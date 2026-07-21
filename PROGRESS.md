@@ -11,7 +11,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M0.1 Repo, XcodeGen, app shell | done | 2026-07-21 | 9f70b14 | Seven local packages declared in project.yml but not linked to Helm target yet; HelmWatch stub embedded for M0.5. |
 | M0.2 Core package | done | 2026-07-21 | e7df993 | HelmDay.day(for:cutoff:calendar:), Clock, units, Sendable value types, 13 unit tests. Sleep attributed by onset via SleepRecord.helmDay(forStart:). |
 | M0.3 Diagnostics package + screen | not started | | | |
-| M0.4 DesignSystem | not started | | | |
+| M0.4 DesignSystem | done | 2026-07-21 | 7109cd1 | OLED-black tokens in HelmTokens.swift; Card, Gauge, StatRow, button styles, helmChartStyle(); tab shell themed via helmTheme() + helmScreenBackground(). DesignSystem linked to Helm target. |
 | M0.5 Watch walking skeleton | not started | | | |
 | M0.6 Debug key bootstrap + battery method doc | not started | | | |
 | M1.1 Persistence: health schema + repositories | not started | | | |

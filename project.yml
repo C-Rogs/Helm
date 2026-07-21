@@ -45,6 +45,8 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
     dependencies:
+      - package: Diagnostics
+      - package: DesignSystem
       - target: HelmWatch
         embed: true
   HelmWatch:

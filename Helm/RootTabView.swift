@@ -1,3 +1,4 @@
+import DesignSystem
 import SwiftUI
 
 struct RootTabView: View {
@@ -19,6 +20,8 @@ struct RootTabView: View {
                 SettingsView()
             }
         }
+        .toolbarBackground(HelmColor.surface, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }
 

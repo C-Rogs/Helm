@@ -1,10 +1,15 @@
+import Diagnostics
 import SwiftUI
 
 struct SettingsView: View {
     var body: some View {
         NavigationStack {
-            Text("Settings")
-                .navigationTitle("Settings")
+            List {
+                NavigationLink("Diagnostics") {
+                    DiagnosticsView(environment: ExportEnvironmentFactory.current())
+                }
+            }
+            .navigationTitle("Settings")
         }
     }
 }
