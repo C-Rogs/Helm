@@ -10,7 +10,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 |---|---|---|---|---|
 | M0.1 Repo, XcodeGen, app shell | done | 2026-07-21 | 9f70b14 | Seven local packages declared in project.yml but not linked to Helm target yet; HelmWatch stub embedded for M0.5. |
 | M0.2 Core package | done | 2026-07-21 | e7df993 | HelmDay.day(for:cutoff:calendar:), Clock, units, Sendable value types, 13 unit tests. Sleep attributed by onset via SleepRecord.helmDay(forStart:). |
-| M0.3 Diagnostics package + screen | done | 2026-07-21 | | DiagnosticsLog actor (500-cap ring), LogExportService zip (manifest/ring_buffer/oslog_extract), HelmCategory/Logger/Signpost helpers, Settings Diagnostics screen with Export share sheet, bootstrap test log + captured error on launch. 5 unit tests pass. |
+| M0.3 Diagnostics package + screen | done | 2026-07-21 | f766be5 | DiagnosticsLog actor (500-cap ring), LogExportService zip (manifest/ring_buffer/oslog_extract), HelmCategory/Logger/Signpost helpers, Settings Diagnostics screen with Export share sheet, bootstrap test log + captured error on launch. 5 unit tests pass. |
 | M0.4 DesignSystem | done | 2026-07-21 | 7109cd1 | OLED-black tokens in HelmTokens.swift; Card, Gauge, StatRow, button styles, helmChartStyle(); tab shell themed via helmTheme() + helmScreenBackground(). DesignSystem linked to Helm target. |
 | M0.5 Watch walking skeleton | not started | | | |
 | M0.6 Debug key bootstrap + battery method doc | not started | | | |
@@ -18,7 +18,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M1.2 DB export + data safety | not started | | | |
 | M1.3 HealthKitIngest actor (live reads) | not started | | | |
 | M1.4 Bounded backfill + debug data browser | not started | | | |
-| M2.1 ReadinessKit engine (pure) | done | 2026-07-21 | | ReadinessKit target in Domain package: ARC per BodyBattery spec (EWMA/MAD, spec weights, logistic ~58, cold-start, Edwards TRIMP, confidence). `readiness(for:)`, `seedBaselines(from:)`, `ReadinessBaselineState`. 20 tests + 3 golden fixtures. |
+| M2.1 ReadinessKit engine (pure) | done | 2026-07-21 | f80e79e | ReadinessKit target in Domain package: ARC per BodyBattery spec (EWMA/MAD, spec weights, logistic ~58, cold-start, Edwards TRIMP, confidence). `readiness(for:)`, `seedBaselines(from:)`, `ReadinessBaselineState`. 20 tests + 3 golden fixtures. |
 | M2.2 Readiness wiring + Dashboard card | not started | | | |
 | M3.1 Logger persistence | not started | | | |
 | M3.2 Active session engine | not started | | | |
