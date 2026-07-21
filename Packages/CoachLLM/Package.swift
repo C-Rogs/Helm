@@ -4,11 +4,16 @@ import PackageDescription
 
 let package = Package(
     name: "CoachLLM",
-    platforms: [.iOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v15)],
     products: [
         .library(name: "CoachLLM", targets: ["CoachLLM"])
     ],
     targets: [
-        .target(name: "CoachLLM")
+        .target(name: "CoachLLM"),
+        .testTarget(
+            name: "CoachLLMTests",
+            dependencies: ["CoachLLM"],
+            resources: [.process("Fixtures")]
+        )
     ]
 )
