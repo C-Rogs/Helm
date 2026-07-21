@@ -1,0 +1,54 @@
+# SwiftLint - Helm iOS app
+# Run: swiftlint (from repo root)
+
+excluded:
+  - DerivedData
+  - build
+  - Packages/*/.build
+
+disabled_rules:
+  - trailing_whitespace
+  - todo
+
+opt_in_rules:
+  - empty_count
+  - explicit_init
+  - fatal_error_message
+  - redundant_nil_coalescing
+
+line_length:
+  warning: 140
+  error: 180
+  ignores_urls: true
+  ignores_function_declarations: true
+
+type_body_length:
+  warning: 400
+  error: 600
+
+file_length:
+  warning: 600
+  error: 900
+
+function_body_length:
+  warning: 80
+  error: 120
+
+identifier_name:
+  min_length:
+    warning: 2
+  excluded:
+    - id
+    - x
+    - y
+
+force_cast: error
+force_try: warning
+implicitly_unwrapped_optional: warning
+
+custom_rules:
+  no_print:
+    name: "No print()"
+    regex: '\bprint\s*\('
+    message: "Use OSLog or Diagnostics instead of print()."
+    severity: error

@@ -1,0 +1,70 @@
+# Regenerate: cd /Users/cameronro/Development/Helm && xcodegen generate
+
+name: Helm
+options:
+  bundleIdPrefix: com.cameronro
+  deploymentTarget:
+    iOS: "26.0"
+    watchOS: "26.0"
+  createIntermediateGroups: true
+settings:
+  base:
+    MARKETING_VERSION: "1.0.0"
+    CURRENT_PROJECT_VERSION: "1"
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    DEVELOPMENT_TEAM: SXWJBD2V3V
+    CODE_SIGN_STYLE: Automatic
+packages:
+  Core:
+    path: Packages/Core
+  Diagnostics:
+    path: Packages/Diagnostics
+  DesignSystem:
+    path: Packages/DesignSystem
+  Persistence:
+    path: Packages/Persistence
+  HealthKitIngest:
+    path: Packages/HealthKitIngest
+  Domain:
+    path: Packages/Domain
+  CoachLLM:
+    path: Packages/CoachLLM
+targets:
+  Helm:
+    type: application
+    platform: iOS
+    sources:
+      - path: Helm
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Helm
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: HelmWatch
+        embed: true
+  HelmWatch:
+    type: application
+    platform: watchOS
+    sources:
+      - path: HelmWatch
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm.watchkitapp
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_CFBundleDisplayName: Helm
+        INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.cameronro.helm
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        SKIP_INSTALL: YES
+schemes:
+  Helm:
+    build:
+      targets:
+        Helm: all
+        HelmWatch: all
+    run:
+      config: Debug

@@ -1,0 +1,19 @@
+# Local secrets (never commit)
+Secrets/
+*.xcconfig.local
+.DS_Store
+
+# Xcode user data
+*.xcuserstate
+xcuserdata/
+
+# Generated project (regenerate with xcodegen)
+Helm.xcodeproj/
+
+# Build
+DerivedData/
+build/
+Packages/*/.build/
+
+# SwiftLint cache
+.swiftlint-cache

@@ -1,0 +1,637 @@
+# Plan: Helm (unified adaptive health coach, clean-slate iOS build)
+
+> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. When the user says "build M3.2", an agent reads this file and builds that section. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). On-device verification is batched into Device Test Gates (DT1 to DT5), not per-section.
+
+## Build agent contract (read this first, every time)
+
+1. **Scope discipline.** Build exactly the section named. Do not start the next section, do not refactor other sections' files except where an interface change is explicitly part of your section. If the section turns out to be materially bigger than described, stop and report instead of half-building.
+2. **Sizing.** Each section is sized for one focused agent pass: one pure engine, one package layer, or one screen plus its wiring. If you cannot hold the whole section's file set in mind, you are doing too much.
+3. **Read before writing.** Read the plan header (Locked decisions, Platform constraints, Engineering standards, the relevant engine spec) plus your section. Read every interface your section consumes in the actual code, not from memory of this document.
+4. **Verification split.** Your acceptance list is agent-verifiable: the project builds under Swift 6 complete concurrency with zero warnings, SwiftLint is clean, all unit/snapshot/property tests pass, and any listed simulator-checkable behaviour works. Items requiring a physical iPhone, a physical Watch, real HealthKit data, live Gemini, or overnight battery runs are listed under the Device Test Gates and are NOT yours to verify. Never claim a device behaviour works.
+5. **Migrations are append-only.** Any section that adds tables appends a new numbered GRDB migration. Never edit a shipped migration. The migrate-up-from-every-prior-schema test must keep passing.
+6. **Fixtures over live services.** LLM work is built and tested against recorded fixtures. Never call live Gemini from tests. Never log request URLs (the key travels as a query parameter).
+7. **Seed content placeholders.** Exercise/evidence/methodology content is authored by Cameron. Build against the defined schema with a small clearly-marked placeholder sample (`"placeholder": true`). Never invent citations.
+8. **Check `PROGRESS.md` before starting, update it when done.** Before building a section, read `PROGRESS.md` for that section's dependencies to confirm they actually landed as specified, and to pick up any "Deviation" notes that change what your section can assume. When your section is done, append your own row (see Progress tracking below). Never edit another section's row.
+9. **Commit at the end of the section, not during.** One section = one clean, atomic commit (a short chain of commits is fine if the section naturally splits, but never leave the section half-committed). See Commit discipline below for message format. Never use `--no-verify`; if a hook fails, fix the underlying issue and recommit.
+10. **Write it like a human engineer shipped it, not like an agent generated it.** See "Read like a human wrote it" below. This is a standing requirement on every section, not a separate cleanup pass.
+11. **Instrument against the frozen contract, don't invent your own.** Read `Docs/DIAGNOSTICS.md` before writing any `OSLog`/signpost/error-capture code. Use your package's assigned category, emit the exact signpost name from the catalog if your section owns one, and route unhandled errors through the ring buffer per its contract. A section is not done until it satisfies that doc's Instrumentation gate.
+
+---
+
+## Progress tracking (`PROGRESS.md`)
+
+`PROGRESS.md`, in this same folder, is the shared status board every agent reads and appends to. `PLAN.md` stays a stable spec that nothing writes back into; `PROGRESS.md` is the mutable log of what actually happened. It exists so:
+
+- an agent about to build M6.1 can confirm M5.5 is actually done (not just assumed from the plan) and see the exact commit it landed in;
+- deviations from spec surface once, in one place, instead of getting rediscovered by every downstream section;
+- Cameron can glance at one file to see what is built, in progress, or blocked, without reconstructing it from git log across dozens of commits.
+
+**Format**: one row per section in the status table, appended (never edited) when the section is picked up and again when it's finished. Each finished row is:
+
+```
+| M#.# | Status | Date | Commit | Notes / deviations |
+```
+
+- **Status**: `not started` / `in progress (agent: <name/session>)` / `done` / `blocked (<reason>)`.
+- **Commit**: the short SHA the section landed in.
+- **Notes / deviations**: anything a downstream section needs to know that isn't obvious from the code: an interface that changed shape, a scope cut, a test that had to be skipped and why, a follow-up filed. Leave blank if none. This field is the one agents actually need to read before starting dependent work; keep it honest, not padded.
+
+If a section is abandoned or redone, add a new row rather than rewriting history; the log should read chronologically.
+
+---
+
+## Commit discipline
+
+- One commit per finished section (or a short logical chain within it), never a commit spanning two sections.
+- Message format: `[M#.#] <imperative summary>` for the subject, e.g. `[M3.2] Add active-session store with rest-timer projection`. Body explains *why* only where non-obvious (a workaround, a constraint from the plan); no restating the diff.
+- Reference the plan section, not "as requested" or conversational framing. This is a durable log future engineers (and future agents) read without this conversation's context.
+- Do not commit failing tests, commented-out code, or scaffolding left over from getting something to compile.
+- Update `PROGRESS.md` in the same commit (or the immediate next one) that finishes the section, so status and code never drift apart.
+- Never squash or rewrite history across sections; each section's commit(s) stay as the record of when and how it landed.
+
+---
+
+## Read like a human wrote it, not like an agent generated it
+
+This app should read as if one disciplined iOS engineer wrote it end to end, not as a series of independently prompted patches. Concretely:
+
+- **No AI tells.** No comments explaining what the code obviously does, no "Note: this was implemented per the plan" or "Added for M4.2" references, no apologetic comments, no leftover TODO scaffolding from getting something to compile. A comment only earns its place by explaining a non-obvious *why* (see Engineering standards).
+- **One naming and structure convention throughout.** Swift API Design Guidelines followed consistently: same file layout per type (properties, init, public API, private helpers), same acronym casing, same extension-grouping style, regardless of which section or agent built it. SwiftLint enforces the mechanical part; agents are responsible for the judgment part (naming, structure) it can't catch.
+- **No redundant abstractions bolted on per-section.** Before adding a new protocol, helper, or wrapper type, check whether an equivalent already exists from an earlier section (grep first). Reuse or extend it rather than duplicating a shape under a new name.
+- **Commit history reads like real engineering, not a changelog of prompts.** Message format above; no commits like "fix build", "wip", "address feedback"; squash those into the section's real commit before it's considered done.
+- **No dead code.** If a section supersedes something from an earlier one (rare, since dependencies are unidirectional), delete the old code in the same commit rather than leaving it unreferenced.
+- **Docs and doc-comments are terse and purposeful**, matching Apple's own style, not verbose LLM-style prose. A doc-comment on a public API says what it does and any non-obvious constraint; it does not narrate the implementation.
+
+---
+
+## Parallel build tracks
+
+Sections in different tracks below have no file overlap and can be built by separate agents at the same time, as long as each track's own internal ordering (left to right) is respected. Cross-track parallelism is safe for code; the one shared hazard is **`project.yml` and any GRDB migration file**, both of which are append-only, shared, single files. See the note after the tracks.
+
+- **Wave 0 (must land first, serially)**: M0.1 then M0.2. Everything else depends on these.
+- **Wave 1, parallel tracks off M0.1/M0.2**:
+  - Track A (diagnostics/UI shell): M0.3 then M0.4 then M0.5 then M0.6 (mostly serial, small)
+  - Track B (persistence): M1.1
+  - Track C (pure engines, no persistence dependency at all): M2.1 (ReadinessKit), M4.1 (CoachLLM protocol), M5.1 (PlanKit mesocycle core). These three can run **simultaneously with each other and with Track B**, since they only need `Core`.
+- **Wave 2, once M1.1 lands**: Track B continues as M1.2 and M1.3 **in parallel** (both depend only on M1.1 + M0.3); separately, Track D (logger) starts: M3.1, which only needs M1.1, runs in parallel with M1.2/M1.3.
+- **Wave 3**: M1.4 (needs M1.3); M3.2 then M3.3 then M3.5 and M3.6 (both off M3.1, can run parallel to each other); M4.2 (needs M4.1 + M0.6) and M4.3 (needs M1.1, parallel to M4.2); M5.2 (needs M5.1 + M3.1).
+- From here the tree fans generally follow the section numbering (M2.2 needs M2.1+M1.4+M0.4; M4.4 needs M4.3+M2.1; M5.3 needs M5.2+M2.1, etc). Check each section's stated "Depends on" line before assuming something can run in parallel with something else. When in doubt, run serially; the cost of a wrong parallel assumption (a merge conflict or a section built against stale interfaces) is worse than the time saved.
+
+**Shared-file hazard.** `project.yml` (XcodeGen) and the GRDB migration files are the only files multiple parallel sections may need to touch. Two agents adding "the next" migration number at the same time, or both editing `project.yml` to register a new target, will conflict or silently clobber each other if merged carelessly. Handle this by either: (a) serializing just those edits, landing one agent's `project.yml`/migration change and merging before the next parallel agent starts, even if the rest of their work proceeded in parallel; or (b) building each parallel section in its own branch/worktree and rebasing onto the latest `project.yml`/migration head immediately before merging, renumbering the migration if a collision occurred. Never let two uncoordinated agents merge conflicting migration numbers or target definitions.
+
+---
+
+## Context: why this is being built
+
+Today Cameron runs a manual coaching loop in Gemini: export HealthKit via **bioharvest** (schema-v2 JSON), paste it into Gemini with Hevy workout text, typed calories, and typed life context (WFH, party, "I feel sick"), and Gemini prescribes sessions, nutrition, and recovery against baselines it only remembers because they sit in one chat thread.
+
+Three problems: Cameron is the integration layer (manual export and paste every time), it is reactive (only answers the last prompt), and it has no durable memory (baselines and programme die with the thread).
+
+The lab proved the pieces separately: **bioharvest** (HealthKit harvest), **coach** (multi-LLM chat), **BodyBattery** (the ARC readiness algorithm), **loggy** (a Hevy-grade GRDB logger schema), **Signal** (the health-brain predecessor coach is built from, the RAG approach retired), **Coacher** (a Cloudflare Worker that mints capped keys). These are **reference and lessons only**. The new app is built clean, reusing a lab design only where it is genuinely the best design.
+
+**Outcome:** one iPhone app plus a functional Watch companion that is a **closed-loop adaptive prescription engine**, not a persona chatbot. Metrics arrive automatically, deterministic engines compute the numbers (readiness, training volume and progression, calorie and macro targets), the prescription lands in the logger as a ready-to-go, evidence-based workout, and an LLM narrates it, grounds it in sports-science research, and adapts it live for context the sensors cannot see. It proactively opens the day with an already-adjusted plan. Personal app, no monetisation, optional TestFlight-for-friends later.
+
+---
+
+## Product paradigm
+
+The plan is the product. It adapts continuously as metrics arrive and as Cameron progresses. There is no coaching "voice" whose job is encouragement; the fact that recovery is low has already changed today's prescribed session and calorie target before he looks. Chat exists to ask "why", to learn the methodology, and to negotiate changes. Science is a pillar: prescriptions cite current evidence on what most effectively trains each muscle and how to periodise.
+
+---
+
+## Locked decisions
+
+| Area | Decision |
+|---|---|
+| Build stance | Clean-slate, highest engineering tier. Lab is reference for proven algorithms, schema design, and lessons. Do not import lab code unless it is the optimal design re-implemented cleanly. |
+| Numbers | Deterministic engines compute readiness, training volume/progression, calorie/macro targets. The LLM adjusts engine output for context it cannot sense (hungover, tweaked shoulder, machine taken) by swap/reorder/reshuffle. The engine stays source of truth for the maths and **clamps every LLM-proposed adjustment to safe bounds**. |
+| Prescription surfacing | Today's prescription appears in the logger as a ready-to-go workout. Each exercise shows the engine's prescribed target and the previous performance inline (Hevy style). |
+| Intra-workout coach | Live in-session coach can reorder exercises, swap an exercise, and adjust remaining sets, applied structurally to the active session and logged as a recommendation, with clean undo. |
+| Science / evidence | Exercise selection and periodisation are evidence-driven. The LLM grounds prescriptions in curated research and cites it. A Sources / Methodology area lets Cameron learn, see citations, and negotiate methodology and preferences. Evidence is grounding, not medical advice; keep the "coaching, not diagnosis" boundary. |
+| Plan horizon | The app silently runs a managed mesocycle (RP-style MEV to MRV ramp with scheduled deload) and always points to the optimal route. Heavy readiness-driven adaptation. **Missed-workout and schedule-drift handling is core logic, not an edge case** (see PlanKit). |
+| Goal model | Primary phase (cut / maintain / gain) + rate + target, plus a training emphasis (for example V-taper: shoulders and back). Changing phase re-plans everything. |
+| Nutrition | HealthKit is the single source of truth. MyFitnessPal keeps feeding it (barcode + manual, already syncs to Apple Health); read HealthKit live, drop the bioharvest hop. Adaptive-TDEE engine on top. **Native photo-to-macro logging is in v1** (Gemini vision, editable confirm, writes meals back to Apple Health): MFP gates photo logging behind premium, so this fills a real gap. |
+| Training text import | Hevy "import" is a copy-paste of the day's workout text, parsed into structured sets. Not an API or CSV integration. Superseded once the built-in logger is primary. |
+| Memory | Editable rolling profile the LLM reads every turn and Cameron can inspect and correct in Settings (baselines, mesocycle position, phase, preferences, standing constraints, what has worked). Ordered as a stable prefix so Gemini implicit caching applies. |
+| Proactivity | Fully local. A Shortcuts automation fires an on-device App Intent (harvest + compute + Gemini + local notification). **Triggered on alarm-off / first unlock, not a fixed clock time** (HealthKit is unreadable while locked; see below). Generate-on-open fallback guarantees it is never missed. No server, no push service. |
+| Proactive pushes | Morning readiness brief, pre-workout prime, post-workout post-mortem. Threshold insights surface in-app but stay silent. |
+| Offline | Engines always render the numbers with no LLM. Gemini narrates and adjusts online. **v1 offline behaviour: coach unavailable, logger and numbers fully functional.** On-device narration (Apple Foundation Models) is **removed from v1 but designed for**: the provider protocol and per-provider budgets stay in place so a FoundationModelsProvider drops in later with no rearchitecting. |
+| Watch | iPhone is the brain. Watch = ARC readiness complication + **live HR during an active workout, structured as a real workout**. The Watch runs an `HKWorkoutSession` of the correct activity type (run, strength, etc.), saving an `HKWorkout` with HR samples to HealthKit, so training load (Edwards TRIMP) and therefore readiness gating are fed correctly, the same way a Hevy or Apple Workout session logs. In v1. A walking skeleton is built and verified early; features land at M8. |
+| Analytics | Focused decision-driving charts first (trend weight vs target, readiness history, per-muscle volume vs landmarks, e1RM progression, energy balance), expanding later. |
+| Keys / devices | iPhone only. Own keys in Keychain now; pushed to the dev device via a Debug bootstrap. Provider layer + device identity designed so the existing **Coacher Cloudflare Worker** (capped free-model key minting) drops in later for TestFlight friends. |
+| Data safety | The GRDB store is the system of record for training data. Manual export (DB + logs) via share sheet from M1; iCloud backup inclusion decided explicitly; restore semantics defined (HealthKit anchors reset on restore). |
+| Privacy vs battery | Privacy is a low concern (data already goes to Gemini). Battery is a hard constraint, **with a measurement method** (Instruments energy log baseline + repeatable overnight test). |
+| Telemetry | None. No analytics SDKs. |
+| Dev diagnostics | Deep structured logging from M0, one-tap export off the phone (AirDrop/share sheet). For app performance and functional debugging, the real risk in agent-built code. |
+| Backwards compatibility | The schema-v2 JSON export and copy-to-Gemini path remain intact as a built-in fallback (built at M11.1). |
+
+---
+
+## Platform constraints the build agents must design around
+
+1. **HealthKit is unreadable while the phone is locked.** HealthKit data is Protected Unless Open; read access is relinquished about 10 minutes after lock and returns on next unlock. A fixed-time Shortcuts automation on a locked phone cannot harvest. Proactive briefs trigger on alarm-off / first unlock, check `isProtectedDataAvailable` at intent start, and fall back to generate-on-open. bioharvest never handled this; the new intent must.
+2. **HealthKit background delivery must be explicitly enabled.** Observer-driven ingest requires `enableBackgroundDelivery(for:frequency:)` per sample type plus the HealthKit background-delivery entitlement and capability; without it, observers only fire while the app is foregrounded. Frequency budgets are type-appropriate (immediate for workouts, hourly is fine for dietary energy).
+3. **Foundation Models context is 4096 tokens total** (instructions + prompt + response), with `contextSize` / `tokenCount(for:)` for budgeting. Relevant only when the later on-device narration provider is added; when built, handle `.exceededContextWindowSize` as a typed error and give it its own trimmed context budget.
+4. **Gemini caching:** rely on implicit caching (default-on for 2.5 models, ~90% discount on shared prefixes, ~1 to 2k min prefix). Order the stable prefix (system prompt + profile + baselines + evidence index) first. Do not build explicit cache management (32k min + storage cost, wrong shape). The API key travels as a URL query parameter on the AI Studio endpoint; never log request URLs. Token estimate = chars / 3.5.
+5. **Live-workout HealthKit teardown:** Signal's documented blank-screen bug was `HKLiveWorkoutBuilder` Error(7) plus a UIKit keyboard teardown during a live workout, not memory pressure. The Watch workout session (M8) and the custom numpad (M3.3) must handle this cleanly.
+
+---
+
+## Competitive gap we exploit
+
+No shipping product closes the loop across recovery, strength, and nutrition with LLM reasoning. Recovery apps (Whoop, Oura, Bevel, Ultrahuman) have chat and readiness but are blind to sets/reps/RPE and do no real hypertrophy programming or adaptive nutrition. Strength engines (Fitbod, RP, Hevy) do rigorous progression but are closed rules-boxes with no chat; RP autoregulates off soreness only, never HRV/sleep. MacroFactor nails adaptive TDEE but is siloed. Our move: readiness-gated autoregulation spanning domains, evidence-cited exercise selection, and an LLM that narrates and negotiates. Single-user removes the constraints that force incumbents into closed, conservative formulas.
+
+Ideas deliberately adopted: personal rolling baselines not population norms; recovery drives a daily target; adaptive TDEE from trend weight; MEV to MRV mesocycle with deloads and RIR autoregulation plus evidence-based movement selection; inspectable editable memory; auto-filled previous performance and low-friction capture; sleep-window-only HRV with artefact filtering; a "what precedes your bad days" correlation view later.
+
+---
+
+## Architecture (clean, from scratch)
+
+One iPhone app plus Watch, built as modular Swift packages with a strict dependency direction. Pure engines depend only on `Core` value types, never on persistence, HealthKit, or network, so they are trivially testable and deterministic. **No on-device embedding or RAG** (retired from Signal for complexity and battery reasons; Gemini's window plus trimmed structured context plus the editable profile replaces it).
+
+### Package graph (aim for ~5 packages, not ~10)
+
+Micro-packages per feature make AI agents duplicate types instead of hunting imports. Consolidate:
+
+```
+App (iPhone)   WatchApp   WidgetsLiveActivity   ShareExtension   AppIntents
+      \___________\____________\_________________\_______________/
+                                │ composition root (DI)
+   ┌───────────────┬───────────────┬───────────────┬───────────────┐
+ DesignSystem     Domain          Persistence     HealthKitIngest   CoachLLM
+                (pure engines)     (GRDB)          (actor)          (Gemini)
+   └───────────────┴───────────────┴───────────────┴─────────────── Core + Diagnostics
+```
+
+- **Core**: Sendable value types (metrics, sets, prescriptions, phase/goal, evidence records), units, a testable `Clock`/`Calendar` abstraction, error types, and the single canonical "day boundary" function (see Time standard: a user-defined cutoff, not sleep-sample end). No I/O.
+- **Diagnostics**: OSLog subsystem/categories, in-memory ring buffer, export service (share sheet / AirDrop), and a **local silent error log**: any unhandled error thrown by an engine or ingest path writes its type, context, and stack trace to the ring buffer (never crashing, never phoning home) so a silent HealthKit-parse failure in agent-built code is recoverable on export. Used by every layer.
+- **Domain** (pure): the three engines as targets or folders under one package: **ReadinessKit**, **PlanKit**, **NutritionKit**. Value inputs, value outputs, zero I/O.
+- **Persistence**: GRDB store with versioned migrations, value-type records, repositories, `DatabasePool`. Derived values (previous performance, e1RM, weekly volume) are computed via queries, not stored as truth.
+- **HealthKitIngest**: an actor wrapping HealthKit read + write, observer-driven (no polling, background delivery enabled per type), bounded/chunked backfill, anchored queries with locally stored cursors, idempotent on sample UUIDs, **source-bundle-ID filtering so the app never re-ingests its own writes**, and anchored-query deletion handling for MFP edits/deletes.
+- **CoachLLM**: LLM provider protocol (`availability`, `prewarm`, streaming `respond`, `resetThread`) with per-provider token budgets. Gemini provider is the v1 backend; OpenRouter sits behind the same protocol (disabled until minting exists); **a FoundationModelsProvider is not built in v1 but the protocol, registry, and budget map reserve its slot**. Context builder with oldest-day-first trimming, memory-profile injection ordered for implicit caching, structured-output parsing for in-session adjustments and photo-macro extraction, and **failure policy** (rate limit, timeout, offline mid-rest-timer → engine-only fallback).
+- **DesignSystem**: OLED-black theme, typography, reusable components (cards, gauges, charts), no em dashes in copy.
+
+### Daily compute pipeline
+
+```
+HealthKit (live, observer) ─┐
+Logger sessions / pasted text ─┼─► Persistence ─► ReadinessKit ─┐
+HealthKit nutrition (MFP) ─────┘                 PlanKit ───────┼─► numeric prescription (ready-to-go workout + targets)
+photo-vision meals ────────────────────────────► NutritionKit ─┘        │
+                                                                        ▼
+              editable memory profile + baselines + evidence ─► CoachLLM (Gemini)
+                                                                        │
+                          narration + evidence citations + live adjustments (swap/reorder, clamped)
+                                                                        ▼
+                                        Dashboard cards + notification + Train screen + chat
+```
+
+The numeric prescription renders with no LLM (offline-safe). The LLM narrates, cites methodology, and applies adjustments requested in chat, flagged as context, or made live in a workout, all clamped by the engine.
+
+---
+
+## Engineering standards (inherited by every section)
+
+- **Language/runtime**: Swift 6, strict concurrency = complete. Everything `Sendable`. Stateful I/O behind `actor`s (HealthKitIngest, Persistence, network clients). UI and view models `@MainActor`. State via the `@Observable` macro, never `ObservableObject`. Structured concurrency only; honour `Task.checkCancellation()` in every streaming/long loop. Do not sprinkle `@MainActor` to silence the compiler in ways that change semantics.
+- **UI**: SwiftUI, iOS 26+. UIKit only where a system control is wrong for the job (notably a custom numeric keypad via `UIViewRepresentable` to avoid the live-workout keyboard teardown bug documented in Signal).
+- **Architecture**: protocol-oriented with a single composition root for DI. No ambient singletons except a justified registry. Pure engines take value inputs and return value outputs, zero I/O. Repositories mediate Persistence and Core. Services behind protocols so engines and view models are testable with fakes.
+- **Persistence**: GRDB, versioned migrations (migrate-up from every prior schema tested), value records, `FetchableRecord`/`PersistableRecord`. No business logic in views. Compute derived data via queries, do not persist it as truth. `DatabasePool` for concurrent reads.
+- **Logging/diagnostics**: `OSLog` shared subsystem + per-module categories; a `Diagnostics` ring buffer capturing signposts and errors; one-tap export to a file via the share sheet. No `print()`. Instrument key flows with `os_signpost`.
+- **Errors**: typed per-domain errors, `async throws`, mapped to friendly copy at the UI edge. Never crash on missing data; honour HealthKit nil semantics (missing is not zero; emit explicit null, keep keys present, as bioharvest does).
+- **Time**: exactly one canonical "day" rule in one Core function. **Use a user-defined end-of-day cutoff (default 04:00 local), not the end of a sleep sample.** Apple Health fragments sleep into multiple samples and late nights (a 04:00 bedtime after a party) would otherwise mis-attribute Friday's recovery or Sunday's early-hours intake to the wrong day. Everything (readiness window, intake day, training day) keys off this single cutoff. Tested across DST transitions, travel, split sleep, and a night that crosses the cutoff.
+- **Performance/battery budget**: observer-driven HealthKit, never polling; live HR only during an active workout, stopped on finish; Live Activities end promptly; complication updates throttled; heavy work gated on foreground stability with defined stop conditions (Signal's documented lesson); background work bounded and idempotent; lazy queries and pagination for history; no MLX/embedding models. Battery is an acceptance criterion, verified with signposts, an Instruments energy baseline, and a repeatable overnight test.
+- **Project/config**: XcodeGen is the single source of truth for targets and package wiring. SwiftLint enforced (line length, no force unwrap, no `print`). A Debug-only key bootstrap loads gitignored `Secrets/` keys into Keychain (`AfterFirstUnlockThisDeviceOnly`); stripped from Release.
+- **Testing posture (deliberately lean but targeted)**: three engines get real suites (below). Contract tests with recorded fixtures for LLM structured-output parsing. Everything else lands in the Device Test Gate checklists. No separate testing milestones.
+
+### Where real tests live (the correctness spend)
+1. **ReadinessKit baselines**: golden-file tests against exported real HealthKit data plus synthetic series, covering missing days, DST, travel, cold start. Guard unit correctness (SDNN not RMSSD, ms not s, kJ vs kcal).
+2. **PlanKit mesocycle core**: property tests (volume never exceeds MRV, monotone progression within a meso, deload invariants) plus scenario tests for missed and reordered sessions.
+3. **Persistence ingest + migrations**: fixture-driven anchored-query merge/dedup, source filtering, migrate-up-from-every-prior-schema.
+
+---
+
+## The engines
+
+### ReadinessKit (re-implement ARC from the BodyBattery spec)
+ARC-Readiness morning score from sleep-window SDNN HRV (HealthKit does not expose RMSSD), resting HR, sleep composite, optional respiratory rate / wrist temperature / prior-day Edwards TRIMP. Personal EWMA baselines (14-day half-life) with MAD-based robust spread and z-scores; weights approximately HRV 0.42, RHR 0.18, sleep 0.22, remainder to optionals with proportional redistribution when absent; logistic squash centring an all-at-baseline day near 58, not 50. Honest cold-start: nil under 4 valid nights ("building baseline N/4"), provisional 4 to 13 (pulled toward the anchor), full at 14+. Seed baselines from HealthKit backfill so day-1 is not blank for two weeks. The ARC spec is v0.1 design status with an acknowledged ~29% MAPE vs chest strap, valid for within-person deltas only; surface confidence labels, make no clinical claims. This score gates PlanKit and NutritionKit.
+
+### PlanKit (the core differentiator, new)
+- **Mesocycle**: 4 to 6 week blocks per muscle, weekly hard-set targets ramping MEV toward MRV, scheduled deload, then reset. Landmarks seeded from experience and refined from logged tolerance (RIR, soreness flags, performance).
+- **Planned vs actual calendar + drift policy**: the data model separates the planned mesocycle from actual logged sessions. An explicit, tested policy handles a session 0, 2, or 5 days late or done out of order (shift / skip / restructure). Specified before build.
+- **Progression**: per-lift estimated 1RM (Epley) from logged sets, working-weight and rep-target progression, per-muscle weekly hard-set accounting.
+- **Readiness gating**: morning ARC scales today's prescribed volume/intensity. Under-recovered trims sets and caps RPE; peaking green-lights the top. Acute:chronic workload ratio guards spikes.
+- **Evidence-driven selection**: an exercise-science model rates movements per target muscle (effectiveness, stretch-position bias, stimulus-to-fatigue, equipment). PlanKit picks movements to satisfy the muscle's weekly target, respecting equipment and constraints, and attaches rationale + citations for the coach to surface.
+- **Prescription output**: a structured, ready-to-go session (exercises, ordered, target sets/reps/load/RPE), consumed by the Train screen. Plus an override API: flagged context or in-workout requests produce structured adjustments (swap via canonical-exercise + muscle map, reorder, drop/move), each **clamped to safe bounds** before applying. The swap request carries an **exclude list** of already-unavailable movements so the coach never re-proposes a machine that is also taken; the engine returns the next best evidence-appropriate movement not on the list.
+
+### NutritionKit (new)
+Adaptive TDEE by reconciling smoothed trend weight against logged intake (MacroFactor-style), updating weekly. Calorie target = expenditure minus phase deficit/surplus; protein per kg bodyweight; carbs/fat periodised (higher on hard days, tighter on rest/deload). Reads HealthKit intake; consumes photo-vision meals (v1).
+
+**Macro-gap / alcohol handling**: HealthKit has no alcohol macro bucket, so when MFP writes 4 beers the total kcal exceeds protein×4 + carbs×4 + fat×9. NutritionKit computes the gap = total kcal minus reconstructed-macro kcal; a significantly positive gap is attributed to alcohol / untracked energy and surfaced separately, and must **not** distort the carb/fat periodisation logic (the day is not read as a huge carb overshoot). The gap is a first-class field the coach can narrate.
+
+### CoachLLM (new, clean provider layer)
+Provider protocol with a registry owning one instance per backend and a local-inference gate reserved for a future on-device model. Gemini (48k budget) is the v1 backend; OpenRouter behind the same protocol for later; the FoundationModelsProvider slot is reserved (4k budget in the map) but not built in v1. Context builder trims oldest days first, skips re-sending health context on follow-up turns. Memory profile prepended every turn, ordered as a stable prefix for implicit caching. Structured output for in-session adjustments and photo-macro extraction, **with a prompt-version and output-schema-version stamped on every stored artefact** so old chat history stays parseable. Failure policy: rate limit / timeout / offline mid-rest-timer degrade cleanly to engine-only. System prompt terse, numbers-first, instructional, evidence-citing, no filler.
+
+---
+
+## Evidence and methodology (the science pillar)
+
+- A local **methodology library**: evidence-based notes on movement selection per muscle, rep ranges, effective reps, stretch-mediated hypertrophy, volume landmarks, deload logic, autoregulation. **Curated and authored by Cameron; build agents only wire it, never invent citations.** Shipped as bundled seed data (JSON or SQLite) with provenance and a versioned update path.
+- The coach **cites** when it prescribes, with a source reference from the curated library.
+- A **Sources / Methodology screen** where Cameron browses the reasoning behind his current programme, reads citations, and negotiates preferences, which updates the memory profile and re-plans. v1 can render this as bundled markdown rather than a bespoke UI.
+- Evidence is grounding, not medical advice. Keep the "coaching, not diagnosis" boundary.
+
+---
+
+## Exercise + evidence seed data (must exist before M5.5; schema + parser built at M5.4)
+
+`Resources/ExerciseSeed/exercises.json`: a curated canonical exercise list with aliases, muscle taxonomy, exercise mode, and per-exercise evidence ratings + citations. **JSON in the app bundle, parsed into GRDB on first launch** (not a binary SQLite blob): it diffs cleanly in git and Cursor agents handle JSON schema updates far better than a binary. Authored by Cameron. Reuse loggy's `exercise` / `exercise_alias` canonicalisation shape. Versioned with a `seedVersion`; on version bump the parser re-imports/updates rows idempotently. This is content work, not engine work. Until Cameron's content lands, agents ship a small placeholder sample marked `"placeholder": true` so parsing and selection are buildable and testable.
+
+---
+
+## UX and flow
+
+- **Dashboard (home)**: today's ARC readiness (with confidence label), the generated brief, the prescribed session summary (with any adjustment), and nutrition targets, as cards. Prominent Ask Coach into chat. Everything shown is something an engine acts on. Built incrementally: readiness card at M2.2, prescription card at M5.6, brief at M6.3, nutrition card at M9.2.
+- **Train (logger, prescription-driven)**: opens today's prescribed workout ready to go. Each exercise row shows the prescribed target and the previous performance inline, plus input fields with the custom numpad. Checkmark to complete a set, auto rest timer (timestamp-projected, survives backgrounding), finish, editable history, templates, PRs. An in-workout Ask Coach applies live structural changes (reorder, swap when a machine is taken, adjust remaining sets) with undo. Paste-a-workout parses unstructured text into sets.
+- **Chat**: persistent, memory-backed, one tap away. For why, learning methodology, negotiating changes. Chat history persists in GRDB (its own migration, M4.5) with prompt/schema versions stamped.
+- **Nutrition**: targets vs actual for the day; quick add via HealthKit/MFP and native photo logging with an editable confirm.
+- **Trends**: focused chart set first.
+- **Sources / Methodology**: the science area above.
+- **Settings**: all configuration (keys, providers, phase/goal/emphasis, notification triggers, editable memory profile, units, Watch, export/paste fallback, data export/backup, diagnostics export, Advanced).
+- **Onboarding**: per-type HealthKit authorisation (read denials are invisible by design, so verify presence of data not the grant), notification permission, Gemini key entry into Keychain, Shortcuts installation for briefs, initial phase/goal, and a bounded backfill to seed baselines. Pieces are built with their features; M6.4 assembles them into one first-run flow.
+- **Watch**: readiness complication tapping to the brief; live HR during an active workout, logged as a proper `HKWorkout`.
+
+---
+
+## Backwards compatibility, data safety, dev diagnostics
+
+- **Backwards compat**: keep a byte-compatible schema-v2 JSON export and the copy-to-Gemini action, plus the Share-Extension import, as a permanent fallback (M11.1).
+- **Data safety (from M1)**: manual export of the GRDB store + OSLog bundle via share sheet. Decide iCloud backup inclusion explicitly (default is included unless excluded). Define restore-on-new-device semantics, including that HealthKit anchors reset on restore and a re-backfill runs.
+- **Dev diagnostics (from M0)**: a diagnostics screen listing recent structured logs and signposts, a global log ring buffer, and an Export action that writes a log bundle and opens the share sheet for AirDrop. For catching performance and functional regressions in agent-built code, not for validating metric accuracy.
+
+---
+
+## Build sections (each sized for one Composer pass)
+
+Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, and agent-verifiable Acceptance. Device-only verification lives in the Device Test Gates below. The manual Gemini workflow is functionally replaced at the end of M6.
+
+### M0 Foundation
+
+#### M0.1 Repo, XcodeGen, app shell
+- **Goal**: buildable skeleton with standards enforced from commit one.
+- **Scope**: git repo, `project.yml` (App target, empty local packages `Core`, `Diagnostics`, `DesignSystem`, `Persistence`, `HealthKitIngest`, `Domain`, `CoachLLM` pre-declared so later agents never fight XcodeGen), SwiftLint config, Swift 6 complete concurrency, a minimal five-tab shell (Dashboard, Train, Chat, Trends, Settings) with placeholder views.
+- **Depends on**: nothing.
+- **Acceptance**: `xcodegen` + build clean with zero warnings; SwiftLint clean; app runs in simulator to the tab shell.
+
+#### M0.2 Core package
+- **Goal**: the shared vocabulary every later section imports.
+- **Scope**: Sendable value types (daily metrics, body comp, sleep, workout/set, prescription, phase/goal, evidence record), units (explicit kcal/kJ, kg/lb, ms), typed base errors, testable `Clock`/`Calendar` abstraction, the single canonical day-boundary function (04:00 default cutoff, user-configurable).
+- **Interfaces**: `HelmDay.day(for:cutoff:calendar:)`; `Clock` protocol; unit types.
+- **Depends on**: M0.1.
+- **Acceptance**: day-boundary unit tests pass across DST transitions, timezone travel, split sleep, and a night crossing the cutoff; no I/O imports anywhere in the package.
+
+#### M0.3 Diagnostics package + screen
+- **Goal**: structured logging and export before any feature code exists.
+- **Scope**: implement `Docs/DIAGNOSTICS.md` exactly: the fixed subsystem/category taxonomy, the ring buffer (500-entry cap, actor-isolated, silent error capture with type + context + stack), `LogExportService` producing the specified zip schema (`manifest.json`, `ring_buffer.json`, `oslog_extract.txt`, chat/photo content excluded by default), a Settings-hosted diagnostics screen listing recent entries with an Export button.
+- **Interfaces**: `DiagnosticsLog`, `LogExportService`, `os_signpost` helpers per the signpost catalog.
+- **Depends on**: M0.2.
+- **Acceptance**: a test log line appears on the diagnostics screen in simulator; export produces a zip matching the documented schema via the share sheet; ring buffer capped and thread-safe under strict concurrency; a deliberately thrown test error is captured to the ring buffer, not crashed.
+
+#### M0.4 DesignSystem
+- **Goal**: theme and reusable components so screens never invent styling.
+- **Scope**: OLED-black theme tokens (colour, typography, spacing), card, gauge, stat row, primary/secondary buttons, chart style primitives; apply the theme to the M0.1 tab shell. No em dashes in any copy.
+- **Interfaces**: theme tokens; `Card`, `Gauge`, `StatRow` components.
+- **Depends on**: M0.1.
+- **Acceptance**: tab shell renders themed in simulator; components have SwiftUI previews; zero hard-coded colours outside the token file.
+
+#### M0.5 Watch walking skeleton
+- **Goal**: prove the Watch pipeline early so M8 is features, not plumbing.
+- **Scope**: WatchApp target in XcodeGen, one value round-tripped via `WCSession` application context, a stub complication, shared `Core` import on the Watch.
+- **Depends on**: M0.1, M0.2.
+- **Acceptance**: both targets build clean; the round-trip and complication are simulator-verifiable stubs; device verification deferred to DT1.
+
+#### M0.6 Debug key bootstrap
+- **Goal**: keys on the dev device without ever committing them. Battery measurement method is already frozen in `Docs/BATTERY.md`; this section is the bootstrap implementation only.
+- **Scope**: gitignored `Secrets/` template, Debug-only bootstrap loading keys into Keychain (`AfterFirstUnlockThisDeviceOnly`), compiled out of Release.
+- **Depends on**: M0.1.
+- **Acceptance**: Release build contains no bootstrap symbols; missing `Secrets/` degrades with a clear diagnostic, not a crash. Record the `Docs/BATTERY.md` M0.6 baseline row (empty-shell Instruments energy log) once this section's build is on a physical device, at DT1.
+
+### M1 Data layer
+
+#### M1.1 Persistence: health schema + repositories
+- **Goal**: the GRDB store for health metrics.
+- **Scope**: `Persistence` package: `DatabasePool`, migrator, migration v1 (daily metrics, body comp, sleep, nutrition days + meals), value records, repositories, in-memory test support.
+- **Interfaces**: repositories for daily metrics, body comp, sleep, nutrition.
+- **Depends on**: M0.2.
+- **Acceptance**: migrate-up from empty passes; the migrate-up-from-every-prior-schema test harness exists and passes; repositories round-trip value records in-memory.
+
+#### M1.2 DB export + data safety
+- **Goal**: the manual backup path, from day one.
+- **Scope**: DB export (checkpointed copy) + OSLog bundle via share sheet from Settings; explicit iCloud backup inclusion decision implemented; restore semantics documented (HealthKit anchors reset on restore, re-backfill runs).
+- **Depends on**: M1.1, M0.3.
+- **Acceptance**: export produces a valid openable SQLite file in simulator; restore behaviour documented in `Docs/DATA-SAFETY.md`.
+
+#### M1.3 HealthKitIngest actor (live reads)
+- **Goal**: live, observer-driven HealthKit ingest.
+- **Scope**: `HealthKitIngest` actor: per-type authorisation requests, anchored queries with persisted cursors, `HKObserverQuery` + `enableBackgroundDelivery` per type (HRV SDNN, RHR, sleep, respiratory rate, wrist temperature, active energy, dietary energy + macros, body mass, workouts), sample-UUID idempotency, source-bundle-ID filtering (never re-ingest own writes), deletion handling for MFP edits, writes into M1.1 repositories, entitlements in XcodeGen.
+- **Interfaces**: async snapshots and `AsyncStream`s per metric family; ingest status reporting. Emits the `HealthKitObserverFetch` signpost per `Docs/DIAGNOSTICS.md`, scoped per HKSampleType.
+- **Depends on**: M1.1, M0.3.
+- **Acceptance**: builds with entitlements; ingest logic covered by fixture-driven tests (merge/dedup, source filtering, deletion); simulator run requests authorisation and ingests seeded simulator Health data; `HealthKitObserverFetch` signpost visible in an Instruments trace. Live-device behaviour is DT1.
+
+#### M1.4 Bounded backfill + debug data browser
+- **Goal**: seed 6 months of history without wrecking first launch.
+- **Scope**: chunked, resumable, off-launch-path backfill (6-month window) with progress reporting and memory bounds; baseline-seeding hook for ReadinessKit; a Debug-only data browser screen listing stored days per metric.
+- **Interfaces**: `BackfillService.run(window:)` with progress; day-listing queries. Emits the `BackfillChunk` signpost per `Docs/DIAGNOSTICS.md`, scoped per chunk index.
+- **Depends on**: M1.3.
+- **Acceptance**: backfill runs off the main path (verified via the `BackfillChunk` signpost in Instruments, not print-debugging), is idempotent on re-run, chunk sizes bounded; browser lists ingested days.
+
+### M2 Readiness
+
+#### M2.1 ReadinessKit engine (pure)
+- **Goal**: the ARC score, correct and tested.
+- **Scope**: `Domain/ReadinessKit` exactly per the engine spec above: EWMA baselines (14-day half-life), MAD spread, z-scores, weight redistribution, logistic squash (~58 centre), honest cold-start (nil <4 nights, provisional 4 to 13, full 14+), Edwards TRIMP contribution, confidence labels. Pure: value inputs, value outputs.
+- **Interfaces**: `readiness(for:) -> ReadinessScore?` with contributor breakdown + confidence; baseline state value type; `seedBaselines(from:)`.
+- **Depends on**: M0.2.
+- **Acceptance**: golden-file tests against exported real HealthKit data plus synthetic series pass, covering missing days, DST, travel, cold start; unit-correctness guards (SDNN not RMSSD, ms not s, kJ vs kcal).
+
+#### M2.2 Readiness wiring + Dashboard card
+- **Goal**: readiness on screen from real stored data.
+- **Scope**: wire ReadinessKit to repositories, baseline seeding from the M1.4 backfill, a daily compute trigger on ingest, and the Dashboard readiness card (gauge + contributors + confidence label, "building baseline N/4" state).
+- **Interfaces**: `ReadinessService` (observed by Dashboard); persisted daily scores (migration). `ReadinessService` emits the `ReadinessCompute` signpost per `Docs/DIAGNOSTICS.md` around each call into the pure `ReadinessKit.readiness(for:)` (the engine itself stays zero-I/O per the engineering standards, so the signpost lives in the wiring layer, not the engine).
+- **Depends on**: M2.1, M1.4, M0.4.
+- **Acceptance**: with fixture data in the store, the card renders score, contributors, and cold-start states correctly in simulator; recompute triggers on new ingest; `ReadinessCompute` signpost visible in Instruments.
+
+### M3 Logger (manual, no prescription, no LLM)
+
+#### M3.1 Logger persistence
+- **Goal**: the loggy-grade schema, re-derived cleanly.
+- **Scope**: migration v-next: sessions, blocks/supersets, sets (weight, reps, RPE/RIR, completed-at), canonical exercise + alias tables, templates, PRs (including `best_estimated_1rm` as a PR metric), exercise-history snapshot, rest-timer state as projections, and a reserved `coach_recommendation` table. Repositories plus the two key queries: previous performance per exercise, e1RM (Epley).
+- **Interfaces**: session/set/template/PR repositories; `previousPerformance(exercise:)`; `estimatedOneRM(exercise:)`.
+- **Depends on**: M1.1.
+- **Acceptance**: migration chain passes; query correctness covered by fixture tests (previous performance picks the right prior set, e1RM matches hand-computed values).
+
+#### M3.2 Active session engine
+- **Goal**: session state machine, independent of UI.
+- **Scope**: active-session store (`@Observable`, persisted continuously so a killed app recovers mid-workout), `logSet`, `completeSet`, add/remove exercise, rest-timer as a timestamp projection (no running timer state), finish/discard.
+- **Interfaces**: `ActiveSessionStore`; `RestTimer` projection.
+- **Depends on**: M3.1.
+- **Acceptance**: unit tests: kill-and-recover restores exact state; rest projection correct across simulated backgrounding; finish writes a complete session.
+
+#### M3.3 Train screen + custom numpad
+- **Goal**: the Hevy-style logging UI.
+- **Scope**: Train tab: exercise rows (previous performance auto-filled inline), set rows with weight/reps/RPE inputs via a custom numeric keypad (`UIViewRepresentable`, avoiding the system-keyboard live-workout teardown bug), checkmark completion, rest-timer display, exercise picker off the canonical exercise table, finish flow.
+- **Depends on**: M3.2, M0.4.
+- **Acceptance**: a full workout logs end-to-end in simulator; previous performance auto-fills; numpad never invokes the system keyboard; SwiftUI previews for every row type.
+
+#### M3.4 Rest-timer alerts, Live Activity, HealthKit write
+- **Goal**: the session survives backgrounding and looks native.
+- **Scope**: on entering background, schedule a `UNUserNotification` at the exact end-of-rest timestamp (audible/haptic), cancel on foreground return; workout Live Activity (elapsed, current exercise, rest countdown) ending promptly on finish; on finish, write an `HKWorkout` via HealthKitIngest (source-filtered so it is never re-ingested). Emits the `WorkoutSessionLifecycle` signpost per `Docs/DIAGNOSTICS.md` (begin on session start, event on pause/resume, end on finish/discard).
+- **Depends on**: M3.3, M1.3.
+- **Acceptance**: notification scheduling/cancellation logic unit-tested; Live Activity starts/ends in simulator; workout write path covered by the source-filter test; `WorkoutSessionLifecycle` signpost spans the full session in an Instruments trace. Suspended-app alert firing is DT2.
+
+#### M3.5 History, templates, PRs
+- **Goal**: the logger is a complete product on its own.
+- **Scope**: session history list + detail (editable after finish), template create/start, PR detection + display (weight, reps, e1RM), paginated queries.
+- **Depends on**: M3.3.
+- **Acceptance**: history edits persist; starting from a template pre-fills; PRs computed via queries (not stored as truth) and shown after a qualifying session in simulator.
+
+#### M3.6 Paste-a-workout parser
+- **Goal**: Hevy text import so historical training data exists before PlanKit.
+- **Scope**: parser from pasted Hevy-format day text to structured sets (exercise resolution via alias table, unresolved names prompt to map + save a new alias), import preview UI, fixture suite of real pasted texts.
+- **Interfaces**: `WorkoutTextParser.parse(_:) -> ParsedWorkout`.
+- **Depends on**: M3.1.
+- **Acceptance**: fixture texts (clean, messy, partial) parse correctly; unknown exercises route through the mapping prompt; imported sessions appear in history.
+
+### M4 Coach plumbing
+
+#### M4.1 Provider protocol + registry
+- **Goal**: the LLM abstraction everything else codes against.
+- **Scope**: `CoachLLM` package: provider protocol (`availability`, `prewarm`, streaming `respond`, `resetThread`), registry owning one instance per backend, per-provider token budget map (Gemini 48k; FoundationModels slot reserved at 4k, returns unavailable in v1; OpenRouter slot disabled), chars/3.5 estimator, typed failure policy (rate limit, timeout, offline → engine-only state), fixture-based test harness.
+- **Depends on**: M0.2.
+- **Acceptance**: a `MockProvider` exercises the full protocol in tests; failure policy maps every error to a typed degraded state; adding a provider requires no protocol change (compile-checked by the reserved slots).
+
+#### M4.2 GeminiProvider + keys
+- **Goal**: real Gemini behind the protocol.
+- **Scope**: GeminiProvider (AI Studio endpoint, streaming SSE, structured output with schema + prompt version stamped on every artefact, key as query parameter, **request URLs never logged** per `Docs/DIAGNOSTICS.md`'s redaction rules), Keychain key management, Settings screen for key entry/provider selection, recorded-fixture contract tests for streaming and structured-output decode. Emits the `GeminiStream` signpost per the catalog, scoped per request UUID.
+- **Depends on**: M4.1, M0.6.
+- **Acceptance**: recorded fixtures decode (streamed chunks reassemble, structured outputs parse, schema-version mismatch handled as typed error); grep-level check that no logging call, signpost annotation, or ring-buffer context can receive a request URL; `GeminiStream` signpost spans a fixture-driven request in a test trace. Live smoke test is DT3.
+
+#### M4.3 MemoryProfile
+- **Goal**: the durable, inspectable coach memory.
+- **Scope**: `MemoryProfile` value type (baselines summary, mesocycle position, phase, preferences, standing constraints, what has worked), persisted (migration), serialised deterministically as a stable prefix block for implicit caching, plus the Settings editor screen.
+- **Interfaces**: `MemoryProfileStore`; `stablePrefixText()`.
+- **Depends on**: M1.1.
+- **Acceptance**: round-trip persistence tests; serialisation is byte-stable for identical content (snapshot test); editor edits persist in simulator.
+
+#### M4.4 Context builder (pure)
+- **Goal**: the payload assembler, snapshot-tested.
+- **Scope**: pure builder assembling system prompt + memory profile + baselines + evidence index (stable prefix first) then recent days, trimming oldest-first to budget; skips re-sending health context on follow-up turns; token estimation.
+- **Interfaces**: `ContextBuilder.build(profile:days:budget:turn:) -> Prompt`.
+- **Depends on**: M4.3, M2.1.
+- **Acceptance**: snapshot tests over fixed inputs; prefix ordering byte-stable across calls; trimming drops oldest days first and never splits the prefix.
+
+#### M4.5 Chat UI + chat persistence
+- **Goal**: streaming chat grounded in real data.
+- **Scope**: Chat tab: streaming rendering, cancellation on tab-disappear, degraded offline state, chat-history persistence (migration; messages stamped with prompt/schema versions), wiring through the composition root (repositories + readiness + memory profile → context builder → provider).
+- **Depends on**: M4.2, M4.4, M2.2.
+- **Acceptance**: chat works end-to-end against the mock provider in simulator with real stored fixture data in context; history persists across relaunch; offline state renders cleanly. Live grounded chat is DT3.
+
+### M5 Planning
+
+#### M5.1 PlanKit mesocycle core (pure)
+- **Goal**: the mesocycle maths, property-tested.
+- **Scope**: `Domain/PlanKit`: mesocycle blocks (4 to 6 weeks per muscle), weekly hard-set targets ramping MEV→MRV, scheduled deload + reset, landmark seeding + refinement from logged tolerance (RIR, soreness, performance), per-muscle weekly hard-set accounting, progression (e1RM, working weight, rep targets).
+- **Interfaces**: `MesocycleState`; `progression(for:history:)`.
+- **Depends on**: M0.2.
+- **Acceptance**: property tests pass: volume never exceeds MRV, monotone progression within a meso, deload invariants hold.
+
+#### M5.2 Planned-vs-actual calendar + drift policy
+- **Goal**: schedule drift as core logic.
+- **Scope**: data model separating planned mesocycle from actual logged sessions (migration for plan state); the explicit drift policy (session 0/2/5 days late, out of order → shift/skip/restructure), written as a short spec section in code comments before implementation; scenario tests.
+- **Interfaces**: `resolveDrift(planned:actual:) -> PlanAdjustment`.
+- **Depends on**: M5.1, M3.1.
+- **Acceptance**: scenario tests for each drift case pass and encode the written policy; acute:chronic workload ratio guard covered.
+
+#### M5.3 Prescription + readiness gating + clamps
+- **Goal**: the daily numeric prescription.
+- **Scope**: `prescription(for:givenReadiness:profile:history:) -> PrescribedSession` (ordered exercises, target sets/reps/load/RPE); readiness gating (low ARC trims volume and caps RPE, high green-lights); the adjustment API `apply(adjustment:excluding:)` with safe-bound clamping and the exclude list contract (a swap never returns an excluded movement).
+- **Depends on**: M5.2, M2.1.
+- **Acceptance**: unit tests: low-readiness prescriptions are strictly lighter; clamps reject out-of-bounds adjustments; exclude list honoured across repeated swaps; changing phase re-plans.
+
+#### M5.4 Exercise seed schema + import
+- **Goal**: the seed pipeline, buildable before Cameron's content lands.
+- **Scope**: `Resources/ExerciseSeed/exercises.json` schema (canonical exercises, aliases, muscle taxonomy, mode, evidence ratings + citations, `seedVersion`), first-launch parse into GRDB, idempotent re-import on version bump, a placeholder sample marked `"placeholder": true`. Never invent citations.
+- **Depends on**: M3.1.
+- **Acceptance**: import + re-import idempotency tests pass; placeholder sample round-trips; version bump updates rows without duplicates.
+
+#### M5.5 Evidence-driven selection + citations
+- **Goal**: prescriptions pick the right movements and say why.
+- **Scope**: selection model rating movements per target muscle (effectiveness, stretch-position bias, stimulus-to-fatigue, equipment/constraints), satisfying weekly targets; rationale + citation attachment on each prescribed exercise, consumed later by the coach.
+- **Depends on**: M5.4, M5.3.
+- **Acceptance**: with seed fixtures, selection satisfies weekly muscle targets under equipment constraints; every selected movement carries rationale + citation references; excluded/unavailable movements never selected.
+
+#### M5.6 Phase/goal setup + Dashboard prescription card
+- **Goal**: the plan is visible and configurable.
+- **Scope**: phase/goal/emphasis model in Settings (and reused later by onboarding), persisted; changing phase triggers re-planning; Dashboard card summarising today's prescribed session. The wiring layer that calls the pure `PlanKit.prescription(for:givenReadiness:profile:history:)` emits the `PrescriptionCompute` signpost per `Docs/DIAGNOSTICS.md` (the engine itself stays zero-I/O).
+- **Depends on**: M5.3, M2.2.
+- **Acceptance**: phase change visibly re-plans in simulator with fixture history; card renders the prescribed session summary; `PrescriptionCompute` signpost visible in Instruments around each compute call.
+
+### M6 Closing the loop
+
+#### M6.1 Prescription-driven Train screen
+- **Goal**: today's plan opens ready to go.
+- **Scope**: Train opens today's `PrescribedSession` as the active workout; each exercise row shows the engine's target and previous performance inline; deviations from target logged as-is; falls back to manual/template start when no prescription exists.
+- **Depends on**: M5.5, M3.3.
+- **Acceptance**: with fixture prescription + history, the session opens pre-populated with targets and previous values in simulator; manual fallback intact.
+
+#### M6.2 In-session coach
+- **Goal**: live structural adjustments with undo.
+- **Scope**: `askCoachInSession` returning structured reorder/swap/adjust (via the M4.2 structured-output path), applied through `apply(adjustment:excluding:)` to the active session, exclude list accumulating across repeated swaps in one session, clean undo stack, every applied adjustment written to `coach_recommendation`.
+- **Depends on**: M6.1, M4.5, M5.3.
+- **Acceptance**: with fixture structured outputs: swap/reorder/adjust apply and undo cleanly; a second "also taken" swap returns a different movement; recommendations logged. Live in-gym behaviour is DT3.
+
+#### M6.3 Morning brief on open
+- **Goal**: the app opens with the day already decided; the manual Gemini loop is now replaced.
+- **Scope**: generate-on-open brief: readiness + prescription + nutrition targets composed by the engines, narrated by the coach (with citations) when online, engine-only card when offline; rendered as the Dashboard brief card; brief persisted per day (no regeneration spam).
+- **Depends on**: M6.1, M4.5, M2.2.
+- **Acceptance**: opening the app with fixture data renders the brief; offline renders the engine-only version; the brief regenerates only when inputs change.
+
+#### M6.4 Onboarding assembly
+- **Goal**: one coherent first-run flow from the pieces already built.
+- **Scope**: sequence: per-type HealthKit authorisation (verify presence of data, not the grant, since read denials are invisible), notification permission, Gemini key entry, initial phase/goal, bounded backfill with progress, pointer to the Shortcuts guide (guide itself lands at M7.2).
+- **Depends on**: M6.3, M1.4, M4.2, M5.6.
+- **Acceptance**: fresh-install simulator run walks the full flow and lands on a working Dashboard; every step skippable and re-enterable from Settings.
+
+### M7 Proactivity
+
+#### M7.1 GenerateBriefIntent (locked-phone aware)
+- **Goal**: the brief fires from Shortcuts without the app open.
+- **Scope**: `AppIntents` target: `GenerateBriefIntent` (check `isProtectedDataAvailable` first, harvest + compute + narrate + local notification; if locked, record the miss and let generate-on-open catch it), bounded runtime, full diagnostics logging. Emits the `BriefIntentRun` signpost per `Docs/DIAGNOSTICS.md`, scoped per invocation.
+- **Depends on**: M6.3.
+- **Acceptance**: intent runs in simulator and produces the notification; locked-state code path unit-tested via the protected-data check abstraction; `BriefIntentRun` signpost spans the full invocation. Real alarm-off trigger is DT4.
+
+#### M7.2 Notification triggers + Shortcuts guide
+- **Goal**: the three pushes plus setup.
+- **Scope**: notification content builders (morning brief, pre-workout prime, post-workout post-mortem), trigger logic (pre: ahead of the planned session window; post: on workout finish), threshold insights surfacing in-app but silent, and a Settings screen guiding Shortcuts automation setup (alarm-off / first-unlock).
+- **Depends on**: M7.1, M6.1.
+- **Acceptance**: content builders snapshot-tested; post-workout notification fires on finish in simulator; guide screen complete.
+
+### M8 Watch features
+
+#### M8.1 Watch workout session
+- **Goal**: live HR as a proper workout, Watch-authoritative.
+- **Scope**: on the M0.5 skeleton: activity-type picker, `HKWorkoutSession` + `HKLiveWorkoutBuilder` (careful teardown per the documented Error(7) lesson), live HR/zones during the session only, saving an `HKWorkout` of the correct type with HR samples on finish. Start/stop is Watch-authoritative; no WCSession dependency for state. Emits `WorkoutSessionLifecycle` (Watch side) and `LiveWorkoutBuilderTeardown` per `Docs/DIAGNOSTICS.md`, both scoped per session.
+- **Depends on**: M0.5, M1.3.
+- **Acceptance**: Watch target builds; session state machine unit-tested (start/pause/end/teardown paths); simulator session saves a workout; both signposts visible in a Watch Instruments trace spanning a simulated session. Real HR + battery is DT4.
+
+#### M8.2 Phone observation + readiness complication
+- **Goal**: the phone learns from HealthKit, not messages; readiness on the wrist.
+- **Scope**: phone-side `HKObserverQuery`/anchored query on the workout type detects Watch sessions (WCSession used only for opportunistic low-latency HR display, never as source of truth); finished workouts feed Edwards TRIMP into readiness; the complication shows today's readiness (pushed via application context, throttled) and taps through to the brief.
+- **Depends on**: M8.1, M2.2.
+- **Acceptance**: fixture-driven test: an observed `HKWorkout` updates training load and next-day readiness inputs; complication renders in the Watch simulator gallery. End-to-end wrist flow is DT4.
+
+### M9 Nutrition
+
+#### M9.1 NutritionKit engine (pure)
+- **Goal**: adaptive targets, tested.
+- **Scope**: `Domain/NutritionKit` per the engine spec: adaptive TDEE from smoothed trend weight vs logged intake (weekly update), calorie target from phase, protein per kg, carb/fat periodisation by day type, and the macro-gap/alcohol field (gap = kcal minus reconstructed-macro kcal, surfaced separately, never distorting periodisation).
+- **Interfaces**: `targets(for:phase:trend:) -> MacroTargets` (including the gap field).
+- **Depends on**: M0.2.
+- **Acceptance**: unit tests: TDEE converges on synthetic series; targets shift correctly across phases and day types; alcohol-day fixtures do not distort carb/fat splits.
+
+#### M9.2 Nutrition screen + Dashboard card
+- **Goal**: targets vs actual, visible daily.
+- **Scope**: Nutrition screen (targets vs HealthKit actuals for the day, weekly TDEE trend), Dashboard nutrition card, wiring NutritionKit to repositories and the readiness/plan day-type signal.
+- **Depends on**: M9.1, M2.2.
+- **Acceptance**: with fixture intake data, targets vs actual render correctly, including the alcohol-gap presentation.
+
+#### M9.3 Photo-to-macro
+- **Goal**: the MFP-premium gap, natively.
+- **Scope**: photo capture/pick, Gemini-vision extraction via the M4.2 structured-output path (`estimateMacros(image:) -> MealEstimate`), editable confirm sheet, write-through to HealthKit as a meal (source-filtered against re-ingest), failure/offline handling.
+- **Depends on**: M9.2, M4.2, M1.3.
+- **Acceptance**: fixture images decode to editable estimates; confirmed meals write through the HealthKit path and the dedup test proves no re-ingest. Real-food accuracy is DT5.
+
+### M10 Analytics and methodology
+
+#### M10.1 Trends charts
+- **Goal**: the focused decision-driving set.
+- **Scope**: Trends tab: trend weight vs target, readiness history, per-muscle weekly volume vs landmarks, e1RM progression per lift, energy balance. Lazy/paginated queries; DesignSystem chart primitives.
+- **Depends on**: M2.2, M5.6, M9.2.
+- **Acceptance**: all five charts render from fixture data; queries paginated (no full-table loads); previews per chart.
+
+#### M10.2 Sources / Methodology screen
+- **Goal**: the science area.
+- **Scope**: methodology browser (bundled markdown acceptable for v1) with citations from the seed library; preference negotiation flows that update the MemoryProfile and trigger a re-plan.
+- **Depends on**: M5.5, M4.3.
+- **Acceptance**: methodology renders with citations; changing a preference updates the profile and visibly re-plans in simulator.
+
+### M11 Compatibility and sharing
+
+#### M11.1 Schema-v2 export + Share Extension (backwards compat)
+- **Goal**: the permanent manual fallback.
+- **Scope**: byte-compatible schema-v2 JSON export (18:00 to 18:00 sleep window, explicit-null semantics, keys always present, matching bioharvest), copy-to-Gemini action, Share-Extension import target.
+- **Depends on**: M1.3.
+- **Acceptance**: exported JSON byte-matches a bioharvest golden file for the same fixture inputs; Share Extension builds and imports a payload in simulator.
+
+#### M11.2 Sharing via Coacher (later, optional)
+- **Goal**: capped free-model key minting for TestFlight friends, reusing the existing Coacher Cloudflare Worker (or cut entirely; friends build from source).
+- **Depends on**: M4.1.
+- **Acceptance**: a device provisions a capped free-models-only key without an account. Note the shared-secret-in-binary caveat (friends-only, not App Store).
+
+---
+
+## Device Test Gates (batched physical testing; not for build agents)
+
+Device testing is slow, so it is consolidated into five gates. Build agents never block on these; Cameron runs each gate as one sitting with the checklist below, and failures are filed back as targeted fix sections.
+
+### DT1 after M2.2: foundation + ingest + readiness (first device install)
+- HealthKit authorisation flow on a real iPhone; real data (including MFP calories) ingests live with no manual export and persists across relaunch.
+- Background delivery: log a meal in MFP with Helm backgrounded; it arrives without opening the app (or on next open via anchored catch-up).
+- 6-month backfill completes off the launch path with no memory spike (Instruments) and is idempotent on re-run.
+- The app never re-ingests its own writes (write a test sample, confirm no echo).
+- Readiness renders with real data: contributors, confidence, honest cold-start (or seeded baselines from backfill).
+- Diagnostics export lands on the Mac via AirDrop; Watch skeleton installs, round-trips a value, and shows the stub complication.
+- Record the Instruments energy baseline per `Docs/BATTERY.md`.
+
+### DT2 after M3.6: the logger, in the gym
+- A full real workout logs cleanly; previous performance auto-fills; the numpad never blanks the screen (the Signal teardown bug).
+- Rest timer: background the app mid-rest and lock the phone; the end-of-rest alert fires while suspended; returning early cancels it and the projection is correct.
+- Live Activity shows on the Lock Screen and ends promptly on finish; the finished workout appears in Apple Health and is not re-ingested.
+- Paste a real Hevy day; it parses, unknown exercises map, the session lands in history. Templates, history edits, and PR detection behave.
+
+### DT3 after M6.4: the loop replaces Gemini (go-live gate)
+- Live Gemini: chat answers grounded in real health + training data; memory profile edits take effect next turn; airplane mode degrades cleanly everywhere (chat, brief, mid-rest-timer).
+- Today's real prescription opens in Train with targets + previous inline; low-readiness day visibly trims the session; phase change re-plans.
+- In the gym: "machine taken" swap and reorder apply live and undo cleanly; a second swap for an also-taken machine returns a fresh alternative; recommendations are logged.
+- Morning brief renders on open with citations; fresh-install onboarding runs end to end on a wiped device.
+- **Exit criterion: the manual Gemini workflow is retired.**
+
+### DT4 after M8.2: proactivity + Watch
+- Real alarm-off / first-unlock Shortcuts automation fires the morning brief notification; a locked-phone run degrades gracefully and generate-on-open catches it; pre- and post-workout pushes fire on the right real triggers.
+- Watch: start a real workout on the wrist; live HR streams only during the session; the phone detects the workout via HealthKit observation even with WCSession dead (test with phone out of range); the saved `HKWorkout` has the correct activity type and its training load appears in next-day readiness.
+- Complication shows today's readiness and taps to the brief; updates are throttled.
+- The repeatable overnight battery test passes against the DT1 baseline (signposts reviewed for observer churn).
+
+### DT5 after M11.1: nutrition, analytics, full regression
+- Photograph real meals (plate, packaged, mixed): estimates are editable, confirmed meals appear in Apple Health and are not double-counted; weekly targets self-correct against real trend weight; an alcohol evening surfaces as gap, not a carb overshoot.
+- All five Trends charts render from real history at acceptable scroll performance; methodology negotiation re-plans.
+- Backwards compat: schema-v2 export byte-checks against bioharvest for the same day; copy-to-Gemini works; Share Extension imports.
+- Full regression sweep of DT2/DT3 flows plus a final battery check.
+
+---
+
+## Reference and lessons from the lab (informing the clean build, not imported)
+- **ARC algorithm** (`BodyBattery/docs/ARC-ALGORITHM.md`, v0.1 design): the readiness spec to re-implement. EWMA + MAD z-scores, transparent weights, logistic squash centring ~58, honest cold-start, SDNN (no RMSSD in HealthKit), ~29% MAPE acknowledged, within-person deltas only.
+- **Logger data model** (`loggy/Docs/04_DATABASE_SCHEMA.sql`): proven normalised schema (sessions, blocks/supersets, sets with RPE/RIR, rest-timer state + events, templates, PRs including `best_estimated_1rm` as a metric, an `exercise_history_snapshot` cache, canonical-exercise + alias, a `coach_recommendation` table). e1RM is a PR metric + snapshot column, not its own table. Re-derive cleanly.
+- **Provider abstraction and budgets** (`coach/ARCHITECTURE.md`): the clean multi-LLM pattern, per-provider budgets (Gemini 48k, FM 4k), chars/3.5 estimating, oldest-day-first trimming, lazy cached markdown, battery-aware lifecycle, Keychain + Debug bootstrap. Gemini gotcha: key as URL query param, never log URLs; free-tier models only. No context-caching lesson exists there; use implicit caching via prefix ordering.
+- **Harvest** (bioharvest): schema-v2 contract, 18:00 to 18:00 sleep window with overlap bucketing, explicit-null semantics (keys always present), the App Intent pattern. Gap to fix: it does not handle the locked-phone HealthKit problem; the new intent must.
+- **Lessons (corrected)**: drop on-device RAG/embeddings for complexity and battery, not jetsam (Signal's blank-screen bug was `HKLiveWorkoutBuilder` Error(7) + a UIKit keyboard teardown, and jetsam was explicitly disproven). Gate heavy work on foreground stability with stop conditions; release large models on dismissal; cancel generation on tab-disappear; no 1 Hz timer-driven fetches during live workouts; custom numpad to avoid the keyboard teardown; timers as projections; bounded/chunked imports off the launch path; keep the "coaching, not diagnosis" boundary.
+- **Coacher** (`Coacher/coach-key-service`): a Cloudflare Worker that mints $0-cap, free-model-allowlist OpenRouter keys per device via KV, with `MAX_DEVICES`. This already is the M11.2 minting service; reuse it rather than standing up an Oracle equivalent.
+
+## Kick-off decisions (resolved)
+- **App name: Helm.** Kept as the real name, not a placeholder.
+- **Backfill window: 6 months.** Enough for EWMA baselines to stabilise and e1RM landmarks to establish, without a slow first-launch parse.
+- **Location: `Development/Helm/` at root**, with root-level SPEC.md + PLAN.md (matching coach), not under `projects/`. Formalise SPEC.md + PLAN.md before M0.
+- **Still open**: whether OpenRouter/Compare stays behind Advanced for model testing (default: yes, behind Advanced).
+
+## Mapping from the previous milestone numbering
+Old M0 → M0.1 to M0.6. Old M1a → M1.1/M1.2. Old M1b → M1.3/M1.4. Old M2 → M2.1/M2.2. Old M2.5 → M3.1 to M3.6. Old M3a → M4.1/M4.2. Old M3b → M4.3/M4.4. Old M3c → M4.5. Old M4a → M5.1/M5.2. Old M4b → M5.3. Old M4c → M5.4/M5.5 (+ M5.6 new). Old M5 → M6.1 to M6.3 (+ M6.4 new). Old M6 → M7.1/M7.2. Old M7 → M8.1/M8.2. Old M8 → M9.1 to M9.3. Old M9 → M10.1/M10.2. Old M10 → M11.2. New with no old counterpart: M11.1 (backwards-compat export, previously a locked decision with no milestone), M6.4 (onboarding assembly), M5.6 and the Dashboard cards (Dashboard previously had no milestone).
