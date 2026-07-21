@@ -15,7 +15,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M0.5 Watch walking skeleton | not started | | | |
 | M0.6 Debug key bootstrap + battery method doc | not started | | | |
 | M1.1 Persistence: health schema + repositories | done | 2026-07-21 | 209e784 | GRDB v1 health schema; PersistenceStore actor; repos for daily metrics, body comp, sleep, nutrition; NutritionDay + MealRecord in Core; migrate-up harness + 7 tests pass. Ephemeral temp-file pool for in-memory tests (GRDB WAL + :memory: incompatible). |
-| M1.2 DB export + data safety | done | 2026-07-21 | | Checkpointed GRDB export via SQLite backup API; Settings Data & Backup screen (database, diagnostics, full zip); iCloud included explicitly; Docs/DATA-SAFETY.md restore semantics. 9 Persistence tests pass. |
+| M1.2 DB export + data safety | done | 2026-07-21 | ca0695f | Checkpointed GRDB export via SQLite backup API; Settings Data & Backup screen (database, diagnostics, full zip); iCloud included explicitly; Docs/DATA-SAFETY.md restore semantics. 9 Persistence tests pass. |
 | M1.3 HealthKitIngest actor (live reads) | not started | | | |
 | M1.4 Bounded backfill + debug data browser | not started | | | |
 | M2.1 ReadinessKit engine (pure) | done | 2026-07-21 | f80e79e | ReadinessKit target in Domain package: ARC per BodyBattery spec (EWMA/MAD, spec weights, logistic ~58, cold-start, Edwards TRIMP, confidence). `readiness(for:)`, `seedBaselines(from:)`, `ReadinessBaselineState`. 20 tests + 3 golden fixtures. |
