@@ -26,7 +26,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M3.4 Rest-timer alerts, Live Activity, HealthKit write | not started | | | |
 | M3.5 History, templates, PRs | not started | | | |
 | M3.6 Paste-a-workout parser | not started | | | |
-| M4.1 Provider protocol + registry | done | 2026-07-21 | | CoachLLM package: protocol, registry with reserved FM/OpenRouter slots, token budgets, failure policy, MockProvider, fixture harness. Gemini placeholder until M4.2. |
+| M4.1 Provider protocol + registry | done | 2026-07-21 | 5ecb5bc | CoachLLM package: protocol, registry with reserved FM/OpenRouter slots, token budgets, failure policy, MockProvider, fixture harness. Gemini placeholder until M4.2. |
 | M4.2 GeminiProvider + keys | not started | | | |
 | M4.3 MemoryProfile | not started | | | |
 | M4.4 Context builder (pure) | not started | | | |
