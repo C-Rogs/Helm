@@ -9,7 +9,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | Section | Status | Date | Commit | Notes / deviations |
 |---|---|---|---|---|
 | M0.1 Repo, XcodeGen, app shell | done | 2026-07-21 | 9f70b14 | Seven local packages declared in project.yml but not linked to Helm target yet; HelmWatch stub embedded for M0.5. |
-| M0.2 Core package | not started | | | |
+| M0.2 Core package | done | 2026-07-21 | 4d4260c | HelmDay.day(for:cutoff:calendar:), Clock, units, Sendable value types, 13 unit tests. Sleep attributed by onset via SleepRecord.helmDay(forStart:). |
 | M0.3 Diagnostics package + screen | not started | | | |
 | M0.4 DesignSystem | not started | | | |
 | M0.5 Watch walking skeleton | not started | | | |
