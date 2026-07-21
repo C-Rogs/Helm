@@ -1,0 +1,12 @@
+{
+  "referenceDay": "2024-02-03",
+  "history": [
+    { "helmDay": "2024-02-01", "hrvDailyAverage": 52, "restingHeartRate": 58, "sleepDurationHours": 7.2, "sleepEfficiency": 0.88, "deepSleepMinutes": 45, "remSleepMinutes": 85 },
+    { "helmDay": "2024-02-02", "hrvDailyAverage": 49, "restingHeartRate": 61, "sleepDurationHours": 7.0, "sleepEfficiency": 0.86, "deepSleepMinutes": 40, "remSleepMinutes": 80 },
+    { "helmDay": "2024-02-03", "hrvDailyAverage": 51, "restingHeartRate": 59, "sleepDurationHours": 7.4, "sleepEfficiency": 0.9, "deepSleepMinutes": 48, "remSleepMinutes": 88 }
+  ],
+  "expected": {
+    "nilScore": true,
+    "validNights": 3
+  }
+}

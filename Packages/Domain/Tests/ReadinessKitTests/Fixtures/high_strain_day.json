@@ -1,0 +1,39 @@
+{
+  "referenceDay": "2024-03-15",
+  "history": [
+    { "helmDay": "2024-02-15", "hrvDailyAverage": 48, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 45 },
+    { "helmDay": "2024-02-16", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 },
+    { "helmDay": "2024-02-17", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 48 },
+    { "helmDay": "2024-02-18", "hrvDailyAverage": 51, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 52 },
+    { "helmDay": "2024-02-19", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 49 },
+    { "helmDay": "2024-02-20", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 51 },
+    { "helmDay": "2024-02-21", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 47 },
+    { "helmDay": "2024-02-22", "hrvDailyAverage": 48, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 53 },
+    { "helmDay": "2024-02-23", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 },
+    { "helmDay": "2024-02-24", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 46 },
+    { "helmDay": "2024-02-25", "hrvDailyAverage": 51, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 54 },
+    { "helmDay": "2024-02-26", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 48 },
+    { "helmDay": "2024-02-27", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 },
+    { "helmDay": "2024-02-28", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 49 },
+    { "helmDay": "2024-03-01", "hrvDailyAverage": 48, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 52 },
+    { "helmDay": "2024-03-02", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 47 },
+    { "helmDay": "2024-03-03", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 51 },
+    { "helmDay": "2024-03-04", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 },
+    { "helmDay": "2024-03-05", "hrvDailyAverage": 51, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 48 },
+    { "helmDay": "2024-03-06", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 53 },
+    { "helmDay": "2024-03-07", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 46 },
+    { "helmDay": "2024-03-08", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 55 },
+    { "helmDay": "2024-03-09", "hrvDailyAverage": 48, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 49 },
+    { "helmDay": "2024-03-10", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 },
+    { "helmDay": "2024-03-11", "hrvDailyAverage": 49, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 47 },
+    { "helmDay": "2024-03-12", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 52 },
+    { "helmDay": "2024-03-13", "hrvDailyAverage": 51, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 48 },
+    { "helmDay": "2024-03-14", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 210 },
+    { "helmDay": "2024-03-15", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 }
+  ],
+  "expected": {
+    "score": 54,
+    "scoreTolerance": 12,
+    "validNights": 29
+  }
+}

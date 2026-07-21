@@ -7,7 +7,8 @@ let package = Package(
     platforms: [.iOS(.v26)],
     products: [
         .library(name: "Domain", targets: ["Domain"]),
-        .library(name: "PlanKit", targets: ["PlanKit"])
+        .library(name: "PlanKit", targets: ["PlanKit"]),
+        .library(name: "ReadinessKit", targets: ["ReadinessKit"])
     ],
     dependencies: [
         .package(path: "../Core")
@@ -23,6 +24,19 @@ let package = Package(
         .testTarget(
             name: "PlanKitTests",
             dependencies: ["PlanKit"]
+        ),
+        .target(
+            name: "ReadinessKit",
+            dependencies: [
+                .product(name: "Core", package: "Core")
+            ]
+        ),
+        .testTarget(
+            name: "ReadinessKitTests",
+            dependencies: ["ReadinessKit"],
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )
