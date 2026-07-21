@@ -14,7 +14,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M0.4 DesignSystem | done | 2026-07-21 | 7109cd1 | OLED-black tokens in HelmTokens.swift; Card, Gauge, StatRow, button styles, helmChartStyle(); tab shell themed via helmTheme() + helmScreenBackground(). DesignSystem linked to Helm target. |
 | M0.5 Watch walking skeleton | not started | | | |
 | M0.6 Debug key bootstrap + battery method doc | not started | | | |
-| M1.1 Persistence: health schema + repositories | done | 2026-07-21 | 51e7a5d | GRDB v1 health schema; PersistenceStore actor; repos for daily metrics, body comp, sleep, nutrition; NutritionDay + MealRecord in Core; migrate-up harness + 7 tests pass. Ephemeral temp-file pool for in-memory tests (GRDB WAL + :memory: incompatible). |
+| M1.1 Persistence: health schema + repositories | done | 2026-07-21 | 209e784 | GRDB v1 health schema; PersistenceStore actor; repos for daily metrics, body comp, sleep, nutrition; NutritionDay + MealRecord in Core; migrate-up harness + 7 tests pass. Ephemeral temp-file pool for in-memory tests (GRDB WAL + :memory: incompatible). |
 | M1.2 DB export + data safety | not started | | | |
 | M1.3 HealthKitIngest actor (live reads) | not started | | | |
 | M1.4 Bounded backfill + debug data browser | not started | | | |

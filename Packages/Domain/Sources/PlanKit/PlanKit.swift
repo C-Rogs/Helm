@@ -1,0 +1,76 @@
+import Core
+import Foundation
+
+/// Pure mesocycle and progression engine. Zero I/O.
+public enum PlanKit {
+    // MARK: - Mesocycle
+
+    /// Seed MEV/MRV landmarks from training experience before tolerance data refines them.
+    public static func seedLandmarks(
+        muscle: MuscleGroup,
+        experience: TrainingExperience
+    ) -> VolumeLandmarks {
+        MesocycleEngine.seedLandmarks(muscle: muscle, experience: experience)
+    }
+
+    /// Refine landmarks from logged tolerance signals at the end of a block.
+    public static func refineLandmarks(
+        _ landmarks: VolumeLandmarks,
+        signals: ToleranceSignals
+    ) -> VolumeLandmarks {
+        MesocycleEngine.refineLandmarks(landmarks, signals: signals)
+    }
+
+    /// Weekly hard-set target for a muscle given its current mesocycle position.
+    public static func weeklyHardSetTarget(for muscleState: MuscleMesocycleState) -> Int {
+        MesocycleEngine.weeklyHardSetTarget(for: muscleState)
+    }
+
+    /// Build an initial mesocycle for the given muscles.
+    public static func makeInitialState(
+        muscles: [MuscleGroup],
+        experience: TrainingExperience,
+        blockLengthWeeks: Int = 5
+    ) -> MesocycleState {
+        MesocycleEngine.makeInitialState(
+            muscles: muscles,
+            experience: experience,
+            blockLengthWeeks: blockLengthWeeks
+        )
+    }
+
+    /// Advance every muscle one week; deload weeks reset the block and refine landmarks.
+    public static func advanceWeek(
+        _ state: MesocycleState,
+        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:]
+    ) -> MesocycleState {
+        MesocycleEngine.advanceWeek(state, toleranceByMuscle: toleranceByMuscle)
+    }
+
+    // MARK: - Progression
+
+    /// Per-lift progression from logged set history (Epley e1RM, working weight, rep targets).
+    public static func progression(for exerciseID: String, history: [LoggedSet]) -> LiftProgression {
+        ProgressionEngine.progression(for: exerciseID, history: history)
+    }
+
+    /// Epley estimated 1RM for a single set.
+    public static func estimatedOneRepMax(mass: Mass, reps: Int) -> Mass {
+        ProgressionEngine.estimatedOneRepMax(mass: mass, reps: reps)
+    }
+
+    // MARK: - Hard-set accounting
+
+    /// Count fractional hard sets per muscle across sessions in the week starting at `weekStart`.
+    public static func weeklyHardSetTotals(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        weekStart: HelmDay
+    ) -> WeeklyHardSetLedger {
+        HardSetAccounting.weeklyHardSetTotals(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            weekStart: weekStart
+        )
+    }
+}
