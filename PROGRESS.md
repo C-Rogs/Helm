@@ -31,7 +31,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M4.3 MemoryProfile | not started | | | |
 | M4.4 Context builder (pure) | not started | | | |
 | M4.5 Chat UI + chat persistence | not started | | | |
-| M5.1 PlanKit mesocycle core (pure) | not started | | | |
+| M5.1 PlanKit mesocycle core (pure) | done | 2026-07-21 | cb28104 | PlanKit target in Domain package. MesocycleState, MEV→MRV ramp, deload/reset, landmark seed+refine, Epley progression, weekly hard-set ledger. 13 tests. |
 | M5.2 Planned-vs-actual calendar + drift policy | not started | | | |
 | M5.3 Prescription + readiness gating + clamps | not started | | | |
 | M5.4 Exercise seed schema + import | not started | | | |
