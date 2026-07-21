@@ -42,11 +42,17 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Helm
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_NSHealthShareUsageDescription: Helm reads your Apple Health data to compute readiness, training, and nutrition guidance.
+        INFOPLIST_KEY_NSHealthUpdateUsageDescription: Helm writes workouts and meals you log back to Apple Health.
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+    entitlements:
+      path: Helm/Helm.entitlements
     dependencies:
       - package: Diagnostics
       - package: DesignSystem
+      - package: Persistence
+      - package: HealthKitIngest
       - target: HelmWatch
         embed: true
   HelmWatch:

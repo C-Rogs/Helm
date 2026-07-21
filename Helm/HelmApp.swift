@@ -1,4 +1,5 @@
 import Diagnostics
+import Persistence
 import SwiftUI
 
 @main
@@ -6,6 +7,7 @@ struct HelmApp: App {
     init() {
         Task {
             await DiagnosticsBootstrap.run()
+            await PersistenceBootstrap.logOpen()
         }
     }
 

@@ -49,6 +49,52 @@ public struct LogExportService: Sendable {
         return destination
     }
 
+    public func exportFullBackup(
+        databaseFileURL: URL,
+        environment: ExportEnvironment
+    ) async throws -> URL {
+        let manifest = ExportManifest(
+            appVersion: environment.appVersion,
+            buildNumber: environment.buildNumber,
+            schemaVersion: environment.schemaVersion,
+            exerciseSeedVersion: environment.exerciseSeedVersion,
+            deviceModel: environment.deviceModel,
+            osVersion: environment.osVersion
+        )
+
+        let entries = await log.entriesOldestFirst()
+        let manifestData = try encode(manifest, label: "manifest.json")
+        let ringBufferData = try encode(entries, label: "ring_buffer.json")
+        let osLogData = try Data(
+            OSLogExtractor.extract(subsystem: HelmSubsystem.value).utf8
+        )
+        let databaseData = try Data(contentsOf: databaseFileURL)
+
+        let fileName = fullBackupZipFileName()
+        let destination = FileManager.default.temporaryDirectory
+            .appendingPathComponent(fileName)
+
+        try ZipWriter.writeArchive(
+            entries: [
+                "manifest.json": manifestData,
+                "ring_buffer.json": ringBufferData,
+                "oslog_extract.txt": osLogData,
+                "helm.sqlite": databaseData
+            ],
+            to: destination
+        )
+
+        return destination
+    }
+
+    private func fullBackupZipFileName() -> String {
+        let formatter = ISO8601DateFormatter()
+        formatter.formatOptions = [.withInternetDateTime]
+        return "helm-backup-\(formatter.string(from: Date()))"
+            .replacingOccurrences(of: ":", with: "-")
+            + ".zip"
+    }
+
     private func zipFileName() -> String {
         let formatter = ISO8601DateFormatter()
         formatter.formatOptions = [.withInternetDateTime]
