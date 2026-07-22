@@ -1,10 +1,12 @@
 import Diagnostics
+import DesignSystem
 import Persistence
 import SwiftUI
 
 @main
 struct HelmApp: App {
     init() {
+        HelmFontRegistration.registerFontsIfNeeded()
         Task { @MainActor in
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
@@ -20,6 +22,7 @@ struct HelmApp: App {
     var body: some Scene {
         WindowGroup {
             RootTabView()
+                .helmTheme()
         }
     }
 }

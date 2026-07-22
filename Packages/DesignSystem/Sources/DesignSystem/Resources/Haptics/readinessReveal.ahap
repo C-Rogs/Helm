@@ -1,0 +1,31 @@
+{
+  "Version": 1.0,
+  "Metadata": {
+    "Project": "Helm",
+    "Created": "2026-07-23",
+    "Description": "readinessReveal"
+  },
+  "Pattern": [
+    {
+      "Event": {
+        "Time": 0.0,
+        "EventType": "HapticContinuous",
+        "EventDuration": 0.7,
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.2 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.2 }
+        ]
+      }
+    },
+    {
+      "Event": {
+        "Time": 0.7,
+        "EventType": "HapticTransient",
+        "EventParameters": [
+          { "ParameterID": "HapticIntensity", "ParameterValue": 0.9 },
+          { "ParameterID": "HapticSharpness", "ParameterValue": 0.4 }
+        ]
+      }
+    }
+  ]
+}

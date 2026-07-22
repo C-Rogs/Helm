@@ -1,0 +1,18 @@
+{
+  "Version": 1.0,
+  "Metadata": { "Project": "Helm", "Description": "phaseChange" },
+  "Pattern": [
+    { "Event": { "Time": 0.0, "EventType": "HapticTransient", "EventParameters": [
+      { "ParameterID": "HapticIntensity", "ParameterValue": 0.7 },
+      { "ParameterID": "HapticSharpness", "ParameterValue": 0.5 }
+    ]}},
+    { "Event": { "Time": 0.12, "EventType": "HapticTransient", "EventParameters": [
+      { "ParameterID": "HapticIntensity", "ParameterValue": 0.7 },
+      { "ParameterID": "HapticSharpness", "ParameterValue": 0.5 }
+    ]}},
+    { "Event": { "Time": 0.24, "EventType": "HapticTransient", "EventParameters": [
+      { "ParameterID": "HapticIntensity", "ParameterValue": 0.7 },
+      { "ParameterID": "HapticSharpness", "ParameterValue": 0.5 }
+    ]}}
+  ]
+}

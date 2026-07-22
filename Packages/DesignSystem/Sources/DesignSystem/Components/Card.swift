@@ -8,14 +8,9 @@ public struct Card<Content: View>: View {
     }
 
     public var body: some View {
-        content
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-            .overlay {
-                RoundedRectangle(cornerRadius: HelmRadius.md)
-                    .strokeBorder(HelmColor.border, lineWidth: 1)
-            }
+        SkinnedContainer {
+            content
+        }
     }
 }
 
@@ -23,11 +18,9 @@ public struct Card<Content: View>: View {
     Card {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             Text("Readiness")
-                .font(HelmTypography.headline)
-                .foregroundStyle(HelmColor.textPrimary)
+                .helmType(.label)
             Text("Building baseline")
-                .font(HelmTypography.caption)
-                .foregroundStyle(HelmColor.textSecondary)
+                .helmType(.body, color: HelmColor.fgSecondary)
         }
     }
     .padding()

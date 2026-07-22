@@ -8,7 +8,21 @@ let package = Package(
     products: [
         .library(name: "DesignSystem", targets: ["DesignSystem"])
     ],
+    dependencies: [
+        .package(path: "../Diagnostics")
+    ],
     targets: [
-        .target(name: "DesignSystem")
+        .target(
+            name: "DesignSystem",
+            dependencies: ["Diagnostics"],
+            resources: [
+                .process("Resources/Fonts"),
+                .process("Resources/Haptics")
+            ]
+        ),
+        .testTarget(
+            name: "DesignSystemTests",
+            dependencies: ["DesignSystem"]
+        )
     ]
 )
