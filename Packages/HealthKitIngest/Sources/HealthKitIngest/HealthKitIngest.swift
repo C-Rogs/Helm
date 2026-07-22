@@ -10,6 +10,7 @@ public actor HealthKitIngest {
     private let store: any HealthKitStoreClient
     private let persistence: PersistenceStore
     private let anchorStore: HealthKitAnchorStore
+    private var metadataStore: IngestMetadataStore
     private let writer: IngestPersistenceWriter
     private let ownBundleID: String
     private let diagnosticsLog: DiagnosticsLog
@@ -37,12 +38,25 @@ public actor HealthKitIngest {
     ) {
         self.persistence = persistence
         anchorStore = HealthKitAnchorStore(directoryURL: anchorDirectoryURL)
+        metadataStore = IngestMetadataStore(directoryURL: anchorDirectoryURL)
         writer = IngestPersistenceWriter(store: persistence)
         self.ownBundleID = ownBundleID
         self.store = store
         self.diagnosticsLog = diagnosticsLog
         signpost = HelmSignpost(name: .healthKitObserverFetch, category: .healthKitIngest)
         log = helmLogger(category: .healthKitIngest)
+
+        let saved = metadataStore.current
+        authorizationRequested = saved.authorizationRequested
+        lastSyncFinishedAt = saved.lastSyncFinishedAt
+        lastSyncSampleCount = saved.lastSyncSampleCount
+        lastSyncDeletedCount = saved.lastSyncDeletedCount
+    }
+
+    public func shouldBootstrapOnLaunch(backfillComplete: Bool) async -> Bool {
+        if authorizationRequested { return true }
+        if await anchorStore.hasPersistedAnchors { return true }
+        return backfillComplete
     }
 
     public func currentStatus() -> HealthKitIngestStatus {
@@ -87,6 +101,7 @@ public actor HealthKitIngest {
             read: HealthKitSampleKind.readTypes
         )
         authorizationRequested = true
+        try persistMetadata()
         log.info("HealthKit authorization requested")
     }
 
@@ -153,6 +168,7 @@ public actor HealthKitIngest {
         lastSyncSampleCount = totalIngested
         lastSyncDeletedCount = totalDeleted
         lastErrorMessage = nil
+        try? persistMetadata()
 
         publishSnapshots(for: affectedFamilies)
 
@@ -204,6 +220,7 @@ public actor HealthKitIngest {
             lastSyncFinishedAt = Date()
             lastSyncSampleCount = totalIngested
             lastSyncDeletedCount = totalDeleted
+            try? persistMetadata()
             publishSnapshots(for: affectedFamilies)
         }
     }
@@ -294,5 +311,16 @@ public actor HealthKitIngest {
         if familyContinuations[family]?.isEmpty == true {
             familyContinuations.removeValue(forKey: family)
         }
+    }
+
+    private func persistMetadata() throws {
+        try metadataStore.save(
+            IngestMetadata(
+                authorizationRequested: authorizationRequested,
+                lastSyncFinishedAt: lastSyncFinishedAt,
+                lastSyncSampleCount: lastSyncSampleCount,
+                lastSyncDeletedCount: lastSyncDeletedCount
+            )
+        )
     }
 }

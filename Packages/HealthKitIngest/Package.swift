@@ -4,13 +4,14 @@ import PackageDescription
 
 let package = Package(
     name: "HealthKitIngest",
-    platforms: [.iOS(.v26)],
+    platforms: [.iOS(.v26), .macOS(.v14)],
     products: [
         .library(name: "HealthKitIngest", targets: ["HealthKitIngest"])
     ],
     dependencies: [
         .package(path: "../Core"),
         .package(path: "../Diagnostics"),
+        .package(path: "../Domain"),
         .package(path: "../Persistence")
     ],
     targets: [
@@ -19,6 +20,7 @@ let package = Package(
             dependencies: [
                 .product(name: "Core", package: "Core"),
                 .product(name: "Diagnostics", package: "Diagnostics"),
+                .product(name: "ReadinessKit", package: "Domain"),
                 .product(name: "Persistence", package: "Persistence")
             ]
         ),
@@ -27,7 +29,8 @@ let package = Package(
             dependencies: [
                 "HealthKitIngest",
                 .product(name: "Core", package: "Core"),
-                .product(name: "Persistence", package: "Persistence")
+                .product(name: "Persistence", package: "Persistence"),
+                .product(name: "ReadinessKit", package: "Domain")
             ]
         )
     ]

@@ -35,6 +35,31 @@ public struct DailyMetricsRepository: Sendable {
         }
     }
 
+    public func listDays(where column: DailyMetricColumn) throws -> [HelmDay] {
+        try pool.read { db in
+            let rows = try String.fetchAll(
+                db,
+                sql: """
+                SELECT DISTINCT helm_day
+                FROM daily_metrics
+                WHERE \(column.rawValue) IS NOT NULL
+                ORDER BY helm_day
+                """
+            )
+            return try rows.map { try HelmDayColumn.decode($0) }
+        }
+    }
+
+    public func listDays() throws -> [HelmDay] {
+        try pool.read { db in
+            let rows = try String.fetchAll(
+                db,
+                sql: "SELECT DISTINCT helm_day FROM daily_metrics ORDER BY helm_day"
+            )
+            return try rows.map { try HelmDayColumn.decode($0) }
+        }
+    }
+
     public func delete(helmDay: HelmDay) throws {
         _ = try pool.write { db in
             try DailyMetricsRecord.deleteOne(db, key: HelmDayColumn.encode(helmDay))

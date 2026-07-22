@@ -12,14 +12,14 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M0.2 Core package | done | 2026-07-21 | e7df993 | HelmDay.day(for:cutoff:calendar:), Clock, units, Sendable value types, 13 unit tests. Sleep attributed by onset via SleepRecord.helmDay(forStart:). |
 | M0.3 Diagnostics package + screen | done | 2026-07-21 | f766be5 | DiagnosticsLog actor (500-cap ring), LogExportService zip (manifest/ring_buffer/oslog_extract), HelmCategory/Logger/Signpost helpers, Settings Diagnostics screen with Export share sheet, bootstrap test log + captured error on launch. 5 unit tests pass. |
 | M0.4 DesignSystem | done | 2026-07-21 | 7109cd1 | OLED-black tokens in HelmTokens.swift; Card, Gauge, StatRow, button styles, helmChartStyle(); tab shell themed via helmTheme() + helmScreenBackground(). DesignSystem linked to Helm target. |
-| M0.5 Watch walking skeleton | done | 2026-07-22 | | | WatchSyncPayload in Core; shared WatchSessionCoordinator; phone Settings screen + Watch root UI; stub complication extension. WCSession round-trip via application context. Core package now supports watchOS. |
-| M0.6 Debug key bootstrap + battery method doc | done | 2026-07-22 | | | APIKeyStore (Keychain, AfterFirstUnlockThisDeviceOnly); Debug-only SecretsBootstrap; Secrets.example template; missing Secrets/ logs to Diagnostics without crashing. Battery method doc already landed at M0.1. |
+| M0.5 Watch walking skeleton | done | 2026-07-22 | 74ef04c | WatchSyncPayload in Core; shared WatchSessionCoordinator; phone Settings screen + Watch root UI; stub complication extension. WCSession round-trip via application context. Core package now supports watchOS. |
+| M0.6 Debug key bootstrap + battery method doc | done | 2026-07-22 | 93ef388 | APIKeyStore (Keychain, AfterFirstUnlockThisDeviceOnly); Debug-only SecretsBootstrap; Secrets.example template; missing Secrets/ logs to Diagnostics without crashing. Battery method doc already landed at M0.1. |
 | M1.1 Persistence: health schema + repositories | done | 2026-07-21 | 209e784 | GRDB v1 health schema; PersistenceStore actor; repos for daily metrics, body comp, sleep, nutrition; NutritionDay + MealRecord in Core; migrate-up harness + 7 tests pass. Ephemeral temp-file pool for in-memory tests (GRDB WAL + :memory: incompatible). |
 | M1.2 DB export + data safety | done | 2026-07-21 | ca0695f | Checkpointed GRDB export via SQLite backup API; Settings Data & Backup screen (database, diagnostics, full zip); iCloud included explicitly; Docs/DATA-SAFETY.md restore semantics. 9 Persistence tests pass. |
 | M1.3 HealthKitIngest actor (live reads) | done | 2026-07-22 | fd8866e | HealthKitIngest actor: anchored sync, observers, background delivery, AsyncStream per family, signposts. Package wired to Core/Diagnostics/Persistence. 14 fixture tests compile; Helm.entitlements adds HealthKit + background delivery. Settings HealthKit screen for auth/sync. Workouts ingested but not persisted until logger schema (M3.1). |
-| M1.4 Bounded backfill + debug data browser | not started | | | |
+| M1.4 Bounded backfill + debug data browser | done | 2026-07-22 | | BackfillService actor: 6-month monthly chunks, resumable cursor, BackfillChunk signpost, ReadinessKit seed hook. HealthKitStoreClient date-bounded fetch. Repository listDays + Debug DataBrowserView. Auto-backfill after HealthKit auth (utility Task). 4 new ingest tests + listDays persistence test. |
 | M2.1 ReadinessKit engine (pure) | done | 2026-07-21 | f80e79e | ReadinessKit target in Domain package: ARC per BodyBattery spec (EWMA/MAD, spec weights, logistic ~58, cold-start, Edwards TRIMP, confidence). `readiness(for:)`, `seedBaselines(from:)`, `ReadinessBaselineState`. 20 tests + 3 golden fixtures. |
-| M2.2 Readiness wiring + Dashboard card | not started | | | |
+| M2.2 Readiness wiring + Dashboard card | done | 2026-07-22 | | v3 migration: readiness_daily_score + readiness_baseline_state. ReadinessRepository, ReadinessEngine + @Observable ReadinessService, ReadinessHistoryBuilder. Backfill persists baselines via engine. Dashboard ARC gauge + contributors + confidence. Ingest observer triggers recompute. ReadinessCompute signpost in wiring layer. Persistence + HealthKitIngest tests. |
 | M3.1 Logger persistence | done | 2026-07-22 | | v2 logger schema (loggy-derived): exercise/alias, sessions/blocks/sets, templates, PRs, exercise_history_snapshot, rest-timer + coach_recommendation tables. Repos: Exercise, WorkoutSession, WorkoutTemplate, PersonalRecord. Queries: previousPerformance(exercise:setIndex:), estimatedOneRM (Epley). Core logger enums + draft types. 15 Persistence tests pass (6 new logger tests + migration harness v1→v2). |
 | M3.2 Active session engine | not started | | | |
 | M3.3 Train screen + custom numpad | not started | | | |
@@ -59,8 +59,16 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 
 | Gate | Status | Date | Notes / issues filed |
 |---|---|---|---|
-| DT1 (after M2.2): foundation + ingest + readiness | not started | | |
+| DT1 (after M2.2): foundation + ingest + readiness | done | 2026-07-22 | HealthKit connected after relaunch, dashboard polish, Watch round-trip complete, ARC/battery/diagnostics pass. |
 | DT2 (after M3.6): the logger, in the gym | not started | | |
 | DT3 (after M6.4): the loop replaces Gemini (go-live gate) | not started | | |
 | DT4 (after M8.2): proactivity + Watch | not started | | |
 | DT5 (after M11.1): nutrition, analytics, full regression | not started | | |
+
+## Fix sections
+
+| ID | Status | Date | Notes |
+|---|---|---|---|
+| F-DT1.1 HealthKit launch bootstrap + status UI | done | 2026-07-22 | Ingest metadata persistence, HealthKitBootstrap.start(), upgraded HealthKitStatusView, tests. |
+| F-DT1.2 Watch companion install path | done | 2026-07-22 | DT1 Watch install note in PLAN.md; signing already inherited from project base. |
+| F-DT1.3 Dashboard visual polish | done | 2026-07-22 | Greeting, band badge/stripe, contributor bars, secondary Ask Coach button. |

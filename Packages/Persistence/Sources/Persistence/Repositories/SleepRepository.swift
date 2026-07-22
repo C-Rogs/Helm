@@ -34,6 +34,16 @@ public struct SleepRepository: Sendable {
         }
     }
 
+    public func listDays() throws -> [HelmDay] {
+        try pool.read { db in
+            let rows = try String.fetchAll(
+                db,
+                sql: "SELECT DISTINCT helm_day FROM sleep_record ORDER BY helm_day"
+            )
+            return try rows.map { try HelmDayColumn.decode($0) }
+        }
+    }
+
     public func replaceAll(for helmDay: HelmDay, records: [SleepRecord]) throws {
         try pool.write { db in
             try SleepIntervalRecord

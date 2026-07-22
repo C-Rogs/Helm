@@ -24,6 +24,16 @@ public struct NutritionRepository: Sendable {
         }
     }
 
+    public func listDays() throws -> [HelmDay] {
+        try pool.read { db in
+            let rows = try String.fetchAll(
+                db,
+                sql: "SELECT DISTINCT helm_day FROM nutrition_day ORDER BY helm_day"
+            )
+            return try rows.map { try HelmDayColumn.decode($0) }
+        }
+    }
+
     public func upsertMeal(_ meal: MealRecord) throws {
         try pool.write { db in
             try MealRow(meal: meal).save(db)

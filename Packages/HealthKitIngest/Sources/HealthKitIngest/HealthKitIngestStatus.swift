@@ -34,6 +34,24 @@ public struct HealthKitIngestStatus: Sendable, Equatable {
     )
 }
 
+public enum HealthKitConnectionState: String, Sendable {
+    case connected = "Connected"
+    case permissionNeeded = "Permission needed"
+    case notConnected = "Not connected"
+}
+
+public extension HealthKitIngestStatus {
+    var connectionState: HealthKitConnectionState {
+        if authorizationRequested || lastSyncFinishedAt != nil {
+            return .connected
+        }
+        if let lastErrorMessage, !lastErrorMessage.isEmpty {
+            return .notConnected
+        }
+        return .permissionNeeded
+    }
+}
+
 public struct HealthKitIngestOutcome: Sendable, Equatable {
     public let samplesIngested: Int
     public let samplesDeleted: Int

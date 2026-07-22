@@ -3,8 +3,29 @@ import GRDB
 
 struct AppMigrator {
     func migrate(_ writer: DatabaseWriter) throws {
-        var migrator = DatabaseMigrator()
+        let migrator = Self.makeMigrator(upTo: SchemaVersion.latest)
+        do {
+            try migrator.migrate(writer)
+        } catch {
+            throw PersistenceError.migrationFailed(error.localizedDescription)
+        }
+    }
 
+    static func makeMigrator(upTo version: Int) -> DatabaseMigrator {
+        var migrator = DatabaseMigrator()
+        if version >= 1 {
+            registerHealthSchema(on: &migrator)
+        }
+        if version >= 2 {
+            LoggerSchemaMigration.register(on: &migrator)
+        }
+        if version >= 3 {
+            ReadinessSchemaMigration.register(on: &migrator)
+        }
+        return migrator
+    }
+
+    static func registerHealthSchema(on migrator: inout DatabaseMigrator) {
         migrator.registerMigration("v1_health_schema") { db in
             try db.create(table: "daily_metrics") { table in
                 table.column("helm_day", .text).primaryKey()
@@ -67,12 +88,6 @@ struct AppMigrator {
                 unique: true,
                 condition: SQL("external_sample_id IS NOT NULL")
             )
-        }
-
-        do {
-            try migrator.migrate(writer)
-        } catch {
-            throw PersistenceError.migrationFailed(error.localizedDescription)
         }
     }
 }

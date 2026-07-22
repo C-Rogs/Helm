@@ -61,6 +61,9 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
     entitlements:
       path: Helm/Helm.entitlements
+      properties:
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.background-delivery: true
     dependencies:
       - package: Core
       - package: Diagnostics
@@ -68,6 +71,8 @@ targets:
       - package: Persistence
       - package: HealthKitIngest
       - package: CoachLLM
+      - package: Domain
+        product: ReadinessKit
       - sdk: WatchConnectivity.framework
       - target: HelmWatch
         embed: true
@@ -96,13 +101,13 @@ targets:
     platform: watchOS
     sources:
       - path: HelmWatchWidgets
+        excludes:
+          - ExtensionInfo.plist
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm.watchkitapp.widgets
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_CFBundleDisplayName: Helm
-        INFOPLIST_KEY_NSExtension:
-          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: HelmWatchWidgets/ExtensionInfo.plist
         SKIP_INSTALL: YES
     dependencies:
       - package: Core

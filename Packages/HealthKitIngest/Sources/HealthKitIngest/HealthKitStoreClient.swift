@@ -16,6 +16,11 @@ public struct AnchoredFetchResult: Sendable {
 public protocol HealthKitStoreClient: Sendable {
     func isHealthDataAvailable() -> Bool
     func requestAuthorization(toShare: Set<HKSampleType>, read: Set<HKObjectType>) async throws
+    func fetchSamples(
+        sampleType: HKSampleType,
+        predicate: NSPredicate?,
+        limit: Int
+    ) async throws -> [HKSample]
     func fetchAnchored(
         sampleType: HKSampleType,
         anchor: HKQueryAnchor?
@@ -47,6 +52,28 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
         read: Set<HKObjectType>
     ) async throws {
         try await store.requestAuthorization(toShare: toShare, read: read)
+    }
+
+    public func fetchSamples(
+        sampleType: HKSampleType,
+        predicate: NSPredicate?,
+        limit: Int
+    ) async throws -> [HKSample] {
+        try await withCheckedThrowingContinuation { continuation in
+            let query = HKSampleQuery(
+                sampleType: sampleType,
+                predicate: predicate,
+                limit: limit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: samples ?? [])
+            }
+            store.execute(query)
+        }
     }
 
     public func fetchAnchored(

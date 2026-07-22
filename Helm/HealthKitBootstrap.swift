@@ -3,18 +3,69 @@ import HealthKitIngest
 import Persistence
 
 enum HealthKitBootstrap {
-    private static let ingest: HealthKitIngest = {
-        let anchorDirectory: URL
+    private static let anchorDirectory: URL = {
         do {
-            anchorDirectory = try DatabaseLocation.defaultDatabaseURL().deletingLastPathComponent()
+            return try DatabaseLocation.defaultDatabaseURL().deletingLastPathComponent()
         } catch {
             fatalError("Failed to resolve HealthKit anchor directory: \(error)")
         }
-        return HealthKitIngest(
+    }()
+
+    private static let ingest: HealthKitIngest = {
+        HealthKitIngest(
             persistence: PersistenceBootstrap.persistenceStore,
             anchorDirectoryURL: anchorDirectory
         )
     }()
 
+    private static let backfill: BackfillService = {
+        BackfillService(
+            persistence: PersistenceBootstrap.persistenceStore,
+            anchorDirectoryURL: anchorDirectory,
+            readinessEngine: ReadinessBootstrap.readinessEngine
+        )
+    }()
+
     static var healthKitIngest: HealthKitIngest { ingest }
+    static var backfillService: BackfillService { backfill }
+
+    static func start() {
+        Task(priority: .utility) {
+            await bootstrapIfNeeded()
+        }
+    }
+
+    private static func bootstrapIfNeeded() async {
+        let window = BackfillWindow.sixMonths()
+        let backfillComplete = await backfill.isComplete(for: window)
+        let shouldStart = await ingest.shouldBootstrapOnLaunch(backfillComplete: backfillComplete)
+        guard shouldStart else { return }
+
+        await ingest.startObserving()
+        let outcome = await ingest.syncNow()
+        await MainActor.run {
+            Task {
+                await ReadinessBootstrap.readinessService.recomputeAfterIngest(
+                    affectedFamilies: outcome.affectedFamilies
+                )
+            }
+        }
+        scheduleDefaultBackfill()
+    }
+
+    static func scheduleDefaultBackfill() {
+        Task(priority: .utility) {
+            for await _ in await backfill.runDefaultIfNeeded() {}
+            await ReadinessBootstrap.readinessService.refresh()
+        }
+    }
+
+    static func scheduleBackfillAfterAnchorReset() {
+        Task(priority: .utility) {
+            let window = BackfillWindow.sixMonths()
+            try? await backfill.resetCursor(for: window)
+            for await _ in await backfill.run(window: window) {}
+            await ReadinessBootstrap.readinessService.refresh()
+        }
+    }
 }

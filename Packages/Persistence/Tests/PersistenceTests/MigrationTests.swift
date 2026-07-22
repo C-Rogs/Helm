@@ -16,7 +16,23 @@ struct MigrationTests {
                 "body_composition",
                 "sleep_record",
                 "nutrition_day",
-                "meal"
+                "meal",
+                "exercise",
+                "exercise_alias",
+                "workout_session",
+                "workout_block",
+                "workout_session_exercise",
+                "set_entry",
+                "active_workout_state",
+                "rest_timer_state",
+                "rest_timer_event",
+                "workout_template",
+                "workout_template_exercise",
+                "personal_record",
+                "exercise_history_snapshot",
+                "coach_recommendation",
+                "readiness_daily_score",
+                "readiness_baseline_state"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)
@@ -58,20 +74,21 @@ enum MigrationHarness {
     }
 
     private static func appliedSchemaVersion(_ pool: DatabasePool) throws -> Int {
-        switch SchemaVersion.latest {
-        case 1:
-            return SchemaVersion.latest
-        default:
-            return SchemaVersion.latest
+        let hasLoggerTables = try pool.read { db in
+            try Bool.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(*) > 0
+                    FROM sqlite_master
+                    WHERE type = 'table' AND name = 'workout_session'
+                    """
+            ) ?? false
         }
+        return hasLoggerTables ? SchemaVersion.latest : 1
     }
 
     private static func applySchemaSnapshot(version: Int, to pool: DatabasePool) throws {
-        switch version {
-        case 1:
-            try AppMigrator().migrate(pool)
-        default:
-            throw PersistenceError.migrationFailed("no snapshot for schema v\(version)")
-        }
+        let migrator = AppMigrator.makeMigrator(upTo: version)
+        try migrator.migrate(pool)
     }
 }

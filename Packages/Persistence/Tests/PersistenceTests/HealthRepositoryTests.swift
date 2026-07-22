@@ -47,6 +47,22 @@ struct HealthRepositoryTests {
         #expect(range.map(\.helmDay) == [previous, day])
     }
 
+    @Test("list days filters by populated metric column")
+    func listDaysByColumn() throws {
+        let store = try PersistenceStore.inMemory()
+        let previous = HelmDay(year: 2026, month: 7, day: 20)
+        try store.dailyMetrics.upsert(DailyMetrics(helmDay: previous, restingHeartRate: 54))
+        try store.dailyMetrics.upsert(
+            DailyMetrics(helmDay: day, hrvSDNN: DurationMs(milliseconds: 48), restingHeartRate: 52)
+        )
+
+        let hrvDays = try store.dailyMetrics.listDays(where: .hrvSDNN)
+        let rhrDays = try store.dailyMetrics.listDays(where: .restingHeartRate)
+
+        #expect(hrvDays == [day])
+        #expect(rhrDays == [previous, day])
+    }
+
     @Test("body composition round trip")
     func bodyCompositionRoundTrip() throws {
         let store = try PersistenceStore.inMemory()

@@ -34,6 +34,16 @@ public struct BodyCompositionRepository: Sendable {
         }
     }
 
+    public func listDays() throws -> [HelmDay] {
+        try pool.read { db in
+            let rows = try String.fetchAll(
+                db,
+                sql: "SELECT DISTINCT helm_day FROM body_composition ORDER BY helm_day"
+            )
+            return try rows.map { try HelmDayColumn.decode($0) }
+        }
+    }
+
     public func fetchLatest(onOrBefore helmDay: HelmDay, limit: Int = 1) throws -> [BodyComposition] {
         try pool.read { db in
             let records = try BodyCompositionRecord

@@ -592,6 +592,33 @@ Device testing is slow, so it is consolidated into five gates. Build agents neve
 - Diagnostics export lands on the Mac via AirDrop; Watch skeleton installs, round-trips a value, and shows the stub complication.
 - Record the Instruments energy baseline per `Docs/BATTERY.md`.
 
+**Watch install (debug builds):** Run the Helm scheme from Xcode with your **iPhone** selected (not the Watch). The Watch app embeds in the iPhone build and auto-installs to the paired Watch within ~60 seconds. Do not install from the Watch app's Available Apps list — that path fails for developer builds with "could not install at this time". If the Watch app is missing after an iPhone install, open Window → Devices and Simulators, select the paired Watch, confirm Helm appears under installed apps, then Run again from Xcode.
+
+### DT1 fix sections (filed 2026-07-22)
+
+Targeted fixes filed from Cameron's first DT1 session. Build agents implement these before Cameron re-runs the DT1 checklist.
+
+#### F-DT1.1 — HealthKit launch bootstrap + truthful status UI
+
+- **Depends on:** M1.3, M1.4, M2.2
+- **Goal:** After relaunch, HealthKit screen shows connected state and last-known sync info without re-tapping Request Access; observers restart automatically.
+- **Scope:** Persist ingest metadata alongside anchors; `HealthKitBootstrap.start()` on launch; upgrade HealthKit status UI with Connection row, last loaded time, stored-day count; tests for metadata round-trip and bootstrap path.
+- **Acceptance:** Build + tests pass; simulator authorize-once → kill → relaunch shows connected + last sync without button tap.
+
+#### F-DT1.2 — Watch companion install path
+
+- **Depends on:** M0.5
+- **Goal:** Reliable Watch install during DT1; clear doc when user tries Watch App Store path.
+- **Scope:** Verify embed chain and signing on watch targets; DT1 troubleshooting note (above).
+- **Acceptance:** Run from Xcode to iPhone → Helm on Watch within ~60s; Watch Sync round-trip; stub complication visible.
+
+#### F-DT1.3 — Dashboard visual polish
+
+- **Depends on:** M0.4, M2.2
+- **Goal:** BodyBattery-inspired hero layout: band colour, contributor bars, greeting. Not a DT1 blocker.
+- **Scope:** Greeting header, band badge + accent stripe, contributor progress bars, secondary Ask Coach button.
+- **Acceptance:** Dashboard renders all readiness states with improved visual hierarchy; no behaviour change to readiness math.
+
 ### DT2 after M3.6: the logger, in the gym
 - A full real workout logs cleanly; previous performance auto-fills; the numpad never blanks the screen (the Signal teardown bug).
 - Rest timer: background the app mid-rest and lock the phone; the end-of-rest alert fires while suspended; returning early cancels it and the projection is correct.

@@ -46,6 +46,10 @@ public actor HealthKitAnchorStore {
         try persist()
     }
 
+    public var hasPersistedAnchors: Bool {
+        !anchors.isEmpty
+    }
+
     private func persist() throws {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]

@@ -5,9 +5,11 @@ import SwiftUI
 @main
 struct HelmApp: App {
     init() {
-        Task {
+        Task { @MainActor in
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
+            ReadinessBootstrap.start()
+            HealthKitBootstrap.start()
             #if DEBUG
             await SecretsBootstrap.run()
             #endif

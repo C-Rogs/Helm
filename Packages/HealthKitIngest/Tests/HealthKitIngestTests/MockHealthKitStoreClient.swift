@@ -6,6 +6,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     private let lock = NSLock()
     private var available = true
     private var fetchResults: [String: AnchoredFetchResult] = [:]
+    private var sampleResults: [String: [HKSample]] = [:]
     private var observerHandlers: [String: @Sendable () -> Void] = [:]
     private(set) var backgroundDeliveryCalls: [(String, HKUpdateFrequency)] = []
     private(set) var authorizationRequested = false
@@ -18,6 +19,10 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
         lock.withLock { fetchResults[sampleType.identifier] = result }
     }
 
+    func setSampleResults(_ samples: [HKSample], for sampleType: HKSampleType) {
+        lock.withLock { sampleResults[sampleType.identifier] = samples }
+    }
+
     func triggerObserver(for sampleType: HKSampleType) {
         lock.withLock { observerHandlers[sampleType.identifier]?() }
     }
@@ -28,6 +33,20 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
 
     func requestAuthorization(toShare: Set<HKSampleType>, read: Set<HKObjectType>) async throws {
         lock.withLock { authorizationRequested = true }
+    }
+
+    func fetchSamples(
+        sampleType: HKSampleType,
+        predicate: NSPredicate?,
+        limit: Int
+    ) async throws -> [HKSample] {
+        lock.withLock {
+            let samples = sampleResults[sampleType.identifier] ?? []
+            if samples.count <= limit {
+                return samples
+            }
+            return Array(samples.prefix(limit))
+        }
     }
 
     func fetchAnchored(

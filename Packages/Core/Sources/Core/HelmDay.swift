@@ -117,4 +117,20 @@ public extension HelmDay {
 
         return HelmDay(year: year, month: month, day: day)
     }
+
+    /// Returns the logical day `days` calendar days before or after this day.
+    func adding(days: Int, calendar: Calendar = Calendar(identifier: .gregorian)) -> HelmDay {
+        let components = dateComponents()
+        guard
+            let date = calendar.date(from: components),
+            let shifted = calendar.date(byAdding: .day, value: days, to: date)
+        else {
+            preconditionFailure("calendar could not shift HelmDay")
+        }
+        let shiftedComponents = calendar.dateComponents([.year, .month, .day], from: shifted)
+        guard let helmDay = HelmDay(components: shiftedComponents) else {
+            preconditionFailure("calendar produced incomplete day components")
+        }
+        return helmDay
+    }
 }

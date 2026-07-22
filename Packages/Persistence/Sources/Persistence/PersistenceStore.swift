@@ -6,6 +6,11 @@ public actor PersistenceStore {
     public nonisolated let bodyComposition: BodyCompositionRepository
     public nonisolated let sleep: SleepRepository
     public nonisolated let nutrition: NutritionRepository
+    public nonisolated let exercises: ExerciseRepository
+    public nonisolated let workoutSessions: WorkoutSessionRepository
+    public nonisolated let workoutTemplates: WorkoutTemplateRepository
+    public nonisolated let personalRecords: PersonalRecordRepository
+    public nonisolated let readiness: ReadinessRepository
 
     public let databaseURL: URL
     private let pool: DatabasePool
@@ -17,6 +22,11 @@ public actor PersistenceStore {
         bodyComposition = BodyCompositionRepository(pool: pool)
         sleep = SleepRepository(pool: pool)
         nutrition = NutritionRepository(pool: pool)
+        exercises = ExerciseRepository(pool: pool)
+        workoutSessions = WorkoutSessionRepository(pool: pool)
+        workoutTemplates = WorkoutTemplateRepository(pool: pool)
+        personalRecords = PersonalRecordRepository(pool: pool)
+        readiness = ReadinessRepository(pool: pool)
     }
 
     public static func openDefault() throws -> PersistenceStore {
