@@ -48,7 +48,7 @@ public struct ActiveSessionRepository: Sendable {
         }
     }
 
-    public func startSession(title: String?, startedAt: Date) throws -> String {
+    public func startSession(title: String?, startedAt: Date, source: WorkoutSessionSource = .manual) throws -> String {
         let sessionID = UUID().uuidString
         let nowString = ISO8601Coding.string(from: startedAt)
         try pool.write { db in
@@ -59,11 +59,81 @@ public struct ActiveSessionRepository: Sendable {
                         id, title, started_at, ended_at, status, source,
                         total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, NULL, 'active', 'manual', 0, 0, 0, ?, ?)
+                    ) VALUES (?, ?, ?, NULL, 'active', ?, 0, 0, 0, ?, ?)
                     """,
-                arguments: [sessionID, title, nowString, nowString, nowString]
+                arguments: [sessionID, title, nowString, source.rawValue, nowString, nowString]
             )
             try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
+        }
+        return sessionID
+    }
+
+    public func startSessionFromTemplate(
+        template: WorkoutTemplateDraft,
+        startedAt: Date
+    ) throws -> String {
+        let sessionID = UUID().uuidString
+        let nowString = ISO8601Coding.string(from: startedAt)
+        try pool.write { db in
+            try Self.assertNoActiveSession(db: db)
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session (
+                        id, title, started_at, ended_at, status, source,
+                        total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, NULL, 'active', 'template', 0, 0, 0, ?, ?)
+                    """,
+                arguments: [sessionID, template.name, nowString, nowString, nowString]
+            )
+            try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
+
+            for exercise in template.exercises.sorted(by: { $0.displayOrder < $1.displayOrder }) {
+                let sessionExerciseID = UUID().uuidString
+                let mode: String = try String.fetchOne(
+                    db,
+                    sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [exercise.exerciseID]
+                ) ?? ExerciseMode.weightReps.rawValue
+                let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
+                let restSeconds = exercise.defaultRestSeconds ?? 90
+                let setCount = max(exercise.targetSetCount ?? 3, 1)
+
+                try db.execute(
+                    sql: """
+                        INSERT INTO workout_session_exercise (
+                            id, workout_session_id, exercise_id, display_order, exercise_mode,
+                            target_rest_seconds, is_collapsed, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        """,
+                    arguments: [
+                        sessionExerciseID, sessionID, exercise.exerciseID, exercise.displayOrder,
+                        exerciseMode.rawValue, restSeconds, nowString, nowString
+                    ]
+                )
+
+                for index in 0 ..< setCount {
+                    let setID = UUID().uuidString
+                    try db.execute(
+                        sql: """
+                            INSERT INTO set_entry (
+                                id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                                weight_kg, reps, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            setID,
+                            sessionExerciseID,
+                            exercise.exerciseID,
+                            index,
+                            exercise.targetMass?.kilograms,
+                            exercise.targetRepMin,
+                            nowString,
+                            nowString
+                        ]
+                    )
+                }
+            }
         }
         return sessionID
     }
@@ -372,9 +442,9 @@ public struct ActiveSessionRepository: Sendable {
     }
 }
 
-// MARK: - Private helpers
+// MARK: - Shared fetch helpers
 
-private extension ActiveSessionRepository {
+extension ActiveSessionRepository {
     static func fetchExercises(db: Database, sessionID: String) throws -> [WorkoutSessionExerciseDraft] {
         let exerciseRows = try Row.fetchAll(
             db,

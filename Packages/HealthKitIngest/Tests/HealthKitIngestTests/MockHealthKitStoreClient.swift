@@ -80,4 +80,20 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     }
 
     func stop(_ query: HKQuery) {}
+
+    func saveWorkout(
+        activityType: HKWorkoutActivityType,
+        start: Date,
+        end: Date,
+        metadata: [String: any Sendable]
+    ) async throws -> SavedWorkoutSample {
+        lock.withLock {
+            SavedWorkoutSample(
+                id: UUID(),
+                start: start,
+                end: end,
+                sourceBundleID: HealthKitIngest.defaultOwnBundleID
+            )
+        }
+    }
 }

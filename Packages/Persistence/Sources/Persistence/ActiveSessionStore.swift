@@ -25,6 +25,10 @@ public final class ActiveSessionStore {
         snapshot = try await engine.start(title: title)
     }
 
+    public func startFromTemplate(_ template: WorkoutTemplateDraft) async throws {
+        snapshot = try await engine.startFromTemplate(template)
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) async throws {
         snapshot = try await engine.logSet(setID: setID, update: update)
     }
@@ -49,9 +53,10 @@ public final class ActiveSessionStore {
         snapshot = try await engine.skipRest()
     }
 
-    public func finish() async throws {
-        try await engine.finish()
+    public func finish() async throws -> String? {
+        let sessionID = try await engine.finish()
         snapshot = nil
+        return sessionID
     }
 
     public func discard() async throws {

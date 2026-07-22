@@ -112,4 +112,37 @@ public struct WorkoutTemplateRepository: Sendable {
             )
         }
     }
+
+    public func createFromSession(
+        session: WorkoutSessionDraft,
+        name: String,
+        notes: String? = nil,
+        timestamp: Date = Date()
+    ) throws -> WorkoutTemplateDraft {
+        let templateID = UUID().uuidString
+        let exercises = session.exercises.enumerated().map { index, exercise in
+            let completedSets = exercise.sets.filter { $0.status == .completed }
+            let targetMass = completedSets.compactMap(\.mass).max(by: { $0.kilograms < $1.kilograms })
+            let reps = completedSets.compactMap(\.reps)
+            let draft = WorkoutTemplateExerciseDraft(
+                exerciseID: exercise.exerciseID,
+                displayOrder: index,
+                targetSetCount: max(completedSets.count, 1),
+                targetRepMin: reps.min(),
+                targetRepMax: reps.max(),
+                targetMass: targetMass,
+                defaultRestSeconds: 90
+            )
+            return draft
+        }
+
+        let template = WorkoutTemplateDraft(
+            id: templateID,
+            name: name,
+            notes: notes,
+            exercises: exercises
+        )
+        try insert(template, timestamp: timestamp)
+        return template
+    }
 }

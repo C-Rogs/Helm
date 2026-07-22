@@ -2,13 +2,6 @@ import Core
 import Foundation
 import GRDB
 
-enum EpleyOneRepMax {
-    static func estimate(mass: Mass, reps: Int) -> Mass {
-        let kilograms = mass.kilograms * (1.0 + Double(reps) / 30.0)
-        return Mass(kilograms: kilograms)
-    }
-}
-
 public struct WorkoutSessionRepository: Sendable {
     private let pool: DatabasePool
 
@@ -176,8 +169,15 @@ public struct WorkoutSessionRepository: Sendable {
         }
     }
 
-    public func estimatedOneRM(exerciseID: String) throws -> Mass? {
+    public func estimatedOneRM(exerciseID: String, excludingSessionID: String? = nil) throws -> Mass? {
         try pool.read { db in
+            var arguments: [DatabaseValueConvertible] = [exerciseID]
+            var excludeClause = ""
+            if let excludingSessionID {
+                excludeClause = "AND ws.id != ?"
+                arguments.append(excludingSessionID)
+            }
+
             let rows = try Row.fetchAll(
                 db,
                 sql: """
@@ -195,8 +195,9 @@ public struct WorkoutSessionRepository: Sendable {
                       AND se.weight_kg IS NOT NULL
                       AND se.reps IS NOT NULL
                       AND se.reps > 0
+                      \(excludeClause)
                     """,
-                arguments: [exerciseID]
+                arguments: StatementArguments(arguments)
             )
 
             return rows.compactMap { row -> Mass? in
@@ -207,6 +208,153 @@ public struct WorkoutSessionRepository: Sendable {
                 }
                 return EpleyOneRepMax.estimate(mass: Mass(kilograms: weight), reps: reps)
             }.max(by: { $0.kilograms < $1.kilograms })
+        }
+    }
+
+    public func maxWeight(exerciseID: String, excludingSessionID: String? = nil) throws -> Double? {
+        try pool.read { db in
+            var arguments: [DatabaseValueConvertible] = [exerciseID]
+            var excludeClause = ""
+            if let excludingSessionID {
+                excludeClause = "AND ws.id != ?"
+                arguments.append(excludingSessionID)
+            }
+
+            return try Double.fetchOne(
+                db,
+                sql: """
+                    SELECT MAX(se.weight_kg)
+                    FROM set_entry se
+                    JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                    JOIN workout_session ws ON ws.id = wse.workout_session_id
+                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                      AND se.status = 'completed'
+                      AND se.deleted_at IS NULL
+                      AND wse.deleted_at IS NULL
+                      AND ws.deleted_at IS NULL
+                      AND ws.status = 'completed'
+                      AND se.set_type != 'warmup'
+                      AND se.weight_kg IS NOT NULL
+                      \(excludeClause)
+                    """,
+                arguments: StatementArguments(arguments)
+            )
+        }
+    }
+
+    public func maxReps(
+        exerciseID: String,
+        atWeightKilograms weight: Double,
+        excludingSessionID: String? = nil
+    ) throws -> Int? {
+        try pool.read { db in
+            var arguments: [DatabaseValueConvertible] = [exerciseID, weight]
+            var excludeClause = ""
+            if let excludingSessionID {
+                excludeClause = "AND ws.id != ?"
+                arguments.append(excludingSessionID)
+            }
+
+            return try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT MAX(se.reps)
+                    FROM set_entry se
+                    JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                    JOIN workout_session ws ON ws.id = wse.workout_session_id
+                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                      AND se.status = 'completed'
+                      AND se.deleted_at IS NULL
+                      AND wse.deleted_at IS NULL
+                      AND ws.deleted_at IS NULL
+                      AND ws.status = 'completed'
+                      AND se.set_type != 'warmup'
+                      AND se.weight_kg = ?
+                      AND se.reps IS NOT NULL
+                      \(excludeClause)
+                    """,
+                arguments: StatementArguments(arguments)
+            )
+        }
+    }
+
+    public func listSummaries(limit: Int, offset: Int = 0) throws -> [WorkoutSessionSummary] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT ws.id, ws.title, ws.started_at, ws.ended_at,
+                           ws.total_volume_kg_cache, ws.total_set_count_cache, ws.total_rep_count_cache,
+                           (
+                               SELECT COUNT(*)
+                               FROM workout_session_exercise wse
+                               WHERE wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+                           ) AS exercise_count
+                    FROM workout_session ws
+                    WHERE ws.status = 'completed' AND ws.deleted_at IS NULL
+                    ORDER BY datetime(ws.started_at) DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                arguments: [limit, offset]
+            )
+
+            return try rows.map { row in
+                WorkoutSessionSummary(
+                    id: row["id"],
+                    title: row["title"],
+                    startedAt: try ISO8601Coding.date(from: row["started_at"] as String),
+                    endedAt: (row["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
+                    totalVolumeKilograms: row["total_volume_kg_cache"] ?? 0,
+                    totalSetCount: row["total_set_count_cache"] ?? 0,
+                    totalRepCount: row["total_rep_count_cache"] ?? 0,
+                    exerciseCount: row["exercise_count"] ?? 0
+                )
+            }
+        }
+    }
+
+    public func fetch(id: String) throws -> WorkoutSessionDraft? {
+        try pool.read { db in
+            guard let header = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT id, title, started_at, ended_at, status, source
+                    FROM workout_session
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [id]
+            ) else {
+                return nil
+            }
+
+            let exercises = try ActiveSessionRepository.fetchExercises(db: db, sessionID: id)
+            let status = WorkoutSessionStatus(rawValue: header["status"] as String) ?? .completed
+            let source = WorkoutSessionSource(rawValue: header["source"] as String) ?? .manual
+
+            return WorkoutSessionDraft(
+                id: header["id"],
+                title: header["title"],
+                startedAt: try ISO8601Coding.date(from: header["started_at"] as String),
+                endedAt: (header["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
+                status: status,
+                source: source,
+                exercises: exercises
+            )
+        }
+    }
+
+    public func updateCompletedSession(_ draft: WorkoutSessionDraft, timestamp: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard let status: String = try String.fetchOne(
+                db,
+                sql: "SELECT status FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [draft.id]
+            ), status == WorkoutSessionStatus.completed.rawValue else {
+                throw PersistenceError.recordNotFound("completed session \(draft.id)")
+            }
+
+            try WorkoutSessionUpdateWriter.apply(draft, now: now, in: db)
         }
     }
 }

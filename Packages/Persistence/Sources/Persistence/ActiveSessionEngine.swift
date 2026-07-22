@@ -27,6 +27,15 @@ public actor ActiveSessionEngine {
         return snapshot
     }
 
+    public func startFromTemplate(_ template: WorkoutTemplateDraft) throws -> ActiveSessionSnapshot {
+        let startedAt = clock.now()
+        _ = try repository.startSessionFromTemplate(template: template, startedAt: startedAt)
+        guard let snapshot = try repository.fetchActiveSnapshot(at: startedAt) else {
+            throw PersistenceError.recordNotFound("active session after template start")
+        }
+        return snapshot
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) throws -> ActiveSessionSnapshot {
         let now = clock.now()
         try repository.logSet(setID: setID, update: update, timestamp: now)
@@ -84,13 +93,15 @@ public actor ActiveSessionEngine {
         return try requireSnapshot(at: now)
     }
 
-    public func finish() throws {
+    public func finish() throws -> String? {
         let now = clock.now()
         guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
             throw PersistenceError.noActiveSession
         }
-        try repository.completeExpiredRestTimers(sessionID: snapshot.session.id, at: now)
-        try repository.finishSession(sessionID: snapshot.session.id, endedAt: now)
+        let sessionID = snapshot.session.id
+        try repository.completeExpiredRestTimers(sessionID: sessionID, at: now)
+        try repository.finishSession(sessionID: sessionID, endedAt: now)
+        return sessionID
     }
 
     public func discard() throws {

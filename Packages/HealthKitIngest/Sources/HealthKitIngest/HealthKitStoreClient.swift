@@ -34,6 +34,12 @@ public protocol HealthKitStoreClient: Sendable {
         handler: @escaping @Sendable () -> Void
     ) -> HKQuery
     func stop(_ query: HKQuery)
+    func saveWorkout(
+        activityType: HKWorkoutActivityType,
+        start: Date,
+        end: Date,
+        metadata: [String: any Sendable]
+    ) async throws -> SavedWorkoutSample
 }
 
 public struct LiveHealthKitStore: HealthKitStoreClient {
@@ -139,5 +145,46 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
 
     public func stop(_ query: HKQuery) {
         store.stop(query)
+    }
+
+    public func saveWorkout(
+        activityType: HKWorkoutActivityType,
+        start: Date,
+        end: Date,
+        metadata: [String: any Sendable]
+    ) async throws -> SavedWorkoutSample {
+        let metadataDictionary = metadata.reduce(into: [String: Any]()) { result, entry in
+            result[entry.key] = entry.value
+        }
+        let workout = HKWorkout(
+            activityType: activityType,
+            start: start,
+            end: end,
+            workoutEvents: nil,
+            totalEnergyBurned: nil,
+            totalDistance: nil,
+            device: .local(),
+            metadata: metadataDictionary
+        )
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.save(workout) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitIngestError.workoutWriteFailed)
+                }
+            }
+        }
+
+        let bundleID = workout.sourceRevision.source.bundleIdentifier
+        return SavedWorkoutSample(
+            id: workout.uuid,
+            start: workout.startDate,
+            end: workout.endDate,
+            sourceBundleID: bundleID
+        )
     }
 }

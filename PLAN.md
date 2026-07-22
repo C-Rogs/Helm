@@ -1,18 +1,39 @@
 # Plan: Helm (unified adaptive health coach, clean-slate iOS build)
 
-> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. When the user says "build M3.2", an agent reads this file and builds that section. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). On-device verification is batched into Device Test Gates (DT1 to DT5), not per-section.
+> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT5). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
+
+## Invocation (for Cameron)
+
+Say only:
+
+```
+build M3.2
+```
+
+or `build F-DT1.1` for a fix section. The agent loads this plan and the Helm build-agent rule, then executes the section end to end including commit and `PROGRESS.md` update. You test on device only when a DT gate's milestones are complete.
 
 ## Build agent contract (read this first, every time)
+
+### Cameron's role vs yours
+
+| Cameron | Build agent |
+|---|---|
+| Runs DT1 to DT5 on a physical device when a gate's milestones are done | Builds one plan section per session |
+| Files fix sections (F-DT#.#) when a gate fails | Implements fix sections like any other section |
+| Does **not** review diffs, run the app, or approve commits between sections | Commits and updates `PROGRESS.md` before ending the turn |
+| Does **not** answer "should I commit?" | **Always commits.** No prompt, no confirmation, no waiting |
+
+If your section passes agent-verifiable acceptance (build, tests, lint), commit and exit. Cameron will test at the next DT gate, not now.
 
 1. **Scope discipline.** Build exactly the section named. Do not start the next section, do not refactor other sections' files except where an interface change is explicitly part of your section. If the section turns out to be materially bigger than described, stop and report instead of half-building.
 2. **Sizing.** Each section is sized for one focused agent pass: one pure engine, one package layer, or one screen plus its wiring. If you cannot hold the whole section's file set in mind, you are doing too much.
 3. **Read before writing.** Read the plan header (Locked decisions, Platform constraints, Engineering standards, the relevant engine spec) plus your section. Read every interface your section consumes in the actual code, not from memory of this document.
-4. **Verification split.** Your acceptance list is agent-verifiable: the project builds under Swift 6 complete concurrency with zero warnings, SwiftLint is clean, all unit/snapshot/property tests pass, and any listed simulator-checkable behaviour works. Items requiring a physical iPhone, a physical Watch, real HealthKit data, live Gemini, or overnight battery runs are listed under the Device Test Gates and are NOT yours to verify. Never claim a device behaviour works.
+4. **Verification split.** Your acceptance list is agent-verifiable: the project builds under Swift 6 complete concurrency with zero warnings, SwiftLint is clean, all unit/snapshot/property tests pass, and any listed simulator-checkable behaviour works. Items requiring a physical iPhone, a physical Watch, real HealthKit data, live Gemini, or overnight battery runs are listed under the Device Test Gates and are NOT yours to verify. Never claim a device behaviour works. **Do not ask Cameron to run the app, preview a screen, or sanity-check your work; he tests only at DT gates.**
 5. **Migrations are append-only.** Any section that adds tables appends a new numbered GRDB migration. Never edit a shipped migration. The migrate-up-from-every-prior-schema test must keep passing.
 6. **Fixtures over live services.** LLM work is built and tested against recorded fixtures. Never call live Gemini from tests. Never log request URLs (the key travels as a query parameter).
 7. **Seed content placeholders.** Exercise/evidence/methodology content is authored by Cameron. Build against the defined schema with a small clearly-marked placeholder sample (`"placeholder": true`). Never invent citations.
-8. **Check `PROGRESS.md` before starting, update it when done.** Before building a section, read `PROGRESS.md` for that section's dependencies to confirm they actually landed as specified, and to pick up any "Deviation" notes that change what your section can assume. When your section is done, append your own row (see Progress tracking below). Never edit another section's row.
-9. **Commit at the end of the section, not during.** One section = one clean, atomic commit (a short chain of commits is fine if the section naturally splits, but never leave the section half-committed). See Commit discipline below for message format. Never use `--no-verify`; if a hook fails, fix the underlying issue and recommit.
+8. **Check `PROGRESS.md` before starting; only mark `done` after a commit lands.** Before building, read dependency rows and confirm each has a commit SHA (blank Commit = not landed). When finished, append your row with status `done`, today's date, and `git rev-parse --short HEAD`. Never edit another section's row.
+9. **Auto-commit. Never ask Cameron.** Finishing a section always includes `git add` + `git commit` on your machine before you report back. **Forbidden:** "Would you like me to commit?", "Should I create a commit?", "Ready for you to review before I commit", ending the turn with uncommitted files, or asking Cameron to commit. One section = one clean commit (two commits max if code and `PROGRESS.md` must split; see Commit discipline). Never use `--no-verify`; fix hook failures and recommit. Your final message includes the commit SHA and a clean `git status`.
 10. **Write it like a human engineer shipped it, not like an agent generated it.** See "Read like a human wrote it" below. This is a standing requirement on every section, not a separate cleanup pass.
 11. **Instrument against the frozen contract, don't invent your own.** Read `Docs/DIAGNOSTICS.md` before writing any `OSLog`/signpost/error-capture code. Use your package's assigned category, emit the exact signpost name from the catalog if your section owns one, and route unhandled errors through the ring buffer per its contract. A section is not done until it satisfies that doc's Instrumentation gate.
 
@@ -33,8 +54,15 @@
 ```
 
 - **Status**: `not started` / `in progress (agent: <name/session>)` / `done` / `blocked (<reason>)`.
-- **Commit**: the short SHA the section landed in.
+- **Commit**: the short SHA the section landed in. **Required for `done`.** Empty Commit = not landed; downstream agents must stop.
 - **Notes / deviations**: anything a downstream section needs to know that isn't obvious from the code: an interface that changed shape, a scope cut, a test that had to be skipped and why, a follow-up filed. Leave blank if none. This field is the one agents actually need to read before starting dependent work; keep it honest, not padded.
+
+**Definition of done (all required):**
+1. Agent-verifiable acceptance passes (build, tests, lint).
+2. Every file for this section is committed (no `??` or `M` left for your paths).
+3. At least one commit with subject `[M#.#] …` (or `[F-DT#.#] …` for fix sections).
+4. `PROGRESS.md` updated with commit SHA in the same commit or the immediate next one.
+5. `git status` clean. Agent reported SHA + status in handoff. **No commit prompt to Cameron.**
 
 If a section is abandoned or redone, add a new row rather than rewriting history; the log should read chronologically.
 
@@ -42,12 +70,26 @@ If a section is abandoned or redone, add a new row rather than rewriting history
 
 ## Commit discipline
 
+**Commits are automatic and mandatory.** Cameron does not test between sections and does not approve commits. If you built it and tests pass, commit it yourself before ending the turn.
+
+### Mandatory close-out (every section, no exceptions)
+
+1. `git status`: stage every path your section touched (`git add …`).
+2. Run acceptance tests (`swift test`, `xcodebuild` as required): all green.
+3. `git commit -m "[M#.#] …"` (see format below). Include `PROGRESS.md` in this commit or commit it immediately after.
+4. `git rev-parse --short HEAD`: put this SHA in your `PROGRESS.md` row.
+5. `git status`: must be clean. Report SHA + status. **Do not ask Cameron whether to commit.**
+
+### Rules
+
 - One commit per finished section (or a short logical chain within it), never a commit spanning two sections.
-- Message format: `[M#.#] <imperative summary>` for the subject, e.g. `[M3.2] Add active-session store with rest-timer projection`. Body explains *why* only where non-obvious (a workaround, a constraint from the plan); no restating the diff.
-- Reference the plan section, not "as requested" or conversational framing. This is a durable log future engineers (and future agents) read without this conversation's context.
+- Message format: `[M#.#] <imperative summary>` for the subject, e.g. `[M3.2] Add active-session store with rest-timer projection`. Fix sections use `[F-DT#.#] …`. Body explains *why* only where non-obvious; no restating the diff.
+- Reference the plan section, not "as requested" or conversational framing.
 - Do not commit failing tests, commented-out code, or scaffolding left over from getting something to compile.
-- Update `PROGRESS.md` in the same commit (or the immediate next one) that finishes the section, so status and code never drift apart.
-- Never squash or rewrite history across sections; each section's commit(s) stay as the record of when and how it landed.
+- Update `PROGRESS.md` in the same commit (or the immediate next one) that finishes the section.
+- Never squash or rewrite history across sections.
+- Parallel agents each commit their own section independently before exiting.
+- **Never** end a turn with uncommitted section work. **Never** ask Cameron to commit, review, or test before you commit.
 
 ---
 
@@ -77,7 +119,9 @@ Sections in different tracks below have no file overlap and can be built by sepa
 - **Wave 3**: M1.4 (needs M1.3); M3.2 then M3.3 then M3.5 and M3.6 (both off M3.1, can run parallel to each other); M4.2 (needs M4.1 + M0.6) and M4.3 (needs M1.1, parallel to M4.2); M5.2 (needs M5.1 + M3.1).
 - From here the tree fans generally follow the section numbering (M2.2 needs M2.1+M1.4+M0.4; M4.4 needs M4.3+M2.1; M5.3 needs M5.2+M2.1, etc). Check each section's stated "Depends on" line before assuming something can run in parallel with something else. When in doubt, run serially; the cost of a wrong parallel assumption (a merge conflict or a section built against stale interfaces) is worse than the time saved.
 
-**Shared-file hazard.** `project.yml` (XcodeGen) and the GRDB migration files are the only files multiple parallel sections may need to touch. Two agents adding "the next" migration number at the same time, or both editing `project.yml` to register a new target, will conflict or silently clobber each other if merged carelessly. Handle this by either: (a) serializing just those edits, landing one agent's `project.yml`/migration change and merging before the next parallel agent starts, even if the rest of their work proceeded in parallel; or (b) building each parallel section in its own branch/worktree and rebasing onto the latest `project.yml`/migration head immediately before merging, renumbering the migration if a collision occurred. Never let two uncoordinated agents merge conflicting migration numbers or target definitions.
+**Shared-file hazard.** `project.yml` (XcodeGen), `Packages/*/Package.swift`, and GRDB migration files are append-only shared files. Serialize edits or use branches; **commit** before the next parallel agent starts. Never let two uncoordinated agents merge conflicting migration numbers.
+
+**Parallel commit rule.** Parallelism does not waive auto-commit. Each agent commits its section before exiting. Downstream agents verify dependency SHAs in `PROGRESS.md`, not uncommitted sibling work.
 
 ---
 
@@ -581,7 +625,7 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 
 ## Device Test Gates (batched physical testing; not for build agents)
 
-Device testing is slow, so it is consolidated into five gates. Build agents never block on these; Cameron runs each gate as one sitting with the checklist below, and failures are filed back as targeted fix sections.
+Device testing is slow, so it is consolidated into five gates. **This is the only point Cameron tests the app.** Build agents never block on gates, never ask Cameron to run the app mid-section, and never wait for his approval before committing. Cameron runs each gate as one sitting when the listed milestones are done; failures are filed back as targeted fix sections (F-DT#.#), which agents implement and **commit** like any other section.
 
 ### DT1 after M2.2: foundation + ingest + readiness (first device install)
 - HealthKit authorisation flow on a real iPhone; real data (including MFP calories) ingests live with no manual export and persists across relaunch.

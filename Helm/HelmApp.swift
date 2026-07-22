@@ -9,6 +9,7 @@ struct HelmApp: App {
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
             ReadinessBootstrap.start()
+            TrainBootstrap.start()
             HealthKitBootstrap.start()
             #if DEBUG
             await SecretsBootstrap.run()

@@ -5,6 +5,7 @@ public enum HealthKitIngestError: Error, Sendable, LocalizedError {
     case healthDataUnavailable
     case backgroundDeliveryFailed(String)
     case anchorPersistenceFailed(String)
+    case workoutWriteFailed
 
     public var errorDescription: String? {
         switch self {
@@ -14,6 +15,8 @@ public enum HealthKitIngestError: Error, Sendable, LocalizedError {
             "Background delivery failed for \(identifier)."
         case let .anchorPersistenceFailed(reason):
             "Could not persist HealthKit anchor: \(reason)."
+        case .workoutWriteFailed:
+            "Could not save workout to HealthKit."
         }
     }
 }

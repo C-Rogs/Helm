@@ -1,0 +1,32 @@
+---
+description: Helm build-agent contract. One section per session, auto-commit, DT-only testing.
+alwaysApply: true
+---
+
+# Helm build agent
+
+Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.1`. No other preamble needed. Everything below is mandatory without asking Cameron.
+
+## Read first
+
+1. `PLAN.md`: Build agent contract, Commit discipline, and the named section (Goal, Scope, Depends on, Acceptance).
+2. `PROGRESS.md`: confirm dependencies have commit SHAs; append your row when done.
+3. `Docs/DIAGNOSTICS.md`: if the section touches logging or signposts.
+
+## Do
+
+- Build **exactly** that section. Nothing else.
+- Pass agent-verifiable acceptance (build, tests, lint).
+- `git add` all paths you touched.
+- `git commit` with `[M#.#] …` or `[F-DT#.#] …`.
+- Update `PROGRESS.md` with status `done`, date, and short SHA.
+- End with commit SHA and clean `git status`.
+
+## Do not
+
+- Ask Cameron to commit, review, preview, or test. He only tests at **DT gates** (DT1–DT5), not between sections.
+- Ask "would you like me to commit?" or wait for approval.
+- Mark `done` with an empty Commit column.
+- Leave section files uncommitted.
+
+Full rules: `PLAN.md`. Status board: `PROGRESS.md`.
