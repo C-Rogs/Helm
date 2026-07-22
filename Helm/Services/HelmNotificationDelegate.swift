@@ -3,9 +3,8 @@ import Foundation
 import Persistence
 import UserNotifications
 
-@MainActor
-final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
-    static let shared = HelmNotificationDelegate()
+final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate, @unchecked Sendable {
+    nonisolated(unsafe) static let shared = HelmNotificationDelegate()
 
     func configure() {
         UNUserNotificationCenter.current().delegate = self
@@ -15,7 +14,7 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification
     ) async -> UNNotificationPresentationOptions {
-        deliverRestHapticIfNeeded(for: notification)
+        await deliverRestHapticIfNeeded(for: notification)
         return [.banner, .sound]
     }
 
@@ -23,9 +22,10 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
         _ center: UNUserNotificationCenter,
         didReceive response: UNNotificationResponse
     ) async {
-        deliverRestHapticIfNeeded(for: response.notification)
+        await deliverRestHapticIfNeeded(for: response.notification)
     }
 
+    @MainActor
     private func deliverRestHapticIfNeeded(for notification: UNNotification) {
         let content = notification.request.content
         let timerID = content.userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
