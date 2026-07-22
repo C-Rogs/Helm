@@ -51,6 +51,20 @@ public enum PRMetricType: String, Codable, Sendable {
     case maxRepsAtWeight = "max_reps_at_weight"
 }
 
+public enum RestTimerPhase: String, Codable, CaseIterable, Sendable {
+    case idle
+    case running
+    case paused
+    case completed
+    case skipped
+}
+
+public enum ActiveWorkoutRecoveryState: String, Codable, CaseIterable, Sendable {
+    case active
+    case stale
+    case recoverable
+}
+
 public extension SetType {
     var isWarmup: Bool { self == .warmup }
 }

@@ -11,6 +11,7 @@ public actor PersistenceStore {
     public nonisolated let workoutTemplates: WorkoutTemplateRepository
     public nonisolated let personalRecords: PersonalRecordRepository
     public nonisolated let readiness: ReadinessRepository
+    public nonisolated let activeSessions: ActiveSessionRepository
 
     public let databaseURL: URL
     private let pool: DatabasePool
@@ -27,6 +28,7 @@ public actor PersistenceStore {
         workoutTemplates = WorkoutTemplateRepository(pool: pool)
         personalRecords = PersonalRecordRepository(pool: pool)
         readiness = ReadinessRepository(pool: pool)
+        activeSessions = ActiveSessionRepository(pool: pool)
     }
 
     public static func openDefault() throws -> PersistenceStore {
