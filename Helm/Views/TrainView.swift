@@ -30,7 +30,6 @@ struct TrainView: View {
             }
             .helmScreenBackground()
             .navigationTitle("Train")
-            .toolbar { toolbarContent }
             .sheet(isPresented: $isShowingImport) {
                 WorkoutImportView(controller: importController)
             }
@@ -267,11 +266,6 @@ struct TrainView: View {
             .padding(.bottom, HelmSpacing.sm)
             .background(HelmColor.canvas)
         }
-    }
-
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        EmptyView()
     }
 
     private var numpadOverlay: some View {
