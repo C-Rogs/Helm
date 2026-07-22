@@ -36,6 +36,7 @@ If your section passes agent-verifiable acceptance (build, tests, lint), commit 
 9. **Auto-commit. Never ask Cameron.** Finishing a section always includes `git add` + `git commit` on your machine before you report back. **Forbidden:** "Would you like me to commit?", "Should I create a commit?", "Ready for you to review before I commit", ending the turn with uncommitted files, or asking Cameron to commit. One section = one clean commit (two commits max if code and `PROGRESS.md` must split; see Commit discipline). Never use `--no-verify`; fix hook failures and recommit. Your final message includes the commit SHA and a clean `git status`.
 10. **Write it like a human engineer shipped it, not like an agent generated it.** See "Read like a human wrote it" below. This is a standing requirement on every section, not a separate cleanup pass.
 11. **Instrument against the frozen contract, don't invent your own.** Read `Docs/DIAGNOSTICS.md` before writing any `OSLog`/signpost/error-capture code. Use your package's assigned category, emit the exact signpost name from the catalog if your section owns one, and route unhandled errors through the ring buffer per its contract. A section is not done until it satisfies that doc's Instrumentation gate.
+12. **UI sections read the design specs.** Before any screen or DesignSystem work, read `Docs/DESIGN-SYSTEM.md` and `Docs/HAPTICS.md` (normative from M0.7). Open `Docs/Helm-Design-Proposal.dc.html` for visual reference. Re-skins of shipped sections (M0.4, M2.2, M3.3-M3.5) are append-only follow-ups (M0.7, M2.3, F-DESIGN-M3), not edits to done `PROGRESS.md` rows.
 
 ---
 
@@ -112,12 +113,13 @@ Sections in different tracks below have no file overlap and can be built by sepa
 
 - **Wave 0 (must land first, serially)**: M0.1 then M0.2. Everything else depends on these.
 - **Wave 1, parallel tracks off M0.1/M0.2**:
-  - Track A (diagnostics/UI shell): M0.3 then M0.4 then M0.5 then M0.6 (mostly serial, small)
+  - Track A (diagnostics/UI shell): M0.3 then M0.4 then M0.5 then M0.6 then **M0.7** (mostly serial, small)
   - Track B (persistence): M1.1
   - Track C (pure engines, no persistence dependency at all): M2.1 (ReadinessKit), M4.1 (CoachLLM protocol), M5.1 (PlanKit mesocycle core). These three can run **simultaneously with each other and with Track B**, since they only need `Core`.
 - **Wave 2, once M1.1 lands**: Track B continues as M1.2 and M1.3 **in parallel** (both depend only on M1.1 + M0.3); separately, Track D (logger) starts: M3.1, which only needs M1.1, runs in parallel with M1.2/M1.3.
 - **Wave 3**: M1.4 (needs M1.3); M3.2 then M3.3 then M3.5 and M3.6 (both off M3.1, can run parallel to each other); M4.2 (needs M4.1 + M0.6) and M4.3 (needs M1.1, parallel to M4.2); M5.2 (needs M5.1 + M3.1).
-- From here the tree fans generally follow the section numbering (M2.2 needs M2.1+M1.4+M0.4; M4.4 needs M4.3+M2.1; M5.3 needs M5.2+M2.1, etc). Check each section's stated "Depends on" line before assuming something can run in parallel with something else. When in doubt, run serially; the cost of a wrong parallel assumption (a merge conflict or a section built against stale interfaces) is worse than the time saved.
+- **Design wave (current)**: **M0.7** (Track A, after M0.6) unlocks **M2.3** (readiness re-skin; append-only follow-up to shipped M2.2) and **F-DESIGN-M3** (logger haptics/UI catch-up for M3.3-M3.5, which shipped before M0.7). **M4.6** follows M2.2 and benefits from M4.5 when present. M0.8 (second layout skin) is reserved, not default v1.
+- From here the tree fans generally follow the section numbering (M2.2 needs M2.1+M1.4+M0.4; M2.3 needs M0.7+M2.2; M4.4 needs M4.3+M2.1; M5.3 needs M5.2+M2.1; M6.2 needs M0.7 for provenance UI, etc). Check each section's stated "Depends on" line before assuming something can run in parallel with something else. When in doubt, run serially; the cost of a wrong parallel assumption (a merge conflict or a section built against stale interfaces) is worse than the time saved.
 
 **Shared-file hazard.** `project.yml` (XcodeGen), `Packages/*/Package.swift`, and GRDB migration files are append-only shared files. Serialize edits or use branches; **commit** before the next parallel agent starts. Never let two uncoordinated agents merge conflicting migration numbers.
 
@@ -213,7 +215,7 @@ App (iPhone)   WatchApp   WidgetsLiveActivity   ShareExtension   AppIntents
 - **Persistence**: GRDB store with versioned migrations, value-type records, repositories, `DatabasePool`. Derived values (previous performance, e1RM, weekly volume) are computed via queries, not stored as truth.
 - **HealthKitIngest**: an actor wrapping HealthKit read + write, observer-driven (no polling, background delivery enabled per type), bounded/chunked backfill, anchored queries with locally stored cursors, idempotent on sample UUIDs, **source-bundle-ID filtering so the app never re-ingests its own writes**, and anchored-query deletion handling for MFP edits/deletes.
 - **CoachLLM**: LLM provider protocol (`availability`, `prewarm`, streaming `respond`, `resetThread`) with per-provider token budgets. Gemini provider is the v1 backend; OpenRouter sits behind the same protocol (disabled until minting exists); **a FoundationModelsProvider is not built in v1 but the protocol, registry, and budget map reserve its slot**. Context builder with oldest-day-first trimming, memory-profile injection ordered for implicit caching, structured-output parsing for in-session adjustments and photo-macro extraction, and **failure policy** (rate limit, timeout, offline mid-rest-timer → engine-only fallback).
-- **DesignSystem**: OLED-black theme, typography, reusable components (cards, gauges, charts), no em dashes in copy.
+- **DesignSystem**: the instrument UI layer in one package (no separate haptics or Arc packages). Normative specs: `Docs/DESIGN-SYSTEM.md` (tokens, `HelmTheme`/`HelmSkin`, `ArcGauge`, type, motion, components, thumb-reach) and `Docs/HAPTICS.md` (`HapticEngine`, twelve named patterns). M0.4 shipped a minimal token shell; **M0.7** elevates it to the full system. `ArcGauge` and `HapticEngine` live here. Visual reference: `Docs/Helm-Design-Proposal.dc.html` (browser only, not shipping code). No em dashes in copy.
 
 ### Daily compute pipeline
 
@@ -251,6 +253,26 @@ The numeric prescription renders with no LLM (offline-safe). The LLM narrates, c
 1. **ReadinessKit baselines**: golden-file tests against exported real HealthKit data plus synthetic series, covering missing days, DST, travel, cold start. Guard unit correctness (SDNN not RMSSD, ms not s, kJ vs kcal).
 2. **PlanKit mesocycle core**: property tests (volume never exceeds MRV, monotone progression within a meso, deload invariants) plus scenario tests for missed and reordered sessions.
 3. **Persistence ingest + migrations**: fixture-driven anchored-query merge/dedup, source filtering, migrate-up-from-every-prior-schema.
+
+---
+
+## Visual design system (normative for all UI work)
+
+**Thesis: an instrument, not an app.** Numbers are the hero; consistency of read, restraint, and feedback earns trust. Pure engines are never re-skinned; all visual work is DesignSystem + screen wiring.
+
+**Normative specs (read before any UI section):**
+- `Docs/DESIGN-SYSTEM.md`: color (dark + light profiles), `HelmTheme` + `HelmSkin` seam, `SkinnedContainer`, Space Grotesk + JetBrains Mono, `ArcGauge`, motion tokens, set-row/numpad/provenance components, thumb-reach rules.
+- `Docs/HAPTICS.md`: `HapticEngine`, twelve named patterns in four groups, Core Haptics + `UIFeedbackGenerator` fallback, Settings toggle, Reduce Motion respect.
+- `Docs/DESIGN-REPORT.md`: assessment and rationale (advisory context for architects).
+- `Docs/Helm-Design-Proposal.dc.html`: visual reference artifact (open in browser; not shipping code).
+
+**Package rule:** `ArcGauge`, `HapticEngine`, and all skin/token primitives live in the existing **`DesignSystem` package**. Do not add haptics or Arc micro-packages (~5 packages rule stands).
+
+**Shipped-section rule:** M0.4 (tokens shell) and M2.2 (readiness wiring + first card) are **done**; do not rewrite their `PROGRESS.md` rows. Visual upgrades land as **append-only follow-ups**: M0.7 (system) and M2.3 (readiness re-skin). M3.3-M3.5 shipped before M0.7; their design threads are specified in those section definitions and implemented in **F-DESIGN-M3** after M0.7.
+
+**Skin posture (v1):** ship one layout skin (`instrument`, card baseline) via `HelmSkin`; palette switch (dark / light / auto) ships fully. Data-sheet, State-field, and Blueprint layouts stay reserved behind the seam (optional M0.8, deferred by default). Mirrors the reserved-provider-slot pattern in CoachLLM.
+
+**What not to do:** no second accent color, no decorative gradients, no device haptic verification in build agents (feel is DT; engine presence/safety is agent-verifiable), no em dashes in in-app copy.
 
 ---
 
@@ -346,6 +368,7 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Interfaces**: theme tokens; `Card`, `Gauge`, `StatRow` components.
 - **Depends on**: M0.1.
 - **Acceptance**: tab shell renders themed in simulator; components have SwiftUI previews; zero hard-coded colours outside the token file.
+- **Note**: shipped as minimal shell. Full instrument system is **M0.7** (append-only; do not edit this section's `PROGRESS.md` row).
 
 #### M0.5 Watch walking skeleton
 - **Goal**: prove the Watch pipeline early so M8 is features, not plumbing.
@@ -358,6 +381,26 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Scope**: gitignored `Secrets/` template, Debug-only bootstrap loading keys into Keychain (`AfterFirstUnlockThisDeviceOnly`), compiled out of Release.
 - **Depends on**: M0.1.
 - **Acceptance**: Release build contains no bootstrap symbols; missing `Secrets/` degrades with a clear diagnostic, not a crash. Record the `Docs/BATTERY.md` M0.6 baseline row (empty-shell Instruments energy log) once this section's build is on a physical device, at DT1.
+
+#### M0.7 DesignSystem v2 (Arc, type, color, motion, haptic engine)
+- **Goal**: turn the M0.4 base into a full instrument system so no screen agent invents styling, motion, or feedback.
+- **Scope** (implement `Docs/DESIGN-SYSTEM.md` and `Docs/HAPTICS.md` exactly; all in the `DesignSystem` package):
+  - Elevate tokens to the design-system spec as **two palette profiles (dark primary + light)**, switched by system appearance: warm-black and warm-paper surface ladders, foreground ladders, acid-lime accent (darkened for AA on light), the four-stop readiness state ramp, radius and spacing scale. Zero hard-coded colors outside the token file (M0.4 rule carries forward).
+  - `HelmTheme` environment (palette: dark / light / auto, default system; explicit override in Settings) and `HelmSkin` environment (layout family). `SkinnedContainer` primitive: shared components render through it so the skin chooses Card vs ruled block vs full-bleed field vs graticule block. **v1 wires the `instrument` (card) skin only**; other layout families reserved for M0.8.
+  - Register Space Grotesk and JetBrains Mono; `HelmType` scale with tabular monospaced figures on every engine number style.
+  - `ArcGauge`: 270° sweep, configurable value/track/state color, optional center readout, reveal animation. Signature view for readiness, volume, energy balance.
+  - Motion tokens per design-system section 6, including named readiness-reveal timeline; honor Reduce Motion.
+  - `HapticEngine`: Core Haptics patterns for all twelve named events, `UIFeedbackGenerator` fallback, Settings toggle, AHAP assets bundled. Wire **selection** haptic at tab bar and segmented controls (M0.4 shell shipped without this; lands here).
+- **Interfaces**: `HelmTheme`, `HelmSkin`, `SkinnedContainer`, `HelmType`, `ArcGauge`, `HapticEngine`, motion tokens.
+- **Depends on**: M0.4, M0.3.
+- **Acceptance**: tokens centralized; SwiftUI previews for `ArcGauge` in every state and cold-start; `HapticEngine` compiles, resolves each named pattern, no-ops safely without CHHapticEngine (unit-tested via capability abstraction); Reduce Motion path unit-tested; selection haptic wired on tab bar; SwiftLint clean; zero hard-coded colors outside token file. Real haptic *feel* is DT1 (design re-check after M2.3).
+
+#### M0.8 Second layout skin (optional, reserved)
+- **Goal**: a second full `HelmSkin` layout family selectable at runtime (in-app layout switcher).
+- **Scope**: second skin treatments for every `SkinnedContainer` site and Dashboard/Train/Trends compositions; Settings control to switch skin live; persist choice.
+- **Depends on**: M0.7, and whichever screens the second skin must cover.
+- **Status**: **build only if Cameron wants an in-app layout switcher in v1.** Default: defer; M0.7 seam makes deferring cheap.
+- **Acceptance**: switching skin re-renders every screen with no layout breakage in simulator, in both palettes; no color or layout constant outside DesignSystem; previews per skin. Feel/perf on device at next DT gate.
 
 ### M1 Data layer
 
@@ -403,6 +446,14 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Interfaces**: `ReadinessService` (observed by Dashboard); persisted daily scores (migration). `ReadinessService` emits the `ReadinessCompute` signpost per `Docs/DIAGNOSTICS.md` around each call into the pure `ReadinessKit.readiness(for:)` (the engine itself stays zero-I/O per the engineering standards, so the signpost lives in the wiring layer, not the engine).
 - **Depends on**: M2.1, M1.4, M0.4.
 - **Acceptance**: with fixture data in the store, the card renders score, contributors, and cold-start states correctly in simulator; recompute triggers on new ingest; `ReadinessCompute` signpost visible in Instruments.
+- **Note**: shipped at M0.4-era visuals. Visual upgrade is **M2.3** (append-only; do not edit this section's `PROGRESS.md` row).
+
+#### M2.3 Readiness card re-skin + reveal (append-only follow-up to M2.2)
+- **Goal**: bring the shipped readiness card up to the Arc + reveal + signature-haptic spec without touching M2.2's engine wiring.
+- **Scope**: replace the M2.2 gauge with `ArcGauge` from M0.7; add readiness-reveal motion timeline and **readiness-reveal** haptic, fired once per day on first Dashboard appearance (not on every recompute); state color drives arc and label; confidence and cold-start per `Docs/DESIGN-SYSTEM.md`.
+- **Interfaces**: consumes `ArcGauge`, `HapticEngine`, motion tokens; "seen today" flag keyed off `HelmDay`.
+- **Depends on**: M0.7, M2.2.
+- **Acceptance**: card renders all readiness states and cold-start via `ArcGauge` in simulator; reveal plays once per day (unit-tested via day-boundary abstraction + seen-today flag); Reduce Motion collapses reveal to cross-fade; recompute does not re-trigger reveal. Haptic feel verified at DT1 design re-check.
 
 ### M3 Logger (manual, no prescription, no LLM)
 
@@ -422,21 +473,21 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 
 #### M3.3 Train screen + custom numpad
 - **Goal**: the Hevy-style logging UI.
-- **Scope**: Train tab: exercise rows (previous performance auto-filled inline), set rows with weight/reps/RPE inputs via a custom numeric keypad (`UIViewRepresentable`, avoiding the system-keyboard live-workout teardown bug), checkmark completion, rest-timer display, exercise picker off the canonical exercise table, finish flow.
-- **Depends on**: M3.2, M0.4.
-- **Acceptance**: a full workout logs end-to-end in simulator; previous performance auto-fills; numpad never invokes the system keyboard; SwiftUI previews for every row type.
+- **Scope**: Train tab: exercise rows (previous performance auto-filled inline), set rows with weight/reps/RPE inputs via a custom numeric keypad (`UIViewRepresentable`, avoiding the system-keyboard live-workout teardown bug), checkmark completion, rest-timer display, exercise picker off the canonical exercise table, finish flow. **Design:** adopt `Docs/DESIGN-SYSTEM.md` set-row and numpad specs when M0.7 is available; fire **set-logged** haptic on set completion and **selection** haptic on numpad keys (requires `HapticEngine` from M0.7). Thumb-reach: numpad and primary actions in bottom third.
+- **Depends on**: M3.2, M0.4 (M0.7 for design-spec compliance; see F-DESIGN-M3 if shipped pre-M0.7).
+- **Acceptance**: a full workout logs end-to-end in simulator; previous performance auto-fills; numpad never invokes the system keyboard; SwiftUI previews for every row type; haptic calls present at set-completion and numpad-key sites (grep-level), no haptic on an already-completed row.
 
 #### M3.4 Rest-timer alerts, Live Activity, HealthKit write
 - **Goal**: the session survives backgrounding and looks native.
-- **Scope**: on entering background, schedule a `UNUserNotification` at the exact end-of-rest timestamp (audible/haptic), cancel on foreground return; workout Live Activity (elapsed, current exercise, rest countdown) ending promptly on finish; on finish, write an `HKWorkout` via HealthKitIngest (source-filtered so it is never re-ingested). Emits the `WorkoutSessionLifecycle` signpost per `Docs/DIAGNOSTICS.md` (begin on session start, event on pause/resume, end on finish/discard).
+- **Scope**: on entering background, schedule a `UNUserNotification` at the exact end-of-rest timestamp (audible/haptic), cancel on foreground return; workout Live Activity (elapsed, current exercise, rest countdown) ending promptly on finish; on finish, write an `HKWorkout` via HealthKitIngest (source-filtered so it is never re-ingested). Emits the `WorkoutSessionLifecycle` signpost per `Docs/DIAGNOSTICS.md` (begin on session start, event on pause/resume, end on finish/discard). **Design:** fire **rest-done** haptic; ensure scheduled-notification path carries the same pattern for suspended delivery (see F-DESIGN-M3 if shipped pre-M0.7).
 - **Depends on**: M3.3, M1.3.
-- **Acceptance**: notification scheduling/cancellation logic unit-tested; Live Activity starts/ends in simulator; workout write path covered by the source-filter test; `WorkoutSessionLifecycle` signpost spans the full session in an Instruments trace. Suspended-app alert firing is DT2.
+- **Acceptance**: notification scheduling/cancellation logic unit-tested; Live Activity starts/ends in simulator; workout write path covered by the source-filter test; `WorkoutSessionLifecycle` signpost spans the full session in an Instruments trace. Suspended-app alert firing and rest-done haptic while suspended are DT2.
 
 #### M3.5 History, templates, PRs
 - **Goal**: the logger is a complete product on its own.
-- **Scope**: session history list + detail (editable after finish), template create/start, PR detection + display (weight, reps, e1RM), paginated queries.
+- **Scope**: session history list + detail (editable after finish), template create/start, PR detection + display (weight, reps, e1RM), paginated queries. **Design:** fire **PR-hit** haptic on a qualifying record, once per record (see F-DESIGN-M3 if shipped pre-M0.7).
 - **Depends on**: M3.3.
-- **Acceptance**: history edits persist; starting from a template pre-fills; PRs computed via queries (not stored as truth) and shown after a qualifying session in simulator.
+- **Acceptance**: history edits persist; starting from a template pre-fills; PRs computed via queries (not stored as truth) and shown after a qualifying session in simulator; PR haptic fires exactly once per detected PR (unit-tested via detection query).
 
 #### M3.6 Paste-a-workout parser
 - **Goal**: Hevy text import so historical training data exists before PlanKit.
@@ -444,6 +495,12 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Interfaces**: `WorkoutTextParser.parse(_:) -> ParsedWorkout`.
 - **Depends on**: M3.1.
 - **Acceptance**: fixture texts (clean, messy, partial) parse correctly; unknown exercises route through the mapping prompt; imported sessions appear in history.
+
+#### F-DESIGN-M3 Logger UI + haptics catch-up (M3.3-M3.5 shipped pre-M0.7)
+- **Goal**: implement the design threads specified in M3.3, M3.4, and M3.5 after those sections shipped without `HapticEngine` or full design-system components.
+- **Scope**: re-skin Train set rows and numpad per `Docs/DESIGN-SYSTEM.md`; wire **set-logged** and **selection** (numpad) haptics; wire **rest-done** on foreground and notification paths; wire **PR-hit** once per qualifying PR; thumb-reach layout pass on Train. No engine or schema changes.
+- **Depends on**: M0.7, M3.3, M3.4, M3.5.
+- **Acceptance**: grep-level haptic calls at all sites listed in M3.3-M3.5 design threads; set-row/numpad match design-system spec in previews; PR and rest haptic unit tests pass; no haptic on already-completed set row. Suspended rest-done feel is DT2.
 
 ### M4 Coach plumbing
 
@@ -478,6 +535,13 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Scope**: Chat tab: streaming rendering, cancellation on tab-disappear, degraded offline state, chat-history persistence (migration; messages stamped with prompt/schema versions), wiring through the composition root (repositories + readiness + memory profile → context builder → provider).
 - **Depends on**: M4.2, M4.4, M2.2.
 - **Acceptance**: chat works end-to-end against the mock provider in simulator with real stored fixture data in context; history persists across relaunch; offline state renders cleanly. Live grounded chat is DT3.
+
+#### M4.6 "Show your working" sheet (tap-to-explain)
+- **Goal**: one consistent affordance to interrogate any engine number ("why 61?", "why minus two sets?").
+- **Scope**: reusable explain sheet taking a number, contributor breakdown, and optional citation reference; long-press or info affordance on any engine readout; **Ask coach about this** hand-off seeding a chat turn (disabled offline); **selection** haptic on open. Degrades to engine-only contributors when coach unavailable.
+- **Interfaces**: `ExplainSheet` (or equivalent), `ExplainableMetric` input model, optional chat hand-off.
+- **Depends on**: M2.2, M0.7. Benefits from M4.5 (chat) and M10.2 (methodology) when present.
+- **Acceptance**: sheet renders from fixture inputs for readiness, prescription volume, and a nutrition target; offline shows engine contributors with coach hand-off disabled; snapshot tests per input type.
 
 ### M5 Planning
 
@@ -529,9 +593,9 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 
 #### M6.2 In-session coach
 - **Goal**: live structural adjustments with undo.
-- **Scope**: `askCoachInSession` returning structured reorder/swap/adjust (via the M4.2 structured-output path), applied through `apply(adjustment:excluding:)` to the active session, exclude list accumulating across repeated swaps in one session, clean undo stack, every applied adjustment written to `coach_recommendation`.
-- **Depends on**: M6.1, M4.5, M5.3.
-- **Acceptance**: with fixture structured outputs: swap/reorder/adjust apply and undo cleanly; a second "also taken" swap returns a different movement; recommendations logged. Live in-gym behaviour is DT3.
+- **Scope**: `askCoachInSession` returning structured reorder/swap/adjust (via the M4.2 structured-output path), applied through `apply(adjustment:excluding:)` to the active session, exclude list accumulating across repeated swaps in one session, clean undo stack, every applied adjustment written to `coach_recommendation`. **Design:** every applied adjustment renders in the shared **provenance** treatment from `Docs/DESIGN-SYSTEM.md` (labeled, reversible diff banner on Train); fires **coach-adjust** haptic on apply (undo restores cleanly).
+- **Depends on**: M6.1, M4.5, M5.3, M0.7.
+- **Acceptance**: with fixture structured outputs: swap/reorder/adjust apply and undo cleanly; a second "also taken" swap returns a different movement; recommendations logged; adjustment banner matches provenance component; coach-adjust haptic fires on apply. Live in-gym behaviour is DT3.
 
 #### M6.3 Morning brief on open
 - **Goal**: the app opens with the day already decided; the manual Gemini loop is now replaced.
@@ -598,9 +662,9 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 
 #### M10.1 Trends charts
 - **Goal**: the focused decision-driving set.
-- **Scope**: Trends tab: trend weight vs target, readiness history, per-muscle weekly volume vs landmarks, e1RM progression per lift, energy balance. Lazy/paginated queries; DesignSystem chart primitives.
-- **Depends on**: M2.2, M5.6, M9.2.
-- **Acceptance**: all five charts render from fixture data; queries paginated (no full-table loads); previews per chart.
+- **Scope**: Trends tab: trend weight vs target, readiness history, per-muscle weekly volume vs landmarks, e1RM progression per lift, energy balance. Lazy/paginated queries; DesignSystem chart primitives. **Design:** per-muscle volume-vs-landmark and energy balance use `ArcGauge`; charts use the four-stop state ramp only (no arbitrary colors).
+- **Depends on**: M2.2, M5.6, M9.2, M0.7.
+- **Acceptance**: all five charts render from fixture data; queries paginated (no full-table loads); previews per chart; volume and energy charts consume `ArcGauge` and state-ramp colors only.
 
 #### M10.2 Sources / Methodology screen
 - **Goal**: the science area.
@@ -636,36 +700,44 @@ Device testing is slow, so it is consolidated into five gates. **This is the onl
 - Diagnostics export lands on the Mac via AirDrop; Watch skeleton installs, round-trips a value, and shows the stub complication.
 - Record the Instruments energy baseline per `Docs/BATTERY.md`.
 
-**Watch install (debug builds):** Run the Helm scheme from Xcode with your **iPhone** selected (not the Watch). The Watch app embeds in the iPhone build and auto-installs to the paired Watch within ~60 seconds. Do not install from the Watch app's Available Apps list — that path fails for developer builds with "could not install at this time". If the Watch app is missing after an iPhone install, open Window → Devices and Simulators, select the paired Watch, confirm Helm appears under installed apps, then Run again from Xcode.
+**Design re-check (after M2.3; run before or as part of next DT session once M0.7 + M2.3 land):**
+- Each named haptic in `Docs/HAPTICS.md` *feels* correct on a real iPhone (CHHapticEngine present).
+- Readiness reveal plays once per day on first Dashboard open and feels like the signature moment; recompute does not replay it.
+- Reduce Motion collapses reveal to cross-fade; Settings haptics-off toggle honored.
+
+**Watch install (debug builds):** Run the Helm scheme from Xcode with your **iPhone** selected (not the Watch). The Watch app embeds in the iPhone build and auto-installs to the paired Watch within ~60 seconds. Do not install from the Watch app's Available Apps list: that path fails for developer builds with "could not install at this time". If the Watch app is missing after an iPhone install, open Window → Devices and Simulators, select the paired Watch, confirm Helm appears under installed apps, then Run again from Xcode.
 
 ### DT1 fix sections (filed 2026-07-22)
 
 Targeted fixes filed from Cameron's first DT1 session. Build agents implement these before Cameron re-runs the DT1 checklist.
 
-#### F-DT1.1 — HealthKit launch bootstrap + truthful status UI
+#### F-DT1.1 - HealthKit launch bootstrap + truthful status UI
 
 - **Depends on:** M1.3, M1.4, M2.2
 - **Goal:** After relaunch, HealthKit screen shows connected state and last-known sync info without re-tapping Request Access; observers restart automatically.
 - **Scope:** Persist ingest metadata alongside anchors; `HealthKitBootstrap.start()` on launch; upgrade HealthKit status UI with Connection row, last loaded time, stored-day count; tests for metadata round-trip and bootstrap path.
 - **Acceptance:** Build + tests pass; simulator authorize-once → kill → relaunch shows connected + last sync without button tap.
 
-#### F-DT1.2 — Watch companion install path
+#### F-DT1.2 - Watch companion install path
 
 - **Depends on:** M0.5
 - **Goal:** Reliable Watch install during DT1; clear doc when user tries Watch App Store path.
 - **Scope:** Verify embed chain and signing on watch targets; DT1 troubleshooting note (above).
 - **Acceptance:** Run from Xcode to iPhone → Helm on Watch within ~60s; Watch Sync round-trip; stub complication visible.
 
-#### F-DT1.3 — Dashboard visual polish
+#### F-DT1.3 - Dashboard visual polish
 
 - **Depends on:** M0.4, M2.2
 - **Goal:** BodyBattery-inspired hero layout: band colour, contributor bars, greeting. Not a DT1 blocker.
 - **Scope:** Greeting header, band badge + accent stripe, contributor progress bars, secondary Ask Coach button.
 - **Acceptance:** Dashboard renders all readiness states with improved visual hierarchy; no behaviour change to readiness math.
 
-### DT2 after M3.6: the logger, in the gym
+### DT2 after M3.6 (+ F-DESIGN-M3): the logger, in the gym
 - A full real workout logs cleanly; previous performance auto-fills; the numpad never blanks the screen (the Signal teardown bug).
 - Rest timer: background the app mid-rest and lock the phone; the end-of-rest alert fires while suspended; returning early cancels it and the projection is correct.
+- **Rest-done haptic fires while the app is suspended** (via the scheduled notification path), not only in-foreground.
+- Set-logged and numpad selection haptics feel correct one-handed mid-set.
+- PR-hit haptic fires once on a qualifying record.
 - Live Activity shows on the Lock Screen and ends promptly on finish; the finished workout appears in Apple Health and is not re-ingested.
 - Paste a real Hevy day; it parses, unknown exercises map, the session lands in history. Templates, history edits, and PR detection behave.
 
@@ -697,12 +769,16 @@ Targeted fixes filed from Cameron's first DT1 session. Build agents implement th
 - **Harvest** (bioharvest): schema-v2 contract, 18:00 to 18:00 sleep window with overlap bucketing, explicit-null semantics (keys always present), the App Intent pattern. Gap to fix: it does not handle the locked-phone HealthKit problem; the new intent must.
 - **Lessons (corrected)**: drop on-device RAG/embeddings for complexity and battery, not jetsam (Signal's blank-screen bug was `HKLiveWorkoutBuilder` Error(7) + a UIKit keyboard teardown, and jetsam was explicitly disproven). Gate heavy work on foreground stability with stop conditions; release large models on dismissal; cancel generation on tab-disappear; no 1 Hz timer-driven fetches during live workouts; custom numpad to avoid the keyboard teardown; timers as projections; bounded/chunked imports off the launch path; keep the "coaching, not diagnosis" boundary.
 - **Coacher** (`Coacher/coach-key-service`): a Cloudflare Worker that mints $0-cap, free-model-allowlist OpenRouter keys per device via KV, with `MAX_DEVICES`. This already is the M11.2 minting service; reuse it rather than standing up an Oracle equivalent.
+- **Visual design** (`Docs/DESIGN-SYSTEM.md`, `Docs/HAPTICS.md`, `Docs/DESIGN-REPORT.md`): instrument-not-app thesis; Arc as signature element; monospaced numeric voice; `HelmTheme`/`HelmSkin` seam; twelve-pattern haptic vocabulary. M3.3-M3.5 shipped before this system; catch up via F-DESIGN-M3.
 
 ## Kick-off decisions (resolved)
 - **App name: Helm.** Kept as the real name, not a placeholder.
 - **Backfill window: 6 months.** Enough for EWMA baselines to stabilise and e1RM landmarks to establish, without a slow first-launch parse.
 - **Location: `Development/Helm/` at root**, with root-level SPEC.md + PLAN.md (matching coach), not under `projects/`. Formalise SPEC.md + PLAN.md before M0.
+- **Visual system:** `Docs/DESIGN-SYSTEM.md` + `Docs/HAPTICS.md` are normative from M0.7 onward. One layout skin (`instrument`) + full palette switch in v1; second layout skin reserved (M0.8, deferred). `ArcGauge` + `HapticEngine` stay in DesignSystem package.
 - **Still open**: whether OpenRouter/Compare stays behind Advanced for model testing (default: yes, behind Advanced).
 
 ## Mapping from the previous milestone numbering
 Old M0 → M0.1 to M0.6. Old M1a → M1.1/M1.2. Old M1b → M1.3/M1.4. Old M2 → M2.1/M2.2. Old M2.5 → M3.1 to M3.6. Old M3a → M4.1/M4.2. Old M3b → M4.3/M4.4. Old M3c → M4.5. Old M4a → M5.1/M5.2. Old M4b → M5.3. Old M4c → M5.4/M5.5 (+ M5.6 new). Old M5 → M6.1 to M6.3 (+ M6.4 new). Old M6 → M7.1/M7.2. Old M7 → M8.1/M8.2. Old M8 → M9.1 to M9.3. Old M9 → M10.1/M10.2. Old M10 → M11.2. New with no old counterpart: M11.1 (backwards-compat export, previously a locked decision with no milestone), M6.4 (onboarding assembly), M5.6 and the Dashboard cards (Dashboard previously had no milestone).
+
+**Design fold-in (2026-07-22):** M0.7 (DesignSystem v2), M0.8 (optional second layout skin, deferred), M2.3 (readiness re-skin, append-only to M2.2), M4.6 (explain sheet), F-DESIGN-M3 (logger haptics/UI catch-up for M3.3-M3.5 shipped pre-M0.7). Normative: `Docs/DESIGN-SYSTEM.md`, `Docs/HAPTICS.md`.

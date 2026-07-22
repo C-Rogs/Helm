@@ -1,4 +1,5 @@
 import Core
+import DesignSystem
 import Foundation
 import Observation
 import Persistence
@@ -110,6 +111,7 @@ final class WorkoutImportController {
                 endedAt: workoutDate
             )
             lastImportedPersonalRecords = result.personalRecords
+            WorkoutHapticCoordinator.playPersonalRecords(result.personalRecords)
             reset()
             onComplete()
         } catch {

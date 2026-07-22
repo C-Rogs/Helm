@@ -8,6 +8,7 @@ struct HelmApp: App {
     init() {
         HelmFontRegistration.registerFontsIfNeeded()
         Task { @MainActor in
+            HelmNotificationDelegate.shared.configure()
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
             ReadinessBootstrap.start()

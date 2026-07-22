@@ -10,6 +10,7 @@ struct TrainView: View {
 
     @State private var restRemainingSeconds: Int?
     @State private var isShowingImport = false
+    @State private var didTrackInitialRestRemaining = false
 
     var body: some View {
         NavigationStack {
@@ -158,110 +159,136 @@ struct TrainView: View {
     }
 
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                if let remaining = restRemainingSeconds {
-                    RestTimerBanner(remainingSeconds: remaining) {
-                        Task { await controller.skipRest() }
-                    }
-                }
-
-                if snapshot.session.exercises.isEmpty {
-                    Text("Add your first exercise to begin logging sets.")
-                        .font(HelmTypography.callout)
-                        .foregroundStyle(HelmColor.textSecondary)
-                        .padding(.horizontal, HelmSpacing.xs)
-                }
-
-                ForEach(snapshot.session.exercises) { exercise in
-                    ExerciseSectionView(
-                        exercise: exercise,
-                        displayName: controller.displayName(for: exercise.exerciseID),
-                        previousLookup: { set in
-                            controller.previousFor(set: set, exerciseID: exercise.exerciseID)
-                        },
-                        activeField: controller.numpadTarget,
-                        onOpenField: { sessionExerciseID, field, set in
-                            controller.openNumpad(
-                                setID: set.id,
-                                sessionExerciseID: sessionExerciseID,
-                                field: field,
-                                currentSet: set
-                            )
-                        },
-                        onFillPrevious: { setID in
-                            Task {
-                                await controller.fillFromPrevious(
-                                    setID: setID,
-                                    sessionExerciseID: exercise.id
-                                )
-                            }
-                        },
-                        onCompleteSet: { sessionExerciseID, setID in
-                            Task {
-                                await controller.completeSet(
-                                    sessionExerciseID: sessionExerciseID,
-                                    setID: setID
-                                )
-                            }
-                        },
-                        onRemove: {
-                            Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
+        VStack(spacing: 0) {
+            ScrollView {
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    if let remaining = restRemainingSeconds {
+                        RestTimerBanner(remainingSeconds: remaining) {
+                            Task { await controller.skipRest() }
                         }
-                    )
-                }
+                    }
 
-                Button {
-                    controller.isShowingExercisePicker = true
-                } label: {
-                    Label("Add exercise", systemImage: "plus.circle.fill")
-                }
-                .buttonStyle(.helmSecondary)
+                    if snapshot.session.exercises.isEmpty {
+                        Text("Add your first exercise to begin logging sets.")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                            .padding(.horizontal, HelmSpacing.xs)
+                    }
 
-                Spacer(minLength: controller.numpadTarget == nil ? HelmSpacing.xl : 280)
+                    ForEach(snapshot.session.exercises) { exercise in
+                        ExerciseSectionView(
+                            exercise: exercise,
+                            displayName: controller.displayName(for: exercise.exerciseID),
+                            previousLookup: { set in
+                                controller.previousFor(set: set, exerciseID: exercise.exerciseID)
+                            },
+                            activeField: controller.numpadTarget,
+                            onOpenField: { sessionExerciseID, field, set in
+                                controller.openNumpad(
+                                    setID: set.id,
+                                    sessionExerciseID: sessionExerciseID,
+                                    field: field,
+                                    currentSet: set
+                                )
+                            },
+                            onFillPrevious: { setID in
+                                Task {
+                                    await controller.fillFromPrevious(
+                                        setID: setID,
+                                        sessionExerciseID: exercise.id
+                                    )
+                                }
+                            },
+                            onCompleteSet: { sessionExerciseID, setID in
+                                Task {
+                                    await controller.completeSet(
+                                        sessionExerciseID: sessionExerciseID,
+                                        setID: setID
+                                    )
+                                }
+                            },
+                            onRemove: {
+                                Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
+                            }
+                        )
+                    }
+
+                    Button {
+                        controller.isShowingExercisePicker = true
+                    } label: {
+                        Label("Add exercise", systemImage: "plus.circle.fill")
+                    }
+                    .buttonStyle(.helmSecondary)
+
+                    Spacer(minLength: bottomContentInset)
+                }
+                .padding(HelmSpacing.screenGutter)
+                .padding(.bottom, HelmSpacing.md)
             }
-            .padding(HelmSpacing.md)
+
+            if controller.numpadTarget == nil {
+                sessionActionBar
+            }
         }
         .timelineViewRestTimer(controller: controller, restRemainingSeconds: $restRemainingSeconds)
+        .onChange(of: restRemainingSeconds) { _, newValue in
+            guard didTrackInitialRestRemaining else {
+                didTrackInitialRestRemaining = true
+                controller.handleRestRemainingSecondsChange(newValue)
+                return
+            }
+            controller.handleRestRemainingSecondsChange(newValue)
+        }
         .task(id: restRemainingSeconds) {
             await controller.syncSideEffects()
         }
     }
 
-    @ToolbarContentBuilder
-    private var toolbarContent: some ToolbarContent {
-        if controller.hasActiveSession {
-            ToolbarItem(placement: .topBarLeading) {
+    private var bottomContentInset: CGFloat {
+        controller.numpadTarget == nil ? 88 : 300
+    }
+
+    private var sessionActionBar: some View {
+        VStack(spacing: HelmSpacing.xs) {
+            Divider()
+                .overlay(HelmColor.hairline)
+            HStack(spacing: HelmSpacing.sm) {
                 Button("Discard") {
                     controller.isShowingDiscardConfirmation = true
                 }
-                .foregroundStyle(HelmColor.destructive)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                Button("Finish") {
+                .buttonStyle(.helmSecondary)
+
+                Button("Finish workout") {
                     controller.isShowingFinishConfirmation = true
                 }
-                .fontWeight(.semibold)
+                .buttonStyle(.helmPrimary)
             }
+            .padding(.horizontal, HelmSpacing.screenGutter)
+            .padding(.top, HelmSpacing.xs)
+            .padding(.bottom, HelmSpacing.sm)
+            .background(HelmColor.canvas)
         }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        EmptyView()
     }
 
     private var numpadOverlay: some View {
         VStack(spacing: 0) {
             if !controller.numpadWorkingText.isEmpty {
                 Text(controller.numpadWorkingText)
-                    .font(HelmTypography.stat)
-                    .foregroundStyle(HelmColor.textPrimary)
+                    .helmType(.bigNumber)
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, HelmSpacing.sm)
                     .background(HelmColor.surface)
             }
 
-            HelmNumericKeypad(
+            HelmNumpad(
                 allowsDecimal: controller.numpadTarget?.field != .reps,
                 onDigit: { controller.appendNumpadDigit($0) },
                 onBackspace: { controller.backspaceNumpad() },
-                onDone: {
+                onNext: {
                     Task {
                         await controller.applyNumpadInput()
                         controller.numpadTarget = nil
@@ -270,7 +297,7 @@ struct TrainView: View {
             )
             .frame(height: 300)
         }
-        .background(HelmColor.surface)
+        .background(HelmColor.canvas)
         .transition(.move(edge: .bottom))
     }
 }

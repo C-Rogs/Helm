@@ -1,4 +1,5 @@
 import Core
+import DesignSystem
 import Foundation
 import Observation
 import Persistence
@@ -37,6 +38,10 @@ final class TrainSessionController {
     var isShowingPersonalRecords = false
     var errorMessage: String?
 
+    private var previousRestRemaining: Int?
+    private var wasRestRunningOnBackground = false
+    private var trackedRestTimerID: String?
+
     init(
         store: ActiveSessionStore,
         persistence: PersistenceStore,
@@ -66,6 +71,7 @@ final class TrainSessionController {
     func startWorkout() async {
         do {
             try await store.start()
+            WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
@@ -82,6 +88,7 @@ final class TrainSessionController {
                 return
             }
             try await store.startFromTemplate(template)
+            WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
@@ -102,6 +109,7 @@ final class TrainSessionController {
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
+                    WorkoutHapticCoordinator.playPersonalRecords(records)
                     isShowingPersonalRecords = !records.isEmpty
                 }
             }
@@ -146,19 +154,22 @@ final class TrainSessionController {
 
     func completeSet(sessionExerciseID: String, setID: String) async {
         do {
-            if let set = findSet(setID: setID),
-               set.mass == nil || set.reps == nil,
-               let previous = previousFor(set: set, exerciseID: exerciseID(for: sessionExerciseID)) {
-                var mass = set.mass
-                var reps = set.reps
+            guard let existingSet = findSet(setID: setID) else { return }
+            guard existingSet.status != .completed else { return }
+
+            if existingSet.mass == nil || existingSet.reps == nil,
+               let previous = previousFor(set: existingSet, exerciseID: exerciseID(for: sessionExerciseID)) {
+                var mass = existingSet.mass
+                var reps = existingSet.reps
                 if mass == nil { mass = previous.mass }
                 if reps == nil { reps = previous.reps }
                 try await store.logSet(
                     setID: setID,
-                    update: SetLogUpdate(mass: mass, reps: reps, rpe: set.rpe)
+                    update: SetLogUpdate(mass: mass, reps: reps, rpe: existingSet.rpe)
                 )
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
+            WorkoutHapticCoordinator.playSetCompletion(wasAlreadyCompleted: false)
             numpadTarget = nil
             await refreshMetadata()
             await syncSideEffects()
@@ -181,12 +192,33 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else { return }
         switch phase {
         case .background:
+            wasRestRunningOnBackground = snapshot.restTimer?.phase == .running
+            trackedRestTimerID = snapshot.restTimer?.id
             await sideEffects.onEnterBackground(snapshot: snapshot)
         case .active:
             await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+            let currentRemaining = await remainingRestSeconds()
+            WorkoutHapticCoordinator.handleForegroundReturn(
+                timerID: trackedRestTimerID,
+                wasRunningOnBackground: wasRestRunningOnBackground,
+                currentRemaining: currentRemaining
+            )
+            wasRestRunningOnBackground = false
+            previousRestRemaining = currentRemaining
         default:
             break
         }
+    }
+
+    func handleRestRemainingSecondsChange(_ currentRemaining: Int?) {
+        let timerID = snapshot?.restTimer?.id
+        WorkoutHapticCoordinator.handleForegroundTransition(
+            timerID: timerID,
+            previousRemaining: previousRestRemaining,
+            currentRemaining: currentRemaining
+        )
+        previousRestRemaining = currentRemaining
+        trackedRestTimerID = timerID
     }
 
     func syncSideEffects() async {

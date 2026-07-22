@@ -45,6 +45,7 @@ final class WorkoutSessionSideEffects {
         }
         await notifications.scheduleRestEndIfNeeded(
             sessionID: snapshot.session.id,
+            timerID: timer.id,
             endsAt: endsAt,
             now: now
         )

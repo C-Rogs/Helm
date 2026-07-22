@@ -12,6 +12,7 @@ Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.
 1. `PLAN.md`: Build agent contract, Commit discipline, and the named section (Goal, Scope, Depends on, Acceptance).
 2. `PROGRESS.md`: confirm dependencies have commit SHAs; append your row when done.
 3. `Docs/DIAGNOSTICS.md`: if the section touches logging or signposts.
+4. `Docs/DESIGN-SYSTEM.md` + `Docs/HAPTICS.md`: if the section touches UI, DesignSystem, haptics, or screen layout (normative from M0.7).
 
 ## Do
 

@@ -15,72 +15,35 @@ struct SetRowView: View {
     private var isCompleted: Bool { setEntry.status == .completed }
 
     var body: some View {
-        HStack(spacing: HelmSpacing.xs) {
-            Text("\(setNumber)")
-                .font(HelmTypography.caption)
-                .foregroundStyle(HelmColor.textSecondary)
-                .frame(width: 20, alignment: .leading)
-
-            previousColumn
-
-            SetValueField(
-                title: "kg",
-                value: weightText,
-                placeholder: previousWeightPlaceholder,
-                isActive: isFieldActive(.weight),
-                action: { onOpenField(.weight) }
-            )
-
-            SetValueField(
-                title: "reps",
-                value: repsText,
-                placeholder: previousRepsPlaceholder,
-                isActive: isFieldActive(.reps),
-                action: { onOpenField(.reps) }
-            )
-
-            SetValueField(
-                title: "RPE",
-                value: rpeText,
-                placeholder: "-",
-                isActive: isFieldActive(.rpe),
-                action: { onOpenField(.rpe) }
-            )
-            .frame(width: 56)
-
-            Button(action: onComplete) {
-                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
-                    .foregroundStyle(isCompleted ? HelmColor.positive : HelmColor.textTertiary)
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel(isCompleted ? "Set completed" : "Complete set")
-        }
-        .opacity(isCompleted ? 0.72 : 1)
+        SetRow(
+            setNumber: setNumber,
+            weight: weightText,
+            weightPlaceholder: previousWeightPlaceholder,
+            reps: repsText,
+            repsPlaceholder: previousRepsPlaceholder,
+            rpe: rpeText,
+            rpePlaceholder: "-",
+            previousValue: previous.map(previousLabel),
+            isCompleted: isCompleted,
+            activeField: activeSetRowField,
+            onPreviousTap: previous == nil ? nil : onFillPrevious,
+            onFieldTap: { field in
+                switch field {
+                case .weight: onOpenField(.weight)
+                case .reps: onOpenField(.reps)
+                case .rpe: onOpenField(.rpe)
+                }
+            },
+            onComplete: onComplete
+        )
     }
 
-    @ViewBuilder
-    private var previousColumn: some View {
-        if let previous {
-            Button(action: onFillPrevious) {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("prev")
-                        .font(.system(size: 10, weight: .medium))
-                        .foregroundStyle(HelmColor.textTertiary)
-                    Text(previousLabel(previous))
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.textSecondary)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-            }
-            .buttonStyle(.plain)
-        } else {
-            Text("-")
-                .font(HelmTypography.caption)
-                .foregroundStyle(HelmColor.textTertiary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+    private var activeSetRowField: SetRowField? {
+        guard let activeField, activeField.setID == setEntry.id else { return nil }
+        switch activeField.field {
+        case .weight: return .weight
+        case .reps: return .reps
+        case .rpe: return .rpe
         }
     }
 
@@ -107,10 +70,6 @@ struct SetRowView: View {
 
     private var previousRepsPlaceholder: String {
         previous?.reps.map(String.init) ?? "-"
-    }
-
-    private func isFieldActive(_ field: NumpadFieldKind) -> Bool {
-        activeField?.setID == setEntry.id && activeField?.field == field
     }
 
     private func previousLabel(_ previous: PreviousPerformance) -> String {

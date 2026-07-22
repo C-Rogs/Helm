@@ -2,6 +2,8 @@ import Foundation
 
 public enum RestTimerNotificationPlanner {
     public static let notificationCategoryID = "helm.rest_timer"
+    public static let sessionIDKey = "sessionID"
+    public static let timerIDKey = "timerID"
 
     public static func notificationIdentifier(sessionID: String) -> String {
         "helm.rest.\(sessionID)"

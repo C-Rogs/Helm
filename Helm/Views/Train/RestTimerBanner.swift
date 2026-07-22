@@ -8,13 +8,10 @@ struct RestTimerBanner: View {
     var body: some View {
         HStack(spacing: HelmSpacing.md) {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("Rest")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textSecondary)
+                Text("REST")
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
                 Text(formattedTime)
-                    .font(HelmTypography.stat)
-                    .foregroundStyle(HelmColor.accent)
-                    .monospacedDigit()
+                    .helmType(.bigNumber, color: HelmColor.accent)
             }
             Spacer()
             Button("Skip", action: onSkip)
