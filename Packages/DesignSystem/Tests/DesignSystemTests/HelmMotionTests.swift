@@ -39,6 +39,27 @@ struct HelmThemeModeTests {
     }
 }
 
+@Suite("Daily reveal gate")
+struct DailyRevealGateTests {
+    @Test("Reveal only once per day key")
+    func oncePerDay() {
+        var gate = DailyRevealGate()
+        #expect(gate.shouldReveal(for: "2026-07-23") == true)
+        gate.markRevealed(for: "2026-07-23")
+        #expect(gate.shouldReveal(for: "2026-07-23") == false)
+    }
+
+    @Test("New day resets reveal eligibility")
+    func dayBoundary() {
+        var gate = DailyRevealGate(lastRevealedDay: "2026-07-22")
+        #expect(gate.shouldReveal(for: "2026-07-22") == false)
+        #expect(gate.shouldReveal(for: "2026-07-23") == true)
+        gate.markRevealed(for: "2026-07-23")
+        #expect(gate.shouldReveal(for: "2026-07-23") == false)
+        #expect(gate.shouldReveal(for: "2026-07-24") == true)
+    }
+}
+
 @Suite("Helm state ramp")
 struct HelmStateTests {
     @Test("Readiness bands map to states")

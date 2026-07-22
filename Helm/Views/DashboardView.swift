@@ -1,3 +1,4 @@
+import Core
 import DesignSystem
 import HealthKitIngest
 import ReadinessKit
@@ -5,6 +6,14 @@ import SwiftUI
 
 struct DashboardView: View {
     private var readinessService: ReadinessService { ReadinessBootstrap.readinessService }
+
+    @Environment(\.helmReduceMotion) private var reduceMotion
+    @State private var revealStore = ReadinessRevealStore()
+    @State private var contributorDetailsVisible = true
+
+    private var today: HelmDay {
+        HelmDay.day(for: .now, calendar: .current)
+    }
 
     var body: some View {
         NavigationStack {
@@ -33,11 +42,9 @@ struct DashboardView: View {
     private var greetingHeader: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(greetingText)
-                .font(HelmTypography.title)
-                .foregroundStyle(HelmColor.textPrimary)
+                .helmType(.title)
             Text("Today's readiness")
-                .font(HelmTypography.callout)
-                .foregroundStyle(HelmColor.textSecondary)
+                .helmType(.body, color: HelmColor.fgSecondary)
         }
     }
 
@@ -46,62 +53,105 @@ struct DashboardView: View {
         switch readinessService.state {
         case .loading:
             readinessShell(subtitle: "Loading…") {
-                Gauge(value: 0, label: "ARC", subtitle: "Loading…")
+                placeholderArc(state: .compromised, subtitle: "Loading…")
             }
         case .awaitingData:
             readinessShell(subtitle: "Awaiting data") {
-                Gauge(value: 0, label: "ARC", subtitle: "Awaiting data")
+                placeholderArc(state: .compromised, subtitle: "Awaiting data")
             }
         case let .buildingBaseline(_, message):
             readinessShell(subtitle: message) {
-                Gauge(value: 0, label: "ARC", subtitle: message)
+                placeholderArc(state: .compromised, subtitle: message)
             }
         case let .scored(score):
-            readinessShell(subtitle: readinessSubtitle(for: score), band: score.band) {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                    Gauge(
-                        value: Double(score.score),
-                        label: "ARC",
-                        subtitle: nil
-                    )
-                    .frame(maxWidth: 220)
-                    .frame(maxWidth: .infinity)
+            scoredReadinessCard(score: score)
+        }
+    }
 
-                    contributorsCard(for: score)
+    private func scoredReadinessCard(score: ReadinessScore) -> some View {
+        let helmState = HelmState.readiness(score: Double(score.score))
+        let shouldReveal = revealStore.shouldReveal(for: today)
+
+        return readinessShell(
+            subtitle: readinessSubtitle(for: score),
+            state: helmState
+        ) {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                ArcRevealGauge(
+                    targetValue: Double(score.score),
+                    state: helmState,
+                    reveal: shouldReveal,
+                    reduceMotion: reduceMotion,
+                    detailsVisible: $contributorDetailsVisible,
+                    onRevealStart: {
+                        HapticEngine.shared.play(.readinessReveal)
+                        revealStore.markRevealed(for: today)
+                    }
+                ) { displayValue in
+                    VStack(spacing: HelmSpacing.xxs) {
+                        Text("\(Int(displayValue.rounded()))")
+                            .helmType(.heroNumber, color: HelmColor.color(for: helmState))
+                        Text(helmState.label)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                        Text(confidenceLabel(for: score.confidence))
+                            .helmType(.body, color: HelmColor.fgMuted)
+                    }
                 }
+                .frame(maxWidth: 220)
+                .frame(maxWidth: .infinity)
+                .onAppear {
+                    contributorDetailsVisible = !shouldReveal
+                }
+
+                contributorsCard(for: score)
+                    .readinessDetailsReveal(visible: contributorDetailsVisible, reduceMotion: reduceMotion)
             }
         }
     }
 
+    private func placeholderArc(state: HelmState, subtitle: String) -> some View {
+        ArcGauge(value: 0, state: state) {
+            VStack(spacing: HelmSpacing.xxs) {
+                Text("--")
+                    .helmType(.heroNumber, color: HelmColor.fgMuted)
+                Text(state.label)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                Text(subtitle)
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .multilineTextAlignment(.center)
+            }
+        }
+        .frame(maxWidth: 220)
+        .frame(maxWidth: .infinity)
+    }
+
     private func readinessShell<Content: View>(
         subtitle: String,
-        band: ReadinessBand? = nil,
+        state: HelmState? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 HStack {
                     Text("ARC")
-                        .font(HelmTypography.headline)
-                        .foregroundStyle(HelmColor.textPrimary)
+                        .helmType(.label)
                     Spacer()
-                    if let band {
-                        bandBadge(for: band)
+                    if let state {
+                        stateBadge(for: state)
                     }
                 }
 
                 content()
 
                 Text(subtitle)
-                    .font(HelmTypography.callout)
-                    .foregroundStyle(HelmColor.textTertiary)
+                    .helmType(.body, color: HelmColor.fgMuted)
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .overlay(alignment: .top) {
-            if let band {
-                RoundedRectangle(cornerRadius: HelmRadius.md)
-                    .fill(bandColor(for: band))
+            if let state {
+                RoundedRectangle(cornerRadius: HelmRadius.card)
+                    .fill(HelmColor.color(for: state))
                     .frame(height: 3)
                     .padding(.horizontal, 1)
             }
@@ -110,15 +160,8 @@ struct DashboardView: View {
 
     private func contributorsCard(for score: ReadinessScore) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            HStack {
-                Text("Contributors")
-                    .font(HelmTypography.headline)
-                    .foregroundStyle(HelmColor.textPrimary)
-                Spacer()
-                Text(confidenceLabel(for: score.confidence))
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textSecondary)
-            }
+            Text("Contributors")
+                .helmType(.label)
 
             contributorBar("HRV", z: score.contributors.zHRV)
             contributorBar("Resting HR", z: score.contributors.zRestingHR)
@@ -135,33 +178,22 @@ struct DashboardView: View {
         }
     }
 
-    private func bandBadge(for band: ReadinessBand) -> some View {
-        Text(band.rawValue.capitalized)
-            .font(HelmTypography.caption)
-            .foregroundStyle(bandColor(for: band))
+    private func stateBadge(for state: HelmState) -> some View {
+        Text(state.label)
+            .helmType(.monoTag, color: HelmColor.color(for: state))
             .padding(.horizontal, HelmSpacing.xs)
             .padding(.vertical, HelmSpacing.xxs)
-            .background(bandColor(for: band).opacity(0.15), in: Capsule())
-    }
-
-    private func bandColor(for band: ReadinessBand) -> Color {
-        switch band {
-        case .depleted: HelmColor.warning
-        case .balanced: HelmColor.accent
-        case .primed: HelmColor.positive
-        }
+            .background(HelmColor.color(for: state).opacity(0.15), in: Capsule())
     }
 
     private func contributorBar(_ label: String, z: Double?) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             HStack {
                 Text(label)
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textSecondary)
+                    .helmType(.body, color: HelmColor.fgSecondary)
                 Spacer()
                 Text(contributorValueText(z))
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textPrimary)
+                    .helmType(.body)
                     .monospacedDigit()
             }
 
@@ -178,8 +210,7 @@ struct DashboardView: View {
 
             if let detail = contributorDetail(z) {
                 Text(detail)
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textTertiary)
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
         }
     }
@@ -198,7 +229,7 @@ struct DashboardView: View {
         if score.validNights < 14 {
             return "Provisional baseline (\(score.validNights)/14 nights)"
         }
-        return "\(score.band.rawValue.capitalized) · \(confidenceLabel(for: score.confidence))"
+        return "\(HelmState.readiness(score: Double(score.score)).label) · \(confidenceLabel(for: score.confidence))"
     }
 
     private func confidenceLabel(for confidence: ReadinessConfidence) -> String {
@@ -222,9 +253,9 @@ struct DashboardView: View {
     }
 
     private func contributorFillColor(_ z: Double?) -> Color {
-        guard let z else { return HelmColor.textTertiary }
-        if z > 0.75 { return HelmColor.positive }
-        if z < -0.75 { return HelmColor.warning }
+        guard let z else { return HelmColor.fgMuted }
+        if z > 0.75 { return HelmColor.primed }
+        if z < -0.75 { return HelmColor.depleted }
         return HelmColor.accent
     }
 
