@@ -33,7 +33,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M3.4 Rest-timer alerts, Live Activity, HealthKit write | done | 2026-07-22 | 4c83f62 | Rest notifications via RestTimerNotificationPlanner + UNUserNotificationCenter; HelmWidgets Live Activity extension; WorkoutHealthKitWriter on finish (source-filtered); WorkoutSessionLifecycle signpost. |
 | M3.5 History, templates, PRs | done | 2026-07-22 | 4c83f62 | Paginated history + editable detail; template create/start; query-based PersonalRecordDetector + celebration UI. |
 | M3.6 Paste-a-workout parser | done | 2026-07-22 | defb7c7 | WorkoutTextParser + import resolver/service, paste + preview UI on Train, alias mapping for unknown exercises, 9 fixture tests. |
-| F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | 83b3811 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator (set-logged, selection, rest-done, PR-hit); HelmNotificationDelegate for suspended rest-done; Train re-skin. 4 WorkoutHapticPolicy unit tests. |
+| F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | fa58558 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator (set-logged, selection, rest-done, PR-hit); HelmNotificationDelegate for suspended rest-done; Train re-skin. 7 WorkoutHapticPolicy unit tests. |
 | M4.1 Provider protocol + registry | done | 2026-07-21 | 5ecb5bc | CoachLLM package: protocol, registry with reserved FM/OpenRouter slots, token budgets, failure policy, MockProvider, fixture harness. Gemini placeholder until M4.2. |
 | M4.2 GeminiProvider + keys | not started | | | |
 | M4.3 MemoryProfile | not started | | | |
@@ -81,4 +81,4 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT1.1 HealthKit launch bootstrap + status UI | done | 2026-07-22 | Ingest metadata persistence, HealthKitBootstrap.start(), upgraded HealthKitStatusView, tests. |
 | F-DT1.2 Watch companion install path | done | 2026-07-22 | DT1 Watch install note in PLAN.md; signing already inherited from project base. |
 | F-DT1.3 Dashboard visual polish | done | 2026-07-22 | Greeting, band badge/stripe, contributor bars, secondary Ask Coach button. Superseded visually by M2.3 once M0.7 lands. |
-| F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator; HelmNotificationDelegate; Train re-skin per DESIGN-SYSTEM.md + HAPTICS.md. Commit 83b3811. |
+| F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | fa58558 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator; HelmNotificationDelegate; Train re-skin per DESIGN-SYSTEM.md + HAPTICS.md. |
