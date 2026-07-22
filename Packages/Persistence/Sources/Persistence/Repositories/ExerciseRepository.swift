@@ -86,6 +86,39 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func listForPicker(search: String? = nil, limit: Int = 200) throws -> [ExerciseSummary] {
+        try pool.read { db in
+            var sql = """
+                SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
+                FROM exercise
+                WHERE deleted_at IS NULL
+                """
+            var arguments: [DatabaseValueConvertible] = []
+            if let search, !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                sql += " AND (display_name LIKE ? OR canonical_name LIKE ?)"
+                let pattern = "%\(search.trimmingCharacters(in: .whitespacesAndNewlines))%"
+                arguments.append(contentsOf: [pattern, pattern])
+            }
+            sql += """
+                 ORDER BY is_picker_default DESC, is_custom ASC, sort_name ASC
+                 LIMIT ?
+                """
+            arguments.append(limit)
+
+            return try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
+                .map { try Self.summary(from: $0) }
+        }
+    }
+
+    public func exerciseCount() throws -> Int {
+        try pool.read { db in
+            try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM exercise WHERE deleted_at IS NULL"
+            ) ?? 0
+        }
+    }
+
     public func resolveExerciseID(normalizedAlias: String) throws -> String? {
         try pool.read { db in
             try String.fetchOne(
@@ -98,6 +131,48 @@ public struct ExerciseRepository: Sendable {
                     """,
                 arguments: [normalizedAlias]
             )
+        }
+    }
+
+    public func resolveImportedTitle(_ title: String) throws -> ResolvedImportedExerciseID? {
+        let candidates = Self.importTitleCandidates(from: title)
+        for candidate in candidates {
+            if let exerciseID = try resolveExerciseID(normalizedAlias: candidate) {
+                return ResolvedImportedExerciseID(exerciseID: exerciseID, matchKind: .alias)
+            }
+
+            if let exerciseID = try resolveExerciseByCanonicalName(candidate) {
+                return ResolvedImportedExerciseID(exerciseID: exerciseID, matchKind: .displayName)
+            }
+        }
+        return nil
+    }
+
+    private func resolveExerciseByCanonicalName(_ normalized: String) throws -> String? {
+        try pool.read { db in
+            try String.fetchOne(
+                db,
+                sql: """
+                    SELECT id
+                    FROM exercise
+                    WHERE deleted_at IS NULL
+                      AND (lower(display_name) = ? OR lower(canonical_name) = ?)
+                    LIMIT 1
+                    """,
+                arguments: [normalized, normalized]
+            )
+        }
+    }
+
+    private static func importTitleCandidates(from title: String) -> [String] {
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        let stripped = ParsedWorkoutTitle.catalogMatchTitle(from: trimmed)
+        let values = [trimmed, stripped]
+        var seen = Set<String>()
+        return values.compactMap { value in
+            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+            guard !normalized.isEmpty, seen.insert(normalized).inserted else { return nil }
+            return normalized
         }
     }
 

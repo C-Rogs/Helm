@@ -1,6 +1,10 @@
 # Helm build progress
 
-Shared status board for every build agent. See "Progress tracking" in [PLAN.md](PLAN.md) for the rules: read your dependencies' rows before starting, append your own row when done, never edit another section's row.
+Shared status board for every build agent. Invocation: Cameron says `build M#.#` only. Rules: `PLAN.md` + `.cursor/rules/helm-build-agent.mdc`.
+
+**Agents auto-commit every section. Cameron only tests at DT gates (DT1 to DT5). Never ask Cameron to commit or review.**
+
+`done` requires a commit SHA. Empty Commit column = not landed.
 
 Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `blocked (<reason>)`.
 
@@ -22,10 +26,10 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M2.2 Readiness wiring + Dashboard card | done | 2026-07-22 | 509c3ac | v3 migration: readiness_daily_score + readiness_baseline_state. ReadinessRepository, ReadinessEngine + @Observable ReadinessService, ReadinessHistoryBuilder. Backfill persists baselines via engine. Dashboard ARC gauge + contributors + confidence. Ingest observer triggers recompute. ReadinessCompute signpost in wiring layer. Persistence + HealthKitIngest tests. |
 | M3.1 Logger persistence | done | 2026-07-22 | 509c3ac | v2 logger schema (loggy-derived): exercise/alias, sessions/blocks/sets, templates, PRs, exercise_history_snapshot, rest-timer + coach_recommendation tables. Repos: Exercise, WorkoutSession, WorkoutTemplate, PersonalRecord. Queries: previousPerformance(exercise:setIndex:), estimatedOneRM (Epley). Core logger enums + draft types. 15 Persistence tests pass (6 new logger tests + migration harness v1→v2). |
 | M3.2 Active session engine | done | 2026-07-22 | cdba93d | ActiveSessionRepository + ActiveSessionEngine actor + @Observable ActiveSessionStore. RestTimer timestamp projection in Core. Kill-recover, rest backgrounding, finish/discard tests (9 new). |
-| M3.3 Train screen + custom numpad | not started | | | |
-| M3.4 Rest-timer alerts, Live Activity, HealthKit write | not started | | | |
-| M3.5 History, templates, PRs | not started | | | |
-| M3.6 Paste-a-workout parser | not started | | | |
+| M3.3 Train screen + custom numpad | done | 2026-07-22 | | Hevy-style Train tab: exercise sections, set rows, UIViewRepresentable numpad (no system keyboard), previous-performance column + tap-to-fill, rest banner, exercise picker, finish/discard. Placeholder exercise seed when table empty (until M5.4). Previews on all row types. |
+| M3.4 Rest-timer alerts, Live Activity, HealthKit write | done | 2026-07-22 | | Rest notifications via RestTimerNotificationPlanner + UNUserNotificationCenter; HelmWidgets Live Activity extension; WorkoutHealthKitWriter on finish (source-filtered); WorkoutSessionLifecycle signpost. |
+| M3.5 History, templates, PRs | done | 2026-07-22 | | Paginated history + editable detail; template create/start; query-based PersonalRecordDetector + celebration UI. |
+| M3.6 Paste-a-workout parser | done | 2026-07-22 | 654e002 | WorkoutTextParser + import resolver/service, paste + preview UI on Train, alias mapping for unknown exercises, 9 fixture tests. |
 | M4.1 Provider protocol + registry | done | 2026-07-21 | 5ecb5bc | CoachLLM package: protocol, registry with reserved FM/OpenRouter slots, token budgets, failure policy, MockProvider, fixture harness. Gemini placeholder until M4.2. |
 | M4.2 GeminiProvider + keys | not started | | | |
 | M4.3 MemoryProfile | not started | | | |

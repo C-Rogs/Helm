@@ -1,26 +1,304 @@
+import Core
 import DesignSystem
 import SwiftUI
 
 struct TrainView: View {
+    @Bindable private var controller = TrainBootstrap.sessionController
+    @Bindable private var history = TrainBootstrap.historyController
+    @Bindable private var importController = TrainBootstrap.importController
+    @Environment(\.scenePhase) private var scenePhase
+
+    @State private var restRemainingSeconds: Int?
+    @State private var isShowingImport = false
+
     var body: some View {
         NavigationStack {
-            VStack(spacing: HelmSpacing.lg) {
-                Text("No active session")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.textSecondary)
+            ZStack(alignment: .bottom) {
+                Group {
+                    if controller.hasActiveSession, let snapshot = controller.snapshot {
+                        activeSessionView(snapshot)
+                    } else {
+                        idleState
+                    }
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                Button("Start workout") {}
-                    .buttonStyle(.helmPrimary)
-                    .padding(.horizontal, HelmSpacing.md)
+                if controller.numpadTarget != nil {
+                    numpadOverlay
+                }
             }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
             .helmScreenBackground()
             .navigationTitle("Train")
+            .toolbar { toolbarContent }
+            .sheet(isPresented: $isShowingImport) {
+                WorkoutImportView(controller: importController)
+            }
+            .sheet(isPresented: $controller.isShowingExercisePicker) {
+                ExercisePickerView(
+                    fetchExercises: controller.fetchPickerExercises(search:),
+                    onSelect: { exerciseID in
+                        Task { await controller.addExercise(exerciseID: exerciseID) }
+                    }
+                )
+            }
+            .confirmationDialog(
+                "Finish workout?",
+                isPresented: $controller.isShowingFinishConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Finish workout", role: .none) {
+                    Task {
+                        await controller.finishWorkout()
+                        history.refresh()
+                        history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
+                    }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("This saves your logged sets.")
+            }
+            .confirmationDialog(
+                "Discard workout?",
+                isPresented: $controller.isShowingDiscardConfirmation,
+                titleVisibility: .visible
+            ) {
+                Button("Discard", role: .destructive) {
+                    Task { await controller.discardWorkout() }
+                }
+                Button("Cancel", role: .cancel) {}
+            } message: {
+                Text("All progress in this session will be lost.")
+            }
+            .alert(
+                "Workout error",
+                isPresented: Binding(
+                    get: { controller.errorMessage != nil },
+                    set: { if !$0 { controller.errorMessage = nil } }
+                )
+            ) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(controller.errorMessage ?? "")
+            }
+            .sheet(isPresented: $controller.isShowingPersonalRecords) {
+                NavigationStack {
+                    ScrollView {
+                        PersonalRecordsCelebrationView(
+                            records: controller.lastFinishedPersonalRecords,
+                            exerciseName: controller.displayName(for:)
+                        )
+                        .padding(HelmSpacing.md)
+                    }
+                    .helmScreenBackground()
+                    .navigationTitle("Personal records")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                controller.isShowingPersonalRecords = false
+                                controller.clearFinishedPersonalRecords()
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.medium])
+            }
+            .task {
+                await controller.recover()
+                history.refresh()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                Task { await controller.handleScenePhase(newPhase) }
+            }
+        }
+    }
+
+    private var idleState: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                VStack(spacing: HelmSpacing.lg) {
+                    Text("No active session")
+                        .font(HelmTypography.body)
+                        .foregroundStyle(HelmColor.textSecondary)
+
+                    Button("Start workout") {
+                        Task { await controller.startWorkout() }
+                    }
+                    .buttonStyle(.helmPrimary)
+
+                    Button("Import workout") {
+                        isShowingImport = true
+                    }
+                    .buttonStyle(.helmSecondary)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.top, HelmSpacing.md)
+
+                if !history.recentPersonalRecords.isEmpty {
+                    PersonalRecordsCelebrationView(
+                        records: history.recentPersonalRecords,
+                        exerciseName: history.displayName(for:)
+                    )
+                }
+
+                WorkoutTemplatesListView(history: history) { templateID in
+                    Task { await controller.startWorkout(fromTemplateID: templateID) }
+                }
+
+                WorkoutHistoryListView(history: history)
+            }
+            .padding(HelmSpacing.md)
+        }
+        .onChange(of: isShowingImport) { _, isPresented in
+            if !isPresented, !importController.lastImportedPersonalRecords.isEmpty {
+                history.refresh()
+                history.setRecentPersonalRecords(importController.lastImportedPersonalRecords)
+                importController.lastImportedPersonalRecords = []
+            }
+        }
+    }
+
+    private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                if let remaining = restRemainingSeconds {
+                    RestTimerBanner(remainingSeconds: remaining) {
+                        Task { await controller.skipRest() }
+                    }
+                }
+
+                if snapshot.session.exercises.isEmpty {
+                    Text("Add your first exercise to begin logging sets.")
+                        .font(HelmTypography.callout)
+                        .foregroundStyle(HelmColor.textSecondary)
+                        .padding(.horizontal, HelmSpacing.xs)
+                }
+
+                ForEach(snapshot.session.exercises) { exercise in
+                    ExerciseSectionView(
+                        exercise: exercise,
+                        displayName: controller.displayName(for: exercise.exerciseID),
+                        previousLookup: { set in
+                            controller.previousFor(set: set, exerciseID: exercise.exerciseID)
+                        },
+                        activeField: controller.numpadTarget,
+                        onOpenField: { sessionExerciseID, field, set in
+                            controller.openNumpad(
+                                setID: set.id,
+                                sessionExerciseID: sessionExerciseID,
+                                field: field,
+                                currentSet: set
+                            )
+                        },
+                        onFillPrevious: { setID in
+                            Task {
+                                await controller.fillFromPrevious(
+                                    setID: setID,
+                                    sessionExerciseID: exercise.id
+                                )
+                            }
+                        },
+                        onCompleteSet: { sessionExerciseID, setID in
+                            Task {
+                                await controller.completeSet(
+                                    sessionExerciseID: sessionExerciseID,
+                                    setID: setID
+                                )
+                            }
+                        },
+                        onRemove: {
+                            Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
+                        }
+                    )
+                }
+
+                Button {
+                    controller.isShowingExercisePicker = true
+                } label: {
+                    Label("Add exercise", systemImage: "plus.circle.fill")
+                }
+                .buttonStyle(.helmSecondary)
+
+                Spacer(minLength: controller.numpadTarget == nil ? HelmSpacing.xl : 280)
+            }
+            .padding(HelmSpacing.md)
+        }
+        .timelineViewRestTimer(controller: controller, restRemainingSeconds: $restRemainingSeconds)
+        .task(id: restRemainingSeconds) {
+            await controller.syncSideEffects()
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var toolbarContent: some ToolbarContent {
+        if controller.hasActiveSession {
+            ToolbarItem(placement: .topBarLeading) {
+                Button("Discard") {
+                    controller.isShowingDiscardConfirmation = true
+                }
+                .foregroundStyle(HelmColor.destructive)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Finish") {
+                    controller.isShowingFinishConfirmation = true
+                }
+                .fontWeight(.semibold)
+            }
+        }
+    }
+
+    private var numpadOverlay: some View {
+        VStack(spacing: 0) {
+            if !controller.numpadWorkingText.isEmpty {
+                Text(controller.numpadWorkingText)
+                    .font(HelmTypography.stat)
+                    .foregroundStyle(HelmColor.textPrimary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, HelmSpacing.sm)
+                    .background(HelmColor.surface)
+            }
+
+            HelmNumericKeypad(
+                allowsDecimal: controller.numpadTarget?.field != .reps,
+                onDigit: { controller.appendNumpadDigit($0) },
+                onBackspace: { controller.backspaceNumpad() },
+                onDone: {
+                    Task {
+                        await controller.applyNumpadInput()
+                        controller.numpadTarget = nil
+                    }
+                }
+            )
+            .frame(height: 300)
+        }
+        .background(HelmColor.surface)
+        .transition(.move(edge: .bottom))
+    }
+}
+
+private struct RestTimerTimelineModifier: ViewModifier {
+    let controller: TrainSessionController
+    @Binding var restRemainingSeconds: Int?
+
+    func body(content: Content) -> some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            content
+                .task(id: context.date) {
+                    restRemainingSeconds = await controller.remainingRestSeconds(at: context.date)
+                }
         }
     }
 }
 
-#Preview {
+private extension View {
+    func timelineViewRestTimer(
+        controller: TrainSessionController,
+        restRemainingSeconds: Binding<Int?>
+    ) -> some View {
+        modifier(RestTimerTimelineModifier(controller: controller, restRemainingSeconds: restRemainingSeconds))
+    }
+}
+
+#Preview("Train empty") {
     TrainView()
         .helmTheme()
 }
