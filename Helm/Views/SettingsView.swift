@@ -8,6 +8,9 @@ struct SettingsView: View {
                 NavigationLink("HealthKit") {
                     HealthKitStatusView()
                 }
+                NavigationLink("Watch Sync") {
+                    WatchSyncStatusView()
+                }
                 NavigationLink("Data & Backup") {
                     DataSafetyView()
                 }
@@ -16,6 +19,11 @@ struct SettingsView: View {
                         schemaVersion: PersistenceBootstrap.schemaVersion
                     ))
                 }
+                #if DEBUG
+                NavigationLink("Stored Data") {
+                    DataBrowserView()
+                }
+                #endif
             }
             .navigationTitle("Settings")
         }
