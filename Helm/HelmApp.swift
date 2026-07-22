@@ -8,6 +8,9 @@ struct HelmApp: App {
         Task {
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
+            #if DEBUG
+            await SecretsBootstrap.run()
+            #endif
         }
     }
 
