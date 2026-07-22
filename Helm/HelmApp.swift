@@ -3,12 +3,14 @@ import DesignSystem
 import Persistence
 import SwiftUI
 
+private let helmNotificationDelegate = HelmNotificationDelegate()
+
 @main
 struct HelmApp: App {
     init() {
         HelmFontRegistration.registerFontsIfNeeded()
         Task { @MainActor in
-            HelmNotificationDelegate.shared.configure()
+            helmNotificationDelegate.configure()
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
             ReadinessBootstrap.start()
