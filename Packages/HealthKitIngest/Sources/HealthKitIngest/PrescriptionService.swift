@@ -94,6 +94,10 @@ public final class PrescriptionService {
         try await engine.loadTrainingPlan()
     }
 
+    public func todaysPrescription(readiness: ReadinessScore?) async throws -> PrescribedSession {
+        try await engine.computeSession(for: today(), readiness: readiness)
+    }
+
     private func today(calendar: Calendar = .current, cutoff: DayCutoff = .default) -> HelmDay {
         HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
     }

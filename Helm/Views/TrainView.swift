@@ -1,5 +1,6 @@
 import Core
 import DesignSystem
+import HealthKitIngest
 import SwiftUI
 
 struct TrainView: View {
@@ -115,23 +116,11 @@ struct TrainView: View {
     private var idleState: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                VStack(spacing: HelmSpacing.lg) {
-                    Text("No active session")
-                        .font(HelmTypography.body)
-                        .foregroundStyle(HelmColor.textSecondary)
-
-                    Button("Start workout") {
-                        Task { await controller.startWorkout() }
-                    }
-                    .buttonStyle(.helmPrimary)
-
-                    Button("Import workout") {
-                        isShowingImport = true
-                    }
-                    .buttonStyle(.helmSecondary)
+                if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
+                    prescriptionIdleCard(summary)
+                } else {
+                    manualIdleCard
                 }
-                .frame(maxWidth: .infinity)
-                .padding(.top, HelmSpacing.md)
 
                 if !history.recentPersonalRecords.isEmpty {
                     PersonalRecordsCelebrationView(
@@ -157,6 +146,85 @@ struct TrainView: View {
         }
     }
 
+    private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            Card {
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    HStack {
+                        Text("Today's session")
+                            .helmType(.label)
+                        Spacer()
+                        Text(summary.phase.label)
+                            .helmType(.monoTag, color: HelmColor.accent)
+                    }
+
+                    if summary.readinessAdjusted {
+                        Text("Volume trimmed for readiness")
+                            .helmType(.monoTag, color: HelmColor.depleted)
+                    }
+
+                    ForEach(summary.exercises) { exercise in
+                        PrescriptionRow(
+                            label: exercise.displayName,
+                            target: prescriptionTargetText(for: exercise)
+                        )
+                    }
+
+                    Text("\(summary.totalSets) total sets")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                }
+            }
+
+            Button("Start today's session") {
+                Task { await controller.startTodaysPrescription() }
+            }
+            .buttonStyle(.helmPrimary)
+
+            Button("Empty workout") {
+                Task { await controller.startWorkout() }
+            }
+            .buttonStyle(.helmSecondary)
+
+            Button("Import workout") {
+                isShowingImport = true
+            }
+            .buttonStyle(.helmSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, HelmSpacing.md)
+    }
+
+    private var manualIdleCard: some View {
+        VStack(spacing: HelmSpacing.lg) {
+            Text("No active session")
+                .font(HelmTypography.body)
+                .foregroundStyle(HelmColor.textSecondary)
+
+            Button("Start workout") {
+                Task { await controller.startWorkout() }
+            }
+            .buttonStyle(.helmPrimary)
+
+            Button("Import workout") {
+                isShowingImport = true
+            }
+            .buttonStyle(.helmSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, HelmSpacing.md)
+    }
+
+    private func prescriptionTargetText(for exercise: PrescribedExerciseSummary) -> String {
+        var parts = ["\(exercise.targetSets)×\(exercise.targetRepRange)"]
+        if let load = exercise.targetLoad {
+            parts.append(load)
+        }
+        if let rpe = exercise.targetRPE {
+            parts.append(rpe)
+        }
+        return parts.joined(separator: " · ")
+    }
+
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -177,6 +245,7 @@ struct TrainView: View {
                         ExerciseSectionView(
                             exercise: exercise,
                             displayName: controller.displayName(for: exercise.exerciseID),
+                            targetSummary: controller.targetSummary(for: exercise.exerciseID),
                             previousLookup: { set in
                                 controller.previousFor(set: set, exerciseID: exercise.exerciseID)
                             },
@@ -322,4 +391,14 @@ private extension View {
 #Preview("Train empty") {
     TrainView()
         .helmTheme()
+}
+
+private extension TrainingPhase {
+    var label: String {
+        switch self {
+        case .cut: "Cut"
+        case .maintain: "Maintain"
+        case .gain: "Gain"
+        }
+    }
 }

@@ -36,6 +36,15 @@ public actor ActiveSessionEngine {
         return snapshot
     }
 
+    public func startFromPrescription(_ prescription: SessionPrescription) throws -> ActiveSessionSnapshot {
+        let startedAt = clock.now()
+        _ = try repository.startSessionFromPrescription(prescription, startedAt: startedAt)
+        guard let snapshot = try repository.fetchActiveSnapshot(at: startedAt) else {
+            throw PersistenceError.recordNotFound("active session after prescription start")
+        }
+        return snapshot
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) throws -> ActiveSessionSnapshot {
         let now = clock.now()
         try repository.logSet(setID: setID, update: update, timestamp: now)

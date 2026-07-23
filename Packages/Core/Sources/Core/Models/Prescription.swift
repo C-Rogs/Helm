@@ -37,6 +37,45 @@ public struct PrescribedExercise: Sendable, Hashable, Codable, Identifiable {
     }
 }
 
+public extension PrescribedExercise {
+    /// Compact target line for Train / dashboard surfaces, e.g. `3×8 · 80kg · RPE 8`.
+    var targetSummaryText: String {
+        var parts: [String] = []
+
+        let repText: String
+        switch (targetRepMin, targetRepMax) {
+        case let (min?, max?) where min == max:
+            repText = "\(targetSets)×\(min)"
+        case let (min?, max?):
+            repText = "\(targetSets)×\(min)–\(max)"
+        case let (min?, nil):
+            repText = "\(targetSets)×\(min)"
+        case let (nil, max?):
+            repText = "\(targetSets)×\(max)"
+        default:
+            repText = "\(targetSets)×"
+        }
+        parts.append(repText)
+
+        if let mass = targetMass {
+            let kilograms = mass.kilograms
+            let load = kilograms.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0fkg", kilograms)
+                : String(format: "%.1fkg", kilograms)
+            parts.append(load)
+        }
+
+        if let targetRPE {
+            let rpe = targetRPE.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "RPE %.0f", targetRPE)
+                : String(format: "RPE %.1f", targetRPE)
+            parts.append(rpe)
+        }
+
+        return parts.joined(separator: " · ")
+    }
+}
+
 public struct SessionPrescription: Sendable, Hashable, Codable, Identifiable {
     public let id: UUID
     public let helmDay: HelmDay

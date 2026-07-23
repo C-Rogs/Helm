@@ -138,6 +138,78 @@ public struct ActiveSessionRepository: Sendable {
         return sessionID
     }
 
+    public func startSessionFromPrescription(
+        _ prescription: SessionPrescription,
+        startedAt: Date
+    ) throws -> String {
+        let sessionID = UUID().uuidString
+        let nowString = ISO8601Coding.string(from: startedAt)
+        try pool.write { db in
+            try Self.assertNoActiveSession(db: db)
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session (
+                        id, title, started_at, ended_at, status, source,
+                        total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, NULL, 'active', 'prescription', 0, 0, 0, ?, ?)
+                    """,
+                arguments: [sessionID, "Today's session", nowString, nowString, nowString]
+            )
+            try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
+
+            for exercise in prescription.exercises.sorted(by: { $0.order < $1.order }) {
+                let sessionExerciseID = UUID().uuidString
+                let mode: String = try String.fetchOne(
+                    db,
+                    sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [exercise.exerciseID]
+                ) ?? ExerciseMode.weightReps.rawValue
+                let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
+                let restSeconds = 90
+                let setCount = max(exercise.targetSets, 1)
+                let targetReps = exercise.targetRepMin ?? exercise.targetRepMax
+
+                try db.execute(
+                    sql: """
+                        INSERT INTO workout_session_exercise (
+                            id, workout_session_id, exercise_id, display_order, exercise_mode,
+                            target_rest_seconds, is_collapsed, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        """,
+                    arguments: [
+                        sessionExerciseID, sessionID, exercise.exerciseID, exercise.order,
+                        exerciseMode.rawValue, restSeconds, nowString, nowString
+                    ]
+                )
+
+                for index in 0 ..< setCount {
+                    let setID = UUID().uuidString
+                    try db.execute(
+                        sql: """
+                            INSERT INTO set_entry (
+                                id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                                weight_kg, reps, rpe, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            setID,
+                            sessionExerciseID,
+                            exercise.exerciseID,
+                            index,
+                            exercise.targetMass?.kilograms,
+                            targetReps,
+                            exercise.targetRPE,
+                            nowString,
+                            nowString
+                        ]
+                    )
+                }
+            }
+        }
+        return sessionID
+    }
+
     public func logSet(setID: String, update: SetLogUpdate, timestamp: Date) throws {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in

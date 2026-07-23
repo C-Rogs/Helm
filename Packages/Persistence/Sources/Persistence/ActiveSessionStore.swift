@@ -29,6 +29,10 @@ public final class ActiveSessionStore {
         snapshot = try await engine.startFromTemplate(template)
     }
 
+    public func startFromPrescription(_ prescription: SessionPrescription) async throws {
+        snapshot = try await engine.startFromPrescription(prescription)
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) async throws {
         snapshot = try await engine.logSet(setID: setID, update: update)
     }

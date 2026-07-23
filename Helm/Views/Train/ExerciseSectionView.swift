@@ -5,6 +5,7 @@ import SwiftUI
 struct ExerciseSectionView: View {
     let exercise: WorkoutSessionExerciseDraft
     let displayName: String
+    let targetSummary: String?
     let previousLookup: (SetEntryDraft) -> PreviousPerformance?
     let activeField: NumpadTarget?
     let onOpenField: (String, NumpadFieldKind, SetEntryDraft) -> Void
@@ -15,11 +16,16 @@ struct ExerciseSectionView: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                HStack {
-                    Text(displayName)
-                        .font(HelmTypography.headline)
-                        .foregroundStyle(HelmColor.textPrimary)
-                    Spacer()
+                HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                    if let targetSummary {
+                        PrescriptionRow(label: displayName, target: targetSummary)
+                    } else {
+                        Text(displayName)
+                            .font(HelmTypography.headline)
+                            .foregroundStyle(HelmColor.textPrimary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+
                     Button(role: .destructive, action: onRemove) {
                         Image(systemName: "trash")
                             .foregroundStyle(HelmColor.destructive)
@@ -59,6 +65,7 @@ struct ExerciseSectionView: View {
             ]
         ),
         displayName: "Bench Press (Barbell)",
+        targetSummary: "3×8 · 80kg · RPE 8",
         previousLookup: { set in
             guard set.setIndex == 0 else { return nil }
             return PreviousPerformance(

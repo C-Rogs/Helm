@@ -17,6 +17,7 @@ public enum WorkoutSessionStatus: String, Codable, CaseIterable, Sendable {
 public enum WorkoutSessionSource: String, Codable, Sendable {
     case manual
     case template
+    case prescription
     case importSource = "import"
 }
 

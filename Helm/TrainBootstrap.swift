@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import HealthKitIngest
 import Persistence
 import SwiftUI
 
@@ -14,7 +15,8 @@ enum TrainBootstrap {
     static let sessionController = TrainSessionController(
         store: ActiveSessionStore(engine: engine),
         persistence: persistence,
-        sideEffects: sideEffects
+        sideEffects: sideEffects,
+        prescriptionService: PlanBootstrap.prescriptionService
     )
 
     @MainActor

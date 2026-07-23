@@ -46,7 +46,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M5.4 Exercise seed schema + import | done | 2026-07-23 | 6140951 | free-exercise-db.json (loggy/Signal catalog) + exercises.json manifest (placeholder:true, seedVersion 1). ExerciseSeedImporter with loggy muscle/mode/alias mapping, Hevy staples, picker curation. v6 app_metadata migration. First-launch import; idempotent re-import on version bump. 4 seed tests pass. |
 | M5.5 Evidence-driven selection + citations | done | 2026-07-23 | b4699be | ExerciseSelectionEngine scores effectiveness/stretch/SFR + equipment; rationale + citationIDs on PrescribedExercise; 6 selection tests. |
 | M5.6 Phase/goal setup + Dashboard prescription card | done | 2026-07-23 | 3576f5a | Training Plan settings (phase/goal/emphasis + experience, v8 migration); PlanPrescriptionEngine with PrescriptionCompute signpost; Dashboard today's session card; phase change re-plans. |
-| M6.1 Prescription-driven Train screen | not started | | | |
+| M6.1 Prescription-driven Train screen | done | 2026-07-23 | | startFromPrescription bridge; auto-start today's plan on Train open; PrescriptionRow targets + PREV inline; manual/template fallback intact. |
 | M6.2 In-session coach | not started | | | |
 | M6.3 Morning brief on open | not started | | | |
 | M6.4 Onboarding assembly | not started | | | |

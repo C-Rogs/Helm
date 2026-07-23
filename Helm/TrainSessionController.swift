@@ -1,8 +1,10 @@
 import Core
 import DesignSystem
 import Foundation
+import HealthKitIngest
 import Observation
 import Persistence
+import ReadinessKit
 import SwiftUI
 
 enum NumpadFieldKind: Hashable, Sendable {
@@ -24,9 +26,12 @@ final class TrainSessionController {
     let sideEffects: WorkoutSessionSideEffects
 
     private let persistence: PersistenceStore
+    private let prescriptionService: PrescriptionService
 
     private(set) var exerciseSummaries: [String: ExerciseSummary] = [:]
     private(set) var previousPerformance: [String: PreviousPerformance] = [:]
+    private(set) var exerciseTargets: [String: String] = [:]
+    private(set) var prescriptionSummary: PrescribedSessionSummary?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
 
     var numpadTarget: NumpadTarget?
@@ -45,11 +50,13 @@ final class TrainSessionController {
     init(
         store: ActiveSessionStore,
         persistence: PersistenceStore,
-        sideEffects: WorkoutSessionSideEffects
+        sideEffects: WorkoutSessionSideEffects,
+        prescriptionService: PrescriptionService
     ) {
         self.store = store
         self.persistence = persistence
         self.sideEffects = sideEffects
+        self.prescriptionService = prescriptionService
     }
 
     var snapshot: ActiveSessionSnapshot? {
@@ -65,12 +72,42 @@ final class TrainSessionController {
         await refreshMetadata()
         if let snapshot = store.snapshot {
             await sideEffects.onSessionStarted(snapshot)
+        } else {
+            await refreshPrescriptionState()
+            await tryAutoStartTodaysPrescription()
         }
+    }
+
+    func refreshPrescriptionState() async {
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        await prescriptionService.refresh(readiness: readiness)
+        prescriptionSummary = prescriptionService.state.summary
     }
 
     func startWorkout() async {
         do {
+            exerciseTargets = [:]
             try await store.start()
+            WorkoutHapticCoordinator.resetRestState()
+            await refreshMetadata()
+            if let snapshot = store.snapshot {
+                await sideEffects.onSessionStarted(snapshot)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startTodaysPrescription() async {
+        do {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            guard !prescription.exercises.isEmpty else {
+                errorMessage = "No prescription available for today."
+                return
+            }
+            applyPrescriptionTargets(from: prescription)
+            try await store.startFromPrescription(prescription)
             WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
             if let snapshot = store.snapshot {
@@ -83,6 +120,7 @@ final class TrainSessionController {
 
     func startWorkout(fromTemplateID templateID: String) async {
         do {
+            exerciseTargets = [:]
             guard let template = try persistence.workoutTemplates.fetch(id: templateID) else {
                 errorMessage = "Template not found."
                 return
@@ -103,6 +141,7 @@ final class TrainSessionController {
             let finishedID = try await store.finish()
             isShowingFinishConfirmation = false
             numpadTarget = nil
+            exerciseTargets = [:]
             await refreshMetadata()
             if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
@@ -124,7 +163,9 @@ final class TrainSessionController {
             try await store.discard()
             isShowingDiscardConfirmation = false
             numpadTarget = nil
+            exerciseTargets = [:]
             await refreshMetadata()
+            await refreshPrescriptionState()
             if let sessionID {
                 await sideEffects.onSessionDiscarded(sessionID: sessionID)
             }
@@ -339,11 +380,41 @@ final class TrainSessionController {
         }
     }
 
+    func targetSummary(for exerciseID: String) -> String? {
+        exerciseTargets[exerciseID]
+    }
+
+    private func tryAutoStartTodaysPrescription() async {
+        guard !store.hasActiveSession else { return }
+        guard let summary = prescriptionSummary, !summary.exercises.isEmpty else { return }
+        await startTodaysPrescription()
+    }
+
+    private func applyPrescriptionTargets(from prescription: SessionPrescription) {
+        var targets: [String: String] = [:]
+        for exercise in prescription.exercises {
+            targets[exercise.exerciseID] = exercise.targetSummaryText
+        }
+        exerciseTargets = targets
+    }
+
     private func refreshMetadata() async {
         guard let snapshot = store.snapshot else {
             exerciseSummaries = [:]
             previousPerformance = [:]
+            if exerciseTargets.isEmpty {
+                exerciseTargets = [:]
+            }
             return
+        }
+
+        if snapshot.session.source == .prescription, exerciseTargets.isEmpty {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            if let prescription = try? await prescriptionService.todaysPrescription(readiness: readiness) {
+                applyPrescriptionTargets(from: prescription)
+            }
+        } else if snapshot.session.source != .prescription {
+            exerciseTargets = [:]
         }
 
         var summaries: [String: ExerciseSummary] = [:]

@@ -196,6 +196,42 @@ struct ActiveSessionEngineTests {
             try await engine.start()
         }
     }
+
+    @Test("prescription start pre-populates exercises, sets, and targets")
+    func prescriptionStartPrePopulatesTargets() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (persistence, engine, _) = try makeHarness(at: start)
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 7, day: 23),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 80),
+                    targetRPE: 8
+                )
+            ]
+        )
+
+        let started = try await engine.startFromPrescription(prescription)
+
+        #expect(started.session.source == .prescription)
+        #expect(started.session.title == "Today's session")
+        #expect(started.session.exercises.count == 1)
+        #expect(started.session.exercises[0].exerciseID == benchPressID)
+        #expect(started.session.exercises[0].sets.count == 3)
+
+        let firstSet = try #require(started.session.exercises[0].sets[0])
+        #expect(firstSet.mass?.kilograms == 80)
+        #expect(firstSet.reps == 8)
+        #expect(firstSet.rpe == 8)
+        #expect(firstSet.status == .planned)
+    }
 }
 
 @Suite("Rest timer projection")
