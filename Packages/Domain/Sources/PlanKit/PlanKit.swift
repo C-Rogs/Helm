@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import ReadinessKit
 
 /// Pure mesocycle and progression engine. Zero I/O.
 public enum PlanKit {
@@ -91,5 +92,30 @@ public enum PlanKit {
     ) -> AcuteChronicWorkloadRatio {
         AcuteChronicWorkload.ratio(dailyLoads: dailyLoads, asOf: day, calendar: calendar)
     }
-}
 
+    // MARK: - Prescription
+
+    /// Daily numeric prescription with readiness gating and mesocycle-driven volume.
+    public static func prescription(
+        for profile: PrescriptionProfile,
+        givenReadiness readiness: ReadinessScore?,
+        history: PrescriptionHistory
+    ) -> PrescribedSession {
+        PrescriptionEngine.prescription(for: profile, givenReadiness: readiness, history: history)
+    }
+
+    /// Apply structured in-session adjustments with safe-bound clamping.
+    public static func apply(
+        adjustment: PrescriptionAdjustment,
+        to session: PrescribedSession,
+        excluding excludedExerciseIDs: Set<String>,
+        catalog: [CatalogExercise]
+    ) -> PrescriptionAdjustmentResult {
+        PrescriptionAdjustmentEngine.apply(
+            adjustment: adjustment,
+            to: session,
+            excluding: excludedExerciseIDs,
+            catalog: catalog
+        )
+    }
+}

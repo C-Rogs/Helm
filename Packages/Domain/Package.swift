@@ -18,7 +18,8 @@ let package = Package(
         .target(
             name: "PlanKit",
             dependencies: [
-                .product(name: "Core", package: "Core")
+                .product(name: "Core", package: "Core"),
+                "ReadinessKit"
             ]
         ),
         .testTarget(
