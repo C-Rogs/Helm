@@ -1,0 +1,71 @@
+import Core
+import DesignSystem
+import Foundation
+import PlanKit
+import ReadinessKit
+
+struct TrendWeightPoint: Identifiable, Sendable, Hashable {
+    let helmDay: HelmDay
+    let trendWeightKg: Double
+    let state: HelmState
+
+    var id: HelmDay { helmDay }
+}
+
+struct ReadinessHistoryPoint: Identifiable, Sendable, Hashable {
+    let helmDay: HelmDay
+    let score: Int
+    let state: HelmState
+
+    var id: HelmDay { helmDay }
+}
+
+struct MuscleVolumeGauge: Identifiable, Sendable, Hashable {
+    let muscle: MuscleGroup
+    let weeklySets: Double
+    let landmarks: VolumeLandmarks
+    let state: HelmState
+
+    var id: MuscleGroup { muscle }
+}
+
+struct E1RMProgressionPoint: Identifiable, Sendable, Hashable {
+    let helmDay: HelmDay
+    let achievedAt: Date
+    let e1RMKilograms: Double
+
+    var id: Date { achievedAt }
+}
+
+struct EnergyBalanceGauge: Identifiable, Sendable, Hashable {
+    let helmDay: HelmDay
+    let intakeKcal: Double
+    let targetKcal: Double
+    let state: HelmState
+
+    var id: HelmDay { helmDay }
+}
+
+struct TrendsSnapshot: Sendable, Equatable {
+    var trendWeight: [TrendWeightPoint]
+    var targetWeightKg: Double?
+    var readinessHistory: [ReadinessHistoryPoint]
+    var muscleVolume: [MuscleVolumeGauge]
+    var e1RMHistory: [E1RMProgressionPoint]
+    var selectedExerciseID: String
+    var selectedExerciseName: String
+    var energyBalance: [EnergyBalanceGauge]
+    var canLoadMoreHistory: Bool
+
+    static let empty = TrendsSnapshot(
+        trendWeight: [],
+        targetWeightKg: nil,
+        readinessHistory: [],
+        muscleVolume: [],
+        e1RMHistory: [],
+        selectedExerciseID: "",
+        selectedExerciseName: "",
+        energyBalance: [],
+        canLoadMoreHistory: false
+    )
+}

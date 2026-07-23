@@ -84,6 +84,25 @@ public enum HelmState: String, Sendable, CaseIterable {
         }
     }
 
+    /// Weekly hard-set volume relative to MEV/MRV landmarks.
+    public static func volumeWeekly(sets: Double, mev: Int, mrv: Int) -> HelmState {
+        if sets < Double(mev) { return .depleted }
+        if sets > Double(mrv) { return .compromised }
+        let midpoint = Double(mev + mrv) / 2
+        if sets >= midpoint { return .primed }
+        return .ready
+    }
+
+    /// Logged intake relative to calorie target (energy balance).
+    public static func energyBalance(intakeKcal: Double, targetKcal: Double) -> HelmState {
+        guard targetKcal > 0 else { return .compromised }
+        let ratio = intakeKcal / targetKcal
+        if ratio >= 0.95, ratio <= 1.05 { return .primed }
+        if ratio < 0.7 { return .depleted }
+        if ratio > 1.15 { return .compromised }
+        return .ready
+    }
+
     public var label: String {
         rawValue.uppercased()
     }

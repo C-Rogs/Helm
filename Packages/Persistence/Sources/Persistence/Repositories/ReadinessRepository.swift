@@ -37,6 +37,20 @@ public struct ReadinessRepository: Sendable {
         }
     }
 
+    /// Paginated readiness scores, newest first.
+    public func fetchScores(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [(HelmDay, String)] {
+        try pool.read { db in
+            let records = try ReadinessScoreRecord
+                .filter(Column("helm_day") <= HelmDayColumn.encode(end))
+                .order(Column("helm_day").desc)
+                .limit(limit, offset: offset)
+                .fetchAll(db)
+            return try records.map { record in
+                (try record.decodedHelmDay(), record.scoreJSON)
+            }
+        }
+    }
+
     public func upsertBaseline(stateJSON: String, updatedAt: Date = Date()) throws {
         try pool.write { db in
             try ReadinessBaselineRecord(stateJSON: stateJSON, updatedAt: updatedAt).save(db)

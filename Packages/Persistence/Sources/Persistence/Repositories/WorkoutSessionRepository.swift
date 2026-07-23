@@ -392,4 +392,93 @@ public struct WorkoutSessionRepository: Sendable {
             try WorkoutSessionUpdateWriter.apply(draft, now: now, in: db)
         }
     }
+
+    public struct E1RMHistoryPoint: Sendable, Hashable {
+        public let helmDay: HelmDay
+        public let achievedAt: Date
+        public let e1RMKilograms: Double
+
+        public init(helmDay: HelmDay, achievedAt: Date, e1RMKilograms: Double) {
+            self.helmDay = helmDay
+            self.achievedAt = achievedAt
+            self.e1RMKilograms = e1RMKilograms
+        }
+    }
+
+    /// Best estimated 1RM per completed session for one exercise, newest sessions first.
+    public func fetchE1RMHistory(
+        exerciseID: String,
+        limit: Int,
+        offset: Int = 0,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [E1RMHistoryPoint] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT ws.started_at,
+                           MAX(se.weight_kg * (1.0 + CAST(se.reps AS REAL) / 30.0)) AS e1rm_kg
+                    FROM workout_session ws
+                    JOIN workout_session_exercise wse ON wse.workout_session_id = ws.id
+                    JOIN set_entry se ON se.workout_session_exercise_id = wse.id
+                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                      AND ws.status = 'completed'
+                      AND ws.deleted_at IS NULL
+                      AND wse.deleted_at IS NULL
+                      AND se.deleted_at IS NULL
+                      AND se.status = 'completed'
+                      AND se.set_type != 'warmup'
+                      AND se.weight_kg IS NOT NULL
+                      AND se.reps IS NOT NULL
+                      AND se.reps > 0
+                    GROUP BY ws.id
+                    ORDER BY datetime(ws.started_at) DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                arguments: [exerciseID, limit, offset]
+            )
+
+            return try rows.map { row in
+                let startedAt = try ISO8601Coding.date(from: row["started_at"] as String)
+                let e1RM: Double = row["e1rm_kg"]
+                let day = HelmDay.day(for: startedAt, cutoff: cutoff, calendar: calendar)
+                return E1RMHistoryPoint(
+                    helmDay: day,
+                    achievedAt: startedAt,
+                    e1RMKilograms: e1RM
+                )
+            }
+        }
+    }
+
+    /// Completed session IDs since a Helm day, oldest first, for paginated volume aggregation.
+    public func listCompletedSessionIDs(
+        since startDay: HelmDay,
+        limit: Int,
+        offset: Int = 0,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [String] {
+        guard let startInstant = startDay.startInstant(cutoff: cutoff, calendar: calendar) else {
+            return []
+        }
+        let startString = ISO8601Coding.string(from: startInstant)
+
+        return try pool.read { db in
+            try String.fetchAll(
+                db,
+                sql: """
+                    SELECT id
+                    FROM workout_session
+                    WHERE status = 'completed'
+                      AND deleted_at IS NULL
+                      AND datetime(started_at) >= datetime(?)
+                    ORDER BY datetime(started_at) ASC
+                    LIMIT ? OFFSET ?
+                    """,
+                arguments: [startString, limit, offset]
+            )
+        }
+    }
 }

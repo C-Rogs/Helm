@@ -45,6 +45,18 @@ public struct NutritionRepository: Sendable {
         }
     }
 
+    /// Paginated nutrition days, newest first.
+    public func fetchDays(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [NutritionDay] {
+        try pool.read { db in
+            let records = try NutritionDayRecord
+                .filter(Column("helm_day") <= HelmDayColumn.encode(end))
+                .order(Column("helm_day").desc)
+                .limit(limit, offset: offset)
+                .fetchAll(db)
+            return try records.map { try $0.toValue() }
+        }
+    }
+
     public func upsertMeal(_ meal: MealRecord) throws {
         try pool.write { db in
             try MealRow(meal: meal).save(db)

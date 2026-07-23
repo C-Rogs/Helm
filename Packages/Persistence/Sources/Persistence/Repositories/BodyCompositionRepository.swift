@@ -60,4 +60,34 @@ public struct BodyCompositionRepository: Sendable {
             try BodyCompositionRecord.deleteOne(db, key: id.uuidString.lowercased())
         }
     }
+
+    /// Latest body-mass sample per day, newest days first.
+    public func fetchDailyWeights(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [(HelmDay, Double)] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT bc.helm_day, bc.mass_kg
+                    FROM body_composition bc
+                    INNER JOIN (
+                        SELECT helm_day, MAX(measured_at) AS max_measured
+                        FROM body_composition
+                        WHERE helm_day <= ?
+                        GROUP BY helm_day
+                    ) latest
+                        ON bc.helm_day = latest.helm_day
+                       AND bc.measured_at = latest.max_measured
+                    ORDER BY bc.helm_day DESC
+                    LIMIT ? OFFSET ?
+                    """,
+                arguments: [HelmDayColumn.encode(end), limit, offset]
+            )
+            return try rows.map { row in
+                let dayString: String = row["helm_day"]
+                let day = try HelmDayColumn.decode(dayString)
+                let massKg: Double = row["mass_kg"]
+                return (day, massKg)
+            }
+        }
+    }
 }
