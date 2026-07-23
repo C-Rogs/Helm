@@ -1,3 +1,3 @@
 public enum SchemaVersion {
-    public static let latest = 3
+    public static let latest = 4
 }

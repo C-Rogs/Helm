@@ -8,8 +8,14 @@ let package = Package(
     products: [
         .library(name: "CoachLLM", targets: ["CoachLLM"])
     ],
+    dependencies: [
+        .package(path: "../Core")
+    ],
     targets: [
-        .target(name: "CoachLLM"),
+        .target(
+            name: "CoachLLM",
+            dependencies: ["Core"]
+        ),
         .testTarget(
             name: "CoachLLMTests",
             dependencies: ["CoachLLM"],

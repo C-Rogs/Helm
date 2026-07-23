@@ -11,6 +11,7 @@ public actor PersistenceStore {
     public nonisolated let workoutTemplates: WorkoutTemplateRepository
     public nonisolated let personalRecords: PersonalRecordRepository
     public nonisolated let readiness: ReadinessRepository
+    public nonisolated let memoryProfile: MemoryProfileStore
     public nonisolated let activeSessions: ActiveSessionRepository
 
     public let databaseURL: URL
@@ -28,6 +29,7 @@ public actor PersistenceStore {
         workoutTemplates = WorkoutTemplateRepository(pool: pool)
         personalRecords = PersonalRecordRepository(pool: pool)
         readiness = ReadinessRepository(pool: pool)
+        memoryProfile = MemoryProfileStore(pool: pool)
         activeSessions = ActiveSessionRepository(pool: pool)
     }
 

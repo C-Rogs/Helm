@@ -32,7 +32,12 @@ struct MigrationTests {
                 "exercise_history_snapshot",
                 "coach_recommendation",
                 "readiness_daily_score",
-                "readiness_baseline_state"
+                "readiness_baseline_state",
+                "memory_profile",
+                "plan_mesocycle_state",
+                "planned_workout",
+                "plan_mesocycle_state",
+                "planned_workout"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

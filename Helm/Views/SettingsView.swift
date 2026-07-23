@@ -25,6 +25,9 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink("Coach Memory") {
+                        MemoryProfileEditorView()
+                    }
                     NavigationLink("HealthKit") {
                         HealthKitStatusView()
                     }

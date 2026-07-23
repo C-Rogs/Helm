@@ -22,6 +22,9 @@ struct AppMigrator {
         if version >= 3 {
             ReadinessSchemaMigration.register(on: &migrator)
         }
+        if version >= 4 {
+            MemoryProfileSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 
