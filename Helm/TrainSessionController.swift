@@ -57,6 +57,7 @@ final class TrainSessionController {
     private var previousRestRemaining: Int?
     private var wasRestRunningOnBackground = false
     private var trackedRestTimerID: String?
+    private var suppressPrescriptionAutoStart = false
 
     init(
         store: ActiveSessionStore,
@@ -82,9 +83,16 @@ final class TrainSessionController {
         store.hasActiveSession
     }
 
-    func recover() async {
+    /// Reloads the persisted active session from the database (kill-recover, tab return).
+    func recoverPersistedSession() async {
         await store.recover()
         await refreshMetadata()
+    }
+
+    /// App-launch recovery: restore an in-progress session or auto-start today's prescription once.
+    func recoverOnLaunch() async {
+        suppressPrescriptionAutoStart = false
+        await recoverPersistedSession()
         if let snapshot = store.snapshot {
             await sideEffects.onSessionStarted(snapshot)
         } else {
@@ -190,6 +198,7 @@ final class TrainSessionController {
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
+            suppressPrescriptionAutoStart = true
             await refreshMetadata()
             await refreshPrescriptionState()
             if let sessionID {
@@ -486,6 +495,7 @@ final class TrainSessionController {
     }
 
     private func tryAutoStartTodaysPrescription() async {
+        guard !suppressPrescriptionAutoStart else { return }
         guard !store.hasActiveSession else { return }
         guard let summary = prescriptionSummary, !summary.exercises.isEmpty else { return }
         await startTodaysPrescription()

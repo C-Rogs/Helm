@@ -29,7 +29,7 @@ enum TrainBootstrap {
     static func start() {
         Task {
             historyController.refresh()
-            await sessionController.recover()
+            await sessionController.recoverOnLaunch()
         }
     }
 }

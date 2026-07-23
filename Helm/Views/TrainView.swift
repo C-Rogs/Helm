@@ -108,7 +108,7 @@ struct TrainView: View {
                 .presentationDetents([.medium])
             }
             .task {
-                await controller.recover()
+                await controller.recoverPersistedSession()
                 history.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
