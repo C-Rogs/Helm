@@ -25,6 +25,9 @@ struct SettingsView: View {
                 }
 
                 Section {
+                    NavigationLink("Training Plan") {
+                        PhaseGoalSettingsView()
+                    }
                     NavigationLink("Coach") {
                         CoachSettingsView()
                     }

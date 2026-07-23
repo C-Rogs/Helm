@@ -6,9 +6,6 @@ import SwiftUI
 
 struct MemoryProfileEditorView: View {
     @State private var profile = MemoryProfile.empty
-    @State private var selectedPhase: TrainingPhase = .maintain
-    @State private var weeklyRateText = ""
-    @State private var emphasisText = ""
     @State private var saveMessage: String?
     @State private var isSaving = false
 
@@ -29,22 +26,15 @@ struct MemoryProfileEditorView: View {
             }
 
             Section("Phase") {
-                Picker("Phase", selection: $selectedPhase) {
-                    ForEach(TrainingPhase.allCases, id: \.self) { phase in
-                        Text(phase.label).tag(phase)
+                Text("Edit phase, rate, and emphasis under Settings → Training Plan.")
+                    .font(HelmType.body.font)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                if let phaseGoal = profile.phaseGoal {
+                    LabeledContent("Current phase", value: phaseGoal.phase.label)
+                    if let emphasis = phaseGoal.emphasis, !emphasis.isEmpty {
+                        LabeledContent("Emphasis", value: emphasis)
                     }
                 }
-                .onChange(of: selectedPhase) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                    syncPhaseGoal()
-                }
-
-                TextField("Weekly rate (kg)", text: $weeklyRateText)
-                    .keyboardType(.decimalPad)
-                    .onChange(of: weeklyRateText) { _, _ in syncPhaseGoal() }
-
-                TextField("Emphasis", text: $emphasisText)
-                    .onChange(of: emphasisText) { _, _ in syncPhaseGoal() }
             }
 
             Section("Preferences") {
@@ -99,13 +89,6 @@ struct MemoryProfileEditorView: View {
         do {
             let loaded = try PersistenceBootstrap.persistenceStore.memoryProfile.load()
             profile = loaded
-            selectedPhase = loaded.phaseGoal?.phase ?? .maintain
-            if let rate = loaded.phaseGoal?.weeklyRateKg {
-                weeklyRateText = String(rate)
-            } else {
-                weeklyRateText = ""
-            }
-            emphasisText = loaded.phaseGoal?.emphasis ?? ""
         } catch {
             saveMessage = error.localizedDescription
         }
@@ -115,7 +98,6 @@ struct MemoryProfileEditorView: View {
     private func save() async {
         isSaving = true
         defer { isSaving = false }
-        syncPhaseGoal()
         do {
             try PersistenceBootstrap.persistenceStore.memoryProfile.save(profile)
             HapticEngine.shared.play(.coachAdjust)
@@ -123,16 +105,6 @@ struct MemoryProfileEditorView: View {
         } catch {
             saveMessage = error.localizedDescription
         }
-    }
-
-    private func syncPhaseGoal() {
-        let rate = Double(weeklyRateText.trimmingCharacters(in: .whitespacesAndNewlines))
-        let emphasis = emphasisText.trimmingCharacters(in: .whitespacesAndNewlines)
-        profile.phaseGoal = PhaseGoal(
-            phase: selectedPhase,
-            weeklyRateKg: rate,
-            emphasis: emphasis.isEmpty ? nil : emphasis
-        )
     }
 }
 

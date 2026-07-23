@@ -6,6 +6,7 @@ import SwiftUI
 
 struct DashboardView: View {
     private var readinessService: ReadinessService { ReadinessBootstrap.readinessService }
+    private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
@@ -21,6 +22,7 @@ struct DashboardView: View {
                 VStack(alignment: .leading, spacing: HelmSpacing.lg) {
                     greetingHeader
                     readinessCard
+                    prescriptionCard
 
                     Button {
                     } label: {
@@ -35,8 +37,111 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.large)
             .task {
                 await readinessService.refresh()
+                await prescriptionService.refresh(readiness: readinessService.state.score)
+            }
+            .onChange(of: readinessService.state) { _, newState in
+                Task {
+                    await prescriptionService.refresh(readiness: newState.score)
+                }
             }
         }
+    }
+
+    @ViewBuilder
+    private var prescriptionCard: some View {
+        switch prescriptionService.state {
+        case .loading:
+            prescriptionShell(subtitle: "Loading…") {
+                Text("Building today's session…")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        case .awaitingCatalog:
+            prescriptionShell(subtitle: "Awaiting exercise catalog") {
+                Text("Import exercises from Settings or finish first launch seeding.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .multilineTextAlignment(.leading)
+            }
+        case let .prescribed(summary):
+            prescriptionShell(
+                subtitle: prescriptionSubtitle(for: summary),
+                phase: summary.phase
+            ) {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    if summary.readinessAdjusted {
+                        Text("Volume trimmed for readiness")
+                            .helmType(.monoTag, color: HelmColor.depleted)
+                    }
+
+                    ForEach(summary.exercises) { exercise in
+                        prescriptionExerciseRow(exercise)
+                    }
+
+                    HStack {
+                        Text("\(summary.totalSets) total sets")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                        Spacer()
+                        Text(summary.phase.label)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                    }
+                }
+            }
+        }
+    }
+
+    private func prescriptionShell<Content: View>(
+        subtitle: String,
+        phase: TrainingPhase? = nil,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                HStack {
+                    Text("Today's Session")
+                        .helmType(.label)
+                    Spacer()
+                    if let phase {
+                        Text(phase.label)
+                            .helmType(.monoTag, color: HelmColor.accent)
+                            .padding(.horizontal, HelmSpacing.xs)
+                            .padding(.vertical, HelmSpacing.xxs)
+                            .background(HelmColor.accent.opacity(0.12), in: Capsule())
+                    }
+                }
+
+                content()
+
+                Text(subtitle)
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        }
+    }
+
+    private func prescriptionExerciseRow(_ exercise: PrescribedExerciseSummary) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(exercise.displayName)
+                .helmType(.body)
+            HStack(spacing: HelmSpacing.sm) {
+                Text("\(exercise.targetSets) × \(exercise.targetRepRange)")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                if let load = exercise.targetLoad {
+                    Text(load)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                }
+                if let rpe = exercise.targetRPE {
+                    Text(rpe)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                }
+            }
+        }
+        .padding(.vertical, HelmSpacing.xxs)
+    }
+
+    private func prescriptionSubtitle(for summary: PrescribedSessionSummary) -> String {
+        var parts = ["\(summary.exercises.count) exercises"]
+        if let emphasis = summary.emphasis, !emphasis.isEmpty {
+            parts.append(emphasis)
+        }
+        return parts.joined(separator: " · ")
     }
 
     private var greetingHeader: some View {
@@ -264,6 +369,16 @@ struct DashboardView: View {
         if z > 0.75 { return "Above baseline" }
         if z < -0.75 { return "Below baseline" }
         return "Near baseline"
+    }
+}
+
+private extension TrainingPhase {
+    var label: String {
+        switch self {
+        case .cut: "Cut"
+        case .maintain: "Maintain"
+        case .gain: "Gain"
+        }
     }
 }
 

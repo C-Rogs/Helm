@@ -14,6 +14,7 @@ struct HelmApp: App {
             await PersistenceBootstrap.logOpen()
             await PersistenceBootstrap.importExerciseSeed()
             ReadinessBootstrap.start()
+            PlanBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()
             CoachBootstrap.start()

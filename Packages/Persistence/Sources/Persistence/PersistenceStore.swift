@@ -13,6 +13,7 @@ public actor PersistenceStore {
     public nonisolated let readiness: ReadinessRepository
     public nonisolated let memoryProfile: MemoryProfileStore
     public nonisolated let plan: PlanRepository
+    public nonisolated let trainingPlan: TrainingPlanSettingsStore
     public nonisolated let activeSessions: ActiveSessionRepository
     public nonisolated let chat: ChatStore
 
@@ -35,6 +36,7 @@ public actor PersistenceStore {
         readiness = ReadinessRepository(pool: pool)
         memoryProfile = MemoryProfileStore(pool: pool)
         plan = PlanRepository(pool: pool)
+        trainingPlan = TrainingPlanSettingsStore(pool: pool)
         activeSessions = ActiveSessionRepository(pool: pool)
         chat = ChatStore(pool: pool)
     }

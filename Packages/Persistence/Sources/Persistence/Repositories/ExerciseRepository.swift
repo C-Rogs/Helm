@@ -110,6 +110,57 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func fetchCatalogRows(limit: Int = 2_000) throws -> [ExerciseCatalogRow] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, display_name, primary_muscle_group, secondary_muscle_groups_json,
+                           equipment_type, is_picker_default
+                    FROM exercise
+                    WHERE deleted_at IS NULL
+                    ORDER BY is_picker_default DESC, sort_name ASC
+                    LIMIT ?
+                    """,
+                arguments: [limit]
+            )
+
+            return try rows.map { row in
+                let secondaryJSON: String = row["secondary_muscle_groups_json"] ?? "[]"
+                let secondaries = try Self.decodeStringArray(from: secondaryJSON)
+                return ExerciseCatalogRow(
+                    id: row["id"],
+                    displayName: row["display_name"],
+                    primaryMuscleGroup: row["primary_muscle_group"],
+                    secondaryMuscleGroups: secondaries,
+                    equipment: row["equipment_type"],
+                    isPickerDefault: (row["is_picker_default"] as Int?) == 1
+                )
+            }
+        }
+    }
+
+    public func displayNames(for exerciseIDs: [String]) throws -> [String: String] {
+        guard !exerciseIDs.isEmpty else { return [:] }
+        return try pool.read { db in
+            let placeholders = Array(repeating: "?", count: exerciseIDs.count).joined(separator: ", ")
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, display_name
+                    FROM exercise
+                    WHERE deleted_at IS NULL AND id IN (\(placeholders))
+                    """,
+                arguments: StatementArguments(exerciseIDs)
+            )
+            var names: [String: String] = [:]
+            for row in rows {
+                names[row["id"]] = row["display_name"]
+            }
+            return names
+        }
+    }
+
     public func exerciseCount() throws -> Int {
         try pool.read { db in
             try Int.fetchOne(
@@ -174,6 +225,11 @@ public struct ExerciseRepository: Sendable {
             guard !normalized.isEmpty, seen.insert(normalized).inserted else { return nil }
             return normalized
         }
+    }
+
+    private static func decodeStringArray(from json: String) throws -> [String] {
+        guard let data = json.data(using: .utf8) else { return [] }
+        return try JSONDecoder().decode([String].self, from: data)
     }
 
     private static func summary(from row: Row) throws -> ExerciseSummary {

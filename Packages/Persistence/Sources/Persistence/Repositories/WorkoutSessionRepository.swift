@@ -315,32 +315,67 @@ public struct WorkoutSessionRepository: Sendable {
 
     public func fetch(id: String) throws -> WorkoutSessionDraft? {
         try pool.read { db in
-            guard let header = try Row.fetchOne(
+            try Self.fetchDraft(db: db, sessionID: id)
+        }
+    }
+
+    public func fetchCompletedSessionsForPrescription(
+        since startDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [WorkoutSessionDraft] {
+        guard let startInstant = startDay.startInstant(cutoff: cutoff, calendar: calendar) else {
+            return []
+        }
+        let startString = ISO8601Coding.string(from: startInstant)
+
+        return try pool.read { db in
+            let headers = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT id, title, started_at, ended_at, status, source
+                    SELECT id
                     FROM workout_session
-                    WHERE id = ? AND deleted_at IS NULL
+                    WHERE status = 'completed'
+                      AND deleted_at IS NULL
+                      AND datetime(started_at) >= datetime(?)
+                    ORDER BY datetime(started_at) ASC
                     """,
-                arguments: [id]
-            ) else {
-                return nil
-            }
-
-            let exercises = try ActiveSessionRepository.fetchExercises(db: db, sessionID: id)
-            let status = WorkoutSessionStatus(rawValue: header["status"] as String) ?? .completed
-            let source = WorkoutSessionSource(rawValue: header["source"] as String) ?? .manual
-
-            return WorkoutSessionDraft(
-                id: header["id"],
-                title: header["title"],
-                startedAt: try ISO8601Coding.date(from: header["started_at"] as String),
-                endedAt: (header["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
-                status: status,
-                source: source,
-                exercises: exercises
+                arguments: [startString]
             )
+
+            return try headers.compactMap { row -> WorkoutSessionDraft? in
+                let sessionID: String = row["id"]
+                return try Self.fetchDraft(db: db, sessionID: sessionID)
+            }
         }
+    }
+
+    private static func fetchDraft(db: Database, sessionID: String) throws -> WorkoutSessionDraft? {
+        guard let header = try Row.fetchOne(
+            db,
+            sql: """
+                SELECT id, title, started_at, ended_at, status, source
+                FROM workout_session
+                WHERE id = ? AND deleted_at IS NULL
+                """,
+            arguments: [sessionID]
+        ) else {
+            return nil
+        }
+
+        let exercises = try ActiveSessionRepository.fetchExercises(db: db, sessionID: sessionID)
+        let status = WorkoutSessionStatus(rawValue: header["status"] as String) ?? .completed
+        let source = WorkoutSessionSource(rawValue: header["source"] as String) ?? .manual
+
+        return WorkoutSessionDraft(
+            id: header["id"],
+            title: header["title"],
+            startedAt: try ISO8601Coding.date(from: header["started_at"] as String),
+            endedAt: (header["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
+            status: status,
+            source: source,
+            exercises: exercises
+        )
     }
 
     public func updateCompletedSession(_ draft: WorkoutSessionDraft, timestamp: Date = Date()) throws {

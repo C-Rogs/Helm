@@ -22,6 +22,7 @@ let package = Package(
                 .product(name: "Core", package: "Core"),
                 .product(name: "Diagnostics", package: "Diagnostics"),
                 .product(name: "ReadinessKit", package: "Domain"),
+                .product(name: "PlanKit", package: "Domain"),
                 .product(name: "Persistence", package: "Persistence"),
                 .product(name: "CoachLLM", package: "CoachLLM")
             ]
@@ -33,6 +34,7 @@ let package = Package(
                 .product(name: "Core", package: "Core"),
                 .product(name: "Persistence", package: "Persistence"),
                 .product(name: "ReadinessKit", package: "Domain"),
+                .product(name: "PlanKit", package: "Domain"),
                 .product(name: "CoachLLM", package: "CoachLLM")
             ]
         )

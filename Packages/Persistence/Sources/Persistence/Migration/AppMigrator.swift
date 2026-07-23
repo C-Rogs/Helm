@@ -34,6 +34,9 @@ struct AppMigrator {
         if version >= 7 {
             ChatSchemaMigration.register(on: &migrator)
         }
+        if version >= 8 {
+            PhaseGoalSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 
