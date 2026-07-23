@@ -73,4 +73,23 @@ public enum PlanKit {
             weekStart: weekStart
         )
     }
+
+    // MARK: - Plan drift
+
+    public static func resolveDrift(
+        planned: PlannedCalendar,
+        actual: ActualCalendar,
+        calendar: Calendar = Calendar(identifier: .iso8601)
+    ) -> PlanAdjustment {
+        DriftPolicyEngine.resolveDrift(planned: planned, actual: actual, calendar: calendar)
+    }
+
+    public static func acuteChronicWorkloadRatio(
+        dailyLoads: [HelmDay: Double],
+        asOf day: HelmDay,
+        calendar: Calendar = Calendar(identifier: .iso8601)
+    ) -> AcuteChronicWorkloadRatio {
+        AcuteChronicWorkload.ratio(dailyLoads: dailyLoads, asOf: day, calendar: calendar)
+    }
 }
+
