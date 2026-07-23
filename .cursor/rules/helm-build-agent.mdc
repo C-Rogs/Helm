@@ -20,7 +20,7 @@ Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.
 - Pass agent-verifiable acceptance (build, tests, lint).
 - `git add` all paths you touched.
 - `git commit` with `[M#.#] …` or `[F-DT#.#] …`.
-- Update `PROGRESS.md` with status `done`, date, and short SHA.
+- Update `PROGRESS.md` with status `done`, date, and short SHA **in that same commit** (`git commit --amend --no-edit` after `git rev-parse --short HEAD`). Never add a follow-up commit just to record the SHA.
 - End with commit SHA and clean `git status`.
 
 ## Do not
@@ -29,5 +29,6 @@ Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.
 - Ask "would you like me to commit?" or wait for approval.
 - Mark `done` with an empty Commit column.
 - Leave section files uncommitted.
+- Make a separate commit whose only purpose is "Record commit SHA in PROGRESS" (or similar).
 
 Full rules: `PLAN.md`. Status board: `PROGRESS.md`.

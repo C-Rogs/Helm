@@ -77,9 +77,10 @@ If a section is abandoned or redone, add a new row rather than rewriting history
 
 1. `git status`: stage every path your section touched (`git add …`).
 2. Run acceptance tests (`swift test`, `xcodebuild` as required): all green.
-3. `git commit -m "[M#.#] …"` (see format below). Include `PROGRESS.md` in this commit or commit it immediately after.
-4. `git rev-parse --short HEAD`: put this SHA in your `PROGRESS.md` row.
-5. `git status`: must be clean. Report SHA + status. **Do not ask Cameron whether to commit.**
+3. Stage `PROGRESS.md` with status `done` and date, but leave the Commit column as `TBD` for now.
+4. `git commit -m "[M#.#] …"` (see format below).
+5. `git rev-parse --short HEAD`: write that SHA into your `PROGRESS.md` row, then `git add PROGRESS.md && git commit --amend --no-edit` so the section lands as **one** commit with the correct SHA. Never add a second commit just to record the SHA.
+6. `git status`: must be clean. Report SHA + status. **Do not ask Cameron whether to commit.**
 
 ### Rules
 
@@ -87,7 +88,8 @@ If a section is abandoned or redone, add a new row rather than rewriting history
 - Message format: `[M#.#] <imperative summary>` for the subject, e.g. `[M3.2] Add active-session store with rest-timer projection`. Fix sections use `[F-DT#.#] …`. Body explains *why* only where non-obvious; no restating the diff.
 - Reference the plan section, not "as requested" or conversational framing.
 - Do not commit failing tests, commented-out code, or scaffolding left over from getting something to compile.
-- Update `PROGRESS.md` in the same commit (or the immediate next one) that finishes the section.
+- Update `PROGRESS.md` in the same commit that finishes the section (amend after you know the SHA).
+- Never commit messages like "Record commit SHA in PROGRESS"; that is a smell. Use amend instead.
 - Never squash or rewrite history across sections.
 - Parallel agents each commit their own section independently before exiting.
 - **Never** end a turn with uncommitted section work. **Never** ask Cameron to commit, review, or test before you commit.

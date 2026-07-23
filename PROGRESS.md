@@ -39,7 +39,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M4.3 MemoryProfile | done | 2026-07-23 | 0081741 | MemoryProfile value type + stablePrefixText(); v4 migration; MemoryProfileStore; Settings Coach Memory editor. 3 persistence + 3 CoachLLM tests pass. |
 | M4.4 Context builder (pure) | done | 2026-07-23 | 0b9c2d0 | ContextBuilder + CoachContextDays + EvidenceIndex + CoachPrompt; stable prefix ordering, oldest-day-first trimming, follow-up skips health days. 6 CoachLLM tests pass. |
 | M4.5 Chat UI + chat persistence | done | 2026-07-23 | 5707237 | v7 chat_message migration; ChatStore; CoachContextAssembler; ChatController + streaming UI; mock provider in DEBUG; tab-disappear cancel. |
-| M4.6 "Show your working" sheet (tap-to-explain) | done | 2026-07-23 | 100097a | ExplainableMetric + ExplainSheet + StatChip in DesignSystem; snapshot tests for readiness/prescription/nutrition; Dashboard wiring; chat hand-off via ChatController. |
+| M4.6 "Show your working" sheet (tap-to-explain) | done | 2026-07-23 | ca901eb | ExplainableMetric + ExplainSheet + StatChip in DesignSystem; snapshot tests for readiness/prescription/nutrition; Dashboard wiring; chat hand-off via ChatController. |
 | M5.1 PlanKit mesocycle core (pure) | done | 2026-07-21 | cb28104 | PlanKit target in Domain package. MesocycleState, MEV→MRV ramp, deload/reset, landmark seed+refine, Epley progression, weekly hard-set ledger. 13 tests. |
 | M5.2 Planned-vs-actual calendar + drift policy | done | 2026-07-23 | 4d00c27 | PlanKit drift policy + ACWR guard; v5 plan schema (planned_workout, plan_mesocycle_state); PlanRepository. 6 drift scenario tests + 2 repo tests. |
 | M5.3 Prescription + readiness gating + clamps | done | 2026-07-23 | 230df19 | PlanKit prescription(for:givenReadiness:profile:history:), readiness gating, apply(adjustment:excluding:) with clamps. 7 new tests. |
@@ -50,9 +50,9 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M6.2 In-session coach | done | 2026-07-23 | 2c4423f | askCoachInSession + InSessionCoachService; PlanKit apply bridge; exclude list + undo; coach_recommendation logging; AdjustmentBanner + AskCoachBar on Train; coach-adjust haptic. |
 | M6.3 Morning brief on open | done | 2026-07-23 | 2c4423f | Generate-on-open brief with engine snapshot + coach narration; BriefCard on Dashboard; daily_brief v9 persistence; fingerprint cache skips regen unless inputs change. Interim NutritionTargetComposer until M9.1. |
 | M6.4 Onboarding assembly | done | 2026-07-23 | c28c464 | First-run flow: HealthKit presence check, notifications, Gemini key, training plan, backfill progress, Shortcuts pointer. Launch gate via AppRootView; Setup section in Settings for re-entry. HealthKitDataPresenceChecker + 2 tests. |
-| M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 044527a |
+| M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 31fda8f |
 | M7.2 Notification triggers + Shortcuts guide | not started | | | |
-| M8.1 Watch workout session | done | 2026-07-23 | 8f14e32 | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
+| M8.1 Watch workout session | done | 2026-07-23 | c8f045d | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
 | M8.2 Phone observation + readiness complication | not started | | | |
 | M9.1 NutritionKit engine (pure) | not started | | | |
 | M9.2 Nutrition screen + Dashboard card | not started | | | |

@@ -33,7 +33,6 @@ public struct ExplainableAffordance: ViewModifier {
     }
 
     private func presentSheet() {
-        HapticEngine.shared.play(.selection)
         isPresented = true
     }
 }
