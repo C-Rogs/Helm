@@ -69,7 +69,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | Gate | Status | Date | Notes / issues filed |
 |---|---|---|---|
 | DT1 (after M2.2): foundation + ingest + readiness | done | 2026-07-22 | HealthKit connected after relaunch, dashboard polish, Watch round-trip complete, ARC/battery/diagnostics pass. Design re-check (haptics + reveal) pending M0.7 + M2.3. |
-| DT2 (after M3.6 + F-DESIGN-M3): the logger, in the gym | not started | | Includes rest-done haptic while suspended, set-logged/PR-hit feel. |
+| DT2 (after M3.6 + F-DESIGN-M3): the logger, in the gym | done | 2026-07-23 | Logger works on device: workout log, rest timer, numpad, paste import, history/templates/PRs. Rest-done haptic while suspended + set-logged/PR-hit feel verified. |
 | DT3 (after M6.4): the loop replaces Gemini (go-live gate) | not started | | |
 | DT4 (after M8.2): proactivity + Watch | not started | | |
 | DT5 (after M11.1): nutrition, analytics, full regression | not started | | |
