@@ -1,0 +1,89 @@
+{
+  "app" : "bioharvest",
+  "export_date" : "2026-07-08T10:00:00Z",
+  "export_range" : {
+    "end_date" : "2026-07-07",
+    "start_date" : "2026-07-06"
+  },
+  "healthkit_status" : "live_authorized",
+  "logs" : [
+    {
+      "activity_and_strain" : {
+        "active_energy_kcal" : null,
+        "exercise_minutes" : null,
+        "resting_energy_kcal" : null,
+        "step_count" : 6200,
+        "training_load_contribution" : null,
+        "workouts" : [
+
+        ]
+      },
+      "body_composition" : {
+        "body_fat_percent" : null,
+        "body_weight_kg" : null
+      },
+      "cns_and_cardio" : {
+        "hrv_sdnn" : 38.1,
+        "resting_heart_rate" : null
+      },
+      "date" : "2026-07-06",
+      "nutrition_and_toxicity" : {
+        "alcoholic_beverages_count" : 0,
+        "calories_consumed_kcal" : null,
+        "carbs_g" : null,
+        "fat_g" : null,
+        "protein_g" : null,
+        "water_liters" : null
+      },
+      "sleep_and_recovery" : {
+        "deep_sleep_minutes" : null,
+        "rem_sleep_minutes" : 95,
+        "sleep_total_minutes" : 390
+      },
+      "timezone" : "Europe\/London"
+    },
+    {
+      "activity_and_strain" : {
+        "active_energy_kcal" : 450,
+        "exercise_minutes" : 45,
+        "resting_energy_kcal" : 1650,
+        "step_count" : 8500,
+        "training_load_contribution" : 12.5,
+        "workouts" : [
+          {
+            "duration_minutes" : 35,
+            "effort_score" : 6.5,
+            "energy_burned_kcal" : 320,
+            "training_load_contribution" : 8.2,
+            "type" : "Running"
+          }
+        ]
+      },
+      "body_composition" : {
+        "body_fat_percent" : 14.5,
+        "body_weight_kg" : 78.2
+      },
+      "cns_and_cardio" : {
+        "hrv_sdnn" : 42.3,
+        "resting_heart_rate" : 58.5
+      },
+      "date" : "2026-07-07",
+      "nutrition_and_toxicity" : {
+        "alcoholic_beverages_count" : 0,
+        "calories_consumed_kcal" : 2100,
+        "carbs_g" : 220,
+        "fat_g" : 65,
+        "protein_g" : 140,
+        "water_liters" : 2.5
+      },
+      "sleep_and_recovery" : {
+        "deep_sleep_minutes" : 90,
+        "rem_sleep_minutes" : 105,
+        "sleep_total_minutes" : 420
+      },
+      "timezone" : "Europe\/London"
+    }
+  ],
+  "purpose" : "time_series_coach_export",
+  "schema_version" : 2
+}

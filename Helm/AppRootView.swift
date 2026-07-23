@@ -1,4 +1,6 @@
 import DesignSystem
+import ExportKit
+import HealthKitIngest
 import SwiftUI
 
 struct AppRootView: View {
@@ -13,6 +15,19 @@ struct AppRootView: View {
             }
         }
         .helmTheme()
+        .onOpenURL { url in
+            guard AppGroupExportStore.matchesImportURL(url) else { return }
+            consumeSchemaV2ShareImportIfNeeded()
+        }
+        .onAppear {
+            consumeSchemaV2ShareImportIfNeeded()
+        }
+    }
+
+    @MainActor
+    private func consumeSchemaV2ShareImportIfNeeded() {
+        guard AppGroupExportStore.consumePendingImport() else { return }
+        _ = try? SchemaV2ExportService.importSharedExport()
     }
 }
 

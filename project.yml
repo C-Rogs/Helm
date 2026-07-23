@@ -30,6 +30,8 @@ packages:
     path: Packages/Domain
   CoachLLM:
     path: Packages/CoachLLM
+  ExportKit:
+    path: Packages/ExportKit
 targets:
   Helm:
     type: application
@@ -61,6 +63,10 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: Helm reads your Apple Health data to compute readiness, training, and nutrition guidance.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Helm writes workouts and meals you log back to Apple Health.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
+        INFOPLIST_KEY_CFBundleURLTypes:
+          - CFBundleURLName: com.cameronro.helm
+            CFBundleURLSchemes:
+              - helm
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
     entitlements:
@@ -68,6 +74,8 @@ targets:
       properties:
         com.apple.developer.healthkit: true
         com.apple.developer.healthkit.background-delivery: true
+        com.apple.security.application-groups:
+          - group.com.cameronro.helm
     dependencies:
       - package: Core
       - package: Diagnostics
@@ -75,6 +83,7 @@ targets:
       - package: Persistence
       - package: HealthKitIngest
       - package: CoachLLM
+      - package: ExportKit
       - package: Domain
         product: ReadinessKit
       - package: Domain
@@ -84,6 +93,25 @@ targets:
         embed: true
       - target: HelmWidgets
         embed: true
+      - target: HelmShare
+        embed: true
+  HelmShare:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: HelmShare
+        excludes:
+          - Info.plist
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm.share
+        INFOPLIST_FILE: HelmShare/Info.plist
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_ENTITLEMENTS: HelmShare/HelmShare.entitlements
+        TARGETED_DEVICE_FAMILY: "1"
+        SKIP_INSTALL: YES
+    dependencies:
+      - package: ExportKit
   HelmWidgets:
     type: app-extension
     platform: iOS
@@ -150,6 +178,7 @@ schemes:
     build:
       targets:
         Helm: all
+        HelmShare: all
         HelmWatch: all
     run:
       config: Debug
