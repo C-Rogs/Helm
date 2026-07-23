@@ -1,6 +1,7 @@
 import Core
 import DesignSystem
 import HealthKitIngest
+import NutritionKit
 import Persistence
 import ReadinessKit
 import SwiftUI
@@ -447,11 +448,12 @@ struct DashboardView: View {
     @ViewBuilder
     private var nutritionTargetsCard: some View {
         let isTrainingDay = prescriptionService.state.summary != nil
-        let targets = NutritionTargetComposer.compose(
-            phase: trainingPhase,
-            bodyMassKg: bodyMassKg,
-            isTrainingDay: isTrainingDay
-        )
+        let dayType: NutritionDayType = isTrainingDay ? .training : .rest
+        let targets = NutritionKit.targets(
+            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType),
+            phase: PhaseGoal(phase: trainingPhase),
+            trend: NutritionTrendState()
+        ).summary
 
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {

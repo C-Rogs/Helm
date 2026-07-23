@@ -13,7 +13,8 @@ let package = Package(
         .package(path: "../Diagnostics"),
         .package(path: "../Domain"),
         .package(path: "../Persistence"),
-        .package(path: "../CoachLLM")
+        .package(path: "../CoachLLM"),
+        .package(path: "../ExportKit")
     ],
     targets: [
         .target(
@@ -23,8 +24,10 @@ let package = Package(
                 .product(name: "Diagnostics", package: "Diagnostics"),
                 .product(name: "ReadinessKit", package: "Domain"),
                 .product(name: "PlanKit", package: "Domain"),
+                .product(name: "NutritionKit", package: "Domain"),
                 .product(name: "Persistence", package: "Persistence"),
-                .product(name: "CoachLLM", package: "CoachLLM")
+                .product(name: "CoachLLM", package: "CoachLLM"),
+                .product(name: "ExportKit", package: "ExportKit")
             ]
         ),
         .testTarget(
@@ -35,8 +38,11 @@ let package = Package(
                 .product(name: "Persistence", package: "Persistence"),
                 .product(name: "ReadinessKit", package: "Domain"),
                 .product(name: "PlanKit", package: "Domain"),
-                .product(name: "CoachLLM", package: "CoachLLM")
-            ]
+                .product(name: "NutritionKit", package: "Domain"),
+                .product(name: "CoachLLM", package: "CoachLLM"),
+                .product(name: "ExportKit", package: "ExportKit")
+            ],
+            resources: [.process("Fixtures")]
         )
     ]
 )

@@ -8,7 +8,8 @@ let package = Package(
     products: [
         .library(name: "Domain", targets: ["Domain"]),
         .library(name: "PlanKit", targets: ["PlanKit"]),
-        .library(name: "ReadinessKit", targets: ["ReadinessKit"])
+        .library(name: "ReadinessKit", targets: ["ReadinessKit"]),
+        .library(name: "NutritionKit", targets: ["NutritionKit"])
     ],
     dependencies: [
         .package(path: "../Core")
@@ -38,6 +39,16 @@ let package = Package(
             resources: [
                 .copy("Fixtures")
             ]
+        ),
+        .target(
+            name: "NutritionKit",
+            dependencies: [
+                .product(name: "Core", package: "Core")
+            ]
+        ),
+        .testTarget(
+            name: "NutritionKitTests",
+            dependencies: ["NutritionKit"]
         )
     ]
 )

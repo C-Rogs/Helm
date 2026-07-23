@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 import PlanKit
 import ReadinessKit
 
@@ -31,11 +32,12 @@ public enum BriefInputComposer {
             )
         }
 
-        let nutrition = NutritionTargetComposer.compose(
-            phase: phase,
-            bodyMassKg: bodyMassKg,
-            isTrainingDay: (prescriptionSummary?.totalSets ?? 0) > 0
-        )
+        let dayType: NutritionDayType = (prescriptionSummary?.totalSets ?? 0) > 0 ? .training : .rest
+        let nutrition = NutritionKit.targets(
+            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType),
+            phase: PhaseGoal(phase: phase),
+            trend: NutritionTrendState()
+        ).summary
 
         return BriefInputsSnapshot(
             helmDay: helmDay,

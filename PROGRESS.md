@@ -54,7 +54,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M7.2 Notification triggers + Shortcuts guide | done | 2026-07-23 | 3325983 | Pre/post notification planners + snapshot tests; pre-workout scheduler from session-window heuristic; post-workout on finish; threshold insights in-app (silent); Proactive Notifications guide + onboarding copy update. |
 | M8.1 Watch workout session | done | 2026-07-23 | c8f045d | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
 | M8.2 Phone observation + readiness complication | done | 2026-07-23 | acb0ffe | Phone HKWorkout observer feeds Edwards TRIMP into next-day prior_day_trimp; throttled readiness push via WCSession application context; complication shows ARC score + brief deep link; Watch Brief tab; opportunistic live HR from Watch (5s throttle). Fixture tests for workout TRIMP + complication payload. |
-| M9.1 NutritionKit engine (pure) | not started | | | |
+| M9.1 NutritionKit engine (pure) | done | 2026-07-23 | 7a676ad | Adaptive TDEE + macro targets + macro gap. Replaces NutritionTargetComposer in brief and Dashboard (empty trend until M9.2 persistence). |
 | M9.2 Nutrition screen + Dashboard card | not started | | | |
 | M9.3 Photo-to-macro | not started | | | |
 | M10.1 Trends charts | not started | | | |
@@ -71,7 +71,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT1 (after M2.2): foundation + ingest + readiness | done | 2026-07-22 | HealthKit connected after relaunch, dashboard polish, Watch round-trip complete, ARC/battery/diagnostics pass. Design re-check (haptics + reveal) pending M0.7 + M2.3. |
 | DT2 (after M3.6 + F-DESIGN-M3): the logger, in the gym | done | 2026-07-23 | Logger works on device: workout log, rest timer, numpad, paste import, history/templates/PRs. Rest-done haptic while suspended + set-logged/PR-hit feel verified. |
 | DT3 (after M6.4): the loop replaces Gemini (go-live gate) | done | 2026-07-23 | Go-live verified on device: grounded chat, prescription Train, in-session coach swaps, morning brief, onboarding. F-DT3.1–3.7 landed. Manual Gemini workflow retired. |
-| DT4 (after M8.2): proactivity + Watch | not started | | |
+| DT4 (after M8.2): proactivity + Watch | on hold | 2026-07-23 | Overnight battery pass (`helm-diagnostics-2026-07-23T15-41-35Z`; no `HealthKitObserverFetch` / `BackfillChunk` churn in export). Watch + rest of checklist paused: corp network blocks Watch deploy; resume off-network. Build `60a85e7`. |
 | DT5 (after M11.1): nutrition, analytics, full regression | not started | | |
 
 ## Fix sections
