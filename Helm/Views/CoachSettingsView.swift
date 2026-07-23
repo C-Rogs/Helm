@@ -5,8 +5,12 @@ import SwiftUI
 struct CoachSettingsView: View {
     @State private var preferences = ProviderPreferencesStore()
     @State private var geminiKey = ""
+    @State private var openRouterKey = ""
     @State private var keyStatus = ""
+    @State private var openRouterStatus = ""
     @State private var isSaving = false
+    @State private var isSavingOpenRouter = false
+    @State private var isProvisioningOpenRouter = false
 
     private let keyStore = APIKeyStore()
 
@@ -49,6 +53,42 @@ struct CoachSettingsView: View {
                         .foregroundStyle(HelmColor.fgSecondary)
                 }
             }
+
+            Section("OpenRouter (TestFlight)") {
+                Text(
+                    "Release builds can auto-provision a capped, free-models-only key via the personal Coacher worker. Friends-only: the worker shared secret ships in the binary, not for App Store."
+                )
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.fgSecondary)
+
+                if keyStore.hasKey(kind: .openRouter) {
+                    Text("OpenRouter key saved in Keychain.")
+                        .font(HelmTypography.caption)
+                        .foregroundStyle(HelmColor.fgSecondary)
+                }
+
+                #if !DEBUG
+                Button(isProvisioningOpenRouter ? "Provisioning…" : "Request cloud key") {
+                    provisionOpenRouterKey()
+                }
+                .disabled(isProvisioningOpenRouter)
+                #endif
+
+                SecureField("Or paste OpenRouter API key", text: $openRouterKey)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+
+                Button(isSavingOpenRouter ? "Saving…" : "Save OpenRouter key") {
+                    saveOpenRouterKey()
+                }
+                .disabled(isSavingOpenRouter || openRouterKey.isEmpty)
+
+                if !openRouterStatus.isEmpty {
+                    Text(openRouterStatus)
+                        .font(HelmTypography.caption)
+                        .foregroundStyle(HelmColor.fgSecondary)
+                }
+            }
         }
         .navigationTitle("Coach")
         .helmScreenBackground()
@@ -56,7 +96,11 @@ struct CoachSettingsView: View {
             if geminiKey.isEmpty {
                 geminiKey = keyStore.displayValue(for: .gemini)
             }
+            if openRouterKey.isEmpty {
+                openRouterKey = keyStore.displayValue(for: .openRouter)
+            }
             keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "No key saved yet."
+            refreshOpenRouterStatus()
         }
     }
 
@@ -79,6 +123,56 @@ struct CoachSettingsView: View {
         ProviderRegistry.shared.resetGeminiProvider()
         if keyStore.hasKey(kind: .gemini), preferences.selectedProvider == .gemini {
             ProviderRegistry.shared.installGeminiProvider(GeminiProvider(apiKeyStore: keyStore))
+        }
+    }
+
+    private func saveOpenRouterKey() {
+        isSavingOpenRouter = true
+        defer { isSavingOpenRouter = false }
+        do {
+            try keyStore.save(openRouterKey, kind: .openRouter)
+            openRouterStatus = "OpenRouter key saved in Keychain."
+            HapticEngine.shared.play(.selection)
+            refreshOpenRouterStatus()
+        } catch {
+            openRouterStatus = "Could not save OpenRouter key."
+            HapticEngine.shared.play(.clampRejected)
+        }
+    }
+
+    private func provisionOpenRouterKey() {
+        isProvisioningOpenRouter = true
+        Task {
+            let result = await OpenRouterKeyProvisioner.provisionIfNeeded()
+            await MainActor.run {
+                isProvisioningOpenRouter = false
+                switch result {
+                case .provisioned(let wasNew):
+                    openRouterStatus = wasNew
+                        ? "Cloud key provisioned and saved."
+                        : "Existing cloud key restored."
+                    openRouterKey = keyStore.displayValue(for: .openRouter)
+                    HapticEngine.shared.play(.selection)
+                case .alreadyPresent:
+                    openRouterStatus = "OpenRouter key already in Keychain."
+                case .notConfigured:
+                    openRouterStatus = "Key service URL not configured in this build."
+                case .failed(let message):
+                    openRouterStatus = message
+                    HapticEngine.shared.play(.clampRejected)
+                case .skippedDebugBuild:
+                    openRouterStatus = "Auto-provision runs in Release builds only."
+                }
+                refreshOpenRouterStatus()
+            }
+        }
+    }
+
+    private func refreshOpenRouterStatus() {
+        if openRouterStatus.isEmpty {
+            openRouterStatus = keyStore.hasKey(kind: .openRouter)
+                ? "OpenRouter key saved in Keychain."
+                : "No OpenRouter key yet."
         }
     }
 }

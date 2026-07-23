@@ -5,6 +5,9 @@ enum CoachBootstrap {
     static func start() {
         Task { @MainActor in
             installProvider()
+            #if !DEBUG
+            _ = await OpenRouterKeyProvisioner.provisionIfNeeded()
+            #endif
         }
     }
 
