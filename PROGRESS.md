@@ -82,9 +82,9 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT1.2 Watch companion install path | done | 2026-07-22 | DT1 Watch install note in PLAN.md; signing already inherited from project base. |
 | F-DT1.3 Dashboard visual polish | done | 2026-07-22 | Greeting, band badge/stripe, contributor bars, secondary Ask Coach button. Superseded visually by M2.3 once M0.7 lands. |
 | F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | fa58558 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator; HelmNotificationDelegate; Train re-skin per DESIGN-SYSTEM.md + HAPTICS.md. |
-| F-DT3.1 Onboarding permission-aware UI | done | 2026-07-23 | | HealthKit connected state + refresh; notifications enabled/denied UI. |
-| F-DT3.2 Training plan onboarding UX | done | 2026-07-23 | | Weekly rate calculator; Set up later; Form layout; Continue saves if dirty. |
-| F-DT3.3 Chat + coach reliability | done | 2026-07-23 | | LocalizedError; chat error bubble; empty stream failure; JSON sanitizer. |
-| F-DT3.4 AskCoachBar layout polish | done | 2026-07-23 | | Fixed indicator frame; loading-only spinner. |
-| F-DT3.5 Shortcuts honest UX | done | 2026-07-23 | | Coming-soon copy; Morning Brief Automation guide in Settings. |
-| F-DT3.6 Haptics catch-up | done | 2026-07-23 | | sessionFinished on workout finish when no PR. |
+| F-DT3.1 Onboarding permission-aware UI | done | 2026-07-23 | bea71fc | HealthKit connected state + refresh; notifications enabled/denied UI. |
+| F-DT3.2 Training plan onboarding UX | done | 2026-07-23 | bea71fc | Weekly rate calculator; Set up later; Form layout; Continue saves if dirty. |
+| F-DT3.3 Chat + coach reliability | done | 2026-07-23 | bea71fc | LocalizedError; chat error bubble; empty stream failure; JSON sanitizer. |
+| F-DT3.4 AskCoachBar layout polish | done | 2026-07-23 | bea71fc | Fixed indicator frame; loading-only spinner. |
+| F-DT3.5 Shortcuts honest UX | done | 2026-07-23 | bea71fc | Coming-soon copy; Morning Brief Automation guide in Settings. |
+| F-DT3.6 Haptics catch-up | done | 2026-07-23 | bea71fc | sessionFinished on workout finish when no PR. |
