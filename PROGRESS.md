@@ -47,8 +47,8 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M5.5 Evidence-driven selection + citations | done | 2026-07-23 | b4699be | ExerciseSelectionEngine scores effectiveness/stretch/SFR + equipment; rationale + citationIDs on PrescribedExercise; 6 selection tests. |
 | M5.6 Phase/goal setup + Dashboard prescription card | done | 2026-07-23 | 3576f5a | Training Plan settings (phase/goal/emphasis + experience, v8 migration); PlanPrescriptionEngine with PrescriptionCompute signpost; Dashboard today's session card; phase change re-plans. |
 | M6.1 Prescription-driven Train screen | done | 2026-07-23 | 5a24028 | startFromPrescription bridge; auto-start today's plan on Train open; PrescriptionRow targets + PREV inline; manual/template fallback intact. |
-| M6.2 In-session coach | done | 2026-07-23 | | askCoachInSession + InSessionCoachService; PlanKit apply bridge; exclude list + undo; coach_recommendation logging; AdjustmentBanner + AskCoachBar on Train; coach-adjust haptic. |
-| M6.3 Morning brief on open | done | 2026-07-23 | c438e49 | Generate-on-open brief with engine snapshot + coach narration; BriefCard on Dashboard; daily_brief v9 persistence; fingerprint cache skips regen unless inputs change. Interim NutritionTargetComposer until M9.1. |
+| M6.2 In-session coach | done | 2026-07-23 | 2c4423f | askCoachInSession + InSessionCoachService; PlanKit apply bridge; exclude list + undo; coach_recommendation logging; AdjustmentBanner + AskCoachBar on Train; coach-adjust haptic. |
+| M6.3 Morning brief on open | done | 2026-07-23 | 2c4423f | Generate-on-open brief with engine snapshot + coach narration; BriefCard on Dashboard; daily_brief v9 persistence; fingerprint cache skips regen unless inputs change. Interim NutritionTargetComposer until M9.1. |
 | M6.4 Onboarding assembly | not started | | | |
 | M7.1 GenerateBriefIntent (locked-phone aware) | not started | | | |
 | M7.2 Notification triggers + Shortcuts guide | not started | | | |
