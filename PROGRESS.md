@@ -44,7 +44,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M5.2 Planned-vs-actual calendar + drift policy | done | 2026-07-23 | 4d00c27 | PlanKit drift policy + ACWR guard; v5 plan schema (planned_workout, plan_mesocycle_state); PlanRepository. 6 drift scenario tests + 2 repo tests. |
 | M5.3 Prescription + readiness gating + clamps | done | 2026-07-23 | 230df19 | PlanKit prescription(for:givenReadiness:profile:history:), readiness gating, apply(adjustment:excluding:) with clamps. 7 new tests. |
 | M5.4 Exercise seed schema + import | done | 2026-07-23 | 6140951 | free-exercise-db.json (loggy/Signal catalog) + exercises.json manifest (placeholder:true, seedVersion 1). ExerciseSeedImporter with loggy muscle/mode/alias mapping, Hevy staples, picker curation. v6 app_metadata migration. First-launch import; idempotent re-import on version bump. 4 seed tests pass. |
-| M5.5 Evidence-driven selection + citations | done | 2026-07-23 | | ExerciseSelectionEngine scores effectiveness/stretch/SFR + equipment; rationale + citationIDs on PrescribedExercise; 6 selection tests. |
+| M5.5 Evidence-driven selection + citations | done | 2026-07-23 | b4699be | ExerciseSelectionEngine scores effectiveness/stretch/SFR + equipment; rationale + citationIDs on PrescribedExercise; 6 selection tests. |
 | M5.6 Phase/goal setup + Dashboard prescription card | not started | | | |
 | M6.1 Prescription-driven Train screen | not started | | | |
 | M6.2 In-session coach | not started | | | |
