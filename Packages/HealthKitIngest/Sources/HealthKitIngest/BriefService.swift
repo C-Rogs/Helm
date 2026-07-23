@@ -26,16 +26,19 @@ public struct BriefCardModel: Sendable, Equatable {
 public actor BriefEngine {
     private let persistence: PersistenceStore
     private let prescriptionEngine: PlanPrescriptionEngine
+    private let nutritionEngine: NutritionEngine
     private let narrator: MorningBriefNarrator
     private let log: Logger
 
     public init(
         persistence: PersistenceStore,
         prescriptionEngine: PlanPrescriptionEngine,
+        nutritionEngine: NutritionEngine? = nil,
         narrator: MorningBriefNarrator = .live()
     ) {
         self.persistence = persistence
         self.prescriptionEngine = prescriptionEngine
+        self.nutritionEngine = nutritionEngine ?? NutritionEngine(persistence: persistence)
         self.narrator = narrator
         log = helmLogger(category: .healthKitIngest)
     }
@@ -46,17 +49,18 @@ public actor BriefEngine {
         prescriptionSummary: PrescribedSessionSummary?,
         attemptNarration: Bool
     ) async throws -> StoredDailyBrief {
-        let settings = try persistence.trainingPlan.load()
         let session = try? await prescriptionEngine.computeSession(for: day, readiness: readiness)
-        let bodyMassKg = try persistence.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
+        let nutritionSnapshot = try await nutritionEngine.snapshot(
+            for: day,
+            prescriptionSummary: prescriptionSummary
+        )
 
         let inputs = BriefInputComposer.compose(
             helmDay: day,
             readiness: readiness,
             prescriptionSummary: prescriptionSummary,
             prescriptionSession: session,
-            phase: settings.phaseGoal.phase,
-            bodyMassKg: bodyMassKg
+            nutritionSnapshot: nutritionSnapshot
         )
         let fingerprint = BriefInputFingerprint.compute(from: inputs)
 

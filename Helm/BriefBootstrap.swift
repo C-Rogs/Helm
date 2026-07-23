@@ -6,7 +6,8 @@ import Persistence
 enum BriefBootstrap {
     private static let engine = BriefEngine(
         persistence: PersistenceBootstrap.persistenceStore,
-        prescriptionEngine: PlanBootstrap.engine
+        prescriptionEngine: PlanBootstrap.engine,
+        nutritionEngine: NutritionBootstrap.engine
     )
 
     @MainActor

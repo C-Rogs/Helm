@@ -2,6 +2,7 @@ import Core
 import DesignSystem
 import Foundation
 import HealthKitIngest
+import NutritionKit
 import ReadinessKit
 
 enum ExplainableMetricMappers {
@@ -109,11 +110,75 @@ enum ExplainableMetricMappers {
     }
 
     static func nutrition(
-        _ targets: NutritionTargetsSummary,
-        phase: TrainingPhase,
+        _ snapshot: NutritionDaySnapshot,
         coachAvailable: Bool
     ) -> ExplainableMetric {
+        let targets = snapshot.targets
         let formattedCalories = formattedInteger(targets.caloriesKcal)
+        var contributors: [ExplainContributor] = [
+            ExplainContributor(
+                id: "tdee",
+                label: "Estimated TDEE",
+                value: "\(targets.estimatedTDEEKcal) kcal",
+                detail: "Adaptive weekly estimate"
+            ),
+            ExplainContributor(
+                id: "protein",
+                label: "Protein floor",
+                value: "\(targets.proteinGrams) g",
+                detail: "2.0 g/kg"
+            ),
+            ExplainContributor(
+                id: "carbs",
+                label: "Carbohydrates",
+                value: "\(targets.carbohydrateGrams) g",
+                detail: dayTypeDetail(snapshot.dayType)
+            ),
+            ExplainContributor(
+                id: "fat",
+                label: "Fat",
+                value: "\(targets.fatGrams) g",
+                detail: "Remaining calories"
+            ),
+            ExplainContributor(
+                id: "phase",
+                label: "Phase",
+                value: snapshot.phase.label,
+                detail: phaseAdjustmentDetail(for: snapshot.phase)
+            ),
+        ]
+
+        if let actual = snapshot.actual?.totalEnergy {
+            contributors.append(
+                ExplainContributor(
+                    id: "logged",
+                    label: "Logged intake",
+                    value: "\(Int(actual.kilocalories.rounded())) kcal",
+                    detail: "HealthKit actuals"
+                )
+            )
+        }
+
+        if let gap = targets.macroGapKilocalories,
+           gap > MacroGapCalculator.significanceThresholdKcal {
+            contributors.append(
+                ExplainContributor(
+                    id: "gap",
+                    label: "Untracked energy",
+                    value: "+\(Int(gap.rounded())) kcal",
+                    detail: "Alcohol or untracked macros",
+                    state: .depleted
+                )
+            )
+        }
+
+        let summary: String
+        if let gap = targets.macroGapKilocalories,
+           gap > MacroGapCalculator.significanceThresholdKcal {
+            summary = "\(snapshot.phase.label) phase \(snapshot.dayType.rawValue) day. Untracked energy is shown separately from macro targets."
+        } else {
+            summary = "\(snapshot.phase.label) phase \(snapshot.dayType.rawValue) day with \(targets.proteinGrams)g protein."
+        }
 
         return ExplainableMetric(
             domain: "Nutrition",
@@ -121,37 +186,20 @@ enum ExplainableMetricMappers {
             value: formattedCalories,
             unit: "kcal",
             state: .ready,
-            summary: "\(phase.label) phase \(targets.dayType) day with \(targets.proteinGrams)g protein.",
-            contributors: [
-                ExplainContributor(
-                    id: "protein",
-                    label: "Protein floor",
-                    value: "\(targets.proteinGrams) g",
-                    detail: "2.0 g/kg"
-                ),
-                ExplainContributor(
-                    id: "carbs",
-                    label: "Carbohydrates",
-                    value: "\(targets.carbohydrateGrams) g",
-                    detail: targets.dayType == "training" ? "Training day share" : "Rest day share"
-                ),
-                ExplainContributor(
-                    id: "fat",
-                    label: "Fat",
-                    value: "\(targets.fatGrams) g",
-                    detail: "Remaining calories"
-                ),
-                ExplainContributor(
-                    id: "phase",
-                    label: "Phase",
-                    value: phase.label,
-                    detail: phaseAdjustmentDetail(for: phase)
-                ),
-            ],
+            summary: summary,
+            contributors: contributors,
             citation: ExplainCitation(id: "ev-energy-balance", label: "Energy balance"),
             coachPromptSeed: "Why is my calorie target \(formattedCalories) kcal today?",
             isCoachHandoffEnabled: coachAvailable
         )
+    }
+
+    private static func dayTypeDetail(_ dayType: NutritionDayType) -> String {
+        switch dayType {
+        case .training: "Training day share"
+        case .rest: "Rest day share"
+        case .deload: "Deload day share"
+        }
     }
 
     private static func contributor(id: String, label: String, z: Double?) -> ExplainContributor {

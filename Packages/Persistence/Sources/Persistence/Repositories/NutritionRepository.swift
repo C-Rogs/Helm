@@ -34,6 +34,17 @@ public struct NutritionRepository: Sendable {
         }
     }
 
+    public func fetchRange(from startDay: HelmDay, through endDay: HelmDay) throws -> [NutritionDay] {
+        try pool.read { db in
+            let records = try NutritionDayRecord
+                .filter(Column("helm_day") >= HelmDayColumn.encode(startDay))
+                .filter(Column("helm_day") <= HelmDayColumn.encode(endDay))
+                .order(Column("helm_day"))
+                .fetchAll(db)
+            return try records.map { try $0.toValue() }
+        }
+    }
+
     public func upsertMeal(_ meal: MealRecord) throws {
         try pool.write { db in
             try MealRow(meal: meal).save(db)

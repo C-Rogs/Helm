@@ -1,8 +1,8 @@
 import Core
 import DesignSystem
+import Foundation
 import HealthKitIngest
 import NutritionKit
-import Persistence
 import ReadinessKit
 import SwiftUI
 
@@ -10,14 +10,13 @@ struct DashboardView: View {
     private var readinessService: ReadinessService { ReadinessBootstrap.readinessService }
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
     private var briefService: BriefService { BriefBootstrap.briefService }
+    private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
     @Bindable private var chatController = ChatBootstrap.controller
     private var thresholdInsightService: ThresholdInsightService { ProactiveBootstrap.thresholdInsightService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
     @State private var contributorDetailsVisible = true
-    @State private var trainingPhase: TrainingPhase = .maintain
-    @State private var bodyMassKg: Double?
 
     private var today: HelmDay {
         HelmDay.day(for: .now, calendar: .current)
@@ -49,16 +48,21 @@ struct DashboardView: View {
             .task {
                 await readinessService.refresh()
                 await prescriptionService.refresh(readiness: readinessService.state.score)
+                await nutritionService.refresh(
+                    prescriptionSummary: prescriptionService.state.summary
+                )
                 await briefService.refresh(
                     readiness: readinessService.state.score,
                     prescriptionSummary: prescriptionService.state.summary
                 )
-                await loadNutritionContext()
                 await ProactiveBootstrap.refreshThresholdInsights()
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
                     await prescriptionService.refresh(readiness: newState.score)
+                    await nutritionService.refresh(
+                        prescriptionSummary: prescriptionService.state.summary
+                    )
                     await briefService.refresh(
                         readiness: newState.score,
                         prescriptionSummary: prescriptionService.state.summary
@@ -68,6 +72,7 @@ struct DashboardView: View {
             }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
+                    await nutritionService.refresh(prescriptionSummary: newState.summary)
                     await briefService.refresh(
                         readiness: readinessService.state.score,
                         prescriptionSummary: newState.summary
@@ -447,49 +452,83 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var nutritionTargetsCard: some View {
-        let isTrainingDay = prescriptionService.state.summary != nil
-        let dayType: NutritionDayType = isTrainingDay ? .training : .rest
-        let targets = NutritionKit.targets(
-            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType),
-            phase: PhaseGoal(phase: trainingPhase),
-            trend: NutritionTrendState()
-        ).summary
-
-        Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                Text("Nutrition targets")
-                    .helmType(.label)
-
-                HStack(alignment: .firstTextBaseline) {
-                    Text("\(targets.caloriesKcal)")
-                        .helmType(.bigNumber)
-                    Text("kcal")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                    Spacer()
-                    Text(targets.dayType.capitalized)
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                }
-
-                HStack(spacing: HelmSpacing.md) {
-                    nutritionMacroChip("P", grams: targets.proteinGrams)
-                    nutritionMacroChip("C", grams: targets.carbohydrateGrams)
-                    nutritionMacroChip("F", grams: targets.fatGrams)
+        switch nutritionService.state {
+        case .loading:
+            nutritionCardShell {
+                Text("Loading nutrition…")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        case let .ready(snapshot):
+            NavigationLink {
+                NutritionView()
+            } label: {
+                nutritionCardShell {
+                    compactNutritionContent(snapshot: snapshot)
                 }
             }
+            .buttonStyle(.plain)
+            .explainable(
+                ExplainableMetricMappers.nutrition(
+                    snapshot,
+                    coachAvailable: chatController.isCoachAvailable
+                ),
+                onAskCoach: chatController.requestCoachHandoff(prompt:)
+            )
         }
-        .explainable(
-            ExplainableMetricMappers.nutrition(
-                targets,
-                phase: trainingPhase,
-                coachAvailable: chatController.isCoachAvailable
-            ),
-            onAskCoach: chatController.requestCoachHandoff(prompt:)
-        )
     }
 
-    private func nutritionMacroChip(_ label: String, grams: Int) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text("\(grams)g")
+    private func nutritionCardShell<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                HStack {
+                    Text("Nutrition")
+                        .helmType(.label)
+                    Spacer()
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.semibold))
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+                content()
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func compactNutritionContent(snapshot: NutritionDaySnapshot) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text("\(snapshot.targets.caloriesKcal)")
+                .helmType(.bigNumber)
+            Text("kcal target")
+                .helmType(.body, color: HelmColor.fgMuted)
+            Spacer()
+            Text(snapshot.dayType.rawValue.capitalized)
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+        }
+
+        if let actualCalories = snapshot.actual?.totalEnergy.map({ Int($0.kilocalories.rounded()) }) {
+            Text("\(actualCalories) kcal logged")
+                .helmType(.body, color: HelmColor.fgSecondary)
+        } else {
+            Text("No intake logged yet")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+
+        HStack(spacing: HelmSpacing.md) {
+            nutritionMacroChip("P", actual: snapshot.actual?.totalProteinGrams, target: snapshot.targets.proteinGrams)
+            nutritionMacroChip("C", actual: snapshot.actual?.totalCarbohydrateGrams, target: snapshot.targets.carbohydrateGrams)
+            nutritionMacroChip("F", actual: snapshot.actual?.totalFatGrams, target: snapshot.targets.fatGrams)
+        }
+
+        if let gap = snapshot.targets.macroGapKilocalories,
+           gap > MacroGapCalculator.significanceThresholdKcal {
+            NutritionAlcoholGapRow(gapKilocalories: gap)
+        }
+    }
+
+    private func nutritionMacroChip(_ label: String, actual: Double?, target: Int) -> some View {
+        let actualGrams = actual.map { Int($0.rounded()) }
+        return VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(actualGrams.map { "\($0)/\(target)g" } ?? "\(target)g")
                 .helmType(.number)
             Text(label)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
@@ -500,22 +539,6 @@ struct DashboardView: View {
     private func estimatedBaselineSets(for summary: PrescribedSessionSummary) -> Int? {
         guard summary.readinessAdjusted else { return summary.totalSets }
         return summary.totalSets + 4
-    }
-
-    private func loadNutritionContext() async {
-        let persistence = PersistenceBootstrap.persistenceStore
-        do {
-            let settings = try persistence.trainingPlan.load()
-            trainingPhase = settings.phaseGoal.phase
-            let latestBody = try persistence.bodyComposition.fetchLatest(
-                onOrBefore: today,
-                limit: 1
-            ).first
-            bodyMassKg = latestBody?.mass.kilograms
-        } catch {
-            trainingPhase = .maintain
-            bodyMassKg = nil
-        }
     }
 }
 
