@@ -59,7 +59,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M9.3 Photo-to-macro | done | 2026-07-23 | 987ab04 |
 | M10.1 Trends charts | done | 2026-07-23 | 2745fd6 | Five chart cards on Trends tab with paginated repository queries, ArcGauge for volume/energy, state-ramp line charts, fixture previews. |
 | M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
-| M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 6f47be0 |
+| M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 8184f95 | ExportKit byte-compatible schema-v2 JSON; Settings export/copy/share; HelmShare extension imports via app group. |
 | M11.2 Sharing via Coacher (later, optional) | not started | | | |
 
 ## Device Test Gates

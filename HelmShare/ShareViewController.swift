@@ -16,7 +16,7 @@ final class ShareViewController: UIViewController {
         view.addSubview(spinner)
         NSLayoutConstraint.activate([
             spinner.centerXAnchor.constraint(equalTo: view.centerXAnchor),
-            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor),
+            spinner.centerYAnchor.constraint(equalTo: view.centerYAnchor)
         ])
         spinner.startAnimating()
     }
@@ -65,7 +65,7 @@ final class ShareViewController: UIViewController {
             UTType.json.identifier,
             UTType.plainText.identifier,
             UTType.fileURL.identifier,
-            "public.data",
+            "public.data"
         ]
         for preferred in preferredTypes where !typeIdentifiers.contains(preferred) {
             typeIdentifiers.append(preferred)
