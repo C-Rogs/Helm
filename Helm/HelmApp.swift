@@ -23,6 +23,7 @@ struct HelmApp: App {
             CoachBootstrap.start()
             ChatBootstrap.start()
             BriefBootstrap.start()
+            ProactiveBootstrap.start()
         }
     }
 

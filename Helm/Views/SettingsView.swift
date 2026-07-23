@@ -22,6 +22,7 @@ struct SettingsView: View {
 
                 Section("Feedback") {
                     Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
+                    Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
                 }
 
                 Section("Setup") {
@@ -48,7 +49,7 @@ struct SettingsView: View {
                         ShortcutsOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Shortcuts Setup")
                     }
-                    NavigationLink("Morning Brief Automation") {
+                    NavigationLink("Proactive Notifications") {
                         MorningBriefAutomationGuideView()
                     }
                 }

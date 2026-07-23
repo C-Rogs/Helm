@@ -52,6 +52,10 @@ public final class HelmThemeCoordinator {
         didSet { persist() }
     }
 
+    public var thresholdInsightHapticsEnabled: Bool {
+        didSet { persist() }
+    }
+
     public private(set) var activePalette: HelmPalette = .dark
 
     private let defaults: UserDefaults
@@ -67,6 +71,11 @@ public final class HelmThemeCoordinator {
         } else {
             hapticsEnabled = defaults.bool(forKey: Keys.hapticsEnabled)
         }
+        if defaults.object(forKey: Keys.thresholdInsightHapticsEnabled) == nil {
+            thresholdInsightHapticsEnabled = false
+        } else {
+            thresholdInsightHapticsEnabled = defaults.bool(forKey: Keys.thresholdInsightHapticsEnabled)
+        }
     }
 
     public func update(colorScheme: ColorScheme) {
@@ -79,12 +88,14 @@ public final class HelmThemeCoordinator {
         defaults.set(themeMode.rawValue, forKey: Keys.themeMode)
         defaults.set(skin.rawValue, forKey: Keys.skin)
         defaults.set(hapticsEnabled, forKey: Keys.hapticsEnabled)
+        defaults.set(thresholdInsightHapticsEnabled, forKey: Keys.thresholdInsightHapticsEnabled)
     }
 
     private enum Keys {
         static let themeMode = "helm.themeMode"
         static let skin = "helm.skin"
         static let hapticsEnabled = "helm.hapticsEnabled"
+        static let thresholdInsightHapticsEnabled = "helm.thresholdInsightHapticsEnabled"
     }
 }
 

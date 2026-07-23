@@ -13,6 +13,7 @@ enum PlanBootstrap {
         Task(priority: .userInitiated) {
             let readiness = ReadinessBootstrap.readinessService.state.score
             await prescriptionService.refresh(readiness: readiness)
+            await ProactiveBootstrap.refreshScheduling()
         }
     }
 
@@ -21,6 +22,7 @@ enum PlanBootstrap {
         Task {
             let readiness = ReadinessBootstrap.readinessService.state.score
             await prescriptionService.refresh(readiness: readiness)
+            await ProactiveBootstrap.refreshScheduling()
         }
     }
 }

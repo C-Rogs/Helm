@@ -20,11 +20,11 @@ struct ShortcutsOnboardingStepView: View {
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                Text("Helm will appear in Shortcuts after the morning-brief automation feature ships.")
+                Text("Helm is available in Shortcuts. Set up a morning automation so your brief generates when you dismiss your alarm or unlock your phone.")
                     .font(HelmTypography.body)
                     .foregroundStyle(HelmColor.fgSecondary)
 
-                Text("For now, open Helm each morning for your brief on the Dashboard. A setup guide is in Settings under Morning Brief Automation.")
+                Text("Pre-workout and post-workout notifications work automatically once notifications are enabled.")
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgMuted)
 

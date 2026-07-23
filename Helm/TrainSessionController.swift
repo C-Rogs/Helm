@@ -170,11 +170,18 @@ final class TrainSessionController {
             exerciseTargets = [:]
             resetCoachSessionState()
             await refreshMetadata()
-                if let finishedID {
+            if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
+                    await ProactiveBootstrap.notificationScheduler.postPostWorkoutSummary(
+                        session: session,
+                        personalRecords: records
+                    )
+                    await ProactiveBootstrap.notificationScheduler.cancelPreWorkoutPrime(
+                        for: HelmDay.day(for: .now, calendar: .current)
+                    )
                     if records.isEmpty {
                         WorkoutHapticCoordinator.playSessionFinished()
                     } else {

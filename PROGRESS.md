@@ -51,7 +51,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M6.3 Morning brief on open | done | 2026-07-23 | 2c4423f | Generate-on-open brief with engine snapshot + coach narration; BriefCard on Dashboard; daily_brief v9 persistence; fingerprint cache skips regen unless inputs change. Interim NutritionTargetComposer until M9.1. |
 | M6.4 Onboarding assembly | done | 2026-07-23 | c28c464 | First-run flow: HealthKit presence check, notifications, Gemini key, training plan, backfill progress, Shortcuts pointer. Launch gate via AppRootView; Setup section in Settings for re-entry. HealthKitDataPresenceChecker + 2 tests. |
 | M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 31fda8f |
-| M7.2 Notification triggers + Shortcuts guide | not started | | | |
+| M7.2 Notification triggers + Shortcuts guide | done | 2026-07-23 | 3325983 | Pre/post notification planners + snapshot tests; pre-workout scheduler from session-window heuristic; post-workout on finish; threshold insights in-app (silent); Proactive Notifications guide + onboarding copy update. |
 | M8.1 Watch workout session | done | 2026-07-23 | c8f045d | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
 | M8.2 Phone observation + readiness complication | not started | | | |
 | M9.1 NutritionKit engine (pure) | not started | | | |
