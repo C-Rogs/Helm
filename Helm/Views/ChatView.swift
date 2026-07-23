@@ -52,6 +52,10 @@ struct ChatView: View {
             .navigationTitle("Chat")
             .onAppear {
                 Task { await controller.onAppear() }
+                controller.consumeHandoffPromptIfNeeded()
+            }
+            .onChange(of: controller.handoffGeneration) { _, _ in
+                controller.consumeHandoffPromptIfNeeded()
             }
             .onDisappear {
                 controller.onDisappear()

@@ -11,6 +11,7 @@ enum AppTab: Hashable {
 
 struct RootTabView: View {
     @State private var selectedTab: AppTab = .dashboard
+    @Bindable private var chatController = ChatBootstrap.controller
 
     var body: some View {
         TabView(selection: $selectedTab) {
@@ -35,6 +36,10 @@ struct RootTabView: View {
         .onChange(of: selectedTab) { oldValue, newValue in
             guard oldValue != newValue else { return }
             HapticEngine.shared.play(.selection)
+        }
+        .onChange(of: chatController.handoffGeneration) { _, _ in
+            guard chatController.pendingHandoffPrompt != nil else { return }
+            selectedTab = .chat
         }
     }
 }

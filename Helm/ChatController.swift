@@ -16,6 +16,8 @@ final class ChatController {
     private(set) var degradedState: CoachDegradedState?
     private(set) var isCoachAvailable = true
     private(set) var lastTurnError: String?
+    private(set) var handoffGeneration = 0
+    private(set) var pendingHandoffPrompt: String?
 
     private let persistence: PersistenceStore
     private let providerPreferences: ProviderPreferencesStore
@@ -79,6 +81,17 @@ final class ChatController {
             isStreaming = false
             streamingText = nil
         }
+    }
+
+    func requestCoachHandoff(prompt: String) {
+        pendingHandoffPrompt = prompt
+        handoffGeneration += 1
+    }
+
+    func consumeHandoffPromptIfNeeded() {
+        guard let prompt = pendingHandoffPrompt else { return }
+        pendingHandoffPrompt = nil
+        draftText = prompt
     }
 
     private func sendMessage(_ text: String) async {

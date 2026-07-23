@@ -1,6 +1,7 @@
 import Core
 import DesignSystem
 import HealthKitIngest
+import Persistence
 import ReadinessKit
 import SwiftUI
 
@@ -8,10 +9,13 @@ struct DashboardView: View {
     private var readinessService: ReadinessService { ReadinessBootstrap.readinessService }
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
     private var briefService: BriefService { BriefBootstrap.briefService }
+    @Bindable private var chatController = ChatBootstrap.controller
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
     @State private var contributorDetailsVisible = true
+    @State private var trainingPhase: TrainingPhase = .maintain
+    @State private var bodyMassKg: Double?
 
     private var today: HelmDay {
         HelmDay.day(for: .now, calendar: .current)
@@ -25,8 +29,10 @@ struct DashboardView: View {
                     briefCard
                     readinessCard
                     prescriptionCard
+                    nutritionTargetsCard
 
                     Button {
+                        chatController.requestCoachHandoff(prompt: "What should I focus on today?")
                     } label: {
                         Label("Ask Coach", systemImage: "bubble.left.and.bubble.right")
                     }
@@ -44,6 +50,7 @@ struct DashboardView: View {
                     readiness: readinessService.state.score,
                     prescriptionSummary: prescriptionService.state.summary
                 )
+                await loadNutritionContext()
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
@@ -123,6 +130,14 @@ struct DashboardView: View {
                         Text(summary.phase.label)
                             .helmType(.monoTag, color: HelmColor.fgMuted)
                     }
+                    .explainable(
+                        ExplainableMetricMappers.prescriptionVolume(
+                            summary,
+                            baselineSets: estimatedBaselineSets(for: summary),
+                            coachAvailable: chatController.isCoachAvailable
+                        ),
+                        onAskCoach: chatController.requestCoachHandoff(prompt:)
+                    )
                 }
             }
         }
@@ -244,6 +259,13 @@ struct DashboardView: View {
                 }
                 .frame(maxWidth: 220)
                 .frame(maxWidth: .infinity)
+                .explainable(
+                    ExplainableMetricMappers.readiness(
+                        score,
+                        coachAvailable: chatController.isCoachAvailable
+                    ),
+                    onAskCoach: chatController.requestCoachHandoff(prompt:)
+                )
                 .onAppear {
                     contributorDetailsVisible = !shouldReveal
                 }
@@ -409,6 +431,78 @@ struct DashboardView: View {
         if z > 0.75 { return "Above baseline" }
         if z < -0.75 { return "Below baseline" }
         return "Near baseline"
+    }
+
+    @ViewBuilder
+    private var nutritionTargetsCard: some View {
+        let isTrainingDay = prescriptionService.state.summary != nil
+        let targets = NutritionTargetComposer.compose(
+            phase: trainingPhase,
+            bodyMassKg: bodyMassKg,
+            isTrainingDay: isTrainingDay
+        )
+
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                Text("Nutrition targets")
+                    .helmType(.label)
+
+                HStack(alignment: .firstTextBaseline) {
+                    Text("\(targets.caloriesKcal)")
+                        .helmType(.bigNumber)
+                    Text("kcal")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                    Spacer()
+                    Text(targets.dayType.capitalized)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                }
+
+                HStack(spacing: HelmSpacing.md) {
+                    nutritionMacroChip("P", grams: targets.proteinGrams)
+                    nutritionMacroChip("C", grams: targets.carbohydrateGrams)
+                    nutritionMacroChip("F", grams: targets.fatGrams)
+                }
+            }
+        }
+        .explainable(
+            ExplainableMetricMappers.nutrition(
+                targets,
+                phase: trainingPhase,
+                coachAvailable: chatController.isCoachAvailable
+            ),
+            onAskCoach: chatController.requestCoachHandoff(prompt:)
+        )
+    }
+
+    private func nutritionMacroChip(_ label: String, grams: Int) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text("\(grams)g")
+                .helmType(.number)
+            Text(label)
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func estimatedBaselineSets(for summary: PrescribedSessionSummary) -> Int? {
+        guard summary.readinessAdjusted else { return summary.totalSets }
+        return summary.totalSets + 4
+    }
+
+    private func loadNutritionContext() async {
+        let persistence = PersistenceBootstrap.persistenceStore
+        do {
+            let settings = try persistence.trainingPlan.load()
+            trainingPhase = settings.phaseGoal.phase
+            let latestBody = try persistence.bodyComposition.fetchLatest(
+                onOrBefore: today,
+                limit: 1
+            ).first
+            bodyMassKg = latestBody?.mass.kilograms
+        } catch {
+            trainingPhase = .maintain
+            bodyMassKg = nil
+        }
     }
 }
 
