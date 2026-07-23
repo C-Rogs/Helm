@@ -7,81 +7,105 @@ import SwiftUI
 struct PhaseGoalSettingsView: View {
     var embedInForm: Bool = true
     var saveButtonTitle: String = "Save & Re-plan"
+    var showsInlineSaveButton: Bool = true
     var onSaved: (() -> Void)?
+    var registerActions: ((PhaseGoalSettingsActions) -> Void)?
 
     @State private var settings = StoredTrainingPlanSettings.default
     @State private var weeklyRateText = ""
     @State private var emphasisText = ""
     @State private var saveMessage: String?
     @State private var isSaving = false
+    @State private var isShowingCalculator = false
+    @State private var loadedSettings = StoredTrainingPlanSettings.default
 
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
     var body: some View {
-        Group {
-            if embedInForm {
-                Form { settingsContent }
-            } else {
-                settingsContent
+        Form { settingsContent }
+            .navigationTitle("Training Plan")
+            .helmScreenBackground()
+            .task { await load() }
+            .onAppear {
+                registerActions?(PhaseGoalSettingsActions(
+                    saveIfNeeded: { await saveIfNeeded() },
+                    isDirty: { isDirty }
+                ))
             }
-        }
-        .navigationTitle("Training Plan")
-        .helmScreenBackground()
-        .task { await load() }
+            .sheet(isPresented: $isShowingCalculator) {
+                WeeklyRateCalculatorSheet(initialPhase: settings.phaseGoal.phase) { rate, phase in
+                    settings.phaseGoal = PhaseGoal(
+                        phase: phase,
+                        weeklyRateKg: rate,
+                        targetMass: settings.phaseGoal.targetMass,
+                        emphasis: settings.phaseGoal.emphasis
+                    )
+                    weeklyRateText = String(format: "%.2f", rate)
+                    HapticEngine.shared.play(.selection)
+                }
+            }
     }
 
     @ViewBuilder
     private var settingsContent: some View {
-        Group {
-            Section {
-                Text("Changing phase re-plans today's session and future volume targets.")
-                    .font(HelmType.body.font)
-                    .foregroundStyle(HelmColor.fgSecondary)
+        Section {
+            Text("Changing phase re-plans today's session and future volume targets. Weekly rate is optional; you can set it later in Settings.")
+                .font(HelmType.body.font)
+                .foregroundStyle(HelmColor.fgSecondary)
+        }
+
+        Section("Phase") {
+            Picker("Phase", selection: phaseBinding) {
+                ForEach(TrainingPhase.allCases, id: \.self) { phase in
+                    Text(phase.label).tag(phase)
+                }
+            }
+            .onChange(of: settings.phaseGoal.phase) { _, _ in
+                HapticEngine.shared.play(.phaseChange)
             }
 
-            Section("Phase") {
-                Picker("Phase", selection: phaseBinding) {
-                    ForEach(TrainingPhase.allCases, id: \.self) { phase in
-                        Text(phase.label).tag(phase)
-                    }
-                }
-                .onChange(of: settings.phaseGoal.phase) { _, _ in
-                    HapticEngine.shared.play(.phaseChange)
-                }
-
-                if settings.phaseGoal.phase != .maintain {
+            if settings.phaseGoal.phase != .maintain {
+                HStack {
                     TextField("Weekly rate (kg)", text: $weeklyRateText)
                         .keyboardType(.decimalPad)
                         .onChange(of: weeklyRateText) { _, _ in syncWeeklyRate() }
+                    Button {
+                        isShowingCalculator = true
+                    } label: {
+                        Image(systemName: "function")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Open rate calculator")
                 }
-
-                TextField("Emphasis", text: $emphasisText)
-                    .onChange(of: emphasisText) { _, _ in syncEmphasis() }
+                Text(WeeklyRateCalculator.safeRangeHint(for: settings.phaseGoal.phase))
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
             }
 
-            Section("Experience") {
-                Picker("Training experience", selection: $settings.experienceRaw) {
-                    Text("Novice").tag("novice")
-                    Text("Intermediate").tag("intermediate")
-                    Text("Advanced").tag("advanced")
-                }
-                .onChange(of: settings.experienceRaw) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-            }
+            TextField("Emphasis", text: $emphasisText)
+                .onChange(of: emphasisText) { _, _ in syncEmphasis() }
+        }
 
-            if let saveMessage {
-                Section {
-                    Text(saveMessage)
-                        .foregroundStyle(HelmColor.fgSecondary)
-                }
+        Section("Experience") {
+            Picker("Training experience", selection: $settings.experienceRaw) {
+                Text("Novice").tag("novice")
+                Text("Intermediate").tag("intermediate")
+                Text("Advanced").tag("advanced")
             }
+            .onChange(of: settings.experienceRaw) { _, _ in
+                HapticEngine.shared.play(.selection)
+            }
+        }
 
-            if embedInForm {
-                Section {
-                    saveButton
-                }
-            } else {
+        if let saveMessage {
+            Section {
+                Text(saveMessage)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
+        }
+
+        if showsInlineSaveButton {
+            Section {
                 saveButton
             }
         }
@@ -89,19 +113,11 @@ struct PhaseGoalSettingsView: View {
 
     @ViewBuilder
     private var saveButton: some View {
-        if embedInForm {
-            Button(isSaving ? "Saving…" : saveButtonTitle) {
-                Task { await save() }
-            }
-            .buttonStyle(.borderless)
-            .disabled(isSaving)
-        } else {
-            Button(isSaving ? "Saving…" : saveButtonTitle) {
-                Task { await save() }
-            }
-            .buttonStyle(.helmPrimary)
-            .disabled(isSaving)
+        Button(isSaving ? "Saving…" : saveButtonTitle) {
+            Task { await save() }
         }
+        .buttonStyle(.borderless)
+        .disabled(isSaving)
     }
 
     private var phaseBinding: Binding<TrainingPhase> {
@@ -118,10 +134,24 @@ struct PhaseGoalSettingsView: View {
         )
     }
 
+    var isDirty: Bool {
+        settings != loadedSettings
+            || weeklyRateText != loadedWeeklyRateText
+            || emphasisText != loadedEmphasisText
+    }
+
+    @MainActor
+    func saveIfNeeded() async -> Bool {
+        guard isDirty else { return true }
+        await save()
+        return saveMessage?.hasPrefix("Saved") == true
+    }
+
     @MainActor
     private func load() async {
         do {
             settings = try await prescriptionService.currentTrainingPlan()
+            loadedSettings = settings
             if let rate = settings.phaseGoal.weeklyRateKg {
                 weeklyRateText = String(rate)
             } else {
@@ -142,6 +172,7 @@ struct PhaseGoalSettingsView: View {
 
         do {
             try await prescriptionService.saveTrainingPlan(settings)
+            loadedSettings = settings
             HapticEngine.shared.play(.phaseChange)
             saveMessage = "Saved. Today's prescription was re-planned."
             PlanBootstrap.refreshPrescription()
@@ -149,6 +180,17 @@ struct PhaseGoalSettingsView: View {
         } catch {
             saveMessage = error.localizedDescription
         }
+    }
+
+    private var loadedWeeklyRateText: String {
+        if let rate = loadedSettings.phaseGoal.weeklyRateKg {
+            return String(rate)
+        }
+        return ""
+    }
+
+    private var loadedEmphasisText: String {
+        loadedSettings.phaseGoal.emphasis ?? ""
     }
 
     private func syncWeeklyRate() {
@@ -171,6 +213,11 @@ struct PhaseGoalSettingsView: View {
             emphasis: trimmed.isEmpty ? nil : trimmed
         )
     }
+}
+
+struct PhaseGoalSettingsActions {
+    let saveIfNeeded: () async -> Bool
+    let isDirty: () -> Bool
 }
 
 private extension TrainingPhase {

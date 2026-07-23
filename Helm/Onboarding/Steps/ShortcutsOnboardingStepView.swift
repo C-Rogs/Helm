@@ -15,20 +15,21 @@ struct ShortcutsOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             primaryTitle: "Get started",
+            skipTitle: nil,
             onPrimary: onContinue,
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                Text("Create a personal automation in Shortcuts to generate your morning brief when you dismiss your alarm or unlock your phone.")
+                Text("Helm will appear in Shortcuts after the morning-brief automation feature ships.")
                     .font(HelmTypography.body)
                     .foregroundStyle(HelmColor.fgSecondary)
 
-                Text("A full setup guide will appear in Settings soon. For now, open Shortcuts and add the Helm brief action when you are ready.")
+                Text("For now, open Helm each morning for your brief on the Dashboard. A setup guide is in Settings under Morning Brief Automation.")
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgMuted)
 
-                Button("Open Shortcuts") {
-                    openShortcuts()
+                NavigationLink("View setup guide") {
+                    MorningBriefAutomationGuideView()
                 }
                 .buttonStyle(.helmSecondary)
             }
@@ -36,15 +37,11 @@ struct ShortcutsOnboardingStepView: View {
             .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
         }
     }
-
-    private func openShortcuts() {
-        guard let url = URL(string: "shortcuts://") else { return }
-        UIApplication.shared.open(url)
-        HapticEngine.shared.play(.selection)
-    }
 }
 
 #Preview {
-    ShortcutsOnboardingStepView()
-        .helmTheme()
+    NavigationStack {
+        ShortcutsOnboardingStepView()
+    }
+    .helmTheme()
 }

@@ -10,20 +10,25 @@ struct ChatView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if let degradedState = controller.degradedState, !controller.isCoachAvailable {
+                if let degradedState = controller.degradedState {
                     offlineBanner(degradedState)
                 }
 
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
-                            if controller.messages.isEmpty, !controller.isStreaming {
+                            if controller.messages.isEmpty, !controller.isStreaming, controller.lastTurnError == nil {
                                 emptyState
                             }
 
                             ForEach(controller.messages) { message in
                                 messageBubble(message)
                                     .id(message.id)
+                            }
+
+                            if let lastTurnError = controller.lastTurnError {
+                                errorBubble(lastTurnError)
+                                    .id("last-turn-error")
                             }
 
                             if controller.isStreaming, let streamingText = controller.streamingText {
@@ -111,6 +116,21 @@ struct ChatView: View {
                 Text(text.isEmpty && isStreaming ? "…" : text)
                     .helmType(.body)
                     .foregroundStyle(HelmColor.fg)
+            }
+            .padding(.horizontal, HelmSpacing.md)
+            .padding(.vertical, HelmSpacing.sm)
+            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            Spacer(minLength: HelmSpacing.xl)
+        }
+    }
+
+    private func errorBubble(_ message: String) -> some View {
+        HStack {
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text("COACH")
+                    .helmType(.monoTag, color: HelmColor.depleted)
+                Text("Couldn't respond. \(message)")
+                    .helmType(.body, color: HelmColor.depleted)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)

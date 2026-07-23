@@ -1,4 +1,7 @@
 import Foundation
+#if canImport(Diagnostics)
+import Diagnostics
+#endif
 import OSLog
 
 private let coachLLMLog = Logger(subsystem: "com.cameronro.helm", category: "CoachLLM")
@@ -110,11 +113,22 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
 
         let responseData = try await httpClient.generateContent(request)
         let jsonText = try GeminiSSEParser.responseText(from: responseData)
-        let payload = try CoachStructuredOutputDecoder.decode(
-            type,
-            from: jsonText,
-            expectedSchema: expectedSchema
-        )
+        let payload: Payload
+        do {
+            payload = try CoachStructuredOutputDecoder.decode(
+                type,
+                from: jsonText,
+                expectedSchema: expectedSchema
+            )
+        } catch {
+            await logStructuredDecodeFailure(
+                requestID: requestID,
+                promptVersion: promptVersion,
+                error: error,
+                jsonSnippet: jsonText
+            )
+            throw error
+        }
 
         coachLLMLog.debug("Gemini generate end requestID=\(requestID.uuidString, privacy: .public)")
         return CoachStructuredArtefact(
@@ -201,5 +215,30 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
         }
         return key
+    }
+
+    private func logStructuredDecodeFailure(
+        requestID: UUID,
+        promptVersion: CoachPromptVersion,
+        error: Error,
+        jsonSnippet: String
+    ) async {
+        let snippet = String(jsonSnippet.prefix(240))
+        coachLLMLog.error(
+            "Gemini structured decode failed requestID=\(requestID.uuidString, privacy: .public) prompt=\(promptVersion.rawValue, privacy: .public)"
+        )
+        #if canImport(Diagnostics)
+        await DiagnosticsLog.shared.record(
+            category: .coachLLM,
+            level: .error,
+            message: "Structured output decode failed",
+            context: [
+                "requestID": requestID.uuidString,
+                "promptVersion": promptVersion.rawValue,
+                "error": String(describing: type(of: error)),
+                "jsonSnippet": snippet
+            ]
+        )
+        #endif
     }
 }

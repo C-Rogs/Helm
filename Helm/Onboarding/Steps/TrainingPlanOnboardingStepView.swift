@@ -8,6 +8,8 @@ struct TrainingPlanOnboardingStepView: View {
     var onContinue: () -> Void = {}
     var onSkip: () -> Void = {}
 
+    @State private var settingsActions: PhaseGoalSettingsActions?
+
     var body: some View {
         OnboardingStepChrome(
             step: .trainingPlan,
@@ -15,13 +17,21 @@ struct TrainingPlanOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             primaryTitle: showsFlowControls ? "Continue" : "Done",
-            onPrimary: onContinue,
+            skipTitle: showsFlowControls ? "Set up later" : nil,
+            onPrimary: {
+                Task {
+                    if let settingsActions {
+                        guard await settingsActions.saveIfNeeded() else { return }
+                    }
+                    onContinue()
+                }
+            },
             onSkip: onSkip
         ) {
             PhaseGoalSettingsView(
-                embedInForm: false,
-                saveButtonTitle: "Save plan",
-                onSaved: showsFlowControls ? onContinue : nil
+                showsInlineSaveButton: false,
+                onSaved: showsFlowControls ? onContinue : nil,
+                registerActions: { settingsActions = $0 }
             )
         }
     }

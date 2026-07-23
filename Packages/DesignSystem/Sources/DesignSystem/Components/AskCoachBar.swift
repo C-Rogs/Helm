@@ -21,20 +21,7 @@ public struct AskCoachBar: View {
     public var body: some View {
         Button(action: action) {
             HStack(spacing: HelmSpacing.sm) {
-                Circle()
-                    .fill(HelmColor.accent)
-                    .frame(width: 10, height: 10)
-                    .scaleEffect(pulse && !reduceMotion ? 1.25 : 1)
-                    .opacity(pulse && !reduceMotion ? 0.65 : 1)
-                    .animation(
-                        reduceMotion ? nil : .easeInOut(duration: 1).repeatForever(autoreverses: true),
-                        value: pulse
-                    )
-
-                if isLoading {
-                    ProgressView()
-                        .tint(HelmColor.accent)
-                }
+                statusIndicator
 
                 Text(prompt)
                     .helmType(.body, color: HelmColor.fg)
@@ -51,15 +38,45 @@ public struct AskCoachBar: View {
         .buttonStyle(.plain)
         .disabled(isLoading)
         .onAppear {
-            pulse = true
+            if !isLoading {
+                pulse = true
+            }
         }
+        .onChange(of: isLoading) { _, loading in
+            pulse = !loading
+        }
+    }
+
+    @ViewBuilder
+    private var statusIndicator: some View {
+        ZStack {
+            if isLoading {
+                ProgressView()
+                    .tint(HelmColor.accent)
+            } else {
+                Circle()
+                    .fill(HelmColor.accent)
+                    .overlay {
+                        Circle()
+                            .fill(HelmColor.accent)
+                            .scaleEffect(pulse && !reduceMotion ? 1.25 : 1)
+                            .opacity(pulse && !reduceMotion ? 0.65 : 1)
+                    }
+                    .animation(
+                        reduceMotion ? nil : .easeInOut(duration: 1).repeatForever(autoreverses: true),
+                        value: pulse
+                    )
+            }
+        }
+        .frame(width: 16, height: 16)
     }
 }
 
 #Preview("Ask coach bar") {
-    VStack {
+    VStack(spacing: HelmSpacing.md) {
         Spacer()
         AskCoachBar(prompt: "Cable fly is taken") {}
+        AskCoachBar(prompt: "Adjusting session…", isLoading: true) {}
             .padding()
     }
     .helmTheme()

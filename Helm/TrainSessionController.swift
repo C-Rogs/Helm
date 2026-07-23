@@ -162,13 +162,19 @@ final class TrainSessionController {
             exerciseTargets = [:]
             resetCoachSessionState()
             await refreshMetadata()
-            if let finishedID {
+                if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
-                    WorkoutHapticCoordinator.playPersonalRecords(records)
+                    if records.isEmpty {
+                        WorkoutHapticCoordinator.playSessionFinished()
+                    } else {
+                        WorkoutHapticCoordinator.playPersonalRecords(records)
+                    }
                     isShowingPersonalRecords = !records.isEmpty
+                } else {
+                    WorkoutHapticCoordinator.playSessionFinished()
                 }
             }
         } catch {
@@ -395,7 +401,7 @@ final class TrainSessionController {
         } catch InSessionCoachError.providerUnavailable(let message) {
             errorMessage = message
         } catch {
-            errorMessage = error.localizedDescription
+            errorMessage = CoachUserFacingError.message(for: error)
         }
     }
 

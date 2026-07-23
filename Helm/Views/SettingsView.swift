@@ -48,6 +48,9 @@ struct SettingsView: View {
                         ShortcutsOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Shortcuts Setup")
                     }
+                    NavigationLink("Morning Brief Automation") {
+                        MorningBriefAutomationGuideView()
+                    }
                 }
 
                 Section {

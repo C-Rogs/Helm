@@ -20,6 +20,10 @@ enum WorkoutHapticCoordinator {
         play(.coachAdjust)
     }
 
+    static func playSessionFinished() {
+        play(.sessionFinished)
+    }
+
     static func playSetCompletion(wasAlreadyCompleted: Bool) {
         guard let pattern = SetCompletionHapticPolicy.pattern(wasAlreadyCompleted: wasAlreadyCompleted) else {
             return

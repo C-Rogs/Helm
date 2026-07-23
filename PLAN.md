@@ -732,6 +732,52 @@ Targeted fixes filed from Cameron's first DT1 session. Build agents implement th
 - **Scope:** Greeting header, band badge + accent stripe, contributor progress bars, secondary Ask Coach button.
 - **Acceptance:** Dashboard renders all readiness states with improved visual hierarchy; no behaviour change to readiness math.
 
+### DT3 fix sections (filed 2026-07-23)
+
+Targeted fixes from Cameron's DT3 session.
+
+#### F-DT3.1 - Onboarding permission-aware UI
+
+- **Depends on:** M6.4, F-DT1.1
+- **Goal:** HealthKit and notification onboarding steps hide redundant connect buttons when already authorized.
+- **Scope:** Gate HealthKit step on `HealthKitIngestStatus.connectionState`; show connected status + refresh; notifications show enabled state or Settings deep link when denied.
+- **Acceptance:** Re-entry from Settings Setup shows correct states; build + tests pass.
+
+#### F-DT3.2 - Training plan onboarding UX
+
+- **Depends on:** M5.6, M6.4
+- **Goal:** Step 4 usable when weekly kg rate unknown.
+- **Scope:** Weekly rate calculator sheet; "Set up later" skip; Form layout fix; Continue saves if dirty.
+- **Acceptance:** Calculator unit test; empty weekly rate allowed; onboarding skip path works.
+
+#### F-DT3.3 - Chat + in-session coach reliability
+
+- **Depends on:** M4.5, M6.2
+- **Goal:** Coach failures surface readable errors; chat never silently drops a turn.
+- **Scope:** `LocalizedError` on coach errors; chat error banner + inline bubble; empty-stream failure; JSON sanitizer; structured-output decode diagnostics.
+- **Acceptance:** CoachLLM tests pass; chat failure shows user-visible message; no cryptic "error 1".
+
+#### F-DT3.4 - AskCoachBar layout polish
+
+- **Depends on:** M6.2, M0.7
+- **Goal:** Pulse indicator stays anchored during loading.
+- **Scope:** Fixed indicator frame; hide pulse when loading; loading-only ProgressView.
+- **Acceptance:** DesignSystem previews for idle + loading; build clean.
+
+#### F-DT3.5 - Shortcuts honest UX (until M7.1)
+
+- **Depends on:** M6.4
+- **Goal:** Stop promising Shortcuts actions that do not exist yet.
+- **Scope:** Onboarding + Settings placeholder guide for morning brief automation; no fake Helm action copy.
+- **Acceptance:** Grep shows no "Helm brief action" claim; guide renders in Settings.
+
+#### F-DT3.6 - Haptics catch-up
+
+- **Depends on:** F-DESIGN-M3
+- **Goal:** Wire `sessionFinished` on workout finish; rest count-in path verified.
+- **Scope:** `sessionFinished` on finish (PR still wins); rest timer hook unchanged but verified.
+- **Acceptance:** Rest haptic policy tests pass; finish path calls sessionFinished when no PR.
+
 ### DT2 after M3.6 (+ F-DESIGN-M3): the logger, in the gym
 - A full real workout logs cleanly; previous performance auto-fills; the numpad never blanks the screen (the Signal teardown bug).
 - Rest timer: background the app mid-rest and lock the phone; the end-of-rest alert fires while suspended; returning early cancels it and the projection is correct.

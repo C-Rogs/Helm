@@ -15,6 +15,7 @@ final class ChatController {
     private(set) var isStreaming = false
     private(set) var degradedState: CoachDegradedState?
     private(set) var isCoachAvailable = true
+    private(set) var lastTurnError: String?
 
     private let persistence: PersistenceStore
     private let providerPreferences: ProviderPreferencesStore
@@ -99,6 +100,7 @@ final class ChatController {
 
         isCoachAvailable = true
         degradedState = nil
+        lastTurnError = nil
 
         do {
             let userMessage = try persistence.chat.append(
@@ -157,6 +159,10 @@ final class ChatController {
             isStreaming = false
             streamingText = nil
 
+            guard !assembled.isEmpty else {
+                throw CoachStructuredOutputError.emptyResponse
+            }
+
             let assistantMessage = try persistence.chat.append(
                 ChatMessageInsert(
                     role: .assistant,
@@ -177,6 +183,7 @@ final class ChatController {
             isStreaming = false
             streamingText = nil
             degradedState = CoachFailurePolicy.degradedState(for: error)
+            lastTurnError = degradedState?.userMessage
             await logTurn(
                 status: "failed",
                 promptVersion: CoachPromptVersion.chatV1.rawValue,

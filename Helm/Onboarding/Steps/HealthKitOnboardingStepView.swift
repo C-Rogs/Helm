@@ -10,11 +10,16 @@ struct HealthKitOnboardingStepView: View {
     var onSkip: () -> Void = {}
 
     @State private var presence: [HealthKitDataPresence] = []
+    @State private var status = HealthKitIngestStatus.idle
     @State private var isConnecting = false
     @State private var isChecking = false
     @State private var errorMessage: String?
 
     private let presenceChecker = HealthKitDataPresenceChecker()
+
+    private var isConnected: Bool {
+        status.connectionState == .connected
+    }
 
     var body: some View {
         OnboardingStepChrome(
@@ -26,11 +31,15 @@ struct HealthKitOnboardingStepView: View {
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                Button(isConnecting ? "Connecting…" : "Connect Apple Health") {
-                    Task { await connectHealth() }
+                if isConnected {
+                    connectedStatusSection
+                } else {
+                    Button(isConnecting ? "Connecting…" : "Connect Apple Health") {
+                        Task { await connectHealth() }
+                    }
+                    .buttonStyle(.helmPrimary)
+                    .disabled(isConnecting)
                 }
-                .buttonStyle(.helmPrimary)
-                .disabled(isConnecting)
 
                 if isChecking {
                     ProgressView("Checking data…")
@@ -47,7 +56,33 @@ struct HealthKitOnboardingStepView: View {
                 }
             }
         }
-        .task { await refreshPresence() }
+        .task { await refreshAll() }
+    }
+
+    private var connectedStatusSection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HStack {
+                Image(systemName: "checkmark.circle.fill")
+                    .foregroundStyle(HelmColor.ready)
+                Text("Connected to Apple Health")
+                    .font(HelmTypography.body)
+                    .foregroundStyle(HelmColor.fg)
+            }
+
+            if let lastSync = status.lastSyncFinishedAt {
+                Text("Last sync \(lastSync.formatted(date: .abbreviated, time: .shortened))")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
+
+            Button(isConnecting ? "Refreshing…" : "Refresh data") {
+                Task { await refreshData() }
+            }
+            .buttonStyle(.helmSecondary)
+            .disabled(isConnecting)
+        }
+        .padding(HelmSpacing.md)
+        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
     }
 
     private var presenceSection: some View {
@@ -122,10 +157,23 @@ struct HealthKitOnboardingStepView: View {
             HapticEngine.shared.play(.clampRejected)
         }
 
-        await refreshPresence()
+        await refreshAll()
     }
 
-    private func refreshPresence() async {
+    private func refreshData() async {
+        isConnecting = true
+        defer { isConnecting = false }
+
+        let outcome = await HealthKitBootstrap.healthKitIngest.syncNow()
+        await ReadinessBootstrap.readinessService.recomputeAfterIngest(
+            affectedFamilies: outcome.affectedFamilies
+        )
+        HapticEngine.shared.play(.selection)
+        await refreshAll()
+    }
+
+    private func refreshAll() async {
+        status = await HealthKitBootstrap.healthKitIngest.currentStatus()
         isChecking = true
         defer { isChecking = false }
         presence = await presenceChecker.checkAllKinds()

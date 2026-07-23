@@ -7,6 +7,7 @@ struct OnboardingStepChrome<Content: View>: View {
     let totalSteps: Int
     let showsFlowControls: Bool
     let primaryTitle: String
+    let skipTitle: String?
     let onPrimary: () -> Void
     let onSkip: () -> Void
     @ViewBuilder var content: () -> Content
@@ -17,6 +18,7 @@ struct OnboardingStepChrome<Content: View>: View {
         totalSteps: Int,
         showsFlowControls: Bool = true,
         primaryTitle: String = "Continue",
+        skipTitle: String? = "Skip for now",
         onPrimary: @escaping () -> Void,
         onSkip: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
@@ -26,6 +28,7 @@ struct OnboardingStepChrome<Content: View>: View {
         self.totalSteps = totalSteps
         self.showsFlowControls = showsFlowControls
         self.primaryTitle = primaryTitle
+        self.skipTitle = skipTitle
         self.onPrimary = onPrimary
         self.onSkip = onSkip
         self.content = content
@@ -61,8 +64,8 @@ struct OnboardingStepChrome<Content: View>: View {
                         }
                         .buttonStyle(.helmPrimary)
 
-                        if step != .shortcuts {
-                            Button("Skip for now") {
+                        if step != .shortcuts, let skipTitle {
+                            Button(skipTitle) {
                                 HapticEngine.shared.play(.selection)
                                 onSkip()
                             }

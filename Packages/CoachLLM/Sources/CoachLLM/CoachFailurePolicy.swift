@@ -45,6 +45,14 @@ public struct CoachDegradedState: Sendable, Equatable {
 /// Maps provider errors to the engine-only fallback the UI renders when the coach is unavailable.
 public enum CoachFailurePolicy: Sendable {
     public static func degradedState(for error: Error) -> CoachDegradedState {
+        if let structuredError = error as? CoachStructuredOutputError {
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .other,
+                userMessage: CoachUserFacingError.message(for: structuredError)
+            )
+        }
+
         if let providerError = error as? CoachProviderError {
             return degradedState(for: providerError)
         }
@@ -111,7 +119,7 @@ public enum CoachFailurePolicy: Sendable {
             CoachDegradedState(
                 mode: .engineOnly,
                 reason: .other,
-                userMessage: "Coach is unavailable. Numbers and logging still work."
+                userMessage: CoachUserFacingError.message(for: error)
             )
         }
     }
