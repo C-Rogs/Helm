@@ -55,7 +55,10 @@ public struct IngestPersistenceWriter: Sendable {
             try applyBodyMassDelta(delta)
             families.insert(.bodyComposition)
         case .workout:
-            if !delta.addedWorkouts.isEmpty || !delta.deletedSampleIDs.isEmpty {
+            if !delta.trimpByTargetDay.isEmpty {
+                try applyWorkoutTRIMP(delta.trimpByTargetDay)
+                families.insert(.workouts)
+            } else if !delta.addedWorkouts.isEmpty || !delta.deletedSampleIDs.isEmpty {
                 families.insert(.workouts)
             }
         }
@@ -125,6 +128,27 @@ public struct IngestPersistenceWriter: Sendable {
         )
         for record in records {
             try store.bodyComposition.upsert(record)
+        }
+    }
+
+    private func applyWorkoutTRIMP(_ trimpByTargetDay: [HelmDay: Double]) throws {
+        for (targetDay, addedTRIMP) in trimpByTargetDay {
+            let existing = try store.dailyMetrics.fetch(helmDay: targetDay)
+            let mergedTRIMP = (existing?.priorDayTRIMP ?? 0) + addedTRIMP
+            let merged = DailyMetrics(
+                helmDay: targetDay,
+                hrvSDNN: existing?.hrvSDNN,
+                restingHeartRate: existing?.restingHeartRate,
+                respiratoryRate: existing?.respiratoryRate,
+                wristTemperatureDeltaCelsius: existing?.wristTemperatureDeltaCelsius,
+                activeEnergy: existing?.activeEnergy,
+                dietaryEnergy: existing?.dietaryEnergy,
+                dietaryProteinGrams: existing?.dietaryProteinGrams,
+                dietaryCarbohydrateGrams: existing?.dietaryCarbohydrateGrams,
+                dietaryFatGrams: existing?.dietaryFatGrams,
+                priorDayTRIMP: mergedTRIMP
+            )
+            try store.dailyMetrics.upsert(merged)
         }
     }
 

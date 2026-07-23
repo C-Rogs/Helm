@@ -240,12 +240,25 @@ public actor HealthKitIngest {
                 anchor: anchor
             )
 
-            let delta = IngestSampleMapper.delta(
+            var delta = IngestSampleMapper.delta(
                 kind: kind,
                 addedSamples: fetchResult.addedSamples,
                 deletedObjectIDs: fetchResult.deletedObjectIDs,
                 ownBundleID: ownBundleID
             )
+
+            if kind == .workout, !delta.addedWorkouts.isEmpty {
+                let ingester = WorkoutTRIMPIngester(store: store, persistence: persistence)
+                let trimpByTargetDay = try await ingester.trimpByTargetDay(for: delta.addedWorkouts)
+                delta = IngestDelta(
+                    kind: delta.kind,
+                    addedQuantitySamples: delta.addedQuantitySamples,
+                    addedSleepSamples: delta.addedSleepSamples,
+                    addedWorkouts: delta.addedWorkouts,
+                    deletedSampleIDs: delta.deletedSampleIDs,
+                    trimpByTargetDay: trimpByTargetDay
+                )
+            }
 
             let sampleCount = delta.addedQuantitySamples.count
                 + delta.addedSleepSamples.count

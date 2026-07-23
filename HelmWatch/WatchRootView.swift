@@ -4,28 +4,55 @@ import SwiftUI
 struct WatchRootView: View {
     @State private var coordinator = WatchSessionCoordinator(role: .watch)
     @State private var workoutStore = WatchWorkoutSessionStore()
+    @State private var selectedTab = 0
 
     var body: some View {
-        TabView {
+        TabView(selection: $selectedTab) {
             WatchWorkoutView(store: workoutStore)
                 .tabItem {
                     Label("Workout", systemImage: "heart.fill")
                 }
+                .tag(0)
+
+            NavigationStack {
+                WatchBriefView(coordinator: coordinator)
+            }
+            .tabItem {
+                Label("Brief", systemImage: "sun.max.fill")
+            }
+            .tag(1)
 
             syncStatusTab
                 .tabItem {
                     Label("Sync", systemImage: "arrow.triangle.2.circlepath")
                 }
+                .tag(2)
+        }
+        .onOpenURL { url in
+            guard url.absoluteString == WatchSyncPayload.briefDeepLink else { return }
+            selectedTab = 1
+        }
+        .onAppear {
+            coordinator.hydrateFromReceivedApplicationContext()
+        }
+        .onChange(of: workoutStore.heartRateBPM) { _, bpm in
+            guard let bpm else { return }
+            guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
+            let day = HelmDay.day(for: .now, calendar: .current)
+            coordinator.pushLiveHeartRate(Int(bpm.rounded()), helmDay: day)
         }
     }
 
     private var syncStatusTab: some View {
         List {
             Section("Helm") {
-                Text("Watch skeleton")
+                Text("Watch companion")
                     .font(.headline)
                 if let received = coordinator.lastReceived {
                     LabeledContent("Phone day", value: received.helmDay)
+                    if let score = received.readinessScore {
+                        LabeledContent("ARC", value: "\(score)")
+                    }
                     LabeledContent("Sequence", value: "#\(received.sequence)")
                 } else {
                     Text("Waiting for phone context")

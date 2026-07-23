@@ -158,6 +158,13 @@ public final class BriefService {
         }
     }
 
+    public var briefSummaryForWatch: String? {
+        guard case let .ready(model) = state else { return nil }
+        let text = model.narration.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !text.isEmpty else { return nil }
+        return String(text.prefix(180))
+    }
+
     private static func cardModel(from brief: StoredDailyBrief) -> BriefCardModel {
         let citationLabel: String?
         if brief.citationIDs.isEmpty {

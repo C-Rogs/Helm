@@ -142,6 +142,7 @@ targets:
         SKIP_INSTALL: YES
     dependencies:
       - package: Core
+      - sdk: WatchConnectivity.framework
 schemes:
   Helm:
     build:

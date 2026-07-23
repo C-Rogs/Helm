@@ -117,18 +117,22 @@ public struct IngestDelta: Sendable {
     public let addedSleepSamples: [IngestSleepSample]
     public let addedWorkouts: [IngestWorkoutSample]
     public let deletedSampleIDs: [UUID]
+    /// Edwards TRIMP to merge into `prior_day_trimp` on each target logical day.
+    public let trimpByTargetDay: [HelmDay: Double]
 
     public init(
         kind: HealthKitSampleKind,
         addedQuantitySamples: [IngestQuantitySample] = [],
         addedSleepSamples: [IngestSleepSample] = [],
         addedWorkouts: [IngestWorkoutSample] = [],
-        deletedSampleIDs: [UUID] = []
+        deletedSampleIDs: [UUID] = [],
+        trimpByTargetDay: [HelmDay: Double] = [:]
     ) {
         self.kind = kind
         self.addedQuantitySamples = addedQuantitySamples
         self.addedSleepSamples = addedSleepSamples
         self.addedWorkouts = addedWorkouts
         self.deletedSampleIDs = deletedSampleIDs
+        self.trimpByTargetDay = trimpByTargetDay
     }
 }

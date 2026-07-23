@@ -1,6 +1,6 @@
 import Foundation
 
-enum StrainCalculator {
+public enum StrainCalculator {
   /// Edwards TRIMP from heart-rate samples during a workout.
   public static func edwardsTRIMP(
     heartRateSamples: [Double],
@@ -41,7 +41,7 @@ enum StrainCalculator {
     }
   }
 
-  static func strainZ(
+  public static func strainZ(
     priorDayTRIMP: Double?,
     historicalTRIMP: [Double],
     seededP75: Double?

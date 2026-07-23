@@ -33,6 +33,7 @@ enum ReadinessBootstrap {
                     await readinessService.recomputeAfterIngest(
                         affectedFamilies: [family]
                     )
+                    await WatchReadinessBootstrap.pushCurrentReadiness()
                 }
             }
         }

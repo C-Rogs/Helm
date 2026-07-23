@@ -53,7 +53,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 31fda8f |
 | M7.2 Notification triggers + Shortcuts guide | done | 2026-07-23 | 3325983 | Pre/post notification planners + snapshot tests; pre-workout scheduler from session-window heuristic; post-workout on finish; threshold insights in-app (silent); Proactive Notifications guide + onboarding copy update. |
 | M8.1 Watch workout session | done | 2026-07-23 | c8f045d | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
-| M8.2 Phone observation + readiness complication | not started | | | |
+| M8.2 Phone observation + readiness complication | done | 2026-07-23 | acb0ffe | Phone HKWorkout observer feeds Edwards TRIMP into next-day prior_day_trimp; throttled readiness push via WCSession application context; complication shows ARC score + brief deep link; Watch Brief tab; opportunistic live HR from Watch (5s throttle). Fixture tests for workout TRIMP + complication payload. |
 | M9.1 NutritionKit engine (pure) | not started | | | |
 | M9.2 Nutrition screen + Dashboard card | not started | | | |
 | M9.3 Photo-to-macro | not started | | | |

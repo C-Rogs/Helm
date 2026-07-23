@@ -24,6 +24,7 @@ struct HelmApp: App {
             ChatBootstrap.start()
             BriefBootstrap.start()
             ProactiveBootstrap.start()
+            WatchReadinessBootstrap.start()
         }
     }
 

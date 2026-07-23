@@ -84,7 +84,9 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
     }
 
     public static var readTypes: Set<HKObjectType> {
-        Set(allCases.map(\.objectType))
+        var types = Set(allCases.map(\.objectType))
+        types.insert(HKQuantityType(.heartRate))
+        return types
     }
 
     public static var shareTypes: Set<HKSampleType> {

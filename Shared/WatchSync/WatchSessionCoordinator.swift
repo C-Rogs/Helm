@@ -10,6 +10,8 @@ final class WatchSessionCoordinator: NSObject {
         case watch
     }
 
+    static let readinessThrottleInterval = WatchSyncPayload.readinessPushThrottleInterval
+
     var activationState: WCSessionActivationState = .notActivated
     var isPaired = false
     var isWatchAppInstalled = false
@@ -18,9 +20,15 @@ final class WatchSessionCoordinator: NSObject {
     var lastReceived: WatchSyncPayload?
     var roundTripComplete = false
     var lastError: String?
+    var latestReadinessScore: Int?
+    var latestReadinessBand: String?
+    var latestBriefSummary: String?
+    var latestLiveHeartRateBPM: Int?
 
     private let role: Role
     private var nextSequence = 1
+    private var lastReadinessPushAt: TimeInterval?
+    private var lastLiveHeartRatePushAt: TimeInterval?
 
     init(role: Role) {
         self.role = role
@@ -42,18 +50,83 @@ final class WatchSessionCoordinator: NSObject {
             return
         }
 
-        let payload = makePayload(origin: role == .phone ? .phone : .watch)
+        let payload = makePayload(
+            origin: role == .phone ? .phone : .watch,
+            messageKind: .ping
+        )
         push(payload)
     }
 
-    private func makePayload(origin: WatchSyncPayload.Origin) -> WatchSyncPayload {
+    func pushReadiness(
+        score: Int,
+        band: String,
+        helmDay: HelmDay,
+        briefSummary: String?,
+        force: Bool = false
+    ) {
+        guard role == .phone else { return }
+        guard activationState == .activated else { return }
+
+        let now = Date().timeIntervalSince1970
+        if !force,
+           let lastReadinessPushAt,
+           now - lastReadinessPushAt < Self.readinessThrottleInterval {
+            return
+        }
+
+        let payload = makePayload(
+            origin: .phone,
+            messageKind: .readiness,
+            helmDay: helmDay,
+            readinessScore: score,
+            readinessBand: band,
+            briefSummary: briefSummary
+        )
+        push(payload)
+        lastReadinessPushAt = now
+    }
+
+    func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay) {
+        guard role == .watch else { return }
+        guard activationState == .activated else { return }
+
+        let now = Date().timeIntervalSince1970
+        if let lastLiveHeartRatePushAt,
+           now - lastLiveHeartRatePushAt < WatchSyncPayload.liveHeartRatePushThrottleInterval {
+            return
+        }
+
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .liveHeartRate,
+            helmDay: helmDay,
+            liveHeartRateBPM: bpm
+        )
+        push(payload)
+        lastLiveHeartRatePushAt = now
+    }
+
+    private func makePayload(
+        origin: WatchSyncPayload.Origin,
+        messageKind: WatchSyncPayload.MessageKind,
+        helmDay: HelmDay? = nil,
+        readinessScore: Int? = nil,
+        readinessBand: String? = nil,
+        briefSummary: String? = nil,
+        liveHeartRateBPM: Int? = nil
+    ) -> WatchSyncPayload {
         let sequence = nextSequence
         nextSequence += 1
         return WatchSyncPayload(
             origin: origin,
             sequence: sequence,
-            helmDay: HelmDay.day(for: .now, calendar: .current),
-            sentAt: Date().timeIntervalSince1970
+            helmDay: helmDay ?? HelmDay.day(for: .now, calendar: .current),
+            sentAt: Date().timeIntervalSince1970,
+            messageKind: messageKind,
+            readinessScore: readinessScore,
+            readinessBand: readinessBand,
+            briefSummary: briefSummary,
+            liveHeartRateBPM: liveHeartRateBPM
         )
     }
 
@@ -70,6 +143,7 @@ final class WatchSessionCoordinator: NSObject {
             try session.updateApplicationContext(context)
             lastSent = payload
             lastError = nil
+            applyDisplayFields(from: payload)
         } catch {
             lastError = error.localizedDescription
         }
@@ -78,16 +152,46 @@ final class WatchSessionCoordinator: NSObject {
     private func handleReceived(_ payload: WatchSyncPayload) {
         lastReceived = payload
         lastError = nil
+        applyDisplayFields(from: payload)
 
         switch role {
         case .phone:
-            roundTripComplete = payload.origin == .watch
+            switch payload.messageKind {
+            case .ping:
+                roundTripComplete = payload.origin == .watch
+            case .readiness:
+                break
+            case .liveHeartRate:
+                latestLiveHeartRateBPM = payload.liveHeartRateBPM
+            }
         case .watch:
-            roundTripComplete = false
-            guard payload.origin == .phone else { return }
-            let reply = makePayload(origin: .watch)
-            push(reply)
-            roundTripComplete = true
+            switch payload.messageKind {
+            case .ping:
+                roundTripComplete = false
+                guard payload.origin == .phone else { return }
+                let reply = makePayload(origin: .watch, messageKind: .ping)
+                push(reply)
+                roundTripComplete = true
+            case .readiness:
+                roundTripComplete = false
+            case .liveHeartRate:
+                break
+            }
+        }
+    }
+
+    private func applyDisplayFields(from payload: WatchSyncPayload) {
+        if let readinessScore = payload.readinessScore {
+            latestReadinessScore = readinessScore
+        }
+        if let readinessBand = payload.readinessBand {
+            latestReadinessBand = readinessBand
+        }
+        if let briefSummary = payload.briefSummary {
+            latestBriefSummary = briefSummary
+        }
+        if let liveHeartRateBPM = payload.liveHeartRateBPM {
+            latestLiveHeartRateBPM = liveHeartRateBPM
         }
     }
 
@@ -103,6 +207,16 @@ final class WatchSessionCoordinator: NSObject {
         isReachable = session.isReachable
         activationState = session.activationState
     }
+
+    func hydrateFromReceivedApplicationContext() {
+        guard WCSession.isSupported() else { return }
+        let session = WCSession.default
+        guard let payload = WatchSyncPayload.from(applicationContext: session.receivedApplicationContext) else {
+            return
+        }
+        lastReceived = payload
+        applyDisplayFields(from: payload)
+    }
 }
 
 extension WatchSessionCoordinator: WCSessionDelegate {
@@ -114,6 +228,7 @@ extension WatchSessionCoordinator: WCSessionDelegate {
         Task { @MainActor in
             self.activationState = activationState
             self.refreshSessionFlags()
+            self.hydrateFromReceivedApplicationContext()
 
             if let error {
                 self.lastError = error.localizedDescription
