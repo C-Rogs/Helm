@@ -20,7 +20,7 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         httpClient: any GeminiHTTPClient = LiveGeminiHTTPClient(),
-        model: GeminiModel = .flash,
+        model: GeminiModel = .default,
         preferences: ProviderPreferencesStore = ProviderPreferencesStore()
     ) {
         self.apiKeyStore = apiKeyStore
@@ -112,20 +112,49 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         )
 
         let responseData = try await httpClient.generateContent(request)
-        let jsonText = try GeminiSSEParser.responseText(from: responseData)
         let payload: Payload
         do {
-            payload = try CoachStructuredOutputDecoder.decode(
+            payload = try decodeStructuredPayload(
                 type,
-                from: jsonText,
+                responseData: responseData,
                 expectedSchema: expectedSchema
             )
+        } catch let error as CoachStructuredOutputError {
+            guard case .schemaVersionMismatch = error else {
+                await logStructuredDecodeFailure(
+                    requestID: requestID,
+                    promptVersion: promptVersion,
+                    error: error,
+                    jsonSnippet: responseSnippet(from: responseData)
+                )
+                throw error
+            }
+
+            coachLLMLog.debug(
+                "Gemini structured decode retry requestID=\(requestID.uuidString, privacy: .public) prompt=\(promptVersion.rawValue, privacy: .public)"
+            )
+            let retryData = try await httpClient.generateContent(request)
+            do {
+                payload = try decodeStructuredPayload(
+                    type,
+                    responseData: retryData,
+                    expectedSchema: expectedSchema
+                )
+            } catch {
+                await logStructuredDecodeFailure(
+                    requestID: requestID,
+                    promptVersion: promptVersion,
+                    error: error,
+                    jsonSnippet: responseSnippet(from: retryData)
+                )
+                throw error
+            }
         } catch {
             await logStructuredDecodeFailure(
                 requestID: requestID,
                 promptVersion: promptVersion,
                 error: error,
-                jsonSnippet: jsonText
+                jsonSnippet: responseSnippet(from: responseData)
             )
             throw error
         }
@@ -215,6 +244,24 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
         }
         return key
+    }
+
+    private func decodeStructuredPayload<Payload: Decodable>(
+        _ type: Payload.Type,
+        responseData: Data,
+        expectedSchema: CoachOutputSchemaVersion
+    ) throws -> Payload {
+        let jsonText = try GeminiSSEParser.responseText(from: responseData)
+        return try CoachStructuredOutputDecoder.decode(
+            type,
+            from: jsonText,
+            expectedSchema: expectedSchema
+        )
+    }
+
+    private func responseSnippet(from responseData: Data) -> String {
+        let jsonText = (try? GeminiSSEParser.responseText(from: responseData)) ?? ""
+        return String(jsonText.prefix(240))
     }
 
     private func logStructuredDecodeFailure(

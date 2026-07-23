@@ -2,6 +2,22 @@ import Foundation
 import Testing
 @testable import CoachLLM
 
+@Suite("Gemini request schemas")
+struct GeminiRequestSchemaTests {
+    @Test("default model is 3.1 Flash-Lite")
+    func defaultModel() {
+        #expect(GeminiModel.default.rawValue == "gemini-3.1-flash-lite")
+    }
+
+    @Test("session adjustment schema pins schemaVersion")
+    func sessionAdjustmentSchemaVersion() {
+        let schema = GeminiRequestBuilder.sessionAdjustmentSchema()
+        let properties = schema["properties"] as? [String: Any]
+        let schemaVersion = properties?["schemaVersion"] as? [String: Any]
+        #expect(schemaVersion?["enum"] as? [String] == ["session_adjustment.v1"])
+    }
+}
+
 @Suite("Gemini structured output")
 struct GeminiStructuredDecodeTests {
     private func fixtureText(named name: String) throws -> String {

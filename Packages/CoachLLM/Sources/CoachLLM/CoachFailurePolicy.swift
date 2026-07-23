@@ -8,6 +8,17 @@ public enum CoachProviderError: Error, Sendable, Equatable {
     case contextTooLarge
     case cancelled
     case requestFailed(String)
+
+    public static func fromHTTPStatusCode(_ statusCode: Int) -> CoachProviderError {
+        switch statusCode {
+        case 429:
+            .rateLimited
+        case 408, 504:
+            .timeout
+        default:
+            .requestFailed("HTTP \(statusCode)")
+        }
+    }
 }
 
 public enum CoachDegradedMode: String, Sendable, Equatable {

@@ -122,7 +122,7 @@ public enum GeminiRequestBuilder {
         [
             "type": "object",
             "properties": [
-                "schemaVersion": ["type": "string"],
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.sessionAdjustmentV1.rawValue),
                 "rationale": ["type": "string"],
                 "operations": [
                     "type": "array",
@@ -137,7 +137,7 @@ public enum GeminiRequestBuilder {
         [
             "type": "object",
             "properties": [
-                "schemaVersion": ["type": "string"],
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.mealEstimateV1.rawValue),
                 "description": ["type": "string"],
                 "caloriesKcal": ["type": "number"],
                 "proteinG": ["type": "number"],
@@ -164,7 +164,7 @@ public enum GeminiRequestBuilder {
         [
             "type": "object",
             "properties": [
-                "schemaVersion": ["type": "string"],
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.briefV1.rawValue),
                 "narration": ["type": "string"],
                 "citationIDs": [
                     "type": "array",
@@ -172,6 +172,13 @@ public enum GeminiRequestBuilder {
                 ]
             ],
             "required": ["schemaVersion", "narration", "citationIDs"]
+        ]
+    }
+
+    private static func schemaVersionProperty(_ version: String) -> [String: Any] {
+        [
+            "type": "string",
+            "enum": [version]
         ]
     }
 

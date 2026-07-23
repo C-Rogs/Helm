@@ -4,6 +4,19 @@ import Testing
 
 @Suite("Coach user-facing errors")
 struct CoachUserFacingErrorTests {
+    @Test("HTTP 429 maps to rate-limited coach message")
+    func http429RateLimit() {
+        let error = CoachProviderError.fromHTTPStatusCode(429)
+        #expect(error == .rateLimited)
+        #expect(
+            CoachUserFacingError.message(for: error)
+                == "Coach is cooling down. Try again shortly."
+        )
+        let degraded = CoachFailurePolicy.degradedState(for: error)
+        #expect(degraded.reason == .rateLimited)
+        #expect(degraded.userMessage == "Coach is cooling down. Numbers and logging still work.")
+    }
+
     @Test("structured output errors have readable messages")
     func structuredOutputMessages() {
         #expect(

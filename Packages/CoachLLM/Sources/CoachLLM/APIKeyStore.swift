@@ -75,6 +75,11 @@ public struct APIKeyStore: Sendable {
         (try? load(kind: kind)) != nil
     }
 
+    public func displayValue(for kind: APIKeyKind) -> String {
+        guard let value = try? load(kind: kind) else { return "" }
+        return value
+    }
+
     private func baseQuery(for kind: APIKeyKind) -> [String: Any] {
         [
             kSecClass as String: kSecClassGenericPassword,

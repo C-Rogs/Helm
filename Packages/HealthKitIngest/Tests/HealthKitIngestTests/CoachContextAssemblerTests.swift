@@ -11,6 +11,32 @@ struct CoachContextAssemblerTests {
     private let day = HelmDay(year: 2026, month: 7, day: 22)
     private let previous = HelmDay(year: 2026, month: 7, day: 21)
 
+    @Test("includes body composition in recent days and stable baselines")
+    func includesBodyComposition() throws {
+        let store = try PersistenceStore.inMemory()
+        let measuredAt = Calendar.current.date(from: DateComponents(
+            timeZone: .current,
+            year: 2026,
+            month: 7,
+            day: 22,
+            hour: 8
+        ))!
+
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: previous,
+                mass: Mass(kilograms: 82.4),
+                measuredAt: measuredAt
+            )
+        )
+
+        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+
+        #expect(context.readinessBaselines.contains("2026-07-21 weight=82.4kg"))
+        #expect(context.recent.count == 1)
+        #expect(context.recent[0].text.contains("weight=82.4kg"))
+    }
+
     @Test("assembles recent days from persisted health rows")
     func assemblesRecentDays() throws {
         let store = try PersistenceStore.inMemory()

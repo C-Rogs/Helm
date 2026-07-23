@@ -45,6 +45,9 @@ struct CoachKeyOnboardingStepView: View {
             }
         }
         .onAppear {
+            if geminiKey.isEmpty {
+                geminiKey = keyStore.displayValue(for: .gemini)
+            }
             keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "Optional. Skip to use engine-only mode."
         }
     }
@@ -55,7 +58,6 @@ struct CoachKeyOnboardingStepView: View {
         do {
             try keyStore.save(geminiKey, kind: .gemini)
             keyStatus = "Key saved in Keychain."
-            geminiKey = ""
             HapticEngine.shared.play(.selection)
             refreshInstalledProvider()
         } catch {

@@ -256,12 +256,3 @@ public struct InSessionCoachService: Sendable {
         return ids
     }
 }
-
-private extension CoachSystemPrompt {
-    static let sessionAdjustmentV1 = """
-    You are Helm's in-session training coach.
-    Return only structured session adjustments (swap, reorder, adjustSets).
-    Honour excluded exercise IDs; never return a movement already excluded.
-    Be terse in rationale. Ground swaps in equipment availability when the user mentions it.
-    """
-}

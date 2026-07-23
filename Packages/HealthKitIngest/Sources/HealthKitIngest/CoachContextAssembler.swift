@@ -43,6 +43,25 @@ public enum CoachContextAssembler {
             days.insert(helmDay)
         }
 
+        var bodyCompositionByDay: [HelmDay: BodyComposition] = [:]
+        for helmDay in try store.bodyComposition.listDays() where helmDay >= startDay && helmDay <= endDay {
+            if let latest = try store.bodyComposition.fetch(for: helmDay).last {
+                bodyCompositionByDay[helmDay] = latest
+                days.insert(helmDay)
+            }
+        }
+
+        let baselines = [
+            baselinesText(from: try store.readiness.fetchBaselineJSON()),
+            try bodyCompositionSummary(
+                from: store,
+                endingAt: endDay,
+                calendar: calendar
+            )
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: "\n")
+
         let recent = try days.sorted().map { helmDay in
             CoachContextDay(
                 helmDay: helmDay,
@@ -52,16 +71,39 @@ public enum CoachContextAssembler {
                     readiness: readinessByDay[helmDay],
                     nutrition: try store.nutrition.fetchDay(helmDay: helmDay),
                     workouts: workoutsByDay[helmDay] ?? [],
-                    sleepRecords: try store.sleep.fetch(for: helmDay)
+                    sleepRecords: try store.sleep.fetch(for: helmDay),
+                    bodyComposition: bodyCompositionByDay[helmDay]
                 )
             )
         }
 
         return CoachContextDays(
-            readinessBaselines: baselinesText(from: try store.readiness.fetchBaselineJSON()),
+            readinessBaselines: baselines,
             evidence: [],
             recent: recent
         )
+    }
+
+    private static func bodyCompositionSummary(
+        from store: PersistenceStore,
+        endingAt endDay: HelmDay,
+        calendar: Calendar
+    ) throws -> String {
+        let yesterday = endDay.adding(days: -1, calendar: calendar)
+        var lines: [String] = []
+
+        if let today = try store.bodyComposition.fetch(for: endDay).last {
+            lines.append("\(endDay.formatted) weight=\(format(today.mass.kilograms))kg")
+        }
+        if let prior = try store.bodyComposition.fetch(for: yesterday).last {
+            lines.append("\(yesterday.formatted) weight=\(format(prior.mass.kilograms))kg")
+        } else if lines.isEmpty,
+                  let latest = try store.bodyComposition.fetchLatest(onOrBefore: endDay, limit: 1).first {
+            lines.append("latest weight=\(format(latest.mass.kilograms))kg on \(latest.helmDay.formatted)")
+        }
+
+        guard !lines.isEmpty else { return "" }
+        return lines.joined(separator: "\n")
     }
 
     private static func dayText(
@@ -70,7 +112,8 @@ public enum CoachContextAssembler {
         readiness: ReadinessScoreSnippet?,
         nutrition: NutritionDay?,
         workouts: [WorkoutSessionSummary],
-        sleepRecords: [SleepRecord]
+        sleepRecords: [SleepRecord],
+        bodyComposition: BodyComposition?
     ) -> String {
         var parts: [String] = []
 
@@ -107,6 +150,13 @@ public enum CoachContextAssembler {
             }
             if let protein = nutrition.totalProteinGrams {
                 parts.append("protein=\(format(protein))g")
+            }
+        }
+
+        if let bodyComposition {
+            parts.append("weight=\(format(bodyComposition.mass.kilograms))kg")
+            if let bodyFat = bodyComposition.bodyFatPercentage {
+                parts.append("bodyfat=\(format(bodyFat))%")
             }
         }
 

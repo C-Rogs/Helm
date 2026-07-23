@@ -53,6 +53,9 @@ struct CoachSettingsView: View {
         .navigationTitle("Coach")
         .helmScreenBackground()
         .onAppear {
+            if geminiKey.isEmpty {
+                geminiKey = keyStore.displayValue(for: .gemini)
+            }
             keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "No key saved yet."
         }
     }
@@ -63,7 +66,6 @@ struct CoachSettingsView: View {
         do {
             try keyStore.save(geminiKey, kind: .gemini)
             keyStatus = "Key saved in Keychain."
-            geminiKey = ""
             HapticEngine.shared.play(.selection)
             refreshInstalledProvider()
         } catch {

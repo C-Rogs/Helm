@@ -68,7 +68,7 @@ enum SecretsBootstrap {
                 message: "Secrets bootstrap found no API keys",
                 context: [
                     "missing": missingKinds.joined(separator: ","),
-                    "hint": "Add gemini.key under Secrets/ and rebuild Debug"
+                    "hint": "Add *.key files under Secrets/ and rebuild Debug, or run scripts/sync-secrets-from-coach.sh"
                 ]
             )
             return

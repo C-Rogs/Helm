@@ -99,7 +99,7 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
                         return
                     }
                     guard (200 ..< 300).contains(http.statusCode) else {
-                        continuation.finish(throwing: CoachProviderError.requestFailed("HTTP \(http.statusCode)"))
+                        continuation.finish(throwing: CoachProviderError.fromHTTPStatusCode(http.statusCode))
                         return
                     }
                     var buffer = Data()
@@ -135,7 +135,7 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
             throw CoachProviderError.requestFailed("Invalid response")
         }
         guard (200 ..< 300).contains(http.statusCode) else {
-            throw CoachProviderError.requestFailed("HTTP \(http.statusCode)")
+            throw CoachProviderError.fromHTTPStatusCode(http.statusCode)
         }
         return data
     }

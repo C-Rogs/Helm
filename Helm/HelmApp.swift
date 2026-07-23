@@ -17,12 +17,12 @@ struct HelmApp: App {
             PlanBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()
-            CoachBootstrap.start()
-            ChatBootstrap.start()
-            BriefBootstrap.start()
             #if DEBUG
             await SecretsBootstrap.run()
             #endif
+            CoachBootstrap.start()
+            ChatBootstrap.start()
+            BriefBootstrap.start()
         }
     }
 
