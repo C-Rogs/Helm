@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import HealthKitIngest
 import Persistence
@@ -14,6 +15,10 @@ enum BriefBootstrap {
     @MainActor
     static func start() {
         Task(priority: .userInitiated) {
+            let day = HelmDay.day(for: .now, calendar: .current)
+            if BriefIntentBootstrap.hasPendingMiss(for: day) {
+                _ = await BriefIntentBootstrap.runner.run(attemptNarration: true)
+            }
             await refreshBrief()
         }
     }

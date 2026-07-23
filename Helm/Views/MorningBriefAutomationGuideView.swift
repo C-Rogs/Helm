@@ -1,3 +1,4 @@
+import Core
 import DesignSystem
 import SwiftUI
 
@@ -5,18 +6,18 @@ struct MorningBriefAutomationGuideView: View {
     var body: some View {
         List {
             Section {
-                Text("Helm will appear in Shortcuts after the automation feature ships in a future update.")
+                Text("Helm can generate your morning brief from Shortcuts without opening the app.")
                     .font(HelmType.body.font)
                     .foregroundStyle(HelmColor.fgSecondary)
-                Text("For now, open Helm each morning for your brief on the Dashboard.")
+                Text("If your phone is still locked, HealthKit data is unavailable. Open Helm and your brief will generate on the Dashboard.")
                     .font(HelmType.body.font)
                     .foregroundStyle(HelmColor.fgSecondary)
             }
 
-            Section("Coming soon") {
+            Section("Shortcuts setup") {
                 Label("Create a Personal Automation", systemImage: "1.circle")
-                Label("Trigger when alarm is dismissed or phone is unlocked", systemImage: "2.circle")
-                Label("Run Helm morning brief action", systemImage: "3.circle")
+                Label("Trigger when your alarm is dismissed or when you unlock your phone", systemImage: "2.circle")
+                Label("Add the Generate Morning Brief action from Helm", systemImage: "3.circle")
             }
 
             Section {

@@ -50,7 +50,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M6.2 In-session coach | done | 2026-07-23 | 2c4423f | askCoachInSession + InSessionCoachService; PlanKit apply bridge; exclude list + undo; coach_recommendation logging; AdjustmentBanner + AskCoachBar on Train; coach-adjust haptic. |
 | M6.3 Morning brief on open | done | 2026-07-23 | 2c4423f | Generate-on-open brief with engine snapshot + coach narration; BriefCard on Dashboard; daily_brief v9 persistence; fingerprint cache skips regen unless inputs change. Interim NutritionTargetComposer until M9.1. |
 | M6.4 Onboarding assembly | done | 2026-07-23 | c28c464 | First-run flow: HealthKit presence check, notifications, Gemini key, training plan, backfill progress, Shortcuts pointer. Launch gate via AppRootView; Setup section in Settings for re-entry. HealthKitDataPresenceChecker + 2 tests. |
-| M7.1 GenerateBriefIntent (locked-phone aware) | not started | | | |
+| M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 044527a |
 | M7.2 Notification triggers + Shortcuts guide | not started | | | |
 | M8.1 Watch workout session | not started | | | |
 | M8.2 Phone observation + readiness complication | not started | | | |

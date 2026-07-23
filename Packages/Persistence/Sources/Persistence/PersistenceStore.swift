@@ -17,6 +17,7 @@ public actor PersistenceStore {
     public nonisolated let activeSessions: ActiveSessionRepository
     public nonisolated let chat: ChatStore
     public nonisolated let brief: BriefStore
+    public nonisolated let appMetadata: AppMetadataStore
     public nonisolated let coachRecommendations: CoachRecommendationRepository
 
     public let databaseURL: URL
@@ -42,6 +43,7 @@ public actor PersistenceStore {
         activeSessions = ActiveSessionRepository(pool: pool)
         chat = ChatStore(pool: pool)
         brief = BriefStore(pool: pool)
+        appMetadata = AppMetadataStore(pool: pool)
         coachRecommendations = CoachRecommendationRepository(pool: pool)
     }
 
