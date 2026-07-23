@@ -8,13 +8,24 @@ public typealias PrescribedSession = SessionPrescription
 public struct CatalogExercise: Sendable, Hashable, Codable {
     public let exerciseID: String
     public let muscleMap: ExerciseMuscleMap
-    /// Lower values are preferred when multiple exercises train the same muscle.
+    /// Lower values are preferred when evidence ratings are absent.
     public let priority: Int
+    /// Normalized equipment tag (for example `barbell`, `dumbbell`). Nil means bodyweight/unspecified.
+    public let equipment: String?
+    public let evidence: ExerciseEvidenceRatings?
 
-    public init(exerciseID: String, muscleMap: ExerciseMuscleMap, priority: Int) {
+    public init(
+        exerciseID: String,
+        muscleMap: ExerciseMuscleMap,
+        priority: Int,
+        equipment: String? = nil,
+        evidence: ExerciseEvidenceRatings? = nil
+    ) {
         self.exerciseID = exerciseID
         self.muscleMap = muscleMap
         self.priority = priority
+        self.equipment = equipment
+        self.evidence = evidence
     }
 }
 
@@ -30,6 +41,8 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
     public let exerciseCatalog: [CatalogExercise]
     /// Planned sessions still to run this week after today (including today).
     public let remainingSessionsThisWeek: Int
+    /// When set, only exercises using this equipment (or bodyweight) are eligible.
+    public let availableEquipment: Set<String>?
 
     public init(
         helmDay: HelmDay,
@@ -38,7 +51,8 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         experience: TrainingExperience,
         targetMuscles: [MuscleGroup],
         exerciseCatalog: [CatalogExercise],
-        remainingSessionsThisWeek: Int = 2
+        remainingSessionsThisWeek: Int = 2,
+        availableEquipment: Set<String>? = nil
     ) {
         precondition(remainingSessionsThisWeek >= 1, "remainingSessionsThisWeek must be >= 1")
         self.helmDay = helmDay
@@ -48,6 +62,7 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         self.targetMuscles = targetMuscles
         self.exerciseCatalog = exerciseCatalog
         self.remainingSessionsThisWeek = remainingSessionsThisWeek
+        self.availableEquipment = availableEquipment
     }
 }
 

@@ -109,13 +109,30 @@ public enum PlanKit {
         adjustment: PrescriptionAdjustment,
         to session: PrescribedSession,
         excluding excludedExerciseIDs: Set<String>,
-        catalog: [CatalogExercise]
+        catalog: [CatalogExercise],
+        availableEquipment: Set<String>? = nil
     ) -> PrescriptionAdjustmentResult {
         PrescriptionAdjustmentEngine.apply(
             adjustment: adjustment,
             to: session,
             excluding: excludedExerciseIDs,
-            catalog: catalog
+            catalog: catalog,
+            availableEquipment: availableEquipment
+        )
+    }
+
+    /// Evidence-driven movement selection for a target muscle.
+    public static func selectExercise(
+        for muscle: MuscleGroup,
+        catalog: [CatalogExercise],
+        excluding excludedExerciseIDs: Set<String> = [],
+        availableEquipment: Set<String>? = nil
+    ) -> ExerciseSelection? {
+        ExerciseSelectionEngine.select(
+            for: muscle,
+            catalog: catalog,
+            excluding: excludedExerciseIDs,
+            availableEquipment: availableEquipment
         )
     }
 }

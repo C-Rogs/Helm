@@ -25,12 +25,14 @@ enum PrescriptionEngine {
 
         for muscle in profile.targetMuscles {
             guard let muscleState = profile.mesocycleState.muscles[muscle] else { continue }
-            guard let catalogExercise = bestExercise(
+            guard let selection = ExerciseSelectionEngine.select(
                 for: muscle,
                 catalog: profile.exerciseCatalog,
-                excluding: selectedExerciseIDs
+                excluding: selectedExerciseIDs,
+                availableEquipment: profile.availableEquipment
             ) else { continue }
 
+            let catalogExercise = selection.exercise
             selectedExerciseIDs.insert(catalogExercise.exerciseID)
 
             let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
@@ -57,7 +59,9 @@ enum PrescriptionEngine {
                 targetRepMin: progression.targetRepMin,
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
-                targetRPE: targetRPE
+                targetRPE: targetRPE,
+                rationale: selection.rationale,
+                evidenceIDs: selection.evidenceIDs
             ))
             order += 1
         }
@@ -68,18 +72,15 @@ enum PrescriptionEngine {
     static func bestExercise(
         for muscle: MuscleGroup,
         catalog: [CatalogExercise],
-        excluding excludedExerciseIDs: Set<String>
+        excluding excludedExerciseIDs: Set<String>,
+        availableEquipment: Set<String>? = nil
     ) -> CatalogExercise? {
-        catalog
-            .filter { exercise in
-                !excludedExerciseIDs.contains(exercise.exerciseID)
-                    && exercise.muscleMap.contributions.contains { $0.muscle == muscle }
-            }
-            .sorted { lhs, rhs in
-                if lhs.priority != rhs.priority { return lhs.priority < rhs.priority }
-                return lhs.exerciseID < rhs.exerciseID
-            }
-            .first
+        ExerciseSelectionEngine.select(
+            for: muscle,
+            catalog: catalog,
+            excluding: excludedExerciseIDs,
+            availableEquipment: availableEquipment
+        )?.exercise
     }
 
     private static func phaseVolumeMultiplier(for phase: TrainingPhase) -> Double {

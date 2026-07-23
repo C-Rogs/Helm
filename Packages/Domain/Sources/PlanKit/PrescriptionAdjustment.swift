@@ -67,7 +67,8 @@ enum PrescriptionAdjustmentEngine {
         adjustment: PrescriptionAdjustment,
         to session: PrescribedSession,
         excluding excludedExerciseIDs: Set<String>,
-        catalog: [CatalogExercise]
+        catalog: [CatalogExercise],
+        availableEquipment: Set<String>? = nil
     ) -> PrescriptionAdjustmentResult {
         var exercises = session.exercises.sorted { $0.order < $1.order }
         let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
@@ -78,7 +79,8 @@ enum PrescriptionAdjustmentEngine {
                 to: &exercises,
                 excluding: excludedExerciseIDs,
                 catalog: catalog,
-                catalogByID: catalogByID
+                catalogByID: catalogByID,
+                availableEquipment: availableEquipment
             ) {
             case .success:
                 continue
@@ -99,7 +101,8 @@ enum PrescriptionAdjustmentEngine {
         to exercises: inout [PrescribedExercise],
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
-        catalogByID: [String: CatalogExercise]
+        catalogByID: [String: CatalogExercise],
+        availableEquipment: Set<String>?
     ) -> OperationOutcome {
         switch operation.kind {
         case .swap:
@@ -108,7 +111,8 @@ enum PrescriptionAdjustmentEngine {
                 to: &exercises,
                 excluding: excludedExerciseIDs,
                 catalog: catalog,
-                catalogByID: catalogByID
+                catalogByID: catalogByID,
+                availableEquipment: availableEquipment
             )
         case .reorder:
             return applyReorder(operation, to: &exercises)
@@ -122,7 +126,8 @@ enum PrescriptionAdjustmentEngine {
         to exercises: inout [PrescribedExercise],
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
-        catalogByID: [String: CatalogExercise]
+        catalogByID: [String: CatalogExercise],
+        availableEquipment: Set<String>?
     ) -> OperationOutcome {
         guard let fromID = operation.fromExerciseID else {
             return .failure(.exerciseNotFound(exerciseID: ""))
@@ -147,7 +152,8 @@ enum PrescriptionAdjustmentEngine {
                 let alternative = PrescriptionEngine.bestExercise(
                     for: primaryMuscle,
                     catalog: catalog,
-                    excluding: blocked
+                    excluding: blocked,
+                    availableEquipment: availableEquipment
                 )
             else {
                 return .failure(.swapNoAlternativeAvailable(fromExerciseID: fromID))
@@ -159,7 +165,21 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.swapTargetExcluded(exerciseID: toID))
         }
 
-        exercises[index] = replacing(exercises[index], exerciseID: toID)
+        let primaryMuscle = catalogByID[fromID]?.muscleMap.contributions
+            .max(by: { $0.fraction < $1.fraction })?.muscle
+        let rationalePayload: (rationale: String, evidenceIDs: [String])
+        if let primaryMuscle, let catalogExercise = catalogByID[toID] {
+            rationalePayload = ExerciseSelectionEngine.makeRationale(for: catalogExercise, muscle: primaryMuscle)
+        } else {
+            rationalePayload = (exercises[index].rationale ?? "", exercises[index].evidenceIDs)
+        }
+
+        exercises[index] = replacing(
+            exercises[index],
+            exerciseID: toID,
+            rationale: rationalePayload.rationale,
+            evidenceIDs: rationalePayload.evidenceIDs
+        )
         return .success
     }
 
@@ -214,7 +234,9 @@ enum PrescriptionAdjustmentEngine {
         _ exercise: PrescribedExercise,
         exerciseID: String? = nil,
         order: Int? = nil,
-        targetSets: Int? = nil
+        targetSets: Int? = nil,
+        rationale: String? = nil,
+        evidenceIDs: [String]? = nil
     ) -> PrescribedExercise {
         PrescribedExercise(
             id: exercise.id,
@@ -225,8 +247,8 @@ enum PrescriptionAdjustmentEngine {
             targetRepMax: exercise.targetRepMax,
             targetMass: exercise.targetMass,
             targetRPE: exercise.targetRPE,
-            rationale: exercise.rationale,
-            evidenceIDs: exercise.evidenceIDs
+            rationale: rationale ?? exercise.rationale,
+            evidenceIDs: evidenceIDs ?? exercise.evidenceIDs
         )
     }
 }

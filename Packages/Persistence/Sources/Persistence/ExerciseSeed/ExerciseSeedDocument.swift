@@ -73,7 +73,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
     }
 }
 
-/// Reserved for M5.5 curated evidence; placeholder seeds leave this nil.
+/// Per-exercise evidence ratings and citations from the seed library.
 public struct ExerciseSeedEvidence: Codable, Sendable, Equatable {
     public let effectivenessRating: Double?
     public let stretchPositionBias: Double?
