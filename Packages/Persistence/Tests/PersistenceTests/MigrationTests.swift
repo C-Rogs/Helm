@@ -36,7 +36,8 @@ struct MigrationTests {
                 "memory_profile",
                 "plan_mesocycle_state",
                 "planned_workout",
-                "app_metadata"
+                "app_metadata",
+                "chat_message"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

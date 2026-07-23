@@ -4,15 +4,32 @@ import Foundation
 enum CoachBootstrap {
     static func start() {
         Task { @MainActor in
-            installGeminiIfPossible()
+            installProvider()
         }
     }
 
     @MainActor
-    private static func installGeminiIfPossible() {
+    private static func installProvider() {
         let keyStore = APIKeyStore()
-        guard keyStore.hasKey(kind: .gemini) else { return }
-        let provider = GeminiProvider(apiKeyStore: keyStore)
-        ProviderRegistry.shared.installGeminiProvider(provider)
+        if keyStore.hasKey(kind: .gemini) {
+            let provider = GeminiProvider(apiKeyStore: keyStore)
+            ProviderRegistry.shared.installGeminiProvider(provider)
+            return
+        }
+
+        #if DEBUG
+        let mock = MockProvider(
+            id: "mock-coach",
+            displayName: "Mock Coach",
+            configuration: MockProvider.Configuration(
+                responseChunks: [
+                    "Based on your stored readiness and training context, ",
+                    "recovery looks moderate today. ",
+                    "Keep volume steady and aim for RIR 2 on compounds."
+                ]
+            )
+        )
+        ProviderRegistry.shared.installGeminiProvider(mock)
+        #endif
     }
 }

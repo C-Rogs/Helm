@@ -31,6 +31,9 @@ struct AppMigrator {
         if version >= 6 {
             ExerciseSeedSchemaMigration.register(on: &migrator)
         }
+        if version >= 7 {
+            ChatSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 
