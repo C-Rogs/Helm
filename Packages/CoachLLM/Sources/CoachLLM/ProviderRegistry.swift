@@ -30,6 +30,10 @@ public final class ProviderRegistry {
         geminiProvider = provider
     }
 
+    public func resetGeminiProvider() {
+        geminiProvider = nil
+    }
+
     public func resetAllThreads() async {
         await foundationModelsProvider.resetThread()
         await openRouterProvider.resetThread()

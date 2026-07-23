@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"schemaVersion\": \"session_adjustment.v1\",\n  \"rationale\": \"Cable station is taken; swap to dumbbells.\",\n  \"operations\": [\n    {\n      \"kind\": \"swap\",\n      \"fromExerciseID\": \"cable-fly\",\n      \"toExerciseID\": \"db-fly\",\n      \"excludeExerciseIDs\": [\"pec-deck\"]\n    }\n  ]\n}\n"
+          }
+        ]
+      }
+    }
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "session_adjustment.v1",
+  "rationale": "Cable station is taken; swap to dumbbells.",
+  "operations": [
+    {
+      "kind": "swap",
+      "fromExerciseID": "cable-fly",
+      "toExerciseID": "db-fly",
+      "excludeExerciseIDs": ["pec-deck"]
+    }
+  ]
+}

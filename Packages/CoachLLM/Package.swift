@@ -9,12 +9,16 @@ let package = Package(
         .library(name: "CoachLLM", targets: ["CoachLLM"])
     ],
     dependencies: [
-        .package(path: "../Core")
+        .package(path: "../Core"),
+        .package(path: "../Diagnostics")
     ],
     targets: [
         .target(
             name: "CoachLLM",
-            dependencies: ["Core"]
+            dependencies: [
+                "Core",
+                .product(name: "Diagnostics", package: "Diagnostics", condition: .when(platforms: [.iOS]))
+            ]
         ),
         .testTarget(
             name: "CoachLLMTests",

@@ -1,0 +1,81 @@
+import Foundation
+
+public struct SessionAdjustmentPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let rationale: String
+    public let operations: [SessionAdjustmentOperation]
+
+    public init(schemaVersion: String, rationale: String, operations: [SessionAdjustmentOperation]) {
+        self.schemaVersion = schemaVersion
+        self.rationale = rationale
+        self.operations = operations
+    }
+}
+
+public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
+    public enum Kind: String, Codable, Sendable, Equatable {
+        case swap
+        case reorder
+        case adjustSets
+    }
+
+    public let kind: Kind
+    public let fromExerciseID: String?
+    public let toExerciseID: String?
+    public let excludeExerciseIDs: [String]?
+    public let orderedExerciseIDs: [String]?
+    public let exerciseID: String?
+    public let setDelta: Int?
+
+    public init(
+        kind: Kind,
+        fromExerciseID: String? = nil,
+        toExerciseID: String? = nil,
+        excludeExerciseIDs: [String]? = nil,
+        orderedExerciseIDs: [String]? = nil,
+        exerciseID: String? = nil,
+        setDelta: Int? = nil
+    ) {
+        self.kind = kind
+        self.fromExerciseID = fromExerciseID
+        self.toExerciseID = toExerciseID
+        self.excludeExerciseIDs = excludeExerciseIDs
+        self.orderedExerciseIDs = orderedExerciseIDs
+        self.exerciseID = exerciseID
+        self.setDelta = setDelta
+    }
+}
+
+public struct MealEstimatePayload: Codable, Sendable, Equatable {
+    public enum Confidence: String, Codable, Sendable, Equatable {
+        case low
+        case medium
+        case high
+    }
+
+    public let schemaVersion: String
+    public let description: String
+    public let caloriesKcal: Double
+    public let proteinG: Double
+    public let carbsG: Double
+    public let fatG: Double
+    public let confidence: Confidence
+
+    public init(
+        schemaVersion: String,
+        description: String,
+        caloriesKcal: Double,
+        proteinG: Double,
+        carbsG: Double,
+        fatG: Double,
+        confidence: Confidence
+    ) {
+        self.schemaVersion = schemaVersion
+        self.description = description
+        self.caloriesKcal = caloriesKcal
+        self.proteinG = proteinG
+        self.carbsG = carbsG
+        self.fatG = fatG
+        self.confidence = confidence
+    }
+}

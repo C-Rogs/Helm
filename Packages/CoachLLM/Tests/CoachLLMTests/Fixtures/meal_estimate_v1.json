@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "meal_estimate.v1",
+  "description": "Chicken rice bowl",
+  "caloriesKcal": 650,
+  "proteinG": 45,
+  "carbsG": 70,
+  "fatG": 18,
+  "confidence": "medium"
+}
