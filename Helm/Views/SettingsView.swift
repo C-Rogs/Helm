@@ -64,6 +64,9 @@ struct SettingsView: View {
                     NavigationLink("Coach Memory") {
                         MemoryProfileEditorView()
                     }
+                    NavigationLink("Sources & Methodology") {
+                        SourcesMethodologyView()
+                    }
                     NavigationLink("HealthKit") {
                         HealthKitStatusView()
                     }
@@ -72,6 +75,9 @@ struct SettingsView: View {
                     }
                     NavigationLink("Data & Backup") {
                         DataSafetyView()
+                    }
+                    NavigationLink("Schema v2 Export") {
+                        SchemaV2ExportView()
                     }
                     NavigationLink("Diagnostics") {
                         DiagnosticsView(environment: ExportEnvironmentFactory.current(

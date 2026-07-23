@@ -110,15 +110,7 @@ public actor BriefEngine {
     }
 
     private func evidenceRecords(for ids: [String]) -> [EvidenceRecord] {
-        ids.map { id in
-            EvidenceRecord(
-                id: id,
-                title: id,
-                summary: "Referenced by today's prescription.",
-                citation: "",
-                placeholder: true
-            )
-        }
+        MethodologyEvidenceSupport.records(for: ids)
     }
 }
 

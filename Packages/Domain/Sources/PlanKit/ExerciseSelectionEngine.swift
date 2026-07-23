@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 public struct ExerciseSelection: Sendable, Hashable {
@@ -15,19 +16,32 @@ public struct ExerciseSelection: Sendable, Hashable {
 }
 
 enum ExerciseSelectionEngine {
-    private enum Weights {
-        static let effectiveness = 0.50
-        static let stretchPositionBias = 0.25
-        static let stimulusToFatigue = 0.25
-        static let primaryMuscleBonus = 0.05
+    private struct Weights {
+        let effectiveness: Double
+        let stretchPositionBias: Double
+        let stimulusToFatigue: Double
+        let primaryMuscleBonus = 0.05
+
+        static func forBias(_ bias: MethodologyPreferences.SelectionBias) -> Weights {
+            switch bias {
+            case .balanced:
+                Weights(effectiveness: 0.50, stretchPositionBias: 0.25, stimulusToFatigue: 0.25)
+            case .stretch:
+                Weights(effectiveness: 0.40, stretchPositionBias: 0.40, stimulusToFatigue: 0.20)
+            case .stimulusToFatigue:
+                Weights(effectiveness: 0.40, stretchPositionBias: 0.20, stimulusToFatigue: 0.40)
+            }
+        }
     }
 
     static func select(
         for muscle: MuscleGroup,
         catalog: [CatalogExercise],
         excluding excludedExerciseIDs: Set<String>,
-        availableEquipment: Set<String>?
+        availableEquipment: Set<String>?,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced
     ) -> ExerciseSelection? {
+        let weights = Weights.forBias(selectionBias)
         let candidates = catalog.filter { exercise in
             !excludedExerciseIDs.contains(exercise.exerciseID)
                 && isEquipmentAvailable(exercise.equipment, availableEquipment: availableEquipment)
@@ -36,8 +50,8 @@ enum ExerciseSelectionEngine {
 
         guard
             let best = candidates.max(by: { lhs, rhs in
-                let lhsScore = score(lhs, for: muscle)
-                let rhsScore = score(rhs, for: muscle)
+                let lhsScore = score(lhs, for: muscle, weights: weights)
+                let rhsScore = score(rhs, for: muscle, weights: weights)
                 if lhsScore != rhsScore { return lhsScore < rhsScore }
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.exerciseID > rhs.exerciseID
@@ -51,7 +65,7 @@ enum ExerciseSelectionEngine {
             exercise: best,
             rationale: rationalePayload.rationale,
             evidenceIDs: rationalePayload.evidenceIDs,
-            score: score(best, for: muscle)
+            score: score(best, for: muscle, weights: weights)
         )
     }
 
@@ -93,14 +107,18 @@ enum ExerciseSelectionEngine {
         return availableEquipment.contains(normalized)
     }
 
-    private static func score(_ exercise: CatalogExercise, for muscle: MuscleGroup) -> Double {
+    private static func score(
+        _ exercise: CatalogExercise,
+        for muscle: MuscleGroup,
+        weights: Weights
+    ) -> Double {
         if let evidence = exercise.evidence {
             var total =
-                evidence.effectiveness * Weights.effectiveness
-                + evidence.stretchPositionBias * Weights.stretchPositionBias
-                + evidence.stimulusToFatigue * Weights.stimulusToFatigue
+                evidence.effectiveness * weights.effectiveness
+                + evidence.stretchPositionBias * weights.stretchPositionBias
+                + evidence.stimulusToFatigue * weights.stimulusToFatigue
             if isPrimaryTarget(exercise, muscle: muscle) {
-                total += Weights.primaryMuscleBonus
+                total += weights.primaryMuscleBonus
             }
             return total
         }

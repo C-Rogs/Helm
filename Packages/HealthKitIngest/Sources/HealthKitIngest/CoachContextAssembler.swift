@@ -13,7 +13,8 @@ public enum CoachContextAssembler {
         endingAt endDay: HelmDay,
         lookbackDays: Int = defaultLookbackDays,
         calendar: Calendar = .current,
-        cutoff: DayCutoff = .default
+        cutoff: DayCutoff = .default,
+        evidence: [EvidenceRecord] = bundledMethodologyEvidence()
     ) throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
@@ -79,9 +80,13 @@ public enum CoachContextAssembler {
 
         return CoachContextDays(
             readinessBaselines: baselines,
-            evidence: [],
+            evidence: evidence,
             recent: recent
         )
+    }
+
+    public static func bundledMethodologyEvidence() -> [EvidenceRecord] {
+        MethodologyEvidenceSupport.allRecords
     }
 
     private static func bodyCompositionSummary(

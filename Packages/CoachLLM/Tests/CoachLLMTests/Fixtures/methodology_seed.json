@@ -1,0 +1,21 @@
+{
+  "seedVersion": 1,
+  "placeholder": true,
+  "evidence": [
+    {
+      "id": "ev-volume-landmarks",
+      "title": "Volume landmarks",
+      "summary": "MEV to MRV framing for weekly hard sets.",
+      "citation": "Placeholder review",
+      "placeholder": true
+    }
+  ],
+  "topics": [
+    {
+      "id": "volume-landmarks",
+      "title": "Weekly volume landmarks",
+      "body": "Placeholder methodology topic.",
+      "citationIDs": ["ev-volume-landmarks"]
+    }
+  ]
+}

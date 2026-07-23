@@ -1,0 +1,39 @@
+{
+  "seedVersion": 99,
+  "placeholder": true,
+  "exercises": [
+    {
+      "id": "method-bench",
+      "canonicalName": "bench press (barbell)",
+      "displayName": "Bench Press (Barbell)",
+      "aliases": ["Bench Press"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": ["triceps"],
+      "isPickerDefault": true
+    },
+    {
+      "id": "method-db-press",
+      "canonicalName": "dumbbell press",
+      "displayName": "Dumbbell Press",
+      "aliases": ["DB Press"],
+      "exerciseMode": "weight_reps",
+      "equipment": "dumbbell",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": ["triceps"],
+      "isPickerDefault": true
+    },
+    {
+      "id": "method-squat",
+      "canonicalName": "squat (barbell)",
+      "displayName": "Squat (Barbell)",
+      "aliases": ["Squat"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "quadriceps",
+      "secondaryMuscleGroups": ["glutes"],
+      "isPickerDefault": true
+    }
+  ]
+}

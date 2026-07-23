@@ -43,6 +43,7 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
     public let remainingSessionsThisWeek: Int
     /// When set, only exercises using this equipment (or bodyweight) are eligible.
     public let availableEquipment: Set<String>?
+    public let selectionBias: MethodologyPreferences.SelectionBias
 
     public init(
         helmDay: HelmDay,
@@ -52,7 +53,8 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         targetMuscles: [MuscleGroup],
         exerciseCatalog: [CatalogExercise],
         remainingSessionsThisWeek: Int = 2,
-        availableEquipment: Set<String>? = nil
+        availableEquipment: Set<String>? = nil,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced
     ) {
         precondition(remainingSessionsThisWeek >= 1, "remainingSessionsThisWeek must be >= 1")
         self.helmDay = helmDay
@@ -63,6 +65,7 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         self.exerciseCatalog = exerciseCatalog
         self.remainingSessionsThisWeek = remainingSessionsThisWeek
         self.availableEquipment = availableEquipment
+        self.selectionBias = selectionBias
     }
 }
 

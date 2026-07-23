@@ -1,0 +1,60 @@
+{
+  "seedVersion": 1,
+  "placeholder": true,
+  "evidence": [
+    {
+      "id": "ev-volume-landmarks",
+      "title": "Volume landmarks",
+      "summary": "Weekly hard sets ramp from MEV toward MRV with a scheduled deload before resetting the block.",
+      "citation": "Placeholder review (content authored separately)",
+      "placeholder": true
+    },
+    {
+      "id": "ev-squat-depth",
+      "title": "Squat depth and hypertrophy",
+      "summary": "Longer muscle lengths and full-ROM patterns are prioritised when stretch bias is selected.",
+      "citation": "Placeholder study (content authored separately)",
+      "placeholder": true
+    },
+    {
+      "id": "ev-readiness-arc",
+      "title": "Readiness autoregulation",
+      "summary": "Morning ARC scales same-day volume and caps RPE when recovery is compromised.",
+      "citation": "Placeholder review (content authored separately)",
+      "placeholder": true
+    },
+    {
+      "id": "ev-deload-logic",
+      "title": "Deload logic",
+      "summary": "Planned deload weeks reduce weekly hard sets before landmarks reset for the next mesocycle.",
+      "citation": "Placeholder review (content authored separately)",
+      "placeholder": true
+    }
+  ],
+  "topics": [
+    {
+      "id": "volume-landmarks",
+      "title": "Weekly volume landmarks",
+      "body": "Helm tracks weekly hard sets per muscle against MEV and MRV landmarks.\n\nEach mesocycle ramps volume toward the upper bound, then schedules a deload before resetting the block. Landmarks refine from logged tolerance over time.\n\nThis is coaching guidance, not medical advice.",
+      "citationIDs": ["ev-volume-landmarks"]
+    },
+    {
+      "id": "movement-selection",
+      "title": "Movement selection",
+      "body": "Exercises are ranked by effectiveness, stretch-position bias, and stimulus-to-fatigue for the target muscle.\n\nEquipment preferences and selection bias below change which movement wins when more than one option is available.\n\nCitations in the seed library are placeholders until Cameron authors the final references.",
+      "citationIDs": ["ev-squat-depth"]
+    },
+    {
+      "id": "readiness-gating",
+      "title": "Readiness autoregulation",
+      "body": "Your morning ARC score scales today's prescribed sets and caps target RPE when recovery is low.\n\nPeaking readiness keeps the planned top-end work in place. The engine always renders numbers offline; the coach narrates the why when online.",
+      "citationIDs": ["ev-readiness-arc"]
+    },
+    {
+      "id": "deloads",
+      "title": "Deloads and resets",
+      "body": "Deload weeks trim volume across the block before landmarks reset for the next accumulation phase.\n\nMissed sessions are handled by the drift policy so the plan stays on route without manual spreadsheet work.",
+      "citationIDs": ["ev-deload-logic"]
+    }
+  ]
+}

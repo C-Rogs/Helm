@@ -58,7 +58,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M9.2 Nutrition screen + Dashboard card | not started | | | |
 | M9.3 Photo-to-macro | not started | | | |
 | M10.1 Trends charts | not started | | | |
-| M10.2 Sources / Methodology screen | not started | | | |
+| M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
 | M11.1 Schema-v2 export + Share Extension | not started | | | |
 | M11.2 Sharing via Coacher (later, optional) | not started | | | |
 

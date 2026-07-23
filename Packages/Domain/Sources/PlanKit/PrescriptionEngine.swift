@@ -29,7 +29,8 @@ enum PrescriptionEngine {
                 for: muscle,
                 catalog: profile.exerciseCatalog,
                 excluding: selectedExerciseIDs,
-                availableEquipment: profile.availableEquipment
+                availableEquipment: profile.availableEquipment,
+                selectionBias: profile.selectionBias
             ) else { continue }
 
             let catalogExercise = selection.exercise
@@ -73,13 +74,15 @@ enum PrescriptionEngine {
         for muscle: MuscleGroup,
         catalog: [CatalogExercise],
         excluding excludedExerciseIDs: Set<String>,
-        availableEquipment: Set<String>? = nil
+        availableEquipment: Set<String>? = nil,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced
     ) -> CatalogExercise? {
         ExerciseSelectionEngine.select(
             for: muscle,
             catalog: catalog,
             excluding: excludedExerciseIDs,
-            availableEquipment: availableEquipment
+            availableEquipment: availableEquipment,
+            selectionBias: selectionBias
         )?.exercise
     }
 

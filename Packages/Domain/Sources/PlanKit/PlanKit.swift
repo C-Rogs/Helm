@@ -126,13 +126,15 @@ public enum PlanKit {
         for muscle: MuscleGroup,
         catalog: [CatalogExercise],
         excluding excludedExerciseIDs: Set<String> = [],
-        availableEquipment: Set<String>? = nil
+        availableEquipment: Set<String>? = nil,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced
     ) -> ExerciseSelection? {
         ExerciseSelectionEngine.select(
             for: muscle,
             catalog: catalog,
             excluding: excludedExerciseIDs,
-            availableEquipment: availableEquipment
+            availableEquipment: availableEquipment,
+            selectionBias: selectionBias
         )
     }
 }

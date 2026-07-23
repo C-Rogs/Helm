@@ -90,6 +90,11 @@ public final class PrescriptionService {
         await refresh(readiness: nil)
     }
 
+    public func saveMethodologyPreferences(_ preferences: MethodologyPreferences) async throws {
+        try await engine.saveMethodologyPreferences(preferences)
+        await refresh(readiness: nil)
+    }
+
     public func currentTrainingPlan() async throws -> StoredTrainingPlanSettings {
         try await engine.loadTrainingPlan()
     }
@@ -133,6 +138,12 @@ public actor PlanPrescriptionEngine {
     public func saveTrainingPlan(_ settings: StoredTrainingPlanSettings) throws {
         try persistence.trainingPlan.save(settings)
         try syncMemoryProfilePhaseGoal(settings.phaseGoal)
+    }
+
+    public func saveMethodologyPreferences(_ preferences: MethodologyPreferences) throws {
+        var profile = try persistence.memoryProfile.load()
+        profile.preferences = preferences.merge(into: profile.preferences)
+        try persistence.memoryProfile.save(profile)
     }
 
     public func dashboardState(
@@ -203,6 +214,7 @@ public actor PlanPrescriptionEngine {
             targetMuscles: targetMuscles,
             experience: experience
         )
+        let methodology = try methodologyPreferences()
 
         let profile = PrescriptionProfile(
             helmDay: day,
@@ -213,7 +225,9 @@ public actor PlanPrescriptionEngine {
             exerciseCatalog: catalog,
             remainingSessionsThisWeek: SessionSplitPlanner.remainingSessionsThisWeek(
                 completedThisWeek: completedThisWeek
-            )
+            ),
+            availableEquipment: methodology.availableEquipmentFilter,
+            selectionBias: methodology.selectionBias
         )
 
         let signpostID = signpost.makeSignpostID()
@@ -258,6 +272,11 @@ public actor PlanPrescriptionEngine {
         var profile = try persistence.memoryProfile.load()
         profile.phaseGoal = phaseGoal
         try persistence.memoryProfile.save(profile)
+    }
+
+    private func methodologyPreferences() throws -> MethodologyPreferences {
+        let profile = try persistence.memoryProfile.load()
+        return MethodologyPreferences.parse(from: profile.preferences).preferences
     }
 
     private func repRangeText(min: Int?, max: Int?) -> String {
