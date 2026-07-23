@@ -62,6 +62,8 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSHealthShareUsageDescription: Helm reads your Apple Health data to compute readiness, training, and nutrition guidance.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Helm writes workouts and meals you log back to Apple Health.
+        INFOPLIST_KEY_NSCameraUsageDescription: Helm uses the camera to estimate meal macros from photos.
+        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Helm uses your photo library to estimate meal macros from meal photos.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_CFBundleURLTypes:
           - CFBundleURLName: com.cameronro.helm

@@ -1,3 +1,4 @@
+import CoachLLM
 import Foundation
 import HealthKitIngest
 import Persistence
@@ -7,6 +8,12 @@ enum NutritionBootstrap {
 
     @MainActor
     static let nutritionService = NutritionService(engine: engine)
+
+    @MainActor
+    static var photoMealService: PhotoMealService? {
+        guard let provider = CoachBootstrap.liveGeminiProvider else { return nil }
+        return PhotoMealService(estimator: PhotoMacroEstimator(provider: provider))
+    }
 
     @MainActor
     static func start() {

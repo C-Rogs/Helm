@@ -40,6 +40,7 @@ public protocol HealthKitStoreClient: Sendable {
         end: Date,
         metadata: [String: any Sendable]
     ) async throws -> SavedWorkoutSample
+    func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples
 }
 
 public struct LiveHealthKitStore: HealthKitStoreClient {
@@ -185,6 +186,81 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
             start: workout.startDate,
             end: workout.endDate,
             sourceBundleID: bundleID
+        )
+    }
+
+    public func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
+        let metadata: [String: Any] = [
+            HKMetadataKeyExternalUUID: request.mealID,
+            HelmHealthKitMetadata.mealIDKey: request.mealID,
+            HelmHealthKitMetadata.mealNameKey: request.name,
+            HelmHealthKitMetadata.mealSourceKey: HelmHealthKitMetadata.mealSourcePhoto
+        ]
+
+        let energyType = HKQuantityType(.dietaryEnergyConsumed)
+        let proteinType = HKQuantityType(.dietaryProtein)
+        let carbType = HKQuantityType(.dietaryCarbohydrates)
+        let fatType = HKQuantityType(.dietaryFatTotal)
+
+        let energySample = HKQuantitySample(
+            type: energyType,
+            quantity: HKQuantity(unit: .kilocalorie(), doubleValue: request.caloriesKcal),
+            start: request.loggedAt,
+            end: request.loggedAt,
+            device: .local(),
+            metadata: metadata
+        )
+        let proteinSample = HKQuantitySample(
+            type: proteinType,
+            quantity: HKQuantity(unit: .gram(), doubleValue: request.proteinG),
+            start: request.loggedAt,
+            end: request.loggedAt,
+            device: .local(),
+            metadata: metadata
+        )
+        let carbSample = HKQuantitySample(
+            type: carbType,
+            quantity: HKQuantity(unit: .gram(), doubleValue: request.carbsG),
+            start: request.loggedAt,
+            end: request.loggedAt,
+            device: .local(),
+            metadata: metadata
+        )
+        let fatSample = HKQuantitySample(
+            type: fatType,
+            quantity: HKQuantity(unit: .gram(), doubleValue: request.fatG),
+            start: request.loggedAt,
+            end: request.loggedAt,
+            device: .local(),
+            metadata: metadata
+        )
+
+        let samples: [HKObject] = [energySample, proteinSample, carbSample, fatSample]
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.save(samples) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitIngestError.mealWriteFailed)
+                }
+            }
+        }
+
+        func savedSample(from sample: HKQuantitySample) -> SavedMealSample {
+            SavedMealSample(
+                id: sample.uuid,
+                sourceBundleID: sample.sourceRevision.source.bundleIdentifier
+            )
+        }
+
+        return SavedMealSamples(
+            mealID: request.mealID,
+            energy: savedSample(from: energySample),
+            protein: savedSample(from: proteinSample),
+            carbohydrate: savedSample(from: carbSample),
+            fat: savedSample(from: fatSample)
         )
     }
 }

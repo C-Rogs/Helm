@@ -6,6 +6,7 @@ public enum HealthKitIngestError: Error, Sendable, LocalizedError {
     case backgroundDeliveryFailed(String)
     case anchorPersistenceFailed(String)
     case workoutWriteFailed
+    case mealWriteFailed
 
     public var errorDescription: String? {
         switch self {
@@ -17,6 +18,8 @@ public enum HealthKitIngestError: Error, Sendable, LocalizedError {
             "Could not persist HealthKit anchor: \(reason)."
         case .workoutWriteFailed:
             "Could not save workout to HealthKit."
+        case .mealWriteFailed:
+            "Could not save meal to HealthKit."
         }
     }
 }

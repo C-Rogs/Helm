@@ -96,6 +96,25 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func mealEstimatePhotoBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        userMessage: String = "Estimate the meal macros from this photo."
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.mealPhotoContents(
+                imageJPEGBase64: imageJPEGBase64,
+                userMessage: userMessage
+            ),
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": mealEstimateSchema()
+            ]
+        )
+    }
+
     public static func morningBriefBody(
         systemInstructions: String,
         contextBlock: String,

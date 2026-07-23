@@ -4,9 +4,9 @@ import Testing
 
 @Suite("Gemini request schemas")
 struct GeminiRequestSchemaTests {
-    @Test("default model is 3.1 Flash-Lite")
+    @Test("default model is 3.5 Flash-Lite")
     func defaultModel() {
-        #expect(GeminiModel.default.rawValue == "gemini-3.1-flash-lite")
+        #expect(GeminiModel.default.rawValue == "gemini-3.5-flash-lite")
     }
 
     @Test("session adjustment schema pins schemaVersion")
@@ -133,6 +133,20 @@ struct GeminiProviderFixtureTests {
         #expect(artefact.schemaVersion == .sessionAdjustmentV1)
         #expect(artefact.promptVersion == .sessionAdjustmentV1)
         #expect(artefact.payload.operations.count == 1)
+        #expect(client.lastGenerateRequestID != nil)
+    }
+
+    @Test("fixture photo meal estimate decodes")
+    func generateMealEstimateFromPhotoFixture() async throws {
+        let client = FixtureGeminiHTTPClient(bundle: .module)
+        let store = fixtureKeyStore()
+        let provider = GeminiProvider(apiKeyStore: store, httpClient: client)
+
+        let artefact = try await provider.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+
+        #expect(artefact.schemaVersion == .mealEstimateV1)
+        #expect(artefact.promptVersion == .mealEstimateV1)
+        #expect(artefact.payload.caloriesKcal == 650)
         #expect(client.lastGenerateRequestID != nil)
     }
 }

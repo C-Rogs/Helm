@@ -96,4 +96,17 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
             )
         }
     }
+
+    func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
+        lock.withLock {
+            let bundleID = HealthKitIngest.defaultOwnBundleID
+            return SavedMealSamples(
+                mealID: request.mealID,
+                energy: SavedMealSample(id: UUID(), sourceBundleID: bundleID),
+                protein: SavedMealSample(id: UUID(), sourceBundleID: bundleID),
+                carbohydrate: SavedMealSample(id: UUID(), sourceBundleID: bundleID),
+                fat: SavedMealSample(id: UUID(), sourceBundleID: bundleID)
+            )
+        }
+    }
 }

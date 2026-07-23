@@ -215,6 +215,30 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         }
     }
 
+    public func estimateMacros(
+        imageJPEGData: Data
+    ) async throws -> CoachStructuredArtefact<MealEstimatePayload> {
+        let base64 = imageJPEGData.base64EncodedString()
+        let systemInstructions = """
+        You estimate meal macros from photos for a training athlete.
+        Return only JSON matching the schema. Round macros to whole grams and calories.
+        """
+        return try await generateStructured(
+            MealEstimatePayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: "",
+            userMessage: "Estimate the meal macros from this photo.",
+            thread: .empty,
+            expectedSchema: .mealEstimateV1,
+            promptVersion: .mealEstimateV1
+        ) {
+            try GeminiRequestBuilder.mealEstimatePhotoBody(
+                systemInstructions: systemInstructions,
+                imageJPEGBase64: base64
+            )
+        }
+    }
+
     public func generateMorningBrief(
         systemInstructions: String,
         contextBlock: String,

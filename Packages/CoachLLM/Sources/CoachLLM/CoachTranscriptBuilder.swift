@@ -40,4 +40,24 @@ enum CoachTranscriptBuilder {
     static func systemInstruction(_ systemInstructions: String) -> [String: Any] {
         ["parts": [["text": systemInstructions]]]
     }
+
+    static func mealPhotoContents(
+        imageJPEGBase64: String,
+        userMessage: String
+    ) -> [[String: Any]] {
+        [
+            [
+                "role": "user",
+                "parts": [
+                    [
+                        "inline_data": [
+                            "mime_type": "image/jpeg",
+                            "data": imageJPEGBase64
+                        ]
+                    ],
+                    ["text": userMessage]
+                ]
+            ]
+        ]
+    }
 }

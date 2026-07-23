@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"schemaVersion\": \"meal_estimate.v1\",\n  \"description\": \"Chicken rice bowl\",\n  \"caloriesKcal\": 650,\n  \"proteinG\": 45,\n  \"carbsG\": 70,\n  \"fatG\": 18,\n  \"confidence\": \"medium\"\n}\n"
+          }
+        ]
+      }
+    }
+  ]
+}

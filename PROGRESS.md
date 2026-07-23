@@ -56,7 +56,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M8.2 Phone observation + readiness complication | done | 2026-07-23 | acb0ffe | Phone HKWorkout observer feeds Edwards TRIMP into next-day prior_day_trimp; throttled readiness push via WCSession application context; complication shows ARC score + brief deep link; Watch Brief tab; opportunistic live HR from Watch (5s throttle). Fixture tests for workout TRIMP + complication payload. |
 | M9.1 NutritionKit engine (pure) | done | 2026-07-23 | 7a676ad | Adaptive TDEE + macro targets + macro gap. Replaces NutritionTargetComposer in brief and Dashboard (empty trend until M9.2 persistence). |
 | M9.2 Nutrition screen + Dashboard card | done | 2026-07-23 | dd249e8 | NutritionService + NutritionEngine; persisted TDEE trend; targets vs actual + alcohol gap on Dashboard and Nutrition screen; day-type resolver (training/rest/deload). |
-| M9.3 Photo-to-macro | not started | | | |
+| M9.3 Photo-to-macro | done | 2026-07-23 | 987ab04 |
 | M10.1 Trends charts | not started | | | |
 | M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
 | M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 6f47be0 |

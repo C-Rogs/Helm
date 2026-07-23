@@ -178,9 +178,34 @@ public final class FixtureGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendabl
 
     public func generateContent(_ request: GeminiGenerateHTTPRequest) async throws -> Data {
         lock.withLock { _lastGenerateRequestID = request.requestID }
-        guard let url = bundle.url(forResource: "gemini_generate_session_adjustment", withExtension: "json") else {
-            throw CoachProviderError.requestFailed("Missing gemini_generate_session_adjustment.json fixture")
+        let fixtureName: String
+        if requestIncludesMealPhoto(request.body) {
+            fixtureName = "gemini_generate_meal_estimate"
+        } else {
+            fixtureName = "gemini_generate_session_adjustment"
+        }
+        guard let url = bundle.url(forResource: fixtureName, withExtension: "json") else {
+            throw CoachProviderError.requestFailed("Missing \(fixtureName).json fixture")
         }
         return try Data(contentsOf: url)
+    }
+
+    private func requestIncludesMealPhoto(_ body: Data) -> Bool {
+        guard
+            let object = try? JSONSerialization.jsonObject(with: body) as? [String: Any],
+            let contents = object["contents"] as? [[String: Any]]
+        else {
+            return false
+        }
+
+        for content in contents {
+            guard let parts = content["parts"] as? [[String: Any]] else { continue }
+            for part in parts {
+                if part["inline_data"] != nil {
+                    return true
+                }
+            }
+        }
+        return false
     }
 }

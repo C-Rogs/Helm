@@ -9,6 +9,11 @@ enum CoachBootstrap {
     }
 
     @MainActor
+    static var liveGeminiProvider: GeminiProvider? {
+        ProviderRegistry.shared.provider(for: .gemini) as? GeminiProvider
+    }
+
+    @MainActor
     private static func installProvider() {
         let keyStore = APIKeyStore()
         if keyStore.hasKey(kind: .gemini) {
