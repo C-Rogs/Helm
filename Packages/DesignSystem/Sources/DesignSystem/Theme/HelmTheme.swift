@@ -65,7 +65,11 @@ public final class HelmThemeCoordinator {
         let storedMode = defaults.string(forKey: Keys.themeMode).flatMap(HelmThemeMode.init(rawValue:))
         themeMode = storedMode ?? .auto
         let storedSkin = defaults.string(forKey: Keys.skin).flatMap(HelmSkin.init(rawValue:))
-        skin = storedSkin ?? .instrument
+        if let storedSkin, storedSkin.isSelectable {
+            skin = storedSkin
+        } else {
+            skin = .instrument
+        }
         if defaults.object(forKey: Keys.hapticsEnabled) == nil {
             hapticsEnabled = true
         } else {
@@ -141,7 +145,7 @@ private struct HelmThemeContainer<Content: View>: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private let content: Content
-    private let coordinator = HelmThemeCoordinator.shared
+    @State private var coordinator = HelmThemeCoordinator.shared
 
     init(content: Content) {
         self.content = content
@@ -164,6 +168,9 @@ private struct HelmThemeContainer<Content: View>: View {
                 coordinator.update(colorScheme: newValue)
             }
             .onChange(of: coordinator.themeMode) { _, _ in
+                coordinator.update(colorScheme: colorScheme)
+            }
+            .onChange(of: coordinator.skin) { _, _ in
                 coordinator.update(colorScheme: colorScheme)
             }
     }

@@ -14,7 +14,7 @@ public struct Card<Content: View>: View {
     }
 }
 
-#Preview("Card") {
+#Preview("Card instrument") {
     Card {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             Text("Readiness")
@@ -25,4 +25,19 @@ public struct Card<Content: View>: View {
     }
     .padding()
     .helmTheme()
+    .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Card data sheet") {
+    Card {
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            Text("Readiness")
+                .helmType(.label)
+            Text("Building baseline")
+                .helmType(.body, color: HelmColor.fgSecondary)
+        }
+    }
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
 }

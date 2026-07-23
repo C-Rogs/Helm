@@ -119,7 +119,7 @@ struct TrainView: View {
 
     private var idleState: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            HelmScreenStack {
                 if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
                     prescriptionIdleCard(summary)
                 } else {

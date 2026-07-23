@@ -18,6 +18,16 @@ struct SettingsView: View {
                     .onChange(of: coordinator.themeMode) { _, _ in
                         HapticEngine.shared.play(.selection)
                     }
+
+                    Picker("Layout", selection: $coordinator.skin) {
+                        ForEach(HelmSkin.selectableSkins) { skin in
+                            Text(skin.label).tag(skin)
+                        }
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: coordinator.skin) { _, _ in
+                        HapticEngine.shared.play(.selection)
+                    }
                 }
 
                 Section("Feedback") {

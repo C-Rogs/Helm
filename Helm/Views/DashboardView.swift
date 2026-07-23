@@ -25,7 +25,7 @@ struct DashboardView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                HelmScreenStack {
                     greetingHeader
                     thresholdInsightCard
                     briefCard
@@ -309,12 +309,13 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity)
     }
 
+    @ViewBuilder
     private func readinessShell<Content: View>(
         subtitle: String,
         state: HelmState? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
-        Card {
+        let card = Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 HStack {
                     Text("ARC")
@@ -332,13 +333,11 @@ struct DashboardView: View {
                     .frame(maxWidth: .infinity, alignment: .center)
             }
         }
-        .overlay(alignment: .top) {
-            if let state {
-                RoundedRectangle(cornerRadius: HelmRadius.card)
-                    .fill(HelmColor.color(for: state))
-                    .frame(height: 3)
-                    .padding(.horizontal, 1)
-            }
+
+        if let state {
+            card.skinAccentStripe(HelmColor.color(for: state))
+        } else {
+            card
         }
     }
 

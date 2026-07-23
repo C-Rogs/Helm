@@ -49,7 +49,7 @@ public struct BriefCard: View {
     }
 }
 
-#Preview("BriefCard") {
+#Preview("BriefCard instrument") {
     BriefCard(
         citationLabel: "ev-chest-1",
         narration: "ARC 72, balanced. Hit today's compounds at RIR 2. Protein target 150g.",
@@ -57,4 +57,16 @@ public struct BriefCard: View {
     )
     .padding()
     .helmTheme()
+    .environment(\.helmSkin, .instrument)
+}
+
+#Preview("BriefCard data sheet") {
+    BriefCard(
+        citationLabel: "ev-chest-1",
+        narration: "ARC 72, balanced. Hit today's compounds at RIR 2. Protein target 150g.",
+        isEngineOnly: false
+    )
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
 }

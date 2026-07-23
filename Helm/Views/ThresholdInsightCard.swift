@@ -18,12 +18,7 @@ struct ThresholdInsightCard: View {
                     .helmType(.monoTag, color: HelmColor.accent)
             }
         }
-        .overlay(alignment: .top) {
-            RoundedRectangle(cornerRadius: HelmRadius.card)
-                .fill(HelmColor.accent.opacity(0.35))
-                .frame(height: 3)
-                .padding(.horizontal, 1)
-        }
+        .skinAccentStripe(HelmColor.accent.opacity(0.35))
     }
 }
 
