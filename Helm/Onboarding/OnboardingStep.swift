@@ -1,0 +1,55 @@
+import Foundation
+
+enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
+    case healthKit
+    case notifications
+    case coachKey
+    case trainingPlan
+    case backfill
+    case shortcuts
+
+    var id: Int { rawValue }
+
+    var title: String {
+        switch self {
+        case .healthKit: "Health data"
+        case .notifications: "Notifications"
+        case .coachKey: "Coach"
+        case .trainingPlan: "Training plan"
+        case .backfill: "Import history"
+        case .shortcuts: "Shortcuts"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .healthKit:
+            "Helm reads Apple Health to compute readiness, training load, and nutrition."
+        case .notifications:
+            "Rest timers and future briefs use local notifications."
+        case .coachKey:
+            "Add a Gemini API key for coach narration. Engine-only mode works without one."
+        case .trainingPlan:
+            "Set your phase and goal so today's session is prescribed."
+        case .backfill:
+            "Import the last six months to seed readiness baselines."
+        case .shortcuts:
+            "Automate your morning brief from Shortcuts when you are ready."
+        }
+    }
+
+    var settingsLabel: String {
+        switch self {
+        case .healthKit: "Health Access"
+        case .notifications: "Notifications"
+        case .coachKey: "Coach API Key"
+        case .trainingPlan: "Training Plan"
+        case .backfill: "Health Import"
+        case .shortcuts: "Shortcuts Setup"
+        }
+    }
+
+    var next: OnboardingStep? {
+        OnboardingStep(rawValue: rawValue + 1)
+    }
+}

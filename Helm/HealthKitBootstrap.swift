@@ -35,6 +35,19 @@ enum HealthKitBootstrap {
         }
     }
 
+    /// Runs deferred bootstrap work after onboarding completes.
+    static func startAfterOnboarding() {
+        Task(priority: .utility) {
+            await bootstrapIfNeeded()
+            guard UserDefaults.standard.bool(forKey: OnboardingStore.completedDefaultsKey) else { return }
+            scheduleDefaultBackfill()
+        }
+    }
+
+    private static func shouldDeferBackfill() -> Bool {
+        !UserDefaults.standard.bool(forKey: OnboardingStore.completedDefaultsKey)
+    }
+
     private static func bootstrapIfNeeded() async {
         let window = BackfillWindow.sixMonths()
         let backfillComplete = await backfill.isComplete(for: window)
@@ -50,7 +63,9 @@ enum HealthKitBootstrap {
                 )
             }
         }
-        scheduleDefaultBackfill()
+        if !shouldDeferBackfill() {
+            scheduleDefaultBackfill()
+        }
     }
 
     static func scheduleDefaultBackfill() {

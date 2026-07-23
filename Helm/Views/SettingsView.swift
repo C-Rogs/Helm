@@ -24,6 +24,32 @@ struct SettingsView: View {
                     Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
                 }
 
+                Section("Setup") {
+                    NavigationLink("Health Access") {
+                        HealthKitOnboardingStepView(showsFlowControls: false)
+                            .navigationTitle("Health Access")
+                    }
+                    NavigationLink("Notifications") {
+                        NotificationOnboardingStepView(showsFlowControls: false)
+                            .navigationTitle("Notifications")
+                    }
+                    NavigationLink("Coach API Key") {
+                        CoachKeyOnboardingStepView(showsFlowControls: false)
+                            .navigationTitle("Coach API Key")
+                    }
+                    NavigationLink("Training Plan") {
+                        TrainingPlanOnboardingStepView(showsFlowControls: false)
+                    }
+                    NavigationLink("Health Import") {
+                        BackfillOnboardingStepView(showsFlowControls: false)
+                            .navigationTitle("Health Import")
+                    }
+                    NavigationLink("Shortcuts Setup") {
+                        ShortcutsOnboardingStepView(showsFlowControls: false)
+                            .navigationTitle("Shortcuts Setup")
+                    }
+                }
+
                 Section {
                     NavigationLink("Training Plan") {
                         PhaseGoalSettingsView()

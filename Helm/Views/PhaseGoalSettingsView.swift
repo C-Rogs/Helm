@@ -5,6 +5,10 @@ import Persistence
 import SwiftUI
 
 struct PhaseGoalSettingsView: View {
+    var embedInForm: Bool = true
+    var saveButtonTitle: String = "Save & Re-plan"
+    var onSaved: (() -> Void)?
+
     @State private var settings = StoredTrainingPlanSettings.default
     @State private var weeklyRateText = ""
     @State private var emphasisText = ""
@@ -14,7 +18,21 @@ struct PhaseGoalSettingsView: View {
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
     var body: some View {
-        Form {
+        Group {
+            if embedInForm {
+                Form { settingsContent }
+            } else {
+                settingsContent
+            }
+        }
+        .navigationTitle("Training Plan")
+        .helmScreenBackground()
+        .task { await load() }
+    }
+
+    @ViewBuilder
+    private var settingsContent: some View {
+        Group {
             Section {
                 Text("Changing phase re-plans today's session and future volume targets.")
                     .font(HelmType.body.font)
@@ -59,16 +77,31 @@ struct PhaseGoalSettingsView: View {
                 }
             }
 
-            Section {
-                Button(isSaving ? "Saving…" : "Save & Re-plan") {
-                    Task { await save() }
+            if embedInForm {
+                Section {
+                    saveButton
                 }
-                .disabled(isSaving)
+            } else {
+                saveButton
             }
         }
-        .navigationTitle("Training Plan")
-        .helmScreenBackground()
-        .task { await load() }
+    }
+
+    @ViewBuilder
+    private var saveButton: some View {
+        if embedInForm {
+            Button(isSaving ? "Saving…" : saveButtonTitle) {
+                Task { await save() }
+            }
+            .buttonStyle(.borderless)
+            .disabled(isSaving)
+        } else {
+            Button(isSaving ? "Saving…" : saveButtonTitle) {
+                Task { await save() }
+            }
+            .buttonStyle(.helmPrimary)
+            .disabled(isSaving)
+        }
     }
 
     private var phaseBinding: Binding<TrainingPhase> {
@@ -112,6 +145,7 @@ struct PhaseGoalSettingsView: View {
             HapticEngine.shared.play(.phaseChange)
             saveMessage = "Saved. Today's prescription was re-planned."
             PlanBootstrap.refreshPrescription()
+            onSaved?()
         } catch {
             saveMessage = error.localizedDescription
         }

@@ -28,8 +28,7 @@ struct HelmApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootTabView()
-                .helmTheme()
+            AppRootView()
         }
     }
 }
