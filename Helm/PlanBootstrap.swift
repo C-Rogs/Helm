@@ -3,7 +3,7 @@ import HealthKitIngest
 import Persistence
 
 enum PlanBootstrap {
-    private static let engine = PlanPrescriptionEngine(persistence: PersistenceBootstrap.persistenceStore)
+    static let engine = PlanPrescriptionEngine(persistence: PersistenceBootstrap.persistenceStore)
 
     @MainActor
     static let prescriptionService = PrescriptionService(engine: engine)

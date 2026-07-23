@@ -129,6 +129,32 @@ public actor ActiveSessionEngine {
         return try repository.fetchActiveSnapshot(at: now)?.restTimer
     }
 
+    public func syncFromPrescription(_ prescription: SessionPrescription) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: prescription,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func restoreExerciseLayout(_ exercises: [WorkoutSessionExerciseDraft]) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.restoreExerciseLayout(
+            sessionID: snapshot.session.id,
+            exercises: exercises,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
     private func requireSnapshot(at now: Date) throws -> ActiveSessionSnapshot {
         guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
             throw PersistenceError.noActiveSession

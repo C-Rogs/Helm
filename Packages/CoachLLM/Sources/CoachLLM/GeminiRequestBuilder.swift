@@ -96,6 +96,28 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func morningBriefBody(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.contents(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread
+            ),
+            generationConfig: [
+                "temperature": 0.3,
+                "responseMimeType": "application/json",
+                "responseSchema": morningBriefSchema()
+            ]
+        )
+    }
+
     public static func sessionAdjustmentSchema() -> [String: Any] {
         [
             "type": "object",
@@ -135,6 +157,21 @@ public enum GeminiRequestBuilder {
                 "fatG",
                 "confidence"
             ]
+        ]
+    }
+
+    public static func morningBriefSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": ["type": "string"],
+                "narration": ["type": "string"],
+                "citationIDs": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ]
+            ],
+            "required": ["schemaVersion", "narration", "citationIDs"]
         ]
     }
 

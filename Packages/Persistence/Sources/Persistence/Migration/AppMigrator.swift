@@ -37,6 +37,9 @@ struct AppMigrator {
         if version >= 8 {
             PhaseGoalSchemaMigration.register(on: &migrator)
         }
+        if version >= 9 {
+            BriefSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

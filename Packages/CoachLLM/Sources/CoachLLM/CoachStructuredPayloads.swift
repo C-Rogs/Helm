@@ -79,3 +79,15 @@ public struct MealEstimatePayload: Codable, Sendable, Equatable {
         self.confidence = confidence
     }
 }
+
+public struct MorningBriefPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let narration: String
+    public let citationIDs: [String]
+
+    public init(schemaVersion: String, narration: String, citationIDs: [String]) {
+        self.schemaVersion = schemaVersion
+        self.narration = narration
+        self.citationIDs = citationIDs
+    }
+}

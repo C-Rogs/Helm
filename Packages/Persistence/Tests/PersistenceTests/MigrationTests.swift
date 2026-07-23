@@ -38,7 +38,8 @@ struct MigrationTests {
                 "planned_workout",
                 "app_metadata",
                 "chat_message",
-                "training_plan_settings"
+                "training_plan_settings",
+                "daily_brief"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

@@ -16,6 +16,10 @@ enum WorkoutHapticCoordinator {
         HapticEngine.shared.play(pattern)
     }
 
+    static func playCoachAdjustment() {
+        play(.coachAdjust)
+    }
+
     static func playSetCompletion(wasAlreadyCompleted: Bool) {
         guard let pattern = SetCompletionHapticPolicy.pattern(wasAlreadyCompleted: wasAlreadyCompleted) else {
             return

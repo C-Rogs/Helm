@@ -12,6 +12,7 @@ struct TrainView: View {
     @State private var restRemainingSeconds: Int?
     @State private var isShowingImport = false
     @State private var didTrackInitialRestRemaining = false
+    @FocusState private var isCoachPromptFocused: Bool
 
     var body: some View {
         NavigationStack {
@@ -80,6 +81,9 @@ struct TrainView: View {
                 Button("OK", role: .cancel) {}
             } message: {
                 Text(controller.errorMessage ?? "")
+            }
+            .sheet(isPresented: $controller.isShowingCoachPrompt) {
+                coachPromptSheet
             }
             .sheet(isPresented: $controller.isShowingPersonalRecords) {
                 NavigationStack {
@@ -229,6 +233,16 @@ struct TrainView: View {
         VStack(spacing: 0) {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    if let banner = controller.adjustmentBanner {
+                        AdjustmentBanner(
+                            fromLabel: banner.fromLabel,
+                            toLabel: banner.toLabel,
+                            reason: banner.reason
+                        ) {
+                            Task { await controller.undoLastAdjustment() }
+                        }
+                    }
+
                     if let remaining = restRemainingSeconds {
                         RestTimerBanner(remainingSeconds: remaining) {
                             Task { await controller.skipRest() }
@@ -294,6 +308,7 @@ struct TrainView: View {
             }
 
             if controller.numpadTarget == nil {
+                inSessionCoachBar
                 sessionActionBar
             }
         }
@@ -312,7 +327,55 @@ struct TrainView: View {
     }
 
     private var bottomContentInset: CGFloat {
-        controller.numpadTarget == nil ? 88 : 300
+        controller.numpadTarget == nil ? 140 : 300
+    }
+
+    private var inSessionCoachBar: some View {
+        AskCoachBar(
+            prompt: controller.isCoachAdjusting ? "Adjusting session…" : "Ask coach…",
+            isLoading: controller.isCoachAdjusting
+        ) {
+            controller.isShowingCoachPrompt = true
+        }
+        .padding(.horizontal, HelmSpacing.screenGutter)
+        .padding(.bottom, HelmSpacing.xs)
+    }
+
+    private var coachPromptSheet: some View {
+        NavigationStack {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                Text("Tell the coach what to change in this session.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+
+                TextField("Cable fly is taken", text: $controller.coachPromptText, axis: .vertical)
+                    .textFieldStyle(.roundedBorder)
+                    .lineLimit(3 ... 6)
+                    .focused($isCoachPromptFocused)
+
+                Spacer()
+            }
+            .padding(HelmSpacing.md)
+            .helmScreenBackground()
+            .navigationTitle("Ask coach")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Cancel") {
+                        controller.isShowingCoachPrompt = false
+                    }
+                }
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Send") {
+                        Task { await controller.submitCoachPrompt() }
+                    }
+                    .disabled(controller.coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+            }
+            .onAppear {
+                isCoachPromptFocused = true
+            }
+        }
+        .presentationDetents([.medium])
     }
 
     private var sessionActionBar: some View {

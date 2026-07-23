@@ -19,6 +19,7 @@ struct HelmApp: App {
             HealthKitBootstrap.start()
             CoachBootstrap.start()
             ChatBootstrap.start()
+            BriefBootstrap.start()
             #if DEBUG
             await SecretsBootstrap.run()
             #endif

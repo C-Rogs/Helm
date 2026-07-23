@@ -16,6 +16,8 @@ public actor PersistenceStore {
     public nonisolated let trainingPlan: TrainingPlanSettingsStore
     public nonisolated let activeSessions: ActiveSessionRepository
     public nonisolated let chat: ChatStore
+    public nonisolated let brief: BriefStore
+    public nonisolated let coachRecommendations: CoachRecommendationRepository
 
     public let databaseURL: URL
     private let pool: DatabasePool
@@ -39,6 +41,8 @@ public actor PersistenceStore {
         trainingPlan = TrainingPlanSettingsStore(pool: pool)
         activeSessions = ActiveSessionRepository(pool: pool)
         chat = ChatStore(pool: pool)
+        brief = BriefStore(pool: pool)
+        coachRecommendations = CoachRecommendationRepository(pool: pool)
     }
 
     public static func openDefault() throws -> PersistenceStore {

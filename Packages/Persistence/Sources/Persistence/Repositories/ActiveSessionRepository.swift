@@ -512,6 +512,124 @@ public struct ActiveSessionRepository: Sendable {
             return WorkoutSessionStatus(rawValue: status)
         }
     }
+
+    public func syncFromPrescription(
+        sessionID: String,
+        prescription: SessionPrescription,
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            let existing = try Self.fetchExercises(db: db, sessionID: sessionID)
+            let sorted = prescription.exercises.sorted { $0.order < $1.order }
+
+            for (index, prescribed) in sorted.enumerated() {
+                guard index < existing.count else { continue }
+                let sessionExercise = existing[index]
+                let sessionExerciseID = sessionExercise.id
+
+                if sessionExercise.exerciseID != prescribed.exerciseID {
+                    try db.execute(
+                        sql: """
+                            UPDATE workout_session_exercise
+                            SET exercise_id = ?, updated_at = ?
+                            WHERE id = ? AND workout_session_id = ?
+                            """,
+                        arguments: [prescribed.exerciseID, now, sessionExerciseID, sessionID]
+                    )
+                    try db.execute(
+                        sql: """
+                            UPDATE set_entry
+                            SET logged_exercise_id = ?
+                            WHERE workout_session_exercise_id = ?
+                              AND status != 'completed'
+                              AND deleted_at IS NULL
+                            """,
+                        arguments: [prescribed.exerciseID, sessionExerciseID]
+                    )
+                }
+
+                try db.execute(
+                    sql: """
+                        UPDATE workout_session_exercise
+                        SET display_order = ?, updated_at = ?
+                        WHERE id = ? AND workout_session_id = ?
+                        """,
+                    arguments: [index, now, sessionExerciseID, sessionID]
+                )
+
+                try Self.adjustSetCount(
+                    db: db,
+                    sessionExerciseID: sessionExerciseID,
+                    exerciseID: prescribed.exerciseID,
+                    targetSetCount: max(prescribed.targetSets, 1),
+                    existingSets: sessionExercise.sets,
+                    now: now
+                )
+            }
+
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func restoreExerciseLayout(
+        sessionID: String,
+        exercises: [WorkoutSessionExerciseDraft],
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            let existing = try Self.fetchExercises(db: db, sessionID: sessionID)
+            let sorted = exercises.sorted { $0.displayOrder < $1.displayOrder }
+
+            for (index, saved) in sorted.enumerated() {
+                guard index < existing.count else { continue }
+                let current = existing[index]
+                let sessionExerciseID = current.id
+
+                if current.exerciseID != saved.exerciseID {
+                    try db.execute(
+                        sql: """
+                            UPDATE workout_session_exercise
+                            SET exercise_id = ?, updated_at = ?
+                            WHERE id = ? AND workout_session_id = ?
+                            """,
+                        arguments: [saved.exerciseID, now, sessionExerciseID, sessionID]
+                    )
+                    try db.execute(
+                        sql: """
+                            UPDATE set_entry
+                            SET logged_exercise_id = ?
+                            WHERE workout_session_exercise_id = ?
+                              AND status != 'completed'
+                              AND deleted_at IS NULL
+                            """,
+                        arguments: [saved.exerciseID, sessionExerciseID]
+                    )
+                }
+
+                try db.execute(
+                    sql: """
+                        UPDATE workout_session_exercise
+                        SET display_order = ?, updated_at = ?
+                        WHERE id = ? AND workout_session_id = ?
+                        """,
+                    arguments: [index, now, sessionExerciseID, sessionID]
+                )
+
+                try Self.adjustSetCount(
+                    db: db,
+                    sessionExerciseID: sessionExerciseID,
+                    exerciseID: saved.exerciseID,
+                    targetSetCount: max(saved.sets.count, 1),
+                    existingSets: current.sets,
+                    now: now
+                )
+            }
+
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
 }
 
 // MARK: - Shared fetch helpers
@@ -747,5 +865,48 @@ extension ActiveSessionRepository {
                 """,
             arguments: [setID]
         )
+    }
+
+    static func adjustSetCount(
+        db: Database,
+        sessionExerciseID: String,
+        exerciseID: String,
+        targetSetCount: Int,
+        existingSets: [SetEntryDraft],
+        now: String
+    ) throws {
+        let completedSets = existingSets.filter { $0.status == .completed }
+        let plannedSets = existingSets.filter { $0.status != .completed }
+        let minimumCount = max(completedSets.count, targetSetCount)
+        let effectiveTarget = max(minimumCount, 1)
+
+        if plannedSets.count + completedSets.count < effectiveTarget {
+            let toAdd = effectiveTarget - existingSets.count
+            let startIndex = existingSets.count
+            for offset in 0 ..< toAdd {
+                let setID = UUID().uuidString
+                try db.execute(
+                    sql: """
+                        INSERT INTO set_entry (
+                            id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                            created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?)
+                        """,
+                    arguments: [setID, sessionExerciseID, exerciseID, startIndex + offset, now, now]
+                )
+            }
+        } else if existingSets.count > effectiveTarget {
+            let removable = existingSets
+                .filter { $0.status != .completed }
+                .sorted { $0.setIndex > $1.setIndex }
+            var toRemove = existingSets.count - effectiveTarget
+            for set in removable where toRemove > 0 {
+                try db.execute(
+                    sql: "UPDATE set_entry SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [now, set.id]
+                )
+                toRemove -= 1
+            }
+        }
     }
 }

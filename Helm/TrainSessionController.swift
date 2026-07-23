@@ -1,4 +1,5 @@
 import Core
+import CoachLLM
 import DesignSystem
 import Foundation
 import HealthKitIngest
@@ -27,6 +28,8 @@ final class TrainSessionController {
 
     private let persistence: PersistenceStore
     private let prescriptionService: PrescriptionService
+    private let inSessionCoach: InSessionCoachService
+    private let providerPreferences: ProviderPreferencesStore
 
     private(set) var exerciseSummaries: [String: ExerciseSummary] = [:]
     private(set) var previousPerformance: [String: PreviousPerformance] = [:]
@@ -43,6 +46,14 @@ final class TrainSessionController {
     var isShowingPersonalRecords = false
     var errorMessage: String?
 
+    var coachPromptText = ""
+    var isShowingCoachPrompt = false
+    private(set) var isCoachAdjusting = false
+    private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
+
+    private var excludedExerciseIDs: Set<String> = []
+    private var undoStack: [AppliedSessionAdjustment] = []
+
     private var previousRestRemaining: Int?
     private var wasRestRunningOnBackground = false
     private var trackedRestTimerID: String?
@@ -51,12 +62,16 @@ final class TrainSessionController {
         store: ActiveSessionStore,
         persistence: PersistenceStore,
         sideEffects: WorkoutSessionSideEffects,
-        prescriptionService: PrescriptionService
+        prescriptionService: PrescriptionService,
+        inSessionCoach: InSessionCoachService? = nil,
+        providerPreferences: ProviderPreferencesStore = ProviderPreferencesStore()
     ) {
         self.store = store
         self.persistence = persistence
         self.sideEffects = sideEffects
         self.prescriptionService = prescriptionService
+        self.inSessionCoach = inSessionCoach ?? InSessionCoachService(persistence: persistence)
+        self.providerPreferences = providerPreferences
     }
 
     var snapshot: ActiveSessionSnapshot? {
@@ -87,6 +102,7 @@ final class TrainSessionController {
     func startWorkout() async {
         do {
             exerciseTargets = [:]
+            resetCoachSessionState()
             try await store.start()
             WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
@@ -107,6 +123,7 @@ final class TrainSessionController {
                 return
             }
             applyPrescriptionTargets(from: prescription)
+            resetCoachSessionState()
             try await store.startFromPrescription(prescription)
             WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
@@ -121,6 +138,7 @@ final class TrainSessionController {
     func startWorkout(fromTemplateID templateID: String) async {
         do {
             exerciseTargets = [:]
+            resetCoachSessionState()
             guard let template = try persistence.workoutTemplates.fetch(id: templateID) else {
                 errorMessage = "Template not found."
                 return
@@ -142,6 +160,7 @@ final class TrainSessionController {
             isShowingFinishConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
+            resetCoachSessionState()
             await refreshMetadata()
             if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
@@ -164,6 +183,7 @@ final class TrainSessionController {
             isShowingDiscardConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
+            resetCoachSessionState()
             await refreshMetadata()
             await refreshPrescriptionState()
             if let sessionID {
@@ -340,6 +360,81 @@ final class TrainSessionController {
         lastFinishedPersonalRecords = []
     }
 
+    func submitCoachPrompt() async {
+        let trimmed = coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, !isCoachAdjusting else { return }
+        guard let snapshot = store.snapshot else {
+            errorMessage = "No active session."
+            return
+        }
+
+        isCoachAdjusting = true
+        isShowingCoachPrompt = false
+        defer { isCoachAdjusting = false }
+
+        do {
+            let profile = try persistence.memoryProfile.load()
+            let endDay = HelmDay.day(for: .now, calendar: .current)
+            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
+
+            let applied = try await inSessionCoach.askCoachInSession(
+                userMessage: trimmed,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs,
+                provider: provider,
+                profile: profile,
+                contextDays: contextDays.recent
+            )
+
+            try await finishApplyingAdjustment(applied)
+            coachPromptText = ""
+        } catch InSessionCoachError.adjustmentRejected {
+            WorkoutHapticCoordinator.play(.clampRejected)
+            errorMessage = "That adjustment is outside safe bounds."
+        } catch InSessionCoachError.providerUnavailable(let message) {
+            errorMessage = message
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func applyFixtureAdjustment(_ payload: SessionAdjustmentPayload) async throws {
+        guard let snapshot = store.snapshot else {
+            throw InSessionCoachError.noActiveSession
+        }
+        let applied = try inSessionCoach.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs
+        )
+        try await finishApplyingAdjustment(applied)
+    }
+
+    func undoLastAdjustment() async {
+        guard let last = undoStack.popLast() else { return }
+        do {
+            try await store.restoreExerciseLayout(last.previousExercises)
+            adjustmentBanner = nil
+            for id in last.swappedExerciseIDs {
+                excludedExerciseIDs.remove(id)
+            }
+            if let snapshot = store.snapshot {
+                let prescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
+                var targets: [String: String] = [:]
+                for exercise in prescription.exercises {
+                    targets[exercise.exerciseID] = exercise.targetSummaryText
+                }
+                exerciseTargets = targets
+            }
+            await refreshMetadata()
+            await syncSideEffects()
+            WorkoutHapticCoordinator.playCoachAdjustment()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func fetchPickerExercises(search: String) throws -> [ExerciseSummary] {
         try persistence.exercises.listForPicker(search: search)
     }
@@ -499,5 +594,32 @@ final class TrainSessionController {
         value.truncatingRemainder(dividingBy: 1) == 0
             ? String(format: "%.0f", value)
             : String(format: "%.1f", value)
+    }
+
+    private func resetCoachSessionState() {
+        excludedExerciseIDs = []
+        undoStack = []
+        adjustmentBanner = nil
+        coachPromptText = ""
+        isShowingCoachPrompt = false
+        isCoachAdjusting = false
+    }
+
+    private func finishApplyingAdjustment(_ applied: AppliedSessionAdjustment) async throws {
+        undoStack.append(applied)
+        excludedExerciseIDs.formUnion(applied.swappedExerciseIDs)
+        adjustmentBanner = applied.banner
+        await store.recover()
+        if let snapshot = store.snapshot {
+            let prescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
+            var targets: [String: String] = [:]
+            for exercise in prescription.exercises {
+                targets[exercise.exerciseID] = exercise.targetSummaryText
+            }
+            exerciseTargets = targets
+        }
+        await refreshMetadata()
+        await syncSideEffects()
+        WorkoutHapticCoordinator.playCoachAdjustment()
     }
 }

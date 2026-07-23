@@ -54,6 +54,18 @@ struct GeminiStructuredDecodeTests {
         #expect(payload.caloriesKcal == 650)
         #expect(payload.confidence == .medium)
     }
+
+    @Test("morning brief fixture decodes")
+    func morningBriefV1() throws {
+        let json = try fixtureText(named: "morning_brief_v1")
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MorningBriefPayload.self,
+            from: json,
+            expectedSchema: .briefV1
+        )
+        #expect(payload.narration.contains("ARC 72"))
+        #expect(payload.citationIDs == ["ev-chest-1"])
+    }
 }
 
 @Suite("GeminiProvider fixtures")

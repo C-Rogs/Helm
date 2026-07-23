@@ -7,6 +7,7 @@ import SwiftUI
 struct DashboardView: View {
     private var readinessService: ReadinessService { ReadinessBootstrap.readinessService }
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
+    private var briefService: BriefService { BriefBootstrap.briefService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
@@ -21,6 +22,7 @@ struct DashboardView: View {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.lg) {
                     greetingHeader
+                    briefCard
                     readinessCard
                     prescriptionCard
 
@@ -38,13 +40,51 @@ struct DashboardView: View {
             .task {
                 await readinessService.refresh()
                 await prescriptionService.refresh(readiness: readinessService.state.score)
+                await briefService.refresh(
+                    readiness: readinessService.state.score,
+                    prescriptionSummary: prescriptionService.state.summary
+                )
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
                     await prescriptionService.refresh(readiness: newState.score)
+                    await briefService.refresh(
+                        readiness: newState.score,
+                        prescriptionSummary: prescriptionService.state.summary
+                    )
+                }
+            }
+            .onChange(of: prescriptionService.state) { _, newState in
+                Task {
+                    await briefService.refresh(
+                        readiness: readinessService.state.score,
+                        prescriptionSummary: newState.summary
+                    )
                 }
             }
         }
+    }
+
+    @ViewBuilder
+    private var briefCard: some View {
+        switch briefService.state {
+        case .loading:
+            briefShell(narration: "Building today's brief…", isEngineOnly: true, citationLabel: nil)
+        case let .ready(model):
+            briefShell(
+                narration: model.narration,
+                isEngineOnly: model.isEngineOnly,
+                citationLabel: model.citationLabel
+            )
+        }
+    }
+
+    private func briefShell(narration: String, isEngineOnly: Bool, citationLabel: String?) -> some View {
+        BriefCard(
+            citationLabel: citationLabel,
+            narration: narration,
+            isEngineOnly: isEngineOnly
+        )
     }
 
     @ViewBuilder

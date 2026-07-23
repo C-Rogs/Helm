@@ -77,4 +77,12 @@ public final class ActiveSessionStore {
         let now = instant ?? Date()
         return timer.remainingSeconds(at: now)
     }
+
+    public func syncFromPrescription(_ prescription: SessionPrescription) async throws {
+        snapshot = try await engine.syncFromPrescription(prescription)
+    }
+
+    public func restoreExerciseLayout(_ exercises: [WorkoutSessionExerciseDraft]) async throws {
+        snapshot = try await engine.restoreExerciseLayout(exercises)
+    }
 }

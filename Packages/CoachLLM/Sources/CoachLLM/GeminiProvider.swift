@@ -172,6 +172,30 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         }
     }
 
+    public func generateMorningBrief(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState
+    ) async throws -> CoachStructuredArtefact<MorningBriefPayload> {
+        try await generateStructured(
+            MorningBriefPayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: contextBlock,
+            userMessage: userMessage,
+            thread: thread,
+            expectedSchema: .briefV1,
+            promptVersion: .briefV1
+        ) {
+            try GeminiRequestBuilder.morningBriefBody(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread
+            )
+        }
+    }
+
     private func requireAPIKey() throws -> String {
         guard let key = try apiKeyStore.load(kind: .gemini), !key.isEmpty else {
             throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
