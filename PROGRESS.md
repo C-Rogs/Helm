@@ -36,7 +36,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | F-DESIGN-M3 Logger UI + haptics catch-up | done | 2026-07-23 | fa58558 | DesignSystem HelmNumpad + SetRow; WorkoutHapticPolicy/Coordinator (set-logged, selection, rest-done, PR-hit); HelmNotificationDelegate for suspended rest-done; Train re-skin. 7 WorkoutHapticPolicy unit tests. |
 | M4.1 Provider protocol + registry | done | 2026-07-21 | 5ecb5bc | CoachLLM package: protocol, registry with reserved FM/OpenRouter slots, token budgets, failure policy, MockProvider, fixture harness. Gemini placeholder until M4.2. |
 | M4.2 GeminiProvider + keys | not started | | | |
-| M4.3 MemoryProfile | not started | | | |
+| M4.3 MemoryProfile | done | 2026-07-23 | 0081741 | MemoryProfile value type + stablePrefixText(); v4 migration; MemoryProfileStore; Settings Coach Memory editor. 3 persistence + 3 CoachLLM tests pass. |
 | M4.4 Context builder (pure) | not started | | | |
 | M4.5 Chat UI + chat persistence | not started | | | |
 | M4.6 "Show your working" sheet (tap-to-explain) | not started | | | Reusable explain sheet; selection haptic; offline degrades to engine contributors only. |
