@@ -42,7 +42,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M4.6 "Show your working" sheet (tap-to-explain) | not started | | | Reusable explain sheet; selection haptic; offline degrades to engine contributors only. |
 | M5.1 PlanKit mesocycle core (pure) | done | 2026-07-21 | cb28104 | PlanKit target in Domain package. MesocycleState, MEV→MRV ramp, deload/reset, landmark seed+refine, Epley progression, weekly hard-set ledger. 13 tests. |
 | M5.2 Planned-vs-actual calendar + drift policy | done | 2026-07-23 | 4d00c27 | PlanKit drift policy + ACWR guard; v5 plan schema (planned_workout, plan_mesocycle_state); PlanRepository. 6 drift scenario tests + 2 repo tests. |
-| M5.3 Prescription + readiness gating + clamps | done | 2026-07-23 | c550aba | PlanKit prescription(for:givenReadiness:profile:history:), readiness gating, apply(adjustment:excluding:) with clamps. 7 new tests. |
+| M5.3 Prescription + readiness gating + clamps | done | 2026-07-23 | 230df19 | PlanKit prescription(for:givenReadiness:profile:history:), readiness gating, apply(adjustment:excluding:) with clamps. 7 new tests. |
 | M5.4 Exercise seed schema + import | not started | | | |
 | M5.5 Evidence-driven selection + citations | not started | | | |
 | M5.6 Phase/goal setup + Dashboard prescription card | not started | | | |
