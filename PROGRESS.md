@@ -52,7 +52,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M6.4 Onboarding assembly | done | 2026-07-23 | c28c464 | First-run flow: HealthKit presence check, notifications, Gemini key, training plan, backfill progress, Shortcuts pointer. Launch gate via AppRootView; Setup section in Settings for re-entry. HealthKitDataPresenceChecker + 2 tests. |
 | M7.1 GenerateBriefIntent (locked-phone aware) | done | 2026-07-23 | 044527a |
 | M7.2 Notification triggers + Shortcuts guide | not started | | | |
-| M8.1 Watch workout session | not started | | | |
+| M8.1 Watch workout session | done | 2026-07-23 | 8f14e32 | HKWorkoutSession + HKLiveWorkoutBuilder on Watch; activity picker; live HR/zones; Edwards zones in Core; state machine unit tests; WorkoutSessionLifecycle + LiveWorkoutBuilderTeardown signposts (Watch category). Error(7) teardown order enforced. Watch-authoritative; no WCSession for workout state. |
 | M8.2 Phone observation + readiness complication | not started | | | |
 | M9.1 NutritionKit engine (pure) | not started | | | |
 | M9.2 Nutrition screen + Dashboard card | not started | | | |

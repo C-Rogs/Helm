@@ -3,8 +3,23 @@ import SwiftUI
 
 struct WatchRootView: View {
     @State private var coordinator = WatchSessionCoordinator(role: .watch)
+    @State private var workoutStore = WatchWorkoutSessionStore()
 
     var body: some View {
+        TabView {
+            WatchWorkoutView(store: workoutStore)
+                .tabItem {
+                    Label("Workout", systemImage: "heart.fill")
+                }
+
+            syncStatusTab
+                .tabItem {
+                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                }
+        }
+    }
+
+    private var syncStatusTab: some View {
         List {
             Section("Helm") {
                 Text("Watch skeleton")
