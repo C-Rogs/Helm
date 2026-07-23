@@ -28,6 +28,9 @@ struct AppMigrator {
         if version >= 5 {
             PlanSchemaMigration.register(on: &migrator)
         }
+        if version >= 6 {
+            ExerciseSeedSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

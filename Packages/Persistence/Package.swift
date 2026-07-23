@@ -24,7 +24,8 @@ let package = Package(
         ),
         .testTarget(
             name: "PersistenceTests",
-            dependencies: ["Persistence", "Core"]
+            dependencies: ["Persistence", "Core"],
+            resources: [.process("Fixtures")]
         )
     ]
 )

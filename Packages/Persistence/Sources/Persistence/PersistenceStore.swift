@@ -18,6 +18,8 @@ public actor PersistenceStore {
     public let databaseURL: URL
     private let pool: DatabasePool
 
+    internal nonisolated var poolForTesting: DatabasePool { pool }
+
     public init(pool: DatabasePool, databaseURL: URL) {
         self.pool = pool
         self.databaseURL = databaseURL
@@ -55,6 +57,14 @@ public actor PersistenceStore {
 
     public nonisolated var schemaVersion: Int {
         SchemaVersion.latest
+    }
+
+    public nonisolated func exerciseSeedVersion() throws -> Int {
+        try ExerciseSeedImporter(pool: pool).appliedSeedVersion()
+    }
+
+    public func importExerciseSeedIfNeeded(manifestURL: URL) throws -> ExerciseSeedImportResult {
+        try ExerciseSeedImporter(pool: pool).importIfNeeded(manifestURL: manifestURL)
     }
 
     public func checkpoint() throws {

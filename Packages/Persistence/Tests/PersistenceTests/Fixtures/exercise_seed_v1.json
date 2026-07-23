@@ -1,0 +1,34 @@
+{
+  "seedVersion": 1,
+  "placeholder": true,
+  "exercises": [
+    {
+      "id": "seed-bench-press",
+      "canonicalName": "bench press (barbell)",
+      "displayName": "Bench Press (Barbell)",
+      "aliases": ["Bench Press", "Barbell Bench Press"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": ["triceps", "shoulders"],
+      "movementPattern": "horizontalPush",
+      "sourceDatasetID": "Barbell_Bench_Press",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-squat",
+      "canonicalName": "squat (barbell)",
+      "displayName": "Squat (Barbell)",
+      "aliases": ["Squat", "Back Squat"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "quadriceps",
+      "secondaryMuscleGroups": ["glutes"],
+      "movementPattern": "squat",
+      "sourceDatasetID": "Barbell_Squat",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    }
+  ]
+}

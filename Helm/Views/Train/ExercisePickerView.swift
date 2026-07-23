@@ -24,7 +24,7 @@ struct ExercisePickerView: View {
                     ContentUnavailableView(
                         "No exercises",
                         systemImage: "dumbbell",
-                        description: Text("Add exercises in Settings once the library seed lands.")
+                        description: Text("Exercise library is still loading or unavailable.")
                     )
                 } else {
                     List(exercises) { exercise in

@@ -1,0 +1,48 @@
+{
+  "seedVersion": 2,
+  "placeholder": true,
+  "exercises": [
+    {
+      "id": "seed-bench-press",
+      "canonicalName": "bench press (barbell)",
+      "displayName": "Bench Press (Barbell)",
+      "aliases": ["Bench Press", "Barbell Bench Press", "Flat Bench"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": ["triceps", "shoulders"],
+      "movementPattern": "horizontalPush",
+      "sourceDatasetID": "Barbell_Bench_Press",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-squat",
+      "canonicalName": "squat (barbell)",
+      "displayName": "Squat (Barbell)",
+      "aliases": ["Squat", "Back Squat"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "quadriceps",
+      "secondaryMuscleGroups": ["glutes"],
+      "movementPattern": "squat",
+      "sourceDatasetID": "Barbell_Squat",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-deadlift",
+      "canonicalName": "deadlift (barbell)",
+      "displayName": "Deadlift (Barbell)",
+      "aliases": ["Deadlift"],
+      "exerciseMode": "weight_reps",
+      "equipment": "barbell",
+      "primaryMuscleGroup": "hamstrings",
+      "secondaryMuscleGroups": ["glutes", "lower back"],
+      "movementPattern": "hinge",
+      "sourceDatasetID": "Barbell_Deadlift",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    }
+  ]
+}

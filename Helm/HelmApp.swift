@@ -12,6 +12,7 @@ struct HelmApp: App {
         Task { @MainActor in
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
+            await PersistenceBootstrap.importExerciseSeed()
             ReadinessBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()

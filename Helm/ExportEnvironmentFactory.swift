@@ -11,6 +11,7 @@ enum ExportEnvironmentFactory {
             appVersion: appVersion,
             buildNumber: buildNumber,
             schemaVersion: schemaVersion,
+            exerciseSeedVersion: PersistenceBootstrap.exerciseSeedVersion,
             deviceModel: UIDevice.current.model,
             osVersion: UIDevice.current.systemVersion
         )
