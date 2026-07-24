@@ -44,7 +44,7 @@ struct DashboardView: View {
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
                     } label: {
-                        Label("Ask Coach", systemImage: "bubble.left.and.bubble.right")
+                        Label("Ask Coach", helmIcon: .chat, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
                     .helmStaggeredAppear(index: 7)
@@ -177,8 +177,7 @@ struct DashboardView: View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 HStack {
-                    Text("Today's Session")
-                        .helmType(.label)
+                    HelmSectionEyebrow("TODAY'S SESSION")
                     Spacer()
                     if let phase {
                         Text(phase.label)
@@ -238,7 +237,7 @@ struct DashboardView: View {
     private var readinessCard: some View {
         switch readinessService.state {
         case .loading:
-            readinessShell(subtitle: "Loading…") {
+            readinessShell(subtitle: "Loading") {
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                     HelmSkeletonBlock(height: 120)
                         .frame(maxWidth: 220)
@@ -333,8 +332,7 @@ struct DashboardView: View {
         let card = Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 HStack {
-                    Text("ARC")
-                        .helmType(.label)
+                    HelmSectionEyebrow("ARC")
                     Spacer()
                     if let state {
                         stateBadge(for: state)
@@ -477,18 +475,16 @@ struct DashboardView: View {
             }
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.helmPressableCard)
     }
 
     private func nutritionCardShell<Content: View>(@ViewBuilder content: () -> Content) -> some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 HStack {
-                    Text("Nutrition")
-                        .helmType(.label)
+                    HelmSectionEyebrow("NUTRITION", showsArcMark: false)
                     Spacer()
-                    Image(systemName: "chevron.right")
-                        .font(.caption.weight(.semibold))
+                    HelmIconView(.chevronRight, context: .inline)
                         .foregroundStyle(HelmColor.fgMuted)
                 }
                 content()
@@ -585,4 +581,39 @@ private extension TrainingPhase {
     DashboardView()
         .helmTheme()
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Dashboard loading") {
+    ScrollView {
+        HelmScreenStack {
+            HelmLoadingState(rowCount: 3)
+            HelmSkeletonCard(rowCount: 2)
+        }
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Dashboard empty readiness") {
+    ScrollView {
+        HelmEmptyState(
+            title: "Awaiting data",
+            message: "Connect HealthKit to start building your readiness baseline.",
+            icon: .health
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Dashboard error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Brief unavailable",
+            message: "Could not load the morning brief. Pull to refresh.",
+            onRetry: {}
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
 }

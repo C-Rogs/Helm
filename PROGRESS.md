@@ -68,7 +68,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M12.1 Motion and transition pass | done | 2026-07-24 | 9cb87c5 | HelmNumericRoll, skeleton shimmer, staggered appear, matched-card detail; adopted on Dashboard/Train/Trends/Nutrition; set/PR/adjustment motion paired with haptics; Reduce Motion unit tests. |
 | M12.2 Layout rhythm and density audit | done | 2026-07-24 | eed20f6 | HelmHairlineRule, HelmLayout tokens, helmScreenPadding, StatChip contributor grid, ruled list rows, LayoutRhythmTests |
 | M12.3 Data-viz refinement | done | 2026-07-24 | 9238343 | HelmSparkline, HelmChartScrub, LandmarkVolumeBar; muscle volume bar card; Dashboard sparklines; scrub + insufficient-data states. |
-| M12.4 Finish pass: states, iconography, consistency | not started | | | |
+| M12.4 Finish pass: states, iconography, consistency | done | 2026-07-24 | 456fd6d | HelmScreenState, HelmIcon, pressable styles; screen empty/loading/error previews; ICONOGRAPHY.md; copy and dash pass. |
 | M12.5 Signature moments | not started | | | |
 | M12.6 DeviationBand component | done | 2026-07-24 | fff7c53 | DeviationBand bar/inline layouts, helmNumericRoll on value, previews for in/below/above-band and cold-start. |
 | M12.7 Recovery detail view | not started | | | |

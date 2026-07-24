@@ -15,19 +15,19 @@ struct RootTabView: View {
 
     var body: some View {
         TabView(selection: $tabRouter.selectedTab) {
-            Tab("Dashboard", systemImage: "gauge.with.dots.needle.67percent", value: AppTab.dashboard) {
+            Tab("Dashboard", systemImage: HelmIcon.dashboard.rawValue, value: AppTab.dashboard) {
                 DashboardView()
             }
-            Tab("Train", systemImage: "dumbbell.fill", value: AppTab.train) {
+            Tab("Train", systemImage: HelmIcon.train.rawValue, value: AppTab.train) {
                 TrainView()
             }
-            Tab("Nutrition", systemImage: "fork.knife", value: AppTab.nutrition) {
+            Tab("Nutrition", systemImage: HelmIcon.nutrition.rawValue, value: AppTab.nutrition) {
                 NutritionView()
             }
-            Tab("Chat", systemImage: "bubble.left.and.bubble.right.fill", value: AppTab.chat) {
+            Tab("Chat", systemImage: HelmIcon.chat.rawValue, value: AppTab.chat) {
                 ChatView()
             }
-            Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
+            Tab("Settings", systemImage: HelmIcon.settings.rawValue, value: AppTab.settings) {
                 SettingsView()
             }
         }

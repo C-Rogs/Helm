@@ -8,14 +8,20 @@ struct WorkoutHistoryListView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("History")
-                .font(HelmTypography.headline)
-                .foregroundStyle(HelmColor.textPrimary)
+            HelmSectionEyebrow("HISTORY", showsArcMark: false)
 
-            if history.sessions.isEmpty {
-                Text("No completed workouts yet.")
-                    .font(HelmTypography.callout)
-                    .foregroundStyle(HelmColor.textSecondary)
+            if let errorMessage = history.errorMessage {
+                HelmErrorState(
+                    title: "History unavailable",
+                    message: errorMessage,
+                    onRetry: { history.refresh() }
+                )
+            } else if history.sessions.isEmpty {
+                HelmEmptyState(
+                    title: "No workouts yet",
+                    message: "Finish a session to see it here.",
+                    icon: .train
+                )
             } else {
                 ForEach(Array(history.sessions.enumerated()), id: \.element.id) { index, session in
                     NavigationLink {
@@ -28,7 +34,7 @@ struct WorkoutHistoryListView: View {
                         WorkoutHistoryRow(summary: session)
                             .helmMatchedCardDetail(id: session.id, in: cardNamespace)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.helmPressableCard)
                     .helmStaggeredAppear(index: index)
                     .onAppear {
                         history.loadMoreIfNeeded(currentSessionID: session.id)
@@ -46,34 +52,57 @@ private struct WorkoutHistoryRow: View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                 Text(summary.title ?? "Workout")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.textPrimary)
+                    .helmType(.label)
                 Text(summary.startedAt, style: .date)
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textSecondary)
+                    .helmType(.body, color: HelmColor.fgSecondary)
                 HStack(spacing: HelmSpacing.md) {
                     Label {
                         HStack(spacing: HelmSpacing.xxs) {
                             HelmNumericText(summary.totalSetCount)
                             Text("sets")
+                                .helmType(.body, color: HelmColor.fgSecondary)
                         }
                     } icon: {
-                        Image(systemName: "checkmark.circle")
+                        HelmIconView(.checkmark, context: .inline)
                     }
                     Label {
                         HStack(spacing: HelmSpacing.xxs) {
                             HelmNumericText(summary.totalVolumeKilograms, format: "%.0f")
                             Text("kg")
+                                .helmType(.body, color: HelmColor.fgSecondary)
                         }
                     } icon: {
-                        Image(systemName: "scalemass")
+                        HelmIconView(.scale, context: .inline)
                     }
                 }
-                .font(HelmTypography.caption)
-                .foregroundStyle(HelmColor.textSecondary)
+                .foregroundStyle(HelmColor.fgSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+    }
+}
+
+#Preview("History empty") {
+    NavigationStack {
+        HelmEmptyState(
+            title: "No workouts yet",
+            message: "Finish a session to see it here.",
+            icon: .train
+        )
+        .helmTheme()
+        .padding()
+    }
+}
+
+#Preview("History error") {
+    NavigationStack {
+        HelmErrorState(
+            title: "History unavailable",
+            message: "Could not load workout history.",
+            onRetry: {}
+        )
+        .helmTheme()
+        .padding()
     }
 }
 

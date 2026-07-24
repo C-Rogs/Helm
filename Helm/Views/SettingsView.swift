@@ -130,3 +130,28 @@ struct SettingsView: View {
         .helmTheme()
         .dynamicTypeSize(.accessibility5)
 }
+
+#Preview("Settings empty state") {
+    ScrollView {
+        HelmEmptyState(
+            title: "No API key",
+            message: "Add a coach API key in Setup to enable chat.",
+            icon: .settings,
+            actionTitle: "Open setup"
+        ) {}
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Settings error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Sync failed",
+            message: "Could not refresh HealthKit status.",
+            onRetry: {}
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}

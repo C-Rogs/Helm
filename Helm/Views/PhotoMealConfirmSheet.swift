@@ -139,11 +139,11 @@ struct PhotoMealConfirmSheet: View {
                             .helmType(.monoTag, color: HelmColor.fgMuted)
                     }
                     Spacer()
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                    HelmIconView(isExpanded ? .chevronUp : .chevronDown, context: .inline)
                         .foregroundStyle(HelmColor.fgMuted)
                 }
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
 
             if isExpanded {
                 HStack {

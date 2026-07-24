@@ -64,19 +64,17 @@ struct ChatView: View {
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Ask why")
-                .helmType(.title)
-            Text("Coach answers from your readiness, training, and nutrition data. Offline keeps numbers and logging working.")
-                .helmType(.body, color: HelmColor.fgSecondary)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
+        HelmEmptyState(
+            title: "Ask why",
+            message: "Coach answers from your readiness, training, and nutrition data. Offline keeps numbers and logging working.",
+            icon: .chat
+        )
         .padding(.top, HelmSpacing.xl)
     }
 
     private func offlineBanner(_ state: CoachDegradedState) -> some View {
         HStack(spacing: HelmSpacing.sm) {
-            Image(systemName: "wifi.slash")
+            HelmIconView(.offline, context: .inline)
                 .foregroundStyle(HelmColor.fgSecondary)
             Text(state.userMessage)
                 .helmType(.body, color: HelmColor.fgSecondary)
@@ -115,9 +113,8 @@ struct ChatView: View {
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("COACH")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                Text(text.isEmpty && isStreaming ? "…" : text)
+                HelmSectionEyebrow("COACH", showsArcMark: false)
+                Text(text.isEmpty && isStreaming ? "..." : text)
                     .helmType(.body)
                     .foregroundStyle(HelmColor.fg)
             }
@@ -133,7 +130,7 @@ struct ChatView: View {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text("COACH")
                     .helmType(.monoTag, color: HelmColor.depleted)
-                Text("Couldn't respond. \(message)")
+                Text("Could not respond. \(message)")
                     .helmType(.body, color: HelmColor.depleted)
             }
             .padding(.horizontal, HelmSpacing.md)
@@ -159,12 +156,12 @@ struct ChatView: View {
                 controller.send()
                 isInputFocused = false
             } label: {
-                Image(systemName: "arrow.up.circle.fill")
-                    .font(.system(size: 28))
+                HelmIconView(.send, context: .action)
                     .foregroundStyle(
                         canSend ? HelmColor.accent : HelmColor.fgMuted
                     )
             }
+            .buttonStyle(.helmPressable)
             .disabled(!canSend)
             .accessibilityLabel("Send")
         }
@@ -189,7 +186,40 @@ struct ChatView: View {
     }
 }
 
-#Preview {
+#Preview("Chat instrument") {
     ChatView()
         .helmTheme()
+        .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Chat empty") {
+    ScrollView {
+        HelmEmptyState(
+            title: "Ask why",
+            message: "Coach answers from your readiness, training, and nutrition data.",
+            icon: .chat
+        )
+        .padding()
+    }
+    .helmTheme()
+}
+
+#Preview("Chat error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Coach unavailable",
+            message: "Could not reach the coach provider.",
+            onRetry: {}
+        )
+        .padding()
+    }
+    .helmTheme()
+}
+
+#Preview("Chat loading") {
+    ScrollView {
+        HelmLoadingState(rowCount: 2)
+            .padding()
+    }
+    .helmTheme()
 }

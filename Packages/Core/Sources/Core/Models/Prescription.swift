@@ -47,7 +47,7 @@ public extension PrescribedExercise {
         case let (min?, max?) where min == max:
             repText = "\(targetSets)×\(min)"
         case let (min?, max?):
-            repText = "\(targetSets)×\(min)–\(max)"
+            repText = "\(targetSets)×\(min)-\(max)"
         case let (min?, nil):
             repText = "\(targetSets)×\(min)"
         case let (nil, max?):

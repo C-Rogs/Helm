@@ -26,7 +26,7 @@ struct SchemaV2ExportView: View {
             Section("Export window") {
                 DatePicker("Start", selection: $window.start, displayedComponents: .date)
                 DatePicker("End", selection: $window.end, displayedComponents: .date)
-                Text("Sleep uses bioharvest’s 18:00–18:00 window. Other metrics use local calendar days.")
+                Text("Sleep uses bioharvest's 18:00-18:00 window. Other metrics use local calendar days.")
                     .font(HelmType.body.font)
                     .foregroundStyle(HelmColor.fgMuted)
             }

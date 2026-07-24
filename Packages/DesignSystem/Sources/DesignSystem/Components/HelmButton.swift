@@ -46,6 +46,14 @@ public extension ButtonStyle where Self == HelmSecondaryButtonStyle {
     static var helmSecondary: HelmSecondaryButtonStyle { HelmSecondaryButtonStyle() }
 }
 
+public extension ButtonStyle where Self == HelmPressableButtonStyle {
+    static var helmPressable: HelmPressableButtonStyle { HelmPressableButtonStyle() }
+}
+
+public extension ButtonStyle where Self == HelmPressableCardButtonStyle {
+    static var helmPressableCard: HelmPressableCardButtonStyle { HelmPressableCardButtonStyle() }
+}
+
 #Preview("Buttons") {
     VStack(spacing: HelmSpacing.md) {
         Button("Ask Coach") {}

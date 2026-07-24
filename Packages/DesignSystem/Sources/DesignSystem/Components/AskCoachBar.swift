@@ -9,7 +9,7 @@ public struct AskCoachBar: View {
     @State private var pulse = false
 
     public init(
-        prompt: String = "Ask coach…",
+        prompt: String = "Ask coach",
         isLoading: Bool = false,
         action: @escaping () -> Void
     ) {
@@ -35,7 +35,7 @@ public struct AskCoachBar: View {
                     .stroke(HelmColor.hairline, lineWidth: 1)
             )
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.helmPressable)
         .disabled(isLoading)
         .onAppear {
             if !isLoading {
@@ -76,7 +76,7 @@ public struct AskCoachBar: View {
     VStack(spacing: HelmSpacing.md) {
         Spacer()
         AskCoachBar(prompt: "Cable fly is taken") {}
-        AskCoachBar(prompt: "Adjusting session…", isLoading: true) {}
+        AskCoachBar(prompt: "Adjusting session", isLoading: true) {}
             .padding()
     }
     .helmTheme()

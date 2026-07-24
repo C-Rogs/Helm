@@ -37,10 +37,10 @@ struct ExerciseSectionView: View {
                     }
 
                     Button(role: .destructive, action: onRemove) {
-                        Image(systemName: "trash")
+                        HelmIconView(.trash, context: .inline)
                             .foregroundStyle(HelmColor.destructive)
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.helmPressable)
                     .accessibilityLabel("Remove exercise")
                 }
 

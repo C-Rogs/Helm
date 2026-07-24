@@ -120,7 +120,7 @@ struct ExercisePickerView: View {
                     Capsule().strokeBorder(HelmColor.hairline, lineWidth: 1)
                 }
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.helmPressable)
     }
 
     private func reloadAll() {

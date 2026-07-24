@@ -144,7 +144,7 @@ public struct DeviationBand: View {
     @ViewBuilder
     private var bandCaption: some View {
         if let band {
-            Text("\(format(band.lowerBound)) – \(format(band.upperBound)) \(unit)")
+            Text("\(format(band.lowerBound))-\(format(band.upperBound)) \(unit)")
                 .helmType(.monoTag, color: HelmColor.fgMuted)
         }
     }

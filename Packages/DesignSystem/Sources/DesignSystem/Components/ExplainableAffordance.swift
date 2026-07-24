@@ -19,12 +19,11 @@ public struct ExplainableAffordance: ViewModifier {
             }
             .overlay(alignment: .topTrailing) {
                 Button(action: presentSheet) {
-                    Image(systemName: "info.circle")
-                        .font(.body)
+                    HelmIconView(.info, context: .inline)
                         .foregroundStyle(HelmColor.fgMuted)
                         .padding(HelmSpacing.xs)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.helmPressable)
                 .accessibilityLabel("Show how this is calculated")
             }
             .sheet(isPresented: $isPresented) {

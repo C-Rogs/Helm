@@ -23,8 +23,7 @@ public struct AdjustmentBanner: View {
 
     public var body: some View {
         HStack(alignment: .top, spacing: HelmSpacing.sm) {
-            Image(systemName: "arrow.triangle.swap")
-                .font(.body.weight(.semibold))
+            HelmIconView(.swap, context: .inline)
                 .foregroundStyle(HelmColor.accent)
                 .padding(.top, 2)
 
@@ -33,8 +32,7 @@ public struct AdjustmentBanner: View {
                     Text(fromLabel)
                         .helmType(.label)
                         .foregroundStyle(HelmColor.fg)
-                    Image(systemName: "arrow.right")
-                        .font(.caption.weight(.semibold))
+                    HelmIconView(.arrowRight, context: .inline)
                         .foregroundStyle(HelmColor.fgMuted)
                     Text(toLabel)
                         .helmType(.label)
@@ -49,7 +47,7 @@ public struct AdjustmentBanner: View {
 
             Button("UNDO", action: onUndo)
                 .helmType(.monoTag, color: HelmColor.accent)
-                .buttonStyle(.plain)
+                .buttonStyle(.helmPressable)
         }
         .padding(HelmSpacing.md)
         .background(HelmColor.accent.opacity(0.12), in: RoundedRectangle(cornerRadius: HelmRadius.card))

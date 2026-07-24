@@ -294,7 +294,7 @@ public actor PlanPrescriptionEngine {
         case let (min?, max?) where min == max:
             return "\(min) reps"
         case let (min?, max?):
-            return "\(min)–\(max) reps"
+            return "\(min)-\(max) reps"
         case let (min?, nil):
             return "\(min)+ reps"
         case let (nil, max?):

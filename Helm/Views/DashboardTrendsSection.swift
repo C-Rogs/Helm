@@ -12,8 +12,7 @@ struct DashboardTrendsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: skin.sectionSpacing) {
-            Text("Trends")
-                .helmType(.label)
+            HelmSectionEyebrow("TRENDS", showsArcMark: true)
                 .padding(.top, HelmSpacing.xs)
 
             trendCards
@@ -73,8 +72,11 @@ struct DashboardTrendsSection: View {
         }
 
         if let errorMessage = controller.errorMessage {
-            Text(errorMessage)
-                .helmType(.body, color: HelmColor.depleted)
+            HelmErrorState(
+                title: "Trends unavailable",
+                message: errorMessage,
+                onRetry: { controller.refresh() }
+            )
         }
     }
 }

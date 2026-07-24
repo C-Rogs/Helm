@@ -27,6 +27,7 @@ struct HelmSkinLayoutTests {
     }
 
     @Test("theme coordinator falls back for reserved skins")
+    @MainActor
     func coordinatorSkinFallback() {
         let defaults = UserDefaults(suiteName: "HelmSkinLayoutTests")!
         defaults.removePersistentDomain(forName: "HelmSkinLayoutTests")

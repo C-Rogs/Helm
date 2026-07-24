@@ -78,10 +78,47 @@ struct TrendsView: View {
         }
 
         if let errorMessage = controller.errorMessage {
-            Text(errorMessage)
-                .helmType(.body, color: HelmColor.depleted)
+            HelmErrorState(
+                title: "Trends unavailable",
+                message: errorMessage,
+                onRetry: { controller.refresh() }
+            )
         }
     }
+}
+
+#Preview("Trends loading") {
+    ScrollView {
+        HelmScreenStack {
+            HelmLoadingState(rowCount: 4)
+        }
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Trends error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Trends unavailable",
+            message: "Could not read workout history.",
+            onRetry: {}
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Trends empty charts") {
+    ScrollView {
+        LazyVStack(spacing: HelmSpacing.lg) {
+            TrendWeightChartCard(points: [], targetWeightKg: nil)
+            ReadinessHistoryChartCard(points: [])
+            MuscleVolumeBarChartCard(gauges: [])
+        }
+        .helmScreenPadding()
+    }
+    .helmTheme()
 }
 
 #Preview("Trends accessibility") {

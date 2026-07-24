@@ -110,8 +110,7 @@ struct NutritionView: View {
     private var photoLogSection: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                Text("Log from photo")
-                    .helmType(.label)
+                HelmSectionEyebrow("LOG FROM PHOTO", showsArcMark: false)
 
                 if photoMealController.isAvailable {
                     HStack(spacing: HelmSpacing.sm) {
@@ -120,7 +119,7 @@ struct NutritionView: View {
                             matching: .images,
                             photoLibrary: .shared()
                         ) {
-                            Label("Choose photo", systemImage: "photo.on.rectangle")
+                            Label("Choose photo", helmIcon: .photo, context: .inline)
                                 .font(HelmTypography.headline)
                                 .foregroundStyle(HelmColor.buttonSecondaryForeground)
                                 .frame(maxWidth: .infinity)
@@ -134,11 +133,12 @@ struct NutritionView: View {
                                         .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
                                 }
                         }
+                        .buttonStyle(.helmPressable)
 
                         Button {
                             photoMealController.showsCamera = true
                         } label: {
-                            Label("Camera", systemImage: "camera.fill")
+                            Label("Camera", helmIcon: .camera, context: .inline)
                                 .font(HelmTypography.headline)
                                 .foregroundStyle(HelmColor.buttonSecondaryForeground)
                                 .frame(maxWidth: .infinity)
@@ -152,6 +152,7 @@ struct NutritionView: View {
                                         .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
                                 }
                         }
+                        .buttonStyle(.helmPressable)
                     }
 
                     if photoMealController.isBusy {
@@ -198,8 +199,7 @@ struct NutritionView: View {
     }
 
     private var loadingCard: some View {
-        Text("Loading nutrition…")
-            .helmType(.body, color: HelmColor.fgMuted)
+        HelmLoadingState(rowCount: 3)
     }
 }
 
@@ -219,4 +219,38 @@ struct NutritionView: View {
     NutritionView()
         .helmTheme()
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Nutrition loading") {
+    ScrollView {
+        HelmScreenStack {
+            HelmLoadingState(rowCount: 3)
+        }
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Nutrition empty") {
+    ScrollView {
+        HelmEmptyState(
+            title: "No intake logged",
+            message: "Log a meal from photo or enter macros on the summary card.",
+            icon: .nutrition
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Nutrition error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Targets unavailable",
+            message: "Could not load nutrition targets.",
+            onRetry: {}
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
 }

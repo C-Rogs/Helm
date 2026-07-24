@@ -61,12 +61,11 @@ public extension EnvironmentValues {
 public struct SkinnedContainer<Content: View>: View {
     @Environment(\.helmSkin) private var skin
     @Environment(\.helmPalette) private var palette
+    @Environment(\.helmSurfacePressed) private var isPressed
 
-    private let isPressed: Bool
     private let content: Content
 
-    public init(isPressed: Bool = false, @ViewBuilder content: () -> Content) {
-        self.isPressed = isPressed
+    public init(@ViewBuilder content: () -> Content) {
         self.content = content()
     }
 

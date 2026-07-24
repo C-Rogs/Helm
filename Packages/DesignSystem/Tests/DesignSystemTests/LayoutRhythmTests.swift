@@ -42,7 +42,7 @@ struct LayoutRhythmTests {
             "Helm/Views/Trends/TrendWeightChartCard.swift",
             "Helm/Views/Trends/ReadinessHistoryChartCard.swift",
             "Helm/Views/Trends/E1RMProgressionChartCard.swift",
-            "Helm/Views/Trends/MuscleVolumeArcGridCard.swift",
+            "Helm/Views/Trends/MuscleVolumeBarChartCard.swift",
             "Helm/Views/Trends/EnergyBalanceChartCard.swift",
             "Helm/Views/Trends/TrendsChartShared.swift",
             "Helm/Views/NutritionView.swift",
@@ -91,20 +91,74 @@ struct LayoutRhythmTests {
             "Helm/Views/SettingsView.swift"
         ]
 
-        let nestedCardPattern = try Regex(#"Card\s*\{[\s\S]*?Card\s*\{"#)
-
         for relativePath in auditedRelativePaths {
             let url = repoRoot.appendingPathComponent(relativePath)
             let source = try String(contentsOf: url, encoding: .utf8)
-            if source.firstMatch(of: nestedCardPattern) != nil {
+            if sourceContainsNestedCard(source) {
                 Issue.record("Nested Card in \(relativePath)")
             }
         }
     }
 
+    private func sourceContainsNestedCard(_ source: String) -> Bool {
+        var searchStart = source.startIndex
+
+        while searchStart < source.endIndex {
+            guard let cardRange = source.range(of: "Card", range: searchStart..<source.endIndex) else {
+                break
+            }
+
+            var braceIndex = cardRange.upperBound
+            while braceIndex < source.endIndex, source[braceIndex].isWhitespace {
+                braceIndex = source.index(after: braceIndex)
+            }
+
+            guard braceIndex < source.endIndex, source[braceIndex] == "{" else {
+                searchStart = cardRange.upperBound
+                continue
+            }
+
+            guard let closeIndex = matchingClosingBrace(in: source, openingBrace: braceIndex) else {
+                break
+            }
+
+            let interiorStart = source.index(after: braceIndex)
+            let interior = source[interiorStart..<closeIndex]
+            if interior.contains("Card {") || interior.contains("Card{") {
+                return true
+            }
+
+            searchStart = closeIndex
+        }
+
+        return false
+    }
+
+    private func matchingClosingBrace(in source: String, openingBrace: String.Index) -> String.Index? {
+        guard source[openingBrace] == "{" else { return nil }
+
+        var depth = 0
+        var index = openingBrace
+        while index < source.endIndex {
+            let character = source[index]
+            if character == "{" {
+                depth += 1
+            } else if character == "}" {
+                depth -= 1
+                if depth == 0 {
+                    return index
+                }
+            }
+            index = source.index(after: index)
+        }
+
+        return nil
+    }
+
     private func layoutRhythmRepoRoot() -> URL {
         let fileURL = URL(fileURLWithPath: #filePath)
         return fileURL
+            .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()

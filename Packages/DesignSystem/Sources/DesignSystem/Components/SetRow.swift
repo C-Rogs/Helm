@@ -67,12 +67,11 @@ public struct SetRow: View {
                 .frame(width: 56)
 
             Button(action: onComplete) {
-                Image(systemName: isCompleted ? "checkmark.circle.fill" : "circle")
-                    .font(.title3)
+                HelmIconView(isCompleted ? .checkmarkFilled : .circle, context: .inline)
                     .foregroundStyle(isCompleted ? HelmColor.accent : HelmColor.fgMuted)
                     .frame(width: 44, height: 44)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
             .accessibilityLabel(isCompleted ? "Set completed" : "Complete set")
         }
         .padding(.horizontal, HelmSpacing.xs)
@@ -106,7 +105,7 @@ public struct SetRow: View {
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
         } else {
             Text("-")
                 .helmType(.number, color: HelmColor.fgMuted)
@@ -143,7 +142,7 @@ public struct SetRow: View {
             .frame(maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.xs)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.helmPressable)
         .accessibilityLabel("\(title) \(value.isEmpty ? placeholder : value)")
     }
 }

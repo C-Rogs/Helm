@@ -203,14 +203,14 @@ struct TrainView: View {
 
     private var manualIdleCard: some View {
         VStack(spacing: HelmSpacing.lg) {
-            Text("No active session")
-                .font(HelmTypography.body)
-                .foregroundStyle(HelmColor.textSecondary)
-
-            Button("Start workout") {
+            HelmEmptyState(
+                title: "No active session",
+                message: "Start a workout or import a session from text.",
+                icon: .train,
+                actionTitle: "Start workout"
+            ) {
                 Task { await controller.startWorkout() }
             }
-            .buttonStyle(.helmPrimary)
 
             Button("Import workout") {
                 isShowingImport = true
@@ -317,7 +317,7 @@ struct TrainView: View {
                     Button {
                         controller.isShowingExercisePicker = true
                     } label: {
-                        Label("Add exercise", systemImage: "plus.circle.fill")
+                        Label("Add exercise", helmIcon: .plus, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
 
@@ -356,7 +356,7 @@ struct TrainView: View {
 
     private var inSessionCoachBar: some View {
         AskCoachBar(
-            prompt: controller.isCoachAdjusting ? "Adjusting session…" : "Ask coach…",
+            prompt: controller.isCoachAdjusting ? "Adjusting session" : "Ask coach",
             isLoading: controller.isCoachAdjusting
         ) {
             controller.isShowingCoachPrompt = true
@@ -491,6 +491,39 @@ private extension View {
     TrainView()
         .helmTheme()
         .dynamicTypeSize(.accessibility5)
+}
+
+#Preview("Train empty") {
+    ScrollView {
+        HelmEmptyState(
+            title: "No active session",
+            message: "Start a workout or import a session from text.",
+            icon: .train,
+            actionTitle: "Start workout"
+        ) {}
+        .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Train loading") {
+    ScrollView {
+        HelmLoadingState(rowCount: 2)
+            .helmScreenPadding()
+    }
+    .helmTheme()
+}
+
+#Preview("Train error") {
+    ScrollView {
+        HelmErrorState(
+            title: "Session error",
+            message: "Could not save the workout.",
+            onRetry: {}
+        )
+        .helmScreenPadding()
+    }
+    .helmTheme()
 }
 
 private extension TrainingPhase {

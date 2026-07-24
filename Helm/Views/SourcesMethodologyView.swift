@@ -49,7 +49,7 @@ struct SourcesMethodologyView: View {
                             }
                         }
                     }
-                    .buttonStyle(.plain)
+                    .buttonStyle(.helmPressable)
                 }
             }
 
