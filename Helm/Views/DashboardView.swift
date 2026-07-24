@@ -18,6 +18,7 @@ struct DashboardView: View {
     @State private var revealStore = ReadinessRevealStore()
     @State private var contributorDetailsVisible = true
     @Namespace private var readinessNamespace
+    @Namespace private var prescriptionNamespace
 
     private var today: HelmDay {
         HelmDay.day(for: .now, calendar: .current)
@@ -133,46 +134,54 @@ struct DashboardView: View {
                     .multilineTextAlignment(.leading)
             }
         case let .prescribed(summary):
-            prescriptionShell(
-                subtitle: prescriptionSubtitle(for: summary),
-                phase: summary.phase
-            ) {
-                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    if summary.readinessAdjusted {
-                        Text("Volume trimmed for readiness")
-                            .helmType(.monoTag, color: HelmColor.depleted)
-                    }
-
-                    ForEach(summary.exercises) { exercise in
-                        prescriptionExerciseRow(exercise)
-                    }
-
-                    HStack {
-                        HStack(spacing: HelmSpacing.xxs) {
-                            HelmNumericText(summary.totalSets)
-                            Text("total sets")
-                                .helmType(.body, color: HelmColor.fgSecondary)
+            NavigationLink {
+                ProgressionDetailContainer(matchedCardNamespace: prescriptionNamespace)
+            } label: {
+                prescriptionShell(
+                    subtitle: prescriptionSubtitle(for: summary),
+                    phase: summary.phase,
+                    showsChevron: true
+                ) {
+                    VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                        if summary.readinessAdjusted {
+                            Text("Volume trimmed for readiness")
+                                .helmType(.monoTag, color: HelmColor.depleted)
                         }
-                        Spacer()
-                        Text(summary.phase.label)
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
+
+                        ForEach(summary.exercises) { exercise in
+                            prescriptionExerciseRow(exercise)
+                        }
+
+                        HStack {
+                            HStack(spacing: HelmSpacing.xxs) {
+                                HelmNumericText(summary.totalSets)
+                                Text("total sets")
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                            }
+                            Spacer()
+                            Text(summary.phase.label)
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
+                        .explainable(
+                            ExplainableMetricMappers.prescriptionVolume(
+                                summary,
+                                baselineSets: estimatedBaselineSets(for: summary),
+                                coachAvailable: chatController.isCoachAvailable
+                            ),
+                            onAskCoach: chatController.requestCoachHandoff(prompt:)
+                        )
                     }
-                    .explainable(
-                        ExplainableMetricMappers.prescriptionVolume(
-                            summary,
-                            baselineSets: estimatedBaselineSets(for: summary),
-                            coachAvailable: chatController.isCoachAvailable
-                        ),
-                        onAskCoach: chatController.requestCoachHandoff(prompt:)
-                    )
                 }
+                .helmMatchedCardDetail(id: "plan-progression", in: prescriptionNamespace)
             }
+            .buttonStyle(.helmPressableCard)
         }
     }
 
     private func prescriptionShell<Content: View>(
         subtitle: String,
         phase: TrainingPhase? = nil,
+        showsChevron: Bool = false,
         @ViewBuilder content: () -> Content
     ) -> some View {
         Card {
@@ -186,6 +195,10 @@ struct DashboardView: View {
                             .padding(.horizontal, HelmSpacing.xs)
                             .padding(.vertical, HelmSpacing.xxs)
                             .background(HelmColor.accent.opacity(0.12), in: Capsule())
+                    }
+                    if showsChevron {
+                        HelmIconView(.chevronRight, context: .inline)
+                            .foregroundStyle(HelmColor.fgMuted)
                     }
                 }
 

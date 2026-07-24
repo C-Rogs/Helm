@@ -72,7 +72,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M12.5 Signature moments | done | 2026-07-24 | 3540be2 | Arc bloom, PR burst, workout finish summary, onboarding welcome/backfill/payoff reveal; Reduce Motion + gate tests.
 | M12.6 DeviationBand component | done | 2026-07-24 | fff7c53 | DeviationBand bar/inline layouts, helmNumericRoll on value, previews for in/below/above-band and cold-start. |
 | M12.7 Recovery detail view | done | 2026-07-24 | 6657228 | RecoveryDetailView from Dashboard ARC card; DeviationBand contributors, band-overlay history, coach read + hand-off; snapshot tests. |
-| M12.8 Progression / plan-model view | not started | | | Absorbs M13.1/M13.2 plan-visibility intent |
+| M12.8 Progression / plan-model view | done | 2026-07-24 | 274023c | Mesocycle position, scheme, per-lift e1RM ladders; Dashboard + Train navigation; absorbs M13.1/M13.2 plan-visibility |
 | M12.9 Muscle-volume promotion and recency | not started | | | |
 
 ## Device Test Gates

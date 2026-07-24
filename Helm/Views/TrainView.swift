@@ -185,6 +185,17 @@ struct TrainView: View {
                         Text("Today's session")
                             .helmType(.label)
                         Spacer()
+                        NavigationLink {
+                            ProgressionDetailContainer()
+                        } label: {
+                            HStack(spacing: HelmSpacing.xxs) {
+                                Text("Plan")
+                                    .helmType(.monoTag, color: HelmColor.accent)
+                                HelmIconView(.chevronRight, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                            }
+                        }
+                        .buttonStyle(.plain)
                         Text(summary.phase.label)
                             .helmType(.monoTag, color: HelmColor.accent)
                     }

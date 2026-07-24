@@ -2,14 +2,14 @@ import Core
 import Foundation
 import PlanKit
 
-enum SessionSplitPlanner {
+public enum SessionSplitPlanner {
     private static let templates: [[MuscleGroup]] = [
         [.chest, .shoulders, .triceps],
         [.back, .biceps],
         [.quads, .hamstrings, .glutes]
     ]
 
-    static func targetMuscles(for day: HelmDay, emphasis: String?, calendar: Calendar = .current) -> [MuscleGroup] {
+    public static func targetMuscles(for day: HelmDay, emphasis: String?, calendar: Calendar = .current) -> [MuscleGroup] {
         let weekdayIndex = weekdayIndex(for: day, calendar: calendar)
         var muscles = templates[weekdayIndex % templates.count]
 

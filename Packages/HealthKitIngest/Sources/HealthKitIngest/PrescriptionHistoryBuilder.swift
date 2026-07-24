@@ -3,8 +3,8 @@ import Foundation
 import Persistence
 import PlanKit
 
-enum PrescriptionHistoryBuilder {
-    static func history(
+public enum PrescriptionHistoryBuilder {
+    public static func history(
         from store: PersistenceStore,
         endingAt endDay: HelmDay,
         calendar: Calendar = .current,
