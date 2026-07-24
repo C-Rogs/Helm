@@ -81,6 +81,11 @@ public final class PrescriptionService {
         do {
             state = try await engine.dashboardState(for: today(), readiness: readiness)
         } catch {
+            await DiagnosticsLog.shared.capture(
+                error: error,
+                category: .planKit,
+                message: "Prescription dashboard refresh failed"
+            )
             state = .awaitingCatalog
         }
     }

@@ -11,6 +11,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case ping
         case readiness
         case liveHeartRate
+        case workoutCompanion
     }
 
     public static let contextKey = "helm.sync"
@@ -28,6 +29,11 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let briefSummary: String?
     /// Opportunistic live HR from Watch during an active session. Never used as source of truth.
     public let liveHeartRateBPM: Int?
+    public let workoutCompanionActive: Bool?
+    public let companionExerciseName: String?
+    public let companionSetNumber: Int?
+    public let companionSetCount: Int?
+    public let companionTargetSummary: String?
 
     public init(
         origin: Origin,
@@ -38,7 +44,12 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         readinessScore: Int? = nil,
         readinessBand: String? = nil,
         briefSummary: String? = nil,
-        liveHeartRateBPM: Int? = nil
+        liveHeartRateBPM: Int? = nil,
+        workoutCompanionActive: Bool? = nil,
+        companionExerciseName: String? = nil,
+        companionSetNumber: Int? = nil,
+        companionSetCount: Int? = nil,
+        companionTargetSummary: String? = nil
     ) {
         self.origin = origin
         self.sequence = sequence
@@ -49,6 +60,11 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         self.readinessBand = readinessBand
         self.briefSummary = briefSummary
         self.liveHeartRateBPM = liveHeartRateBPM
+        self.workoutCompanionActive = workoutCompanionActive
+        self.companionExerciseName = companionExerciseName
+        self.companionSetNumber = companionSetNumber
+        self.companionSetCount = companionSetCount
+        self.companionTargetSummary = companionTargetSummary
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -61,6 +77,11 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case readinessBand
         case briefSummary
         case liveHeartRateBPM
+        case workoutCompanionActive
+        case companionExerciseName
+        case companionSetNumber
+        case companionSetCount
+        case companionTargetSummary
     }
 
     public init(from decoder: Decoder) throws {
@@ -74,6 +95,11 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         readinessBand = try container.decodeIfPresent(String.self, forKey: .readinessBand)
         briefSummary = try container.decodeIfPresent(String.self, forKey: .briefSummary)
         liveHeartRateBPM = try container.decodeIfPresent(Int.self, forKey: .liveHeartRateBPM)
+        workoutCompanionActive = try container.decodeIfPresent(Bool.self, forKey: .workoutCompanionActive)
+        companionExerciseName = try container.decodeIfPresent(String.self, forKey: .companionExerciseName)
+        companionSetNumber = try container.decodeIfPresent(Int.self, forKey: .companionSetNumber)
+        companionSetCount = try container.decodeIfPresent(Int.self, forKey: .companionSetCount)
+        companionTargetSummary = try container.decodeIfPresent(String.self, forKey: .companionTargetSummary)
     }
 }
 

@@ -32,6 +32,7 @@ struct DashboardView: View {
                     readinessCard
                     prescriptionCard
                     nutritionTargetsCard
+                    DashboardTrendsSection()
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -467,8 +468,8 @@ struct DashboardView: View {
     private func nutritionNavigationLink<Content: View>(
         @ViewBuilder content: () -> Content
     ) -> some View {
-        NavigationLink {
-            NutritionView()
+        Button {
+            AppTabRouter.shared.openNutrition()
         } label: {
             nutritionCardShell {
                 content()

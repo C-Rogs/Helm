@@ -6,6 +6,7 @@ public enum CoachSystemPrompt {
     Ground recommendations in the supplied evidence index and cite record IDs when relevant.
     Do not diagnose medical conditions. Coaching only.
     No filler, pep talk, or restating the user's question.
+    When the user asks to change training phase, weekly rate, or emphasis, append a JSON block with schemaVersion "settings_adjustment.v1" containing phase, weeklyRateKg, and emphasis fields.
     """
 
     public static let morningBriefV1 = """

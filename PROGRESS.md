@@ -92,3 +92,17 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT3.4 AskCoachBar layout polish | done | 2026-07-23 | bea71fc | Fixed indicator frame; loading-only spinner. |
 | F-DT3.5 Shortcuts honest UX | done | 2026-07-23 | bea71fc | Coming-soon copy; Morning Brief Automation guide in Settings. |
 | F-DT3.6 Haptics catch-up | done | 2026-07-23 | bea71fc | sessionFinished on workout finish when no PR. |
+| F-DT5.1 OpenRouter photo 404 | done | 2026-07-24 | 3c65441 | OpenRouter prompt-only JSON; error body surfaced; Gemini fallback in MealVisionRouter. |
+| F-DT5.2 Coach OpenRouter picker | done | 2026-07-24 | 3c65441 | Removed OpenRouter from coach provider picker; note that OpenRouter is for photo meals. |
+| F-DT5.3 Nutrition tab + Dashboard trends | done | 2026-07-24 | 3c65441 | Nutrition tab; DashboardTrendsSection; AppTabRouter. |
+| F-DT5.4 Settings polish | done | 2026-07-24 | 3c65441 | Plain list styling; merged notifications guide; layout preview Card. |
+| F-DT5.5 App icon | done | 2026-07-24 | 3c65441 | Treatment C arc icon in iPhone + Watch asset catalogs. |
+| F-DT5.6 Nutrition transparency | done | 2026-07-24 | 3c65441 | Explain on calorie row; floor/TDEE contributors; zero TDEE treated as nil. |
+| F-DT5.7 Export UI rebrand | done | 2026-07-24 | 3c65441 | Export health data copy; bioharvest wire unchanged. |
+| F-DT5.8 Diagnostics refresh | done | 2026-07-24 | 3c65441 | Category filter, stack traces, share-extension OSLog in export. |
+| F-DT5.9 Train sets + picker | done | 2026-07-24 | 3c65441 | Manual +/- sets; recent exercises + muscle filters in picker. |
+| F-DT5.10 Watch companion | done | 2026-07-24 | 3c65441 | Phone-led companion payload; WatchCompanionView; HR auto-start. |
+| F-DT5.11 Coach-editable settings | done | 2026-07-24 | 3c65441 | settings_adjustment.v1 JSON apply from chat; re-plans prescription. |
+| M13.1 Planned workout UI | deferred | | | Post-DT5 |
+| M13.2 Drift policy UI | deferred | | | Post-DT5 |
+| M13.3 EventKit hints | deferred | | | Post-DT5 |

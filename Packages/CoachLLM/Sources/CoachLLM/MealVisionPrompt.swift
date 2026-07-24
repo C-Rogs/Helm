@@ -8,7 +8,7 @@ public enum MealVisionBackendPreference: String, Sendable, CaseIterable, Codable
 
 public enum MealVisionModel: String, Sendable, Equatable {
     case geminiFlash = "gemini-2.5-flash"
-    case openRouterGemma = "google/gemma-3-27b-it:free"
+    case openRouterGemma = "google/gemma-3-27b-it"
 }
 
 enum MealVisionPrompt {

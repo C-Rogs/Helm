@@ -1,6 +1,10 @@
 import Core
 import Foundation
 
+public enum NutritionConstants {
+    public static let minimumTDEEKcal = NutritionMass.minimumTDEEKcal
+}
+
 /// Adaptive TDEE and macro targets (pure engine).
 public enum NutritionKit {
     private static let minimumIntakeDaysForColdStart = 5

@@ -130,7 +130,15 @@ final class WorkoutImportController {
         errorMessage = nil
     }
 
-    func fetchPickerExercises(search: String) throws -> [ExerciseSummary] {
-        try persistence.exercises.listForPicker(search: search)
+    func fetchPickerExercises(search: String, muscleGroup: String? = nil) throws -> [ExerciseSummary] {
+        try persistence.exercises.listForPicker(search: search, muscleGroup: muscleGroup)
+    }
+
+    func fetchRecentExercises() throws -> [ExerciseSummary] {
+        try persistence.exercises.listRecentlyUsed()
+    }
+
+    func fetchMuscleGroups() throws -> [String] {
+        try persistence.exercises.listMuscleGroups()
     }
 }

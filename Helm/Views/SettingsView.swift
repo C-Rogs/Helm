@@ -3,7 +3,7 @@ import Diagnostics
 import SwiftUI
 
 struct SettingsView: View {
-    @State private var coordinator = HelmThemeCoordinator.shared
+    @Bindable private var coordinator = HelmThemeCoordinator.shared
 
     var body: some View {
         NavigationStack {
@@ -28,6 +28,17 @@ struct SettingsView: View {
                     .onChange(of: coordinator.skin) { _, _ in
                         HapticEngine.shared.play(.selection)
                     }
+
+                    Card {
+                        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                            Text("Layout preview")
+                                .helmType(.label)
+                            Text("Cards switch between instrument panels and ruled data blocks.")
+                                .helmType(.body, color: HelmColor.fgMuted)
+                        }
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(Color.clear)
                 }
 
                 Section("Feedback") {
@@ -52,11 +63,7 @@ struct SettingsView: View {
                         BackfillOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Health Import")
                     }
-                    NavigationLink("Shortcuts Setup") {
-                        ShortcutsOnboardingStepView(showsFlowControls: false)
-                            .navigationTitle("Shortcuts Setup")
-                    }
-                    NavigationLink("Proactive Notifications") {
+                    NavigationLink("Notifications & Shortcuts") {
                         MorningBriefAutomationGuideView()
                     }
                 }
@@ -83,7 +90,7 @@ struct SettingsView: View {
                     NavigationLink("Data & Backup") {
                         DataSafetyView()
                     }
-                    NavigationLink("Schema v2 Export") {
+                    NavigationLink("Export health data") {
                         SchemaV2ExportView()
                     }
                     NavigationLink("Diagnostics") {
@@ -98,13 +105,15 @@ struct SettingsView: View {
                     #endif
                 }
             }
+            .listStyle(.plain)
+            .listRowBackground(HelmColor.surface)
             .navigationTitle("Settings")
             .helmScreenBackground()
         }
-        .helmTheme()
     }
 }
 
 #Preview {
     SettingsView()
+        .helmTheme()
 }

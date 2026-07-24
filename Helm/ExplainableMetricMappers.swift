@@ -115,19 +115,48 @@ enum ExplainableMetricMappers {
     ) -> ExplainableMetric {
         let targets = snapshot.targets
         let formattedCalories = formattedInteger(targets.caloriesKcal)
+        let floorApplied = targets.caloriesKcal <= 1_200
+
         var contributors: [ExplainContributor] = [
             ExplainContributor(
                 id: "tdee",
                 label: "Estimated TDEE",
                 value: "\(targets.estimatedTDEEKcal) kcal",
-                detail: "Adaptive weekly estimate"
+                detail: snapshot.trend.estimatedTDEEKcal.map { _ in "Adaptive weekly estimate" } ?? "Seed from body mass"
+            ),
+            ExplainContributor(
+                id: "phase",
+                label: "Phase adjustment",
+                value: phaseAdjustmentLabel(for: snapshot.phase),
+                detail: phaseAdjustmentDetail(for: snapshot.phase)
             ),
             ExplainContributor(
                 id: "protein",
                 label: "Protein floor",
                 value: "\(targets.proteinGrams) g",
-                detail: "2.0 g/kg"
+                detail: "2.0 g/kg minimum"
             ),
+            ExplainContributor(
+                id: "daytype",
+                label: "Day type",
+                value: snapshot.dayType.rawValue.capitalized,
+                detail: "Affects carb/fat split only, not calories"
+            ),
+        ]
+
+        if floorApplied {
+            contributors.append(
+                ExplainContributor(
+                    id: "floor",
+                    label: "Safety floor",
+                    value: "1,200 kcal",
+                    detail: "Target cannot drop below minimum TDEE floor",
+                    state: .compromised
+                )
+            )
+        }
+
+        contributors.append(contentsOf: [
             ExplainContributor(
                 id: "carbs",
                 label: "Carbohydrates",
@@ -140,13 +169,7 @@ enum ExplainableMetricMappers {
                 value: "\(targets.fatGrams) g",
                 detail: "Remaining calories"
             ),
-            ExplainContributor(
-                id: "phase",
-                label: "Phase",
-                value: snapshot.phase.label,
-                detail: phaseAdjustmentDetail(for: snapshot.phase)
-            ),
-        ]
+        ])
 
         if let actual = snapshot.actual?.totalEnergy {
             contributors.append(
@@ -173,7 +196,9 @@ enum ExplainableMetricMappers {
         }
 
         let summary: String
-        if let gap = targets.macroGapKilocalories,
+        if floorApplied {
+            summary = "Calorie target is at the 1,200 kcal safety floor. Adjust phase or body mass in Training Plan settings."
+        } else if let gap = targets.macroGapKilocalories,
            gap > MacroGapCalculator.significanceThresholdKcal {
             summary = "\(snapshot.phase.label) phase \(snapshot.dayType.rawValue) day. Untracked energy is shown separately from macro targets."
         } else {
@@ -244,9 +269,25 @@ enum ExplainableMetricMappers {
 
     private static func phaseAdjustmentDetail(for phase: TrainingPhase) -> String {
         switch phase {
-        case .cut: "500 kcal deficit"
-        case .gain: "300 kcal surplus"
+        case .cut: "500 kcal deficit from TDEE"
+        case .gain: "300 kcal surplus to TDEE"
         case .maintain: "Maintenance calories"
+        }
+    }
+
+    private static func phaseAdjustmentLabel(for phase: TrainingPhase) -> String {
+        switch phase {
+        case .cut: "-\(Int(phaseAdjustmentKcal(for: phase))) kcal"
+        case .gain: "+\(Int(phaseAdjustmentKcal(for: phase))) kcal"
+        case .maintain: "0 kcal"
+        }
+    }
+
+    private static func phaseAdjustmentKcal(for phase: TrainingPhase) -> Double {
+        switch phase {
+        case .cut: 500
+        case .gain: 300
+        case .maintain: 0
         }
     }
 

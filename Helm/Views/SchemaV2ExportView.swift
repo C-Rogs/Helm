@@ -32,7 +32,7 @@ struct SchemaV2ExportView: View {
             }
 
             Section("Actions") {
-                Button(isExporting ? "Exporting…" : "Export schema v2 JSON") {
+                Button(isExporting ? "Exporting…" : "Export JSON") {
                     Task { await exportJSON() }
                 }
                 .disabled(isExporting || !window.isValid)
@@ -49,12 +49,12 @@ struct SchemaV2ExportView: View {
             }
 
             Section {
-                Text("Manual fallback: export matches bioharvest schema v2 (`app: bioharvest`). Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
+                Text("Helm export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
                     .font(HelmType.body.font)
                     .foregroundStyle(HelmColor.fgMuted)
             }
         }
-        .navigationTitle("Schema v2 Export")
+        .navigationTitle("Export health data")
         .overlay(alignment: .top) {
             if showCopiedBanner {
                 Text("Copied for Gemini")

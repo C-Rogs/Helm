@@ -8,7 +8,7 @@ struct WatchRootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            WatchWorkoutView(store: workoutStore)
+            WatchWorkoutView(store: workoutStore, coordinator: coordinator)
                 .tabItem {
                     Label("Workout", systemImage: "heart.fill")
                 }
@@ -34,6 +34,11 @@ struct WatchRootView: View {
         }
         .onAppear {
             coordinator.hydrateFromReceivedApplicationContext()
+        }
+        .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
+            guard isActive else { return }
+            guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
+            Task { await workoutStore.startWorkout() }
         }
         .onChange(of: workoutStore.heartRateBPM) { _, bpm in
             guard let bpm else { return }

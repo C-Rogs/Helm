@@ -81,6 +81,8 @@ struct NutritionAlcoholGapRow: View {
 struct NutritionDaySummaryCard: View {
     let snapshot: NutritionDaySnapshot
     var showTrend: Bool = false
+    var explainMetric: ExplainableMetric?
+    var onAskCoach: ((String) -> Void)?
 
     private var targets: MacroTargets {
         guard snapshot.targets.caloriesKcal > 0, snapshot.targets.proteinGrams > 0 else {
@@ -102,12 +104,7 @@ struct NutritionDaySummaryCard: View {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 header
 
-                NutritionMacroProgressRow(
-                    label: "Calories",
-                    actual: actualCalories,
-                    target: targets.caloriesKcal,
-                    unit: "kcal"
-                )
+                calorieRow
 
                 NutritionMacroProgressRow(
                     label: "Protein",
@@ -142,6 +139,21 @@ struct NutritionDaySummaryCard: View {
         }
     }
 
+    @ViewBuilder
+    private var calorieRow: some View {
+        let row = NutritionMacroProgressRow(
+            label: "Calories",
+            actual: actualCalories,
+            target: targets.caloriesKcal,
+            unit: "kcal"
+        )
+        if let explainMetric, let onAskCoach {
+            row.explainable(explainMetric, onAskCoach: onAskCoach)
+        } else {
+            row
+        }
+    }
+
     private var header: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             HStack(alignment: .firstTextBaseline) {
@@ -150,6 +162,7 @@ struct NutritionDaySummaryCard: View {
                 Spacer()
                 Text(snapshot.dayType.rawValue.capitalized)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .padding(.trailing, explainMetric == nil ? 0 : HelmSpacing.lg)
             }
 
             HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {

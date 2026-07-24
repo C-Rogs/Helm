@@ -73,7 +73,9 @@ struct WorkoutImportPreviewView: View {
             .sheet(isPresented: mappingSheetPresented) {
                 if let title = mappingExerciseTitle {
                     ExercisePickerView(
-                        fetchExercises: controller.fetchPickerExercises(search:),
+                        fetchRecent: { try controller.fetchRecentExercises() },
+                        fetchMuscleGroups: { try controller.fetchMuscleGroups() },
+                        fetchExercises: controller.fetchPickerExercises(search:muscleGroup:),
                         onSelect: { exerciseID in
                             controller.mapExercise(importedTitle: title, to: exerciseID)
                             mappingExerciseTitle = nil

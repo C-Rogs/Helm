@@ -11,7 +11,17 @@ struct ExerciseSectionView: View {
     let onOpenField: (String, NumpadFieldKind, SetEntryDraft) -> Void
     let onFillPrevious: (String) -> Void
     let onCompleteSet: (String, String) -> Void
+    let onAddSet: () -> Void
+    let onRemoveSet: () -> Void
     let onRemove: () -> Void
+
+    private var completedSetCount: Int {
+        exercise.sets.filter { $0.status == .completed }.count
+    }
+
+    private var canRemoveSet: Bool {
+        exercise.sets.count > max(completedSetCount, 1)
+    }
 
     var body: some View {
         Card {
@@ -48,6 +58,23 @@ struct ExerciseSectionView: View {
                         onComplete: { onCompleteSet(exercise.id, set.id) }
                     )
                 }
+
+                HStack(spacing: HelmSpacing.sm) {
+                    Button {
+                        onRemoveSet()
+                    } label: {
+                        Label("Remove set", systemImage: "minus.circle")
+                    }
+                    .buttonStyle(.helmSecondary)
+                    .disabled(!canRemoveSet)
+
+                    Button {
+                        onAddSet()
+                    } label: {
+                        Label("Add set", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.helmSecondary)
+                }
             }
         }
     }
@@ -81,6 +108,8 @@ struct ExerciseSectionView: View {
         onOpenField: { _, _, _ in },
         onFillPrevious: { _ in },
         onCompleteSet: { _, _ in },
+        onAddSet: {},
+        onRemoveSet: {},
         onRemove: {}
     )
     .padding()

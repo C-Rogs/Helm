@@ -64,7 +64,7 @@ A section that owns one of these rows must emit it; a section landing a new crit
 
 - `manifest.json`: app version + build number, GRDB migration schema version, exercise seed version, device model, OS version, export timestamp.
 - `ring_buffer.json`: the current contents of the ring buffer, oldest first.
-- `oslog_extract.txt`: a bounded pull from `OSLogStore` for subsystem `com.cameronro.helm`, most recent 24 hours or 5,000 entries, whichever is smaller.
+- `oslog_extract.txt`: a bounded pull from `OSLogStore` for subsystem `com.cameronro.helm`, most recent 24 hours or 5,000 entries, whichever is smaller. Includes the Share Extension process when present on the exporting device; **Watch app logs are not included** in a phone-initiated export (Watch runs as a separate process — use Xcode / Console on the paired Watch for Watch-only regressions).
 - **Not included by default**: raw chat transcript text, meal photo images, raw HealthKit sample payloads. Chat metadata (message count, timestamps, prompt/schema version, provider error codes) may appear in the ring buffer / OSLog extract since those are typed, non-content fields; the actual message text and images are not written to either.
 - If a future debugging need genuinely requires chat content in an export, that is a separate, explicit, opt-in action (not this default one-tap bundle), and would be its own small addition, not a change to this default schema.
 

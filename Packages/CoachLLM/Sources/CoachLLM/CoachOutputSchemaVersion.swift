@@ -3,5 +3,6 @@ public enum CoachOutputSchemaVersion: String, Sendable, Codable, Equatable, Case
     case sessionAdjustmentV1 = "session_adjustment.v1"
     case mealEstimateV1 = "meal_estimate.v1"
     case mealDecompositionV1 = "meal_decomposition.v1"
+    case settingsAdjustmentV1 = "settings_adjustment.v1"
     case briefV1 = "brief.v1"
 }

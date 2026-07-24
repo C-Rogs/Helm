@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct DiagnosticsView: View {
     @State private var entries: [LogEntry] = []
+    @State private var selectedCategory: HelmCategory?
     @State private var shareItem: ExportShareItem?
     @State private var isExporting = false
     @State private var exportErrorMessage: String?
@@ -9,6 +10,11 @@ public struct DiagnosticsView: View {
     private let log: DiagnosticsLog
     private let exportService: LogExportService
     private let environment: ExportEnvironment
+
+    private var filteredEntries: [LogEntry] {
+        guard let selectedCategory else { return entries }
+        return entries.filter { $0.category == selectedCategory.rawValue }
+    }
 
     public init(
         log: DiagnosticsLog = .shared,
@@ -22,14 +28,26 @@ public struct DiagnosticsView: View {
 
     public var body: some View {
         List {
-            if entries.isEmpty {
+            Section {
+                Text("\(entries.count) entries in ring buffer")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                Picker("Category", selection: $selectedCategory) {
+                    Text("All").tag(HelmCategory?.none)
+                    ForEach(HelmCategory.allCases, id: \.self) { category in
+                        Text(category.rawValue).tag(Optional(category))
+                    }
+                }
+            }
+
+            if filteredEntries.isEmpty {
                 ContentUnavailableView(
                     "No log entries",
                     systemImage: "doc.text.magnifyingglass",
                     description: Text("Structured diagnostics will appear here as the app runs.")
                 )
             } else {
-                ForEach(entries) { entry in
+                ForEach(filteredEntries) { entry in
                     LogEntryRow(entry: entry)
                 }
             }
@@ -106,6 +124,12 @@ private struct LogEntryRow: View {
                 Text(errorType)
                     .font(.caption.monospaced())
                     .foregroundStyle(.red)
+            }
+            if let stackTrace = entry.stackTrace, !stackTrace.isEmpty {
+                Text(stackTrace)
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(.secondary)
+                    .lineLimit(6)
             }
             Text(entry.timestamp.formatted(date: .abbreviated, time: .standard))
                 .font(.caption2)

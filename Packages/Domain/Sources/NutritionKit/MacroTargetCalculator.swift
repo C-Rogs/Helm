@@ -33,8 +33,8 @@ enum MacroTargetCalculator {
     static func resolvedTDEE(trend: NutritionTrendState, bodyMassKg: Double) -> Double {
         let mass = NutritionMass.resolved(bodyMassKg)
         let seed = TDEECalculator.seedTDEE(bodyMassKg: mass)
-        let raw = trend.estimatedTDEEKcal ?? seed
-        let floored = NutritionMass.flooredTDEE(raw, bodyMassKg: mass)
+        let rawEstimate = trend.estimatedTDEEKcal.flatMap { $0 > 0 ? $0 : nil } ?? seed
+        let floored = NutritionMass.flooredTDEE(rawEstimate, bodyMassKg: mass)
         return floored.isFinite ? floored : seed
     }
 

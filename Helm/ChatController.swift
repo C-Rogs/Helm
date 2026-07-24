@@ -186,6 +186,12 @@ final class ChatController {
             )
             messages.append(assistantMessage)
 
+            if (try? CoachPlanSettingsAdjuster.tryApplyEmbeddedJSON(in: assembled, persistence: persistence)) == true {
+                await PlanBootstrap.prescriptionService.refresh(
+                    readiness: ReadinessBootstrap.readinessService.state.score
+                )
+            }
+
             await logTurn(
                 status: "completed",
                 promptVersion: CoachPromptVersion.chatV1.rawValue,

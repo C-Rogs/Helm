@@ -77,6 +77,93 @@ struct ExerciseSeedImporterTests {
         #expect(deadlift?.displayName == "Deadlift (Barbell)")
     }
 
+    @Test("version bump prunes stale seed exercises")
+    func versionBumpPrunesStaleExercises() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let v1URL = try fixtureURL("exercise_seed_v1")
+        let v1Data = try Data(contentsOf: v1URL)
+
+        let replacementManifest = """
+        {
+          "seedVersion": 2,
+          "placeholder": false,
+          "exercises": [
+            {
+              "id": "seed-bench-press",
+              "canonicalName": "bench press (barbell)",
+              "displayName": "Bench Press (Barbell)",
+              "aliases": ["Bench Press"],
+              "exerciseMode": "weight_reps",
+              "equipment": "barbell",
+              "primaryMuscleGroup": "chest",
+              "secondaryMuscleGroups": [],
+              "isPickerDefault": true,
+              "isHevyLibrary": true
+            },
+            {
+              "id": "seed-deadlift",
+              "canonicalName": "deadlift (barbell)",
+              "displayName": "Deadlift (Barbell)",
+              "aliases": ["Deadlift"],
+              "exerciseMode": "weight_reps",
+              "equipment": "barbell",
+              "primaryMuscleGroup": "hamstrings",
+              "secondaryMuscleGroups": [],
+              "isPickerDefault": true,
+              "isHevyLibrary": true
+            }
+          ]
+        }
+        """
+        let replacementData = Data(replacementManifest.utf8)
+        let replacementURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("exercise_seed_prune_test.json")
+        try replacementData.write(to: replacementURL)
+
+        _ = try importer.importIfNeeded(manifestURL: v1URL, manifestData: v1Data)
+        #expect(try store.exercises.exerciseCount() == 2)
+
+        _ = try importer.importIfNeeded(manifestURL: replacementURL, manifestData: replacementData)
+        #expect(try store.exercises.exerciseCount() == 2)
+        #expect(try store.exercises.fetchSummary(id: "seed-bench-press") != nil)
+        #expect(try store.exercises.fetchSummary(id: "seed-deadlift") != nil)
+        #expect(try store.exercises.fetchSummary(id: "seed-squat") == nil)
+    }
+
+    @Test("Hevy aliases resolve for curated gym staples")
+    func hevyAliasResolution() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let manifest = """
+        {
+          "seedVersion": 1,
+          "placeholder": false,
+          "exercises": [
+            {
+              "id": "seed-horizontal-leg-press",
+              "canonicalName": "horizontal leg press",
+              "displayName": "Leg Press Horizontal (Machine)",
+              "aliases": ["Leg Press Horizontal (Machine)", "Horizontal Leg Press"],
+              "exerciseMode": "weight_reps",
+              "equipment": "machine",
+              "primaryMuscleGroup": "quadriceps",
+              "secondaryMuscleGroups": [],
+              "isPickerDefault": true,
+              "isHevyLibrary": true
+            }
+          ]
+        }
+        """
+        let data = Data(manifest.utf8)
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("exercise_seed_hevy_alias.json")
+        try data.write(to: url)
+
+        _ = try importer.importIfNeeded(manifestURL: url, manifestData: data)
+        let resolved = try store.exercises.resolveImportedTitle("Leg Press Horizontal (Machine)")
+        #expect(resolved?.exerciseID == "seed-horizontal-leg-press")
+    }
+
     @Test("free-exercise-db catalog maps loggy-style entries")
     func freeExerciseDBMapping() throws {
         let record = FreeExerciseDBRecord(

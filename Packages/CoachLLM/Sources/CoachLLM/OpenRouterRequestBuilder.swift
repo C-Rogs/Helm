@@ -82,7 +82,7 @@ public struct OpenRouterChatCompletionRequest: Encodable, @unchecked Sendable {
 
     public let model: String
     public let messages: [Message]
-    public let responseFormat: ResponseFormat
+    public let responseFormat: ResponseFormat?
     public let temperature: Double
 
     enum CodingKeys: String, CodingKey {
@@ -95,7 +95,7 @@ public struct OpenRouterChatCompletionRequest: Encodable, @unchecked Sendable {
     public init(
         model: String,
         messages: [Message],
-        responseFormat: ResponseFormat,
+        responseFormat: ResponseFormat? = nil,
         temperature: Double = 0.2
     ) {
         self.model = model
@@ -155,21 +155,15 @@ public enum OpenRouterRequestBuilder {
     public static func mealDecompositionPhotoBody(
         systemInstructions: String,
         imageJPEGBase64: String,
-        model: MealVisionModel = .openRouterGemma
+        model: MealVisionModel = .openRouterGemma,
+        useStructuredOutput: Bool = false
     ) throws -> Data {
-        let request = OpenRouterChatCompletionRequest(
-            model: model.rawValue,
-            messages: [
-                .init(role: "system", content: [.text(systemInstructions)]),
-                .init(
-                    role: "user",
-                    content: [
-                        .text("Decompose this meal photo into ingredients and estimated grams."),
-                        .image(jpegBase64: imageJPEGBase64)
-                    ]
-                )
-            ],
-            responseFormat: .init(
+        let jsonInstructions = """
+        \(systemInstructions)
+        Respond with JSON only matching meal_decomposition schema_version \(CoachOutputSchemaVersion.mealDecompositionV1.rawValue).
+        """
+        let responseFormat: OpenRouterChatCompletionRequest.ResponseFormat? = useStructuredOutput
+            ? .init(
                 type: "json_schema",
                 jsonSchema: .init(
                     name: "meal_decomposition",
@@ -177,6 +171,17 @@ public enum OpenRouterRequestBuilder {
                     schema: GeminiRequestBuilder.mealDecompositionSchema()
                 )
             )
+            : nil
+        let request = OpenRouterChatCompletionRequest(
+            model: model.rawValue,
+            messages: [
+                .init(role: "user", content: [
+                    .text(jsonInstructions),
+                    .text("Decompose this meal photo into ingredients and estimated grams."),
+                    .image(jpegBase64: imageJPEGBase64)
+                ])
+            ],
+            responseFormat: responseFormat
         )
         return try JSONEncoder().encode(request)
     }

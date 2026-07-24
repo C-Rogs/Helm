@@ -4,28 +4,28 @@ import SwiftUI
 enum AppTab: Hashable {
     case dashboard
     case train
+    case nutrition
     case chat
-    case trends
     case settings
 }
 
 struct RootTabView: View {
-    @State private var selectedTab: AppTab = .dashboard
+    @Bindable private var tabRouter = AppTabRouter.shared
     @Bindable private var chatController = ChatBootstrap.controller
 
     var body: some View {
-        TabView(selection: $selectedTab) {
+        TabView(selection: $tabRouter.selectedTab) {
             Tab("Dashboard", systemImage: "gauge.with.dots.needle.67percent", value: AppTab.dashboard) {
                 DashboardView()
             }
             Tab("Train", systemImage: "dumbbell.fill", value: AppTab.train) {
                 TrainView()
             }
+            Tab("Nutrition", systemImage: "fork.knife", value: AppTab.nutrition) {
+                NutritionView()
+            }
             Tab("Chat", systemImage: "bubble.left.and.bubble.right.fill", value: AppTab.chat) {
                 ChatView()
-            }
-            Tab("Trends", systemImage: "chart.xyaxis.line", value: AppTab.trends) {
-                TrendsView()
             }
             Tab("Settings", systemImage: "gearshape.fill", value: AppTab.settings) {
                 SettingsView()
@@ -33,13 +33,13 @@ struct RootTabView: View {
         }
         .toolbarBackground(HelmColor.surface, for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
-        .onChange(of: selectedTab) { oldValue, newValue in
+        .onChange(of: tabRouter.selectedTab) { oldValue, newValue in
             guard oldValue != newValue else { return }
             HapticEngine.shared.play(.selection)
         }
         .onChange(of: chatController.handoffGeneration) { _, _ in
             guard chatController.pendingHandoffPrompt != nil else { return }
-            selectedTab = .chat
+            tabRouter.selectedTab = .chat
         }
     }
 }

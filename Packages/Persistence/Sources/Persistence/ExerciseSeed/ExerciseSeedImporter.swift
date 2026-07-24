@@ -53,10 +53,12 @@ public struct ExerciseSeedImporter: Sendable {
     @discardableResult
     public func importEntries(_ entries: [ExerciseSeedEntry], seedVersion: Int) throws -> Int {
         let now = ISO8601Coding.string(from: Date())
+        let importedIDs = Set(entries.map(\.id))
         try pool.write { db in
             for entry in entries {
                 try upsertSeedEntry(entry, now: now, in: db)
             }
+            try pruneStaleSeedExercises(keeping: importedIDs, now: now, in: db)
             try CatalogPickerCurator.apply(in: db)
             try db.execute(
                 sql: """
@@ -146,5 +148,25 @@ public struct ExerciseSeedImporter: Sendable {
     private func encodeJSON(_ values: [String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: values)
         return String(data: data, encoding: .utf8) ?? "[]"
+    }
+
+    /// Soft-deletes bundled seed rows that are no longer in the active manifest.
+    private func pruneStaleSeedExercises(keeping entryIDs: Set<String>, now: String, in db: Database) throws {
+        guard !entryIDs.isEmpty else { return }
+        let placeholders = Array(repeating: "?", count: entryIDs.count).joined(separator: ", ")
+        var arguments: [DatabaseValueConvertible] = [now, now]
+        for id in entryIDs.sorted() {
+            arguments.append(id)
+        }
+        try db.execute(
+            sql: """
+                UPDATE exercise
+                SET deleted_at = ?, updated_at = ?
+                WHERE is_custom = 0
+                  AND deleted_at IS NULL
+                  AND id NOT IN (\(placeholders))
+                """,
+            arguments: StatementArguments(arguments)
+        )
     }
 }

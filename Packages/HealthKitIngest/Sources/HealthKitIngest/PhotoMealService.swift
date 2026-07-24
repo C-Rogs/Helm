@@ -1,5 +1,6 @@
 import CoachLLM
 import Core
+import Diagnostics
 import Foundation
 import OSLog
 
@@ -37,6 +38,7 @@ public struct PhotoMealService: Sendable {
             return try await estimator.estimateMacros(imageJPEGData: imageJPEGData)
         } catch {
             photoMealLog.error("Photo macro estimate failed: \(String(describing: type(of: error)), privacy: .public)")
+            Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo macro estimate failed") }
             throw error
         }
     }
@@ -63,6 +65,7 @@ public struct PhotoMealService: Sendable {
             return saved
         } catch {
             photoMealLog.error("Photo meal write failed: \(String(describing: type(of: error)), privacy: .public)")
+            Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo meal HealthKit write failed") }
             throw error
         }
     }

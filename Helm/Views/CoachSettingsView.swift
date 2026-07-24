@@ -18,7 +18,7 @@ struct CoachSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Choose the coach backend and store your Gemini API key on-device.")
+                Text("Coach chat uses Gemini. OpenRouter powers photo meal vision below.")
                     .font(HelmTypography.body)
                     .foregroundStyle(HelmColor.fgSecondary)
             }
@@ -34,7 +34,6 @@ struct CoachSettingsView: View {
                 )) {
                     Text("Gemini").tag(ProviderKind.gemini)
                     Text("On-device").tag(ProviderKind.foundationModels)
-                    Text("OpenRouter").tag(ProviderKind.openRouter)
                 }
             }
 

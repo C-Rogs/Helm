@@ -87,6 +87,14 @@ public struct ExerciseRepository: Sendable {
     }
 
     public func listForPicker(search: String? = nil, limit: Int = 200) throws -> [ExerciseSummary] {
+        try listForPicker(search: search, muscleGroup: nil, limit: limit)
+    }
+
+    public func listForPicker(
+        search: String?,
+        muscleGroup: String?,
+        limit: Int = 500
+    ) throws -> [ExerciseSummary] {
         try pool.read { db in
             var sql = """
                 SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
@@ -99,6 +107,10 @@ public struct ExerciseRepository: Sendable {
                 let pattern = "%\(search.trimmingCharacters(in: .whitespacesAndNewlines))%"
                 arguments.append(contentsOf: [pattern, pattern])
             }
+            if let muscleGroup, !muscleGroup.isEmpty {
+                sql += " AND primary_muscle_group = ?"
+                arguments.append(muscleGroup)
+            }
             sql += """
                  ORDER BY is_picker_default DESC, is_custom ASC, sort_name ASC
                  LIMIT ?
@@ -110,6 +122,44 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func listRecentlyUsed(limit: Int = 12) throws -> [ExerciseSummary] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group
+                    FROM exercise e
+                    INNER JOIN workout_session_exercise wse ON wse.exercise_id = e.id
+                    INNER JOIN workout_session ws ON ws.id = wse.workout_session_id
+                    WHERE e.deleted_at IS NULL
+                      AND ws.deleted_at IS NULL
+                      AND ws.status = 'completed'
+                    GROUP BY e.id
+                    ORDER BY MAX(ws.ended_at) DESC
+                    LIMIT ?
+                    """,
+                arguments: [limit]
+            )
+            return try rows.map { try Self.summary(from: $0) }
+        }
+    }
+
+    public func listMuscleGroups() throws -> [String] {
+        try pool.read { db in
+            try String.fetchAll(
+                db,
+                sql: """
+                    SELECT DISTINCT primary_muscle_group
+                    FROM exercise
+                    WHERE deleted_at IS NULL
+                      AND primary_muscle_group IS NOT NULL
+                      AND primary_muscle_group != ''
+                    ORDER BY primary_muscle_group ASC
+                    """
+            )
+        }
+    }
+
     public func fetchCatalogRows(limit: Int = 2_000) throws -> [ExerciseCatalogRow] {
         try pool.read { db in
             let rows = try Row.fetchAll(
@@ -118,8 +168,8 @@ public struct ExerciseRepository: Sendable {
                     SELECT id, display_name, primary_muscle_group, secondary_muscle_groups_json,
                            equipment_type, is_picker_default
                     FROM exercise
-                    WHERE deleted_at IS NULL
-                    ORDER BY is_picker_default DESC, sort_name ASC
+                    WHERE deleted_at IS NULL AND is_picker_default = 1
+                    ORDER BY sort_name ASC
                     LIMIT ?
                     """,
                 arguments: [limit]

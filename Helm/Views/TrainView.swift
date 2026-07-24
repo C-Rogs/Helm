@@ -37,7 +37,9 @@ struct TrainView: View {
             }
             .sheet(isPresented: $controller.isShowingExercisePicker) {
                 ExercisePickerView(
-                    fetchExercises: controller.fetchPickerExercises(search:),
+                    fetchRecent: { try controller.fetchRecentExercises() },
+                    fetchMuscleGroups: { try controller.fetchMuscleGroups() },
+                    fetchExercises: controller.fetchPickerExercises(search:muscleGroup:),
                     onSelect: { exerciseID in
                         Task { await controller.addExercise(exerciseID: exerciseID) }
                     }
@@ -229,6 +231,52 @@ struct TrainView: View {
         return parts.joined(separator: " · ")
     }
 
+    @ViewBuilder
+    private func exerciseSection(for exercise: WorkoutSessionExerciseDraft) -> some View {
+        ExerciseSectionView(
+            exercise: exercise,
+            displayName: controller.displayName(for: exercise.exerciseID),
+            targetSummary: controller.targetSummary(for: exercise.exerciseID),
+            previousLookup: { set in
+                controller.previousFor(set: set, exerciseID: exercise.exerciseID)
+            },
+            activeField: controller.numpadTarget,
+            onOpenField: { sessionExerciseID, field, set in
+                controller.openNumpad(
+                    setID: set.id,
+                    sessionExerciseID: sessionExerciseID,
+                    field: field,
+                    currentSet: set
+                )
+            },
+            onFillPrevious: { setID in
+                Task {
+                    await controller.fillFromPrevious(
+                        setID: setID,
+                        sessionExerciseID: exercise.id
+                    )
+                }
+            },
+            onCompleteSet: { sessionExerciseID, setID in
+                Task {
+                    await controller.completeSet(
+                        sessionExerciseID: sessionExerciseID,
+                        setID: setID
+                    )
+                }
+            },
+            onAddSet: {
+                Task { await controller.addSet(sessionExerciseID: exercise.id) }
+            },
+            onRemoveSet: {
+                Task { await controller.removeSet(sessionExerciseID: exercise.id) }
+            },
+            onRemove: {
+                Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
+            }
+        )
+    }
+
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
         VStack(spacing: 0) {
             ScrollView {
@@ -256,42 +304,7 @@ struct TrainView: View {
                     }
 
                     ForEach(snapshot.session.exercises) { exercise in
-                        ExerciseSectionView(
-                            exercise: exercise,
-                            displayName: controller.displayName(for: exercise.exerciseID),
-                            targetSummary: controller.targetSummary(for: exercise.exerciseID),
-                            previousLookup: { set in
-                                controller.previousFor(set: set, exerciseID: exercise.exerciseID)
-                            },
-                            activeField: controller.numpadTarget,
-                            onOpenField: { sessionExerciseID, field, set in
-                                controller.openNumpad(
-                                    setID: set.id,
-                                    sessionExerciseID: sessionExerciseID,
-                                    field: field,
-                                    currentSet: set
-                                )
-                            },
-                            onFillPrevious: { setID in
-                                Task {
-                                    await controller.fillFromPrevious(
-                                        setID: setID,
-                                        sessionExerciseID: exercise.id
-                                    )
-                                }
-                            },
-                            onCompleteSet: { sessionExerciseID, setID in
-                                Task {
-                                    await controller.completeSet(
-                                        sessionExerciseID: sessionExerciseID,
-                                        setID: setID
-                                    )
-                                }
-                            },
-                            onRemove: {
-                                Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
-                            }
-                        )
+                        exerciseSection(for: exercise)
                     }
 
                     Button {

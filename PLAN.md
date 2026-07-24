@@ -834,6 +834,110 @@ Targeted fixes from Cameron's DT3 session.
 - Backwards compat: schema-v2 export byte-checks against bioharvest for the same day; copy-to-Gemini works; Share Extension imports.
 - Full regression sweep of DT2/DT3 flows plus a final battery check.
 
+### DT5 fix sections (filed 2026-07-24)
+
+Targeted fixes from Cameron's DT5 session.
+
+#### F-DT5.1 - OpenRouter photo 404
+
+- **Depends on:** M9.6
+- **Goal:** Photo meal upload works with OpenRouter key.
+- **Scope:** OpenRouter model slug fix; prompt-only JSON fallback (drop strict json_schema for Gemma); surface error body in HTTP client; MealVisionRouter auto-fallback to Gemini when both keys present.
+- **Acceptance:** CoachLLM fixture tests pass; OpenRouter failure falls back to Gemini when configured.
+
+#### F-DT5.2 - Coach OpenRouter picker confusion
+
+- **Depends on:** M11.2
+- **Goal:** Coach settings do not promise OpenRouter chat when only meal vision is wired.
+- **Scope:** Remove OpenRouter from coach Provider picker; keep Photo meal vision picker + TestFlight key section; explanatory note.
+- **Acceptance:** Selecting coach provider never shows "reserved for later release" for OpenRouter; build clean.
+
+#### F-DT5.3 - Nutrition tab + Trends on Dashboard
+
+- **Depends on:** M9.2, M10.1
+- **Goal:** Nutrition is a root tab; trend charts live on Dashboard.
+- **Scope:** Add Nutrition tab; remove Trends tab; embed trend section on Dashboard; wire TrendsBootstrap from Dashboard.
+- **Acceptance:** Build + previews; Nutrition one tap; Dashboard shows trend charts.
+
+#### F-DT5.4 - Settings polish
+
+- **Depends on:** M0.7, M0.8
+- **Goal:** Settings matches canvas; data-sheet skin visible; one notifications entry.
+- **Scope:** List plain style + row backgrounds; remove nested helmTheme; merge Shortcuts + Proactive Notifications; skin preview Card; audit skin bypasses.
+- **Acceptance:** Settings visually matches Dashboard; layout picker visible on Settings; single notifications guide entry.
+
+#### F-DT5.5 - App icon from design spec
+
+- **Depends on:** M0.1
+- **Goal:** Replace black placeholder icon on iPhone + Watch.
+- **Scope:** Treatment C icon (arc + data trace) per DESIGN-SYSTEM.md in both asset catalogs.
+- **Acceptance:** Icon visible on device after reinstall; not solid black.
+
+#### F-DT5.6 - Nutrition transparency + glyph fix
+
+- **Depends on:** M4.6, M9.2
+- **Goal:** Calorie target explainable; info glyph does not overlap day-type tag.
+- **Scope:** Move explainable to calorie row; extend nutrition contributors (TDEE, floor, phase); treat zero TDEE as nil; header spacing fix.
+- **Acceptance:** Explain sheet shows floor/TDEE contributors; glyph does not overlap tag.
+
+#### F-DT5.7 - Export UI rebrand
+
+- **Depends on:** M11.1
+- **Goal:** Settings copy says Helm export; JSON wire format unchanged (bioharvest-compatible).
+- **Scope:** SchemaV2ExportView + Settings row labels only.
+- **Acceptance:** No "schema v2" in user-facing copy; golden export test unchanged.
+
+#### F-DT5.8 - Diagnostics refresh
+
+- **Depends on:** M0.3
+- **Goal:** Diagnostics useful for DT5 regression.
+- **Scope:** Stack trace + category filter + buffer count in UI; widen OSLog extract; capture() at PhotoMeal, Prescription, Nutrition silent failures; doc Watch limitation.
+- **Acceptance:** Diagnostics tests pass; export includes share subsystem.
+
+#### F-DT5.9 - Train set count + exercise picker
+
+- **Depends on:** M3.3, M5.4
+- **Goal:** Manual +/- sets; picker recents and filters.
+- **Scope:** addSet/removeSet on ActiveSessionStore; +/- in ExerciseSectionView; listRecentlyUsed + filter chips in ExercisePickerView.
+- **Acceptance:** Persistence tests; picker shows recent section.
+
+#### F-DT5.10 - Watch phone-led companion
+
+- **Depends on:** M8.2, M6.1
+- **Goal:** Phone Train start opens Watch companion with live HR + exercise/set mirror.
+- **Scope:** WatchWorkoutCompanionPayload; TrainSessionController pushes state; Watch defaults to companion; demote standalone workout start; phone HR chip.
+- **Acceptance:** Build passes; companion payload round-trip tests.
+
+#### F-DT5.11 - Coach-editable settings (phase A)
+
+- **Depends on:** M4.5, M5.6, M9.1
+- **Goal:** Coach adjusts training plan settings via chat.
+- **Scope:** settings_adjustment.v1 schema; ChatController applies phase/goal/rate mutations; triggers re-plan.
+- **Acceptance:** Fixture decodes adjustment; plan persists after coach turn.
+
+### M13 Schedule and calendar (post-DT5)
+
+#### M13.1 Planned workout UI
+
+- **Depends on:** M5.2, F-DT5.10
+- **Goal:** Week-ahead schedule visible on Train.
+- **Scope:** Generate planned_workout rows when prescription computes; week list on Train.
+- **Acceptance:** Fixture plan renders week ahead.
+
+#### M13.2 Drift policy UI
+
+- **Depends on:** M13.1
+- **Goal:** Skipped/moved sessions visible.
+- **Scope:** Drift indicators on Train calendar list.
+- **Acceptance:** Drift scenario tests render in UI.
+
+#### M13.3 EventKit hints (optional)
+
+- **Depends on:** M13.2
+- **Goal:** Busy-day hints from calendar read-only.
+- **Scope:** EventKit read; no write-back.
+- **Acceptance:** Permission flow; busy day surfaces hint.
+
 ---
 
 ## Reference and lessons from the lab (informing the clean build, not imported)

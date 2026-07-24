@@ -24,6 +24,11 @@ final class WatchSessionCoordinator: NSObject {
     var latestReadinessBand: String?
     var latestBriefSummary: String?
     var latestLiveHeartRateBPM: Int?
+    var workoutCompanionActive = false
+    var companionExerciseName: String?
+    var companionSetNumber: Int?
+    var companionSetCount: Int?
+    var companionTargetSummary: String?
 
     private let role: Role
     private var nextSequence = 1
@@ -86,6 +91,30 @@ final class WatchSessionCoordinator: NSObject {
         lastReadinessPushAt = now
     }
 
+    func pushWorkoutCompanion(
+        active: Bool,
+        exerciseName: String? = nil,
+        setNumber: Int? = nil,
+        setCount: Int? = nil,
+        targetSummary: String? = nil,
+        helmDay: HelmDay? = nil
+    ) {
+        guard role == .phone else { return }
+        guard activationState == .activated else { return }
+
+        let payload = makePayload(
+            origin: .phone,
+            messageKind: .workoutCompanion,
+            helmDay: helmDay,
+            workoutCompanionActive: active,
+            companionExerciseName: exerciseName,
+            companionSetNumber: setNumber,
+            companionSetCount: setCount,
+            companionTargetSummary: targetSummary
+        )
+        push(payload)
+    }
+
     func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay) {
         guard role == .watch else { return }
         guard activationState == .activated else { return }
@@ -113,7 +142,12 @@ final class WatchSessionCoordinator: NSObject {
         readinessScore: Int? = nil,
         readinessBand: String? = nil,
         briefSummary: String? = nil,
-        liveHeartRateBPM: Int? = nil
+        liveHeartRateBPM: Int? = nil,
+        workoutCompanionActive: Bool? = nil,
+        companionExerciseName: String? = nil,
+        companionSetNumber: Int? = nil,
+        companionSetCount: Int? = nil,
+        companionTargetSummary: String? = nil
     ) -> WatchSyncPayload {
         let sequence = nextSequence
         nextSequence += 1
@@ -126,7 +160,12 @@ final class WatchSessionCoordinator: NSObject {
             readinessScore: readinessScore,
             readinessBand: readinessBand,
             briefSummary: briefSummary,
-            liveHeartRateBPM: liveHeartRateBPM
+            liveHeartRateBPM: liveHeartRateBPM,
+            workoutCompanionActive: workoutCompanionActive,
+            companionExerciseName: companionExerciseName,
+            companionSetNumber: companionSetNumber,
+            companionSetCount: companionSetCount,
+            companionTargetSummary: companionTargetSummary
         )
     }
 
@@ -163,6 +202,8 @@ final class WatchSessionCoordinator: NSObject {
                 break
             case .liveHeartRate:
                 latestLiveHeartRateBPM = payload.liveHeartRateBPM
+            case .workoutCompanion:
+                break
             }
         case .watch:
             switch payload.messageKind {
@@ -176,6 +217,12 @@ final class WatchSessionCoordinator: NSObject {
                 roundTripComplete = false
             case .liveHeartRate:
                 break
+            case .workoutCompanion:
+                workoutCompanionActive = payload.workoutCompanionActive ?? false
+                companionExerciseName = payload.companionExerciseName
+                companionSetNumber = payload.companionSetNumber
+                companionSetCount = payload.companionSetCount
+                companionTargetSummary = payload.companionTargetSummary
             }
         }
     }
@@ -192,6 +239,13 @@ final class WatchSessionCoordinator: NSObject {
         }
         if let liveHeartRateBPM = payload.liveHeartRateBPM {
             latestLiveHeartRateBPM = liveHeartRateBPM
+        }
+        if payload.messageKind == .workoutCompanion {
+            workoutCompanionActive = payload.workoutCompanionActive ?? false
+            companionExerciseName = payload.companionExerciseName
+            companionSetNumber = payload.companionSetNumber
+            companionSetCount = payload.companionSetCount
+            companionTargetSummary = payload.companionTargetSummary
         }
     }
 

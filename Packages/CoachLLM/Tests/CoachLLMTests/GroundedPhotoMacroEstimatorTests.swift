@@ -67,8 +67,14 @@ struct GroundedPhotoMacroEstimatorTests {
         #expect(decomposition.items.count == 2)
     }
 
-    @Test("router prefers openrouter when both keys exist in auto mode")
-    func routerPrefersOpenRouter() async throws {
+    @Test("router falls back to gemini when openrouter fails")
+    func routerFallsBackToGemini() async throws {
+        struct FailingOpenRouter: MealVisionProviding {
+            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("OpenRouter request failed with status 404.")
+            }
+        }
+
         let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
         try store.save("gemini-key", kind: .gemini)
         try store.save("openrouter-key", kind: .openRouter)
@@ -79,10 +85,7 @@ struct GroundedPhotoMacroEstimatorTests {
                 apiKeyStore: store,
                 httpClient: FixtureGeminiHTTPClient(bundle: .module)
             ),
-            openRouterVision: OpenRouterMealVisionProvider(
-                apiKeyStore: store,
-                httpClient: FixtureOpenRouterHTTPClient(bundle: .module)
-            )
+            openRouterVision: FailingOpenRouter()
         )
 
         let estimate = try await PhotoMacroEstimator(router: router).estimateMacros(

@@ -1,4 +1,5 @@
 import Core
+import Diagnostics
 import Foundation
 import NutritionKit
 import Persistence
@@ -128,6 +129,18 @@ public actor NutritionEngine {
         let primary = NutritionKit.targets(for: context, phase: phase, trend: trend)
         if primary.caloriesKcal > 0, primary.proteinGrams > 0 {
             return primary
+        }
+
+        Task {
+            await DiagnosticsLog.shared.record(
+                category: .nutritionKit,
+                level: .info,
+                message: "Macro targets cold-start fallback",
+                context: [
+                    "primaryCalories": String(primary.caloriesKcal),
+                    "estimatedTDEE": String(primary.estimatedTDEEKcal)
+                ]
+            )
         }
 
         let fallback = NutritionKit.targets(

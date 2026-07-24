@@ -3,14 +3,14 @@ import Foundation
 public struct MealVisionRouter: Sendable {
     private let apiKeyStore: APIKeyStore
     private let preferences: MealVisionPreferencesStore
-    private let geminiVision: GeminiMealVisionProvider
-    private let openRouterVision: OpenRouterMealVisionProvider
+    private let geminiVision: any MealVisionProviding
+    private let openRouterVision: any MealVisionProviding
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         preferences: MealVisionPreferencesStore = MealVisionPreferencesStore(),
-        geminiVision: GeminiMealVisionProvider? = nil,
-        openRouterVision: OpenRouterMealVisionProvider? = nil
+        geminiVision: (any MealVisionProviding)? = nil,
+        openRouterVision: (any MealVisionProviding)? = nil
     ) {
         self.apiKeyStore = apiKeyStore
         self.preferences = preferences
@@ -25,7 +25,14 @@ public struct MealVisionRouter: Sendable {
     public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
         switch resolvedBackend() {
         case .openRouter:
-            return try await openRouterVision.decompose(imageJPEGData: imageJPEGData)
+            do {
+                return try await openRouterVision.decompose(imageJPEGData: imageJPEGData)
+            } catch {
+                guard hasGeminiKey, preferences.backendPreference != .openRouter else {
+                    throw error
+                }
+                return try await geminiVision.decompose(imageJPEGData: imageJPEGData)
+            }
         case .gemini:
             return try await geminiVision.decompose(imageJPEGData: imageJPEGData)
         }

@@ -142,6 +142,23 @@ public actor ActiveSessionEngine {
         return try requireSnapshot(at: now)
     }
 
+    public func adjustExerciseSetCount(
+        sessionExerciseID: String,
+        targetSetCount: Int
+    ) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.adjustExerciseSetCount(
+            sessionID: snapshot.session.id,
+            sessionExerciseID: sessionExerciseID,
+            targetSetCount: targetSetCount,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
     public func restoreExerciseLayout(_ exercises: [WorkoutSessionExerciseDraft]) throws -> ActiveSessionSnapshot {
         let now = clock.now()
         guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {

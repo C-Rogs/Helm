@@ -232,6 +232,40 @@ final class TrainSessionController {
         do {
             try await store.removeExercise(sessionExerciseID: sessionExerciseID)
             await refreshMetadata()
+            pushWatchCompanionState()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func addSet(sessionExerciseID: String) async {
+        guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return
+        }
+        do {
+            try await store.adjustExerciseSetCount(
+                sessionExerciseID: sessionExerciseID,
+                targetSetCount: exercise.sets.count + 1
+            )
+            await refreshMetadata()
+            pushWatchCompanionState()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func removeSet(sessionExerciseID: String) async {
+        guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return
+        }
+        guard exercise.sets.count > 1 else { return }
+        do {
+            try await store.adjustExerciseSetCount(
+                sessionExerciseID: sessionExerciseID,
+                targetSetCount: exercise.sets.count - 1
+            )
+            await refreshMetadata()
+            pushWatchCompanionState()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -459,8 +493,37 @@ final class TrainSessionController {
         }
     }
 
-    func fetchPickerExercises(search: String) throws -> [ExerciseSummary] {
-        try persistence.exercises.listForPicker(search: search)
+    func fetchPickerExercises(search: String, muscleGroup: String? = nil) throws -> [ExerciseSummary] {
+        try persistence.exercises.listForPicker(search: search, muscleGroup: muscleGroup)
+    }
+
+    func fetchRecentExercises() throws -> [ExerciseSummary] {
+        try persistence.exercises.listRecentlyUsed()
+    }
+
+    func fetchMuscleGroups() throws -> [String] {
+        try persistence.exercises.listMuscleGroups()
+    }
+
+    private func pushWatchCompanionState() {
+        guard let snapshot = store.snapshot else {
+            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false)
+            return
+        }
+        let currentExercise = snapshot.session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        } ?? snapshot.session.exercises.first
+        let displayName = currentExercise.flatMap { exerciseSummaries[$0.exerciseID]?.displayName }
+        let setNumber = currentExercise.flatMap { exercise in
+            exercise.sets.firstIndex { $0.status != .completed }.map { $0 + 1 }
+        }
+        WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
+            active: true,
+            exerciseName: displayName,
+            setNumber: setNumber,
+            setCount: currentExercise?.sets.count,
+            targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+        )
     }
 
     private func numpadUpdate(for field: NumpadFieldKind, text: String, existing: SetEntryDraft) -> SetLogUpdate {
@@ -529,6 +592,7 @@ final class TrainSessionController {
             if exerciseTargets.isEmpty {
                 exerciseTargets = [:]
             }
+            pushWatchCompanionState()
             return
         }
 
@@ -566,6 +630,7 @@ final class TrainSessionController {
 
         exerciseSummaries = summaries
         previousPerformance = previous
+        pushWatchCompanionState()
     }
 
     private func findSet(setID: String) -> SetEntryDraft? {

@@ -30,7 +30,9 @@ public struct LogExportService: Sendable {
         let manifestData = try encode(manifest, label: "manifest.json")
         let ringBufferData = try encode(entries, label: "ring_buffer.json")
         let osLogData = try Data(
-            OSLogExtractor.extract(subsystem: HelmSubsystem.value).utf8
+            OSLogExtractor.extract(
+                subsystems: [HelmSubsystem.value, OSLogExtractor.shareExtensionSubsystem]
+            ).utf8
         )
 
         let fileName = zipFileName()
@@ -66,7 +68,9 @@ public struct LogExportService: Sendable {
         let manifestData = try encode(manifest, label: "manifest.json")
         let ringBufferData = try encode(entries, label: "ring_buffer.json")
         let osLogData = try Data(
-            OSLogExtractor.extract(subsystem: HelmSubsystem.value).utf8
+            OSLogExtractor.extract(
+                subsystems: [HelmSubsystem.value, OSLogExtractor.shareExtensionSubsystem]
+            ).utf8
         )
         let databaseData = try Data(contentsOf: databaseFileURL)
 

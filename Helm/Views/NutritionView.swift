@@ -20,14 +20,15 @@ struct NutritionView: View {
                     case .loading:
                         loadingCard
                     case let .ready(snapshot):
-                        NutritionDaySummaryCard(snapshot: snapshot, showTrend: true)
-                            .explainable(
-                                ExplainableMetricMappers.nutrition(
-                                    snapshot,
-                                    coachAvailable: chatController.isCoachAvailable
-                                ),
-                                onAskCoach: chatController.requestCoachHandoff(prompt:)
-                            )
+                        NutritionDaySummaryCard(
+                            snapshot: snapshot,
+                            showTrend: true,
+                            explainMetric: ExplainableMetricMappers.nutrition(
+                                snapshot,
+                                coachAvailable: chatController.isCoachAvailable
+                            ),
+                            onAskCoach: chatController.requestCoachHandoff(prompt:)
+                        )
                     }
                 }
                 .padding(HelmSpacing.md)

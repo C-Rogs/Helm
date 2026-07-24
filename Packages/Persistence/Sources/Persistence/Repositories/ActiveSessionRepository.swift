@@ -867,6 +867,31 @@ extension ActiveSessionRepository {
         )
     }
 
+    public func adjustExerciseSetCount(
+        sessionID: String,
+        sessionExerciseID: String,
+        targetSetCount: Int,
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard let sessionExercise = try Self.fetchExercises(db: db, sessionID: sessionID)
+                .first(where: { $0.id == sessionExerciseID })
+            else {
+                throw PersistenceError.recordNotFound("session exercise")
+            }
+            try Self.adjustSetCount(
+                db: db,
+                sessionExerciseID: sessionExerciseID,
+                exerciseID: sessionExercise.exerciseID,
+                targetSetCount: max(targetSetCount, 1),
+                existingSets: sessionExercise.sets,
+                now: now
+            )
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
     static func adjustSetCount(
         db: Database,
         sessionExerciseID: String,

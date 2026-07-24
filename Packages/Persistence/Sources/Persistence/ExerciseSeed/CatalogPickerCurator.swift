@@ -27,8 +27,16 @@ enum CatalogPickerCurator {
         let isHevyLibrary: Bool
     }
 
+    private static let curatedCatalogMaxCount = 150
+
     static func apply(in db: Database) throws {
         let rows = try fetchRows(db)
+        if rows.count <= curatedCatalogMaxCount {
+            try db.execute(sql: "UPDATE exercise SET is_picker_default = 0 WHERE deleted_at IS NULL")
+            try db.execute(sql: "UPDATE exercise SET is_picker_default = 1 WHERE deleted_at IS NULL")
+            return
+        }
+
         let hevyIDs = Set(rows.filter(\.isHevyLibrary).map(\.id))
 
         try db.execute(sql: "UPDATE exercise SET is_picker_default = 0 WHERE deleted_at IS NULL")

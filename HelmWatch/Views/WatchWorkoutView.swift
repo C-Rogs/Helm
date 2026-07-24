@@ -3,18 +3,23 @@ import SwiftUI
 
 struct WatchWorkoutView: View {
     @Bindable var store: WatchWorkoutSessionStore
+    var coordinator: WatchSessionCoordinator
 
     var body: some View {
         Group {
-            switch store.phase {
-            case .idle, .ended:
-                idleView
-            case .preparing:
-                ProgressView("Starting…")
-            case .active, .paused:
-                WatchActiveWorkoutView(store: store)
-            case .ending:
-                ProgressView("Saving…")
+            if coordinator.workoutCompanionActive {
+                WatchCompanionView(store: store, coordinator: coordinator)
+            } else {
+                switch store.phase {
+                case .idle, .ended:
+                    idleView
+                case .preparing:
+                    ProgressView("Starting…")
+                case .active, .paused:
+                    WatchActiveWorkoutView(store: store)
+                case .ending:
+                    ProgressView("Saving…")
+                }
             }
         }
         .task {
@@ -24,24 +29,17 @@ struct WatchWorkoutView: View {
 
     private var idleView: some View {
         VStack(spacing: 12) {
+            Text("Start a workout on your iPhone to track heart rate here.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+
             NavigationLink {
                 WatchActivityPickerView(store: store)
             } label: {
-                LabeledContent("Activity", value: store.selectedActivity.displayName)
+                Text("Manual workout")
+                    .font(.caption)
             }
-
-            if !store.isHealthKitAuthorized {
-                Text("HealthKit access required")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            Button("Start Workout") {
-                Task { await store.startWorkout() }
-            }
-            .buttonStyle(.borderedProminent)
-            .disabled(!store.isHealthKitAuthorized)
 
             if let error = store.lastError {
                 Text(error)

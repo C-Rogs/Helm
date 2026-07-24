@@ -28,8 +28,10 @@ struct TrendsView: View {
             }
             .sheet(isPresented: $isShowingExercisePicker) {
                 ExercisePickerView(
-                    fetchExercises: { search in
-                        try persistence.exercises.listForPicker(search: search)
+                    fetchRecent: { (try? persistence.exercises.listRecentlyUsed()) ?? [] },
+                    fetchMuscleGroups: { (try? persistence.exercises.listMuscleGroups()) ?? [] },
+                    fetchExercises: { search, muscle in
+                        try persistence.exercises.listForPicker(search: search, muscleGroup: muscle)
                     },
                     onSelect: { exerciseID in
                         controller.selectExercise(id: exerciseID)

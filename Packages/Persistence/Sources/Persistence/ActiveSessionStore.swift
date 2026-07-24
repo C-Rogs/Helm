@@ -82,6 +82,13 @@ public final class ActiveSessionStore {
         snapshot = try await engine.syncFromPrescription(prescription)
     }
 
+    public func adjustExerciseSetCount(sessionExerciseID: String, targetSetCount: Int) async throws {
+        snapshot = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: sessionExerciseID,
+            targetSetCount: targetSetCount
+        )
+    }
+
     public func restoreExerciseLayout(_ exercises: [WorkoutSessionExerciseDraft]) async throws {
         snapshot = try await engine.restoreExerciseLayout(exercises)
     }
