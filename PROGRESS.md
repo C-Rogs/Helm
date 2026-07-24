@@ -71,7 +71,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M12.4 Finish pass: states, iconography, consistency | done | 2026-07-24 | 456fd6d | HelmScreenState, HelmIcon, pressable styles; screen empty/loading/error previews; ICONOGRAPHY.md; copy and dash pass. |
 | M12.5 Signature moments | done | 2026-07-24 | 3540be2 | Arc bloom, PR burst, workout finish summary, onboarding welcome/backfill/payoff reveal; Reduce Motion + gate tests.
 | M12.6 DeviationBand component | done | 2026-07-24 | fff7c53 | DeviationBand bar/inline layouts, helmNumericRoll on value, previews for in/below/above-band and cold-start. |
-| M12.7 Recovery detail view | not started | | | |
+| M12.7 Recovery detail view | done | 2026-07-24 | 6657228 | RecoveryDetailView from Dashboard ARC card; DeviationBand contributors, band-overlay history, coach read + hand-off; snapshot tests. |
 | M12.8 Progression / plan-model view | not started | | | Absorbs M13.1/M13.2 plan-visibility intent |
 | M12.9 Muscle-volume promotion and recency | not started | | | |
 

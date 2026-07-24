@@ -17,6 +17,7 @@ struct DashboardView: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
     @State private var contributorDetailsVisible = true
+    @Namespace private var readinessNamespace
 
     private var today: HelmDay {
         HelmDay.day(for: .now, calendar: .current)
@@ -263,48 +264,50 @@ struct DashboardView: View {
         let helmState = HelmState.readiness(score: Double(score.score))
         let shouldReveal = revealStore.shouldReveal(for: today)
 
-        return readinessShell(
-            subtitle: readinessSubtitle(for: score),
-            state: helmState
-        ) {
-            VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                ArcRevealGauge(
-                    targetValue: Double(score.score),
-                    state: helmState,
-                    reveal: shouldReveal,
-                    reduceMotion: reduceMotion,
-                    detailsVisible: $contributorDetailsVisible,
-                    onRevealStart: {
-                        HapticEngine.shared.play(.readinessReveal)
-                        revealStore.markRevealed(for: today)
+        return NavigationLink {
+            RecoveryDetailContainer(
+                score: score,
+                matchedCardNamespace: readinessNamespace
+            )
+        } label: {
+            readinessShell(
+                subtitle: readinessSubtitle(for: score),
+                state: helmState
+            ) {
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    ArcRevealGauge(
+                        targetValue: Double(score.score),
+                        state: helmState,
+                        reveal: shouldReveal,
+                        reduceMotion: reduceMotion,
+                        detailsVisible: $contributorDetailsVisible,
+                        onRevealStart: {
+                            HapticEngine.shared.play(.readinessReveal)
+                            revealStore.markRevealed(for: today)
+                        }
+                    ) { displayValue in
+                        VStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(Int(displayValue.rounded()))
+                                .helmType(.heroNumber, color: HelmColor.color(for: helmState))
+                            Text(helmState.label)
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                            Text(confidenceLabel(for: score.confidence))
+                                .helmType(.body, color: HelmColor.fgMuted)
+                        }
                     }
-                ) { displayValue in
-                    VStack(spacing: HelmSpacing.xxs) {
-                        HelmNumericText(Int(displayValue.rounded()))
-                            .helmType(.heroNumber, color: HelmColor.color(for: helmState))
-                        Text(helmState.label)
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                        Text(confidenceLabel(for: score.confidence))
-                            .helmType(.body, color: HelmColor.fgMuted)
+                    .frame(maxWidth: 220)
+                    .frame(maxWidth: .infinity)
+                    .helmMatchedCardDetail(id: "arc-readiness", in: readinessNamespace)
+                    .onAppear {
+                        contributorDetailsVisible = !shouldReveal
                     }
-                }
-                .frame(maxWidth: 220)
-                .frame(maxWidth: .infinity)
-                .explainable(
-                    ExplainableMetricMappers.readiness(
-                        score,
-                        coachAvailable: chatController.isCoachAvailable
-                    ),
-                    onAskCoach: chatController.requestCoachHandoff(prompt:)
-                )
-                .onAppear {
-                    contributorDetailsVisible = !shouldReveal
-                }
 
-                contributorsSection(for: score, visible: contributorDetailsVisible)
-                    .readinessDetailsReveal(visible: contributorDetailsVisible, reduceMotion: reduceMotion)
+                    contributorsSection(for: score, visible: contributorDetailsVisible)
+                        .readinessDetailsReveal(visible: contributorDetailsVisible, reduceMotion: reduceMotion)
+                }
             }
         }
+        .buttonStyle(.helmPressableCard)
     }
 
     private func placeholderArc(state: HelmState, subtitle: String) -> some View {

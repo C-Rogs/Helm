@@ -5,7 +5,10 @@ import SwiftUI
 struct ReadinessHistoryChartCard: View {
     let points: [ReadinessHistoryPoint]
     var showsSparkline = false
+    var showsBandOverlay = false
     var baselineNights: Int?
+    var title = "Readiness history"
+    var subtitle = "ARC score over time"
 
     @State private var selectedDay: Date?
 
@@ -45,10 +48,7 @@ struct ReadinessHistoryChartCard: View {
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                chartHeader(
-                    title: "Readiness history",
-                    subtitle: "ARC score over time"
-                )
+                chartHeader(title: title, subtitle: subtitle)
 
                 if showsSparkline {
                     HelmSparkline(points: sparklinePoints, latestState: latestState)
@@ -66,29 +66,35 @@ struct ReadinessHistoryChartCard: View {
     }
 
     private var chartBody: some View {
-        Chart(points) { point in
-            let day = TrendsChartSupport.chartDate(for: point.helmDay)
+        Chart {
+            if showsBandOverlay {
+                bandOverlayMarks
+            }
 
-            AreaMark(
-                x: .value("Day", day),
-                y: .value("Score", point.score)
-            )
-            .foregroundStyle(HelmColor.color(for: point.state).opacity(0.18))
+            ForEach(points) { point in
+                let day = TrendsChartSupport.chartDate(for: point.helmDay)
 
-            LineMark(
-                x: .value("Day", day),
-                y: .value("Score", point.score)
-            )
-            .interpolationMethod(.catmullRom)
-            .foregroundStyle(HelmColor.color(for: point.state))
-            .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
+                    AreaMark(
+                    x: .value("Day", day),
+                    y: .value("Score", point.score)
+                )
+                .foregroundStyle(HelmColor.color(for: point.state).opacity(0.18))
 
-            PointMark(
-                x: .value("Day", day),
-                y: .value("Score", point.score)
-            )
-            .foregroundStyle(HelmColor.color(for: point.state))
-            .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize)
+                LineMark(
+                    x: .value("Day", day),
+                    y: .value("Score", point.score)
+                )
+                .interpolationMethod(.catmullRom)
+                .foregroundStyle(HelmColor.color(for: point.state))
+                .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
+
+                PointMark(
+                    x: .value("Day", day),
+                    y: .value("Score", point.score)
+                )
+                .foregroundStyle(HelmColor.color(for: point.state))
+                .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize)
+            }
 
             if let selectedDay {
                 RuleMark(x: .value("Selected", selectedDay))
@@ -96,6 +102,7 @@ struct ReadinessHistoryChartCard: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
         }
+        .chartYScale(domain: 0 ... 100)
         .helmChartStyle()
         .helmChartScrub(selection: $selectedDay)
         .chartOverlay { proxy in
@@ -107,6 +114,57 @@ struct ReadinessHistoryChartCard: View {
         }
         .frame(height: HelmChartStyle.standardHeight)
     }
+
+    @ChartContentBuilder
+    private var bandOverlayMarks: some ChartContent {
+        let start = chartStart
+        let end = chartEnd
+
+        RectangleMark(
+            xStart: .value("Start", start),
+            xEnd: .value("End", end),
+            yStart: .value("Primed", 67),
+            yEnd: .value("Top", 100)
+        )
+        .foregroundStyle(HelmColor.primed.opacity(0.08))
+
+        RectangleMark(
+            xStart: .value("Start", start),
+            xEnd: .value("End", end),
+            yStart: .value("Balanced", 34),
+            yEnd: .value("BalancedTop", 66)
+        )
+        .foregroundStyle(HelmColor.ready.opacity(0.08))
+
+        RectangleMark(
+            xStart: .value("Start", start),
+            xEnd: .value("End", end),
+            yStart: .value("Bottom", 0),
+            yEnd: .value("Depleted", 33)
+        )
+        .foregroundStyle(HelmColor.depleted.opacity(0.08))
+    }
+
+    private var chartStart: Date {
+        guard let first = points.first else { return Date() }
+        return TrendsChartSupport.chartDate(for: first.helmDay)
+    }
+
+    private var chartEnd: Date {
+        guard let last = points.last else { return Date() }
+        return TrendsChartSupport.chartDate(for: last.helmDay)
+    }
+}
+
+#Preview("Readiness band overlay") {
+    ReadinessHistoryChartCard(
+        points: TrendChartFixtures.readinessHistory,
+        showsBandOverlay: true,
+        title: "Readiness history",
+        subtitle: "ARC score with target bands"
+    )
+    .padding()
+    .helmTheme()
 }
 
 #Preview("Readiness history") {
