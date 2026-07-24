@@ -20,10 +20,18 @@ struct NutritionView: View {
         }
     )
     @State private var mealsStore = NutritionDayMealsStore()
+    @State private var mealActionsController = NutritionMealActionsController(
+        mealRepeatService: NutritionBootstrap.mealRepeatService,
+        onChanged: {
+            NutritionBootstrap.refreshNutrition()
+        }
+    )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
     @State private var isFABExpanded = false
     @State private var showsPhotoOptions = false
+    @State private var showsTemplates = false
+    @State private var currentHelmDay: HelmDay?
 
     var body: some View {
         navigationStack
@@ -50,7 +58,13 @@ struct NutritionView: View {
             .modifier(NutritionLoggingSheets(
                 photoMealController: photoMealController,
                 manualFoodLogController: manualFoodLogController,
-                showsPhotoOptions: $showsPhotoOptions
+                mealActionsController: mealActionsController,
+                showsPhotoOptions: $showsPhotoOptions,
+                showsTemplates: $showsTemplates,
+                currentHelmDay: currentHelmDay,
+                onMealsChanged: {
+                    reloadMeals(from: nutritionService.state)
+                }
             ))
     }
 
@@ -102,6 +116,24 @@ struct NutritionView: View {
     @ToolbarContentBuilder
     private var refreshToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
+            Menu {
+                Button("Meal templates") {
+                    mealActionsController.reloadTemplates()
+                    showsTemplates = true
+                }
+                Button("Copy yesterday's meals") {
+                    Task {
+                        guard let today = currentHelmDay else { return }
+                        await mealActionsController.copyYesterdayToToday(today: today)
+                        reloadMeals(from: nutritionService.state)
+                    }
+                }
+            } label: {
+                Image(systemName: "ellipsis.circle")
+            }
+            .accessibilityLabel("Nutrition actions")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
             Button {
                 Task { await refreshTargets() }
             } label: {
@@ -127,6 +159,7 @@ struct NutritionView: View {
 
     private func reloadMeals(from state: NutritionDashboardState) {
         guard case let .ready(snapshot) = state else { return }
+        currentHelmDay = snapshot.helmDay
         mealsStore.reload(for: snapshot.helmDay)
     }
 
@@ -138,7 +171,17 @@ struct NutritionView: View {
             ForEach(MealBucket.allCases, id: \.self) { bucket in
                 NutritionMealBucketSection(
                     bucket: bucket,
-                    meals: mealsStore.mealsByBucket[bucket] ?? []
+                    meals: mealsStore.mealsByBucket[bucket] ?? [],
+                    onCopyToToday: {
+                        Task {
+                            guard let today = currentHelmDay else { return }
+                            await mealActionsController.copyBucketToToday(bucket: bucket, today: today)
+                            reloadMeals(from: nutritionService.state)
+                        }
+                    },
+                    onSaveTemplate: {
+                        mealActionsController.beginSaveTemplate(for: bucket)
+                    }
                 )
             }
         }
@@ -176,7 +219,11 @@ struct NutritionView: View {
 private struct NutritionLoggingSheets: ViewModifier {
     let photoMealController: PhotoMealController
     let manualFoodLogController: ManualFoodLogController
+    let mealActionsController: NutritionMealActionsController
     @Binding var showsPhotoOptions: Bool
+    @Binding var showsTemplates: Bool
+    let currentHelmDay: HelmDay?
+    let onMealsChanged: () -> Void
 
     func body(content: Content) -> some View {
         content
@@ -239,6 +286,101 @@ private struct NutritionLoggingSheets: ViewModifier {
                     }
                 }
             )
+            .sheet(isPresented: saveTemplateBinding) {
+                if let bucket = mealActionsController.saveTemplateBucket, let helmDay = currentHelmDay {
+                    SaveMealTemplateSheet(
+                        bucket: bucket,
+                        onSave: { name in
+                            mealActionsController.saveTemplate(name: name, bucket: bucket, helmDay: helmDay)
+                        },
+                        onCancel: {
+                            mealActionsController.cancelSaveTemplate()
+                        }
+                    )
+                }
+            }
+            .sheet(isPresented: $showsTemplates) {
+                MealTemplatesSheet(
+                    templates: mealActionsController.templates,
+                    onLog: { template in
+                        showsTemplates = false
+                        mealActionsController.beginLogTemplate(template)
+                    },
+                    onDelete: { template in
+                        mealActionsController.deleteTemplate(template)
+                    },
+                    onDismiss: {
+                        showsTemplates = false
+                    }
+                )
+            }
+            .sheet(item: logTemplateBinding) { template in
+                LogMealTemplateConfirmSheet(
+                    template: template,
+                    isSaving: mealActionsController.isSaving,
+                    onConfirm: {
+                        Task {
+                            await mealActionsController.confirmLogTemplate(template)
+                            onMealsChanged()
+                        }
+                    },
+                    onCancel: {
+                        mealActionsController.cancelPendingAction()
+                    }
+                )
+            }
+            .alert(
+                "Meal actions",
+                isPresented: mealActionsErrorBinding,
+                actions: {
+                    Button("OK", role: .cancel) {
+                        mealActionsController.dismissError()
+                    }
+                },
+                message: {
+                    if let errorMessage = mealActionsController.errorMessage {
+                        Text(errorMessage)
+                    }
+                }
+            )
+    }
+
+    private var saveTemplateBinding: Binding<Bool> {
+        Binding(
+            get: { mealActionsController.saveTemplateBucket != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealActionsController.cancelSaveTemplate()
+                }
+            }
+        )
+    }
+
+    private var logTemplateBinding: Binding<MealTemplate?> {
+        Binding(
+            get: {
+                if case let .logTemplate(template) = mealActionsController.pendingAction {
+                    return template
+                }
+                return nil
+            },
+            set: { isPresented in
+                if isPresented == nil {
+                    mealActionsController.cancelPendingAction()
+                }
+            }
+        )
+    }
+
+    private var mealActionsErrorBinding: Binding<Bool> {
+        Binding(
+            get: { mealActionsController.errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealActionsController.dismissError()
+                }
+            }
+        )
     }
 
     private var photoConfirmBinding: Binding<Bool> {

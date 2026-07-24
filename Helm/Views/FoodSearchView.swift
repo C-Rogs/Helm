@@ -9,6 +9,7 @@ struct FoodSearchView: View {
 
     @State private var query = ""
     @State private var results: [FoodSearchResult] = []
+    @State private var recents: [ResolvedFoodProduct] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
 
@@ -27,6 +28,14 @@ struct FoodSearchView: View {
             }
 
             List {
+                if !recents.isEmpty, trimmedQuery.isEmpty {
+                    Section {
+                        recentsStrip
+                    }
+                    .listRowInsets(EdgeInsets())
+                    .listRowBackground(HelmColor.surface)
+                }
+
                 if isSearching {
                     HStack(spacing: HelmSpacing.sm) {
                         ProgressView()
@@ -65,7 +74,51 @@ struct FoodSearchView: View {
         }
         .task {
             await controller.refreshConnectivity()
+            recents = await controller.fetchRecents()
         }
+    }
+
+    private var recentsStrip: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Recent")
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+                .padding(.horizontal, HelmSpacing.md)
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: HelmSpacing.xs) {
+                    ForEach(recents, id: \.ref.cacheKey) { product in
+                        Button {
+                            onSelect(product)
+                        } label: {
+                            recentChip(product)
+                        }
+                        .buttonStyle(.helmPressable)
+                    }
+                }
+                .padding(.horizontal, HelmSpacing.md)
+                .padding(.bottom, HelmSpacing.xs)
+            }
+        }
+        .padding(.top, HelmSpacing.sm)
+    }
+
+    private func recentChip(_ product: ResolvedFoodProduct) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(product.ref.displayName)
+                .helmType(.label)
+                .lineLimit(2)
+                .multilineTextAlignment(.leading)
+            if let serving = product.servingLabel {
+                Text(serving)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            } else if let grams = product.suggestedGrams {
+                Text("\(Int(grams.rounded())) g")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
+        }
+        .frame(width: 132, alignment: .leading)
+        .padding(HelmSpacing.sm)
+        .background(HelmColor.gaugeTrack.opacity(0.25), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
     }
 
     private var trimmedQuery: String {

@@ -11,9 +11,14 @@ enum NutritionBootstrap {
 
     static let foodResolver = FoodResolver(persistence: PersistenceBootstrap.persistenceStore)
 
-    @MainActor
     static let manualMealService = ManualMealService(
         localStore: ManualMealLocalStore(store: PersistenceBootstrap.persistenceStore)
+    )
+
+    @MainActor
+    static let mealRepeatService = MealRepeatService(
+        store: PersistenceBootstrap.persistenceStore,
+        manualMealService: manualMealService
     )
 
     @MainActor

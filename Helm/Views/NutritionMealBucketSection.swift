@@ -5,6 +5,8 @@ import SwiftUI
 struct NutritionMealBucketSection: View {
     let bucket: MealBucket
     let meals: [LoggedMealDisplay]
+    var onCopyToToday: (() -> Void)?
+    var onSaveTemplate: (() -> Void)?
 
     var body: some View {
         Card {
@@ -16,6 +18,23 @@ struct NutritionMealBucketSection: View {
                     if bucketTotalKcal > 0 {
                         Text("\(bucketTotalKcal) kcal")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
+                    }
+                    if onCopyToToday != nil || onSaveTemplate != nil {
+                        Menu {
+                            if let onCopyToToday {
+                                Button("Copy yesterday to today", action: onCopyToToday)
+                            }
+                            if let onSaveTemplate {
+                                Button("Save as template", action: onSaveTemplate)
+                            }
+                        } label: {
+                            Image(systemName: "ellipsis")
+                                .font(.system(size: 14, weight: .semibold))
+                                .foregroundStyle(HelmColor.fgMuted)
+                                .frame(width: 32, height: 32)
+                        }
+                        .buttonStyle(.helmPressable)
+                        .accessibilityLabel("\(bucket.displayName) actions")
                     }
                 }
 

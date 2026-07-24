@@ -1,0 +1,146 @@
+import Core
+import DesignSystem
+import HealthKitIngest
+import Observation
+import Persistence
+
+@MainActor
+@Observable
+final class NutritionMealActionsController {
+    enum PendingAction: Equatable, Identifiable {
+        case logTemplate(MealTemplate)
+
+        var id: String {
+            switch self {
+            case let .logTemplate(template):
+                template.id.uuidString
+            }
+        }
+    }
+
+    private(set) var templates: [MealTemplate] = []
+    private(set) var isSaving = false
+    var pendingAction: PendingAction?
+    var saveTemplateBucket: MealBucket?
+    var errorMessage: String?
+
+    private let mealRepeatService: MealRepeatService
+    private let onChanged: @MainActor () -> Void
+
+    init(
+        mealRepeatService: MealRepeatService,
+        onChanged: @escaping @MainActor () -> Void = {}
+    ) {
+        self.mealRepeatService = mealRepeatService
+        self.onChanged = onChanged
+    }
+
+    func reloadTemplates() {
+        templates = (try? mealRepeatService.fetchTemplates()) ?? []
+    }
+
+    func beginSaveTemplate(for bucket: MealBucket) {
+        saveTemplateBucket = bucket
+    }
+
+    func cancelSaveTemplate() {
+        saveTemplateBucket = nil
+    }
+
+    func saveTemplate(name: String, bucket: MealBucket, helmDay: HelmDay) {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            errorMessage = "Enter a template name."
+            return
+        }
+        do {
+            guard let template = try mealRepeatService.buildTemplate(
+                name: trimmed,
+                bucket: bucket,
+                helmDay: helmDay
+            ) else {
+                errorMessage = "Nothing logged in \(bucket.displayName.lowercased()) to save."
+                return
+            }
+            try mealRepeatService.saveTemplate(template)
+            saveTemplateBucket = nil
+            reloadTemplates()
+            HapticEngine.shared.play(.mealConfirmed)
+        } catch {
+            errorMessage = "Could not save template. Try again."
+        }
+    }
+
+    func beginLogTemplate(_ template: MealTemplate) {
+        pendingAction = .logTemplate(template)
+    }
+
+    func cancelPendingAction() {
+        pendingAction = nil
+    }
+
+    func confirmLogTemplate(_ template: MealTemplate) async {
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await mealRepeatService.logTemplate(template)
+            pendingAction = nil
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch {
+            errorMessage = "Could not log template. Try again."
+        }
+    }
+
+    func deleteTemplate(_ template: MealTemplate) {
+        do {
+            try mealRepeatService.deleteTemplate(id: template.id)
+            reloadTemplates()
+        } catch {
+            errorMessage = "Could not delete template."
+        }
+    }
+
+    func copyBucketToToday(bucket: MealBucket, today: HelmDay) async {
+        let sourceDay = today.adding(days: -1)
+        do {
+            _ = try await mealRepeatService.copyBucket(from: sourceDay, bucket: bucket, to: today)
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch MealRepeatError.emptyBucket {
+            errorMessage = "Nothing logged in \(bucket.displayName.lowercased()) yesterday."
+        } catch {
+            errorMessage = "Could not copy meal. Try again."
+        }
+    }
+
+    func copyYesterdayToToday(today: HelmDay) async {
+        let sourceDay = today.adding(days: -1)
+        do {
+            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch MealRepeatError.emptySource {
+            errorMessage = "No meals logged yesterday."
+        } catch {
+            errorMessage = "Could not copy yesterday's meals. Try again."
+        }
+    }
+
+    func dismissError() {
+        errorMessage = nil
+    }
+}
+
+#if DEBUG
+extension NutritionMealActionsController {
+    static func previewController() -> NutritionMealActionsController {
+        NutritionMealActionsController(
+            mealRepeatService: MealRepeatService(
+                store: try! PersistenceStore.inMemory(),
+                manualMealService: ManualMealService()
+            )
+        )
+    }
+}
+#endif

@@ -122,6 +122,45 @@ public struct ManualMealService: Sendable {
         )
     }
 
+    public func logCompositeMeal(
+        name: String,
+        bucket: MealBucket,
+        lineItems: [MealLineItemRecord],
+        loggedAt: Date = Date(),
+        mealID: String = UUID().uuidString,
+        source: MealRecord.Source,
+        overrideMacros: FoodPortionMacros? = nil
+    ) async throws -> SavedMealSamples {
+        let macros: FoodPortionMacros
+        if let overrideMacros {
+            macros = overrideMacros
+        } else if lineItems.isEmpty {
+            throw ManualMealError.invalidPortion
+        } else {
+            macros = FoodPortionMacros(
+                energyKcal: lineItems.reduce(0) { $0 + $1.energyKcal },
+                proteinG: lineItems.reduce(0) { $0 + $1.proteinG },
+                carbsG: lineItems.reduce(0) { $0 + $1.carbsG },
+                fatG: lineItems.reduce(0) { $0 + $1.fatG }
+            )
+        }
+        guard macros.energyKcal > 0 || !lineItems.isEmpty else {
+            throw ManualMealError.invalidPortion
+        }
+
+        return try await persist(
+            PersistedManualMeal(
+                name: name,
+                bucket: bucket,
+                loggedAt: loggedAt,
+                mealID: mealID,
+                source: source,
+                macros: macros,
+                lineItems: lineItems
+            )
+        )
+    }
+
     private struct PersistedManualMeal: Sendable {
         let name: String
         let bucket: MealBucket

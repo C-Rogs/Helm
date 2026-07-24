@@ -151,6 +151,10 @@ public actor FoodResolver {
         return results
     }
 
+    public func fetchRecentProducts(limit: Int = 20) throws -> [ResolvedFoodProduct] {
+        try foodLog.fetchRecents(limit: limit).map { resolved(from: $0) }
+    }
+
     public func resolveBarcode(_ barcode: String) async throws -> ResolvedFoodProduct {
         let trimmed = barcode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {

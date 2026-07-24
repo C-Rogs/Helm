@@ -122,6 +122,6 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | M14.4 ManualMealService + HK write-through | done | 2026-07-24 | fe5b8a5 | ManualMealService + quick-add/alcohol presets; GRDB+HK write-through; resolver prefers meal sums; explicit alcohol macro gap. |
 | M14.5 Search + barcode UI + MealLineItemEditor | done | 2026-07-24 | c1254fd | MealLineItemEditor extracted; FoodSearchView + offline banner; BarcodeScannerView; portion step + ManualMealService wiring on Nutrition tab. |
 | M14.6 Nutrition tab meal buckets + multi-action FAB | done | 2026-07-24 | f785172 | Targets-first layout; four meal buckets; expandable FAB; FoodLogTipStore; quick-add/alcohol sheets; mealConfirmed haptic. |
-| M14.7 Recents, portion memory, templates, copy meal | not started | | | |
+| M14.7 Recents, portion memory, templates, copy meal | done | 2026-07-24 | 7c093e0 | Recents strip on search; portion memory on log; MealTemplate CRUD + confirm log; copy bucket/yesterday; save template from bucket header. |
 | M14.8 Edit/delete history + HK sync + MFP dedup | not started | | | |
 | M14.9 Offline pending import queue | not started | | | |

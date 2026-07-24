@@ -88,6 +88,10 @@ final class ManualFoodLogController {
         try await foodResolver.search(query: query)
     }
 
+    func fetchRecents(limit: Int = 20) async -> [ResolvedFoodProduct] {
+        (try? await foodResolver.fetchRecentProducts(limit: limit)) ?? []
+    }
+
     func resolveBarcode(_ barcode: String) async throws -> ResolvedFoodProduct {
         try await foodResolver.resolveBarcode(barcode)
     }
