@@ -96,23 +96,44 @@ public struct ExerciseRepository: Sendable {
         limit: Int = 500
     ) throws -> [ExerciseSummary] {
         try pool.read { db in
+            let trimmedSearch = search?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let isSearching = !trimmedSearch.isEmpty
+
             var sql = """
-                SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
-                FROM exercise
-                WHERE deleted_at IS NULL
+                SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group,
+                       e.is_picker_default, e.sort_name
+                FROM exercise e
+                LEFT JOIN exercise_alias a ON a.exercise_id = e.id
+                WHERE e.deleted_at IS NULL
                 """
             var arguments: [DatabaseValueConvertible] = []
-            if let search, !search.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                sql += " AND (display_name LIKE ? OR canonical_name LIKE ?)"
-                let pattern = "%\(search.trimmingCharacters(in: .whitespacesAndNewlines))%"
-                arguments.append(contentsOf: [pattern, pattern])
+
+            if !isSearching {
+                sql += " AND e.is_picker_default = 1"
             }
+
+            if isSearching {
+                let candidates = ExerciseSearchNormalizer.searchCandidates(for: trimmedSearch)
+                var clauses: [String] = []
+                for candidate in candidates {
+                    let contains = "%\(candidate)%"
+                    clauses.append(
+                        "(e.display_name LIKE ? OR e.canonical_name LIKE ? OR a.normalized_alias LIKE ? OR a.normalized_alias = ?)"
+                    )
+                    arguments.append(contentsOf: [contains, contains, contains, candidate])
+                }
+                if !clauses.isEmpty {
+                    sql += " AND (\(clauses.joined(separator: " OR ")))"
+                }
+            }
+
             if let muscleGroup, !muscleGroup.isEmpty {
-                sql += " AND primary_muscle_group = ?"
+                sql += " AND e.primary_muscle_group = ?"
                 arguments.append(muscleGroup)
             }
+
             sql += """
-                 ORDER BY is_picker_default DESC, is_custom ASC, sort_name ASC
+                 ORDER BY e.is_picker_default DESC, e.is_custom ASC, e.sort_name ASC
                  LIMIT ?
                 """
             arguments.append(limit)
@@ -144,23 +165,24 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
-    public func listMuscleGroups() throws -> [String] {
+    public func listMuscleGroups(forPickerDefaults: Bool = false) throws -> [String] {
         try pool.read { db in
-            try String.fetchAll(
-                db,
-                sql: """
-                    SELECT DISTINCT primary_muscle_group
-                    FROM exercise
-                    WHERE deleted_at IS NULL
-                      AND primary_muscle_group IS NOT NULL
-                      AND primary_muscle_group != ''
-                    ORDER BY primary_muscle_group ASC
-                    """
-            )
+            var sql = """
+                SELECT DISTINCT primary_muscle_group
+                FROM exercise
+                WHERE deleted_at IS NULL
+                  AND primary_muscle_group IS NOT NULL
+                  AND primary_muscle_group != ''
+                """
+            if forPickerDefaults {
+                sql += " AND is_picker_default = 1"
+            }
+            sql += " ORDER BY primary_muscle_group ASC"
+            return try String.fetchAll(db, sql: sql)
         }
     }
 
-    public func fetchCatalogRows(limit: Int = 2_000) throws -> [ExerciseCatalogRow] {
+    public func fetchCatalogRows(limit: Int = 5_000) throws -> [ExerciseCatalogRow] {
         try pool.read { db in
             let rows = try Row.fetchAll(
                 db,
@@ -168,8 +190,8 @@ public struct ExerciseRepository: Sendable {
                     SELECT id, display_name, primary_muscle_group, secondary_muscle_groups_json,
                            equipment_type, is_picker_default
                     FROM exercise
-                    WHERE deleted_at IS NULL AND is_picker_default = 1
-                    ORDER BY sort_name ASC
+                    WHERE deleted_at IS NULL
+                    ORDER BY is_picker_default DESC, sort_name ASC
                     LIMIT ?
                     """,
                 arguments: [limit]
@@ -268,13 +290,16 @@ public struct ExerciseRepository: Sendable {
     private static func importTitleCandidates(from title: String) -> [String] {
         let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
         let stripped = ParsedWorkoutTitle.catalogMatchTitle(from: trimmed)
-        let values = [trimmed, stripped]
         var seen = Set<String>()
-        return values.compactMap { value in
-            let normalized = value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-            guard !normalized.isEmpty, seen.insert(normalized).inserted else { return nil }
-            return normalized
+        var results: [String] = []
+
+        for value in [trimmed, stripped] {
+            for candidate in ExerciseSearchNormalizer.searchCandidates(for: value) {
+                guard seen.insert(candidate).inserted else { continue }
+                results.append(candidate)
+            }
         }
+        return results
     }
 
     private static func decodeStringArray(from json: String) throws -> [String] {

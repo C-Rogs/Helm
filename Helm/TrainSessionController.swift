@@ -502,7 +502,7 @@ final class TrainSessionController {
     }
 
     func fetchMuscleGroups() throws -> [String] {
-        try persistence.exercises.listMuscleGroups()
+        try persistence.exercises.listMuscleGroups(forPickerDefaults: true)
     }
 
     private func pushWatchCompanionState() {

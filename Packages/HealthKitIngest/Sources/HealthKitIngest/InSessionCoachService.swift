@@ -85,14 +85,15 @@ public struct InSessionCoachService: Sendable {
         modelVersion: String? = CoachOutputSchemaVersion.sessionAdjustmentV1.rawValue
     ) throws -> AppliedSessionAdjustment {
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
-        let catalog = try loadCatalog()
+        let (catalog, familiarExerciseIDs) = try loadCatalog()
         let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: payload)
 
         let result = PlanKit.apply(
             adjustment: adjustment,
             to: currentPrescription,
             excluding: excludedExerciseIDs,
-            catalog: catalog
+            catalog: catalog,
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         switch result {
@@ -173,9 +174,19 @@ public struct InSessionCoachService: Sendable {
         )
     }
 
-    private func loadCatalog() throws -> [CatalogExercise] {
+    private func loadCatalog() throws -> (catalog: [CatalogExercise], familiarExerciseIDs: Set<String>) {
         let rows = try persistence.exercises.fetchCatalogRows()
-        return PrescriptionCatalogBuilder.build(from: rows)
+        let day = HelmDay.day(for: Date(), cutoff: .default)
+        let history = try PrescriptionHistoryBuilder.history(
+            from: persistence,
+            endingAt: day
+        )
+        let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(
+            from: rows,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+        return (catalog, familiarExerciseIDs)
     }
 
     private func logRecommendation(

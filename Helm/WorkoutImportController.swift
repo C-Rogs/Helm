@@ -139,6 +139,6 @@ final class WorkoutImportController {
     }
 
     func fetchMuscleGroups() throws -> [String] {
-        try persistence.exercises.listMuscleGroups()
+        try persistence.exercises.listMuscleGroups(forPickerDefaults: true)
     }
 }

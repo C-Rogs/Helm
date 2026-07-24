@@ -38,11 +38,16 @@ public struct ExerciseSeedImporter: Sendable {
             )
         }
 
-        let entries = try ExerciseSeedLoader.resolveEntries(
+        let resolved = try ExerciseSeedLoader.resolveEntries(
             manifest: manifest,
             manifestDirectory: manifestURL.deletingLastPathComponent()
         )
-        let importedCount = try importEntries(entries, seedVersion: manifest.seedVersion)
+        let importedCount = try importEntries(
+            resolved.entries,
+            seedVersion: manifest.seedVersion,
+            pickerCuration: resolved.pickerCuration,
+            explicitPickerIDs: resolved.explicitPickerIDs
+        )
         return ExerciseSeedImportResult(
             appliedSeedVersion: manifest.seedVersion,
             importedCount: importedCount,
@@ -51,15 +56,22 @@ public struct ExerciseSeedImporter: Sendable {
     }
 
     @discardableResult
-    public func importEntries(_ entries: [ExerciseSeedEntry], seedVersion: Int) throws -> Int {
+    public func importEntries(
+        _ entries: [ExerciseSeedEntry],
+        seedVersion: Int,
+        pickerCuration: ExercisePickerCuration = .algorithmic,
+        explicitPickerIDs: Set<String> = []
+    ) throws -> Int {
         let now = ISO8601Coding.string(from: Date())
-        let importedIDs = Set(entries.map(\.id))
         try pool.write { db in
             for entry in entries {
                 try upsertSeedEntry(entry, now: now, in: db)
             }
-            try pruneStaleSeedExercises(keeping: importedIDs, now: now, in: db)
-            try CatalogPickerCurator.apply(in: db)
+            try CatalogPickerCurator.apply(
+                in: db,
+                curation: pickerCuration,
+                explicitPickerIDs: explicitPickerIDs
+            )
             try db.execute(
                 sql: """
                     INSERT INTO app_metadata (key, value, updated_at)
@@ -86,8 +98,8 @@ public struct ExerciseSeedImporter: Sendable {
                     id, canonical_name, display_name, exercise_mode, equipment_type,
                     primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name,
                     instruction_text, gif_url, source_dataset_id, is_hevy_library, is_picker_default,
-                    created_at, updated_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    created_at, updated_at, deleted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 ON CONFLICT(id) DO UPDATE SET
                     canonical_name = excluded.canonical_name,
                     display_name = excluded.display_name,
@@ -100,6 +112,7 @@ public struct ExerciseSeedImporter: Sendable {
                     source_dataset_id = excluded.source_dataset_id,
                     is_hevy_library = MAX(exercise.is_hevy_library, excluded.is_hevy_library),
                     sort_name = excluded.sort_name,
+                    deleted_at = NULL,
                     updated_at = excluded.updated_at
                 WHERE exercise.is_custom = 0
                 """,
@@ -134,7 +147,7 @@ public struct ExerciseSeedImporter: Sendable {
         for alias in aliases {
             let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
-            let normalized = trimmed.lowercased()
+            let normalized = ExerciseSearchNormalizer.normalize(trimmed)
             try db.execute(
                 sql: """
                     INSERT OR IGNORE INTO exercise_alias (id, exercise_id, alias, normalized_alias, created_at)
@@ -142,31 +155,21 @@ public struct ExerciseSeedImporter: Sendable {
                     """,
                 arguments: [UUID().uuidString, entry.id, trimmed, normalized, now]
             )
+            let rawLower = trimmed.lowercased()
+            if rawLower != normalized {
+                try db.execute(
+                    sql: """
+                        INSERT OR IGNORE INTO exercise_alias (id, exercise_id, alias, normalized_alias, created_at)
+                        VALUES (?, ?, ?, ?, ?)
+                        """,
+                    arguments: [UUID().uuidString, entry.id, trimmed, rawLower, now]
+                )
+            }
         }
     }
 
     private func encodeJSON(_ values: [String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: values)
         return String(data: data, encoding: .utf8) ?? "[]"
-    }
-
-    /// Soft-deletes bundled seed rows that are no longer in the active manifest.
-    private func pruneStaleSeedExercises(keeping entryIDs: Set<String>, now: String, in db: Database) throws {
-        guard !entryIDs.isEmpty else { return }
-        let placeholders = Array(repeating: "?", count: entryIDs.count).joined(separator: ", ")
-        var arguments: [DatabaseValueConvertible] = [now, now]
-        for id in entryIDs.sorted() {
-            arguments.append(id)
-        }
-        try db.execute(
-            sql: """
-                UPDATE exercise
-                SET deleted_at = ?, updated_at = ?
-                WHERE is_custom = 0
-                  AND deleted_at IS NULL
-                  AND id NOT IN (\(placeholders))
-                """,
-            arguments: StatementArguments(arguments)
-        )
     }
 }

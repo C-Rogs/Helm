@@ -110,14 +110,16 @@ public enum PlanKit {
         to session: PrescribedSession,
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
-        availableEquipment: Set<String>? = nil
+        availableEquipment: Set<String>? = nil,
+        familiarExerciseIDs: Set<String> = []
     ) -> PrescriptionAdjustmentResult {
         PrescriptionAdjustmentEngine.apply(
             adjustment: adjustment,
             to: session,
             excluding: excludedExerciseIDs,
             catalog: catalog,
-            availableEquipment: availableEquipment
+            availableEquipment: availableEquipment,
+            familiarExerciseIDs: familiarExerciseIDs
         )
     }
 
@@ -127,14 +129,16 @@ public enum PlanKit {
         catalog: [CatalogExercise],
         excluding excludedExerciseIDs: Set<String> = [],
         availableEquipment: Set<String>? = nil,
-        selectionBias: MethodologyPreferences.SelectionBias = .balanced
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced,
+        familiarExerciseIDs: Set<String> = []
     ) -> ExerciseSelection? {
         ExerciseSelectionEngine.select(
             for: muscle,
             catalog: catalog,
             excluding: excludedExerciseIDs,
             availableEquipment: availableEquipment,
-            selectionBias: selectionBias
+            selectionBias: selectionBias,
+            familiarExerciseIDs: familiarExerciseIDs
         )
     }
 }

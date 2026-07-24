@@ -1,0 +1,54 @@
+[
+  {
+    "id": "Leg_Press",
+    "name": "Leg Press",
+    "force": "push",
+    "level": "beginner",
+    "mechanic": "compound",
+    "equipment": "machine",
+    "primaryMuscles": ["quadriceps"],
+    "secondaryMuscles": ["glutes", "hamstrings"],
+    "instructions": ["Sit in machine", "Press"],
+    "category": "strength",
+    "images": ["Leg_Press/0.jpg"]
+  },
+  {
+    "id": "Face_Pull",
+    "name": "Face Pull",
+    "force": "pull",
+    "level": "beginner",
+    "mechanic": "compound",
+    "equipment": "cable",
+    "primaryMuscles": ["shoulders"],
+    "secondaryMuscles": ["middle back"],
+    "instructions": ["Pull to face"],
+    "category": "strength",
+    "images": ["Face_Pull/0.jpg"]
+  },
+  {
+    "id": "90_90_Hamstring",
+    "name": "90/90 Hamstring",
+    "force": "static",
+    "level": "beginner",
+    "mechanic": null,
+    "equipment": "body only",
+    "primaryMuscles": ["hamstrings"],
+    "secondaryMuscles": ["calves"],
+    "instructions": ["Stretch"],
+    "category": "stretching",
+    "images": ["90_90_Hamstring/0.jpg"]
+  },
+  {
+    "id": "Lying_Leg_Curls",
+    "name": "Lying Leg Curls",
+    "force": "pull",
+    "level": "beginner",
+    "mechanic": "isolation",
+    "equipment": "machine",
+    "primaryMuscles": ["hamstrings"],
+    "secondaryMuscles": [],
+    "instructions": ["Curl"],
+    "category": "strength",
+    "images": ["Lying_Leg_Curls/0.jpg"]
+  }
+]

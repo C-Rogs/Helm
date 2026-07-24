@@ -68,7 +68,8 @@ enum PrescriptionAdjustmentEngine {
         to session: PrescribedSession,
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
-        availableEquipment: Set<String>? = nil
+        availableEquipment: Set<String>? = nil,
+        familiarExerciseIDs: Set<String> = []
     ) -> PrescriptionAdjustmentResult {
         var exercises = session.exercises.sorted { $0.order < $1.order }
         let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
@@ -80,7 +81,8 @@ enum PrescriptionAdjustmentEngine {
                 excluding: excludedExerciseIDs,
                 catalog: catalog,
                 catalogByID: catalogByID,
-                availableEquipment: availableEquipment
+                availableEquipment: availableEquipment,
+                familiarExerciseIDs: familiarExerciseIDs
             ) {
             case .success:
                 continue
@@ -102,7 +104,8 @@ enum PrescriptionAdjustmentEngine {
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         catalogByID: [String: CatalogExercise],
-        availableEquipment: Set<String>?
+        availableEquipment: Set<String>?,
+        familiarExerciseIDs: Set<String>
     ) -> OperationOutcome {
         switch operation.kind {
         case .swap:
@@ -112,7 +115,8 @@ enum PrescriptionAdjustmentEngine {
                 excluding: excludedExerciseIDs,
                 catalog: catalog,
                 catalogByID: catalogByID,
-                availableEquipment: availableEquipment
+                availableEquipment: availableEquipment,
+                familiarExerciseIDs: familiarExerciseIDs
             )
         case .reorder:
             return applyReorder(operation, to: &exercises)
@@ -127,7 +131,8 @@ enum PrescriptionAdjustmentEngine {
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         catalogByID: [String: CatalogExercise],
-        availableEquipment: Set<String>?
+        availableEquipment: Set<String>?,
+        familiarExerciseIDs: Set<String>
     ) -> OperationOutcome {
         guard let fromID = operation.fromExerciseID else {
             return .failure(.exerciseNotFound(exerciseID: ""))
@@ -153,7 +158,8 @@ enum PrescriptionAdjustmentEngine {
                     for: primaryMuscle,
                     catalog: catalog,
                     excluding: blocked,
-                    availableEquipment: availableEquipment
+                    availableEquipment: availableEquipment,
+                    familiarExerciseIDs: familiarExerciseIDs
                 )
             else {
                 return .failure(.swapNoAlternativeAvailable(fromExerciseID: fromID))

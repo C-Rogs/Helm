@@ -1,7 +1,7 @@
 import Foundation
 import GRDB
 
-/// Picks ~220 picker-default exercises from the full catalog (loggy/Signal-style curation).
+/// Picks picker-default exercises for the manual exercise picker.
 enum CatalogPickerCurator {
     private static let targetDefaultCount = 220
     private static let maxPerMuscleEquipment = 4
@@ -27,16 +27,31 @@ enum CatalogPickerCurator {
         let isHevyLibrary: Bool
     }
 
-    private static let curatedCatalogMaxCount = 150
-
-    static func apply(in db: Database) throws {
-        let rows = try fetchRows(db)
-        if rows.count <= curatedCatalogMaxCount {
-            try db.execute(sql: "UPDATE exercise SET is_picker_default = 0 WHERE deleted_at IS NULL")
-            try db.execute(sql: "UPDATE exercise SET is_picker_default = 1 WHERE deleted_at IS NULL")
-            return
+    static func apply(
+        in db: Database,
+        curation: ExercisePickerCuration = .algorithmic,
+        explicitPickerIDs: Set<String> = []
+    ) throws {
+        switch curation {
+        case .explicit:
+            try applyExplicit(in: db, pickerIDs: explicitPickerIDs)
+        case .algorithmic:
+            try applyAlgorithmic(in: db)
         }
+    }
 
+    private static func applyExplicit(in db: Database, pickerIDs: Set<String>) throws {
+        try db.execute(sql: "UPDATE exercise SET is_picker_default = 0 WHERE deleted_at IS NULL")
+        for id in pickerIDs {
+            try db.execute(
+                sql: "UPDATE exercise SET is_picker_default = 1 WHERE id = ? AND deleted_at IS NULL",
+                arguments: [id]
+            )
+        }
+    }
+
+    private static func applyAlgorithmic(in db: Database) throws {
+        let rows = try fetchRows(db)
         let hevyIDs = Set(rows.filter(\.isHevyLibrary).map(\.id))
 
         try db.execute(sql: "UPDATE exercise SET is_picker_default = 0 WHERE deleted_at IS NULL")

@@ -255,4 +255,62 @@ struct ExerciseSelectionTests {
         #expect(updated.exercises[0].rationale?.contains("chest") == true)
         #expect(!updated.exercises[0].evidenceIDs.isEmpty)
     }
+
+    @Test("picker staples beat obscure stretches without evidence")
+    func staplesBeatObscureStretches() {
+        let catalog: [CatalogExercise] = [
+            CatalogExercise(
+                exerciseID: "lying_leg_curl",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "lying_leg_curl",
+                    contributions: [ExerciseMuscleContribution(muscle: .hamstrings, fraction: 1.0)]
+                ),
+                priority: 0,
+                equipment: "machine"
+            ),
+            CatalogExercise(
+                exerciseID: "hamstring_stretch",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "hamstring_stretch",
+                    contributions: [ExerciseMuscleContribution(muscle: .hamstrings, fraction: 1.0)]
+                ),
+                priority: 1,
+                equipment: "bodyweight"
+            )
+        ]
+
+        let selection = PlanKit.selectExercise(for: .hamstrings, catalog: catalog)
+        #expect(selection?.exercise.exerciseID == "lying_leg_curl")
+    }
+
+    @Test("familiar exercises outrank obscure alternatives")
+    func familiarExerciseBoost() {
+        let catalog: [CatalogExercise] = [
+            CatalogExercise(
+                exerciseID: "seated_leg_curl",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "seated_leg_curl",
+                    contributions: [ExerciseMuscleContribution(muscle: .hamstrings, fraction: 1.0)]
+                ),
+                priority: 1,
+                equipment: "machine"
+            ),
+            CatalogExercise(
+                exerciseID: "hamstring_stretch",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "hamstring_stretch",
+                    contributions: [ExerciseMuscleContribution(muscle: .hamstrings, fraction: 1.0)]
+                ),
+                priority: 1,
+                equipment: "bodyweight"
+            )
+        ]
+
+        let selection = PlanKit.selectExercise(
+            for: .hamstrings,
+            catalog: catalog,
+            familiarExerciseIDs: ["seated_leg_curl"]
+        )
+        #expect(selection?.exercise.exerciseID == "seated_leg_curl")
+    }
 }

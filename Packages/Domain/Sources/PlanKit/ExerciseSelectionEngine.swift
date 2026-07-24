@@ -39,7 +39,8 @@ enum ExerciseSelectionEngine {
         catalog: [CatalogExercise],
         excluding excludedExerciseIDs: Set<String>,
         availableEquipment: Set<String>?,
-        selectionBias: MethodologyPreferences.SelectionBias = .balanced
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced,
+        familiarExerciseIDs: Set<String> = []
     ) -> ExerciseSelection? {
         let weights = Weights.forBias(selectionBias)
         let candidates = catalog.filter { exercise in
@@ -50,8 +51,8 @@ enum ExerciseSelectionEngine {
 
         guard
             let best = candidates.max(by: { lhs, rhs in
-                let lhsScore = score(lhs, for: muscle, weights: weights)
-                let rhsScore = score(rhs, for: muscle, weights: weights)
+                let lhsScore = score(lhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+                let rhsScore = score(rhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
                 if lhsScore != rhsScore { return lhsScore < rhsScore }
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.exerciseID > rhs.exerciseID
@@ -65,7 +66,7 @@ enum ExerciseSelectionEngine {
             exercise: best,
             rationale: rationalePayload.rationale,
             evidenceIDs: rationalePayload.evidenceIDs,
-            score: score(best, for: muscle, weights: weights)
+            score: score(best, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
         )
     }
 
@@ -110,20 +111,29 @@ enum ExerciseSelectionEngine {
     private static func score(
         _ exercise: CatalogExercise,
         for muscle: MuscleGroup,
-        weights: Weights
+        weights: Weights,
+        familiarExerciseIDs: Set<String>
     ) -> Double {
+        var total: Double
         if let evidence = exercise.evidence {
-            var total =
+            total =
                 evidence.effectiveness * weights.effectiveness
                 + evidence.stretchPositionBias * weights.stretchPositionBias
                 + evidence.stimulusToFatigue * weights.stimulusToFatigue
             if isPrimaryTarget(exercise, muscle: muscle) {
                 total += weights.primaryMuscleBonus
             }
-            return total
+        } else {
+            total = 1.0 - (Double(exercise.priority) * 0.05)
         }
 
-        return 1.0 - (Double(exercise.priority) * 0.01)
+        if familiarExerciseIDs.contains(exercise.exerciseID) {
+            total += 0.25
+        }
+        if exercise.evidence == nil, exercise.priority == 0 {
+            total += 0.15
+        }
+        return total
     }
 
     private static func isPrimaryTarget(_ exercise: CatalogExercise, muscle: MuscleGroup) -> Bool {

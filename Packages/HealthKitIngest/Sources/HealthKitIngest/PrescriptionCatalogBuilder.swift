@@ -1,17 +1,26 @@
 import Core
 import Foundation
-import Persistence
-import PlanKit
 
 /// Maps persisted exercise rows into PlanKit catalog entries.
 enum PrescriptionCatalogBuilder {
-    static func build(from rows: [ExerciseCatalogRow]) -> [CatalogExercise] {
+    static func build(
+        from rows: [ExerciseCatalogRow],
+        familiarExerciseIDs: Set<String> = []
+    ) -> [CatalogExercise] {
         rows.compactMap { row in
             guard let muscleMap = muscleMap(for: row) else { return nil }
+            let priority: Int
+            if row.isPickerDefault {
+                priority = 0
+            } else if familiarExerciseIDs.contains(row.id) {
+                priority = -1
+            } else {
+                priority = 1
+            }
             return CatalogExercise(
                 exerciseID: row.id,
                 muscleMap: muscleMap,
-                priority: row.isPickerDefault ? 0 : 1,
+                priority: priority,
                 equipment: normalizedEquipment(row.equipment)
             )
         }

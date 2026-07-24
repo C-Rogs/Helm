@@ -195,17 +195,21 @@ public actor PlanPrescriptionEngine {
         let settings = try persistence.trainingPlan.load()
         let experience = TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
         let catalogRows = try persistence.exercises.fetchCatalogRows()
-        let catalog = PrescriptionCatalogBuilder.build(from: catalogRows)
-        guard !catalog.isEmpty else {
-            return PrescribedSession(helmDay: day, exercises: [])
-        }
-
         let history = try PrescriptionHistoryBuilder.history(
             from: persistence,
             endingAt: day,
             calendar: calendar,
             cutoff: cutoff
         )
+        let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(
+            from: catalogRows,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+        guard !catalog.isEmpty else {
+            return PrescribedSession(helmDay: day, exercises: [])
+        }
+
         let targetMuscles = SessionSplitPlanner.targetMuscles(
             for: day,
             emphasis: settings.phaseGoal.emphasis,
@@ -232,7 +236,8 @@ public actor PlanPrescriptionEngine {
                 completedThisWeek: completedThisWeek
             ),
             availableEquipment: methodology.availableEquipmentFilter,
-            selectionBias: methodology.selectionBias
+            selectionBias: methodology.selectionBias,
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         let signpostID = signpost.makeSignpostID()

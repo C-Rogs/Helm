@@ -71,6 +71,18 @@ enum PrescriptionHistoryBuilder {
         return history.sessions.filter { weekDaySet.contains($0.helmDay) && $0.helmDay <= endDay }.count
     }
 
+    static func familiarExerciseIDs(
+        from history: PrescriptionHistory,
+        withinDays days: Int = 90,
+        referenceDate: Date = Date()
+    ) -> Set<String> {
+        let cutoff = referenceDate.addingTimeInterval(-Double(days) * 86_400)
+        let ids = history.loggedSets
+            .filter { $0.completedAt >= cutoff }
+            .map(\.exerciseID)
+        return Set(ids)
+    }
+
     static func weekStart(containing day: HelmDay, calendar: Calendar) -> HelmDay {
         var iso = calendar
         iso.firstWeekday = 2

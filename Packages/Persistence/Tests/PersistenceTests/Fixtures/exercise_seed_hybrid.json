@@ -1,0 +1,49 @@
+{
+  "seedVersion": 3,
+  "placeholder": false,
+  "catalogResource": "mini-exercise-catalog",
+  "pickerCuration": "explicit",
+  "exercises": [
+    {
+      "id": "seed-horizontal-leg-press",
+      "canonicalName": "horizontal leg press",
+      "displayName": "Leg Press Horizontal (Machine)",
+      "aliases": [
+        "Leg Press Horizontal (Machine)",
+        "Horizontal Leg Press"
+      ],
+      "exerciseMode": "weight_reps",
+      "equipment": "machine",
+      "primaryMuscleGroup": "quadriceps",
+      "secondaryMuscleGroups": ["glutes"],
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-face-pull-overlay",
+      "canonicalName": "cable face pull",
+      "displayName": "Face Pull (Cable)",
+      "aliases": ["Face Pull", "Face Pull (Cable)", "Cable Face Pull"],
+      "exerciseMode": "weight_reps",
+      "equipment": "cable",
+      "primaryMuscleGroup": "shoulders",
+      "secondaryMuscleGroups": [],
+      "sourceDatasetID": "Face_Pull",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-lying-leg-curl",
+      "canonicalName": "lying leg curl",
+      "displayName": "Lying Leg Curl (Machine)",
+      "aliases": ["Lying Leg Curl (Machine)", "Lying Leg Curl"],
+      "exerciseMode": "weight_reps",
+      "equipment": "machine",
+      "primaryMuscleGroup": "hamstrings",
+      "secondaryMuscleGroups": [],
+      "sourceDatasetID": "Lying_Leg_Curls",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    }
+  ]
+}

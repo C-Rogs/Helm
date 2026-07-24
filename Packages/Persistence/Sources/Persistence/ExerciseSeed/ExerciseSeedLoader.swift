@@ -23,7 +23,8 @@ public enum ExerciseSeedLoader {
     public static func resolveEntries(
         manifest: ExerciseSeedDocument,
         manifestDirectory: URL
-    ) throws -> [ExerciseSeedEntry] {
+    ) throws -> ResolvedExerciseSeed {
+        let catalogEntries: [ExerciseSeedEntry]
         if let resource = manifest.catalogResource {
             let catalogURL = manifestDirectory
                 .appendingPathComponent(resource)
@@ -33,8 +34,36 @@ public enum ExerciseSeedLoader {
             }
             let data = try Data(contentsOf: catalogURL)
             let records = try FreeExerciseCatalogSupport.decodeCatalog(from: data)
-            return ExerciseSeedCatalogMapper.mapCatalogRecords(records)
+            catalogEntries = ExerciseSeedCatalogMapper.mapCatalogRecords(records)
+        } else {
+            catalogEntries = []
         }
-        return manifest.exercises
+
+        let overlay = manifest.exercises
+        let curation = manifest.pickerCuration ?? (overlay.isEmpty ? .algorithmic : .explicit)
+
+        if overlay.isEmpty {
+            return ResolvedExerciseSeed(
+                entries: catalogEntries,
+                pickerCuration: curation,
+                explicitPickerIDs: []
+            )
+        }
+
+        if catalogEntries.isEmpty {
+            let explicitIDs = Set(overlay.filter { $0.isPickerDefault == true }.map(\.id))
+            return ResolvedExerciseSeed(
+                entries: overlay,
+                pickerCuration: curation,
+                explicitPickerIDs: explicitIDs
+            )
+        }
+
+        let merged = ExerciseSeedMerger.merge(catalog: catalogEntries, overlay: overlay)
+        return ResolvedExerciseSeed(
+            entries: merged.entries,
+            pickerCuration: curation,
+            explicitPickerIDs: merged.explicitPickerIDs
+        )
     }
 }

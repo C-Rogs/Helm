@@ -1,22 +1,48 @@
 import Core
 import Foundation
 
+public enum ExercisePickerCuration: String, Codable, Sendable, Equatable {
+    /// Only manifest overlay entries marked `isPickerDefault` appear in the default picker.
+    case explicit
+    /// Score ~220 staples from the full catalog (legacy loggy-style curation).
+    case algorithmic
+}
+
+public struct ResolvedExerciseSeed: Sendable, Equatable {
+    public let entries: [ExerciseSeedEntry]
+    public let pickerCuration: ExercisePickerCuration
+    public let explicitPickerIDs: Set<String>
+
+    public init(
+        entries: [ExerciseSeedEntry],
+        pickerCuration: ExercisePickerCuration,
+        explicitPickerIDs: Set<String> = []
+    ) {
+        self.entries = entries
+        self.pickerCuration = pickerCuration
+        self.explicitPickerIDs = explicitPickerIDs
+    }
+}
+
 public struct ExerciseSeedDocument: Codable, Sendable, Equatable {
     public let seedVersion: Int
     public let placeholder: Bool
     /// When set, exercises are loaded from a bundled free-exercise-db JSON array in the same directory.
     public let catalogResource: String?
+    public let pickerCuration: ExercisePickerCuration?
     public let exercises: [ExerciseSeedEntry]
 
     public init(
         seedVersion: Int,
         placeholder: Bool,
         catalogResource: String? = nil,
+        pickerCuration: ExercisePickerCuration? = nil,
         exercises: [ExerciseSeedEntry] = []
     ) {
         self.seedVersion = seedVersion
         self.placeholder = placeholder
         self.catalogResource = catalogResource
+        self.pickerCuration = pickerCuration
         self.exercises = exercises
     }
 }
