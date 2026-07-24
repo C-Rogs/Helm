@@ -65,7 +65,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
 | M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 8184f95 | ExportKit byte-compatible schema-v2 JSON; Settings export/copy/share; HelmShare extension imports via app group. |
 | M11.2 Sharing via Coacher (later, optional) | done | 2026-07-23 | 67b47aa | CoachKeyService client + HelmDeviceIdentity + OpenRouterKeyProvisioner (Release auto-provision); Settings retry UI; reuses Coacher worker; shared-secret-in-binary documented. Also aligned GeminiModel with existing 3.5 test expectation (pre-existing mismatch on HEAD). |
-| M12.1 Motion and transition pass | in progress (agent: cursor) | | | |
+| M12.1 Motion and transition pass | done | 2026-07-24 | 9cb87c5 | HelmNumericRoll, skeleton shimmer, staggered appear, matched-card detail; adopted on Dashboard/Train/Trends/Nutrition; set/PR/adjustment motion paired with haptics; Reduce Motion unit tests. |
 | M12.2 Layout rhythm and density audit | done | 2026-07-24 | eed20f6 | HelmHairlineRule, HelmLayout tokens, helmScreenPadding, StatChip contributor grid, ruled list rows, LayoutRhythmTests |
 | M12.3 Data-viz refinement | done | 2026-07-24 | 9238343 | HelmSparkline, HelmChartScrub, LandmarkVolumeBar; muscle volume bar card; Dashboard sparklines; scrub + insufficient-data states. |
 | M12.4 Finish pass: states, iconography, consistency | not started | | | |

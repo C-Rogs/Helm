@@ -23,6 +23,7 @@ public struct StatRow: View {
                 Text(value)
                     .font(HelmTypography.statSmall)
                     .foregroundStyle(HelmColor.textPrimary)
+                    .helmNumericRoll(value: value)
                 if let detail {
                     Text(detail)
                         .font(HelmTypography.caption)

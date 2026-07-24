@@ -21,7 +21,7 @@ public struct SetRow: View {
     public let onFieldTap: (SetRowField) -> Void
     public let onComplete: () -> Void
 
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     public init(
         setNumber: Int,

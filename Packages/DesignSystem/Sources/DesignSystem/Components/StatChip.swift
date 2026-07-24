@@ -17,6 +17,7 @@ public struct StatChip: View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(value)
                 .helmType(.number, color: valueColor)
+                .helmNumericRoll(value: value)
             Text(label)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
         }

@@ -7,6 +7,7 @@ public struct AdjustmentBanner: View {
     public let onUndo: () -> Void
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @State private var presented = false
 
     public init(
         fromLabel: String,
@@ -62,6 +63,13 @@ public struct AdjustmentBanner: View {
                 removal: .opacity
             )
         )
+        .scaleEffect(presented ? 1 : 0.96)
+        .opacity(presented ? 1 : 0)
+        .onAppear {
+            withAnimation(HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion)) {
+                presented = true
+            }
+        }
         .animation(
             HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
             value: fromLabel

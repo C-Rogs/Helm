@@ -63,7 +63,7 @@ public struct AskCoachBar: View {
                             .opacity(pulse && !reduceMotion ? 0.65 : 1)
                     }
                     .animation(
-                        reduceMotion ? nil : .easeInOut(duration: 1).repeatForever(autoreverses: true),
+                        reduceMotion ? nil : HelmMotion.pulseAnimation.repeatForever(autoreverses: true),
                         value: pulse
                     )
             }

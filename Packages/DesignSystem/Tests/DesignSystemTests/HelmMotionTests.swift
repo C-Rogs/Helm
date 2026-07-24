@@ -22,6 +22,18 @@ struct HelmMotionTests {
         #expect(reduced != nil)
         #expect(full != nil)
     }
+
+    @Test("Reduce motion collapses stagger delay")
+    func reduceMotionStaggerDelay() {
+        #expect(HelmMotion.staggerDelay(index: 4, reduceMotion: true) == 0)
+        #expect(HelmMotion.staggerDelay(index: 4, reduceMotion: false) == 0.16)
+    }
+
+    @Test("Reduce motion disables skeleton shimmer")
+    func reduceMotionShimmer() {
+        #expect(HelmMotion.usesShimmer(reduceMotion: true) == false)
+        #expect(HelmMotion.usesShimmer(reduceMotion: false) == true)
+    }
 }
 
 @Suite("Helm theme mode")
