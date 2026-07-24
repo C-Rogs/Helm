@@ -12,7 +12,7 @@ public struct ResolvedNutrition: Sendable, Equatable {
     }
 }
 
-/// On-device USDA SR Legacy subset lookup. No network.
+/// On-device McCance & Widdowson CoFID lookup. No network.
 public struct NutritionLookup: Sendable {
     private let records: [NutritionFoodRecord]
     private let normalizedIndex: [String: NutritionFoodRecord]
@@ -67,12 +67,54 @@ public struct NutritionLookup: Sendable {
         }
 
         if normalized.contains("oil") || normalized.contains("dressing") || normalized.contains("sauce") {
-            if let oil = records.first(where: { $0.fdcId == "4043" || $0.description.lowercased().contains("oil") }) {
+            if let oil = records.first(where: { $0.fdcId == "17-038" || $0.description.lowercased().contains("oil, olive") }) {
                 return ResolvedNutrition(record: oil, matchConfidence: .fallback)
             }
         }
 
         return ResolvedNutrition(record: fallbackRecord, matchConfidence: .fallback)
+    }
+
+    /// Prefix/substring matches for inline food correction while editing photo meal line items.
+    public func suggestionNames(matching query: String, limit: Int = 5) -> [String] {
+        let normalized = Self.normalize(query)
+        guard normalized.count >= 2 else { return [] }
+
+        var scored: [(name: String, score: Int)] = []
+        for record in records {
+            let description = Self.normalize(record.description)
+            if description == normalized {
+                continue
+            }
+            if description.hasPrefix(normalized) {
+                scored.append((record.description, 100))
+                continue
+            }
+            if description.contains(normalized) {
+                scored.append((record.description, 60))
+                continue
+            }
+            for synonym in record.synonyms where Self.normalize(synonym).contains(normalized) {
+                scored.append((record.description, 40))
+                break
+            }
+        }
+
+        var seen = Set<String>()
+        return scored
+            .sorted { lhs, rhs in
+                if lhs.score == rhs.score {
+                    return lhs.name < rhs.name
+                }
+                return lhs.score > rhs.score
+            }
+            .compactMap { entry in
+                let key = Self.normalize(entry.name)
+                guard seen.insert(key).inserted else { return nil }
+                return entry.name
+            }
+            .prefix(limit)
+            .map { $0 }
     }
 
     private static var resourceBundle: Bundle {
@@ -85,7 +127,7 @@ public struct NutritionLookup: Sendable {
 
     private static func loadRecords(from bundle: Bundle) -> (records: [NutritionFoodRecord], index: [String: NutritionFoodRecord], fallback: NutritionFoodRecord) {
         guard
-            let url = bundle.url(forResource: "usda_sr_subset", withExtension: "json"),
+            let url = bundle.url(forResource: "cofid_foods", withExtension: "json"),
             let data = try? Data(contentsOf: url),
             let decoded = try? JSONDecoder().decode(NutritionFoodBundle.self, from: data)
         else {

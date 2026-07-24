@@ -2,6 +2,7 @@ import CoachLLM
 import Core
 import DesignSystem
 import HealthKitIngest
+import NutritionKit
 import Persistence
 import SwiftUI
 
@@ -24,6 +25,23 @@ struct SourcesMethodologyView: View {
                         CitationRow(record: record)
                     }
                 }
+            }
+
+            Section("Food reference data") {
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text(CoFIDAttribution.title)
+                        .font(HelmType.label.font)
+                        .foregroundStyle(HelmColor.fg)
+                    Text(CoFIDAttribution.sourceName)
+                        .font(HelmType.body.font)
+                        .foregroundStyle(HelmColor.fgSecondary)
+                    Text(CoFIDAttribution.licenceNotice)
+                        .font(HelmType.body.font)
+                        .foregroundStyle(HelmColor.fgMuted)
+                    Link("CoFID publication", destination: URL(string: CoFIDAttribution.sourceURL)!)
+                        .font(HelmType.body.font)
+                }
+                .padding(.vertical, HelmSpacing.xs)
             }
 
             Section("Methodology") {

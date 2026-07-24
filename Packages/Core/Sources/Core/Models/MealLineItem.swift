@@ -1,6 +1,6 @@
 import Foundation
 
-/// One USDA-grounded ingredient line in a photo meal estimate.
+/// One CoFID-grounded ingredient line in a photo meal estimate.
 public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
     public var id: String { "\(name)-\(grams)" }
 

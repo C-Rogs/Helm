@@ -46,7 +46,7 @@ let package = Package(
                 .product(name: "Core", package: "Core")
             ],
             resources: [
-                .copy("Resources/usda_sr_subset.json")
+                .copy("Resources/cofid_foods.json")
             ]
         ),
         .testTarget(

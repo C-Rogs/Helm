@@ -7,7 +7,7 @@ import Testing
 struct NutritionLookupTests {
     private let lookup = NutritionLookup()
 
-    @Test("resolves at least 90% of athlete fixture items")
+    @Test("resolves at least 90% of UK fixture items")
     func fixtureResolutionRate() {
         let items = [
             "grilled chicken breast",
@@ -70,5 +70,44 @@ struct NutritionLookupTests {
         #expect(estimate.caloriesKcal < 900)
         #expect(estimate.proteinG > 30)
         #expect(estimate.confidence == .low)
+    }
+
+    @Test("renaming a line item re-resolves macros from CoFID lookup")
+    func renameLineItemReResolvesMacros() {
+        let chicken = lookup.resolve(item: "grilled chicken breast")
+        #expect(chicken != nil)
+        guard let chicken else { return }
+
+        let original = MacroAggregator.lineItem(
+            name: "pistachio spread",
+            grams: 30,
+            resolved: chicken,
+            itemConfidence: .medium
+        )
+
+        let almond = lookup.resolve(item: "almond butter")
+        #expect(almond != nil)
+        let renamed = MacroAggregator.recomputeLineItem(
+            original,
+            name: "almond butter",
+            grams: 30,
+            lookup: lookup
+        )
+
+        #expect(renamed.name == "almond butter")
+        #expect(renamed.caloriesKcal != original.caloriesKcal)
+        #expect(renamed.usdaMatchID == almond?.record.fdcId)
+    }
+
+    @Test("food suggestions return prefix matches")
+    func foodSuggestions() {
+        let suggestions = lookup.suggestionNames(matching: "almond")
+        #expect(suggestions.contains { $0.lowercased().contains("almond") })
+    }
+
+    @Test("CoFID attribution exposes OGL notice")
+    func cofidAttribution() {
+        #expect(CoFIDAttribution.licenceNotice.contains("Open Government Licence"))
+        #expect(CoFIDAttribution.sourceURL.contains("cofid"))
     }
 }

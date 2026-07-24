@@ -2,7 +2,7 @@
 
 Shared status board for every build agent. Invocation: Cameron says `build M#.#` only. Rules: `PLAN.md` + `.cursor/rules/helm-build-agent.mdc`.
 
-**Agents auto-commit every section. Cameron only tests at DT gates (DT1 to DT6). Never ask Cameron to commit or review.**
+**Agents auto-commit every section. Cameron only tests at DT gates (DT1 to DT7). Never ask Cameron to commit or review.**
 
 `done` requires a commit SHA. Empty Commit column = not landed.
 
@@ -116,3 +116,12 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | M13.1 Planned workout UI | deferred | | | Plan-visibility absorbed by M12.8; calendar scope remains |
 | M13.2 Drift policy UI | deferred | | | Mesocycle visibility absorbed by M12.8; drift indicators remain |
 | M13.3 EventKit hints | deferred | | | Post-DT5 |
+| M14.1 CoFID bundle replaces USDA | done | 2026-07-24 | a158e24 | Full CoFID 2021 bundle; NutritionLookup on cofid_foods.json; OGL attribution in Sources; USDA removed; lookup + grounded photo tests pass. |
+| M14.2 Food log persistence (GRDB v10) | not started | | | |
+| M14.3 Food resolver + Open Food Facts client | not started | | | |
+| M14.4 ManualMealService + HK write-through | not started | | | |
+| M14.5 Search + barcode UI + MealLineItemEditor | not started | | | |
+| M14.6 Nutrition tab meal buckets + multi-action FAB | not started | | | |
+| M14.7 Recents, portion memory, templates, copy meal | not started | | | |
+| M14.8 Edit/delete history + HK sync + MFP dedup | not started | | | |
+| M14.9 Offline pending import queue | not started | | | |

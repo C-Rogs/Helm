@@ -8,6 +8,7 @@ public struct NutritionFoodRecord: Sendable, Equatable, Codable {
         public let fatG: Double
     }
 
+    /// CoFID food code (M14.1). Field name retained from USDA era for bundle compatibility.
     public let fdcId: String
     public let description: String
     public let synonyms: [String]
