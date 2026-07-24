@@ -1,7 +1,6 @@
 import Core
 import DesignSystem
 import HealthKitIngest
-import Persistence
 import PhotosUI
 import SwiftUI
 
@@ -20,62 +19,167 @@ struct NutritionView: View {
             NutritionBootstrap.refreshNutrition()
         }
     )
+    @State private var mealsStore = NutritionDayMealsStore()
+    @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
+    @State private var isFABExpanded = false
+    @State private var showsPhotoOptions = false
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                HelmScreenStack {
-                    manualLogSection
-                    photoLogSection
-
-                    switch nutritionService.state {
-                    case .loading:
-                        loadingCard
-                    case let .ready(snapshot):
-                        NutritionDaySummaryCard(
-                            snapshot: snapshot,
-                            showTrend: true,
-                            explainMetric: ExplainableMetricMappers.nutrition(
-                                snapshot,
-                                coachAvailable: chatController.isCoachAvailable
-                            ),
-                            onAskCoach: chatController.requestCoachHandoff(prompt:)
-                        )
-                    }
-                }
-                .helmScreenPadding()
-            }
-            .helmScreenBackground()
+        navigationStack
             .navigationTitle("Nutrition")
             .navigationBarTitleDisplayMode(.large)
-            .toolbar {
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await refreshTargets() }
-                    } label: {
-                        if isRefreshing {
-                            ProgressView()
-                        } else {
-                            Label("Refresh", systemImage: "arrow.clockwise")
-                        }
-                    }
-                    .disabled(isRefreshing)
-                }
-            }
-            .task {
-                await refreshTargets()
-            }
+            .toolbar { refreshToolbar }
+            .task { await refreshTargets() }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
                     await nutritionService.refresh(prescriptionSummary: newState.summary)
                 }
             }
-            .onChange(of: photoMealController.pickerItem) { _, _ in
-                Task {
-                    await photoMealController.handlePickerItemChange()
+            .onChange(of: nutritionService.state) { _, newState in
+                reloadMeals(from: newState)
+            }
+            .onChange(of: manualFoodLogController.phase) { _, newPhase in
+                if case .idle = newPhase {
+                    reloadMeals(from: nutritionService.state)
                 }
             }
+            .onChange(of: photoMealController.pickerItem) { _, _ in
+                Task { await photoMealController.handlePickerItemChange() }
+            }
+            .modifier(NutritionLoggingSheets(
+                photoMealController: photoMealController,
+                manualFoodLogController: manualFoodLogController,
+                showsPhotoOptions: $showsPhotoOptions
+            ))
+    }
+
+    private var navigationStack: some View {
+        NavigationStack {
+            ZStack(alignment: .bottomTrailing) {
+                ScrollView {
+                    HelmScreenStack {
+                        switch nutritionService.state {
+                        case .loading:
+                            loadingCard
+                        case let .ready(snapshot):
+                            NutritionDaySummaryCard(
+                                snapshot: snapshot,
+                                showTrend: true,
+                                explainMetric: ExplainableMetricMappers.nutrition(
+                                    snapshot,
+                                    coachAvailable: chatController.isCoachAvailable
+                                ),
+                                onAskCoach: chatController.requestCoachHandoff(prompt:)
+                            )
+
+                            if foodLogTipStore.isVisible {
+                                foodLogTipCard
+                            }
+
+                            mealBucketsSection
+                        }
+                    }
+                    .helmScreenPadding()
+                    .padding(.bottom, HelmSpacing.xl * 2)
+                }
+                .helmScreenBackground()
+
+                NutritionFoodLogFAB(
+                    isExpanded: $isFABExpanded,
+                    isPhotoAvailable: photoMealController.isAvailable,
+                    onSearch: { manualFoodLogController.startSearch() },
+                    onBarcode: { manualFoodLogController.startBarcode() },
+                    onPhoto: { showsPhotoOptions = true },
+                    onQuickAdd: { manualFoodLogController.startQuickAdd() },
+                    onAlcohol: { manualFoodLogController.startAlcohol() }
+                )
+                .padding(HelmSpacing.lg)
+            }
+        }
+    }
+
+    @ToolbarContentBuilder
+    private var refreshToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await refreshTargets() }
+            } label: {
+                if isRefreshing {
+                    ProgressView()
+                } else {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+            }
+            .disabled(isRefreshing)
+        }
+    }
+
+    @MainActor
+    private func refreshTargets() async {
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await nutritionService.refresh(
+            prescriptionSummary: prescriptionService.state.summary
+        )
+        reloadMeals(from: nutritionService.state)
+    }
+
+    private func reloadMeals(from state: NutritionDashboardState) {
+        guard case let .ready(snapshot) = state else { return }
+        mealsStore.reload(for: snapshot.helmDay)
+    }
+
+    @ViewBuilder
+    private var mealBucketsSection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HelmSectionEyebrow("MEALS", showsArcMark: true)
+
+            ForEach(MealBucket.allCases, id: \.self) { bucket in
+                NutritionMealBucketSection(
+                    bucket: bucket,
+                    meals: mealsStore.mealsByBucket[bucket] ?? []
+                )
+            }
+        }
+    }
+
+    private var foodLogTipCard: some View {
+        Card {
+            HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    HelmSectionEyebrow("LOG FOOD", showsArcMark: true)
+                    Text("Tap + to search, scan, photo, or quick-add. Pick a meal bucket when you save.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Button {
+                    foodLogTipStore.dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(HelmColor.fgMuted)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Dismiss tip")
+            }
+        }
+    }
+
+    private var loadingCard: some View {
+        HelmLoadingState(rowCount: 3)
+    }
+}
+
+private struct NutritionLoggingSheets: ViewModifier {
+    let photoMealController: PhotoMealController
+    let manualFoodLogController: ManualFoodLogController
+    @Binding var showsPhotoOptions: Bool
+
+    func body(content: Content) -> some View {
+        content
             .sheet(isPresented: photoConfirmBinding) {
                 if case let .confirm(estimate, previewImage) = photoMealController.phase {
                     PhotoMealConfirmSheet(
@@ -85,13 +189,24 @@ struct NutritionView: View {
                     )
                 }
             }
-            .sheet(isPresented: $photoMealController.showsCamera) {
+            .sheet(isPresented: Binding(
+                get: { photoMealController.showsCamera },
+                set: { photoMealController.showsCamera = $0 }
+            )) {
                 CameraImagePicker { image in
-                    Task {
-                        await photoMealController.handleCameraImage(image)
-                    }
+                    Task { await photoMealController.handleCameraImage(image) }
                 }
                 .ignoresSafeArea()
+            }
+            .sheet(isPresented: $showsPhotoOptions) {
+                PhotoLogOptionsSheet(
+                    pickerItem: Binding(
+                        get: { photoMealController.pickerItem },
+                        set: { photoMealController.pickerItem = $0 }
+                    ),
+                    onCamera: { photoMealController.showsCamera = true },
+                    onCancel: { showsPhotoOptions = false }
+                )
             }
             .alert(
                 "Meal logging",
@@ -124,137 +239,6 @@ struct NutritionView: View {
                     }
                 }
             )
-        }
-    }
-
-    @MainActor
-    private func refreshTargets() async {
-        isRefreshing = true
-        defer { isRefreshing = false }
-        await nutritionService.refresh(
-            prescriptionSummary: prescriptionService.state.summary
-        )
-    }
-
-    @ViewBuilder
-    private var manualLogSection: some View {
-        Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                HelmSectionEyebrow("LOG FOOD", showsArcMark: false)
-
-                HStack(spacing: HelmSpacing.sm) {
-                    Button {
-                        manualFoodLogController.startSearch()
-                    } label: {
-                        Label("Search", helmIcon: .search, context: .inline)
-                            .font(HelmTypography.headline)
-                            .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, HelmSpacing.sm)
-                            .background(
-                                HelmColor.buttonSecondaryBackground,
-                                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                            )
-                            .overlay {
-                                RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.helmPressable)
-
-                    Button {
-                        manualFoodLogController.startBarcode()
-                    } label: {
-                        Label("Barcode", helmIcon: .barcode, context: .inline)
-                            .font(HelmTypography.headline)
-                            .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, HelmSpacing.sm)
-                            .background(
-                                HelmColor.buttonSecondaryBackground,
-                                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                            )
-                            .overlay {
-                                RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                            }
-                    }
-                    .buttonStyle(.helmPressable)
-                }
-
-                if manualFoodLogController.isBusy {
-                    HStack(spacing: HelmSpacing.sm) {
-                        ProgressView()
-                        Text("Saving food…")
-                            .helmType(.body, color: HelmColor.fgMuted)
-                    }
-                }
-            }
-        }
-    }
-
-    @ViewBuilder
-    private var photoLogSection: some View {
-        Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                HelmSectionEyebrow("LOG FROM PHOTO", showsArcMark: false)
-
-                if photoMealController.isAvailable {
-                    HStack(spacing: HelmSpacing.sm) {
-                        PhotosPicker(
-                            selection: $photoMealController.pickerItem,
-                            matching: .images,
-                            photoLibrary: .shared()
-                        ) {
-                            Label("Choose photo", helmIcon: .photo, context: .inline)
-                                .font(HelmTypography.headline)
-                                .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, HelmSpacing.sm)
-                                .background(
-                                    HelmColor.buttonSecondaryBackground,
-                                    in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                )
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                        .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                                }
-                        }
-                        .buttonStyle(.helmPressable)
-
-                        Button {
-                            photoMealController.showsCamera = true
-                        } label: {
-                            Label("Camera", helmIcon: .camera, context: .inline)
-                                .font(HelmTypography.headline)
-                                .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                                .frame(maxWidth: .infinity)
-                                .padding(.vertical, HelmSpacing.sm)
-                                .background(
-                                    HelmColor.buttonSecondaryBackground,
-                                    in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                )
-                                .overlay {
-                                    RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                        .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                                }
-                        }
-                        .buttonStyle(.helmPressable)
-                    }
-
-                    if photoMealController.isBusy {
-                        HStack(spacing: HelmSpacing.sm) {
-                            ProgressView()
-                            Text(photoMealController.busyMessage)
-                                .helmType(.body, color: HelmColor.fgMuted)
-                        }
-                    }
-                } else {
-                    Text("Add your Gemini API key in Settings to estimate meals from photos.")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-            }
-        }
     }
 
     private var photoConfirmBinding: Binding<Bool> {
@@ -314,10 +298,6 @@ struct NutritionView: View {
             }
         )
     }
-
-    private var loadingCard: some View {
-        HelmLoadingState(rowCount: 3)
-    }
 }
 
 #Preview("Nutrition instrument") {
@@ -348,13 +328,16 @@ struct NutritionView: View {
     .helmTheme()
 }
 
-#Preview("Nutrition empty") {
+#Preview("Nutrition empty buckets") {
     ScrollView {
-        HelmEmptyState(
-            title: "No intake logged",
-            message: "Log a meal from photo or enter macros on the summary card.",
-            icon: .nutrition
-        )
+        HelmScreenStack {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                HelmSectionEyebrow("MEALS")
+                ForEach(MealBucket.allCases, id: \.self) { bucket in
+                    NutritionMealBucketSection(bucket: bucket, meals: [])
+                }
+            }
+        }
         .helmScreenPadding()
     }
     .helmTheme()

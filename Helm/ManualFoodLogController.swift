@@ -135,7 +135,7 @@ final class ManualFoodLogController {
             )
             HapticEngine.shared.play(.mealConfirmed)
             phase = .idle
-            NutritionBootstrap.refreshNutrition()
+            onLogged()
         } catch {
             phase = .failed(quickAddMessage(for: error))
         }
@@ -155,7 +155,7 @@ final class ManualFoodLogController {
             )
             HapticEngine.shared.play(.mealConfirmed)
             phase = .idle
-            NutritionBootstrap.refreshNutrition()
+            onLogged()
         } catch {
             phase = .failed(alcoholMessage(for: error))
         }
