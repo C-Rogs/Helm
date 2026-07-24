@@ -1,6 +1,6 @@
 # Plan: Helm (unified adaptive health coach, clean-slate iOS build)
 
-> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT5). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
+> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT6). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
 
 ## Invocation (for Cameron)
 
@@ -18,7 +18,7 @@ or `build F-DT1.1` for a fix section. The agent loads this plan and the Helm bui
 
 | Cameron | Build agent |
 |---|---|
-| Runs DT1 to DT5 on a physical device when a gate's milestones are done | Builds one plan section per session |
+| Runs DT1 to DT6 on a physical device when a gate's milestones are done | Builds one plan section per session |
 | Files fix sections (F-DT#.#) when a gate fails | Implements fix sections like any other section |
 | Does **not** review diffs, run the app, or approve commits between sections | Commits and updates `PROGRESS.md` before ending the turn |
 | Does **not** answer "should I commit?" | **Always commits.** No prompt, no confirmation, no waiting |
@@ -716,7 +716,7 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 
 ## Device Test Gates (batched physical testing; not for build agents)
 
-Device testing is slow, so it is consolidated into five gates. **This is the only point Cameron tests the app.** Build agents never block on gates, never ask Cameron to run the app mid-section, and never wait for his approval before committing. Cameron runs each gate as one sitting when the listed milestones are done; failures are filed back as targeted fix sections (F-DT#.#), which agents implement and **commit** like any other section.
+Device testing is slow, so it is consolidated into six gates. **This is the only point Cameron tests the app.** Build agents never block on gates, never ask Cameron to run the app mid-section, and never wait for his approval before committing. Cameron runs each gate as one sitting when the listed milestones are done; failures are filed back as targeted fix sections (F-DT#.#), which agents implement and **commit** like any other section.
 
 ### DT1 after M2.2: foundation + ingest + readiness (first device install)
 - HealthKit authorisation flow on a real iPhone; real data (including MFP calories) ingests live with no manual export and persists across relaunch.
@@ -915,20 +915,100 @@ Targeted fixes from Cameron's DT5 session.
 - **Scope:** settings_adjustment.v1 schema; ChatController applies phase/goal/rate mutations; triggers re-plan.
 - **Acceptance:** Fixture decodes adjustment; plan persists after coach turn.
 
+### M12 Design polish and league push
+
+UI-layer and DesignSystem-layer only; no engine, schema, or migration changes. All acceptance is agent-verifiable (build under Swift 6 complete concurrency with zero warnings, SwiftLint clean, previews, unit tests where noted); device *feel* is DT6.
+
+Suggested order: M12.2 (rhythm) first so later sections lay out on a fixed grid, then M12.1 (motion), M12.3 (data-viz), and M12.6 (the `DeviationBand` atom) in parallel, then M12.4 (finish), M12.5 (signature moments), and the transparency views M12.7 to M12.9 (which consume M12.6). The transparency band (M12.6 to M12.9) reprioritises deferred M13.1/M13.2: M12.8 pulls their plan-visibility intent forward.
+
+#### M12.1 Motion and transition pass
+
+- **Track**: A (UI / DesignSystem). **Depends on**: M0.7, and the shipped screens (M2.3, M3.3 to M3.5, M6.3, M9.2, M10.1).
+- **Goal**: every screen transition and every engine readout moves per DESIGN-SYSTEM section 6, calmly and consistently.
+- **Scope**: add a small set of reusable motion modifiers in DesignSystem (numeric-roll wrapper, skeleton shimmer, staggered-appear, matched-geometry card-to-detail helper); adopt them on Dashboard, Train, Trends, Nutrition; wire `contentTransition(.numericText())` on all engine numbers; pair set-completion/PR/adjustment motion with their existing haptics. No new motion tokens.
+- **Acceptance**: grep shows no ad-hoc `.animation(...)` durations outside tokens; every engine readout uses the numeric-roll wrapper; skeleton and staggered-appear have previews; Reduce Motion collapses each to a `quick` cross-fade (unit-tested via the capability abstraction); SwiftLint clean.
+
+#### M12.2 Layout rhythm and density audit
+
+- **Track**: A. **Depends on**: M0.7 and shipped screens.
+- **Goal**: one spacing rhythm and one hierarchy discipline across the app; no card-in-card.
+- **Scope**: audit and fix Dashboard, Train, Trends, Nutrition, Settings to the spacing scale; de-nest surfaces (hairline rules replace nested cards); enforce one-primary-number-per-card with `StatChip` rows for secondaries; column alignment and unit treatment per DESIGN-SYSTEM section 2 and 5.
+- **Acceptance**: grep shows no raw spacing literals outside the scale in the audited views; no nested `Card` within `Card`; previews in both palettes and at the largest Dynamic Type size show no clipping or column jump; SwiftLint clean.
+
+#### M12.3 Data-viz refinement
+
+- **Track**: A. **Depends on**: M12.2, M10.1 (Trends), M2.2/M9.1 (data).
+- **Goal**: one chart language, a signature per-muscle-vs-landmark chart, Dashboard sparklines, interactive scrub.
+- **Scope**: route every Trends card and any inline chart through `HelmChartStyle` (state-ramp only, mono tabular axes, hairline gridlines); rebuild the per-muscle volume card as horizontal bars with MEV/MRV bands and state coloring; add 7-day sparklines to the readiness and weight Dashboard cards; add drag-to-scrub with a mono callout and a light haptic tick; honest insufficient-data states on every chart.
+- **Acceptance**: all charts consume `HelmChartStyle` and design-system primitives only (no arbitrary colors); the per-muscle card renders under, in-range, at, and over-MRV states in previews; sparkline and scrub have previews and a Reduce Motion path; insufficient-data states previewed; SwiftLint clean.
+
+#### M12.4 Finish pass: states, iconography, consistency
+
+- **Track**: A. **Depends on**: M12.2.
+- **Goal**: shipped-product finish on the last 15 percent.
+- **Scope**: design empty, loading (skeleton), and error states for every screen; iconography audit to one weight/size per context with the arc-trace motif on tab and section marks; surface-discipline audit (radius, hairline, pressed/active states on every tappable surface); `monoTag` eyebrow consistency; a copy pass for terseness and label consistency.
+- **Acceptance**: every screen has previewed empty/loading/error states; a documented icon set with consistent weights; grep shows pressed/active states on interactive surfaces; no em dashes in any in-app string; SwiftLint clean.
+
+#### M12.5 Signature moments
+
+- **Track**: A / coach-UI. **Depends on**: M12.1, M2.3 (reveal), M3.5 (PR), M6.4 (onboarding).
+- **Goal**: make the reveal, PR, workout finish, and onboarding feel premium and memorable.
+- **Scope**: elevate the readiness reveal (state-tint bloom, contributor stagger, haptic swell already present); elevate PR celebration (arc burst, once per PR); build the workout-finish summary moment (volume, sets, TRIMP, animated landmark movement, tomorrow-readiness teaser); author the onboarding sequence (self-drawing Arc, backfill-as-filling-Arc, first reveal as payoff).
+- **Acceptance**: each moment has previews across its states; reveal and PR fire once per day / once per PR (unit-tested via the existing gates and detection query); finish summary renders from fixture session data; all four honor Reduce Motion; SwiftLint clean. Feel is DT6.
+
+#### M12.6 DeviationBand component (the reference-band atom)
+
+- **Track**: A (DesignSystem). **Depends on**: M0.7.
+- **Goal**: one reusable component that plots a value inside its personal reference range, the atom the transparency theme is built from.
+- **Scope**: a `DeviationBand` view in DesignSystem taking a current value, a band (lower/upper, typically `mean ± robustSigma` or a target range), units, a `HelmState` for colour, and an optional verdict tag (`GOOD` / label). Marker inside a hairline band track, mono tabular value, unit one step smaller in `fgMuted`, state colour on the marker and tag. A horizontal `bar` layout (contributor rows) and a compact inline layout. No engine change; the values are supplied by the wiring layer.
+- **Acceptance**: previews for in-band, below-band, above-band, and cold-start (no band yet) in both palettes and at the largest Dynamic Type; state never encoded by colour alone (value and tag always present); numeric-roll on value change; SwiftLint clean; zero hard-coded colours.
+
+#### M12.7 Recovery detail view
+
+- **Track**: A / readiness-UI. **Depends on**: M12.6, M2.2/M2.3, M10.1 (history), and benefits from M4.5 (coach) for the narration line.
+- **Goal**: one screen that consolidates the scattered recovery pieces and reads the way StrongSplit's recovery screen does, plus the coach's interpretation.
+- **Scope**: score against its target band; readiness history with the band overlaid (reuse the Trends history query, restyled through `HelmChartStyle`); each contributor (HRV, resting HR, sleep) as a `DeviationBand` in real units, reconstructed from the stored daily metric plus the persisted `readiness_baseline_state` (`mean`, `robustSigma`); the coach's one-line read at the top, degrading to the engine contributor summary when the coach is offline; an "Ask coach about this" hand-off. Reachable from the Dashboard readiness card.
+- **Acceptance**: renders from fixture readiness + baseline data for good/compromised/cold-start states; contributor bands show real units and the personal range; offline path shows engine summary with the coach hand-off disabled; snapshot tests per state; no engine change (pure wiring over existing repositories); SwiftLint clean.
+
+#### M12.8 Progression / plan-model view (absorbs deferred M13.1/M13.2 plan visibility)
+
+- **Track**: plan-UI. **Depends on**: M12.2, PlanKit (M5.x), M3.5 (PR/e1RM queries).
+- **Goal**: make the plan model and the user's position in it visible, not just today's prescription.
+- **Scope**: surface the current mesocycle position (block, week, MEV to MRV ramp state, scheduled deload) from `PlanKit` mesocycle state; the active progression scheme (rep range, RPE cap, sets-per-session, load increment); and a per-lift level ladder with estimated 1RM and per-step deltas from the logged history. Read-only visibility in v1 (editing stays in Settings/plan config); this is the plan-visibility intent of the deferred M13.1/M13.2 pulled forward. Reachable from the Dashboard prescription card and Train.
+- **Acceptance**: renders from fixture mesocycle state and logged history for mid-meso, deload-week, and cold-start; the level ladder marks completed steps from real queries (not stored as truth); no engine or schema change; SwiftLint clean.
+
+#### M12.9 Muscle-volume promotion and recency
+
+- **Track**: A / plan-UI. **Depends on**: M12.2, M10.1, PlanKit weekly hard-set ledger.
+- **Goal**: lift the landmark-aware per-muscle volume board out of Trends into a first-class surface, with the recency dimension StrongSplit shows.
+- **Scope**: extend `MuscleVolumeGauge` with days-since-trained per muscle (from the ledger/last-session query); a ranked per-muscle board (sets vs MEV/MRV landmark band, state colour, days since trained), promoted onto Train and summarised on the Dashboard; keep the existing `ArcGauge` grid available in Trends. Landmark bands stay; do not regress to raw counts.
+- **Acceptance**: board renders under-MEV, in-range, at-MRV, and over-MRV states with recency from fixtures; the Dashboard summary and the Train board share one view model; previews in both palettes; no engine change beyond the additive recency field on the view model; SwiftLint clean.
+
+### DT6 (after M12.5 and M0.8): the polish gate
+
+- Every named haptic still syncs to its motion on a real iPhone; the readiness reveal, PR burst, and workout-finish summary land as premium moments.
+- Skeleton-to-content and matched-geometry transitions feel fluid at 120Hz, no dropped frames on device.
+- Both skins switch live with no flash or layout break, in dark and light.
+- Empty/loading/error states verified on device with real (and absent) data.
+- Largest Dynamic Type pass on Dashboard and the set row.
+- `DeviationBand` reads correctly against real HealthKit-derived baselines on device (right units, band the right width, verdict matches the engine); the recovery detail view, progression view, and muscle-volume board reconcile with the engine numbers.
+
 ### M13 Schedule and calendar (post-DT5)
 
 #### M13.1 Planned workout UI
 
 - **Depends on:** M5.2, F-DT5.10
+- **Status:** Plan-visibility intent absorbed by **M12.8**. Calendar/week-ahead scope remains here if still wanted post-M12.
 - **Goal:** Week-ahead schedule visible on Train.
-- **Scope:** Generate planned_workout rows when prescription computes; week list on Train.
+- **Scope:** Generate planned_workout rows when prescription computes; week list on Train. *(Plan model / progression ladder → M12.8.)*
 - **Acceptance:** Fixture plan renders week ahead.
 
 #### M13.2 Drift policy UI
 
 - **Depends on:** M13.1
+- **Status:** Mesocycle position visibility absorbed by **M12.8**. Drift-on-calendar scope remains here.
 - **Goal:** Skipped/moved sessions visible.
-- **Scope:** Drift indicators on Train calendar list.
+- **Scope:** Drift indicators on Train calendar list. *(Block/week/MEV→MRV ramp state → M12.8.)*
 - **Acceptance:** Drift scenario tests render in UI.
 
 #### M13.3 EventKit hints (optional)

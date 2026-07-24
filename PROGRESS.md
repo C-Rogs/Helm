@@ -2,7 +2,7 @@
 
 Shared status board for every build agent. Invocation: Cameron says `build M#.#` only. Rules: `PLAN.md` + `.cursor/rules/helm-build-agent.mdc`.
 
-**Agents auto-commit every section. Cameron only tests at DT gates (DT1 to DT5). Never ask Cameron to commit or review.**
+**Agents auto-commit every section. Cameron only tests at DT gates (DT1 to DT6). Never ask Cameron to commit or review.**
 
 `done` requires a commit SHA. Empty Commit column = not landed.
 
@@ -65,6 +65,15 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
 | M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 8184f95 | ExportKit byte-compatible schema-v2 JSON; Settings export/copy/share; HelmShare extension imports via app group. |
 | M11.2 Sharing via Coacher (later, optional) | done | 2026-07-23 | 67b47aa | CoachKeyService client + HelmDeviceIdentity + OpenRouterKeyProvisioner (Release auto-provision); Settings retry UI; reuses Coacher worker; shared-secret-in-binary documented. Also aligned GeminiModel with existing 3.5 test expectation (pre-existing mismatch on HEAD). |
+| M12.1 Motion and transition pass | not started | | | |
+| M12.2 Layout rhythm and density audit | not started | | | |
+| M12.3 Data-viz refinement | not started | | | |
+| M12.4 Finish pass: states, iconography, consistency | not started | | | |
+| M12.5 Signature moments | not started | | | |
+| M12.6 DeviationBand component | not started | | | |
+| M12.7 Recovery detail view | not started | | | |
+| M12.8 Progression / plan-model view | not started | | | Absorbs M13.1/M13.2 plan-visibility intent |
+| M12.9 Muscle-volume promotion and recency | not started | | | |
 
 ## Device Test Gates
 
@@ -77,6 +86,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT3 (after M6.4): the loop replaces Gemini (go-live gate) | done | 2026-07-23 | Go-live verified on device: grounded chat, prescription Train, in-session coach swaps, morning brief, onboarding. F-DT3.1–3.7 landed. Manual Gemini workflow retired. |
 | DT4 (after M8.2): proactivity + Watch | on hold | 2026-07-23 | Overnight battery pass (`helm-diagnostics-2026-07-23T15-41-35Z`; no `HealthKitObserverFetch` / `BackfillChunk` churn in export). Watch + rest of checklist paused: corp network blocks Watch deploy; resume off-network. Build `60a85e7`. |
 | DT5 (after M11.1): nutrition, analytics, full regression | not started | | |
+| DT6 (after M12.5 and M0.8): the polish gate | not started | | | Motion feel, skins, states, DeviationBand on device |
 
 ## Fix sections
 
@@ -103,6 +113,6 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT5.9 Train sets + picker | done | 2026-07-24 | 3c65441 | Manual +/- sets; recent exercises + muscle filters in picker. |
 | F-DT5.10 Watch companion | done | 2026-07-24 | 3c65441 | Phone-led companion payload; WatchCompanionView; HR auto-start. |
 | F-DT5.11 Coach-editable settings | done | 2026-07-24 | 3c65441 | settings_adjustment.v1 JSON apply from chat; re-plans prescription. |
-| M13.1 Planned workout UI | deferred | | | Post-DT5 |
-| M13.2 Drift policy UI | deferred | | | Post-DT5 |
+| M13.1 Planned workout UI | deferred | | | Plan-visibility absorbed by M12.8; calendar scope remains |
+| M13.2 Drift policy UI | deferred | | | Mesocycle visibility absorbed by M12.8; drift indicators remain |
 | M13.3 EventKit hints | deferred | | | Post-DT5 |
