@@ -15,7 +15,7 @@ public enum NutritionKit {
         guard !weekDays.isEmpty else { return state }
 
         let sorted = weekDays.sorted { $0.helmDay < $1.helmDay }
-        let weights = sorted.compactMap(\.bodyMassKg)
+        let weights = sorted.compactMap(\.bodyMassKg).filter { $0 > 1 }
         if !weights.isEmpty {
             state.smoothedTrendWeightKg = TrendWeightSmoother.ewma(weights)
         }
@@ -26,12 +26,15 @@ public enum NutritionKit {
         let averageIntake = intakes.reduce(0, +) / Double(intakes.count)
         state.weeklyIntakeAverageKcal = averageIntake
 
-        let mass = state.smoothedTrendWeightKg ?? defaultBodyMassKg
+        let mass = NutritionMass.resolved(state.smoothedTrendWeightKg, default: defaultBodyMassKg)
         var estimate = state.estimatedTDEEKcal ?? TDEECalculator.seedTDEE(bodyMassKg: mass)
 
         if
+            intakes.count >= minimumIntakeDaysForColdStart,
             let currentTrend = state.smoothedTrendWeightKg,
-            let priorTrend = state.priorWeekTrendWeightKg
+            let priorTrend = state.priorWeekTrendWeightKg,
+            currentTrend > 1,
+            priorTrend > 1
         {
             let weightChangeKg = currentTrend - priorTrend
             let implied = TDEECalculator.impliedTDEE(
@@ -43,7 +46,7 @@ public enum NutritionKit {
             estimate = TDEECalculator.blendedEstimate(prior: estimate, implied: averageIntake)
         }
 
-        state.estimatedTDEEKcal = estimate
+        state.estimatedTDEEKcal = NutritionMass.flooredTDEE(estimate, bodyMassKg: mass)
         state.priorWeekTrendWeightKg = state.smoothedTrendWeightKg
         state.lastWeeklyUpdate = sorted.last?.helmDay
         return state
@@ -55,5 +58,23 @@ public enum NutritionKit {
         trend: NutritionTrendState
     ) -> MacroTargets {
         MacroTargetCalculator.compute(context: context, phase: phase, trend: trend)
+    }
+
+    public static func resolvedBodyMassKg(_ bodyMassKg: Double?) -> Double {
+        NutritionMass.resolved(bodyMassKg)
+    }
+
+    /// Clears invalid persisted trend values (e.g. zero body-mass EWMA) before target math.
+    public static func healTrendState(_ state: inout NutritionTrendState, bodyMassKg: Double?) {
+        let mass = NutritionMass.resolved(bodyMassKg)
+        if let weight = state.smoothedTrendWeightKg, weight <= 1 {
+            state.smoothedTrendWeightKg = nil
+        }
+        if let prior = state.priorWeekTrendWeightKg, prior <= 1 {
+            state.priorWeekTrendWeightKg = nil
+        }
+        if let estimate = state.estimatedTDEEKcal {
+            state.estimatedTDEEKcal = NutritionMass.flooredTDEE(estimate, bodyMassKg: mass)
+        }
     }
 }

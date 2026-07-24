@@ -14,13 +14,20 @@ public struct NutritionTrendStore: Sendable {
     }
 
     public func load() throws -> NutritionTrendState {
-        guard let json = try metadata.value(forKey: Self.metadataKey) else {
+        loadSafely()
+    }
+
+    public func loadSafely() -> NutritionTrendState {
+        guard let json = try? metadata.value(forKey: Self.metadataKey) else {
             return NutritionTrendState()
         }
-        guard let data = json.data(using: .utf8) else {
-            throw NutritionServiceError.decodingFailed
+        guard
+            let data = json.data(using: .utf8),
+            let state = try? jsonDecoder.decode(NutritionTrendState.self, from: data)
+        else {
+            return NutritionTrendState()
         }
-        return try jsonDecoder.decode(NutritionTrendState.self, from: data)
+        return state
     }
 
     public func save(_ state: NutritionTrendState) throws {

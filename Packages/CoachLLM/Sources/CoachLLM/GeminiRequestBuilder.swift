@@ -115,6 +115,25 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func mealDecompositionPhotoBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        userMessage: String = "Decompose this meal photo into ingredients and estimated grams."
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.mealPhotoContents(
+                imageJPEGBase64: imageJPEGBase64,
+                userMessage: userMessage
+            ),
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": mealDecompositionSchema()
+            ]
+        )
+    }
+
     public static func morningBriefBody(
         systemInstructions: String,
         contextBlock: String,
@@ -176,6 +195,41 @@ public enum GeminiRequestBuilder {
                 "fatG",
                 "confidence"
             ]
+        ]
+    }
+
+    public static func mealDecompositionSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.mealDecompositionV1.rawValue),
+                "mealDescription": ["type": "string"],
+                "items": [
+                    "type": "array",
+                    "items": decompositionItemSchema()
+                ],
+                "implicitFats": [
+                    "type": "array",
+                    "items": decompositionItemSchema()
+                ],
+                "portionNotes": ["type": "string"]
+            ],
+            "required": ["schemaVersion", "mealDescription", "items", "implicitFats"]
+        ]
+    }
+
+    private static func decompositionItemSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "name": ["type": "string"],
+                "estimatedGrams": ["type": "number"],
+                "confidence": [
+                    "type": "string",
+                    "enum": ["low", "medium", "high"]
+                ]
+            ],
+            "required": ["name", "estimatedGrams", "confidence"]
         ]
     }
 

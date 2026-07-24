@@ -44,11 +44,17 @@ let package = Package(
             name: "NutritionKit",
             dependencies: [
                 .product(name: "Core", package: "Core")
+            ],
+            resources: [
+                .copy("Resources/usda_sr_subset.json")
             ]
         ),
         .testTarget(
             name: "NutritionKitTests",
-            dependencies: ["NutritionKit"]
+            dependencies: ["NutritionKit"],
+            resources: [
+                .copy("Fixtures")
+            ]
         )
     ]
 )

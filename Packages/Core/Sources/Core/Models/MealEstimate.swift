@@ -14,6 +14,8 @@ public struct MealEstimate: Sendable, Equatable {
     public var carbsG: Double
     public var fatG: Double
     public let confidence: Confidence
+    /// Per-ingredient breakdown from grounded photo pipeline; empty for legacy v1 artefacts.
+    public var lineItems: [MealLineItem]
 
     public init(
         description: String,
@@ -21,7 +23,8 @@ public struct MealEstimate: Sendable, Equatable {
         proteinG: Double,
         carbsG: Double,
         fatG: Double,
-        confidence: Confidence
+        confidence: Confidence,
+        lineItems: [MealLineItem] = []
     ) {
         self.description = description
         self.caloriesKcal = caloriesKcal
@@ -29,5 +32,6 @@ public struct MealEstimate: Sendable, Equatable {
         self.carbsG = carbsG
         self.fatG = fatG
         self.confidence = confidence
+        self.lineItems = lineItems
     }
 }

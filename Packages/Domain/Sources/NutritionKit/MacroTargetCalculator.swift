@@ -14,17 +14,16 @@ public struct NutritionTargetContext: Sendable, Hashable, Equatable {
 }
 
 enum MacroTargetCalculator {
-    static let defaultBodyMassKg = 75.0
     static let proteinGramsPerKg = 2.0
 
     static func phaseCalorieAdjustment(for phase: PhaseGoal) -> Double {
         let kcalPerDayPerKgWeek = TDEECalculator.kcalPerKgBodyMassChange / 7.0
         switch phase.phase {
         case .cut:
-            let rate = phase.weeklyRateKg ?? 0.5
+            let rate = min(phase.weeklyRateKg ?? 0.5, 1.0)
             return rate * kcalPerDayPerKgWeek
         case .gain:
-            let rate = phase.weeklyRateKg ?? 0.25
+            let rate = min(phase.weeklyRateKg ?? 0.25, 1.0)
             return -rate * kcalPerDayPerKgWeek
         case .maintain:
             return 0
@@ -32,7 +31,11 @@ enum MacroTargetCalculator {
     }
 
     static func resolvedTDEE(trend: NutritionTrendState, bodyMassKg: Double) -> Double {
-        trend.estimatedTDEEKcal ?? TDEECalculator.seedTDEE(bodyMassKg: bodyMassKg)
+        let mass = NutritionMass.resolved(bodyMassKg)
+        let seed = TDEECalculator.seedTDEE(bodyMassKg: mass)
+        let raw = trend.estimatedTDEEKcal ?? seed
+        let floored = NutritionMass.flooredTDEE(raw, bodyMassKg: mass)
+        return floored.isFinite ? floored : seed
     }
 
     static func carbShare(for dayType: NutritionDayType) -> Double {
@@ -49,15 +52,16 @@ enum MacroTargetCalculator {
         phase: PhaseGoal,
         trend: NutritionTrendState
     ) -> MacroTargets {
-        let mass = context.bodyMassKg ?? defaultBodyMassKg
+        let mass = NutritionMass.resolved(context.bodyMassKg)
         let tdee = resolvedTDEE(trend: trend, bodyMassKg: mass)
-        let targetCalories = max(
-            Int((tdee - phaseCalorieAdjustment(for: phase)).rounded()),
-            0
-        )
-
         let proteinGrams = Int((mass * proteinGramsPerKg).rounded())
         let proteinKcal = proteinGrams * 4
+        let targetCalories = max(
+            Int((tdee - phaseCalorieAdjustment(for: phase)).rounded()),
+            proteinKcal,
+            Int(NutritionMass.minimumTDEEKcal.rounded())
+        )
+
         let remainingKcal = max(targetCalories - proteinKcal, 0)
 
         let carbShare = carbShare(for: context.dayType)

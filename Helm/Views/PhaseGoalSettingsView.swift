@@ -176,6 +176,7 @@ struct PhaseGoalSettingsView: View {
             HapticEngine.shared.play(.phaseChange)
             saveMessage = "Saved. Today's prescription was re-planned."
             PlanBootstrap.refreshPrescription()
+            NutritionBootstrap.refreshNutrition()
             onSaved?()
         } catch {
             saveMessage = error.localizedDescription

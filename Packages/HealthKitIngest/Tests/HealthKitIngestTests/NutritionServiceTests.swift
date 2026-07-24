@@ -24,13 +24,46 @@ struct NutritionServiceTests {
         try store.nutrition.upsertDay(alcoholDay)
 
         let engine = NutritionEngine(persistence: store)
-        let snapshot = try await engine.snapshot(for: day, prescriptionSummary: nil)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil)
 
         #expect(snapshot.actual?.helmDay == alcoholDay.helmDay)
         #expect(snapshot.actual?.macroGapKilocalories != nil)
         #expect(snapshot.targets.macroGapKilocalories! > 100)
         #expect(snapshot.targets.carbohydrateGrams > 0)
         #expect(snapshot.dayType == .rest)
+    }
+
+    @Test("zero body mass still yields macro targets and MFP aggregates resolve")
+    func zeroBodyMassTargets() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+
+        let day = HelmDay(year: 2026, month: 7, day: 23)
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 0),
+                measuredAt: Date()
+            )
+        )
+        try store.dailyMetrics.upsert(
+            DailyMetrics(
+                helmDay: day,
+                dietaryEnergy: Energy(kilocalories: 2_100),
+                dietaryProteinGrams: 160,
+                dietaryCarbohydrateGrams: 210,
+                dietaryFatGrams: 60
+            )
+        )
+
+        let engine = NutritionEngine(persistence: store)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil)
+
+        #expect(snapshot.actual?.totalEnergy?.kilocalories == 2_100)
+        #expect(snapshot.targets.caloriesKcal > 0)
+        #expect(snapshot.targets.proteinGrams > 0)
+        #expect(snapshot.targets.carbohydrateGrams > 0)
+        #expect(snapshot.targets.fatGrams > 0)
     }
 
     @Test("weekly trend persists across snapshots")
@@ -60,8 +93,8 @@ struct NutritionServiceTests {
         }
 
         let engine = NutritionEngine(persistence: store)
-        let first = try await engine.snapshot(for: endDay, prescriptionSummary: nil)
-        let second = try await engine.snapshot(for: endDay, prescriptionSummary: nil)
+        let first = await engine.snapshot(for: endDay, prescriptionSummary: nil)
+        let second = await engine.snapshot(for: endDay, prescriptionSummary: nil)
 
         #expect(first.trend.weeklyIntakeAverageKcal != nil)
         #expect(second.trend.estimatedTDEEKcal != nil)

@@ -180,7 +180,9 @@ public final class FixtureGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendabl
         lock.withLock { _lastGenerateRequestID = request.requestID }
         let fixtureName: String
         if requestIncludesMealPhoto(request.body) {
-            fixtureName = "gemini_generate_meal_estimate"
+            fixtureName = requestIncludesMealDecomposition(request.body)
+                ? "gemini_generate_meal_decomposition"
+                : "gemini_generate_meal_estimate"
         } else {
             fixtureName = "gemini_generate_session_adjustment"
         }
@@ -207,5 +209,10 @@ public final class FixtureGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendabl
             }
         }
         return false
+    }
+
+    private func requestIncludesMealDecomposition(_ body: Data) -> Bool {
+        guard let text = String(data: body, encoding: .utf8) else { return false }
+        return text.contains(CoachOutputSchemaVersion.mealDecompositionV1.rawValue)
     }
 }

@@ -1,25 +1,23 @@
+import CoachLLM
 import Core
 import DesignSystem
+import NutritionKit
 import SwiftUI
 
 struct PhotoMealConfirmSheet: View {
     @Bindable var controller: PhotoMealController
-    let initialEstimate: MealEstimate
     let previewImage: UIImage?
 
     @State private var description: String
-    @State private var calories: String
-    @State private var protein: String
-    @State private var carbs: String
-    @State private var fat: String
+    @State private var lineItems: [MealLineItem]
+    @State private var expandedItemIDs: Set<String>
     @FocusState private var focusedField: Field?
+
+    private let lookup = NutritionLookup()
 
     private enum Field: Hashable {
         case description
-        case calories
-        case protein
-        case carbs
-        case fat
+        case grams(String)
     }
 
     init(
@@ -28,13 +26,27 @@ struct PhotoMealConfirmSheet: View {
         previewImage: UIImage?
     ) {
         self.controller = controller
-        self.initialEstimate = initialEstimate
         self.previewImage = previewImage
         _description = State(initialValue: initialEstimate.description)
-        _calories = State(initialValue: Self.format(initialEstimate.caloriesKcal))
-        _protein = State(initialValue: Self.format(initialEstimate.proteinG))
-        _carbs = State(initialValue: Self.format(initialEstimate.carbsG))
-        _fat = State(initialValue: Self.format(initialEstimate.fatG))
+        _lineItems = State(initialValue: initialEstimate.lineItems)
+        _expandedItemIDs = State(initialValue: Set(initialEstimate.lineItems.map(\.id)))
+    }
+
+    private var currentEstimate: MealEstimate {
+        if lineItems.isEmpty {
+            return MealEstimate(
+                description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+                caloriesKcal: 0,
+                proteinG: 0,
+                carbsG: 0,
+                fatG: 0,
+                confidence: .medium
+            )
+        }
+        return MacroAggregator.sum(
+            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
+            lineItems: lineItems
+        )
     }
 
     var body: some View {
@@ -52,17 +64,11 @@ struct PhotoMealConfirmSheet: View {
 
                     confidenceLabel
 
-                    VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                        macroField("Description", text: $description, field: .description)
-                            .textInputAutocapitalization(.sentences)
-                        macroField("Calories", text: $calories, field: .calories, unit: "kcal")
-                            .keyboardType(.numberPad)
-                        macroField("Protein", text: $protein, field: .protein, unit: "g")
-                            .keyboardType(.decimalPad)
-                        macroField("Carbohydrates", text: $carbs, field: .carbs, unit: "g")
-                            .keyboardType(.decimalPad)
-                        macroField("Fat", text: $fat, field: .fat, unit: "g")
-                            .keyboardType(.decimalPad)
+                    if lineItems.isEmpty {
+                        legacyTotalsFallback
+                    } else {
+                        ingredientsSection
+                        totalsSection
                     }
                 }
                 .padding(HelmSpacing.md)
@@ -81,7 +87,7 @@ struct PhotoMealConfirmSheet: View {
                 VStack(spacing: HelmSpacing.sm) {
                     Button("Log to Health") {
                         Task {
-                            await controller.confirm(estimate: builtEstimate(), name: description)
+                            await controller.confirm(estimate: currentEstimate, name: description)
                         }
                     }
                     .buttonStyle(.helmPrimary)
@@ -94,59 +100,133 @@ struct PhotoMealConfirmSheet: View {
     }
 
     private var confidenceLabel: some View {
-        Text("Estimate confidence: \(initialEstimate.confidence.rawValue.capitalized)")
+        Text("Estimate confidence: \(currentEstimate.confidence.rawValue.capitalized)")
             .helmType(.body, color: HelmColor.fgMuted)
     }
 
     private var isValid: Bool {
-        parsed(calories) != nil
-            && parsed(protein) != nil
-            && parsed(carbs) != nil
-            && parsed(fat) != nil
-            && !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            && currentEstimate.caloriesKcal > 0
     }
 
-    private func builtEstimate() -> MealEstimate {
-        MealEstimate(
-            description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-            caloriesKcal: parsed(calories) ?? initialEstimate.caloriesKcal,
-            proteinG: parsed(protein) ?? initialEstimate.proteinG,
-            carbsG: parsed(carbs) ?? initialEstimate.carbsG,
-            fatG: parsed(fat) ?? initialEstimate.fatG,
-            confidence: initialEstimate.confidence
+    private var ingredientsSection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Ingredients")
+                .helmType(.label)
+
+            ForEach(lineItems) { item in
+                ingredientRow(item)
+            }
+        }
+    }
+
+    private func ingredientRow(_ item: MealLineItem) -> some View {
+        let isExpanded = expandedItemIDs.contains(item.id)
+
+        return VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            Button {
+                if isExpanded {
+                    expandedItemIDs.remove(item.id)
+                } else {
+                    expandedItemIDs.insert(item.id)
+                }
+            } label: {
+                HStack {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        Text(item.name)
+                            .helmType(.body)
+                        Text("\(Self.format(item.grams)) g · \(Self.format(item.caloriesKcal)) kcal")
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                    }
+                    Spacer()
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+            }
+            .buttonStyle(.plain)
+
+            if isExpanded {
+                HStack {
+                    Text("Grams")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    TextField("Grams", text: gramsBinding(for: item))
+                        .focused($focusedField, equals: .grams(item.id))
+                        .keyboardType(.decimalPad)
+                        .helmType(.body)
+                        .padding(HelmSpacing.sm)
+                        .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                }
+            }
+        }
+        .padding(HelmSpacing.sm)
+        .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+    }
+
+    private var totalsSection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Totals")
+                .helmType(.label)
+
+            macroField("Description", text: $description, field: .description)
+                .textInputAutocapitalization(.sentences)
+
+            readOnlyRow("Calories", value: currentEstimate.caloriesKcal, unit: "kcal")
+            readOnlyRow("Protein", value: currentEstimate.proteinG, unit: "g")
+            readOnlyRow("Carbohydrates", value: currentEstimate.carbsG, unit: "g")
+            readOnlyRow("Fat", value: currentEstimate.fatG, unit: "g")
+        }
+    }
+
+    private var legacyTotalsFallback: some View {
+        Text("No ingredient breakdown available for this estimate.")
+            .helmType(.body, color: HelmColor.fgMuted)
+    }
+
+    private func gramsBinding(for item: MealLineItem) -> Binding<String> {
+        Binding(
+            get: {
+                Self.format(item.grams)
+            },
+            set: { newValue in
+                guard let grams = Double(newValue.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
+                guard let index = lineItems.firstIndex(where: { $0.id == item.id }) else { return }
+                lineItems[index] = MacroAggregator.recomputeLineItem(item, grams: grams, lookup: lookup)
+            }
         )
     }
 
     private func macroField(
         _ label: String,
         text: Binding<String>,
-        field: Field,
-        unit: String? = nil
+        field: Field
     ) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(label)
                 .helmType(.label)
-            HStack {
-                TextField(label, text: text)
-                    .focused($focusedField, equals: field)
-                    .helmType(.body)
-                if let unit {
-                    Text(unit)
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-            }
-            .padding(HelmSpacing.sm)
-            .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+            TextField(label, text: text)
+                .focused($focusedField, equals: field)
+                .helmType(.body)
+                .padding(HelmSpacing.sm)
+                .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
         }
     }
 
-    private func parsed(_ text: String) -> Double? {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return nil }
-        return Double(trimmed)
+    private func readOnlyRow(_ label: String, value: Double, unit: String) -> some View {
+        HStack {
+            Text(label)
+                .helmType(.body)
+            Spacer()
+            Text("\(Self.format(value)) \(unit)")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+        .padding(HelmSpacing.sm)
+        .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
     }
 
     private static func format(_ value: Double) -> String {
-        String(Int(value.rounded()))
+        if value.rounded() == value {
+            return String(Int(value.rounded()))
+        }
+        return String(format: "%.1f", value)
     }
 }

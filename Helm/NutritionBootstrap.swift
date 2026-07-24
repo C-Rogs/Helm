@@ -11,8 +11,13 @@ enum NutritionBootstrap {
 
     @MainActor
     static var photoMealService: PhotoMealService? {
-        guard let provider = CoachBootstrap.liveGeminiProvider else { return nil }
-        return PhotoMealService(estimator: PhotoMacroEstimator(provider: provider))
+        let keyStore = APIKeyStore()
+        let router = MealVisionRouter(apiKeyStore: keyStore)
+        guard router.isAvailable else { return nil }
+        return PhotoMealService(
+            estimator: PhotoMacroEstimator(router: router),
+            localStore: PhotoMealLocalStore(store: PersistenceBootstrap.persistenceStore)
+        )
     }
 
     @MainActor

@@ -112,12 +112,14 @@ public enum HealthKitDayAggregator {
         calendar: Calendar,
         cutoff: DayCutoff = .default
     ) -> [BodyComposition] {
-        samples.map { sample in
+        samples.compactMap { sample in
+            let kilograms = kilograms(from: sample)
+            guard kilograms > 1 else { return nil }
             let helmDay = HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
             return BodyComposition(
                 id: sample.id,
                 helmDay: helmDay,
-                mass: Mass(kilograms: kilograms(from: sample)),
+                mass: Mass(kilograms: kilograms),
                 measuredAt: sample.start
             )
         }

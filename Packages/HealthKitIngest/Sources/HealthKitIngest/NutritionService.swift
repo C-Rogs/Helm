@@ -28,15 +28,11 @@ public final class NutritionService {
 
     public func refresh(prescriptionSummary: PrescribedSessionSummary?) async {
         let day = today()
-        do {
-            let snapshot = try await engine.snapshot(
-                for: day,
-                prescriptionSummary: prescriptionSummary
-            )
-            state = .ready(snapshot)
-        } catch {
-            state = .loading
-        }
+        let snapshot = await engine.snapshot(
+            for: day,
+            prescriptionSummary: prescriptionSummary
+        )
+        state = .ready(snapshot)
     }
 
     public func recomputeAfterIngest(affectedFamilies: Set<HealthKitMetricFamily>) async {

@@ -72,7 +72,7 @@ final class PhotoMealController {
 
     func confirm(estimate: MealEstimate, name: String) async {
         guard let service else {
-            phase = .failed("Add your Gemini API key in Settings to log meals from photos.")
+            phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
             return
         }
 
@@ -99,7 +99,7 @@ final class PhotoMealController {
 
     private func estimate(imageJPEGData: Data, preview: UIImage?) async {
         guard let service else {
-            phase = .failed("Add your Gemini API key in Settings to log meals from photos.")
+            phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
             return
         }
 

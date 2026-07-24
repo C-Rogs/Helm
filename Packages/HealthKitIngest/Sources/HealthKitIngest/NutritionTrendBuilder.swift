@@ -24,7 +24,7 @@ enum NutritionTrendBuilder {
             inputs.append(
                 NutritionTrendDayInput(
                     helmDay: day,
-                    bodyMassKg: bodyMassKg,
+                    bodyMassKg: bodyMassKg.flatMap { $0 > 1 ? $0 : nil },
                     loggedIntakeKcal: loggedIntakeKcal
                 )
             )

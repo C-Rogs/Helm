@@ -48,6 +48,12 @@ struct NutritionMacroProgressRow: View {
     }
 
     private var valueText: String {
+        guard target > 0 else {
+            if let actual {
+                return "\(actual) \(unit) logged"
+            }
+            return "Target pending"
+        }
         let actualText = actual.map { "\($0)" } ?? "-"
         return "\(actualText) / \(target) \(unit)"
     }
@@ -76,6 +82,21 @@ struct NutritionDaySummaryCard: View {
     let snapshot: NutritionDaySnapshot
     var showTrend: Bool = false
 
+    private var targets: MacroTargets {
+        guard snapshot.targets.caloriesKcal > 0, snapshot.targets.proteinGrams > 0 else {
+            return NutritionKit.targets(
+                for: NutritionTargetContext(
+                    bodyMassKg: NutritionKit.resolvedBodyMassKg(nil),
+                    dayType: snapshot.dayType,
+                    loggedDay: snapshot.actual
+                ),
+                phase: PhaseGoal(phase: snapshot.phase),
+                trend: NutritionTrendState()
+            )
+        }
+        return snapshot.targets
+    }
+
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
@@ -84,32 +105,32 @@ struct NutritionDaySummaryCard: View {
                 NutritionMacroProgressRow(
                     label: "Calories",
                     actual: actualCalories,
-                    target: snapshot.targets.caloriesKcal,
+                    target: targets.caloriesKcal,
                     unit: "kcal"
                 )
 
                 NutritionMacroProgressRow(
                     label: "Protein",
                     actual: actualProtein,
-                    target: snapshot.targets.proteinGrams,
+                    target: targets.proteinGrams,
                     unit: "g"
                 )
 
                 NutritionMacroProgressRow(
                     label: "Carbohydrates",
                     actual: actualCarbs,
-                    target: snapshot.targets.carbohydrateGrams,
+                    target: targets.carbohydrateGrams,
                     unit: "g"
                 )
 
                 NutritionMacroProgressRow(
                     label: "Fat",
                     actual: actualFat,
-                    target: snapshot.targets.fatGrams,
+                    target: targets.fatGrams,
                     unit: "g"
                 )
 
-                if let gap = snapshot.targets.macroGapKilocalories,
+                if let gap = targets.macroGapKilocalories,
                    gap > MacroGapCalculator.significanceThresholdKcal {
                     NutritionAlcoholGapRow(gapKilocalories: gap)
                 }
@@ -122,12 +143,29 @@ struct NutritionDaySummaryCard: View {
     }
 
     private var header: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Today")
-                .helmType(.label)
-            Spacer()
-            Text(snapshot.dayType.rawValue.capitalized)
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            HStack(alignment: .firstTextBaseline) {
+                Text("Today")
+                    .helmType(.label)
+                Spacer()
+                Text(snapshot.dayType.rawValue.capitalized)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
+
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
+                Text("\(targets.caloriesKcal)")
+                    .helmType(.bigNumber)
+                Text("kcal target")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                Spacer()
+                Text(snapshot.phase.label)
+                    .helmType(.monoTag, color: HelmColor.accent)
+            }
+
+            if snapshot.targets.caloriesKcal <= 0 {
+                Text("Recovered default targets. Tap Refresh if numbers look wrong.")
+                    .helmType(.body, color: HelmColor.depleted)
+            }
         }
     }
 
@@ -178,6 +216,16 @@ struct NutritionDaySummaryCard: View {
 
     private var actualFat: Int? {
         snapshot.actual?.totalFatGrams.map { Int($0.rounded()) }
+    }
+}
+
+private extension TrainingPhase {
+    var label: String {
+        switch self {
+        case .cut: "Cut"
+        case .maintain: "Maintain"
+        case .gain: "Gain"
+        }
     }
 }
 

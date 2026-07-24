@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import Persistence
 import Testing
 @testable import HealthKitIngest
 
@@ -28,9 +29,11 @@ struct PhotoMealServiceTests {
             fatG: 18,
             confidence: .medium
         )
+        let store = try PersistenceStore.inMemory()
         let service = PhotoMealService(
             estimator: StubMealMacroEstimator(estimate: estimate),
-            writer: MealHealthKitWriter(store: MockHealthKitStoreClient())
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: PhotoMealLocalStore(store: store)
         )
 
         let decoded = try await service.estimate(from: fixtureJPEGData)
@@ -58,5 +61,13 @@ struct PhotoMealServiceTests {
                 ownBundleID: HealthKitIngest.defaultOwnBundleID
             ) == false
         )
+
+        let loggedDay = HelmDay.day(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let nutritionDay = try store.nutrition.fetchDay(helmDay: loggedDay)
+        #expect(nutritionDay?.totalEnergy?.kilocalories == 700)
+        let meals = try store.nutrition.fetchMeals(for: loggedDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].source == .photo)
+        #expect(meals[0].name == "Large chicken bowl")
     }
 }

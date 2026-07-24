@@ -8,6 +8,7 @@ struct NutritionView: View {
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
     @Bindable private var chatController = ChatBootstrap.controller
     @State private var photoMealController = PhotoMealController()
+    @State private var isRefreshing = false
 
     var body: some View {
         NavigationStack {
@@ -34,10 +35,22 @@ struct NutritionView: View {
             .helmScreenBackground()
             .navigationTitle("Nutrition")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await refreshTargets() }
+                    } label: {
+                        if isRefreshing {
+                            ProgressView()
+                        } else {
+                            Label("Refresh", systemImage: "arrow.clockwise")
+                        }
+                    }
+                    .disabled(isRefreshing)
+                }
+            }
             .task {
-                await nutritionService.refresh(
-                    prescriptionSummary: prescriptionService.state.summary
-                )
+                await refreshTargets()
             }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
@@ -81,6 +94,15 @@ struct NutritionView: View {
                 }
             )
         }
+    }
+
+    @MainActor
+    private func refreshTargets() async {
+        isRefreshing = true
+        defer { isRefreshing = false }
+        await nutritionService.refresh(
+            prescriptionSummary: prescriptionService.state.summary
+        )
     }
 
     @ViewBuilder

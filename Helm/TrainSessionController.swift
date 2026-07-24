@@ -57,7 +57,7 @@ final class TrainSessionController {
     private var previousRestRemaining: Int?
     private var wasRestRunningOnBackground = false
     private var trackedRestTimerID: String?
-    private var suppressPrescriptionAutoStart = false
+    private let prescriptionAutoStartStore: PrescriptionAutoStartStore
 
     init(
         store: ActiveSessionStore,
@@ -65,7 +65,8 @@ final class TrainSessionController {
         sideEffects: WorkoutSessionSideEffects,
         prescriptionService: PrescriptionService,
         inSessionCoach: InSessionCoachService? = nil,
-        providerPreferences: ProviderPreferencesStore = ProviderPreferencesStore()
+        providerPreferences: ProviderPreferencesStore = ProviderPreferencesStore(),
+        prescriptionAutoStartStore: PrescriptionAutoStartStore = PrescriptionAutoStartStore()
     ) {
         self.store = store
         self.persistence = persistence
@@ -73,6 +74,7 @@ final class TrainSessionController {
         self.prescriptionService = prescriptionService
         self.inSessionCoach = inSessionCoach ?? InSessionCoachService(persistence: persistence)
         self.providerPreferences = providerPreferences
+        self.prescriptionAutoStartStore = prescriptionAutoStartStore
     }
 
     var snapshot: ActiveSessionSnapshot? {
@@ -91,7 +93,6 @@ final class TrainSessionController {
 
     /// App-launch recovery: restore an in-progress session or auto-start today's prescription once.
     func recoverOnLaunch() async {
-        suppressPrescriptionAutoStart = false
         await recoverPersistedSession()
         if let snapshot = store.snapshot {
             await sideEffects.onSessionStarted(snapshot)
@@ -170,6 +171,7 @@ final class TrainSessionController {
             exerciseTargets = [:]
             resetCoachSessionState()
             await refreshMetadata()
+            prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
@@ -205,7 +207,7 @@ final class TrainSessionController {
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
-            suppressPrescriptionAutoStart = true
+            prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             await refreshMetadata()
             await refreshPrescriptionState()
             if let sessionID {
@@ -502,10 +504,14 @@ final class TrainSessionController {
     }
 
     private func tryAutoStartTodaysPrescription() async {
-        guard !suppressPrescriptionAutoStart else { return }
+        guard prescriptionAutoStartStore.shouldAutoStart(for: todayHelmDay()) else { return }
         guard !store.hasActiveSession else { return }
         guard let summary = prescriptionSummary, !summary.exercises.isEmpty else { return }
         await startTodaysPrescription()
+    }
+
+    private func todayHelmDay() -> HelmDay {
+        HelmDay.day(for: .now, calendar: .current)
     }
 
     private func applyPrescriptionTargets(from prescription: SessionPrescription) {

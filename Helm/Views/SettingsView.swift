@@ -48,9 +48,6 @@ struct SettingsView: View {
                         CoachKeyOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Coach API Key")
                     }
-                    NavigationLink("Training Plan") {
-                        TrainingPlanOnboardingStepView(showsFlowControls: false)
-                    }
                     NavigationLink("Health Import") {
                         BackfillOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Health Import")

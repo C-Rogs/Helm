@@ -1,0 +1,13 @@
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{\n  \"schemaVersion\": \"meal_decomposition.v1\",\n  \"mealDescription\": \"Chicken rice bowl\",\n  \"items\": [\n    {\n      \"name\": \"grilled chicken breast\",\n      \"estimatedGrams\": 140,\n      \"confidence\": \"high\"\n    },\n    {\n      \"name\": \"white rice cooked\",\n      \"estimatedGrams\": 180,\n      \"confidence\": \"medium\"\n    }\n  ],\n  \"implicitFats\": [\n    {\n      \"name\": \"cooking oil\",\n      \"estimatedGrams\": 8,\n      \"confidence\": \"low\"\n    }\n  ],\n  \"portionNotes\": \"Half standard dinner plate\"\n}\n"
+          }
+        ]
+      }
+    }
+  ]
+}

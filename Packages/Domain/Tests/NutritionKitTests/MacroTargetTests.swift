@@ -53,4 +53,15 @@ struct MacroTargetTests {
 
         #expect(aggressiveCut.caloriesKcal < defaultCut.caloriesKcal)
     }
+
+    @Test("missing body mass and zero stored TDEE still yield a calorie target")
+    func coldStartCalorieTarget() {
+        let targets = NutritionKit.targets(
+            for: NutritionTargetContext(bodyMassKg: 0, dayType: .training),
+            phase: PhaseGoal(phase: .maintain),
+            trend: NutritionTrendState(estimatedTDEEKcal: 0)
+        )
+
+        #expect(targets.caloriesKcal >= 1_200)
+    }
 }

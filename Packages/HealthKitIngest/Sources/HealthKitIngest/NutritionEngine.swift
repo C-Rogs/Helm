@@ -47,33 +47,48 @@ public actor NutritionEngine {
         self.cutoff = cutoff
     }
 
+    /// Always returns a snapshot with non-zero macro targets when training plan data is readable.
     public func snapshot(
         for day: HelmDay,
         prescriptionSummary: PrescribedSessionSummary?
-    ) throws -> NutritionDaySnapshot {
-        let settings = try persistence.trainingPlan.load()
-        let actual = try persistence.nutrition.fetchDay(helmDay: day)
-        let bodyMassKg = try persistence.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
+    ) -> NutritionDaySnapshot {
+        let settings = (try? persistence.trainingPlan.load()) ?? .default
+        let storedDay = try? persistence.nutrition.fetchDay(helmDay: day)
+        let dailyMetrics = try? persistence.dailyMetrics.fetch(helmDay: day)
+        let actual = NutritionActualResolver.resolve(
+            helmDay: day,
+            storedDay: storedDay,
+            dailyMetrics: dailyMetrics
+        )
+        let bodyMassKg = try? persistence.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
+        let safeBodyMassKg = NutritionKit.resolvedBodyMassKg(bodyMassKg)
         let targetMuscles = targetMuscles(for: day, emphasis: settings.phaseGoal.emphasis)
-        let mesocycleState = try loadMesocycleState()
+        let mesocycleState = loadMesocycleState()
         let dayType = NutritionDayTypeResolver.resolve(
             prescriptionSummary: prescriptionSummary,
             targetMuscles: targetMuscles,
             mesocycleState: mesocycleState
         )
 
-        var trend = try trendStore.load()
-        trend = try NutritionTrendBuilder.updatedTrend(
+        var trend = trendStore.loadSafely()
+        NutritionKit.healTrendState(&trend, bodyMassKg: safeBodyMassKg)
+        var workingTrend = trend
+        if let updated = try? NutritionTrendBuilder.updatedTrend(
             from: persistence,
-            state: &trend,
+            state: &workingTrend,
             through: day,
             calendar: calendar
-        )
-        try trendStore.save(trend)
+        ) {
+            trend = updated
+        }
+        NutritionKit.healTrendState(&trend, bodyMassKg: safeBodyMassKg)
+        try? trendStore.save(trend)
 
-        let targets = NutritionKit.targets(
-            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType, loggedDay: actual),
+        let targets = Self.ensuredTargets(
+            bodyMassKg: safeBodyMassKg,
+            dayType: dayType,
             phase: settings.phaseGoal,
+            loggedDay: actual,
             trend: trend
         )
 
@@ -88,7 +103,7 @@ public actor NutritionEngine {
     }
 
     public func refreshTrend(through day: HelmDay) throws {
-        var trend = try trendStore.load()
+        var trend = trendStore.loadSafely()
         trend = try NutritionTrendBuilder.updatedTrend(
             from: persistence,
             state: &trend,
@@ -98,13 +113,50 @@ public actor NutritionEngine {
         try trendStore.save(trend)
     }
 
+    private static func ensuredTargets(
+        bodyMassKg: Double,
+        dayType: NutritionDayType,
+        phase: PhaseGoal,
+        loggedDay: NutritionDay?,
+        trend: NutritionTrendState
+    ) -> MacroTargets {
+        let context = NutritionTargetContext(
+            bodyMassKg: bodyMassKg,
+            dayType: dayType,
+            loggedDay: loggedDay
+        )
+        let primary = NutritionKit.targets(for: context, phase: phase, trend: trend)
+        if primary.caloriesKcal > 0, primary.proteinGrams > 0 {
+            return primary
+        }
+
+        let fallback = NutritionKit.targets(
+            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType, loggedDay: loggedDay),
+            phase: phase,
+            trend: NutritionTrendState()
+        )
+        if fallback.caloriesKcal > 0, fallback.proteinGrams > 0 {
+            return fallback
+        }
+
+        return NutritionKit.targets(
+            for: NutritionTargetContext(
+                bodyMassKg: NutritionKit.resolvedBodyMassKg(nil),
+                dayType: dayType,
+                loggedDay: loggedDay
+            ),
+            phase: PhaseGoal(phase: .maintain),
+            trend: NutritionTrendState()
+        )
+    }
+
     private func targetMuscles(for day: HelmDay, emphasis: String?) -> [MuscleGroup] {
         SessionSplitPlanner.targetMuscles(for: day, emphasis: emphasis, calendar: calendar)
     }
 
-    private func loadMesocycleState() throws -> MesocycleState? {
+    private func loadMesocycleState() -> MesocycleState? {
         guard
-            let json = try persistence.plan.loadMesocycleStateJSON(),
+            let json = try? persistence.plan.loadMesocycleStateJSON(),
             let data = json.data(using: .utf8)
         else {
             return nil

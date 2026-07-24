@@ -80,6 +80,60 @@ public struct MealEstimatePayload: Codable, Sendable, Equatable {
     }
 }
 
+public struct MealDecompositionPayload: Codable, Sendable, Equatable {
+    public enum Confidence: String, Codable, Sendable, Equatable {
+        case low
+        case medium
+        case high
+    }
+
+    public struct Item: Codable, Sendable, Equatable {
+        public let name: String
+        public let estimatedGrams: Double
+        public let confidence: Confidence
+
+        public init(name: String, estimatedGrams: Double, confidence: Confidence) {
+            self.name = name
+            self.estimatedGrams = estimatedGrams
+            self.confidence = confidence
+        }
+    }
+
+    public let schemaVersion: String
+    public let mealDescription: String
+    public let items: [Item]
+    public let implicitFats: [Item]
+    public let portionNotes: String?
+
+    public init(
+        schemaVersion: String,
+        mealDescription: String,
+        items: [Item],
+        implicitFats: [Item] = [],
+        portionNotes: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.mealDescription = mealDescription
+        self.items = items
+        self.implicitFats = implicitFats
+        self.portionNotes = portionNotes
+    }
+}
+
+public struct MealDecomposition: Sendable, Equatable {
+    public let mealDescription: String
+    public let items: [MealDecompositionPayload.Item]
+    public let implicitFats: [MealDecompositionPayload.Item]
+    public let portionNotes: String?
+
+    public init(payload: MealDecompositionPayload) {
+        mealDescription = payload.mealDescription
+        items = payload.items
+        implicitFats = payload.implicitFats
+        portionNotes = payload.portionNotes
+    }
+}
+
 public struct MorningBriefPayload: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let narration: String

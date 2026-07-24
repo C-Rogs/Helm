@@ -17,6 +17,7 @@ public struct MealWriteRequest: Sendable {
     public let proteinG: Double
     public let carbsG: Double
     public let fatG: Double
+    public let lineItems: [MealLineItem]
 
     public init(
         mealID: String,
@@ -25,7 +26,8 @@ public struct MealWriteRequest: Sendable {
         caloriesKcal: Double,
         proteinG: Double,
         carbsG: Double,
-        fatG: Double
+        fatG: Double,
+        lineItems: [MealLineItem] = []
     ) {
         self.mealID = mealID
         self.name = name
@@ -34,6 +36,7 @@ public struct MealWriteRequest: Sendable {
         self.proteinG = proteinG
         self.carbsG = carbsG
         self.fatG = fatG
+        self.lineItems = lineItems
     }
 
     public init(estimate: MealEstimate, name: String, loggedAt: Date, mealID: String = UUID().uuidString) {
@@ -44,7 +47,8 @@ public struct MealWriteRequest: Sendable {
             caloriesKcal: estimate.caloriesKcal,
             proteinG: estimate.proteinG,
             carbsG: estimate.carbsG,
-            fatG: estimate.fatG
+            fatG: estimate.fatG,
+            lineItems: estimate.lineItems
         )
     }
 }

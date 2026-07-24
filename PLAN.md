@@ -660,6 +660,31 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Depends on**: M9.2, M4.2, M1.3.
 - **Acceptance**: fixture images decode to editable estimates; confirmed meals write through the HealthKit path and the dedup test proves no re-ingest. Real-food accuracy is DT5.
 
+#### M9.4 USDA reference bundle + NutritionLookup
+- **Goal**: deterministic macro math from identified foods.
+- **Scope**: `NutritionKit` package additions: bundle USDA FoodData Central SR Legacy subset (~1,500–2,500 athlete-relevant foods) as compressed JSON in `NutritionKit/Resources/`; `NutritionFoodRecord` (fdc_id, description, per-100g kcal/P/C/F); `NutritionLookup` with normalized string match + synonym table; `MacroAggregator.sum(lineItems:) -> MealEstimate` (totals + confidence = min item confidence). Extend `MealEstimate` + `MealLineItem` in Core.
+- **Depends on**: M9.3.
+- **Acceptance**: lookup resolves ≥90% of a 20-item fixture list; aggregator tests pass; no network; bundle < 5 MB.
+
+#### M9.5 Grounded photo pipeline
+- **Goal**: replace direct macro hallucination with decompose → lookup → sum.
+- **Scope**: `meal_decomposition.v1` schema + prompt versions in CoachLLM; `MealVisionProviding` protocol; `GeminiMealVisionProvider` (stronger free vision model pin, not Flash-Lite); `GroundedPhotoMacroEstimator` (vision → lookup each item + implicitFats → aggregate → `MealEstimate` with `lineItems`); unresolved items use conservative generic fallback with `.low` confidence. Deprecate direct `GeminiProvider.estimateMacros` production path; redirect `PhotoMacroEstimator` to grounded estimator. Fixture tests for full pipeline (recorded decomposition JSON → lookup → totals).
+- **Depends on**: M9.4, M4.2.
+- **Acceptance**: fixture images produce line items + totals; no live API in tests; `meal_estimate.v1` HealthKit write path unchanged.
+
+#### M9.6 OpenRouter vision + confirm sheet v2
+- **Goal**: free OpenRouter path for TestFlight; user can see and edit ingredients.
+- **Scope**: `OpenRouterMealVisionProvider` (OpenAI-compatible `/api/v1/chat/completions`, `response_format: json_schema`, base64 image; never log URLs); `MealVisionRouter` (OpenRouter key → `google/gemma-3-27b-it:free`, else Gemini key → `gemini-2.5-flash`); wire in `NutritionBootstrap`. `PhotoMealConfirmSheet` v2: expandable line-item rows (name, grams, item kcal); totals read-only derived from edits; editing grams recomputes via `MacroAggregator` on-device. `PhotoMealLocalStore` persists line items for audit. Optional Settings "Photo model" row (Auto / Gemini / OpenRouter) behind Advanced.
+- **Depends on**: M9.5, M11.2.
+- **Acceptance**: router selects backend from Keychain; confirm sheet edits grams and recomputes totals; OpenRouter fixture tests pass; build + lint clean.
+
+#### M9.7 LiDAR portion assist (optional, post-DT5)
+- **Goal**: portion accuracy without extra API calls.
+- **Scope**: on Pro iPhones, attach depth metadata or scale factor from `AVDepthData` / ARKit to vision prompt context; or multiply gram estimates by depth-derived volume ratio.
+- **Depends on**: M9.6, DT5 photo accuracy feedback.
+- **Acceptance**: DT5 subset shows improved gram estimates vs RGB-only on same meals.
+- **Status**: deferred until DT5 photo feedback.
+
 ### M10 Analytics and methodology
 
 #### M10.1 Trends charts
@@ -803,7 +828,8 @@ Targeted fixes from Cameron's DT3 session.
 - The repeatable overnight battery test passes against the DT1 baseline (signposts reviewed for observer churn).
 
 ### DT5 after M11.1: nutrition, analytics, full regression
-- Photograph real meals (plate, packaged, mixed): estimates are editable, confirmed meals appear in Apple Health and are not double-counted; weekly targets self-correct against real trend weight; an alcohol evening surfaces as gap, not a carb overshoot.
+- Photograph plate, packaged, and mixed meals: confirm sheet shows ingredient breakdown (not one blob); totals change when grams are edited (on-device recompute); same meal re-photographed within ~±25% kcal (consumer-grade bar).
+- Confirmed meals appear in Apple Health and are not double-counted; weekly targets self-correct against real trend weight; an alcohol evening surfaces as gap, not a carb overshoot.
 - All five Trends charts render from real history at acceptable scroll performance; methodology negotiation re-plans.
 - Backwards compat: schema-v2 export byte-checks against bioharvest for the same day; copy-to-Gemini works; Share Extension imports.
 - Full regression sweep of DT2/DT3 flows plus a final battery check.

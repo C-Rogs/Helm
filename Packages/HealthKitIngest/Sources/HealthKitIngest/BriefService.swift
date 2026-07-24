@@ -50,7 +50,7 @@ public actor BriefEngine {
         attemptNarration: Bool
     ) async throws -> StoredDailyBrief {
         let session = try? await prescriptionEngine.computeSession(for: day, readiness: readiness)
-        let nutritionSnapshot = try await nutritionEngine.snapshot(
+        let nutritionSnapshot = await nutritionEngine.snapshot(
             for: day,
             prescriptionSummary: prescriptionSummary
         )

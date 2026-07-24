@@ -453,27 +453,29 @@ struct DashboardView: View {
     private var nutritionTargetsCard: some View {
         switch nutritionService.state {
         case .loading:
-            nutritionCardShell {
+            nutritionNavigationLink {
                 Text("Loading nutrition…")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         case let .ready(snapshot):
-            NavigationLink {
-                NutritionView()
-            } label: {
-                nutritionCardShell {
-                    compactNutritionContent(snapshot: snapshot)
-                }
+            nutritionNavigationLink {
+                compactNutritionContent(snapshot: snapshot)
             }
-            .buttonStyle(.plain)
-            .explainable(
-                ExplainableMetricMappers.nutrition(
-                    snapshot,
-                    coachAvailable: chatController.isCoachAvailable
-                ),
-                onAskCoach: chatController.requestCoachHandoff(prompt:)
-            )
         }
+    }
+
+    private func nutritionNavigationLink<Content: View>(
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        NavigationLink {
+            NutritionView()
+        } label: {
+            nutritionCardShell {
+                content()
+            }
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
     }
 
     private func nutritionCardShell<Content: View>(@ViewBuilder content: () -> Content) -> some View {

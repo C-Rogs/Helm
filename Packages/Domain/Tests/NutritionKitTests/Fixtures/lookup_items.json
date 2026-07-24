@@ -1,0 +1,102 @@
+[
+  {
+    "name": "grilled chicken breast",
+    "grams": 140,
+    "confidence": "high"
+  },
+  {
+    "name": "white rice cooked",
+    "grams": 180,
+    "confidence": "medium"
+  },
+  {
+    "name": "cooking oil",
+    "grams": 8,
+    "confidence": "low"
+  },
+  {
+    "name": "salmon grilled",
+    "grams": 150,
+    "confidence": "high"
+  },
+  {
+    "name": "brown rice",
+    "grams": 160,
+    "confidence": "medium"
+  },
+  {
+    "name": "egg whole",
+    "grams": 50,
+    "confidence": "high"
+  },
+  {
+    "name": "greek yogurt",
+    "grams": 170,
+    "confidence": "high"
+  },
+  {
+    "name": "oatmeal",
+    "grams": 240,
+    "confidence": "medium"
+  },
+  {
+    "name": "banana",
+    "grams": 120,
+    "confidence": "high"
+  },
+  {
+    "name": "broccoli",
+    "grams": 90,
+    "confidence": "high"
+  },
+  {
+    "name": "sweet potato",
+    "grams": 200,
+    "confidence": "medium"
+  },
+  {
+    "name": "ground beef",
+    "grams": 120,
+    "confidence": "medium"
+  },
+  {
+    "name": "pasta cooked",
+    "grams": 200,
+    "confidence": "medium"
+  },
+  {
+    "name": "avocado",
+    "grams": 80,
+    "confidence": "high"
+  },
+  {
+    "name": "whey protein",
+    "grams": 30,
+    "confidence": "high"
+  },
+  {
+    "name": "almond butter",
+    "grams": 20,
+    "confidence": "medium"
+  },
+  {
+    "name": "cottage cheese",
+    "grams": 150,
+    "confidence": "high"
+  },
+  {
+    "name": "tuna canned",
+    "grams": 100,
+    "confidence": "high"
+  },
+  {
+    "name": "olive oil",
+    "grams": 10,
+    "confidence": "low"
+  },
+  {
+    "name": "mixed greens salad",
+    "grams": 60,
+    "confidence": "medium"
+  }
+]

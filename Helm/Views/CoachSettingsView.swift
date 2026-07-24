@@ -11,6 +11,7 @@ struct CoachSettingsView: View {
     @State private var isSaving = false
     @State private var isSavingOpenRouter = false
     @State private var isProvisioningOpenRouter = false
+    @State private var photoVisionPreferences = MealVisionPreferencesStore()
 
     private let keyStore = APIKeyStore()
 
@@ -52,6 +53,24 @@ struct CoachSettingsView: View {
                         .font(HelmTypography.caption)
                         .foregroundStyle(HelmColor.fgSecondary)
                 }
+            }
+
+            Section("Photo meal vision") {
+                Picker("Photo model", selection: Binding(
+                    get: { photoVisionPreferences.backendPreference },
+                    set: { newValue in
+                        photoVisionPreferences.backendPreference = newValue
+                        HapticEngine.shared.play(.selection)
+                    }
+                )) {
+                    Text("Auto").tag(MealVisionBackendPreference.auto)
+                    Text("Gemini").tag(MealVisionBackendPreference.gemini)
+                    Text("OpenRouter").tag(MealVisionBackendPreference.openRouter)
+                }
+
+                Text("Auto prefers OpenRouter when a key is present, otherwise Gemini. Macro math stays on-device.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
             }
 
             Section("OpenRouter (TestFlight)") {

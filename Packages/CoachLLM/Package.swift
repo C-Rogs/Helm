@@ -10,13 +10,15 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../Core"),
-        .package(path: "../Diagnostics")
+        .package(path: "../Diagnostics"),
+        .package(path: "../Domain")
     ],
     targets: [
         .target(
             name: "CoachLLM",
             dependencies: [
                 "Core",
+                .product(name: "NutritionKit", package: "Domain"),
                 .product(name: "Diagnostics", package: "Diagnostics", condition: .when(platforms: [.iOS]))
             ]
         ),
