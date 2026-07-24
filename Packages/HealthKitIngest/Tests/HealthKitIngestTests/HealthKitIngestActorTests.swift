@@ -68,7 +68,7 @@ struct HealthKitIngestActorTests {
             quantity: HKQuantity(unit: .kilocalorie(), doubleValue: 500),
             start: loggedAt,
             end: loggedAt,
-            uuid: sampleID
+            metadata: [HKMetadataKeyExternalUUID: sampleID.uuidString]
         )
         mockStore.setFetchResult(
             AnchoredFetchResult(addedSamples: [sample], deletedObjectIDs: [], newAnchor: nil),

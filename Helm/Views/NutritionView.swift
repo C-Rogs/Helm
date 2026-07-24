@@ -26,6 +26,12 @@ struct NutritionView: View {
             NutritionBootstrap.refreshNutrition()
         }
     )
+    @State private var mealEditController = MealEditController(
+        manualMealService: NutritionBootstrap.manualMealService,
+        onChanged: {
+            NutritionBootstrap.refreshNutrition()
+        }
+    )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
     @State private var isFABExpanded = false
@@ -59,6 +65,7 @@ struct NutritionView: View {
                 photoMealController: photoMealController,
                 manualFoodLogController: manualFoodLogController,
                 mealActionsController: mealActionsController,
+                mealEditController: mealEditController,
                 showsPhotoOptions: $showsPhotoOptions,
                 showsTemplates: $showsTemplates,
                 currentHelmDay: currentHelmDay,
@@ -181,6 +188,9 @@ struct NutritionView: View {
                     },
                     onSaveTemplate: {
                         mealActionsController.beginSaveTemplate(for: bucket)
+                    },
+                    onMealTap: { display in
+                        mealEditController.beginEdit(display)
                     }
                 )
             }
@@ -220,6 +230,7 @@ private struct NutritionLoggingSheets: ViewModifier {
     let photoMealController: PhotoMealController
     let manualFoodLogController: ManualFoodLogController
     let mealActionsController: NutritionMealActionsController
+    let mealEditController: MealEditController
     @Binding var showsPhotoOptions: Bool
     @Binding var showsTemplates: Bool
     let currentHelmDay: HelmDay?
@@ -343,6 +354,45 @@ private struct NutritionLoggingSheets: ViewModifier {
                     }
                 }
             )
+            .sheet(item: mealEditBinding) { display in
+                MealEditSheet(
+                    display: display,
+                    isSaving: mealEditController.isSaving,
+                    onSave: { name, lineItems, quickAddKcal in
+                        Task {
+                            await mealEditController.save(
+                                name: name,
+                                lineItems: lineItems,
+                                quickAddKcal: quickAddKcal
+                            )
+                            onMealsChanged()
+                        }
+                    },
+                    onDelete: {
+                        Task {
+                            await mealEditController.delete()
+                            onMealsChanged()
+                        }
+                    },
+                    onCancel: {
+                        mealEditController.cancel()
+                    }
+                )
+            }
+            .alert(
+                "Edit meal",
+                isPresented: mealEditErrorBinding,
+                actions: {
+                    Button("OK", role: .cancel) {
+                        mealEditController.dismissError()
+                    }
+                },
+                message: {
+                    if let errorMessage = mealEditController.errorMessage {
+                        Text(errorMessage)
+                    }
+                }
+            )
     }
 
     private var saveTemplateBinding: Binding<Bool> {
@@ -378,6 +428,28 @@ private struct NutritionLoggingSheets: ViewModifier {
             set: { isPresented in
                 if !isPresented {
                     mealActionsController.dismissError()
+                }
+            }
+        )
+    }
+
+    private var mealEditBinding: Binding<LoggedMealDisplay?> {
+        Binding(
+            get: { mealEditController.selectedMeal },
+            set: { isPresented in
+                if isPresented == nil {
+                    mealEditController.cancel()
+                }
+            }
+        )
+    }
+
+    private var mealEditErrorBinding: Binding<Bool> {
+        Binding(
+            get: { mealEditController.errorMessage != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealEditController.dismissError()
                 }
             }
         )

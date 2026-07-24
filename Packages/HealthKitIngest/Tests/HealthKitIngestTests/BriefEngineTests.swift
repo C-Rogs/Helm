@@ -49,9 +49,9 @@ struct BriefEngineTests {
         try seedCatalog(in: store)
         try store.trainingPlan.save(.default)
 
-        var narrationCalls = 0
+        let narrationCounter = LockedCounter()
         let narrator = MorningBriefNarrator { _ in
-            narrationCalls += 1
+            narrationCounter.increment()
             return CoachStructuredArtefact(
                 payload: MorningBriefPayload(
                     schemaVersion: CoachOutputSchemaVersion.briefV1.rawValue,
@@ -85,7 +85,7 @@ struct BriefEngineTests {
             attemptNarration: true
         )
         #expect(first.source == .coach)
-        #expect(narrationCalls == 1)
+        #expect(narrationCounter.value == 1)
 
         let cached = try await engine.ensureBrief(
             for: day,
@@ -94,7 +94,7 @@ struct BriefEngineTests {
             attemptNarration: true
         )
         #expect(cached == first)
-        #expect(narrationCalls == 1)
+        #expect(narrationCounter.value == 1)
 
         let depleted = readinessScore(score: 28, band: .depleted)
         let adjustedSummary = try await prescriptionEngine.dashboardState(for: day, readiness: depleted)
@@ -110,7 +110,7 @@ struct BriefEngineTests {
             attemptNarration: true
         )
         #expect(refreshed.inputFingerprint != first.inputFingerprint)
-        #expect(narrationCalls == 2)
+        #expect(narrationCounter.value == 2)
     }
 
     @Test("offline narrator keeps engine-only brief")
@@ -188,5 +188,18 @@ struct BriefEngineTests {
             primaryMuscleGroup: "lats",
             isPickerDefault: true
         )
+    }
+}
+
+private final class LockedCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var count = 0
+
+    var value: Int {
+        lock.withLock { count }
+    }
+
+    func increment() {
+        lock.withLock { count += 1 }
     }
 }

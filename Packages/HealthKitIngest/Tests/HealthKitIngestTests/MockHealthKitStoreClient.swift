@@ -10,6 +10,8 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     private var observerHandlers: [String: @Sendable () -> Void] = [:]
     private(set) var backgroundDeliveryCalls: [(String, HKUpdateFrequency)] = []
     private(set) var authorizationRequested = false
+    private(set) var savedMealIDs: [String] = []
+    private(set) var deletedMealIDs: [String] = []
 
     func setAvailable(_ available: Bool) {
         lock.withLock { self.available = available }
@@ -99,6 +101,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
 
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
         lock.withLock {
+            savedMealIDs.append(request.mealID)
             let bundleID = HealthKitIngest.defaultOwnBundleID
             return SavedMealSamples(
                 mealID: request.mealID,
@@ -107,6 +110,13 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
                 carbohydrate: SavedMealSample(id: UUID(), sourceBundleID: bundleID),
                 fat: SavedMealSample(id: UUID(), sourceBundleID: bundleID)
             )
+        }
+    }
+
+    func deleteDietaryMeal(mealID: String) async throws {
+        lock.withLock {
+            deletedMealIDs.append(mealID)
+            savedMealIDs.removeAll { $0 == mealID }
         }
     }
 }

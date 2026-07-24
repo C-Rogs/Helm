@@ -67,6 +67,7 @@ struct FoodPortionDefaultsTests {
 @Suite("Manual food log flow")
 struct ManualFoodLogFlowTests {
     private let loggedAt = Date(timeIntervalSince1970: 1_700_000_000)
+    private let calendar = Calendar(identifier: .gregorian)
 
     @Test("search resolves fixture foods")
     func searchResolvesFixtureFoods() async throws {
@@ -116,7 +117,7 @@ struct ManualFoodLogFlowTests {
 
         #expect(saved.mealID == "barcode-flow-meal")
 
-        let helmDay = HelmDay.day(for: loggedAt)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
         let meals = try store.nutrition.fetchMeals(for: helmDay)
         #expect(meals.count == 1)
         #expect(meals[0].source == .barcode)

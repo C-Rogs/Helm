@@ -1,8 +1,11 @@
+import CoachLLM
 import Core
 import Foundation
 import Persistence
 import Testing
 @testable import HealthKitIngest
+
+private let testCalendar = Calendar(identifier: .gregorian)
 
 private struct StubMealMacroEstimator: MealMacroEstimating {
     let estimate: MealEstimate
@@ -62,7 +65,7 @@ struct PhotoMealServiceTests {
             ) == false
         )
 
-        let loggedDay = HelmDay.day(for: Date(timeIntervalSince1970: 1_700_000_000))
+        let loggedDay = HelmDay.day(for: Date(timeIntervalSince1970: 1_700_000_000), calendar: testCalendar)
         let nutritionDay = try store.nutrition.fetchDay(helmDay: loggedDay)
         #expect(nutritionDay?.totalEnergy?.kilocalories == 700)
         let meals = try store.nutrition.fetchMeals(for: loggedDay)

@@ -7,6 +7,7 @@ struct NutritionMealBucketSection: View {
     let meals: [LoggedMealDisplay]
     var onCopyToToday: (() -> Void)?
     var onSaveTemplate: (() -> Void)?
+    var onMealTap: ((LoggedMealDisplay) -> Void)?
 
     var body: some View {
         Card {
@@ -63,7 +64,7 @@ struct NutritionMealBucketSection: View {
 
     @ViewBuilder
     private func mealBlock(_ display: LoggedMealDisplay) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+        let content = VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             if meals.count > 1 || display.lineItems.count > 1 {
                 Text(display.meal.name)
                     .helmType(.body, color: HelmColor.fgSecondary)
@@ -84,6 +85,19 @@ struct NutritionMealBucketSection: View {
             }
         }
         .padding(.vertical, HelmSpacing.xxs)
+
+        if let onMealTap, MealEditController.isEditable(display.meal) {
+            Button {
+                onMealTap(display)
+            } label: {
+                content
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Edit \(display.meal.name)")
+        } else {
+            content
+        }
     }
 
     private var bucketTotalKcal: Int {

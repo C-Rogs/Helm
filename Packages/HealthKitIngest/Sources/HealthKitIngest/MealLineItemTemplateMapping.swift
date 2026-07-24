@@ -1,8 +1,8 @@
 import Core
 import Foundation
 
-enum MealLineItemTemplateMapping {
-    static func lineItem(from record: MealLineItemRecord) -> MealLineItem {
+public enum MealLineItemTemplateMapping {
+    public static func lineItem(from record: MealLineItemRecord) -> MealLineItem {
         MealLineItem(
             name: record.foodRef.displayName,
             grams: record.grams,
@@ -15,7 +15,7 @@ enum MealLineItemTemplateMapping {
         )
     }
 
-    static func record(from lineItem: MealLineItem, mealID: UUID, sortOrder: Int) -> MealLineItemRecord {
+    public static func record(from lineItem: MealLineItem, mealID: UUID, sortOrder: Int) -> MealLineItemRecord {
         MealLineItemRecord(
             mealID: mealID,
             foodRef: foodRef(from: lineItem),
@@ -29,7 +29,7 @@ enum MealLineItemTemplateMapping {
         )
     }
 
-    static func foodRef(from lineItem: MealLineItem) -> FoodProductRef {
+    public static func foodRef(from lineItem: MealLineItem) -> FoodProductRef {
         if let cacheKey = lineItem.usdaMatchID,
            let ref = FoodProductRef(cacheKey: cacheKey, displayName: lineItem.name) {
             return ref

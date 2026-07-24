@@ -68,7 +68,7 @@ struct BackfillServiceTests {
         )
 
         var firstProgress: BackfillProgress?
-        for await progress in service.run(window: window) {
+        for await progress in await service.run(window: window) {
             firstProgress = progress
         }
 
@@ -76,7 +76,7 @@ struct BackfillServiceTests {
         #expect(metrics?.restingHeartRate == 52)
         #expect(firstProgress?.isComplete == true)
 
-        for await progress in service.run(window: window) {
+        for await progress in await service.run(window: window) {
             #expect(progress.isComplete == true)
         }
 
@@ -103,7 +103,7 @@ struct BackfillServiceTests {
             calendar: calendar
         )
 
-        for await progress in service.run(window: window) {
+        for await progress in await service.run(window: window) {
             #expect(progress.totalChunks == 2)
         }
 

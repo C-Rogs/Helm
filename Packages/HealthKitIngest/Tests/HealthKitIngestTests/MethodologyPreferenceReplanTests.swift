@@ -27,7 +27,7 @@ struct MethodologyPreferenceReplanTests {
         let fixtureURL = try #require(
             Bundle.module.url(forResource: "exercise_seed_methodology", withExtension: "json")
         )
-        _ = try store.importExerciseSeedIfNeeded(manifestURL: fixtureURL)
+        _ = try await store.importExerciseSeedIfNeeded(manifestURL: fixtureURL)
         try store.trainingPlan.save(.default)
 
         let engine = PlanPrescriptionEngine(persistence: store)

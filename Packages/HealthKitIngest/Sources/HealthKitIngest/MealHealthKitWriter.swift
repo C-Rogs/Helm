@@ -122,6 +122,7 @@ public struct SavedMealSamples: Sendable, Equatable {
 
 public protocol MealHealthKitWriting: Sendable {
     func saveMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples
+    func deleteMeal(mealID: String) async throws
 }
 
 public struct MealHealthKitWriter: MealHealthKitWriting {
@@ -137,6 +138,10 @@ public struct MealHealthKitWriter: MealHealthKitWriting {
 
     public func saveMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
         try await store.saveDietaryMeal(request)
+    }
+
+    public func deleteMeal(mealID: String) async throws {
+        try await store.deleteDietaryMeal(mealID: mealID)
     }
 }
 

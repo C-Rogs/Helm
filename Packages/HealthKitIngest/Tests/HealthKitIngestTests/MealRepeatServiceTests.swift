@@ -8,7 +8,8 @@ import Testing
 @Suite("Meal repeat service")
 struct MealRepeatServiceTests {
     private let loggedAt = Date(timeIntervalSince1970: 1_700_000_000)
-    private var today: HelmDay { HelmDay.day(for: loggedAt) }
+    private let calendar = Calendar(identifier: .gregorian)
+    private var today: HelmDay { HelmDay.day(for: loggedAt, calendar: calendar) }
     private var yesterday: HelmDay { today.adding(days: -1) }
 
     private var yogurtRef: FoodProductRef {
@@ -73,10 +74,9 @@ struct MealRepeatServiceTests {
     func templateLogsMultiItemBreakfast() async throws {
         let store = try PersistenceStore.inMemory()
         let repeatService = makeService(store: store)
-        let template = MealTemplate(
-            name: "Work breakfast",
-            bucket: .breakfast,
-            lineItems: (1 ... 7).map { index in
+        var templateLineItems: [MealLineItem] = []
+        for index in 1 ... 7 {
+            templateLineItems.append(
                 MealLineItem(
                     name: "Item \(index)",
                     grams: Double(index * 10),
@@ -87,7 +87,12 @@ struct MealRepeatServiceTests {
                     usdaMatchID: "custom:\(index)",
                     matchConfidence: .high
                 )
-            },
+            )
+        }
+        let template = MealTemplate(
+            name: "Work breakfast",
+            bucket: .breakfast,
+            lineItems: templateLineItems,
             updatedAt: loggedAt
         )
 

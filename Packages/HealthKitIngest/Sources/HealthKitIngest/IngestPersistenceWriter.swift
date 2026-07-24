@@ -67,6 +67,11 @@ public struct IngestPersistenceWriter: Sendable {
     }
 
     private func applyQuantityDelta(_ delta: IngestDelta) throws {
+        let mode = NutritionPreferencesStore.shared.mode()
+        if mode == .helmOnly, delta.kind.metricFamily == .nutrition {
+            return
+        }
+
         let patches = HealthKitDayAggregator.aggregateQuantity(
             kind: delta.kind,
             samples: delta.addedQuantitySamples,
@@ -97,11 +102,17 @@ public struct IngestPersistenceWriter: Sendable {
             cutoff: cutoff
         )
         let meals = HealthKitDayAggregator.mergeMealDrafts(drafts)
+        let mode = NutritionPreferencesStore.shared.mode()
+        var affectedDays = Set<HelmDay>()
         for meal in meals {
+            let existingMeals = try store.nutrition.fetchMeals(for: meal.helmDay)
+            if DietarySourceMerger.shouldSkipExternalIngest(meal, existingMeals: existingMeals, mode: mode) {
+                continue
+            }
             try store.nutrition.upsertMeal(meal)
+            affectedDays.insert(meal.helmDay)
         }
 
-        let affectedDays = Set(meals.map(\.helmDay))
         for helmDay in affectedDays {
             let dayMeals = try store.nutrition.fetchMeals(for: helmDay)
             let nutritionDay = HealthKitDayAggregator.nutritionDay(from: dayMeals, helmDay: helmDay)

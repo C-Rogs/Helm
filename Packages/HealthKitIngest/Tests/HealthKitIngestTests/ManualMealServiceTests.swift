@@ -8,6 +8,7 @@ import Testing
 @Suite("Manual meal service")
 struct ManualMealServiceTests {
     private let loggedAt = Date(timeIntervalSince1970: 1_700_000_000)
+    private let calendar = Calendar(identifier: .gregorian)
 
     private var grenadeProduct: ResolvedFoodProduct {
         ResolvedFoodProduct(
@@ -52,7 +53,7 @@ struct ManualMealServiceTests {
             ) == false
         )
 
-        let helmDay = HelmDay.day(for: loggedAt)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
         let meals = try store.nutrition.fetchMeals(for: helmDay)
         #expect(meals.count == 1)
         #expect(meals[0].source == .manual)
@@ -78,7 +79,7 @@ struct ManualMealServiceTests {
             BodyProfile(bodyMassKg: 80, heightCm: 175, biologicalSex: .male, dateOfBirth: dob)
         )
 
-        let endDay = HelmDay.day(for: loggedAt)
+        let endDay = HelmDay.day(for: loggedAt, calendar: calendar)
         for offset in 0 ..< 6 {
             let day = endDay.adding(days: -offset)
             try store.nutrition.upsertDay(
@@ -133,7 +134,7 @@ struct ManualMealServiceTests {
             mealID: "alcohol-meal"
         )
 
-        let helmDay = HelmDay.day(for: loggedAt)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
         let nutritionDay = try store.nutrition.fetchDay(helmDay: helmDay)
         #expect(nutritionDay?.totalEnergy?.kilocalories == 420)
         #expect(nutritionDay?.macroGapKilocalories == nil)
@@ -176,7 +177,7 @@ struct ManualMealServiceTests {
     @Test("GRDB meal sums preferred over stale HK metrics")
     func resolverPrefersMealSums() async throws {
         let store = try PersistenceStore.inMemory()
-        let helmDay = HelmDay.day(for: loggedAt)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
 
         try store.dailyMetrics.upsert(
             DailyMetrics(
@@ -208,5 +209,81 @@ struct ManualMealServiceTests {
 
         #expect(actual?.totalEnergy?.kilocalories == 740)
         #expect(actual?.totalEnergy?.kilocalories != 3_000)
+    }
+
+    @Test("edit meal updates totals and rewrites HK")
+    func editMealUpdatesTotals() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        let mealID = UUID()
+        _ = try await service.logFood(
+            product: grenadeProduct,
+            grams: 60,
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: mealID.uuidString
+        )
+
+        _ = try await service.updateMeal(
+            mealID: mealID,
+            name: "Grenade bar (edited)",
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            macros: FoodPortionMacros(energyKcal: 300, proteinG: 40, carbsG: 10, fatG: 8),
+            lineItems: [
+                MealLineItemRecord(
+                    mealID: mealID,
+                    foodRef: grenadeProduct.ref,
+                    grams: 80,
+                    servingLabel: "1 bar",
+                    energyKcal: 300,
+                    proteinG: 40,
+                    carbsG: 10,
+                    fatG: 8,
+                    sortOrder: 0
+                )
+            ],
+            source: .manual
+        )
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        let nutritionDay = try store.nutrition.fetchDay(helmDay: helmDay)
+        #expect(nutritionDay?.totalEnergy?.kilocalories == 300)
+
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals[0].name == "Grenade bar (edited)")
+        #expect(mockHK.deletedMealIDs.contains(mealID.uuidString.lowercased()))
+        #expect(mockHK.savedMealIDs.contains(mealID.uuidString.lowercased()))
+    }
+
+    @Test("delete meal removes GRDB row and HK samples")
+    func deleteMealRemovesAll() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        let mealID = UUID()
+        _ = try await service.logQuickAdd(
+            kilocalories: 450,
+            label: "Snack",
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: mealID.uuidString
+        )
+
+        try await service.deleteMeal(mealID: mealID)
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
+        #expect(try store.nutrition.fetchDay(helmDay: helmDay) == nil)
+        #expect(mockHK.deletedMealIDs == [mealID.uuidString.lowercased()])
     }
 }

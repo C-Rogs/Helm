@@ -1,0 +1,119 @@
+import Core
+import DesignSystem
+import HealthKitIngest
+import Observation
+import Persistence
+
+@MainActor
+@Observable
+final class MealEditController {
+    var selectedMeal: LoggedMealDisplay?
+    var isSaving = false
+    var showsDeleteConfirm = false
+    var errorMessage: String?
+
+    private let manualMealService: ManualMealService
+    private let onChanged: @MainActor () -> Void
+
+    init(
+        manualMealService: ManualMealService,
+        onChanged: @escaping @MainActor () -> Void = {}
+    ) {
+        self.manualMealService = manualMealService
+        self.onChanged = onChanged
+    }
+
+    static func isEditable(_ meal: MealRecord) -> Bool {
+        meal.source != .healthKit
+    }
+
+    func beginEdit(_ display: LoggedMealDisplay) {
+        guard Self.isEditable(display.meal) else { return }
+        selectedMeal = display
+    }
+
+    func cancel() {
+        selectedMeal = nil
+        errorMessage = nil
+    }
+
+    func save(
+        name: String,
+        lineItems: [MealLineItemEditor.EditableLineItem],
+        quickAddKcal: Double?
+    ) async {
+        guard let display = selectedMeal else { return }
+        let meal = display.meal
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else {
+            errorMessage = "Enter a meal name."
+            return
+        }
+
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            let records: [MealLineItemRecord]
+            let macros: FoodPortionMacros
+
+            if lineItems.isEmpty, let quickAddKcal {
+                macros = FoodPortionMacros(
+                    energyKcal: quickAddKcal,
+                    proteinG: meal.proteinGrams ?? 0,
+                    carbsG: meal.carbohydrateGrams ?? 0,
+                    fatG: meal.fatGrams ?? 0
+                )
+                records = []
+            } else {
+                records = lineItems.enumerated().map { index, entry in
+                    MealLineItemTemplateMapping.record(
+                        from: entry.item,
+                        mealID: meal.id,
+                        sortOrder: index
+                    )
+                }
+                macros = FoodPortionMacros(
+                    energyKcal: records.reduce(0) { $0 + $1.energyKcal },
+                    proteinG: records.reduce(0) { $0 + $1.proteinG },
+                    carbsG: records.reduce(0) { $0 + $1.carbsG },
+                    fatG: records.reduce(0) { $0 + $1.fatG }
+                )
+            }
+
+            _ = try await manualMealService.updateMeal(
+                mealID: meal.id,
+                name: trimmedName,
+                bucket: meal.bucket,
+                loggedAt: meal.loggedAt,
+                macros: macros,
+                lineItems: records,
+                source: meal.source
+            )
+            selectedMeal = nil
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch {
+            errorMessage = "Could not save changes. Try again."
+        }
+    }
+
+    func delete() async {
+        guard let meal = selectedMeal?.meal else { return }
+        isSaving = true
+        defer { isSaving = false }
+
+        do {
+            try await manualMealService.deleteMeal(mealID: meal.id)
+            selectedMeal = nil
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch {
+            errorMessage = "Could not delete meal. Try again."
+        }
+    }
+
+    func dismissError() {
+        errorMessage = nil
+    }
+}

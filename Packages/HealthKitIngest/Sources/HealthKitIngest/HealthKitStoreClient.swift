@@ -41,6 +41,7 @@ public protocol HealthKitStoreClient: Sendable {
         metadata: [String: any Sendable]
     ) async throws -> SavedWorkoutSample
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples
+    func deleteDietaryMeal(mealID: String) async throws
 }
 
 public struct LiveHealthKitStore: HealthKitStoreClient {
@@ -262,5 +263,43 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
             carbohydrate: savedSample(from: carbSample),
             fat: savedSample(from: fatSample)
         )
+    }
+
+    public func deleteDietaryMeal(mealID: String) async throws {
+        let metadataPredicate = HKQuery.predicateForObjects(
+            withMetadataKey: HelmHealthKitMetadata.mealIDKey,
+            operatorType: .equalTo,
+            value: mealID
+        )
+        let types: [HKQuantityType] = [
+            HKQuantityType(.dietaryEnergyConsumed),
+            HKQuantityType(.dietaryProtein),
+            HKQuantityType(.dietaryCarbohydrates),
+            HKQuantityType(.dietaryFatTotal)
+        ]
+
+        var objectsToDelete: [HKObject] = []
+        for type in types {
+            let samples = try await fetchSamples(
+                sampleType: type,
+                predicate: metadataPredicate,
+                limit: 10_000
+            )
+            objectsToDelete.append(contentsOf: samples)
+        }
+
+        guard !objectsToDelete.isEmpty else { return }
+
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.delete(objectsToDelete) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(throwing: HealthKitIngestError.mealWriteFailed)
+                }
+            }
+        }
     }
 }

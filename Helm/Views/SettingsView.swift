@@ -51,6 +51,9 @@ struct SettingsView: View {
                         HealthKitOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Health Access")
                     }
+                    NavigationLink("Body Profile") {
+                        BodyProfileSettingsView()
+                    }
                     NavigationLink("Notifications") {
                         NotificationOnboardingStepView(showsFlowControls: false)
                             .navigationTitle("Notifications")
@@ -71,6 +74,9 @@ struct SettingsView: View {
                 Section {
                     NavigationLink("Training Plan") {
                         PhaseGoalSettingsView()
+                    }
+                    NavigationLink("Nutrition") {
+                        NutritionSettingsView()
                     }
                     NavigationLink("Coach") {
                         CoachSettingsView()

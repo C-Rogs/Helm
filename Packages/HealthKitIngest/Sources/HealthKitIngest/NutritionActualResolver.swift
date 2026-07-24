@@ -8,11 +8,17 @@ enum NutritionActualResolver {
         helmDay: HelmDay,
         storedDay: NutritionDay?,
         dailyMetrics: DailyMetrics?,
-        meals: [MealRecord]? = nil
+        meals: [MealRecord]? = nil,
+        dietarySourceMode: DietarySourceMode = NutritionPreferencesStore.shared.mode()
     ) -> NutritionDay? {
         let dayMeals = meals?.filter { $0.helmDay == helmDay } ?? []
-        if !dayMeals.isEmpty {
-            return HealthKitDayAggregator.nutritionDay(from: dayMeals, helmDay: helmDay)
+        let mergedMeals = DietarySourceMerger.meals(from: dayMeals, mode: dietarySourceMode)
+        if !mergedMeals.isEmpty {
+            return HealthKitDayAggregator.nutritionDay(from: mergedMeals, helmDay: helmDay)
+        }
+
+        if dietarySourceMode == .helmOnly {
+            return nil
         }
 
         let fromMetrics = nutritionDay(from: dailyMetrics, helmDay: helmDay)

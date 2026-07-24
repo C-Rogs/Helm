@@ -10,6 +10,7 @@ public enum ManualMealError: Error, Sendable, Equatable {
     case invalidPortion
     case invalidQuickAdd
     case invalidAlcoholQuantity
+    case mealNotFound
 }
 
 public struct ManualMealService: Sendable {
@@ -159,6 +160,68 @@ public struct ManualMealService: Sendable {
                 lineItems: lineItems
             )
         )
+    }
+
+    public func updateMeal(
+        mealID: UUID,
+        name: String,
+        bucket: MealBucket,
+        loggedAt: Date,
+        macros: FoodPortionMacros,
+        lineItems: [MealLineItemRecord],
+        source: MealRecord.Source
+    ) async throws -> SavedMealSamples {
+        guard let existing = try localStore?.fetchMeal(id: mealID) else {
+            throw ManualMealError.mealNotFound
+        }
+
+        let mealIDString = mealID.uuidString.lowercased()
+        try await writer.deleteMeal(mealID: mealIDString)
+
+        let request = MealWriteRequest(
+            mealID: mealIDString,
+            name: name,
+            loggedAt: loggedAt,
+            caloriesKcal: macros.energyKcal,
+            proteinG: macros.proteinG,
+            carbsG: macros.carbsG,
+            fatG: macros.fatG,
+            mealSource: HelmHealthKitMetadata.mealSourceValue(for: source)
+        )
+
+        do {
+            let saved = try await writer.saveMeal(request)
+            try localStore?.updateSavedMeal(
+                mealID: mealID,
+                previousHelmDay: existing.helmDay,
+                request: request,
+                saved: saved,
+                bucket: bucket,
+                source: source,
+                lineItems: lineItems
+            )
+            manualMealLog.debug("Manual meal updated mealID=\(saved.mealID, privacy: .public)")
+            return saved
+        } catch {
+            manualMealLog.error("Manual meal update failed: \(String(describing: type(of: error)), privacy: .public)")
+            Task {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .nutritionKit,
+                    message: "Manual meal HealthKit rewrite failed"
+                )
+            }
+            throw error
+        }
+    }
+
+    public func deleteMeal(mealID: UUID) async throws {
+        let mealIDString = mealID.uuidString.lowercased()
+        try await writer.deleteMeal(mealID: mealIDString)
+        guard try localStore?.deleteMeal(id: mealID) != nil else {
+            throw ManualMealError.mealNotFound
+        }
+        manualMealLog.debug("Manual meal deleted mealID=\(mealIDString, privacy: .public)")
     }
 
     private struct PersistedManualMeal: Sendable {
