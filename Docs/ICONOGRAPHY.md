@@ -40,6 +40,8 @@ Dashboard and section eyebrows use the arc gauge symbol (`gauge.with.dots.needle
 | `refresh` | `arrow.clockwise` | inline | Pull to refresh toolbar |
 | `photo` | `photo.on.rectangle` | inline | Photo meal picker |
 | `camera` | `camera.fill` | inline | Camera meal capture |
+| `search` | `magnifyingglass` | inline | Food search |
+| `barcode` | `barcode.viewfinder` | inline | Barcode scanner |
 | `offline` | `wifi.slash` | inline | Coach degraded banner |
 | `swap` | `arrow.triangle.swap` | inline | Adjustment banner |
 | `arrowRight` | `arrow.right` | inline | Adjustment from-to |

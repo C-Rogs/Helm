@@ -1,5 +1,7 @@
+import Core
 import DesignSystem
 import HealthKitIngest
+import Persistence
 import PhotosUI
 import SwiftUI
 
@@ -8,12 +10,23 @@ struct NutritionView: View {
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
     @Bindable private var chatController = ChatBootstrap.controller
     @State private var photoMealController = PhotoMealController()
+    @State private var manualFoodLogController = ManualFoodLogController(
+        foodResolver: NutritionBootstrap.foodResolver,
+        manualMealService: NutritionBootstrap.manualMealService,
+        portionPreferenceLoader: { ref in
+            try PersistenceBootstrap.persistenceStore.foodLog.fetchPortionPreference(ref: ref)
+        },
+        onLogged: {
+            NutritionBootstrap.refreshNutrition()
+        }
+    )
     @State private var isRefreshing = false
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 HelmScreenStack {
+                    manualLogSection
                     photoLogSection
 
                     switch nutritionService.state {
@@ -94,6 +107,23 @@ struct NutritionView: View {
                     }
                 }
             )
+            .sheet(item: manualFoodFlowBinding) { mode in
+                AddFoodFlowView(controller: manualFoodLogController, entryMode: mode)
+            }
+            .alert(
+                "Food logging",
+                isPresented: manualFoodErrorBinding,
+                actions: {
+                    Button("OK", role: .cancel) {
+                        manualFoodLogController.dismissError()
+                    }
+                },
+                message: {
+                    if case let .failed(message) = manualFoodLogController.phase {
+                        Text(message)
+                    }
+                }
+            )
         }
     }
 
@@ -104,6 +134,63 @@ struct NutritionView: View {
         await nutritionService.refresh(
             prescriptionSummary: prescriptionService.state.summary
         )
+    }
+
+    @ViewBuilder
+    private var manualLogSection: some View {
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                HelmSectionEyebrow("LOG FOOD", showsArcMark: false)
+
+                HStack(spacing: HelmSpacing.sm) {
+                    Button {
+                        manualFoodLogController.startSearch()
+                    } label: {
+                        Label("Search", helmIcon: .search, context: .inline)
+                            .font(HelmTypography.headline)
+                            .foregroundStyle(HelmColor.buttonSecondaryForeground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, HelmSpacing.sm)
+                            .background(
+                                HelmColor.buttonSecondaryBackground,
+                                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: HelmRadius.sm)
+                                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.helmPressable)
+
+                    Button {
+                        manualFoodLogController.startBarcode()
+                    } label: {
+                        Label("Barcode", helmIcon: .barcode, context: .inline)
+                            .font(HelmTypography.headline)
+                            .foregroundStyle(HelmColor.buttonSecondaryForeground)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, HelmSpacing.sm)
+                            .background(
+                                HelmColor.buttonSecondaryBackground,
+                                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+                            )
+                            .overlay {
+                                RoundedRectangle(cornerRadius: HelmRadius.sm)
+                                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+                            }
+                    }
+                    .buttonStyle(.helmPressable)
+                }
+
+                if manualFoodLogController.isBusy {
+                    HStack(spacing: HelmSpacing.sm) {
+                        ProgressView()
+                        Text("Saving food…")
+                            .helmType(.body, color: HelmColor.fgMuted)
+                    }
+                }
+            }
+        }
     }
 
     @ViewBuilder
@@ -193,6 +280,36 @@ struct NutritionView: View {
             set: { isPresented in
                 if !isPresented {
                     photoMealController.dismissError()
+                }
+            }
+        )
+    }
+
+    private var manualFoodFlowBinding: Binding<AddFoodEntryMode?> {
+        Binding(
+            get: {
+                if case let .flow(mode) = manualFoodLogController.phase {
+                    return mode
+                }
+                return nil
+            },
+            set: { isPresented in
+                if isPresented == nil {
+                    manualFoodLogController.cancel()
+                }
+            }
+        )
+    }
+
+    private var manualFoodErrorBinding: Binding<Bool> {
+        Binding(
+            get: {
+                if case .failed = manualFoodLogController.phase { return true }
+                return false
+            },
+            set: { isPresented in
+                if !isPresented {
+                    manualFoodLogController.dismissError()
                 }
             }
         )

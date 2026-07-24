@@ -9,16 +9,9 @@ struct PhotoMealConfirmSheet: View {
     let previewImage: UIImage?
 
     @State private var description: String
-    @State private var lineItems: [MealLineItem]
-    @State private var expandedItemIDs: Set<String>
-    @FocusState private var focusedField: Field?
+    @State private var lineItems: [MealLineItemEditor.EditableLineItem]
 
     private let lookup = NutritionLookup()
-
-    private enum Field: Hashable {
-        case description
-        case grams(String)
-    }
 
     init(
         controller: PhotoMealController,
@@ -27,13 +20,16 @@ struct PhotoMealConfirmSheet: View {
     ) {
         self.controller = controller
         self.previewImage = previewImage
+        let editableItems = initialEstimate.lineItems.map {
+            MealLineItemEditor.EditableLineItem(id: UUID().uuidString, item: $0)
+        }
         _description = State(initialValue: initialEstimate.description)
-        _lineItems = State(initialValue: initialEstimate.lineItems)
-        _expandedItemIDs = State(initialValue: Set(initialEstimate.lineItems.map(\.id)))
+        _lineItems = State(initialValue: editableItems)
     }
 
     private var currentEstimate: MealEstimate {
-        if lineItems.isEmpty {
+        let items = lineItems.map(\.item)
+        if items.isEmpty {
             return MealEstimate(
                 description: description.trimmingCharacters(in: .whitespacesAndNewlines),
                 caloriesKcal: 0,
@@ -45,7 +41,7 @@ struct PhotoMealConfirmSheet: View {
         }
         return MacroAggregator.sum(
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
-            lineItems: lineItems
+            lineItems: items
         )
     }
 
@@ -64,12 +60,7 @@ struct PhotoMealConfirmSheet: View {
 
                     confidenceLabel
 
-                    if lineItems.isEmpty {
-                        legacyTotalsFallback
-                    } else {
-                        ingredientsSection
-                        totalsSection
-                    }
+                    MealLineItemEditor(description: $description, lineItems: $lineItems)
                 }
                 .padding(HelmSpacing.md)
             }
@@ -107,126 +98,5 @@ struct PhotoMealConfirmSheet: View {
     private var isValid: Bool {
         !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && currentEstimate.caloriesKcal > 0
-    }
-
-    private var ingredientsSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Ingredients")
-                .helmType(.label)
-
-            ForEach(lineItems) { item in
-                ingredientRow(item)
-            }
-        }
-    }
-
-    private func ingredientRow(_ item: MealLineItem) -> some View {
-        let isExpanded = expandedItemIDs.contains(item.id)
-
-        return VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Button {
-                if isExpanded {
-                    expandedItemIDs.remove(item.id)
-                } else {
-                    expandedItemIDs.insert(item.id)
-                }
-            } label: {
-                HStack {
-                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                        Text(item.name)
-                            .helmType(.body)
-                        Text("\(Self.format(item.grams)) g · \(Self.format(item.caloriesKcal)) kcal")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                    }
-                    Spacer()
-                    HelmIconView(isExpanded ? .chevronUp : .chevronDown, context: .inline)
-                        .foregroundStyle(HelmColor.fgMuted)
-                }
-            }
-            .buttonStyle(.helmPressable)
-
-            if isExpanded {
-                HStack {
-                    Text("Grams")
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                    TextField("Grams", text: gramsBinding(for: item))
-                        .focused($focusedField, equals: .grams(item.id))
-                        .keyboardType(.decimalPad)
-                        .helmType(.body)
-                        .padding(HelmSpacing.sm)
-                        .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-                }
-            }
-        }
-        .padding(HelmSpacing.sm)
-        .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-    }
-
-    private var totalsSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Totals")
-                .helmType(.label)
-
-            macroField("Description", text: $description, field: .description)
-                .textInputAutocapitalization(.sentences)
-
-            readOnlyRow("Calories", value: currentEstimate.caloriesKcal, unit: "kcal")
-            readOnlyRow("Protein", value: currentEstimate.proteinG, unit: "g")
-            readOnlyRow("Carbohydrates", value: currentEstimate.carbsG, unit: "g")
-            readOnlyRow("Fat", value: currentEstimate.fatG, unit: "g")
-        }
-    }
-
-    private var legacyTotalsFallback: some View {
-        Text("No ingredient breakdown available for this estimate.")
-            .helmType(.body, color: HelmColor.fgMuted)
-    }
-
-    private func gramsBinding(for item: MealLineItem) -> Binding<String> {
-        Binding(
-            get: {
-                Self.format(item.grams)
-            },
-            set: { newValue in
-                guard let grams = Double(newValue.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
-                guard let index = lineItems.firstIndex(where: { $0.id == item.id }) else { return }
-                lineItems[index] = MacroAggregator.recomputeLineItem(item, grams: grams, lookup: lookup)
-            }
-        )
-    }
-
-    private func macroField(
-        _ label: String,
-        text: Binding<String>,
-        field: Field
-    ) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text(label)
-                .helmType(.label)
-            TextField(label, text: text)
-                .focused($focusedField, equals: field)
-                .helmType(.body)
-                .padding(HelmSpacing.sm)
-                .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-        }
-    }
-
-    private func readOnlyRow(_ label: String, value: Double, unit: String) -> some View {
-        HStack {
-            Text(label)
-                .helmType(.body)
-            Spacer()
-            Text("\(Self.format(value)) \(unit)")
-                .helmType(.body, color: HelmColor.fgMuted)
-        }
-        .padding(HelmSpacing.sm)
-        .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-    }
-
-    private static func format(_ value: Double) -> String {
-        if value.rounded() == value {
-            return String(Int(value.rounded()))
-        }
-        return String(format: "%.1f", value)
     }
 }

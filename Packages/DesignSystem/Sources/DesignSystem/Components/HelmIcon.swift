@@ -23,6 +23,8 @@ public enum HelmIcon: String, CaseIterable, Sendable {
     case refresh = "arrow.clockwise"
     case photo = "photo.on.rectangle"
     case camera = "camera.fill"
+    case search = "magnifyingglass"
+    case barcode = "barcode.viewfinder"
     case offline = "wifi.slash"
     case swap = "arrow.triangle.swap"
     case arrowRight = "arrow.right"
