@@ -156,7 +156,7 @@ public struct NutritionLookup: Sendable {
         return index
     }
 
-    static func normalize(_ text: String) -> String {
+    public static func normalize(_ text: String) -> String {
         text
             .lowercased()
             .replacingOccurrences(of: ",", with: " ")

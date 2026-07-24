@@ -1,0 +1,18 @@
+{
+  "count": 1,
+  "page": 1,
+  "page_size": 20,
+  "products": [
+    {
+      "code": "5050159001234",
+      "product_name": "Carb Killa High Protein Bar",
+      "brands": "Grenade",
+      "nutriments": {
+        "energy-kcal_100g": 380,
+        "proteins_100g": 35,
+        "carbohydrates_100g": 18,
+        "fat_100g": 12
+      }
+    }
+  ]
+}
