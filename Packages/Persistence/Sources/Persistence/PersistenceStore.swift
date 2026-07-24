@@ -6,6 +6,8 @@ public actor PersistenceStore {
     public nonisolated let bodyComposition: BodyCompositionRepository
     public nonisolated let sleep: SleepRepository
     public nonisolated let nutrition: NutritionRepository
+    public nonisolated let foodLog: FoodLogRepository
+    public nonisolated let mealTemplates: MealTemplateRepository
     public nonisolated let exercises: ExerciseRepository
     public nonisolated let workoutSessions: WorkoutSessionRepository
     public nonisolated let workoutTemplates: WorkoutTemplateRepository
@@ -32,6 +34,8 @@ public actor PersistenceStore {
         bodyComposition = BodyCompositionRepository(pool: pool)
         sleep = SleepRepository(pool: pool)
         nutrition = NutritionRepository(pool: pool)
+        foodLog = FoodLogRepository(pool: pool)
+        mealTemplates = MealTemplateRepository(pool: pool)
         exercises = ExerciseRepository(pool: pool)
         workoutSessions = WorkoutSessionRepository(pool: pool)
         workoutTemplates = WorkoutTemplateRepository(pool: pool)

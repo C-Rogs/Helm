@@ -40,6 +40,9 @@ struct AppMigrator {
         if version >= 9 {
             BriefSchemaMigration.register(on: &migrator)
         }
+        if version >= 10 {
+            FoodLoggingSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

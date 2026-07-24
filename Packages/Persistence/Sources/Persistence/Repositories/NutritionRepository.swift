@@ -84,6 +84,9 @@ public struct NutritionRepository: Sendable {
 
     public func deleteMeal(id: UUID) throws {
         _ = try pool.write { db in
+            try MealLineItemRow
+                .filter(Column("meal_id") == id.uuidString.lowercased())
+                .deleteAll(db)
             try MealRow.deleteOne(db, key: id.uuidString.lowercased())
         }
     }

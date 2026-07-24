@@ -117,7 +117,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | M13.2 Drift policy UI | deferred | | | Mesocycle visibility absorbed by M12.8; drift indicators remain |
 | M13.3 EventKit hints | deferred | | | Post-DT5 |
 | M14.1 CoFID bundle replaces USDA | done | 2026-07-24 | a158e24 | Full CoFID 2021 bundle; NutritionLookup on cofid_foods.json; OGL attribution in Sources; USDA removed; lookup + grounded photo tests pass. |
-| M14.2 Food log persistence (GRDB v10) | not started | | | |
+| M14.2 Food log persistence (GRDB v10) | done | 2026-07-24 | a755461 | GRDB v10 food-logging schema; Core models; FoodLogRepository + MealTemplateRepository; migrate-up + CRUD fixture tests pass. |
 | M14.3 Food resolver + Open Food Facts client | not started | | | |
 | M14.4 ManualMealService + HK write-through | not started | | | |
 | M14.5 Search + barcode UI + MealLineItemEditor | not started | | | |

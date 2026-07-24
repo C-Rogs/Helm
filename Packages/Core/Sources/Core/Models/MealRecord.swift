@@ -6,12 +6,17 @@ public struct MealRecord: Sendable, Hashable, Codable, Identifiable {
         case healthKit
         case manual
         case photo
+        case barcode
+        case quickAdd
+        case alcohol
+        case template
     }
 
     public let id: UUID
     public let helmDay: HelmDay
     public let name: String
     public let loggedAt: Date
+    public let bucket: MealBucket
     public let energy: Energy?
     public let proteinGrams: Double?
     public let carbohydrateGrams: Double?
@@ -25,6 +30,7 @@ public struct MealRecord: Sendable, Hashable, Codable, Identifiable {
         helmDay: HelmDay,
         name: String,
         loggedAt: Date,
+        bucket: MealBucket = .snacks,
         energy: Energy? = nil,
         proteinGrams: Double? = nil,
         carbohydrateGrams: Double? = nil,
@@ -36,6 +42,7 @@ public struct MealRecord: Sendable, Hashable, Codable, Identifiable {
         self.helmDay = helmDay
         self.name = name
         self.loggedAt = loggedAt
+        self.bucket = bucket
         self.energy = energy
         self.proteinGrams = proteinGrams
         self.carbohydrateGrams = carbohydrateGrams
