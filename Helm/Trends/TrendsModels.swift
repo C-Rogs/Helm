@@ -25,6 +25,8 @@ struct MuscleVolumeGauge: Identifiable, Sendable, Hashable {
     let weeklySets: Double
     let landmarks: VolumeLandmarks
     let state: HelmState
+    /// Calendar days since the muscle last received hard-set credit; `nil` when never trained.
+    let daysSinceTrained: Int?
 
     var id: MuscleGroup { muscle }
 }

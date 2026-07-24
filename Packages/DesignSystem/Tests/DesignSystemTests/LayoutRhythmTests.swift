@@ -43,6 +43,7 @@ struct LayoutRhythmTests {
             "Helm/Views/Trends/ReadinessHistoryChartCard.swift",
             "Helm/Views/Trends/E1RMProgressionChartCard.swift",
             "Helm/Views/Trends/MuscleVolumeBarChartCard.swift",
+            "Helm/Views/Trends/MuscleVolumeArcGridCard.swift",
             "Helm/Views/Trends/EnergyBalanceChartCard.swift",
             "Helm/Views/Trends/TrendsChartShared.swift",
             "Helm/Views/NutritionView.swift",

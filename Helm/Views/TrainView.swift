@@ -7,6 +7,7 @@ struct TrainView: View {
     @Bindable private var controller = TrainBootstrap.sessionController
     @Bindable private var history = TrainBootstrap.historyController
     @Bindable private var importController = TrainBootstrap.importController
+    @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -106,6 +107,7 @@ struct TrainView: View {
                                 controller.clearFinishSummary()
                                 history.refresh()
                                 history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
+                                muscleVolumeStore.refresh()
                             }
                         }
                     }
@@ -137,6 +139,7 @@ struct TrainView: View {
             .task {
                 await controller.recoverPersistedSession()
                 history.refresh()
+                muscleVolumeStore.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 Task { await controller.handleScenePhase(newPhase) }
@@ -159,6 +162,8 @@ struct TrainView: View {
                         exerciseName: history.displayName(for:)
                     )
                 }
+
+                muscleVolumeBoardSection
 
                 WorkoutTemplatesListView(history: history) { templateID in
                     Task { await controller.startWorkout(fromTemplateID: templateID) }
@@ -254,6 +259,17 @@ struct TrainView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
+    }
+
+    @ViewBuilder
+    private var muscleVolumeBoardSection: some View {
+        if muscleVolumeStore.isLoading, muscleVolumeStore.model == nil {
+            HelmSkeletonCard(rowCount: 4)
+        } else if let model = muscleVolumeStore.model {
+            Card {
+                MuscleVolumeBoardView(model: model, showsHeader: true)
+            }
+        }
     }
 
     private func prescriptionTargetText(for exercise: PrescribedExerciseSummary) -> String {

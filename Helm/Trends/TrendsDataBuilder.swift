@@ -10,6 +10,7 @@ import ReadinessKit
 enum TrendsDataBuilder {
     static let pageSize = 30
     static let sessionPageSize = 25
+    static let recencyLookbackDays = 120
     static let defaultExerciseID = "exercise-squat"
 
     static func buildTrendWeightPage(
@@ -76,18 +77,87 @@ enum TrendsDataBuilder {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) throws -> [MuscleVolumeGauge] {
+        try buildMuscleVolumeRows(
+            store: store,
+            weekContaining: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        .map {
+            MuscleVolumeGauge(
+                muscle: $0.muscle,
+                weeklySets: $0.weeklySets,
+                landmarks: $0.landmarks,
+                state: $0.state,
+                daysSinceTrained: $0.daysSinceTrained
+            )
+        }
+    }
+
+    static func buildMuscleVolumeBoard(
+        store: PersistenceStore,
+        weekContaining day: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> MuscleVolumeBoardModel {
+        let rows = try buildMuscleVolumeRows(
+            store: store,
+            weekContaining: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        return MuscleVolumeBoardModel(
+            rows: rows.map {
+                MuscleVolumeBoardRow(
+                    id: $0.muscle.rawValue,
+                    label: TrendsChartSupport.muscleLabel($0.muscle),
+                    weeklySets: $0.weeklySets,
+                    mev: $0.landmarks.mev,
+                    mrv: $0.landmarks.mrv,
+                    state: $0.state,
+                    daysSinceTrained: $0.daysSinceTrained
+                )
+            }
+        )
+    }
+
+    struct MuscleVolumeRowData: Sendable {
+        let muscle: MuscleGroup
+        let weeklySets: Double
+        let landmarks: VolumeLandmarks
+        let state: HelmState
+        let daysSinceTrained: Int?
+    }
+
+    static func buildMuscleVolumeRows(
+        store: PersistenceStore,
+        weekContaining day: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [MuscleVolumeRowData] {
         let weekStart = weekStart(containing: day, calendar: calendar)
-        let sessions = try loadSessionsForSummary(
+        let recencyStart = day.adding(days: -recencyLookbackDays, calendar: calendar)
+        let weekSessions = try loadSessionsForSummary(
             store: store,
             since: weekStart,
             calendar: calendar,
             cutoff: cutoff
         )
+        let recencySessions = try loadSessionsForSummary(
+            store: store,
+            since: recencyStart,
+            calendar: calendar,
+            cutoff: cutoff
+        )
         let muscleMaps = try muscleMaps(from: store)
         let ledger = PlanKit.weeklyHardSetTotals(
-            sessions: sessions,
+            sessions: weekSessions,
             muscleMaps: muscleMaps,
             weekStart: weekStart
+        )
+        let lastTrained = MuscleVolumeRecencyBuilder.lastTrainedDays(
+            sessions: recencySessions,
+            muscleMaps: muscleMaps
         )
 
         let mesocycle = try loadMesocycleState(from: store)
@@ -99,7 +169,10 @@ enum TrendsDataBuilder {
             let landmarks = mesocycle?.muscles[muscle]?.landmarks
                 ?? PlanKit.seedLandmarks(muscle: muscle, experience: experience)
             guard weeklySets > 0 || mesocycle?.muscles[muscle] != nil else { return nil }
-            return MuscleVolumeGauge(
+            let daysSinceTrained = lastTrained[muscle].map {
+                MuscleVolumeRecencyBuilder.calendarDays(from: $0, to: day, calendar: calendar)
+            }
+            return MuscleVolumeRowData(
                 muscle: muscle,
                 weeklySets: weeklySets,
                 landmarks: landmarks,
@@ -107,7 +180,8 @@ enum TrendsDataBuilder {
                     sets: weeklySets,
                     mev: landmarks.mev,
                     mrv: landmarks.mrv
-                )
+                ),
+                daysSinceTrained: daysSinceTrained
             )
         }
         .sorted { $0.weeklySets > $1.weeklySets }

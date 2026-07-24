@@ -40,25 +40,29 @@ enum TrendChartFixtures {
                 muscle: .quads,
                 weeklySets: 4,
                 landmarks: VolumeLandmarks(mev: 8, mrv: 18),
-                state: .depleted
+                state: .depleted,
+                daysSinceTrained: 5
             ),
             MuscleVolumeGauge(
                 muscle: .chest,
                 weeklySets: 14,
                 landmarks: VolumeLandmarks(mev: 10, mrv: 20),
-                state: .ready
+                state: .ready,
+                daysSinceTrained: 2
             ),
             MuscleVolumeGauge(
                 muscle: .back,
                 weeklySets: 18,
                 landmarks: VolumeLandmarks(mev: 10, mrv: 18),
-                state: .primed
+                state: .primed,
+                daysSinceTrained: 0
             ),
             MuscleVolumeGauge(
                 muscle: .hamstrings,
                 weeklySets: 22,
                 landmarks: VolumeLandmarks(mev: 8, mrv: 16),
-                state: .compromised
+                state: .compromised,
+                daysSinceTrained: 1
             ),
         ]
     }

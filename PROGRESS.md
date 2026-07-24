@@ -73,7 +73,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M12.6 DeviationBand component | done | 2026-07-24 | fff7c53 | DeviationBand bar/inline layouts, helmNumericRoll on value, previews for in/below/above-band and cold-start. |
 | M12.7 Recovery detail view | done | 2026-07-24 | 6657228 | RecoveryDetailView from Dashboard ARC card; DeviationBand contributors, band-overlay history, coach read + hand-off; snapshot tests. |
 | M12.8 Progression / plan-model view | done | 2026-07-24 | 274023c | Mesocycle position, scheme, per-lift e1RM ladders; Dashboard + Train navigation; absorbs M13.1/M13.2 plan-visibility |
-| M12.9 Muscle-volume promotion and recency | not started | | | |
+| M12.9 Muscle-volume promotion and recency | done | 2026-07-24 | c5061fc | MuscleVolumeBoardModel + recency from ledger; Dashboard summary + Train board; ArcGauge grid kept in Trends. |
 
 ## Device Test Gates
 

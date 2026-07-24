@@ -23,7 +23,9 @@ struct MuscleVolumeBarChartCard: View {
                                 weeklySets: gauge.weeklySets,
                                 mev: gauge.landmarks.mev,
                                 mrv: gauge.landmarks.mrv,
-                                state: gauge.state
+                                state: gauge.state,
+                                daysSinceTrained: gauge.daysSinceTrained,
+                                showsRecency: true
                             )
                         }
                     }

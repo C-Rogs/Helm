@@ -6,19 +6,25 @@ public struct LandmarkVolumeBar: View {
     private let mev: Int
     private let mrv: Int
     private let state: HelmState
+    private let daysSinceTrained: Int?
+    private let showsRecency: Bool
 
     public init(
         label: String,
         weeklySets: Double,
         mev: Int,
         mrv: Int,
-        state: HelmState
+        state: HelmState,
+        daysSinceTrained: Int? = nil,
+        showsRecency: Bool = false
     ) {
         self.label = label
         self.weeklySets = weeklySets
         self.mev = mev
         self.mrv = mrv
         self.state = state
+        self.daysSinceTrained = daysSinceTrained
+        self.showsRecency = showsRecency
     }
 
     private var scaleMax: Double {
@@ -27,10 +33,16 @@ public struct LandmarkVolumeBar: View {
 
     public var body: some View {
         HStack(spacing: HelmSpacing.sm) {
-            Text(label)
-                .helmType(.label)
-                .lineLimit(1)
-                .frame(width: HelmSpacing.xl * 2.2, alignment: .leading)
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text(label)
+                    .helmType(.label)
+                    .lineLimit(1)
+                if showsRecency {
+                    Text(MuscleVolumeRecency.shortLabel(daysSinceTrained: daysSinceTrained))
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                }
+            }
+            .frame(width: HelmSpacing.xl * 2.2, alignment: .leading)
 
             GeometryReader { geometry in
                 let width = geometry.size.width

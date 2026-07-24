@@ -56,6 +56,10 @@ struct TrendsView: View {
             gauges: controller.snapshot.muscleVolume
         )
 
+        MuscleVolumeArcGridCard(
+            gauges: controller.snapshot.muscleVolume
+        )
+
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,

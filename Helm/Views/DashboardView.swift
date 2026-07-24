@@ -12,6 +12,7 @@ struct DashboardView: View {
     private var briefService: BriefService { BriefBootstrap.briefService }
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
     @Bindable private var chatController = ChatBootstrap.controller
+    @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     private var thresholdInsightService: ThresholdInsightService { ProactiveBootstrap.thresholdInsightService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
@@ -19,6 +20,7 @@ struct DashboardView: View {
     @State private var contributorDetailsVisible = true
     @Namespace private var readinessNamespace
     @Namespace private var prescriptionNamespace
+    @Namespace private var muscleVolumeNamespace
 
     private var today: HelmDay {
         HelmDay.day(for: .now, calendar: .current)
@@ -38,10 +40,12 @@ struct DashboardView: View {
                         .helmStaggeredAppear(index: 3)
                     prescriptionCard
                         .helmStaggeredAppear(index: 4)
-                    nutritionTargetsCard
+                    muscleVolumeSummaryCard
                         .helmStaggeredAppear(index: 5)
-                    DashboardTrendsSection()
+                    nutritionTargetsCard
                         .helmStaggeredAppear(index: 6)
+                    DashboardTrendsSection()
+                        .helmStaggeredAppear(index: 7)
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -49,7 +53,7 @@ struct DashboardView: View {
                         Label("Ask Coach", helmIcon: .chat, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
-                    .helmStaggeredAppear(index: 7)
+                    .helmStaggeredAppear(index: 8)
                 }
                 .helmScreenPadding()
             }
@@ -67,6 +71,7 @@ struct DashboardView: View {
                     prescriptionSummary: prescriptionService.state.summary
                 )
                 await ProactiveBootstrap.refreshThresholdInsights()
+                muscleVolumeStore.refresh()
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
@@ -120,6 +125,21 @@ struct DashboardView: View {
             narration: narration,
             isEngineOnly: isEngineOnly
         )
+    }
+
+    @ViewBuilder
+    private var muscleVolumeSummaryCard: some View {
+        if muscleVolumeStore.isLoading, muscleVolumeStore.model == nil {
+            HelmSkeletonCard(rowCount: 3)
+        } else if let model = muscleVolumeStore.model {
+            NavigationLink {
+                MuscleVolumeBoardContainer()
+            } label: {
+                MuscleVolumeSummaryCard(model: model)
+                    .helmMatchedCardDetail(id: "muscle-volume", in: muscleVolumeNamespace)
+            }
+            .buttonStyle(.helmPressableCard)
+        }
     }
 
     @ViewBuilder
