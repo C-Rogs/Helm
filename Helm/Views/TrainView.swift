@@ -8,6 +8,7 @@ struct TrainView: View {
     @Bindable private var history = TrainBootstrap.historyController
     @Bindable private var importController = TrainBootstrap.importController
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     @State private var restRemainingSeconds: Int?
     @State private var isShowingImport = false
@@ -141,7 +142,7 @@ struct TrainView: View {
 
                 WorkoutHistoryListView(history: history)
             }
-            .padding(HelmSpacing.md)
+            .helmScreenPadding()
         }
         .onChange(of: isShowingImport) { _, isPresented in
             if !isPresented, !importController.lastImportedPersonalRecords.isEmpty {
@@ -289,6 +290,12 @@ struct TrainView: View {
                         ) {
                             Task { await controller.undoLastAdjustment() }
                         }
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .opacity
+                            )
+                        )
                     }
 
                     if let remaining = restRemainingSeconds {
@@ -319,6 +326,10 @@ struct TrainView: View {
                 .padding(HelmSpacing.screenGutter)
                 .padding(.bottom, HelmSpacing.md)
             }
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.adjustmentBanner
+            )
 
             if controller.numpadTarget == nil {
                 inSessionCoachBar
@@ -340,7 +351,9 @@ struct TrainView: View {
     }
 
     private var bottomContentInset: CGFloat {
-        controller.numpadTarget == nil ? 140 : 300
+        controller.numpadTarget == nil
+            ? HelmLayout.trainScrollBottomInset
+            : HelmLayout.trainScrollBottomInsetWithNumpad
     }
 
     private var inSessionCoachBar: some View {
@@ -434,7 +447,7 @@ struct TrainView: View {
                     }
                 }
             )
-            .frame(height: 300)
+            .frame(height: HelmLayout.numpadHeight)
         }
         .background(HelmColor.canvas)
         .transition(.move(edge: .bottom))
@@ -464,9 +477,22 @@ private extension View {
     }
 }
 
-#Preview("Train empty") {
+#Preview("Train instrument") {
     TrainView()
         .helmTheme()
+        .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Train data sheet") {
+    TrainView()
+        .helmTheme()
+        .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Train accessibility") {
+    TrainView()
+        .helmTheme()
+        .dynamicTypeSize(.accessibility5)
 }
 
 private extension TrainingPhase {

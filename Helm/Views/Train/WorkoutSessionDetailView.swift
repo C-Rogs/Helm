@@ -5,6 +5,7 @@ import SwiftUI
 struct WorkoutSessionDetailView: View {
     let sessionID: String
     @Bindable var history: WorkoutHistoryController
+    var matchedCardNamespace: Namespace.ID? = nil
 
     @State private var draft: WorkoutSessionDraft?
     @State private var templateName = ""
@@ -15,23 +16,30 @@ struct WorkoutSessionDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 if let draft {
-                    ForEach(draft.exercises) { exercise in
-                        Card {
-                            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                                Text(history.displayName(for: exercise.exerciseID))
-                                    .font(HelmTypography.headline)
-                                    .foregroundStyle(HelmColor.textPrimary)
+                    if let matchedCardNamespace {
+                        sessionHeaderCard(for: draft)
+                            .helmMatchedCardDetail(id: sessionID, in: matchedCardNamespace, isSource: false)
+                    }
 
-                                ForEach(exercise.sets) { set in
-                                    EditableSetRow(
-                                        set: set,
-                                        onUpdate: { updated in
-                                            updateSet(exerciseID: exercise.id, set: updated)
+                    Card {
+                        VStack(spacing: 0) {
+                            ForEach(draft.exercises) { exercise in
+                                HelmRuledRow {
+                                    VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                                        Text(history.displayName(for: exercise.exerciseID))
+                                            .helmType(.label)
+
+                                        ForEach(exercise.sets) { set in
+                                            EditableSetRow(
+                                                set: set,
+                                                onUpdate: { updated in
+                                                    updateSet(exerciseID: exercise.id, set: updated)
+                                                }
+                                            )
                                         }
-                                    )
+                                    }
                                 }
                             }
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         }
                     }
 
@@ -48,7 +56,7 @@ struct WorkoutSessionDetailView: View {
                     ProgressView()
                 }
             }
-            .padding(HelmSpacing.md)
+            .helmScreenPadding()
         }
         .navigationTitle(draft?.title ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
@@ -64,6 +72,49 @@ struct WorkoutSessionDetailView: View {
                 }
             }
             Button("Cancel", role: .cancel) {}
+        }
+    }
+
+    private func sessionHeaderCard(for draft: WorkoutSessionDraft) -> some View {
+        let summary = history.sessions.first(where: { $0.id == sessionID })
+        let totalSets = summary?.totalSetCount ?? draft.exercises.reduce(0) { $0 + $1.sets.count }
+        let totalVolume = summary?.totalVolumeKilograms ?? draft.exercises
+            .flatMap(\.sets)
+            .reduce(0.0) { partial, set in
+                guard let mass = set.mass, let reps = set.reps else { return partial }
+                return partial + mass.kilograms * Double(reps)
+            }
+
+        return Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                Text(draft.title ?? "Workout")
+                    .font(HelmTypography.body)
+                    .foregroundStyle(HelmColor.textPrimary)
+                Text(draft.startedAt, style: .date)
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.textSecondary)
+                HStack(spacing: HelmSpacing.md) {
+                    Label {
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(totalSets)
+                            Text("sets")
+                        }
+                    } icon: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    Label {
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(totalVolume, format: "%.0f")
+                            Text("kg")
+                        }
+                    } icon: {
+                        Image(systemName: "scalemass")
+                    }
+                }
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.textSecondary)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

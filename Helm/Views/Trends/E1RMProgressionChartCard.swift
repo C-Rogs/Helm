@@ -7,6 +7,20 @@ struct E1RMProgressionChartCard: View {
     let exerciseName: String
     let onPickExercise: () -> Void
 
+    @State private var selectedSession: Date?
+
+    private var insufficientMessage: String? {
+        TrendsChartCoverage.sessionMessage(pointCount: points.count)
+    }
+
+    private var selectedLabel: String? {
+        guard let selectedSession else { return nil }
+        guard let point = points.first(where: { $0.achievedAt == selectedSession }) else {
+            return nil
+        }
+        return String(format: "%.0f kg", point.e1RMKilograms)
+    }
+
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -22,44 +36,64 @@ struct E1RMProgressionChartCard: View {
 
                 if points.isEmpty {
                     emptyChartCopy("Complete working sets to chart estimated 1RM over time.")
+                } else if let insufficientMessage {
+                    insufficientChartCopy(insufficientMessage)
                 } else {
-                    Chart(points) { point in
-                        LineMark(
-                            x: .value("Session", point.achievedAt),
-                            y: .value("e1RM", point.e1RMKilograms)
-                        )
-                        .interpolationMethod(.catmullRom)
-                        .foregroundStyle(
-                            LinearGradient(
-                                colors: [
-                                    HelmColor.compromised,
-                                    HelmColor.ready,
-                                    HelmColor.primed,
-                                ],
-                                startPoint: .bottom,
-                                endPoint: .top
-                            )
-                        )
-                        .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
-
-                        PointMark(
-                            x: .value("Session", point.achievedAt),
-                            y: .value("e1RM", point.e1RMKilograms)
-                        )
-                        .foregroundStyle(HelmColor.primed)
-                        .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize)
-                    }
-                    .helmChartStyle()
-                    .frame(height: 180)
+                    chartBody
                 }
             }
         }
+    }
+
+    private var chartBody: some View {
+        Chart(points) { point in
+            LineMark(
+                x: .value("Session", point.achievedAt),
+                y: .value("e1RM", point.e1RMKilograms)
+            )
+            .interpolationMethod(.catmullRom)
+            .foregroundStyle(HelmColor.color(for: .primed))
+            .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
+
+            PointMark(
+                x: .value("Session", point.achievedAt),
+                y: .value("e1RM", point.e1RMKilograms)
+            )
+            .foregroundStyle(HelmColor.color(for: .primed))
+            .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize)
+
+            if let selectedSession {
+                RuleMark(x: .value("Selected", selectedSession))
+                    .foregroundStyle(HelmColor.fgMuted.opacity(0.35))
+                    .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
+            }
+        }
+        .helmChartStyle()
+        .helmChartScrub(selection: $selectedSession)
+        .chartOverlay { proxy in
+            TrendsChartSupport.scrubCalloutOverlay(
+                proxy: proxy,
+                selectedX: selectedSession,
+                label: selectedLabel
+            )
+        }
+        .frame(height: HelmChartStyle.standardHeight)
     }
 }
 
 #Preview("e1RM progression") {
     E1RMProgressionChartCard(
         points: TrendChartFixtures.e1RMHistory,
+        exerciseName: "Squat (Barbell)",
+        onPickExercise: {}
+    )
+    .padding()
+    .helmTheme()
+}
+
+#Preview("e1RM insufficient") {
+    E1RMProgressionChartCard(
+        points: Array(TrendChartFixtures.e1RMHistory.prefix(2)),
         exerciseName: "Squat (Barbell)",
         onPickExercise: {}
     )

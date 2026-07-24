@@ -22,7 +22,7 @@ struct ThresholdInsightCard: View {
     }
 }
 
-#Preview {
+#Preview("Threshold insight instrument") {
     ThresholdInsightCard(
         insight: ThresholdInsight(
             id: "hrv_above",
@@ -31,6 +31,21 @@ struct ThresholdInsightCard: View {
             direction: .above
         )
     )
-    .padding()
+    .helmScreenPadding()
     .helmTheme()
+    .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Threshold insight data sheet") {
+    ThresholdInsightCard(
+        insight: ThresholdInsight(
+            id: "hrv_above",
+            metricLabel: "HRV",
+            message: "HRV moved above baseline (z +1.2).",
+            direction: .above
+        )
+    )
+    .helmScreenPadding()
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
 }

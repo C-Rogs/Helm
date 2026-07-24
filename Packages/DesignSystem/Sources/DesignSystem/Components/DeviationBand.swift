@@ -111,7 +111,6 @@ public struct DeviationBand: View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
             Text(formattedValue)
                 .helmType(.number, color: HelmColor.color(for: state))
-                .helmNumericRoll(value: formattedValue)
 
             Text(unit)
                 .helmType(.body, color: HelmColor.fgMuted)

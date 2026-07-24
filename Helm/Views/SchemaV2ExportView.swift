@@ -59,10 +59,10 @@ struct SchemaV2ExportView: View {
             if showCopiedBanner {
                 Text("Copied for Gemini")
                     .font(HelmType.label.font)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
+                    .padding(.horizontal, HelmSpacing.sm)
+                    .padding(.vertical, HelmSpacing.xs)
                     .background(.ultraThinMaterial, in: Capsule())
-                    .padding(.top, 8)
+                    .padding(.top, HelmSpacing.xs)
             }
         }
         .alert("Export failed", isPresented: Binding(

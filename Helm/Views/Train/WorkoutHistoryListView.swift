@@ -4,6 +4,7 @@ import SwiftUI
 
 struct WorkoutHistoryListView: View {
     @Bindable var history: WorkoutHistoryController
+    @Namespace private var cardNamespace
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -16,13 +17,19 @@ struct WorkoutHistoryListView: View {
                     .font(HelmTypography.callout)
                     .foregroundStyle(HelmColor.textSecondary)
             } else {
-                ForEach(history.sessions) { session in
+                ForEach(Array(history.sessions.enumerated()), id: \.element.id) { index, session in
                     NavigationLink {
-                        WorkoutSessionDetailView(sessionID: session.id, history: history)
+                        WorkoutSessionDetailView(
+                            sessionID: session.id,
+                            history: history,
+                            matchedCardNamespace: cardNamespace
+                        )
                     } label: {
                         WorkoutHistoryRow(summary: session)
+                            .helmMatchedCardDetail(id: session.id, in: cardNamespace)
                     }
                     .buttonStyle(.plain)
+                    .helmStaggeredAppear(index: index)
                     .onAppear {
                         history.loadMoreIfNeeded(currentSessionID: session.id)
                     }
@@ -45,8 +52,22 @@ private struct WorkoutHistoryRow: View {
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.textSecondary)
                 HStack(spacing: HelmSpacing.md) {
-                    Label("\(summary.totalSetCount) sets", systemImage: "checkmark.circle")
-                    Label(String(format: "%.0f kg", summary.totalVolumeKilograms), systemImage: "scalemass")
+                    Label {
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(summary.totalSetCount)
+                            Text("sets")
+                        }
+                    } icon: {
+                        Image(systemName: "checkmark.circle")
+                    }
+                    Label {
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(summary.totalVolumeKilograms, format: "%.0f")
+                            Text("kg")
+                        }
+                    } icon: {
+                        Image(systemName: "scalemass")
+                    }
                 }
                 .font(HelmTypography.caption)
                 .foregroundStyle(HelmColor.textSecondary)

@@ -2,13 +2,14 @@ import Charts
 import SwiftUI
 
 public enum HelmChartStyle {
-    public static let axisLabelFont = HelmTypography.caption
-    public static let axisLabelColor = HelmColor.textTertiary
+    public static let axisLabelFont = HelmFont.mono(size: 11, weight: .semibold)
+    public static let axisLabelColor = HelmColor.fgMuted
     public static let gridColor = HelmColor.chartGrid
     public static let lineColor = HelmColor.chartLine
     public static let areaFill = HelmColor.chartAreaFill
     public static let lineWidth: CGFloat = 2
-    public static let pointSize: CGFloat = 6
+    public static let pointSize: CGFloat = HelmLayout.progressTrackHeight
+    public static let standardHeight = HelmLayout.chartHeight
     public static let plotInsets = EdgeInsets(
         top: HelmSpacing.sm,
         leading: HelmSpacing.xs,
@@ -70,7 +71,7 @@ private struct SampleTrend: Identifiable {
         .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
     }
     .helmChartStyle()
-    .frame(height: 200)
+    .frame(height: HelmLayout.chartHeight)
     .padding()
     .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
     .padding()

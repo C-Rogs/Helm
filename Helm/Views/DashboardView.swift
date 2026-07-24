@@ -27,12 +27,19 @@ struct DashboardView: View {
             ScrollView {
                 HelmScreenStack {
                     greetingHeader
+                        .helmStaggeredAppear(index: 0)
                     thresholdInsightCard
+                        .helmStaggeredAppear(index: 1)
                     briefCard
+                        .helmStaggeredAppear(index: 2)
                     readinessCard
+                        .helmStaggeredAppear(index: 3)
                     prescriptionCard
+                        .helmStaggeredAppear(index: 4)
                     nutritionTargetsCard
+                        .helmStaggeredAppear(index: 5)
                     DashboardTrendsSection()
+                        .helmStaggeredAppear(index: 6)
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -40,8 +47,9 @@ struct DashboardView: View {
                         Label("Ask Coach", systemImage: "bubble.left.and.bubble.right")
                     }
                     .buttonStyle(.helmSecondary)
+                    .helmStaggeredAppear(index: 7)
                 }
-                .padding(HelmSpacing.md)
+                .helmScreenPadding()
             }
             .helmScreenBackground()
             .navigationTitle("Dashboard")
@@ -94,7 +102,7 @@ struct DashboardView: View {
     private var briefCard: some View {
         switch briefService.state {
         case .loading:
-            briefShell(narration: "Building today's brief…", isEngineOnly: true, citationLabel: nil)
+            HelmSkeletonCard(rowCount: 2)
         case let .ready(model):
             briefShell(
                 narration: model.narration,
@@ -116,10 +124,7 @@ struct DashboardView: View {
     private var prescriptionCard: some View {
         switch prescriptionService.state {
         case .loading:
-            prescriptionShell(subtitle: "Loading…") {
-                Text("Building today's session…")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
+            HelmSkeletonCard(rowCount: 3)
         case .awaitingCatalog:
             prescriptionShell(subtitle: "Awaiting exercise catalog") {
                 Text("Import exercises from Settings or finish first launch seeding.")
@@ -142,8 +147,11 @@ struct DashboardView: View {
                     }
 
                     HStack {
-                        Text("\(summary.totalSets) total sets")
-                            .helmType(.body, color: HelmColor.fgSecondary)
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(summary.totalSets)
+                            Text("total sets")
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                        }
                         Spacer()
                         Text(summary.phase.label)
                             .helmType(.monoTag, color: HelmColor.fgMuted)
@@ -231,7 +239,13 @@ struct DashboardView: View {
         switch readinessService.state {
         case .loading:
             readinessShell(subtitle: "Loading…") {
-                placeholderArc(state: .compromised, subtitle: "Loading…")
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HelmSkeletonBlock(height: 120)
+                        .frame(maxWidth: 220)
+                        .frame(maxWidth: .infinity)
+                    HelmSkeletonBlock(height: 12)
+                    HelmSkeletonBlock(height: 12)
+                }
             }
         case .awaitingData:
             readinessShell(subtitle: "Awaiting data") {
@@ -267,7 +281,7 @@ struct DashboardView: View {
                     }
                 ) { displayValue in
                     VStack(spacing: HelmSpacing.xxs) {
-                        Text("\(Int(displayValue.rounded()))")
+                        HelmNumericText(Int(displayValue.rounded()))
                             .helmType(.heroNumber, color: HelmColor.color(for: helmState))
                         Text(helmState.label)
                             .helmType(.monoTag, color: HelmColor.fgMuted)
@@ -275,7 +289,7 @@ struct DashboardView: View {
                             .helmType(.body, color: HelmColor.fgMuted)
                     }
                 }
-                .frame(maxWidth: 220)
+                .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
                 .frame(maxWidth: .infinity)
                 .explainable(
                     ExplainableMetricMappers.readiness(
@@ -288,7 +302,7 @@ struct DashboardView: View {
                     contributorDetailsVisible = !shouldReveal
                 }
 
-                contributorsCard(for: score)
+                contributorsSection(for: score)
                     .readinessDetailsReveal(visible: contributorDetailsVisible, reduceMotion: reduceMotion)
             }
         }
@@ -306,7 +320,7 @@ struct DashboardView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: 220)
+        .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
         .frame(maxWidth: .infinity)
     }
 
@@ -342,24 +356,50 @@ struct DashboardView: View {
         }
     }
 
-    private func contributorsCard(for score: ReadinessScore) -> some View {
+    private func contributorsSection(for score: ReadinessScore) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HelmHairlineRule()
+
             Text("Contributors")
                 .helmType(.label)
+                .padding(.top, HelmSpacing.sm)
 
-            contributorBar("HRV", z: score.contributors.zHRV)
-            contributorBar("Resting HR", z: score.contributors.zRestingHR)
-            contributorBar("Sleep", z: score.contributors.zSleep)
-            if score.contributors.zStrain != nil {
-                contributorBar("Strain", z: score.contributors.zStrain)
-            }
-            if score.contributors.zRespiratory != nil {
-                contributorBar("Respiratory", z: score.contributors.zRespiratory)
-            }
-            if score.contributors.zTemperature != nil {
-                contributorBar("Temperature", z: score.contributors.zTemperature)
+            LazyVGrid(
+                columns: [
+                    GridItem(.flexible(), spacing: HelmSpacing.sm),
+                    GridItem(.flexible(), spacing: HelmSpacing.sm),
+                ],
+                spacing: HelmSpacing.sm
+            ) {
+                contributorChip("HRV", z: score.contributors.zHRV)
+                contributorChip("Resting HR", z: score.contributors.zRestingHR)
+                contributorChip("Sleep", z: score.contributors.zSleep)
+                if score.contributors.zStrain != nil {
+                    contributorChip("Strain", z: score.contributors.zStrain)
+                }
+                if score.contributors.zRespiratory != nil {
+                    contributorChip("Respiratory", z: score.contributors.zRespiratory)
+                }
+                if score.contributors.zTemperature != nil {
+                    contributorChip("Temperature", z: score.contributors.zTemperature)
+                }
             }
         }
+    }
+
+    private func contributorChip(_ label: String, z: Double?) -> StatChip {
+        StatChip(
+            label: label,
+            value: contributorValueText(z),
+            state: contributorState(z)
+        )
+    }
+
+    private func contributorState(_ z: Double?) -> HelmState? {
+        guard let z else { return nil }
+        if z > 0.75 { return .primed }
+        if z < -0.75 { return .depleted }
+        return .ready
     }
 
     private func stateBadge(for state: HelmState) -> some View {
@@ -368,35 +408,6 @@ struct DashboardView: View {
             .padding(.horizontal, HelmSpacing.xs)
             .padding(.vertical, HelmSpacing.xxs)
             .background(HelmColor.color(for: state).opacity(0.15), in: Capsule())
-    }
-
-    private func contributorBar(_ label: String, z: Double?) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            HStack {
-                Text(label)
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                Spacer()
-                Text(contributorValueText(z))
-                    .helmType(.body)
-                    .monospacedDigit()
-            }
-
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(HelmColor.gaugeTrack)
-                    Capsule()
-                        .fill(contributorFillColor(z))
-                        .frame(width: geometry.size.width * contributorFillFraction(z))
-                }
-            }
-            .frame(height: 6)
-
-            if let detail = contributorDetail(z) {
-                Text(detail)
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
-        }
     }
 
     private var greetingText: String {
@@ -430,33 +441,23 @@ struct DashboardView: View {
         return "z \(sign)\(String(format: "%.1f", z))"
     }
 
-    private func contributorFillFraction(_ z: Double?) -> CGFloat {
-        guard let z else { return 0 }
-        let clamped = min(max(z, -2), 2)
-        return CGFloat((clamped + 2) / 4)
-    }
-
-    private func contributorFillColor(_ z: Double?) -> Color {
-        guard let z else { return HelmColor.fgMuted }
-        if z > 0.75 { return HelmColor.primed }
-        if z < -0.75 { return HelmColor.depleted }
-        return HelmColor.accent
-    }
-
-    private func contributorDetail(_ z: Double?) -> String? {
-        guard let z else { return "No data" }
-        if z > 0.75 { return "Above baseline" }
-        if z < -0.75 { return "Below baseline" }
-        return "Near baseline"
-    }
-
     @ViewBuilder
     private var nutritionTargetsCard: some View {
         switch nutritionService.state {
         case .loading:
             nutritionNavigationLink {
-                Text("Loading nutrition…")
-                    .helmType(.body, color: HelmColor.fgMuted)
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HelmSkeletonBlock(height: 28)
+                    HelmSkeletonBlock(height: 12)
+                    HStack(spacing: HelmSpacing.md) {
+                        HelmSkeletonBlock()
+                            .frame(maxWidth: .infinity)
+                        HelmSkeletonBlock()
+                            .frame(maxWidth: .infinity)
+                        HelmSkeletonBlock()
+                            .frame(maxWidth: .infinity)
+                    }
+                }
             }
         case let .ready(snapshot):
             nutritionNavigationLink {
@@ -497,10 +498,10 @@ struct DashboardView: View {
 
     @ViewBuilder
     private func compactNutritionContent(snapshot: NutritionDaySnapshot) -> some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("\(snapshot.targets.caloriesKcal)")
+        HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
+            HelmNumericText(snapshot.targets.caloriesKcal)
                 .helmType(.bigNumber)
-            Text("kcal target")
+            Text("kcal")
                 .helmType(.body, color: HelmColor.fgMuted)
             Spacer()
             Text(snapshot.dayType.rawValue.capitalized)
@@ -508,17 +509,20 @@ struct DashboardView: View {
         }
 
         if let actualCalories = snapshot.actual?.totalEnergy.map({ Int($0.kilocalories.rounded()) }) {
-            Text("\(actualCalories) kcal logged")
-                .helmType(.body, color: HelmColor.fgSecondary)
+            HStack(spacing: HelmSpacing.xxs) {
+                HelmNumericText(actualCalories)
+                Text("kcal logged")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+            }
         } else {
             Text("No intake logged yet")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
 
-        HStack(spacing: HelmSpacing.md) {
-            nutritionMacroChip("P", actual: snapshot.actual?.totalProteinGrams, target: snapshot.targets.proteinGrams)
-            nutritionMacroChip("C", actual: snapshot.actual?.totalCarbohydrateGrams, target: snapshot.targets.carbohydrateGrams)
-            nutritionMacroChip("F", actual: snapshot.actual?.totalFatGrams, target: snapshot.targets.fatGrams)
+        HStack(spacing: HelmSpacing.sm) {
+            nutritionMacroChip("Protein", actual: snapshot.actual?.totalProteinGrams, target: snapshot.targets.proteinGrams)
+            nutritionMacroChip("Carbs", actual: snapshot.actual?.totalCarbohydrateGrams, target: snapshot.targets.carbohydrateGrams)
+            nutritionMacroChip("Fat", actual: snapshot.actual?.totalFatGrams, target: snapshot.targets.fatGrams)
         }
 
         if let gap = snapshot.targets.macroGapKilocalories,
@@ -530,8 +534,19 @@ struct DashboardView: View {
     private func nutritionMacroChip(_ label: String, actual: Double?, target: Int) -> some View {
         let actualGrams = actual.map { Int($0.rounded()) }
         return VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text(actualGrams.map { "\($0)/\(target)g" } ?? "\(target)g")
-                .helmType(.number)
+            if let actualGrams {
+                HStack(spacing: 0) {
+                    HelmNumericText(actualGrams)
+                    Text("/\(target)g")
+                        .helmType(.number)
+                }
+            } else {
+                HStack(spacing: 0) {
+                    HelmNumericText(target)
+                    Text("g")
+                        .helmType(.number)
+                }
+            }
             Text(label)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
         }
@@ -554,7 +569,20 @@ private extension TrainingPhase {
     }
 }
 
-#Preview {
+#Preview("Dashboard instrument") {
     DashboardView()
         .helmTheme()
+        .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Dashboard data sheet") {
+    DashboardView()
+        .helmTheme()
+        .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Dashboard accessibility") {
+    DashboardView()
+        .helmTheme()
+        .dynamicTypeSize(.accessibility5)
 }

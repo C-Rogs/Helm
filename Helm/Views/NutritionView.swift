@@ -13,7 +13,7 @@ struct NutritionView: View {
     var body: some View {
         NavigationStack {
             ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                HelmScreenStack {
                     photoLogSection
 
                     switch nutritionService.state {
@@ -31,7 +31,7 @@ struct NutritionView: View {
                         )
                     }
                 }
-                .padding(HelmSpacing.md)
+                .helmScreenPadding()
             }
             .helmScreenBackground()
             .navigationTitle("Nutrition")
@@ -198,18 +198,24 @@ struct NutritionView: View {
     }
 
     private var loadingCard: some View {
-        Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                Text("Nutrition")
-                    .helmType(.label)
-                Text("Loading today's intake…")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
-        }
+        HelmSkeletonCard(rowCount: 4)
     }
 }
 
-#Preview {
+#Preview("Nutrition instrument") {
     NutritionView()
         .helmTheme()
+        .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Nutrition data sheet") {
+    NutritionView()
+        .helmTheme()
+        .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Nutrition accessibility") {
+    NutritionView()
+        .helmTheme()
+        .dynamicTypeSize(.accessibility5)
 }

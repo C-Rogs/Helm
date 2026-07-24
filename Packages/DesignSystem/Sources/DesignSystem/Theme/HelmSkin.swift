@@ -189,4 +189,9 @@ public extension View {
     func skinAccentStripe(_ color: Color) -> some View {
         modifier(SkinAccentStripeModifier(color: color))
     }
+
+    /// Standard horizontal screen gutter from the spacing scale.
+    func helmScreenPadding() -> some View {
+        padding(.horizontal, HelmSpacing.screenGutter)
+    }
 }

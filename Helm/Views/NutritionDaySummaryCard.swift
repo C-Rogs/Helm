@@ -18,7 +18,7 @@ struct NutritionMacroProgressRow: View {
                 Spacer()
                 Text(valueText)
                     .helmType(.body)
-                    .monospacedDigit()
+                    .helmNumericRoll(value: valueText)
             }
 
             GeometryReader { geometry in
@@ -30,7 +30,7 @@ struct NutritionMacroProgressRow: View {
                         .frame(width: geometry.size.width * progressFraction)
                 }
             }
-            .frame(height: 6)
+            .frame(height: HelmLayout.progressTrackHeight)
         }
     }
 
@@ -71,8 +71,14 @@ struct NutritionAlcoholGapRow: View {
                     .helmType(.body, color: HelmColor.fgMuted)
             }
             Spacer()
-            Text("+\(Int(gapKilocalories.rounded())) kcal")
-                .helmType(.monoTag, color: HelmColor.depleted)
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                Text("+")
+                    .helmType(.monoTag, color: HelmColor.depleted)
+                HelmNumericText(Int(gapKilocalories.rounded()))
+                    .helmType(.monoTag, color: HelmColor.depleted)
+                Text("kcal")
+                    .helmType(.monoTag, color: HelmColor.depleted)
+            }
         }
         .padding(.vertical, HelmSpacing.xxs)
     }
@@ -166,9 +172,9 @@ struct NutritionDaySummaryCard: View {
             }
 
             HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
-                Text("\(targets.caloriesKcal)")
+                HelmNumericText(targets.caloriesKcal)
                     .helmType(.bigNumber)
-                Text("kcal target")
+                Text("kcal")
                     .helmType(.body, color: HelmColor.fgMuted)
                 Spacer()
                 Text(snapshot.phase.label)
@@ -272,7 +278,70 @@ private extension TrainingPhase {
 
     ScrollView {
         NutritionDaySummaryCard(snapshot: snapshot, showTrend: true)
-            .padding()
+            .helmScreenPadding()
     }
     .helmTheme()
+}
+
+#Preview("Nutrition summary data sheet") {
+    let day = HelmDay(year: 2026, month: 7, day: 23)
+    let actual = NutritionDay(
+        helmDay: day,
+        totalEnergy: Energy(kilocalories: 1_800),
+        totalProteinGrams: 140,
+        totalCarbohydrateGrams: 180,
+        totalFatGrams: 55,
+        macroGapKilocalories: 320
+    )
+    let targets = MacroTargets(
+        caloriesKcal: 2_400,
+        proteinGrams: 160,
+        carbohydrateGrams: 280,
+        fatGrams: 70,
+        dayType: .training,
+        estimatedTDEEKcal: 2_640,
+        macroGapKilocalories: 320
+    )
+    let snapshot = NutritionDaySnapshot(
+        helmDay: day,
+        targets: targets,
+        actual: actual,
+        trend: NutritionTrendState(estimatedTDEEKcal: 2_640, weeklyIntakeAverageKcal: 2_100),
+        dayType: .training,
+        phase: .maintain
+    )
+
+    ScrollView {
+        NutritionDaySummaryCard(snapshot: snapshot, showTrend: true)
+            .helmScreenPadding()
+    }
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Nutrition summary accessibility") {
+    let day = HelmDay(year: 2026, month: 7, day: 23)
+    let snapshot = NutritionDaySnapshot(
+        helmDay: day,
+        targets: MacroTargets(
+            caloriesKcal: 2_400,
+            proteinGrams: 160,
+            carbohydrateGrams: 280,
+            fatGrams: 70,
+            dayType: .training,
+            estimatedTDEEKcal: 2_640,
+            macroGapKilocalories: nil
+        ),
+        actual: nil,
+        trend: NutritionTrendState(),
+        dayType: .training,
+        phase: .maintain
+    )
+
+    ScrollView {
+        NutritionDaySummaryCard(snapshot: snapshot, showTrend: true)
+            .helmScreenPadding()
+    }
+    .helmTheme()
+    .dynamicTypeSize(.accessibility5)
 }

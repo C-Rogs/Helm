@@ -39,26 +39,32 @@ struct DashboardTrendsSection: View {
     private var trendCards: some View {
         TrendWeightChartCard(
             points: controller.snapshot.trendWeight,
-            targetWeightKg: controller.snapshot.targetWeightKg
+            targetWeightKg: controller.snapshot.targetWeightKg,
+            showsSparkline: true
         )
+        .helmStaggeredAppear(index: 0)
 
         ReadinessHistoryChartCard(
             points: controller.snapshot.readinessHistory
         )
+        .helmStaggeredAppear(index: 1)
 
-        MuscleVolumeArcGridCard(
+        MuscleVolumeBarChartCard(
             gauges: controller.snapshot.muscleVolume
         )
+        .helmStaggeredAppear(index: 2)
 
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
         )
+        .helmStaggeredAppear(index: 3)
 
         EnergyBalanceChartCard(
             gauges: controller.snapshot.energyBalance
         )
+        .helmStaggeredAppear(index: 4)
 
         if controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {
@@ -81,7 +87,25 @@ struct DashboardTrendsSection: View {
 #Preview {
     ScrollView {
         DashboardTrendsSection()
-            .padding()
+            .helmScreenPadding()
     }
     .helmTheme()
+}
+
+#Preview("Dashboard trends data sheet") {
+    ScrollView {
+        DashboardTrendsSection()
+            .helmScreenPadding()
+    }
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Dashboard trends accessibility") {
+    ScrollView {
+        DashboardTrendsSection()
+            .helmScreenPadding()
+    }
+    .helmTheme()
+    .dynamicTypeSize(.accessibility5)
 }

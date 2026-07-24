@@ -30,19 +30,23 @@ struct EnergyBalanceChartCard: View {
                                     state: gauge.state
                                 ) {
                                     VStack(spacing: HelmSpacing.xxs) {
-                                        Text("\(Int(gauge.intakeKcal.rounded()))")
+                                        HelmNumericText(Int(gauge.intakeKcal.rounded()))
                                             .helmType(.number)
                                         Text("kcal")
                                             .helmType(.monoTag, color: HelmColor.fgMuted)
                                     }
                                 }
-                                .frame(maxWidth: 96)
+                                .frame(maxWidth: HelmLayout.compactEnergyArcWidth)
 
                                 Text(TrendsChartSupport.shortLabel(for: gauge.helmDay))
                                     .helmType(.monoTag, color: HelmColor.fgMuted)
 
-                                Text("target \(Int(gauge.targetKcal.rounded()))")
-                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                                HStack(spacing: HelmSpacing.xxs) {
+                                    Text("target")
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                    HelmNumericText(Int(gauge.targetKcal.rounded()))
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                }
                             }
                         }
                     }

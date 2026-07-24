@@ -15,7 +15,7 @@ struct TrendsView: View {
                 LazyVStack(alignment: .leading, spacing: skin.sectionSpacing) {
                     trendCards
                 }
-                .padding(HelmSpacing.md)
+                .helmScreenPadding()
             }
             .helmScreenBackground()
             .navigationTitle("Trends")
@@ -47,24 +47,29 @@ struct TrendsView: View {
             points: controller.snapshot.trendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg
         )
+        .helmStaggeredAppear(index: 0)
 
         ReadinessHistoryChartCard(
             points: controller.snapshot.readinessHistory
         )
+        .helmStaggeredAppear(index: 1)
 
         MuscleVolumeArcGridCard(
             gauges: controller.snapshot.muscleVolume
         )
+        .helmStaggeredAppear(index: 2)
 
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
         )
+        .helmStaggeredAppear(index: 3)
 
         EnergyBalanceChartCard(
             gauges: controller.snapshot.energyBalance
         )
+        .helmStaggeredAppear(index: 4)
 
         if controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {
@@ -84,9 +89,10 @@ struct TrendsView: View {
     }
 }
 
-#Preview("Trends") {
+#Preview("Trends accessibility") {
     TrendsView()
         .helmTheme()
+        .dynamicTypeSize(.accessibility5)
 }
 
 #Preview("Trends fixture cards instrument") {

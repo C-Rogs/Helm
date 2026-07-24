@@ -70,16 +70,16 @@ struct MemoryProfileEditorView: View {
 
     @ViewBuilder
     private func editorField(_ title: String, text: Binding<String>) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             Text(title)
                 .font(HelmType.monoTag.font)
                 .foregroundStyle(HelmColor.fgMuted)
             TextEditor(text: text)
-                .frame(minHeight: 88)
+                .frame(minHeight: HelmSpacing.xl * 2 + HelmSpacing.lg)
                 .scrollContentBackground(.hidden)
-                .padding(8)
+                .padding(HelmSpacing.xs)
                 .background(HelmColor.surfaceElevated)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .clipShape(RoundedRectangle(cornerRadius: HelmRadius.sm))
         }
         .listRowBackground(HelmColor.surface)
     }

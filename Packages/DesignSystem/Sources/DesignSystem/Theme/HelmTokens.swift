@@ -70,3 +70,9 @@ public enum HelmRadius {
     public static let lg: CGFloat = 20
     public static let gauge: CGFloat = 14
 }
+
+public enum HelmLayout {
+    public static let chartHeight: CGFloat = HelmSpacing.sm * 15
+    public static let emptyChartMinHeight: CGFloat = HelmSpacing.sm * 10
+    public static let progressTrackHeight: CGFloat = HelmSpacing.xs - 2
+}

@@ -36,11 +36,16 @@ struct WorkoutImportPreviewView: View {
                     }
 
                     Text("Exercises")
-                        .font(HelmTypography.headline)
-                        .foregroundStyle(HelmColor.textPrimary)
+                        .helmType(.label)
 
-                    ForEach(controller.resolutions) { resolution in
-                        exerciseCard(resolution)
+                    Card {
+                        VStack(spacing: 0) {
+                            ForEach(controller.resolutions) { resolution in
+                                HelmRuledRow {
+                                    exerciseRow(resolution)
+                                }
+                            }
+                        }
                     }
 
                     if let errorMessage = controller.errorMessage {
@@ -58,7 +63,7 @@ struct WorkoutImportPreviewView: View {
                     .buttonStyle(.helmPrimary)
                     .disabled(!controller.canImport)
                 }
-                .padding(HelmSpacing.md)
+                .helmScreenPadding()
             }
             .helmScreenBackground()
             .navigationTitle("Import preview")
@@ -88,41 +93,37 @@ struct WorkoutImportPreviewView: View {
     }
 
     @ViewBuilder
-    private func exerciseCard(_ resolution: WorkoutImportExerciseResolution) -> some View {
+    private func exerciseRow(_ resolution: WorkoutImportExerciseResolution) -> some View {
         let parsedExercise = controller.parsedWorkout?.exercises.first { $0.exerciseTitle == resolution.importedTitle }
 
-        Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                HStack(alignment: .top) {
-                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                        Text(resolution.importedTitle)
-                            .font(HelmTypography.body)
-                            .foregroundStyle(HelmColor.textPrimary)
-                        if let exerciseID = resolution.exerciseID {
-                            Text(controller.displayName(for: exerciseID))
-                                .font(HelmTypography.caption)
-                                .foregroundStyle(HelmColor.textSecondary)
-                        }
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    Text(resolution.importedTitle)
+                        .helmType(.body)
+                    if let exerciseID = resolution.exerciseID {
+                        Text(controller.displayName(for: exerciseID))
+                            .helmType(.body, color: HelmColor.fgSecondary)
                     }
-                    Spacer(minLength: HelmSpacing.sm)
-                    matchBadge(for: resolution.matchKind)
                 }
-
-                if let parsedExercise {
-                    Text(setSummary(for: parsedExercise))
-                        .font(HelmTypography.caption.monospacedDigit())
-                        .foregroundStyle(HelmColor.textSecondary)
-                }
-
-                if resolution.matchKind == .unresolved || resolution.matchKind == .manual {
-                    Button(resolution.isResolved ? "Change exercise" : "Map exercise") {
-                        mappingExerciseTitle = resolution.importedTitle
-                    }
-                    .buttonStyle(.helmSecondary)
-                }
+                Spacer(minLength: HelmSpacing.sm)
+                matchBadge(for: resolution.matchKind)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let parsedExercise {
+                Text(setSummary(for: parsedExercise))
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .monospacedDigit()
+            }
+
+            if resolution.matchKind == .unresolved || resolution.matchKind == .manual {
+                Button(resolution.isResolved ? "Change exercise" : "Map exercise") {
+                    mappingExerciseTitle = resolution.importedTitle
+                }
+                .buttonStyle(.helmSecondary)
+            }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func setSummary(for exercise: ParsedWorkoutExercise) -> String {

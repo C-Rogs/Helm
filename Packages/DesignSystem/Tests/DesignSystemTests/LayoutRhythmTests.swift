@@ -1,0 +1,113 @@
+import Foundation
+import Testing
+@testable import DesignSystem
+
+@Suite("Layout rhythm")
+struct LayoutRhythmTests {
+    @Test("spacing scale matches DESIGN-SYSTEM section 5")
+    func spacingScale() {
+        #expect(HelmSpacing.xxs == 4)
+        #expect(HelmSpacing.xs == 8)
+        #expect(HelmSpacing.sm == 12)
+        #expect(HelmSpacing.md == 16)
+        #expect(HelmSpacing.lg == 22)
+        #expect(HelmSpacing.xl == 32)
+        #expect(HelmSpacing.screenGutter == HelmSpacing.lg)
+    }
+
+    @Test("layout dimensions derive from spacing scale")
+    func layoutDimensions() {
+        #expect(HelmLayout.chartHeight == HelmSpacing.sm * 15)
+        #expect(HelmLayout.emptyChartMinHeight == HelmSpacing.sm * 10)
+        #expect(HelmLayout.arcReadoutMaxWidth == HelmSpacing.lg * 10)
+        #expect(HelmChartStyle.standardHeight == HelmLayout.chartHeight)
+    }
+
+    @Test("audited views avoid raw spacing literals")
+    func auditedViewsAvoidRawSpacingLiterals() throws {
+        let repoRoot = layoutRhythmRepoRoot()
+        let auditedRelativePaths = [
+            "Helm/Views/DashboardView.swift",
+            "Helm/Views/DashboardTrendsSection.swift",
+            "Helm/Views/ThresholdInsightCard.swift",
+            "Helm/Views/TrainView.swift",
+            "Helm/Views/Train/ExerciseSectionView.swift",
+            "Helm/Views/Train/PersonalRecordsCelebrationView.swift",
+            "Helm/Views/Train/WorkoutHistoryListView.swift",
+            "Helm/Views/Train/WorkoutTemplatesListView.swift",
+            "Helm/Views/Train/WorkoutSessionDetailView.swift",
+            "Helm/Views/Train/WorkoutImportPreviewView.swift",
+            "Helm/Views/Train/WorkoutImportPreviewView.swift",
+            "Helm/Views/TrendsView.swift",
+            "Helm/Views/Trends/TrendWeightChartCard.swift",
+            "Helm/Views/Trends/ReadinessHistoryChartCard.swift",
+            "Helm/Views/Trends/E1RMProgressionChartCard.swift",
+            "Helm/Views/Trends/MuscleVolumeArcGridCard.swift",
+            "Helm/Views/Trends/EnergyBalanceChartCard.swift",
+            "Helm/Views/Trends/TrendsChartShared.swift",
+            "Helm/Views/NutritionView.swift",
+            "Helm/Views/NutritionDaySummaryCard.swift",
+            "Helm/Views/SettingsView.swift",
+            "Helm/Views/MemoryProfileEditorView.swift",
+            "Helm/Views/SchemaV2ExportView.swift"
+        ]
+
+        let forbiddenPatterns = [
+            #"spacing:\s*[1-9]\d*"#,
+            #"padding\(\s*[1-9]\d*\s*\)"#,
+            #"\.padding\(\.(top|bottom|leading|trailing|horizontal|vertical),\s*[1-9]\d*\s*\)"#
+        ]
+
+        for relativePath in auditedRelativePaths {
+            let url = repoRoot.appendingPathComponent(relativePath)
+            let source = try String(contentsOf: url, encoding: .utf8)
+            let lines = source.split(separator: "\n", omittingEmptySubsequences: false)
+
+            for (index, line) in lines.enumerated() {
+                let trimmed = line.trimmingCharacters(in: .whitespaces)
+                if trimmed.contains("spacing: 0") { continue }
+                if trimmed.contains(", 0)") || trimmed.contains("(0)") { continue }
+
+                for pattern in forbiddenPatterns {
+                    let regex = try Regex(pattern)
+                    if trimmed.firstMatch(of: regex) != nil {
+                        Issue.record("Raw spacing literal in \(relativePath):\(index + 1): \(trimmed)")
+                    }
+                }
+            }
+        }
+    }
+
+    @Test("audited views avoid nested Card surfaces")
+    func auditedViewsAvoidNestedCards() throws {
+        let repoRoot = layoutRhythmRepoRoot()
+        let auditedRelativePaths = [
+            "Helm/Views/DashboardView.swift",
+            "Helm/Views/NutritionDaySummaryCard.swift",
+            "Helm/Views/Train/WorkoutHistoryListView.swift",
+            "Helm/Views/Train/WorkoutTemplatesListView.swift",
+            "Helm/Views/Train/WorkoutSessionDetailView.swift",
+            "Helm/Views/Train/WorkoutImportPreviewView.swift",
+            "Helm/Views/SettingsView.swift"
+        ]
+
+        let nestedCardPattern = try Regex(#"Card\s*\{[\s\S]*?Card\s*\{"#)
+
+        for relativePath in auditedRelativePaths {
+            let url = repoRoot.appendingPathComponent(relativePath)
+            let source = try String(contentsOf: url, encoding: .utf8)
+            if source.firstMatch(of: nestedCardPattern) != nil {
+                Issue.record("Nested Card in \(relativePath)")
+            }
+        }
+    }
+
+    private func layoutRhythmRepoRoot() -> URL {
+        let fileURL = URL(fileURLWithPath: #filePath)
+        return fileURL
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+    }
+}

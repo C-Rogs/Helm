@@ -30,13 +30,13 @@ struct MuscleVolumeArcGridCard: View {
                                     state: gauge.state
                                 ) {
                                     VStack(spacing: HelmSpacing.xxs) {
-                                        Text(String(format: "%.0f", gauge.weeklySets))
+                                        HelmNumericText(gauge.weeklySets, format: "%.0f")
                                             .helmType(.bigNumber)
                                         Text(gauge.state.label)
                                             .helmType(.monoTag, color: HelmColor.fgMuted)
                                     }
                                 }
-                                .frame(maxWidth: 120)
+                                .frame(maxWidth: HelmLayout.compactArcWidth)
 
                                 Text(TrendsChartSupport.muscleLabel(gauge.muscle))
                                     .helmType(.label)

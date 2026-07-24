@@ -29,7 +29,7 @@ struct SettingsView: View {
                         HapticEngine.shared.play(.selection)
                     }
 
-                    Card {
+                    HelmRuledRow {
                         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                             Text("Layout preview")
                                 .helmType(.label)
@@ -113,7 +113,20 @@ struct SettingsView: View {
     }
 }
 
-#Preview {
+#Preview("Settings instrument") {
     SettingsView()
         .helmTheme()
+        .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Settings data sheet") {
+    SettingsView()
+        .helmTheme()
+        .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Settings accessibility") {
+    SettingsView()
+        .helmTheme()
+        .dynamicTypeSize(.accessibility5)
 }
