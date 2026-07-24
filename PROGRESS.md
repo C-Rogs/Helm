@@ -124,4 +124,4 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | M14.6 Nutrition tab meal buckets + multi-action FAB | done | 2026-07-24 | f785172 | Targets-first layout; four meal buckets; expandable FAB; FoodLogTipStore; quick-add/alcohol sheets; mealConfirmed haptic. |
 | M14.7 Recents, portion memory, templates, copy meal | done | 2026-07-24 | 7c093e0 | Recents strip on search; portion memory on log; MealTemplate CRUD + confirm log; copy bucket/yesterday; save template from bucket header. |
 | M14.8 Edit/delete history + HK sync + MFP dedup | done | 2026-07-24 | 39d8d57 | Edit/delete meals with HK delete-by-meal_id rewrite; DietarySourceMerger ±15m/±10% kcal; Settings Helm only/Merge external; meal tap edit sheet. |
-| M14.9 Offline pending import queue | not started | | | |
+| M14.9 Offline pending import queue | done | 2026-07-24 | 13005b3 | PendingFoodImportService queues offline barcodes; reconnect resolves via OFF; offline banner + miss UX; local notification on resolve; fixture tests. |

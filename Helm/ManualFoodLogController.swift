@@ -29,19 +29,23 @@ final class ManualFoodLogController {
 
     private let foodResolver: FoodResolver
     private let manualMealService: ManualMealService
+    private let pendingImportService: PendingFoodImportService
     private let networkGate: any NetworkGating
     private let portionPreferenceLoader: @Sendable (FoodProductRef) throws -> FoodPortionPreference?
     private let onLogged: @MainActor () -> Void
+    private var wasOnline = true
 
     init(
         foodResolver: FoodResolver,
         manualMealService: ManualMealService,
+        pendingImportService: PendingFoodImportService,
         networkGate: any NetworkGating = LiveNetworkGate(),
         portionPreferenceLoader: @escaping @Sendable (FoodProductRef) throws -> FoodPortionPreference? = { _ in nil },
         onLogged: @escaping @MainActor () -> Void = {}
     ) {
         self.foodResolver = foodResolver
         self.manualMealService = manualMealService
+        self.pendingImportService = pendingImportService
         self.networkGate = networkGate
         self.portionPreferenceLoader = portionPreferenceLoader
         self.onLogged = onLogged
@@ -55,7 +59,13 @@ final class ManualFoodLogController {
     }
 
     func refreshConnectivity() async {
-        isOnline = await networkGate.isOnline()
+        let nowOnline = await networkGate.isOnline()
+        if !wasOnline && nowOnline {
+            _ = await pendingImportService.resolvePendingImports()
+            onLogged()
+        }
+        wasOnline = nowOnline
+        isOnline = nowOnline
     }
 
     func startSearch() {
@@ -145,6 +155,24 @@ final class ManualFoodLogController {
         }
     }
 
+    func queueOfflineBarcode(
+        barcode: String,
+        bucket: MealBucket
+    ) async {
+        phase = .saving
+        do {
+            _ = try await pendingImportService.queueOfflineBarcode(
+                barcode: barcode,
+                bucket: bucket
+            )
+            HapticEngine.shared.play(.mealConfirmed)
+            phase = .idle
+            onLogged()
+        } catch {
+            phase = .failed("Could not save that barcode for later. Try again.")
+        }
+    }
+
     func logAlcohol(
         preset: AlcoholDrinkPreset,
         quantity: Int,
@@ -200,9 +228,16 @@ final class ManualFoodLogController {
 #if DEBUG
 extension ManualFoodLogController {
     static func previewController(online: Bool) -> ManualFoodLogController {
-        ManualFoodLogController(
-            foodResolver: FoodResolver(persistence: try! PersistenceStore.inMemory()),
+        let store = try! PersistenceStore.inMemory()
+        let foodResolver = FoodResolver(persistence: store)
+        return ManualFoodLogController(
+            foodResolver: foodResolver,
             manualMealService: ManualMealService(),
+            pendingImportService: PendingFoodImportService(
+                persistence: store,
+                foodResolver: foodResolver,
+                manualMealService: ManualMealService()
+            ),
             networkGate: FixedNetworkGate(online: online)
         )
     }

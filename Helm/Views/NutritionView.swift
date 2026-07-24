@@ -12,6 +12,7 @@ struct NutritionView: View {
     @State private var manualFoodLogController = ManualFoodLogController(
         foodResolver: NutritionBootstrap.foodResolver,
         manualMealService: NutritionBootstrap.manualMealService,
+        pendingImportService: NutritionBootstrap.pendingFoodImportService,
         portionPreferenceLoader: { ref in
             try PersistenceBootstrap.persistenceStore.foodLog.fetchPortionPreference(ref: ref)
         },
@@ -38,6 +39,7 @@ struct NutritionView: View {
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
     @State private var currentHelmDay: HelmDay?
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         navigationStack
@@ -45,6 +47,12 @@ struct NutritionView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar { refreshToolbar }
             .task { await refreshTargets() }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                Task {
+                    await manualFoodLogController.refreshConnectivity()
+                }
+            }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
                     await nutritionService.refresh(prescriptionSummary: newState.summary)

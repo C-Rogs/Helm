@@ -48,9 +48,13 @@ struct FoodSearchView: View {
                         .helmType(.body, color: HelmColor.fgMuted)
                         .listRowBackground(HelmColor.surface)
                 } else if results.isEmpty {
-                    Text("No matches for \"\(trimmedQuery)\".")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                        .listRowBackground(HelmColor.surface)
+                    if !isOnline {
+                        offlineMissState
+                    } else {
+                        Text("No matches for \"\(trimmedQuery)\".")
+                            .helmType(.body, color: HelmColor.fgMuted)
+                            .listRowBackground(HelmColor.surface)
+                    }
                 } else {
                     ForEach(results, id: \.product.ref.cacheKey) { result in
                         Button {
@@ -135,6 +139,16 @@ struct FoodSearchView: View {
         .padding(HelmSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(HelmColor.compromised.opacity(0.12))
+    }
+
+    private var offlineMissState: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            Text("No offline match for \"\(trimmedQuery)\".")
+                .helmType(.body, color: HelmColor.fgMuted)
+            Text("Try a generic food name, use a recent item, or log with a photo.")
+                .helmType(.body, color: HelmColor.fgSecondary)
+        }
+        .listRowBackground(HelmColor.surface)
     }
 
     private func scheduleSearch(for query: String) {

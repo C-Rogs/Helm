@@ -9,6 +9,7 @@ struct AddFoodFlowView: View {
 
     @State private var selectedProduct: ResolvedFoodProduct?
     @State private var lookupError: String?
+    @State private var pendingBarcode: String?
     @State private var isResolvingBarcode = false
     @Environment(\.dismiss) private var dismiss
 
@@ -91,6 +92,37 @@ struct AddFoodFlowView: View {
                 }
             }
         )
+        .alert(
+            "Save for later?",
+            isPresented: Binding(
+                get: { pendingBarcode != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        pendingBarcode = nil
+                    }
+                }
+            ),
+            actions: {
+                Button("Save pending") {
+                    guard let barcode = pendingBarcode else { return }
+                    Task {
+                        await controller.queueOfflineBarcode(
+                            barcode: barcode,
+                            bucket: .snacks
+                        )
+                        pendingBarcode = nil
+                    }
+                }
+                Button("Cancel", role: .cancel) {
+                    pendingBarcode = nil
+                }
+            },
+            message: {
+                if let pendingBarcode {
+                    Text("Barcode \(pendingBarcode) will be saved without macros and matched when you are back online. You can also log with a photo from the + menu.")
+                }
+            }
+        )
     }
 
     @ViewBuilder
@@ -121,6 +153,8 @@ struct AddFoodFlowView: View {
             do {
                 let product = try await controller.resolveBarcode(barcode)
                 selectedProduct = product
+            } catch FoodResolverError.offline {
+                pendingBarcode = barcode
             } catch {
                 lookupError = controller.isBusy ? "Could not look up that barcode." : lookupMessage(for: error)
             }

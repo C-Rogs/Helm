@@ -15,6 +15,15 @@ enum NutritionBootstrap {
         localStore: ManualMealLocalStore(store: PersistenceBootstrap.persistenceStore)
     )
 
+    static let pendingFoodImportService = PendingFoodImportService(
+        persistence: PersistenceBootstrap.persistenceStore,
+        foodResolver: foodResolver,
+        manualMealService: manualMealService,
+        onResolved: { count in
+            await PendingImportNotificationScheduler.postResolved(count: count)
+        }
+    )
+
     @MainActor
     static let mealRepeatService = MealRepeatService(
         store: PersistenceBootstrap.persistenceStore,
@@ -41,6 +50,11 @@ enum NutritionBootstrap {
 
         Task(priority: .utility) {
             observeIngest()
+        }
+
+        Task(priority: .utility) {
+            _ = await pendingFoodImportService.resolvePendingImports()
+            await refreshNutrition()
         }
     }
 
