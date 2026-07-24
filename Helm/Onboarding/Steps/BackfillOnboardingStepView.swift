@@ -1,14 +1,16 @@
 import DesignSystem
 import HealthKitIngest
+import ReadinessKit
 import SwiftUI
 
 struct BackfillOnboardingStepView: View {
     var showsFlowControls: Bool = true
-    var stepIndex: Int = 5
+    var stepIndex: Int = 6
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
     var onSkip: () -> Void = {}
 
+    @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var isBackfilling = false
     @State private var progress = BackfillProgress(
         completedChunks: 0,
@@ -29,7 +31,17 @@ struct BackfillOnboardingStepView: View {
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 if isBackfilling || hasStarted {
-                    ProgressView(value: progressFraction)
+                    ArcProgressGauge(progress: progressFraction, state: .ready, reduceMotion: reduceMotion) {
+                        VStack(spacing: HelmSpacing.xxs) {
+                            HelmNumericText(Int((progressFraction * 100).rounded()))
+                                .helmType(.heroNumber)
+                            Text("IMPORT")
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
+                    }
+                    .frame(maxWidth: 180)
+                    .frame(maxWidth: .infinity)
+
                     Text(statusText)
                         .font(HelmTypography.body)
                         .foregroundStyle(HelmColor.fgSecondary)

@@ -28,6 +28,13 @@ struct OnboardingFlowView: View {
         }
 
         switch step {
+        case .welcome:
+            WelcomeOnboardingStepView(
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                onContinue: advance,
+                onSkip: skip
+            )
         case .healthKit:
             HealthKitOnboardingStepView(
                 stepIndex: stepIndex,

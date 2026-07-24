@@ -301,7 +301,7 @@ struct DashboardView: View {
                     contributorDetailsVisible = !shouldReveal
                 }
 
-                contributorsSection(for: score)
+                contributorsSection(for: score, visible: contributorDetailsVisible)
                     .readinessDetailsReveal(visible: contributorDetailsVisible, reduceMotion: reduceMotion)
             }
         }
@@ -354,8 +354,23 @@ struct DashboardView: View {
         }
     }
 
-    private func contributorsSection(for score: ReadinessScore) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+    private func contributorsSection(for score: ReadinessScore, visible: Bool) -> some View {
+        var contributors: [(String, Double?)] = [
+            ("HRV", score.contributors.zHRV),
+            ("Resting HR", score.contributors.zRestingHR),
+            ("Sleep", score.contributors.zSleep),
+        ]
+        if score.contributors.zStrain != nil {
+            contributors.append(("Strain", score.contributors.zStrain))
+        }
+        if score.contributors.zRespiratory != nil {
+            contributors.append(("Respiratory", score.contributors.zRespiratory))
+        }
+        if score.contributors.zTemperature != nil {
+            contributors.append(("Temperature", score.contributors.zTemperature))
+        }
+
+        return VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             HelmHairlineRule()
 
             Text("Contributors")
@@ -369,17 +384,13 @@ struct DashboardView: View {
                 ],
                 spacing: HelmSpacing.sm
             ) {
-                contributorChip("HRV", z: score.contributors.zHRV)
-                contributorChip("Resting HR", z: score.contributors.zRestingHR)
-                contributorChip("Sleep", z: score.contributors.zSleep)
-                if score.contributors.zStrain != nil {
-                    contributorChip("Strain", z: score.contributors.zStrain)
-                }
-                if score.contributors.zRespiratory != nil {
-                    contributorChip("Respiratory", z: score.contributors.zRespiratory)
-                }
-                if score.contributors.zTemperature != nil {
-                    contributorChip("Temperature", z: score.contributors.zTemperature)
+                ForEach(Array(contributors.enumerated()), id: \.offset) { index, contributor in
+                    contributorChip(contributor.0, z: contributor.1)
+                        .readinessContributorReveal(
+                            visible: visible,
+                            index: index,
+                            reduceMotion: reduceMotion
+                        )
                 }
             }
         }

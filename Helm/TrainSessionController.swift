@@ -36,6 +36,7 @@ final class TrainSessionController {
     private(set) var exerciseTargets: [String: String] = [:]
     private(set) var prescriptionSummary: PrescribedSessionSummary?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
+    private(set) var lastFinishSummary: WorkoutFinishSummary?
 
     var numpadTarget: NumpadTarget?
     var numpadWorkingText = ""
@@ -43,6 +44,7 @@ final class TrainSessionController {
     var isShowingExercisePicker = false
     var isShowingFinishConfirmation = false
     var isShowingDiscardConfirmation = false
+    var isShowingFinishSummary = false
     var isShowingPersonalRecords = false
     var errorMessage: String?
 
@@ -177,6 +179,10 @@ final class TrainSessionController {
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
+                    lastFinishSummary = try? WorkoutFinishSummaryAssembler.build(
+                        session: session,
+                        store: persistence
+                    )
                     await ProactiveBootstrap.notificationScheduler.postPostWorkoutSummary(
                         session: session,
                         personalRecords: records
@@ -184,12 +190,10 @@ final class TrainSessionController {
                     await ProactiveBootstrap.notificationScheduler.cancelPreWorkoutPrime(
                         for: HelmDay.day(for: .now, calendar: .current)
                     )
-                    if records.isEmpty {
-                        WorkoutHapticCoordinator.playSessionFinished()
-                    } else {
-                        WorkoutHapticCoordinator.playPersonalRecords(records)
+                    isShowingFinishSummary = lastFinishSummary != nil
+                    if lastFinishSummary == nil {
+                        presentPersonalRecordsIfNeeded(records)
                     }
-                    isShowingPersonalRecords = !records.isEmpty
                 } else {
                     WorkoutHapticCoordinator.playSessionFinished()
                 }
@@ -416,6 +420,21 @@ final class TrainSessionController {
 
     func clearFinishedPersonalRecords() {
         lastFinishedPersonalRecords = []
+    }
+
+    func clearFinishSummary() {
+        lastFinishSummary = nil
+    }
+
+    func dismissFinishSummary() {
+        isShowingFinishSummary = false
+        presentPersonalRecordsIfNeeded(lastFinishedPersonalRecords)
+    }
+
+    private func presentPersonalRecordsIfNeeded(_ records: [DetectedPersonalRecord]) {
+        guard !records.isEmpty else { return }
+        WorkoutHapticCoordinator.playPersonalRecords(records)
+        isShowingPersonalRecords = true
     }
 
     func submitCoachPrompt() async {

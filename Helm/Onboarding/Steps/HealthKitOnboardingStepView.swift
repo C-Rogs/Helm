@@ -4,7 +4,7 @@ import SwiftUI
 
 struct HealthKitOnboardingStepView: View {
     var showsFlowControls: Bool = true
-    var stepIndex: Int = 1
+    var stepIndex: Int = 2
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
     var onSkip: () -> Void = {}

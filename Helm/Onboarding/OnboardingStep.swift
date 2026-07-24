@@ -1,6 +1,7 @@
 import Foundation
 
 enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
+    case welcome
     case healthKit
     case notifications
     case coachKey
@@ -12,6 +13,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
+        case .welcome: "Welcome to Helm"
         case .healthKit: "Health data"
         case .notifications: "Notifications"
         case .coachKey: "Coach"
@@ -23,6 +25,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
 
     var subtitle: String {
         switch self {
+        case .welcome:
+            "Your readiness instrument. One arc, one score, one plan for today."
         case .healthKit:
             "Helm reads Apple Health to compute readiness, training load, and nutrition."
         case .notifications:
@@ -40,6 +44,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
 
     var settingsLabel: String {
         switch self {
+        case .welcome: "Welcome"
         case .healthKit: "Health Access"
         case .notifications: "Notifications"
         case .coachKey: "Coach API Key"

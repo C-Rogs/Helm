@@ -54,8 +54,6 @@ struct TrainView: View {
                 Button("Finish workout", role: .none) {
                     Task {
                         await controller.finishWorkout()
-                        history.refresh()
-                        history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
                     }
                 }
                 Button("Cancel", role: .cancel) {}
@@ -87,6 +85,32 @@ struct TrainView: View {
             }
             .sheet(isPresented: $controller.isShowingCoachPrompt) {
                 coachPromptSheet
+            }
+            .sheet(isPresented: $controller.isShowingFinishSummary) {
+                NavigationStack {
+                    ScrollView {
+                        if let summary = controller.lastFinishSummary {
+                            WorkoutFinishSummaryView(
+                                summary: summary,
+                                muscleLabel: TrendsChartSupport.muscleLabel
+                            )
+                            .padding(HelmSpacing.md)
+                        }
+                    }
+                    .helmScreenBackground()
+                    .navigationTitle("Session summary")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarTrailing) {
+                            Button("Done") {
+                                controller.dismissFinishSummary()
+                                controller.clearFinishSummary()
+                                history.refresh()
+                                history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
+                            }
+                        }
+                    }
+                }
+                .presentationDetents([.large])
             }
             .sheet(isPresented: $controller.isShowingPersonalRecords) {
                 NavigationStack {

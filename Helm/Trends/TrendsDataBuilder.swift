@@ -77,7 +77,7 @@ enum TrendsDataBuilder {
         cutoff: DayCutoff = .default
     ) throws -> [MuscleVolumeGauge] {
         let weekStart = weekStart(containing: day, calendar: calendar)
-        let sessions = try loadSessions(
+        let sessions = try loadSessionsForSummary(
             store: store,
             since: weekStart,
             calendar: calendar,
@@ -197,7 +197,7 @@ enum TrendsDataBuilder {
         return (fallback?.id ?? defaultExerciseID, fallback?.displayName ?? "Squat")
     }
 
-    private static func weekStart(containing day: HelmDay, calendar: Calendar) -> HelmDay {
+    static func weekStart(containing day: HelmDay, calendar: Calendar) -> HelmDay {
         var iso = calendar
         iso.firstWeekday = 2
         let components = day.dateComponents()
@@ -219,7 +219,7 @@ enum TrendsDataBuilder {
         return .depleted
     }
 
-    private static func loadMesocycleState(from store: PersistenceStore) throws -> MesocycleState? {
+    static func loadMesocycleState(from store: PersistenceStore) throws -> MesocycleState? {
         guard let json = try store.plan.loadMesocycleStateJSON(),
               let data = json.data(using: .utf8) else {
             return nil
@@ -227,7 +227,7 @@ enum TrendsDataBuilder {
         return try? JSONDecoder().decode(MesocycleState.self, from: data)
     }
 
-    private static func muscleMaps(from store: PersistenceStore) throws -> [String: ExerciseMuscleMap] {
+    static func muscleMaps(from store: PersistenceStore) throws -> [String: ExerciseMuscleMap] {
         let rows = try store.exercises.fetchCatalogRows()
         var maps: [String: ExerciseMuscleMap] = [:]
         for row in rows {
@@ -285,7 +285,7 @@ enum TrendsDataBuilder {
         }
     }
 
-    private static func loadSessions(
+    static func loadSessionsForSummary(
         store: PersistenceStore,
         since startDay: HelmDay,
         calendar: Calendar,

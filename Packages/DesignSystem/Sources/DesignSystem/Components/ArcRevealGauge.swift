@@ -33,10 +33,17 @@ public struct ArcRevealGauge<Center: View>: View {
         self.center = center
     }
 
+    private var revealProgress: Double {
+        guard range.upperBound > range.lowerBound else { return 0 }
+        let clamped = min(max(displayValue, range.lowerBound), range.upperBound)
+        return (clamped - range.lowerBound) / (range.upperBound - range.lowerBound)
+    }
+
     public var body: some View {
         ArcGauge(value: displayValue, range: range, state: state) {
             center(displayValue)
         }
+        .arcStateBloom(progress: revealProgress, state: state, reduceMotion: reduceMotion)
         .onAppear(perform: beginRevealIfNeeded)
         .onChange(of: targetValue) { _, newValue in
             guard reveal == false else { return }
@@ -87,6 +94,21 @@ public extension View {
     func readinessDetailsReveal(visible: Bool, reduceMotion: Bool) -> some View {
         modifier(ReadinessDetailsRevealModifier(visible: visible, reduceMotion: reduceMotion))
     }
+
+    /// Staggers contributor rows in during the reveal tail.
+    func readinessContributorReveal(
+        visible: Bool,
+        index: Int,
+        reduceMotion: Bool
+    ) -> some View {
+        modifier(
+            ReadinessContributorRevealModifier(
+                visible: visible,
+                index: index,
+                reduceMotion: reduceMotion
+            )
+        )
+    }
 }
 
 private struct ReadinessDetailsRevealModifier: ViewModifier {
@@ -101,6 +123,46 @@ private struct ReadinessDetailsRevealModifier: ViewModifier {
                 HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
                 value: visible
             )
+    }
+}
+
+private struct ReadinessContributorRevealModifier: ViewModifier {
+    let visible: Bool
+    let index: Int
+    let reduceMotion: Bool
+
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        content
+            .opacity(appeared ? 1 : 0)
+            .offset(y: appeared || reduceMotion ? 0 : 8)
+            .onAppear { updateAppearance(visible) }
+            .onChange(of: visible) { _, isVisible in
+                updateAppearance(isVisible)
+            }
+    }
+
+    private func updateAppearance(_ isVisible: Bool) {
+        guard isVisible else {
+            appeared = false
+            return
+        }
+
+        let delay = HelmMotion.staggerDelay(index: index, step: 0.05, reduceMotion: reduceMotion)
+        if delay == 0 {
+            withAnimation(HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion)) {
+                appeared = true
+            }
+            return
+        }
+
+        appeared = false
+        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+            withAnimation(HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion)) {
+                appeared = true
+            }
+        }
     }
 }
 
