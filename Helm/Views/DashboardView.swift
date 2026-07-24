@@ -289,7 +289,7 @@ struct DashboardView: View {
                             .helmType(.body, color: HelmColor.fgMuted)
                     }
                 }
-                .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
+                .frame(maxWidth: 220)
                 .frame(maxWidth: .infinity)
                 .explainable(
                     ExplainableMetricMappers.readiness(
@@ -320,7 +320,7 @@ struct DashboardView: View {
                     .multilineTextAlignment(.center)
             }
         }
-        .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
+        .frame(maxWidth: 220)
         .frame(maxWidth: .infinity)
     }
 

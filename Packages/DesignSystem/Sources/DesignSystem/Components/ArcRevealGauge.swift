@@ -114,7 +114,7 @@ private struct ReadinessDetailsRevealModifier: ViewModifier {
         detailsVisible: .constant(false)
     ) { value in
         VStack(spacing: HelmSpacing.xxs) {
-            Text("\(Int(value.rounded()))")
+            HelmNumericText(Int(value.rounded()))
                 .helmType(.heroNumber)
             Text(HelmState.ready.label)
                 .helmType(.monoTag, color: HelmColor.fgMuted)

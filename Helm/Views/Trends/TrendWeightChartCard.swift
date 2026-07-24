@@ -62,7 +62,7 @@ struct TrendWeightChartCard: View {
                         HStack(spacing: HelmSpacing.xxs) {
                             Text("Target")
                                 .helmType(.monoTag, color: HelmColor.fgMuted)
-                            Text(String(format: "%.1f", targetWeightKg))
+                            HelmNumericText(targetWeightKg, format: "%.1f")
                                 .helmType(.monoTag, color: HelmColor.fgMuted)
                             Text("kg")
                                 .helmType(.monoTag, color: HelmColor.fgMuted)

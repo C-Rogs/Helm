@@ -42,29 +42,24 @@ struct DashboardTrendsSection: View {
             targetWeightKg: controller.snapshot.targetWeightKg,
             showsSparkline: true
         )
-        .helmStaggeredAppear(index: 0)
 
         ReadinessHistoryChartCard(
             points: controller.snapshot.readinessHistory
         )
-        .helmStaggeredAppear(index: 1)
 
         MuscleVolumeBarChartCard(
             gauges: controller.snapshot.muscleVolume
         )
-        .helmStaggeredAppear(index: 2)
 
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
         )
-        .helmStaggeredAppear(index: 3)
 
         EnergyBalanceChartCard(
             gauges: controller.snapshot.energyBalance
         )
-        .helmStaggeredAppear(index: 4)
 
         if controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {

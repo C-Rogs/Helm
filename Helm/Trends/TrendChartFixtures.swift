@@ -31,24 +31,28 @@ enum TrendChartFixtures {
     }
 
     static var muscleVolume: [MuscleVolumeGauge] {
+        muscleVolumeStates
+    }
+
+    static var muscleVolumeStates: [MuscleVolumeGauge] {
         [
             MuscleVolumeGauge(
                 muscle: .quads,
-                weeklySets: 14,
+                weeklySets: 4,
                 landmarks: VolumeLandmarks(mev: 8, mrv: 18),
-                state: .ready
+                state: .depleted
             ),
             MuscleVolumeGauge(
                 muscle: .chest,
-                weeklySets: 16,
+                weeklySets: 14,
                 landmarks: VolumeLandmarks(mev: 10, mrv: 20),
-                state: .primed
+                state: .ready
             ),
             MuscleVolumeGauge(
                 muscle: .back,
-                weeklySets: 6,
-                landmarks: VolumeLandmarks(mev: 10, mrv: 20),
-                state: .depleted
+                weeklySets: 18,
+                landmarks: VolumeLandmarks(mev: 10, mrv: 18),
+                state: .primed
             ),
             MuscleVolumeGauge(
                 muscle: .hamstrings,

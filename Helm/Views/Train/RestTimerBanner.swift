@@ -10,7 +10,7 @@ struct RestTimerBanner: View {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text("REST")
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
-                Text(formattedTime)
+                HelmNumericText(formattedTime)
                     .helmType(.bigNumber, color: HelmColor.accent)
             }
             Spacer()

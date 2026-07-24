@@ -198,7 +198,8 @@ struct NutritionView: View {
     }
 
     private var loadingCard: some View {
-        HelmSkeletonCard(rowCount: 4)
+        Text("Loading nutrition…")
+            .helmType(.body, color: HelmColor.fgMuted)
     }
 }
 

@@ -67,7 +67,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M11.2 Sharing via Coacher (later, optional) | done | 2026-07-23 | 67b47aa | CoachKeyService client + HelmDeviceIdentity + OpenRouterKeyProvisioner (Release auto-provision); Settings retry UI; reuses Coacher worker; shared-secret-in-binary documented. Also aligned GeminiModel with existing 3.5 test expectation (pre-existing mismatch on HEAD). |
 | M12.1 Motion and transition pass | in progress (agent: cursor) | | | |
 | M12.2 Layout rhythm and density audit | done | 2026-07-24 | eed20f6 | HelmHairlineRule, HelmLayout tokens, helmScreenPadding, StatChip contributor grid, ruled list rows, LayoutRhythmTests |
-| M12.3 Data-viz refinement | not started | | | |
+| M12.3 Data-viz refinement | done | 2026-07-24 | 9238343 | HelmSparkline, HelmChartScrub, LandmarkVolumeBar; muscle volume bar card; Dashboard sparklines; scrub + insufficient-data states. |
 | M12.4 Finish pass: states, iconography, consistency | not started | | | |
 | M12.5 Signature moments | not started | | | |
 | M12.6 DeviationBand component | done | 2026-07-24 | fff7c53 | DeviationBand bar/inline layouts, helmNumericRoll on value, previews for in/below/above-band and cold-start. |

@@ -176,7 +176,7 @@ public struct InSessionCoachService: Sendable {
 
     private func loadCatalog() throws -> (catalog: [CatalogExercise], familiarExerciseIDs: Set<String>) {
         let rows = try persistence.exercises.fetchCatalogRows()
-        let day = HelmDay.day(for: Date(), cutoff: .default)
+        let day = HelmDay.day(for: Date(), cutoff: .default, calendar: .current)
         let history = try PrescriptionHistoryBuilder.history(
             from: persistence,
             endingAt: day

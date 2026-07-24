@@ -47,29 +47,24 @@ struct TrendsView: View {
             points: controller.snapshot.trendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg
         )
-        .helmStaggeredAppear(index: 0)
 
         ReadinessHistoryChartCard(
             points: controller.snapshot.readinessHistory
         )
-        .helmStaggeredAppear(index: 1)
 
-        MuscleVolumeArcGridCard(
+        MuscleVolumeBarChartCard(
             gauges: controller.snapshot.muscleVolume
         )
-        .helmStaggeredAppear(index: 2)
 
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
         )
-        .helmStaggeredAppear(index: 3)
 
         EnergyBalanceChartCard(
             gauges: controller.snapshot.energyBalance
         )
-        .helmStaggeredAppear(index: 4)
 
         if controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {
@@ -103,7 +98,7 @@ struct TrendsView: View {
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
             ReadinessHistoryChartCard(points: TrendChartFixtures.readinessHistory)
-            MuscleVolumeArcGridCard(gauges: TrendChartFixtures.muscleVolume)
+            MuscleVolumeBarChartCard(gauges: TrendChartFixtures.muscleVolumeStates)
             E1RMProgressionChartCard(
                 points: TrendChartFixtures.e1RMHistory,
                 exerciseName: "Squat (Barbell)",
@@ -125,7 +120,7 @@ struct TrendsView: View {
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
             ReadinessHistoryChartCard(points: TrendChartFixtures.readinessHistory)
-            MuscleVolumeArcGridCard(gauges: TrendChartFixtures.muscleVolume)
+            MuscleVolumeBarChartCard(gauges: TrendChartFixtures.muscleVolumeStates)
             E1RMProgressionChartCard(
                 points: TrendChartFixtures.e1RMHistory,
                 exerciseName: "Squat (Barbell)",

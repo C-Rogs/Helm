@@ -1,5 +1,7 @@
 import Core
 import Foundation
+import Persistence
+import PlanKit
 
 /// Maps persisted exercise rows into PlanKit catalog entries.
 enum PrescriptionCatalogBuilder {

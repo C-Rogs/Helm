@@ -351,9 +351,7 @@ struct TrainView: View {
     }
 
     private var bottomContentInset: CGFloat {
-        controller.numpadTarget == nil
-            ? HelmLayout.trainScrollBottomInset
-            : HelmLayout.trainScrollBottomInsetWithNumpad
+        controller.numpadTarget == nil ? 140 : 300
     }
 
     private var inSessionCoachBar: some View {
@@ -447,7 +445,7 @@ struct TrainView: View {
                     }
                 }
             )
-            .frame(height: HelmLayout.numpadHeight)
+            .frame(height: 300)
         }
         .background(HelmColor.canvas)
         .transition(.move(edge: .bottom))

@@ -38,6 +38,22 @@ public enum HelmMotion {
     public static func shouldAnimateReveal(reduceMotion: Bool) -> Bool {
         !reduceMotion
     }
+
+    public static func staggerDelay(
+        index: Int,
+        step: TimeInterval = 0.04,
+        reduceMotion: Bool
+    ) -> TimeInterval {
+        reduceMotion ? 0 : step * Double(index)
+    }
+
+    public static func usesShimmer(reduceMotion: Bool) -> Bool {
+        !reduceMotion
+    }
+
+    public static var pulseAnimation: Animation {
+        revealAnimation
+    }
 }
 
 public extension EnvironmentValues {
