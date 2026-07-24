@@ -56,10 +56,12 @@ public actor NutritionEngine {
         let settings = (try? persistence.trainingPlan.load()) ?? .default
         let storedDay = try? persistence.nutrition.fetchDay(helmDay: day)
         let dailyMetrics = try? persistence.dailyMetrics.fetch(helmDay: day)
+        let meals = try? persistence.nutrition.fetchMeals(for: day)
         let actual = NutritionActualResolver.resolve(
             helmDay: day,
             storedDay: storedDay,
-            dailyMetrics: dailyMetrics
+            dailyMetrics: dailyMetrics,
+            meals: meals
         )
         let bodyMassKg = try? persistence.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
         let safeBodyMassKg = NutritionKit.resolvedBodyMassKg(bodyMassKg)

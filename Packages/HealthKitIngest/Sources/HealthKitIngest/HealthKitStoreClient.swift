@@ -194,7 +194,7 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
             HKMetadataKeyExternalUUID: request.mealID,
             HelmHealthKitMetadata.mealIDKey: request.mealID,
             HelmHealthKitMetadata.mealNameKey: request.name,
-            HelmHealthKitMetadata.mealSourceKey: HelmHealthKitMetadata.mealSourcePhoto
+            HelmHealthKitMetadata.mealSourceKey: request.mealSource
         ]
 
         let energyType = HKQuantityType(.dietaryEnergyConsumed)

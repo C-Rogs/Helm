@@ -119,7 +119,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | M14.1 CoFID bundle replaces USDA | done | 2026-07-24 | a158e24 | Full CoFID 2021 bundle; NutritionLookup on cofid_foods.json; OGL attribution in Sources; USDA removed; lookup + grounded photo tests pass. |
 | M14.2 Food log persistence (GRDB v10) | done | 2026-07-24 | a755461 | GRDB v10 food-logging schema; Core models; FoodLogRepository + MealTemplateRepository; migrate-up + CRUD fixture tests pass. |
 | M14.3 Food resolver + Open Food Facts client | done | 2026-07-24 | d220e56 | FoodResolver actor (recents→CoFID→OFF→custom); OpenFoodFactsClient + NetworkGate; product cache writes; OFF JSON fixtures; cache hit skips network. |
-| M14.4 ManualMealService + HK write-through | not started | | | |
+| M14.4 ManualMealService + HK write-through | done | 2026-07-24 | fe5b8a5 | ManualMealService + quick-add/alcohol presets; GRDB+HK write-through; resolver prefers meal sums; explicit alcohol macro gap. |
 | M14.5 Search + barcode UI + MealLineItemEditor | not started | | | |
 | M14.6 Nutrition tab meal buckets + multi-action FAB | not started | | | |
 | M14.7 Recents, portion memory, templates, copy meal | not started | | | |

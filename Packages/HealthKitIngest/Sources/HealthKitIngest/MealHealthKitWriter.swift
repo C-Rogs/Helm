@@ -6,7 +6,32 @@ public enum HelmHealthKitMetadata {
     public static let mealIDKey = "com.cameronro.helm.meal_id"
     public static let mealNameKey = "com.cameronro.helm.meal_name"
     public static let mealSourceKey = "com.cameronro.helm.meal_source"
+    public static let mealSourceHealthKit = "healthKit"
+    public static let mealSourceManual = "manual"
     public static let mealSourcePhoto = "photo"
+    public static let mealSourceBarcode = "barcode"
+    public static let mealSourceQuickAdd = "quickAdd"
+    public static let mealSourceAlcohol = "alcohol"
+    public static let mealSourceTemplate = "template"
+
+    public static func mealSourceValue(for source: MealRecord.Source) -> String {
+        switch source {
+        case .healthKit:
+            mealSourceHealthKit
+        case .manual:
+            mealSourceManual
+        case .photo:
+            mealSourcePhoto
+        case .barcode:
+            mealSourceBarcode
+        case .quickAdd:
+            mealSourceQuickAdd
+        case .alcohol:
+            mealSourceAlcohol
+        case .template:
+            mealSourceTemplate
+        }
+    }
 }
 
 public struct MealWriteRequest: Sendable {
@@ -18,6 +43,7 @@ public struct MealWriteRequest: Sendable {
     public let carbsG: Double
     public let fatG: Double
     public let lineItems: [MealLineItem]
+    public let mealSource: String
 
     public init(
         mealID: String,
@@ -27,7 +53,8 @@ public struct MealWriteRequest: Sendable {
         proteinG: Double,
         carbsG: Double,
         fatG: Double,
-        lineItems: [MealLineItem] = []
+        lineItems: [MealLineItem] = [],
+        mealSource: String = HelmHealthKitMetadata.mealSourcePhoto
     ) {
         self.mealID = mealID
         self.name = name
@@ -37,9 +64,16 @@ public struct MealWriteRequest: Sendable {
         self.carbsG = carbsG
         self.fatG = fatG
         self.lineItems = lineItems
+        self.mealSource = mealSource
     }
 
-    public init(estimate: MealEstimate, name: String, loggedAt: Date, mealID: String = UUID().uuidString) {
+    public init(
+        estimate: MealEstimate,
+        name: String,
+        loggedAt: Date,
+        mealID: String = UUID().uuidString,
+        mealSource: String = HelmHealthKitMetadata.mealSourcePhoto
+    ) {
         self.init(
             mealID: mealID,
             name: name,
@@ -48,7 +82,8 @@ public struct MealWriteRequest: Sendable {
             proteinG: estimate.proteinG,
             carbsG: estimate.carbsG,
             fatG: estimate.fatG,
-            lineItems: estimate.lineItems
+            lineItems: estimate.lineItems,
+            mealSource: mealSource
         )
     }
 }

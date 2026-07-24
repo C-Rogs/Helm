@@ -81,8 +81,28 @@ struct HealthKitDayAggregatorTests {
         #expect(patches[0].dietaryEnergy?.kilocalories == 800)
     }
 
-    @Test("computes macro gap for alcohol-heavy day")
-    func macroGap() {
+    @Test("explicit alcohol kcal is excluded from macro gap")
+    func explicitAlcoholExcluded() {
+        let meals = [
+            MealRecord(
+                helmDay: day,
+                name: "Beer",
+                loggedAt: Date(),
+                energy: Energy(kilocalories: 420),
+                proteinGrams: 4,
+                carbohydrateGrams: 34,
+                fatGrams: 0,
+                source: .alcohol
+            )
+        ]
+
+        let nutritionDay = HealthKitDayAggregator.nutritionDay(from: meals, helmDay: day)
+
+        #expect(nutritionDay.macroGapKilocalories == nil)
+    }
+
+    @Test("untracked alcohol from HealthKit still surfaces gap")
+    func untrackedAlcoholGap() {
         let meals = [
             MealRecord(
                 helmDay: day,

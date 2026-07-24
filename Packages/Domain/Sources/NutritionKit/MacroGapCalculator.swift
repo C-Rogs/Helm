@@ -16,15 +16,23 @@ public enum MacroGapCalculator {
         totalEnergyKcal: Double,
         proteinGrams: Double,
         carbohydrateGrams: Double,
-        fatGrams: Double
+        fatGrams: Double,
+        explicitAlcoholKilocalories: Double = 0
     ) -> Double? {
         let reconstructed = reconstructedEnergyKcal(
             proteinGrams: proteinGrams,
             carbohydrateGrams: carbohydrateGrams,
             fatGrams: fatGrams
         )
-        let gap = totalEnergyKcal - reconstructed
+        let gap = totalEnergyKcal - reconstructed - explicitAlcoholKilocalories
         return gap > significanceThresholdKcal ? gap : nil
+    }
+
+    public static func explicitAlcoholKilocalories(from meals: [MealRecord]) -> Double {
+        meals
+            .filter { $0.source == .alcohol }
+            .compactMap(\.energy?.kilocalories)
+            .reduce(0, +)
     }
 
     public static func macroGap(for day: NutritionDay) -> Double? {

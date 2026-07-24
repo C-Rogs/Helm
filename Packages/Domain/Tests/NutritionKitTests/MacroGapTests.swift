@@ -21,6 +21,19 @@ struct MacroGapTests {
         #expect(gap! > 100)
     }
 
+    @Test("explicit alcohol kcal is subtracted from macro gap")
+    func explicitAlcoholSubtracted() {
+        let gap = MacroGapCalculator.macroGap(
+            totalEnergyKcal: 420,
+            proteinGrams: 4,
+            carbohydrateGrams: 34,
+            fatGrams: 0,
+            explicitAlcoholKilocalories: 420
+        )
+
+        #expect(gap == nil)
+    }
+
     @Test("alcohol day does not distort carb and fat targets")
     func gapDoesNotDistortTargets() {
         let alcoholDay = NutritionDay(

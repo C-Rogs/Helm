@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 
 public enum HealthKitDayAggregator {
     public static func aggregateQuantity(
@@ -161,11 +162,20 @@ public enum HealthKitDayAggregator {
         let protein = sumOptionalDoubles(dayMeals.compactMap(\.proteinGrams))
         let carbs = sumOptionalDoubles(dayMeals.compactMap(\.carbohydrateGrams))
         let fat = sumOptionalDoubles(dayMeals.compactMap(\.fatGrams))
+        let explicitAlcoholKcal = MacroGapCalculator.explicitAlcoholKilocalories(from: dayMeals)
 
-        let reconstructed = (protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9
         let macroGap: Double?
-        if let totalEnergy {
-            let gap = totalEnergy.kilocalories - reconstructed
+        if let totalEnergy, let protein, let carbs, let fat {
+            macroGap = MacroGapCalculator.macroGap(
+                totalEnergyKcal: totalEnergy.kilocalories,
+                proteinGrams: protein,
+                carbohydrateGrams: carbs,
+                fatGrams: fat,
+                explicitAlcoholKilocalories: explicitAlcoholKcal
+            )
+        } else if let totalEnergy {
+            let reconstructed = (protein ?? 0) * 4 + (carbs ?? 0) * 4 + (fat ?? 0) * 9
+            let gap = totalEnergy.kilocalories - reconstructed - explicitAlcoholKcal
             macroGap = gap > 1 ? gap : nil
         } else {
             macroGap = nil

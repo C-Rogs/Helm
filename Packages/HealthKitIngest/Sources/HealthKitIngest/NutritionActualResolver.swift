@@ -7,8 +7,14 @@ enum NutritionActualResolver {
     static func resolve(
         helmDay: HelmDay,
         storedDay: NutritionDay?,
-        dailyMetrics: DailyMetrics?
+        dailyMetrics: DailyMetrics?,
+        meals: [MealRecord]? = nil
     ) -> NutritionDay? {
+        let dayMeals = meals?.filter { $0.helmDay == helmDay } ?? []
+        if !dayMeals.isEmpty {
+            return HealthKitDayAggregator.nutritionDay(from: dayMeals, helmDay: helmDay)
+        }
+
         let fromMetrics = nutritionDay(from: dailyMetrics, helmDay: helmDay)
         guard let storedDay else {
             return fromMetrics
