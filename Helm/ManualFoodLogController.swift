@@ -242,7 +242,6 @@ final class ManualFoodLogController {
     }
 }
 
-#if DEBUG
 extension ManualFoodLogController {
     static func previewController(online: Bool) -> ManualFoodLogController {
         let store = try! PersistenceStore.inMemory()
@@ -259,4 +258,3 @@ extension ManualFoodLogController {
         )
     }
 }
-#endif

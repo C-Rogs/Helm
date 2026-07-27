@@ -144,7 +144,6 @@ final class NutritionMealActionsController {
     }
 }
 
-#if DEBUG
 extension NutritionMealActionsController {
     static func previewController() -> NutritionMealActionsController {
         NutritionMealActionsController(
@@ -155,4 +154,3 @@ extension NutritionMealActionsController {
         )
     }
 }
-#endif

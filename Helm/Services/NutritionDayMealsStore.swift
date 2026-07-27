@@ -98,7 +98,6 @@ final class NutritionDayMealsStore {
     }
 }
 
-#if DEBUG
 extension NutritionDayMealsStore {
     static func previewStore() -> NutritionDayMealsStore {
         let store = NutritionDayMealsStore()
@@ -127,4 +126,3 @@ extension NutritionDayMealsStore {
         return store
     }
 }
-#endif
