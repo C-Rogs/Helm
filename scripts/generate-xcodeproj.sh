@@ -10,14 +10,32 @@ fi
 for path in \
   Helm/Resources/ExerciseSeed/exercises.json \
   Helm/Resources/ExerciseSeed/free-exercise-db.json \
-  Helm/Resources/MethodologySeed/methodology.json
+  Helm/Resources/MethodologySeed/methodology.json \
+  Packages/ExportKit/Package.swift
 do
   if [ ! -f "$path" ]; then
-    echo "Missing required resource: $path"
+    echo "Missing required path: $path"
     exit 1
   fi
 done
 
+echo "Removing stale Xcode project and package caches..."
 rm -rf Helm.xcodeproj
+rm -rf Packages/ExportKit/.build Packages/ExportKit/.swiftpm
+
+echo "Generating Helm.xcodeproj..."
 xcodegen generate
-echo "Generated Helm.xcodeproj. Open that file in Xcode (not a Package.swift folder)."
+
+echo "Resolving Swift packages..."
+if ! xcodebuild -resolvePackageDependencies -project Helm.xcodeproj -scheme Helm 2>&1 | tee /tmp/helm-resolve.log; then
+  echo "Package resolution failed. See /tmp/helm-resolve.log"
+  exit 1
+fi
+
+if ! rg -q "ExportKit: /" /tmp/helm-resolve.log; then
+  echo "ExportKit did not resolve. See /tmp/helm-resolve.log"
+  exit 1
+fi
+
+echo "Generated Helm.xcodeproj and resolved packages."
+echo "Open Helm.xcodeproj in Xcode (not Packages/ExportKit)."

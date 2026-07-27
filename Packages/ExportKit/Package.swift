@@ -10,12 +10,6 @@ let package = Package(
     ],
     targets: [
         .target(name: "ExportKit"),
-        .executableTarget(
-            name: "GenerateGolden",
-            dependencies: ["ExportKit"],
-            path: "scripts",
-            sources: ["generate_golden.swift"]
-        ),
         .testTarget(
             name: "ExportKitTests",
             dependencies: ["ExportKit"],
