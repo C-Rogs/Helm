@@ -16,6 +16,26 @@ struct TrainView: View {
     @State private var restEditorExerciseID: String?
 
     var body: some View {
+        navigationRoot
+            .trainPresentationLayer(
+                controller: controller,
+                history: history,
+                muscleVolumeStore: muscleVolumeStore,
+                importController: importController,
+                isShowingImport: $isShowingImport,
+                restEditorExerciseID: $restEditorExerciseID
+            )
+            .task {
+                await controller.recoverPersistedSession()
+                history.refresh()
+                muscleVolumeStore.refresh()
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                Task { await controller.handleScenePhase(newPhase) }
+            }
+    }
+
+    private var navigationRoot: some View {
         NavigationStack {
             ZStack(alignment: .bottom) {
                 Group {
@@ -54,160 +74,6 @@ struct TrainView: View {
             }
             .helmScreenBackground()
             .navigationTitle("Train")
-            .sheet(isPresented: $isShowingImport) {
-                WorkoutImportView(controller: importController) { plan, saveTemplate in
-                    await controller.startWorkout(fromImportedPlan: plan, saveTemplate: saveTemplate)
-                    if saveTemplate {
-                        history.refresh()
-                    }
-                }
-            }
-            .sheet(isPresented: $controller.isShowingExercisePicker) {
-                ExercisePickerView(
-                    fetchRecent: { try controller.fetchRecentExercises() },
-                    fetchMuscleGroups: { try controller.fetchMuscleGroups() },
-                    fetchExercises: controller.fetchPickerExercises(search:muscleGroup:),
-                    onSelect: { exerciseID in
-                        Task { await controller.addExercise(exerciseID: exerciseID) }
-                    }
-                )
-            }
-            .confirmationDialog(
-                "Finish workout?",
-                isPresented: $controller.isShowingFinishConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Finish workout", role: .none) {
-                    Task {
-                        await controller.finishWorkout()
-                    }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("This saves your logged sets.")
-            }
-            .confirmationDialog(
-                "Discard workout?",
-                isPresented: $controller.isShowingDiscardConfirmation,
-                titleVisibility: .visible
-            ) {
-                Button("Discard", role: .destructive) {
-                    Task { await controller.discardWorkout() }
-                }
-                Button("Cancel", role: .cancel) {}
-            } message: {
-                Text("All progress in this session will be lost.")
-            }
-            .confirmationDialog(
-                "Remove exercise?",
-                isPresented: Binding(
-                    get: { controller.pendingDeleteExerciseID != nil },
-                    set: { if !$0 { controller.cancelRemoveExercise() } }
-                ),
-                titleVisibility: .visible
-            ) {
-                Button("Remove exercise", role: .destructive) {
-                    Task { await controller.confirmRemoveExercise() }
-                }
-                Button("Cancel", role: .cancel) {
-                    controller.cancelRemoveExercise()
-                }
-            } message: {
-                if let id = controller.pendingDeleteExerciseID {
-                    Text("Remove \(controller.displayName(forExerciseSessionID: id))? Logged sets for this exercise will be deleted.")
-                }
-            }
-            .sheet(isPresented: Binding(
-                get: { restEditorExerciseID != nil },
-                set: { if !$0 { restEditorExerciseID = nil } }
-            )) {
-                if let sessionExerciseID = restEditorExerciseID,
-                   let exercise = controller.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) {
-                    ExerciseRestEditorSheet(
-                        exerciseName: controller.displayName(for: exercise.exerciseID),
-                        currentSeconds: exercise.targetRestSeconds ?? 90
-                    ) { seconds in
-                        Task {
-                            await controller.updateExerciseRest(
-                                sessionExerciseID: sessionExerciseID,
-                                seconds: seconds
-                            )
-                            restEditorExerciseID = nil
-                        }
-                    }
-                }
-            }
-            .alert(
-                "Workout error",
-                isPresented: Binding(
-                    get: { controller.errorMessage != nil },
-                    set: { if !$0 { controller.errorMessage = nil } }
-                )
-            ) {
-                Button("OK", role: .cancel) {}
-            } message: {
-                Text(controller.errorMessage ?? "")
-            }
-            .sheet(isPresented: $controller.isShowingCoachPrompt) {
-                InSessionCoachSheet(controller: controller)
-            }
-            .sheet(isPresented: $controller.isShowingFinishSummary) {
-                NavigationStack {
-                    ScrollView {
-                        if let summary = controller.lastFinishSummary {
-                            WorkoutFinishSummaryView(
-                                summary: summary,
-                                muscleLabel: TrendsChartSupport.muscleLabel
-                            )
-                            .padding(HelmSpacing.md)
-                        }
-                    }
-                    .helmScreenBackground()
-                    .navigationTitle("Session summary")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                controller.dismissFinishSummary()
-                                controller.clearFinishSummary()
-                                history.refresh()
-                                history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
-                                muscleVolumeStore.refresh()
-                            }
-                        }
-                    }
-                }
-                .presentationDetents([.large])
-            }
-            .sheet(isPresented: $controller.isShowingPersonalRecords) {
-                NavigationStack {
-                    ScrollView {
-                        PersonalRecordsCelebrationView(
-                            records: controller.lastFinishedPersonalRecords,
-                            exerciseName: controller.displayName(for:)
-                        )
-                        .padding(HelmSpacing.md)
-                    }
-                    .helmScreenBackground()
-                    .navigationTitle("Personal records")
-                    .toolbar {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button("Done") {
-                                controller.isShowingPersonalRecords = false
-                                controller.clearFinishedPersonalRecords()
-                            }
-                        }
-                    }
-                }
-                .presentationDetents([.medium])
-            }
-            .task {
-                await controller.recoverPersistedSession()
-                history.refresh()
-                muscleVolumeStore.refresh()
-            }
-            .onChange(of: scenePhase) { _, newPhase in
-                Task { await controller.handleScenePhase(newPhase) }
-            }
         }
     }
 

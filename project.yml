@@ -44,6 +44,14 @@ targets:
       - path: Shared/WorkoutLiveActivity
         name: WorkoutLiveActivity
     preBuildScripts:
+      - name: Sync Xcode Project
+        script: |
+          if ! command -v xcodegen >/dev/null 2>&1; then exit 0; fi
+          cd "$SRCROOT"
+          if [ ! -f Helm.xcodeproj/project.pbxproj ] || [ project.yml -nt Helm.xcodeproj/project.pbxproj ]; then
+            xcodegen generate
+          fi
+        basedOnDependencyAnalysis: false
       - name: Bundle Debug Secrets
         script: |
           if [ "$CONFIGURATION" != "Debug" ]; then exit 0; fi
