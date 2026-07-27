@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 import Persistence
 
 struct MealLineItemSummary: Identifiable, Sendable, Equatable {
@@ -51,8 +52,15 @@ final class NutritionDayMealsStore {
         if let records = try? store.foodLog.fetchLineItems(for: meal.id), !records.isEmpty {
             return records.map { item in
                 MealLineItemSummary(
-                    name: item.foodRef.displayName,
-                    detail: item.servingLabel ?? "\(Int(item.grams.rounded())) g",
+                    name: FoodLogDisplayFormatter.primaryTitle(
+                        displayName: item.foodRef.displayName,
+                        servingLabel: item.servingLabel
+                    ),
+                    detail: FoodLogDisplayFormatter.secondaryDetail(
+                        displayName: item.foodRef.displayName,
+                        servingLabel: item.servingLabel,
+                        grams: item.grams
+                    ),
                     energyKcal: Int(item.energyKcal.rounded())
                 )
             }

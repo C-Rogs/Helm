@@ -65,7 +65,7 @@ struct NutritionMealBucketSection: View {
     @ViewBuilder
     private func mealBlock(_ display: LoggedMealDisplay) -> some View {
         let content = VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            if meals.count > 1 || display.lineItems.count > 1 {
+            if shouldShowMealHeader(for: display) {
                 Text(display.meal.name)
                     .helmType(.body, color: HelmColor.fgSecondary)
             }
@@ -104,6 +104,10 @@ struct NutritionMealBucketSection: View {
         meals.reduce(0) { partial, meal in
             partial + meal.lineItems.reduce(0) { $0 + $1.energyKcal }
         }
+    }
+
+    private func shouldShowMealHeader(for display: LoggedMealDisplay) -> Bool {
+        display.lineItems.count > 1
     }
 }
 

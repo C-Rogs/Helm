@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 
 /// Smart default portion for the add-food flow.
 public struct FoodPortionDefaults: Sendable, Equatable {
@@ -7,11 +8,24 @@ public struct FoodPortionDefaults: Sendable, Equatable {
     public let servingLabel: String?
     /// Packaged foods prefer serving labels; produce defaults to grams.
     public let prefersServingLabel: Bool
+    public let inputMode: PortionInputMode
+    public let defaultQuantity: Int
+    public let defaultSizeLabel: String?
 
-    public init(grams: Double, servingLabel: String?, prefersServingLabel: Bool) {
+    public init(
+        grams: Double,
+        servingLabel: String?,
+        prefersServingLabel: Bool,
+        inputMode: PortionInputMode = .weight,
+        defaultQuantity: Int = 1,
+        defaultSizeLabel: String? = nil
+    ) {
         self.grams = grams
         self.servingLabel = servingLabel
         self.prefersServingLabel = prefersServingLabel
+        self.inputMode = inputMode
+        self.defaultQuantity = max(defaultQuantity, 1)
+        self.defaultSizeLabel = defaultSizeLabel
     }
 }
 
@@ -22,36 +36,124 @@ public enum FoodPortionDefaultsResolver {
         for product: ResolvedFoodProduct,
         storedPreference: FoodPortionPreference?
     ) -> FoodPortionDefaults {
+        let countableConfig = CountablePortion.detect(
+            for: product.ref.displayName,
+            suggestedGrams: product.suggestedGrams,
+            servingLabel: product.servingLabel
+        )
+
         if let storedPreference {
-            return FoodPortionDefaults(
+            return buildDefaults(
+                product: product,
                 grams: storedPreference.grams,
                 servingLabel: storedPreference.servingLabel,
-                prefersServingLabel: prefersServingLabel(for: product, servingLabel: storedPreference.servingLabel)
+                countableConfig: countableConfig
             )
         }
 
         if let suggestedGrams = product.suggestedGrams {
-            return FoodPortionDefaults(
-                grams: suggestedGrams,
+            let adjustedGrams = adjustedSuggestedGrams(
+                suggestedGrams,
+                product: product,
+                countableConfig: countableConfig
+            )
+            return buildDefaults(
+                product: product,
+                grams: adjustedGrams,
                 servingLabel: product.servingLabel,
-                prefersServingLabel: prefersServingLabel(for: product, servingLabel: product.servingLabel)
+                countableConfig: countableConfig
             )
         }
 
         switch product.ref.origin {
         case .openFoodFacts:
-            return FoodPortionDefaults(
+            return buildDefaults(
+                product: product,
                 grams: produceDefaultGrams,
                 servingLabel: product.servingLabel,
-                prefersServingLabel: true
+                countableConfig: countableConfig
             )
         case .cofid, .custom:
-            return FoodPortionDefaults(
-                grams: produceDefaultGrams,
-                servingLabel: nil,
-                prefersServingLabel: false
+            let portionOptions = PortionOptionCatalog.options(
+                for: product.ref.displayName,
+                cofidID: product.ref.origin == .cofid ? product.ref.externalID : nil,
+                origin: .cofid,
+                defaultGrams: produceDefaultGrams
+            )
+            let medium = portionOptions.first { $0.label == "1 medium" }
+                ?? portionOptions.first { !$0.label.hasSuffix(" g") }
+                ?? portionOptions.first
+            return buildDefaults(
+                product: product,
+                grams: medium?.grams ?? produceDefaultGrams,
+                servingLabel: medium?.label,
+                countableConfig: countableConfig
             )
         }
+    }
+
+    // MARK: - Private
+
+    private static func buildDefaults(
+        product: ResolvedFoodProduct,
+        grams: Double,
+        servingLabel: String?,
+        countableConfig: CountablePortionConfig?
+    ) -> FoodPortionDefaults {
+        guard let config = countableConfig else {
+            return FoodPortionDefaults(
+                grams: grams,
+                servingLabel: servingLabel,
+                prefersServingLabel: prefersServingLabel(for: product, servingLabel: servingLabel)
+            )
+        }
+
+        let parsed = servingLabel.flatMap { CountablePortion.parseServingLabel($0, config: config) }
+        let defaultSize = parsed?.sizeOption
+            ?? CountablePortion.inferDefaultSize(from: product.ref.displayName, config: config)
+        let unitGrams = CountablePortion.gramsPerUnit(
+            sizeOption: defaultSize,
+            config: config,
+            fallbackGrams: grams
+        )
+        let quantity = parsed?.quantity ?? inferredQuantity(from: grams, unitGrams: unitGrams)
+        let resolvedGrams = unitGrams * Double(quantity)
+        let label = CountablePortion.formatServingLabel(
+            quantity: quantity,
+            sizeLabel: defaultSize?.label,
+            config: config
+        )
+
+        return FoodPortionDefaults(
+            grams: resolvedGrams,
+            servingLabel: label,
+            prefersServingLabel: true,
+            inputMode: .countable(config),
+            defaultQuantity: quantity,
+            defaultSizeLabel: defaultSize?.label
+        )
+    }
+
+    private static func adjustedSuggestedGrams(
+        _ suggestedGrams: Double,
+        product: ResolvedFoodProduct,
+        countableConfig: CountablePortionConfig?
+    ) -> Double {
+        guard let config = countableConfig else { return suggestedGrams }
+        guard CountablePortion.isLikelyPackWeight(suggestedGrams, config: config) else { return suggestedGrams }
+
+        let defaultSize = CountablePortion.inferDefaultSize(from: product.ref.displayName, config: config)
+        return CountablePortion.gramsPerUnit(
+            sizeOption: defaultSize,
+            config: config,
+            fallbackGrams: suggestedGrams
+        )
+    }
+
+    private static func inferredQuantity(from grams: Double, unitGrams: Double) -> Int {
+        guard unitGrams > 0 else { return 1 }
+        let raw = Int((grams / unitGrams).rounded())
+        return max(raw, 1)
     }
 
     private static func prefersServingLabel(

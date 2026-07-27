@@ -15,12 +15,12 @@ public enum MealLineItemTemplateMapping {
         )
     }
 
-    public static func record(from lineItem: MealLineItem, mealID: UUID, sortOrder: Int) -> MealLineItemRecord {
+    public static func record(from lineItem: MealLineItem, mealID: UUID, sortOrder: Int, servingLabel: String? = nil) -> MealLineItemRecord {
         MealLineItemRecord(
             mealID: mealID,
             foodRef: foodRef(from: lineItem),
             grams: lineItem.grams,
-            servingLabel: nil,
+            servingLabel: servingLabel,
             energyKcal: lineItem.caloriesKcal,
             proteinG: lineItem.proteinG,
             carbsG: lineItem.carbsG,

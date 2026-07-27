@@ -44,8 +44,8 @@ struct FoodPortionDefaultsTests {
         #expect(defaults.prefersServingLabel)
     }
 
-    @Test("produce defaults to grams")
-    func produceDefaultsToGrams() {
+    @Test("produce defaults to medium portion when available")
+    func produceDefaultsToMediumPortion() {
         let product = ResolvedFoodProduct(
             ref: bananaRef,
             per100gKcal: 89,
@@ -58,9 +58,43 @@ struct FoodPortionDefaultsTests {
 
         let defaults = FoodPortionDefaultsResolver.defaults(for: product, storedPreference: nil)
 
-        #expect(defaults.grams == FoodPortionDefaultsResolver.produceDefaultGrams)
-        #expect(defaults.servingLabel == nil)
-        #expect(defaults.prefersServingLabel == false)
+        #expect(defaults.grams == 118)
+        #expect(defaults.servingLabel == "1 medium")
+        #expect(defaults.prefersServingLabel == true)
+        if case .weight = defaults.inputMode {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Banana should stay in weight input mode")
+        }
+    }
+
+    @Test("egg pack avoids whole-pack default grams")
+    func eggPackUsesPerEggDefault() {
+        let product = ResolvedFoodProduct(
+            ref: FoodProductRef(
+                origin: .openFoodFacts,
+                externalID: "1234567890123",
+                displayName: "Coop 6 large free range eggs"
+            ),
+            per100gKcal: 154,
+            per100gProteinG: 12.5,
+            per100gCarbsG: 0.5,
+            per100gFatG: 11,
+            confidence: .branded,
+            suggestedGrams: 300,
+            servingLabel: nil,
+            source: .openFoodFacts
+        )
+
+        let defaults = FoodPortionDefaultsResolver.defaults(for: product, storedPreference: nil)
+
+        #expect(defaults.grams == 50)
+        #expect(defaults.defaultSizeLabel == "1 large")
+        if case .countable = defaults.inputMode {
+            #expect(Bool(true))
+        } else {
+            Issue.record("Egg pack should use countable input mode")
+        }
     }
 }
 

@@ -39,10 +39,11 @@ struct MealEditSheet: View {
             && (display.meal.source == .quickAdd || display.meal.source == .alcohol)
 
         _name = State(initialValue: display.meal.name)
-        _lineItems = State(initialValue: storedItems.enumerated().map { index, record in
+        _lineItems = State(initialValue: storedItems.enumerated().map { _, record in
             MealLineItemEditor.EditableLineItem(
                 id: record.id.uuidString,
-                item: MealLineItemTemplateMapping.lineItem(from: record)
+                item: MealLineItemTemplateMapping.lineItem(from: record),
+                servingLabel: record.servingLabel
             )
         })
         let kcal = display.meal.energy?.kilocalories ?? 0

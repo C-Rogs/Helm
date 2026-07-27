@@ -70,7 +70,8 @@ final class MealEditController {
                     MealLineItemTemplateMapping.record(
                         from: entry.item,
                         mealID: meal.id,
-                        sortOrder: index
+                        sortOrder: index,
+                        servingLabel: entry.servingLabel
                     )
                 }
                 macros = FoodPortionMacros(
