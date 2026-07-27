@@ -94,8 +94,16 @@ final class ManualFoodLogController {
         }
     }
 
+    func searchLocal(query: String) async throws -> [FoodSearchResult] {
+        try await foodResolver.searchLocal(query: query)
+    }
+
+    func searchRemote(query: String) async throws -> [FoodSearchResult] {
+        try await foodResolver.searchRemote(query: query)
+    }
+
     func search(query: String) async throws -> [FoodSearchResult] {
-        try await foodResolver.search(query: query)
+        try await foodResolver.searchRemote(query: query)
     }
 
     func fetchRecents(limit: Int = 20) async -> [ResolvedFoodProduct] {

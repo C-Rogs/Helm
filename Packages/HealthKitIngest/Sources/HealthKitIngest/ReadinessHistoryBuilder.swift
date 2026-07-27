@@ -47,13 +47,23 @@ public enum ReadinessHistoryBuilder {
             days.insert(helmDay)
         }
 
+        let historyWindowStart = sleepHistoryWindowStart(for: startDay, calendar: calendar)
+        let historyWindowEnd = sleepHistoryWindowEnd(for: endDay, calendar: calendar)
+        let sleepRecords = try store.sleep.fetchOverlapping(
+            start: historyWindowStart,
+            end: historyWindowEnd
+        )
+
         var history: [ReadinessDayInput] = []
         history.reserveCapacity(days.count)
 
         for helmDay in days.sorted() {
             let dayMetrics = metricsByDay[helmDay]
-            let sleepRecords = try store.sleep.fetch(for: helmDay)
-            let sleepDurationHours = totalSleepHours(from: sleepRecords)
+            let sleepDurationHours = SleepAggregation.totalHours(
+                for: helmDay,
+                records: sleepRecords,
+                calendar: calendar
+            )
 
             history.append(
                 ReadinessDayInput(
@@ -71,9 +81,17 @@ public enum ReadinessHistoryBuilder {
         return history
     }
 
-    private static func totalSleepHours(from records: [SleepRecord]) -> Double? {
-        guard !records.isEmpty else { return nil }
-        let seconds = records.reduce(0.0) { $0 + $1.duration }
-        return seconds / 3_600
+    private static func sleepHistoryWindowStart(for startDay: HelmDay, calendar: Calendar) -> Date {
+        guard let wakeDay = calendar.date(from: startDay.dateComponents()) else {
+            preconditionFailure("calendar could not build wake day for \(startDay.formatted)")
+        }
+        return SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
+    }
+
+    private static func sleepHistoryWindowEnd(for endDay: HelmDay, calendar: Calendar) -> Date {
+        guard let wakeDay = calendar.date(from: endDay.dateComponents()) else {
+            preconditionFailure("calendar could not build wake day for \(endDay.formatted)")
+        }
+        return SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
     }
 }

@@ -21,8 +21,13 @@ enum NutritionBootstrap {
         manualMealService: manualMealService,
         onResolved: { count in
             await PendingImportNotificationScheduler.postResolved(count: count)
+            await MainActor.run {
+                refreshNutrition()
+            }
         }
     )
+
+    private static let networkReconnectNotifier = NetworkReconnectNotifier()
 
     @MainActor
     static let mealRepeatService = MealRepeatService(
@@ -43,6 +48,15 @@ enum NutritionBootstrap {
 
     @MainActor
     static func start() {
+        networkReconnectNotifier.setHandler {
+            Task(priority: .utility) {
+                _ = await pendingFoodImportService.resolvePendingImports()
+                await MainActor.run {
+                    refreshNutrition()
+                }
+            }
+        }
+
         Task(priority: .userInitiated) {
             let summary = PlanBootstrap.prescriptionService.state.summary
             await nutritionService.refresh(prescriptionSummary: summary)

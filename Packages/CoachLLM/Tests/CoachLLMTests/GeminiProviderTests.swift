@@ -9,6 +9,12 @@ struct GeminiRequestSchemaTests {
         #expect(GeminiModel.default.rawValue == "gemini-3.5-flash-lite")
     }
 
+    @Test("meal vision prefers 3.5 Flash-Lite over 2.5 Flash")
+    func mealVisionModel() {
+        #expect(GeminiModel.mealVision.rawValue == "gemini-3.5-flash-lite")
+        #expect(GeminiModel.mealVisionCandidates.first?.rawValue == "gemini-3.5-flash-lite")
+    }
+
     @Test("session adjustment schema pins schemaVersion")
     func sessionAdjustmentSchemaVersion() {
         let schema = GeminiRequestBuilder.sessionAdjustmentSchema()

@@ -82,4 +82,20 @@ public struct ActiveSessionSnapshot: Sendable, Hashable {
         self.recoveryState = recoveryState
         self.restTimer = restTimer
     }
+
+    /// True once the athlete has logged work or used the rest timer beyond its idle shell.
+    public var hasMeaningfulProgress: Bool {
+        if session.hasLoggedWork {
+            return true
+        }
+        guard let restTimer else { return false }
+        return restTimer.phase != .idle
+    }
+}
+
+public enum ActiveSessionRecoveryPolicy: Sendable {
+    /// Drops prescription shells that were auto-started but never progressed (e.g. dev reinstall).
+    public static func shouldAbandonUntouchedPrescription(_ snapshot: ActiveSessionSnapshot) -> Bool {
+        snapshot.session.source == .prescription && !snapshot.hasMeaningfulProgress
+    }
 }

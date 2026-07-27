@@ -155,7 +155,7 @@ public enum OpenRouterRequestBuilder {
     public static func mealDecompositionPhotoBody(
         systemInstructions: String,
         imageJPEGBase64: String,
-        model: MealVisionModel = .openRouterGemma,
+        model: MealVisionModel = .openRouterGemmaFree,
         useStructuredOutput: Bool = false
     ) throws -> Data {
         let jsonInstructions = """

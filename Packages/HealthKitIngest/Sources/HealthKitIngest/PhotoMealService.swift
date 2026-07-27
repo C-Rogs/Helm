@@ -80,7 +80,30 @@ public struct PhotoMealService: Sendable {
             }
         }
 
+        if let providerError = error as? CoachProviderError {
+            return nutritionMessage(for: providerError)
+        }
+
         return CoachFailurePolicy.degradedState(for: error).userMessage
+    }
+
+    private static func nutritionMessage(for error: CoachProviderError) -> String {
+        switch error {
+        case .rateLimited:
+            return "Photo analysis is rate limited. Try again shortly."
+        case .timeout:
+            return "Photo analysis timed out. Check your connection and try again."
+        case .offline:
+            return "Photo analysis needs a network connection."
+        case .unavailable(let message):
+            return message
+        case .contextTooLarge:
+            return "That photo could not be analysed. Try a smaller image."
+        case .cancelled:
+            return "Photo analysis cancelled."
+        case .requestFailed(let detail):
+            return "Could not analyse that photo (\(detail))."
+        }
     }
 
     private static let maxJPEGBytes = 4 * 1_024 * 1_024

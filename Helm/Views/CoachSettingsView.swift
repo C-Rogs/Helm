@@ -14,6 +14,7 @@ struct CoachSettingsView: View {
     @State private var photoVisionPreferences = MealVisionPreferencesStore()
 
     private let keyStore = APIKeyStore()
+    private let openRouterMetadata = OpenRouterKeyMetadataStore()
 
     var body: some View {
         Form {
@@ -67,7 +68,7 @@ struct CoachSettingsView: View {
                     Text("OpenRouter").tag(MealVisionBackendPreference.openRouter)
                 }
 
-                Text("Auto prefers OpenRouter when a key is present, otherwise Gemini. Macro math stays on-device.")
+                Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Macro math stays on-device.")
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgSecondary)
             }
@@ -149,6 +150,7 @@ struct CoachSettingsView: View {
         defer { isSavingOpenRouter = false }
         do {
             try keyStore.save(openRouterKey, kind: .openRouter)
+            openRouterMetadata.clear()
             openRouterStatus = "OpenRouter key saved in Keychain."
             HapticEngine.shared.play(.selection)
             refreshOpenRouterStatus()

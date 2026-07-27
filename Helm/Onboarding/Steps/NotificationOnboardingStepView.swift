@@ -6,6 +6,7 @@ struct NotificationOnboardingStepView: View {
     var stepIndex: Int = 2
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
+    var onBack: (() -> Void)? = nil
     var onSkip: () -> Void = {}
 
     @State private var status: NotificationAuthorizationStatus = .notDetermined
@@ -24,6 +25,7 @@ struct NotificationOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             onPrimary: onContinue,
+            onBack: onBack,
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {

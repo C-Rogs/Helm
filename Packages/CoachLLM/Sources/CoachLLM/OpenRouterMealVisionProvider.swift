@@ -3,20 +3,46 @@ import Foundation
 public struct OpenRouterMealVisionProvider: Sendable {
     private let apiKeyStore: APIKeyStore
     private let httpClient: any OpenRouterHTTPClient
-    private let model: MealVisionModel
+    private let metadataStore: OpenRouterKeyMetadataStore
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         httpClient: any OpenRouterHTTPClient = LiveOpenRouterHTTPClient(),
-        model: MealVisionModel = .openRouterGemma
+        metadataStore: OpenRouterKeyMetadataStore = OpenRouterKeyMetadataStore()
     ) {
         self.apiKeyStore = apiKeyStore
         self.httpClient = httpClient
-        self.model = model
+        self.metadataStore = metadataStore
     }
 
     public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
         let apiKey = try requireAPIKey()
+        let models = MealVisionModel.openRouterCandidates(freeModelsOnly: metadataStore.freeModelsOnly)
+        var lastError: Error?
+
+        for model in models {
+            do {
+                return try await decompose(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("OpenRouter meal vision is unavailable.")
+    }
+
+    private func decompose(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: MealVisionModel
+    ) async throws -> MealDecomposition {
         let base64 = imageJPEGData.base64EncodedString()
         let requestID = UUID()
 
@@ -35,6 +61,15 @@ public struct OpenRouterMealVisionProvider: Sendable {
             expectedSchema: .mealDecompositionV1
         )
         return MealDecomposition(payload: payload)
+    }
+
+    private static func shouldRetryWithAlternateModel(_ error: CoachProviderError) -> Bool {
+        guard case .requestFailed(let detail) = error else { return false }
+        let normalized = detail.lowercased()
+        return normalized.contains("404")
+            || normalized.contains("no endpoints found")
+            || normalized.contains("no allowed providers")
+            || normalized.contains("unavailable for free")
     }
 
     private func requireAPIKey() throws -> String {

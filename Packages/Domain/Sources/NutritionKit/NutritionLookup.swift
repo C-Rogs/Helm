@@ -80,20 +80,65 @@ public struct NutritionLookup: Sendable {
         let normalized = Self.normalize(query)
         guard normalized.count >= 2 else { return [] }
 
+        let queryTokens = Set(normalized.split(separator: " ").map(String.init))
+        let processedModifiers = ["juice", "canned", "dried", "baked", "cooked", "stewed", "puree", "pureed", "frozen", "pickled", "sauce", "soup", "drink", "beverage", "concentrate"]
+        let isSimpleQuery = queryTokens.count == 1
+
         var scored: [(name: String, score: Int)] = []
         for record in records {
             let description = Self.normalize(record.description)
             if description == normalized {
+                scored.append((record.description, 200))
                 continue
             }
+
+            let primaryWord = description.split(separator: " ").first.map(String.init) ?? description
+            if primaryWord == normalized {
+                scored.append((record.description, 180))
+                continue
+            }
+
+            if Self.wordBoundaryMatch(description: description, query: normalized) {
+                var score = 150
+                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                    score -= 80
+                }
+                scored.append((record.description, score))
+                continue
+            }
+
             if description.hasPrefix(normalized) {
-                scored.append((record.description, 100))
+                var score = 100
+                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                    score -= 50
+                }
+                scored.append((record.description, score))
                 continue
             }
+
             if description.contains(normalized) {
-                scored.append((record.description, 60))
+                var score = 40
+                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                    score -= 30
+                }
+                scored.append((record.description, score))
                 continue
             }
+
+            if queryTokens.count >= 2 {
+                let candidates = [record.description] + record.synonyms
+                if candidates.contains(where: { candidate in
+                    let normalizedCandidate = Self.normalize(candidate)
+                    return queryTokens.allSatisfy { normalizedCandidate.contains($0) }
+                }) {
+                    let normalizedDescription = Self.normalize(record.description)
+                    let descriptionTokens = Set(normalizedDescription.split(separator: " ").map(String.init))
+                    let overlap = queryTokens.intersection(descriptionTokens).count
+                    scored.append((record.description, 55 + overlap * 15))
+                    continue
+                }
+            }
+
             for synonym in record.synonyms where Self.normalize(synonym).contains(normalized) {
                 scored.append((record.description, 40))
                 break
@@ -104,7 +149,10 @@ public struct NutritionLookup: Sendable {
         return scored
             .sorted { lhs, rhs in
                 if lhs.score == rhs.score {
-                    return lhs.name < rhs.name
+                    if lhs.name.count == rhs.name.count {
+                        return lhs.name < rhs.name
+                    }
+                    return lhs.name.count < rhs.name.count
                 }
                 return lhs.score > rhs.score
             }
@@ -115,6 +163,17 @@ public struct NutritionLookup: Sendable {
             }
             .prefix(limit)
             .map { $0 }
+    }
+
+    private static func wordBoundaryMatch(description: String, query: String) -> Bool {
+        let parts = description.split(separator: " ").map(String.init)
+        for part in parts {
+            let token = part.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
+            if token == query || token.hasPrefix(query) {
+                return true
+            }
+        }
+        return false
     }
 
     private static var resourceBundle: Bundle {

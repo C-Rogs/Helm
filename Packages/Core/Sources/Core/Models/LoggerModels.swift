@@ -155,6 +155,15 @@ public struct WorkoutSessionDraft: Sendable, Hashable, Codable, Identifiable {
         self.source = source
         self.exercises = exercises
     }
+
+    /// True once the athlete has completed or skipped at least one set.
+    public var hasLoggedWork: Bool {
+        exercises.contains { exercise in
+            exercise.sets.contains { set in
+                set.status == .completed || set.status == .skipped
+            }
+        }
+    }
 }
 
 public struct WorkoutTemplateSummary: Sendable, Hashable, Codable, Identifiable {

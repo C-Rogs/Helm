@@ -2,7 +2,7 @@ import Core
 import DesignSystem
 import Foundation
 
-/// Remembers when Cameron declined or finished today's prescription so relaunch does not auto-start again.
+/// Remembers when Cameron finished or discarded today's prescription so we do not resurrect stale shells.
 @MainActor
 final class PrescriptionAutoStartStore {
     private let defaults: UserDefaults

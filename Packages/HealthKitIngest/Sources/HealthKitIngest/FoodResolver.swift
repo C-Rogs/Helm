@@ -63,6 +63,8 @@ public struct FoodSearchResult: Sendable, Equatable {
 public enum FoodResolverError: Error, Sendable, Equatable {
     case offline
     case notFound
+    case rateLimited
+    case queryTooShort
 }
 
 public actor FoodResolver {
@@ -103,25 +105,21 @@ public actor FoodResolver {
         log = helmLogger(category: .healthKitIngest)
     }
 
-    public func search(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
+    /// Recents + on-device CoFID only. Safe to call while typing.
+    public func searchLocal(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
+        try localResults(query: query, limit: limit)
+    }
+
+    /// Local hits plus Open Food Facts when online. Call only on explicit search submit.
+    public func searchRemote(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return [] }
-
-        var results: [FoodSearchResult] = []
-        var seen = Set<String>()
-
-        for recent in try foodLog.fetchRecents(limit: 50) where matches(query: trimmed, displayName: recent.ref.displayName) {
-            guard seen.insert(recent.ref.cacheKey).inserted else { continue }
-            results.append(FoodSearchResult(product: resolved(from: recent)))
-            if results.count >= limit { return results }
+        guard trimmed.count >= 3 else {
+            throw FoodResolverError.queryTooShort
         }
 
-        for name in cofidLookup.suggestionNames(matching: trimmed, limit: limit) {
-            guard let cofidMatch = cofidLookup.resolve(item: name) else { continue }
-            let ref = FoodProductRef(origin: .cofid, externalID: cofidMatch.record.fdcId, displayName: cofidMatch.record.description)
-            guard seen.insert(ref.cacheKey).inserted else { continue }
-            results.append(FoodSearchResult(product: resolved(from: cofidMatch, ref: ref)))
-            if results.count >= limit { return results }
+        var results = try localResults(query: trimmed, limit: limit)
+        guard results.count < limit else {
+            return results
         }
 
         guard await networkGate.isOnline() else {
@@ -129,13 +127,16 @@ public actor FoodResolver {
         }
 
         do {
-            let offProducts = try await offClient.search(query: trimmed, pageSize: limit)
+            let offProducts = try await offClient.search(query: trimmed, pageSize: min(10, limit))
+            var seen = Set(results.map(\.product.ref.cacheKey))
             for offProduct in offProducts {
                 let resolved = try cacheAndResolve(offProduct: offProduct)
                 guard seen.insert(resolved.ref.cacheKey).inserted else { continue }
                 results.append(FoodSearchResult(product: resolved))
                 if results.count >= limit { return results }
             }
+        } catch OpenFoodFactsError.rateLimited {
+            throw FoodResolverError.rateLimited
         } catch {
             log.debug("OFF search skipped after local hits: \(String(describing: type(of: error)), privacy: .public)")
             Task {
@@ -146,6 +147,41 @@ public actor FoodResolver {
                     context: ["queryLength": String(trimmed.count)]
                 )
             }
+        }
+
+        return results
+    }
+
+    public func search(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
+        try await searchRemote(query: query, limit: limit)
+    }
+
+    private func localResults(query: String, limit: Int) throws -> [FoodSearchResult] {
+        let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+
+        var results: [FoodSearchResult] = []
+        var seen = Set<String>()
+        let cofidLimit = max(limit, 15)
+
+        for recent in try foodLog.fetchRecents(limit: 50) where matches(query: trimmed, displayName: recent.ref.displayName) {
+            guard seen.insert(recent.ref.cacheKey).inserted else { continue }
+            results.append(FoodSearchResult(product: resolved(from: recent)))
+            if results.count >= limit { return results }
+        }
+
+        for cached in try foodLog.fetchCacheEntries(limit: 200) where matches(query: trimmed, displayName: cached.ref.displayName) {
+            guard seen.insert(cached.ref.cacheKey).inserted else { continue }
+            results.append(FoodSearchResult(product: resolved(from: cached, source: .productCache)))
+            if results.count >= limit { return results }
+        }
+
+        for name in cofidLookup.suggestionNames(matching: trimmed, limit: cofidLimit) {
+            guard let cofidMatch = cofidLookup.resolve(item: name) else { continue }
+            let ref = FoodProductRef(origin: .cofid, externalID: cofidMatch.record.fdcId, displayName: cofidMatch.record.description)
+            guard seen.insert(ref.cacheKey).inserted else { continue }
+            results.append(FoodSearchResult(product: resolved(from: cofidMatch, ref: ref)))
+            if results.count >= limit { return results }
         }
 
         return results
@@ -171,8 +207,16 @@ public actor FoodResolver {
             throw FoodResolverError.offline
         }
 
-        let offProduct = try await offClient.fetchProduct(barcode: trimmed)
-        return try cacheAndResolve(offProduct: offProduct)
+        do {
+            let offProduct = try await offClient.fetchProduct(barcode: trimmed)
+            return try cacheAndResolve(offProduct: offProduct)
+        } catch OpenFoodFactsError.productNotFound {
+            throw FoodResolverError.notFound
+        } catch OpenFoodFactsError.rateLimited {
+            throw FoodResolverError.rateLimited
+        } catch {
+            throw error
+        }
     }
 
     public func resolve(query: String) async throws -> ResolvedFoodProduct? {
@@ -246,6 +290,8 @@ public actor FoodResolver {
             updatedAt: now()
         )
         try foodLog.upsertCacheEntry(entry)
+        let suggestedGrams = offProduct.servingQuantityGrams
+        let servingLabel = offProduct.servingSizeLabel
         return ResolvedFoodProduct(
             ref: ref,
             per100gKcal: offProduct.per100gKcal,
@@ -253,6 +299,8 @@ public actor FoodResolver {
             per100gCarbsG: offProduct.per100gCarbsG,
             per100gFatG: offProduct.per100gFatG,
             confidence: .branded,
+            suggestedGrams: suggestedGrams,
+            servingLabel: servingLabel,
             source: .openFoodFacts
         )
     }
@@ -312,9 +360,10 @@ public actor FoodResolver {
     }
 
     private func resolved(from cache: FoodProductCacheEntry, source: FoodResolutionSource) -> ResolvedFoodProduct {
-        ResolvedFoodProduct(
+        let kcal = cache.snapshotJSON.flatMap { OpenFoodFactsParser.kcalPer100g(fromSnapshotJSON: $0) } ?? cache.per100gKcal
+        return ResolvedFoodProduct(
             ref: cache.ref,
-            per100gKcal: cache.per100gKcal,
+            per100gKcal: kcal,
             per100gProteinG: cache.per100gProteinG,
             per100gCarbsG: cache.per100gCarbsG,
             per100gFatG: cache.per100gFatG,
@@ -340,6 +389,13 @@ public actor FoodResolver {
         let normalizedQuery = NutritionLookup.normalize(query)
         let normalizedName = NutritionLookup.normalize(displayName)
         guard !normalizedQuery.isEmpty else { return false }
-        return normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName)
+
+        if normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName) {
+            return true
+        }
+
+        let queryTokens = normalizedQuery.split(separator: " ").map(String.init)
+        guard queryTokens.count >= 2 else { return false }
+        return queryTokens.allSatisfy { normalizedName.contains($0) }
     }
 }

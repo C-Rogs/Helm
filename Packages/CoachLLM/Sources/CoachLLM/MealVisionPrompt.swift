@@ -8,7 +8,17 @@ public enum MealVisionBackendPreference: String, Sendable, CaseIterable, Codable
 
 public enum MealVisionModel: String, Sendable, Equatable {
     case geminiFlash = "gemini-2.5-flash"
+    case openRouterGemmaFree = "google/gemma-3-27b-it:free"
     case openRouterGemma = "google/gemma-3-27b-it"
+
+    /// OpenRouter model slugs to try for meal vision, ordered for the caller's key tier.
+    public static func openRouterCandidates(freeModelsOnly: Bool) -> [MealVisionModel] {
+        if freeModelsOnly {
+            [.openRouterGemmaFree, .openRouterGemma]
+        } else {
+            [.openRouterGemma, .openRouterGemmaFree]
+        }
+    }
 }
 
 enum MealVisionPrompt {

@@ -121,7 +121,11 @@ struct NutritionView: View {
                     onBarcode: { manualFoodLogController.startBarcode() },
                     onPhoto: { showsPhotoOptions = true },
                     onQuickAdd: { manualFoodLogController.startQuickAdd() },
-                    onAlcohol: { manualFoodLogController.startAlcohol() }
+                    onAlcohol: { manualFoodLogController.startAlcohol() },
+                    onLogTemplate: {
+                        mealActionsController.reloadTemplates()
+                        showsTemplates = true
+                    }
                 )
                 .padding(HelmSpacing.lg)
             }

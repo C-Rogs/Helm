@@ -12,6 +12,18 @@ struct OnboardingFlowView: View {
         NavigationStack {
             stepView(for: coordinator.currentStep)
                 .navigationBarTitleDisplayMode(.inline)
+                .toolbar {
+                    if coordinator.canGoBack {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button {
+                                HapticEngine.shared.play(.selection)
+                                coordinator.goBack()
+                            } label: {
+                                Label("Back", systemImage: "chevron.left")
+                            }
+                        }
+                    }
+                }
         }
         .helmTheme()
     }
@@ -20,6 +32,7 @@ struct OnboardingFlowView: View {
     private func stepView(for step: OnboardingStep) -> some View {
         let stepIndex = step.rawValue + 1
         let advance = { coordinator.advance() }
+        let goBack = coordinator.canGoBack ? { coordinator.goBack() } : nil
         let skip = { coordinator.skip() }
         let finish = {
             OnboardingStore.shared.markCompleted()
@@ -33,6 +46,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .healthKit:
@@ -40,6 +54,15 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
+                onSkip: skip
+            )
+        case .bodyProfile:
+            BodyProfileOnboardingStepView(
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .notifications:
@@ -47,6 +70,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .coachKey:
@@ -54,6 +78,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .trainingPlan:
@@ -61,6 +86,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .backfill:
@@ -68,6 +94,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .shortcuts:
@@ -75,6 +102,7 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: finish,
+                onBack: goBack,
                 onSkip: finish
             )
         }

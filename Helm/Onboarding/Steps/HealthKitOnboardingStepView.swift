@@ -7,11 +7,13 @@ struct HealthKitOnboardingStepView: View {
     var stepIndex: Int = 2
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
+    var onBack: (() -> Void)? = nil
     var onSkip: () -> Void = {}
 
     @State private var presence: [HealthKitDataPresence] = []
     @State private var status = HealthKitIngestStatus.idle
     @State private var isConnecting = false
+    @State private var isSyncingData = false
     @State private var isChecking = false
     @State private var errorMessage: String?
 
@@ -28,6 +30,7 @@ struct HealthKitOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             onPrimary: onContinue,
+            onBack: onBack,
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
@@ -41,7 +44,9 @@ struct HealthKitOnboardingStepView: View {
                     .disabled(isConnecting)
                 }
 
-                if isChecking {
+                if isSyncingData {
+                    ProgressView("Loading your health data…")
+                } else if isChecking {
                     ProgressView("Checking data…")
                 }
 
@@ -79,7 +84,7 @@ struct HealthKitOnboardingStepView: View {
                 Task { await refreshData() }
             }
             .buttonStyle(.helmSecondary)
-            .disabled(isConnecting)
+            .disabled(isConnecting || isSyncingData)
         }
         .padding(HelmSpacing.md)
         .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
@@ -142,22 +147,28 @@ struct HealthKitOnboardingStepView: View {
     private func connectHealth() async {
         isConnecting = true
         errorMessage = nil
-        defer { isConnecting = false }
 
         do {
             try await HealthKitBootstrap.healthKitIngest.requestAuthorization()
+            status = await HealthKitBootstrap.healthKitIngest.currentStatus()
+            isConnecting = false
+            HapticEngine.shared.play(.selection)
+
+            isSyncingData = true
+            defer { isSyncingData = false }
+
             await HealthKitBootstrap.healthKitIngest.startObserving()
             let outcome = await HealthKitBootstrap.healthKitIngest.syncNow()
             await ReadinessBootstrap.readinessService.recomputeAfterIngest(
                 affectedFamilies: outcome.affectedFamilies
             )
-            HapticEngine.shared.play(.selection)
+            status = await HealthKitBootstrap.healthKitIngest.currentStatus()
+            presence = await presenceChecker.checkAllKinds()
         } catch {
+            isConnecting = false
             errorMessage = error.localizedDescription
             HapticEngine.shared.play(.clampRejected)
         }
-
-        await refreshAll()
     }
 
     private func refreshData() async {
@@ -174,6 +185,8 @@ struct HealthKitOnboardingStepView: View {
 
     private func refreshAll() async {
         status = await HealthKitBootstrap.healthKitIngest.currentStatus()
+        guard isConnected else { return }
+
         isChecking = true
         defer { isChecking = false }
         presence = await presenceChecker.checkAllKinds()

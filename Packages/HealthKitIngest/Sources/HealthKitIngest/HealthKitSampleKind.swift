@@ -86,6 +86,13 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
     public static var readTypes: Set<HKObjectType> {
         var types = Set(allCases.map(\.objectType))
         types.insert(HKQuantityType(.heartRate))
+        types.insert(HKQuantityType(.height))
+        if let biologicalSex = HKObjectType.characteristicType(forIdentifier: .biologicalSex) {
+            types.insert(biologicalSex)
+        }
+        if let dateOfBirth = HKObjectType.characteristicType(forIdentifier: .dateOfBirth) {
+            types.insert(dateOfBirth)
+        }
         return types
     }
 

@@ -114,6 +114,18 @@ final class NutritionMealActionsController {
         }
     }
 
+    func copyAllMeals(from sourceDay: HelmDay, to today: HelmDay) async {
+        do {
+            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch MealRepeatError.emptySource {
+            errorMessage = "No Helm meals logged on that day."
+        } catch {
+            errorMessage = "Could not copy meals. Try again."
+        }
+    }
+
     func copyYesterdayToToday(today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {

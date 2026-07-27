@@ -6,6 +6,7 @@ struct TrainingPlanOnboardingStepView: View {
     var stepIndex: Int = 4
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
+    var onBack: (() -> Void)? = nil
     var onSkip: () -> Void = {}
 
     @State private var settingsActions: PhaseGoalSettingsActions?
@@ -26,9 +27,11 @@ struct TrainingPlanOnboardingStepView: View {
                     onContinue()
                 }
             },
+            onBack: onBack,
             onSkip: onSkip
         ) {
             PhaseGoalSettingsView(
+                embedInForm: false,
                 showsInlineSaveButton: false,
                 onSaved: showsFlowControls ? onContinue : nil,
                 registerActions: { settingsActions = $0 }

@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import Testing
 @testable import NutritionKit
 
@@ -54,7 +55,27 @@ struct MacroTargetTests {
         #expect(aggressiveCut.caloriesKcal < defaultCut.caloriesKcal)
     }
 
-    @Test("missing body mass and zero stored TDEE still yield a calorie target")
+    @Test("profile seeds macro targets from Mifflin-St Jeor maintenance")
+    func profileSeedTargets() throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let dob = calendar.date(byAdding: .year, value: -30, to: Date())!
+        let profile = BodyProfile(
+            bodyMassKg: 73.1,
+            heightCm: 175,
+            biologicalSex: .male,
+            dateOfBirth: dob
+        )
+        let profileSeed = try #require(BodyProfileTDEE.seedTDEEKcal(profile: profile))
+        let targets = NutritionKit.targets(
+            for: NutritionTargetContext(bodyProfile: profile, dayType: .training),
+            phase: PhaseGoal(phase: .maintain),
+            trend: NutritionTrendState()
+        )
+
+        #expect(targets.estimatedTDEEKcal == Int(profileSeed.rounded()))
+        #expect(targets.caloriesKcal == targets.estimatedTDEEKcal)
+    }
+
     func coldStartCalorieTarget() {
         let targets = NutritionKit.targets(
             for: NutritionTargetContext(bodyMassKg: 0, dayType: .training),
@@ -62,6 +83,7 @@ struct MacroTargetTests {
             trend: NutritionTrendState(estimatedTDEEKcal: 0)
         )
 
-        #expect(targets.caloriesKcal >= 1_200)
+        #expect(targets.caloriesKcal == 0)
+        #expect(targets.proteinGrams == 0)
     }
 }

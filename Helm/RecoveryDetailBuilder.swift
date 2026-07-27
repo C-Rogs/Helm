@@ -70,8 +70,7 @@ enum RecoveryDetailBuilder {
     ) throws -> (model: RecoveryDetailModel, history: [ReadinessHistoryPoint]) {
         let today = HelmDay.day(for: .now, calendar: calendar)
         let baseline = try loadBaseline(from: store)
-        let sleepRecords = try store.sleep.fetch(for: today)
-        let sleepHours = totalSleepHours(from: sleepRecords)
+        let sleepHours = try store.sleep.totalSleepHours(for: today, calendar: calendar)
         let (history, _) = try TrendsDataBuilder.buildReadinessPage(
             store: store,
             endingAt: today,
@@ -98,12 +97,6 @@ enum RecoveryDetailBuilder {
             return nil
         }
         return try? JSONDecoder().decode(ReadinessBaselineState.self, from: data)
-    }
-
-    private static func totalSleepHours(from records: [SleepRecord]) -> Double? {
-        guard !records.isEmpty else { return nil }
-        let seconds = records.reduce(0.0) { $0 + $1.duration }
-        return seconds / 3_600
     }
 
     private static func arcTargetBand(for band: ReadinessBand) -> ClosedRange<Double> {

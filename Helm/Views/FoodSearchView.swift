@@ -12,6 +12,8 @@ struct FoodSearchView: View {
     @State private var recents: [ResolvedFoodProduct] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var remoteSearchMessage: String?
+    @State private var hasSubmittedRemoteSearch = false
 
     private let controller: ManualFoodLogController
 
@@ -36,6 +38,12 @@ struct FoodSearchView: View {
                     .listRowBackground(HelmColor.surface)
                 }
 
+                if let remoteSearchMessage {
+                    Text(remoteSearchMessage)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .listRowBackground(HelmColor.surface)
+                }
+
                 if isSearching {
                     HStack(spacing: HelmSpacing.sm) {
                         ProgressView()
@@ -44,12 +52,16 @@ struct FoodSearchView: View {
                     }
                     .listRowBackground(HelmColor.surface)
                 } else if trimmedQuery.isEmpty {
-                    Text("Search CoFID foods or UK branded products.")
+                    Text("Search CoFID and scanned products on-device. Press Search for new branded products.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .listRowBackground(HelmColor.surface)
                 } else if results.isEmpty {
                     if !isOnline {
                         offlineMissState
+                    } else if !hasSubmittedRemoteSearch {
+                        Text("No local matches for \"\(trimmedQuery)\". Press Search to check branded products.")
+                            .helmType(.body, color: HelmColor.fgMuted)
+                            .listRowBackground(HelmColor.surface)
                     } else {
                         Text("No matches for \"\(trimmedQuery)\".")
                             .helmType(.body, color: HelmColor.fgMuted)
@@ -73,8 +85,13 @@ struct FoodSearchView: View {
         .searchable(text: $query, prompt: "Search foods")
         .navigationTitle("Search food")
         .navigationBarTitleDisplayMode(.inline)
+        .onSubmit(of: .search) {
+            Task { await submitRemoteSearch() }
+        }
         .onChange(of: query) { _, newValue in
-            scheduleSearch(for: newValue)
+            hasSubmittedRemoteSearch = false
+            remoteSearchMessage = nil
+            scheduleLocalSearch(for: newValue)
         }
         .task {
             await controller.refreshConnectivity()
@@ -151,7 +168,7 @@ struct FoodSearchView: View {
         .listRowBackground(HelmColor.surface)
     }
 
-    private func scheduleSearch(for query: String) {
+    private func scheduleLocalSearch(for query: String) {
         searchTask?.cancel()
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -162,10 +179,10 @@ struct FoodSearchView: View {
 
         isSearching = true
         searchTask = Task {
-            try? await Task.sleep(for: .milliseconds(250))
+            try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
             do {
-                let hits = try await controller.search(query: trimmed)
+                let hits = try await controller.searchLocal(query: trimmed)
                 guard !Task.isCancelled else { return }
                 results = hits
             } catch {
@@ -173,6 +190,35 @@ struct FoodSearchView: View {
                 results = []
             }
             isSearching = false
+        }
+    }
+
+    private func submitRemoteSearch() async {
+        searchTask?.cancel()
+        let trimmed = trimmedQuery
+        guard trimmed.count >= 3 else {
+            remoteSearchMessage = "Enter at least 3 characters to search branded products."
+            return
+        }
+        guard isOnline else {
+            remoteSearchMessage = "Branded search needs a network connection."
+            return
+        }
+
+        isSearching = true
+        remoteSearchMessage = nil
+        defer { isSearching = false }
+
+        do {
+            let hits = try await controller.searchRemote(query: trimmed)
+            results = hits
+            hasSubmittedRemoteSearch = true
+        } catch FoodResolverError.rateLimited {
+            remoteSearchMessage = "Too many searches. Wait a minute and try again."
+        } catch FoodResolverError.queryTooShort {
+            remoteSearchMessage = "Enter at least 3 characters to search branded products."
+        } catch {
+            remoteSearchMessage = "Branded search failed. Local results are still shown."
         }
     }
 }

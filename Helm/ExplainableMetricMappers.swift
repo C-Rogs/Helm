@@ -114,16 +114,68 @@ enum ExplainableMetricMappers {
         coachAvailable: Bool
     ) -> ExplainableMetric {
         let targets = snapshot.targets
-        let formattedCalories = formattedInteger(targets.caloriesKcal)
-        let floorApplied = targets.caloriesKcal <= 1_200
+        let formattedCalories = targets.caloriesKcal > 0
+            ? formattedInteger(targets.caloriesKcal)
+            : "Pending"
+        let floorApplied = targets.caloriesKcal > 0 && targets.caloriesKcal <= 1_200
 
-        var contributors: [ExplainContributor] = [
-            ExplainContributor(
-                id: "tdee",
-                label: "Estimated TDEE",
-                value: "\(targets.estimatedTDEEKcal) kcal",
-                detail: snapshot.trend.estimatedTDEEKcal.map { _ in "Adaptive weekly estimate" } ?? "Seed from body mass"
-            ),
+        var contributors: [ExplainContributor] = []
+
+        if let profileMaintenance = snapshot.profileMaintenanceKcal, profileMaintenance > 0 {
+            contributors.append(
+                ExplainContributor(
+                    id: "profile-maintenance",
+                    label: "Profile maintenance",
+                    value: "\(profileMaintenance) kcal",
+                    detail: "Starting estimate from body profile"
+                )
+            )
+        }
+
+        if targets.estimatedTDEEKcal > 0 {
+            let tdeeDetail: String
+            if let adaptive = snapshot.trend.estimatedTDEEKcal,
+               adaptive > 0,
+               let profileMaintenance = snapshot.profileMaintenanceKcal,
+               abs(Int(adaptive.rounded()) - profileMaintenance) > 25 {
+                tdeeDetail = "Refined from recent food logs and weight trend"
+            } else if snapshot.trend.estimatedTDEEKcal != nil {
+                tdeeDetail = "Refined from recent food logs and weight trend"
+            } else {
+                tdeeDetail = "Using profile maintenance until enough weight and intake data"
+            }
+            contributors.append(
+                ExplainContributor(
+                    id: "tdee",
+                    label: "Current TDEE estimate",
+                    value: "\(targets.estimatedTDEEKcal) kcal",
+                    detail: tdeeDetail
+                )
+            )
+        } else {
+            contributors.append(
+                ExplainContributor(
+                    id: "tdee",
+                    label: "Current TDEE estimate",
+                    value: "Pending",
+                    detail: "Complete body profile in Settings",
+                    state: .compromised
+                )
+            )
+        }
+
+        if let intake = snapshot.trend.weeklyIntakeAverageKcal, intake > 0 {
+            contributors.append(
+                ExplainContributor(
+                    id: "intake-avg",
+                    label: "7-day diet average",
+                    value: "\(Int(intake.rounded())) kcal",
+                    detail: "Logged food only; not maintenance during a cut"
+                )
+            )
+        }
+
+        contributors.append(contentsOf: [
             ExplainContributor(
                 id: "phase",
                 label: "Phase adjustment",
@@ -133,7 +185,7 @@ enum ExplainableMetricMappers {
             ExplainContributor(
                 id: "protein",
                 label: "Protein floor",
-                value: "\(targets.proteinGrams) g",
+                value: targets.proteinGrams > 0 ? "\(targets.proteinGrams) g" : "Pending",
                 detail: "2.0 g/kg minimum"
             ),
             ExplainContributor(
@@ -142,7 +194,7 @@ enum ExplainableMetricMappers {
                 value: snapshot.dayType.rawValue.capitalized,
                 detail: "Affects carb/fat split only, not calories"
             ),
-        ]
+        ])
 
         if floorApplied {
             contributors.append(

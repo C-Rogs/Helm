@@ -72,7 +72,7 @@ public enum CoachContextAssembler {
                     readiness: readinessByDay[helmDay],
                     nutrition: try store.nutrition.fetchDay(helmDay: helmDay),
                     workouts: workoutsByDay[helmDay] ?? [],
-                    sleepRecords: try store.sleep.fetch(for: helmDay),
+                    sleepHours: try store.sleep.totalSleepHours(for: helmDay, calendar: calendar),
                     bodyComposition: bodyCompositionByDay[helmDay]
                 )
             )
@@ -117,7 +117,7 @@ public enum CoachContextAssembler {
         readiness: ReadinessScoreSnippet?,
         nutrition: NutritionDay?,
         workouts: [WorkoutSessionSummary],
-        sleepRecords: [SleepRecord],
+        sleepHours: Double?,
         bodyComposition: BodyComposition?
     ) -> String {
         var parts: [String] = []
@@ -141,7 +141,7 @@ public enum CoachContextAssembler {
             }
         }
 
-        if let sleepHours = totalSleepHours(from: sleepRecords) {
+        if let sleepHours {
             parts.append("sleep=\(format(sleepHours))h")
         }
 
@@ -198,12 +198,6 @@ public enum CoachContextAssembler {
             lines.append("seededNights=\(state.seededNightCount)")
         }
         return lines.joined(separator: "\n")
-    }
-
-    private static func totalSleepHours(from records: [SleepRecord]) -> Double? {
-        guard !records.isEmpty else { return nil }
-        let seconds = records.reduce(0.0) { $0 + $1.duration }
-        return seconds / 3_600
     }
 
     private static func decodeScoreSnippet(from json: String) -> ReadinessScoreSnippet? {

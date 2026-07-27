@@ -37,10 +37,8 @@ final class PhotoMealController {
         return "Estimating macros…"
     }
 
-    private let service: PhotoMealService?
-
-    init(service: PhotoMealService? = NutritionBootstrap.photoMealService) {
-        self.service = service
+    private var service: PhotoMealService? {
+        NutritionBootstrap.photoMealService
     }
 
     var isAvailable: Bool {

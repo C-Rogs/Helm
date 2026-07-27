@@ -67,6 +67,145 @@ struct GroundedPhotoMacroEstimatorTests {
         #expect(decomposition.items.count == 2)
     }
 
+    @Test("gemini vision retries alternate model after 404")
+    func geminiVisionRetriesAlternateModel() async throws {
+        final class CountingGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
+            private let lock = NSLock()
+            private var attempts: [String] = []
+
+            var lastStreamRequestID: UUID?
+            var lastGenerateRequestID: UUID?
+
+            func streamGenerate(_ request: GeminiStreamHTTPRequest) async throws -> AsyncThrowingStream<Data, Error> {
+                lastStreamRequestID = request.requestID
+                return AsyncThrowingStream { $0.finish() }
+            }
+
+            func generateContent(_ request: GeminiGenerateHTTPRequest) async throws -> Data {
+                lastGenerateRequestID = request.requestID
+                lock.withLock { attempts.append(request.model.rawValue) }
+                if request.model == .flashLite {
+                    throw CoachProviderError.requestFailed(
+                        "Gemini request failed with status 404: models/gemini-3.5-flash-lite is no longer available."
+                    )
+                }
+                guard let url = Bundle.module.url(forResource: "gemini_generate_meal_decomposition", withExtension: "json") else {
+                    throw CoachProviderError.requestFailed("Missing fixture")
+                }
+                return try Data(contentsOf: url)
+            }
+
+            func recordedAttempts() -> [String] {
+                lock.withLock { attempts }
+            }
+        }
+
+        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        try store.save("fixture-key", kind: .gemini)
+        let httpClient = CountingGeminiHTTPClient()
+        let vision = GeminiMealVisionProvider(
+            apiKeyStore: store,
+            httpClient: httpClient,
+            models: [.flashLite, .flash]
+        )
+
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        #expect(decomposition.mealDescription == "Chicken rice bowl")
+        #expect(httpClient.recordedAttempts() == [
+            GeminiModel.flashLite.rawValue,
+            GeminiModel.flash.rawValue
+        ])
+    }
+
+    @Test("router prefers gemini in auto when gemini key present")
+    func routerPrefersGeminiInAuto() async throws {
+        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        try store.save("gemini-key", kind: .gemini)
+        try store.save("openrouter-key", kind: .openRouter)
+
+        let preferences = MealVisionPreferencesStore(
+            defaults: UserDefaults(suiteName: "com.cameronro.helm.tests.\(UUID().uuidString)")!
+        )
+        preferences.backendPreference = .auto
+
+        struct GeminiOnlyVision: MealVisionProviding {
+            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+                _ = imageJPEGData
+                return MealDecomposition(
+                    payload: MealDecompositionPayload(
+                        schemaVersion: CoachOutputSchemaVersion.mealDecompositionV1.rawValue,
+                        mealDescription: "Gemini routed meal",
+                        items: [],
+                        implicitFats: [],
+                        portionNotes: nil
+                    )
+                )
+            }
+        }
+
+        struct FailingOpenRouter: MealVisionProviding {
+            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("OpenRouter should not be called")
+            }
+        }
+
+        let router = MealVisionRouter(
+            apiKeyStore: store,
+            preferences: preferences,
+            geminiVision: GeminiOnlyVision(),
+            openRouterVision: FailingOpenRouter()
+        )
+
+        let decomposition = try await router.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        #expect(decomposition.mealDescription == "Gemini routed meal")
+    }
+
+    @Test("openrouter retries free slug when paid slug 404s")
+    func openRouterRetriesFreeSlug() async throws {
+        final class CountingOpenRouterHTTPClient: OpenRouterHTTPClient, @unchecked Sendable {
+            private let lock = NSLock()
+            private var attempts: [String] = []
+
+            func chatCompletion(_ request: OpenRouterHTTPRequest) async throws -> Data {
+                let model = (try? JSONDecoder().decode(ModelProbe.self, from: request.body))?.model ?? ""
+                lock.withLock { attempts.append(model) }
+                if !model.hasSuffix(":free") {
+                    throw CoachProviderError.requestFailed(
+                        "OpenRouter request failed with status 404: unavailable for free"
+                    )
+                }
+                guard let url = Bundle.module.url(forResource: "openrouter_meal_decomposition", withExtension: "json") else {
+                    throw CoachProviderError.requestFailed("Missing fixture")
+                }
+                return try Data(contentsOf: url)
+            }
+
+            func recordedAttempts() -> [String] {
+                lock.withLock { attempts }
+            }
+
+            private struct ModelProbe: Decodable {
+                let model: String
+            }
+        }
+
+        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        try store.save("fixture-key", kind: .openRouter)
+        let httpClient = CountingOpenRouterHTTPClient()
+
+        let vision = OpenRouterMealVisionProvider(
+            apiKeyStore: store,
+            httpClient: httpClient
+        )
+
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        #expect(decomposition.mealDescription == "Chicken rice bowl")
+        #expect(httpClient.recordedAttempts() == [
+            MealVisionModel.openRouterGemma.rawValue,
+            MealVisionModel.openRouterGemmaFree.rawValue
+        ])
+    }
+
     @Test("router falls back to gemini when openrouter fails")
     func routerFallsBackToGemini() async throws {
         struct FailingOpenRouter: MealVisionProviding {

@@ -8,10 +8,16 @@ struct AddFoodFlowView: View {
     let entryMode: AddFoodEntryMode
 
     @State private var selectedProduct: ResolvedFoodProduct?
-    @State private var lookupError: String?
     @State private var pendingBarcode: String?
-    @State private var isResolvingBarcode = false
+    @State private var barcodePhase: BarcodeScanPhase = .scanning
+    @State private var pendingQueueBucket: MealBucket = .snacks
     @Environment(\.dismiss) private var dismiss
+
+    private enum BarcodeScanPhase: Equatable {
+        case scanning
+        case resolving
+        case failed(String)
+    }
 
     var body: some View {
         NavigationStack {
@@ -71,71 +77,42 @@ struct AddFoodFlowView: View {
                 dismiss()
             }
         }
-        .alert(
-            "Food lookup",
-            isPresented: Binding(
-                get: { lookupError != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        lookupError = nil
-                    }
-                }
-            ),
-            actions: {
-                Button("OK", role: .cancel) {
-                    lookupError = nil
-                }
-            },
-            message: {
-                if let lookupError {
-                    Text(lookupError)
-                }
-            }
-        )
-        .alert(
-            "Save for later?",
-            isPresented: Binding(
-                get: { pendingBarcode != nil },
-                set: { isPresented in
-                    if !isPresented {
-                        pendingBarcode = nil
-                    }
-                }
-            ),
-            actions: {
-                Button("Save pending") {
-                    guard let barcode = pendingBarcode else { return }
-                    Task {
-                        await controller.queueOfflineBarcode(
-                            barcode: barcode,
-                            bucket: .snacks
-                        )
-                        pendingBarcode = nil
-                    }
-                }
-                Button("Cancel", role: .cancel) {
+        .sheet(isPresented: Binding(
+            get: { pendingBarcode != nil },
+            set: { isPresented in
+                if !isPresented {
                     pendingBarcode = nil
-                }
-            },
-            message: {
-                if let pendingBarcode {
-                    Text("Barcode \(pendingBarcode) will be saved without macros and matched when you are back online. You can also log with a photo from the + menu.")
+                    barcodePhase = .scanning
                 }
             }
-        )
+        )) {
+            if let barcode = pendingBarcode {
+                OfflineBarcodeQueueSheet(
+                    barcode: barcode,
+                    bucket: $pendingQueueBucket,
+                    onSave: {
+                        Task {
+                            await controller.queueOfflineBarcode(
+                                barcode: barcode,
+                                bucket: pendingQueueBucket
+                            )
+                            pendingBarcode = nil
+                            barcodePhase = .scanning
+                        }
+                    },
+                    onCancel: {
+                        pendingBarcode = nil
+                        barcodePhase = .scanning
+                    }
+                )
+            }
+        }
     }
 
     @ViewBuilder
     private var barcodeStep: some View {
-        if isResolvingBarcode {
-            VStack(spacing: HelmSpacing.md) {
-                ProgressView()
-                Text("Looking up product…")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .helmScreenBackground()
-        } else {
+        switch barcodePhase {
+        case .scanning:
             BarcodeScannerView(
                 onBarcode: { barcode in
                     resolveBarcode(barcode)
@@ -144,21 +121,47 @@ struct AddFoodFlowView: View {
                     controller.cancel()
                 }
             )
+        case .resolving:
+            VStack(spacing: HelmSpacing.md) {
+                ProgressView()
+                Text("Looking up product…")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .helmScreenBackground()
+        case let .failed(message):
+            VStack(spacing: HelmSpacing.lg) {
+                HelmErrorState(
+                    title: "Barcode not found",
+                    message: message,
+                    onRetry: {
+                        barcodePhase = .scanning
+                    }
+                )
+                Button("Done") {
+                    controller.cancel()
+                }
+                .buttonStyle(.helmSecondary)
+            }
+            .padding(HelmSpacing.md)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .helmScreenBackground()
         }
     }
 
     private func resolveBarcode(_ barcode: String) {
-        isResolvingBarcode = true
+        barcodePhase = .resolving
         Task {
             do {
                 let product = try await controller.resolveBarcode(barcode)
                 selectedProduct = product
+                barcodePhase = .scanning
             } catch FoodResolverError.offline {
                 pendingBarcode = barcode
+                barcodePhase = .scanning
             } catch {
-                lookupError = controller.isBusy ? "Could not look up that barcode." : lookupMessage(for: error)
+                barcodePhase = .failed(lookupMessage(for: error))
             }
-            isResolvingBarcode = false
         }
     }
 
@@ -168,8 +171,10 @@ struct AddFoodFlowView: View {
             "Branded lookup needs a network connection."
         case FoodResolverError.notFound:
             "No product found for that barcode."
+        case OpenFoodFactsError.productNotFound:
+            "No product found for that barcode."
         default:
-            "Could not look up that barcode."
+            "Could not look up that barcode. Tap Scan again to try another product."
         }
     }
 }

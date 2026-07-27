@@ -5,6 +5,17 @@ import Testing
 
 @Suite("TDEECalculator")
 struct TDEECalculatorTests {
+    private func profile(massKg: Double = 80) -> BodyProfile {
+        let calendar = Calendar(identifier: .gregorian)
+        let dob = calendar.date(byAdding: .year, value: -30, to: Date())!
+        return BodyProfile(
+            bodyMassKg: massKg,
+            heightCm: 175,
+            biologicalSex: .male,
+            dateOfBirth: dob
+        )
+    }
+
     private func weekDays(
         starting offset: Int,
         massKg: Double,
@@ -24,13 +35,19 @@ struct TDEECalculatorTests {
 
     @Test("TDEE converges toward maintenance intake on stable weight")
     func stableWeightConvergence() throws {
+        let seedProfile = profile(massKg: 80)
+        let profileSeed = try #require(BodyProfileTDEE.seedTDEEKcal(profile: seedProfile))
         var state = NutritionTrendState(estimatedTDEEKcal: 2_200)
         let maintenanceIntake = 2_800.0
         let mass = 80.0
 
         for week in 0 ..< 8 {
             let days = weekDays(starting: week * 7, massKg: mass, intakeKcal: maintenanceIntake)
-            NutritionKit.updateTrend(state: &state, weekDays: days)
+            NutritionKit.updateTrend(
+                state: &state,
+                weekDays: days,
+                profileSeedTDEEKcal: profileSeed
+            )
         }
 
         let estimate = try #require(state.estimatedTDEEKcal)
@@ -39,6 +56,8 @@ struct TDEECalculatorTests {
 
     @Test("weight loss raises implied TDEE above logged intake")
     func weightLossImpliedTDEE() throws {
+        let seedProfile = profile(massKg: 80)
+        let profileSeed = try #require(BodyProfileTDEE.seedTDEEKcal(profile: seedProfile))
         var state = NutritionTrendState(
             estimatedTDEEKcal: 2_200,
             smoothedTrendWeightKg: 80.0,
@@ -46,10 +65,33 @@ struct TDEECalculatorTests {
         )
 
         let days = weekDays(starting: 0, massKg: 80.0, intakeKcal: 2_000)
-        NutritionKit.updateTrend(state: &state, weekDays: days)
+        NutritionKit.updateTrend(
+            state: &state,
+            weekDays: days,
+            profileSeedTDEEKcal: profileSeed
+        )
 
         let estimate = try #require(state.estimatedTDEEKcal)
         #expect(estimate > 2_000)
         #expect(estimate < 2_800)
+    }
+
+    @Test("cut logging alone does not drag TDEE below profile seed")
+    func cutLoggingDoesNotCollapseTDEE() throws {
+        let seedProfile = profile(massKg: 73.1)
+        let profileSeed = try #require(BodyProfileTDEE.seedTDEEKcal(profile: seedProfile))
+        var state = NutritionTrendState(estimatedTDEEKcal: profileSeed)
+
+        for week in 0 ..< 4 {
+            let days = weekDays(starting: week * 7, massKg: 73.1, intakeKcal: 1_850)
+            NutritionKit.updateTrend(
+                state: &state,
+                weekDays: days,
+                profileSeedTDEEKcal: profileSeed
+            )
+        }
+
+        let estimate = try #require(state.estimatedTDEEKcal)
+        #expect(estimate >= profileSeed * 0.85)
     }
 }

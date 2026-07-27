@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let mealVisionLog = Logger(subsystem: "com.cameronro.helm", category: "NutritionKit")
 
 public struct MealVisionRouter: Sendable {
     private let apiKeyStore: APIKeyStore
@@ -23,37 +26,46 @@ public struct MealVisionRouter: Sendable {
     }
 
     public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
-        switch resolvedBackend() {
+        let backend = resolvedBackend()
+        mealVisionLog.debug(
+            "Meal vision backend=\(backend.rawValue, privacy: .public) preference=\(preferences.backendPreference.rawValue, privacy: .public)"
+        )
+
+        switch backend {
         case .openRouter:
             do {
                 return try await openRouterVision.decompose(imageJPEGData: imageJPEGData)
             } catch {
-                guard hasGeminiKey, preferences.backendPreference != .openRouter else {
+                guard hasGeminiKey else {
                     throw error
                 }
+                mealVisionLog.debug("Meal vision falling back to Gemini after OpenRouter failure")
                 return try await geminiVision.decompose(imageJPEGData: imageJPEGData)
             }
         case .gemini:
+            guard hasGeminiKey else {
+                throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
+            }
             return try await geminiVision.decompose(imageJPEGData: imageJPEGData)
         }
     }
 
-    private enum ResolvedBackend {
+    private enum ResolvedBackend: String {
         case openRouter
         case gemini
     }
 
     private func resolvedBackend() -> ResolvedBackend {
         switch preferences.backendPreference {
-        case .openRouter where hasOpenRouterKey:
-            return .openRouter
-        case .gemini where hasGeminiKey:
+        case .openRouter:
+            return hasOpenRouterKey ? .openRouter : (hasGeminiKey ? .gemini : .openRouter)
+        case .gemini:
+            return .gemini
+        case .auto where hasGeminiKey:
             return .gemini
         case .auto where hasOpenRouterKey:
             return .openRouter
-        case .auto where hasGeminiKey:
-            return .gemini
-        case .openRouter, .gemini, .auto:
+        case .auto:
             return hasGeminiKey ? .gemini : .openRouter
         }
     }

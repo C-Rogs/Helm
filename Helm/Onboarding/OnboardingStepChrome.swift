@@ -9,6 +9,7 @@ struct OnboardingStepChrome<Content: View>: View {
     let primaryTitle: String
     let skipTitle: String?
     let onPrimary: () -> Void
+    let onBack: (() -> Void)?
     let onSkip: () -> Void
     @ViewBuilder var content: () -> Content
 
@@ -20,6 +21,7 @@ struct OnboardingStepChrome<Content: View>: View {
         primaryTitle: String = "Continue",
         skipTitle: String? = "Skip for now",
         onPrimary: @escaping () -> Void,
+        onBack: (() -> Void)? = nil,
         onSkip: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
@@ -30,6 +32,7 @@ struct OnboardingStepChrome<Content: View>: View {
         self.primaryTitle = primaryTitle
         self.skipTitle = skipTitle
         self.onPrimary = onPrimary
+        self.onBack = onBack
         self.onSkip = onSkip
         self.content = content
     }
@@ -63,6 +66,14 @@ struct OnboardingStepChrome<Content: View>: View {
                             onPrimary()
                         }
                         .buttonStyle(.helmPrimary)
+
+                        if let onBack {
+                            Button("Back") {
+                                HapticEngine.shared.play(.selection)
+                                onBack()
+                            }
+                            .buttonStyle(.helmSecondary)
+                        }
 
                         if step != .shortcuts, let skipTitle {
                             Button(skipTitle) {

@@ -3,6 +3,7 @@ import Foundation
 enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
     case welcome
     case healthKit
+    case bodyProfile
     case notifications
     case coachKey
     case trainingPlan
@@ -15,6 +16,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .welcome: "Welcome to Helm"
         case .healthKit: "Health data"
+        case .bodyProfile: "Body profile"
         case .notifications: "Notifications"
         case .coachKey: "Coach"
         case .trainingPlan: "Training plan"
@@ -29,6 +31,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
             "Your readiness instrument. One arc, one score, one plan for today."
         case .healthKit:
             "Helm reads Apple Health to compute readiness, training load, and nutrition."
+        case .bodyProfile:
+            "Confirm weight, height, sex, and date of birth so Helm can estimate maintenance calories."
         case .notifications:
             "Rest timers and future briefs use local notifications."
         case .coachKey:
@@ -46,6 +50,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .welcome: "Welcome"
         case .healthKit: "Health Access"
+        case .bodyProfile: "Body Profile"
         case .notifications: "Notifications"
         case .coachKey: "Coach API Key"
         case .trainingPlan: "Training Plan"
@@ -56,5 +61,9 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
 
     var next: OnboardingStep? {
         OnboardingStep(rawValue: rawValue + 1)
+    }
+
+    var previous: OnboardingStep? {
+        OnboardingStep(rawValue: rawValue - 1)
     }
 }

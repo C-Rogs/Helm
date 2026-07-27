@@ -135,9 +135,34 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
             throw CoachProviderError.requestFailed("Invalid response")
         }
         guard (200 ..< 300).contains(http.statusCode) else {
-            throw CoachProviderError.fromHTTPStatusCode(http.statusCode)
+            throw CoachProviderError.requestFailed(Self.errorDetail(statusCode: http.statusCode, data: data))
         }
         return data
+    }
+
+    private static func errorDetail(statusCode: Int, data: Data) -> String {
+        let bodySnippet = errorSnippet(from: data)
+        if bodySnippet.isEmpty {
+            return "Gemini request failed with status \(statusCode)."
+        }
+        return "Gemini request failed with status \(statusCode): \(bodySnippet)"
+    }
+
+    private static func errorSnippet(from data: Data) -> String {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            let text = String(data: data, encoding: .utf8)?
+                .trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return String(text.prefix(240))
+        }
+        if let error = object["error"] as? [String: Any],
+           let message = error["message"] as? String,
+           !message.isEmpty {
+            return String(message.prefix(240))
+        }
+        if let message = object["message"] as? String, !message.isEmpty {
+            return String(message.prefix(240))
+        }
+        return ""
     }
 }
 

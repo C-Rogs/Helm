@@ -1,22 +1,54 @@
 import Foundation
+import OSLog
+
+private let mealVisionLog = Logger(subsystem: "com.cameronro.helm", category: "NutritionKit")
 
 public struct GeminiMealVisionProvider: Sendable {
     private let apiKeyStore: APIKeyStore
     private let httpClient: any GeminiHTTPClient
-    private let model: GeminiModel
+    private let models: [GeminiModel]
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         httpClient: any GeminiHTTPClient = LiveGeminiHTTPClient(),
-        model: GeminiModel = .mealVision
+        models: [GeminiModel] = GeminiModel.mealVisionCandidates
     ) {
         self.apiKeyStore = apiKeyStore
         self.httpClient = httpClient
-        self.model = model
+        self.models = models.isEmpty ? GeminiModel.mealVisionCandidates : models
     }
 
     public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
         let apiKey = try requireAPIKey()
+        var lastError: Error?
+
+        for model in models {
+            do {
+                mealVisionLog.debug("Gemini meal vision begin model=\(model.rawValue, privacy: .public)")
+                return try await decompose(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                mealVisionLog.error(
+                    "Gemini meal vision model failed model=\(model.rawValue, privacy: .public) error=\(CoachUserFacingError.message(for: error), privacy: .public)"
+                )
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("Gemini meal vision is unavailable.")
+    }
+
+    private func decompose(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: GeminiModel
+    ) async throws -> MealDecomposition {
         let base64 = imageJPEGData.base64EncodedString()
         let requestID = UUID()
 
@@ -40,6 +72,14 @@ public struct GeminiMealVisionProvider: Sendable {
             expectedSchema: .mealDecompositionV1
         )
         return MealDecomposition(payload: payload)
+    }
+
+    private static func shouldRetryWithAlternateModel(_ error: CoachProviderError) -> Bool {
+        guard case .requestFailed(let detail) = error else { return false }
+        let normalized = detail.lowercased()
+        return normalized.contains("404")
+            || normalized.contains("not found")
+            || normalized.contains("no longer available")
     }
 
     private func requireAPIKey() throws -> String {

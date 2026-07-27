@@ -37,9 +37,16 @@ enum NutritionTrendBuilder {
         from store: PersistenceStore,
         state: inout NutritionTrendState,
         through endDay: HelmDay,
+        bodyProfile: BodyProfile?,
         calendar: Calendar = .current
     ) throws -> NutritionTrendState {
         let weekDays = try weekInputs(from: store, endingAt: endDay, calendar: calendar)
-        return NutritionKit.updateTrend(state: &state, weekDays: weekDays)
+        let profileSeed = bodyProfile.flatMap { BodyProfileTDEE.seedTDEEKcal(profile: $0) }
+        return NutritionKit.updateTrend(
+            state: &state,
+            weekDays: weekDays,
+            profileSeedTDEEKcal: profileSeed,
+            defaultBodyMassKg: bodyProfile?.bodyMassKg ?? NutritionKit.resolvedBodyMassKg(nil)
+        )
     }
 }

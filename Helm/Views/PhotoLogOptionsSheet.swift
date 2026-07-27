@@ -33,11 +33,6 @@ struct PhotoLogOptionsSheet: View {
                         }
                 }
                 .buttonStyle(.helmPressable)
-                .onChange(of: pickerItem) { _, item in
-                    if item != nil {
-                        onCancel()
-                    }
-                }
 
                 Button {
                     onCamera()

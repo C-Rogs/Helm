@@ -22,32 +22,69 @@ struct PhaseGoalSettingsView: View {
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
     var body: some View {
-        Form { settingsContent }
-            .navigationTitle("Training Plan")
-            .helmScreenBackground()
-            .task { await load() }
-            .onAppear {
-                registerActions?(PhaseGoalSettingsActions(
-                    saveIfNeeded: { await saveIfNeeded() },
-                    isDirty: { isDirty }
-                ))
+        Group {
+            if embedInForm {
+                Form { formSections }
+            } else {
+                inlineContent
             }
-            .sheet(isPresented: $isShowingCalculator) {
-                WeeklyRateCalculatorSheet(initialPhase: settings.phaseGoal.phase) { rate, phase in
-                    settings.phaseGoal = PhaseGoal(
-                        phase: phase,
-                        weeklyRateKg: rate,
-                        targetMass: settings.phaseGoal.targetMass,
-                        emphasis: settings.phaseGoal.emphasis
-                    )
-                    weeklyRateText = String(format: "%.2f", rate)
-                    HapticEngine.shared.play(.selection)
-                }
+        }
+        .navigationTitle("Training Plan")
+        .helmScreenBackground()
+        .task { await load() }
+        .onAppear {
+            registerActions?(PhaseGoalSettingsActions(
+                saveIfNeeded: { await saveIfNeeded() },
+                isDirty: { isDirty }
+            ))
+        }
+        .sheet(isPresented: $isShowingCalculator) {
+            WeeklyRateCalculatorSheet(initialPhase: settings.phaseGoal.phase) { rate, phase in
+                settings.phaseGoal = PhaseGoal(
+                    phase: phase,
+                    weeklyRateKg: rate,
+                    targetMass: settings.phaseGoal.targetMass,
+                    emphasis: settings.phaseGoal.emphasis
+                )
+                weeklyRateText = String(format: "%.2f", rate)
+                HapticEngine.shared.play(.selection)
             }
+        }
     }
 
     @ViewBuilder
-    private var settingsContent: some View {
+    private var inlineContent: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            Text("Changing phase re-plans today's session and future volume targets. Weekly rate is optional; you can set it later in Settings.")
+                .font(HelmTypography.body)
+                .foregroundStyle(HelmColor.fgSecondary)
+
+            phaseFields
+
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                Text("Experience")
+                    .helmType(.label, color: HelmColor.fgSecondary)
+                Picker("Training experience", selection: $settings.experienceRaw) {
+                    Text("Novice").tag("novice")
+                    Text("Intermediate").tag("intermediate")
+                    Text("Advanced").tag("advanced")
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: settings.experienceRaw) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+            }
+
+            if let saveMessage {
+                Text(saveMessage)
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var formSections: some View {
         Section {
             Text("Changing phase re-plans today's session and future volume targets. Weekly rate is optional; you can set it later in Settings.")
                 .font(HelmType.body.font)
@@ -55,35 +92,7 @@ struct PhaseGoalSettingsView: View {
         }
 
         Section("Phase") {
-            Picker("Phase", selection: phaseBinding) {
-                ForEach(TrainingPhase.allCases, id: \.self) { phase in
-                    Text(phase.label).tag(phase)
-                }
-            }
-            .onChange(of: settings.phaseGoal.phase) { _, _ in
-                HapticEngine.shared.play(.phaseChange)
-            }
-
-            if settings.phaseGoal.phase != .maintain {
-                HStack {
-                    TextField("Weekly rate (kg)", text: $weeklyRateText)
-                        .keyboardType(.decimalPad)
-                        .onChange(of: weeklyRateText) { _, _ in syncWeeklyRate() }
-                    Button {
-                        isShowingCalculator = true
-                    } label: {
-                        Image(systemName: "function")
-                    }
-                    .buttonStyle(.borderless)
-                    .accessibilityLabel("Open rate calculator")
-                }
-                Text(WeeklyRateCalculator.safeRangeHint(for: settings.phaseGoal.phase))
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgMuted)
-            }
-
-            TextField("Emphasis", text: $emphasisText)
-                .onChange(of: emphasisText) { _, _ in syncEmphasis() }
+            phaseFields
         }
 
         Section("Experience") {
@@ -109,6 +118,44 @@ struct PhaseGoalSettingsView: View {
                 saveButton
             }
         }
+    }
+
+    @ViewBuilder
+    private var phaseFields: some View {
+        Picker("Phase", selection: phaseBinding) {
+            ForEach(TrainingPhase.allCases, id: \.self) { phase in
+                Text(phase.label).tag(phase)
+            }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: settings.phaseGoal.phase) { _, _ in
+            HapticEngine.shared.play(.phaseChange)
+        }
+
+        if settings.phaseGoal.phase != .maintain {
+            VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                HStack {
+                    TextField("Weekly rate (kg)", text: $weeklyRateText)
+                        .keyboardType(.decimalPad)
+                        .textFieldStyle(.roundedBorder)
+                        .onChange(of: weeklyRateText) { _, _ in syncWeeklyRate() }
+                    Button {
+                        isShowingCalculator = true
+                    } label: {
+                        Image(systemName: "function")
+                    }
+                    .buttonStyle(.borderless)
+                    .accessibilityLabel("Open rate calculator")
+                }
+                Text(WeeklyRateCalculator.safeRangeHint(for: settings.phaseGoal.phase))
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
+            }
+        }
+
+        TextField("Emphasis", text: $emphasisText)
+            .textFieldStyle(.roundedBorder)
+            .onChange(of: emphasisText) { _, _ in syncEmphasis() }
     }
 
     @ViewBuilder

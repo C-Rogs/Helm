@@ -224,6 +224,8 @@ enum TrendsDataBuilder {
         let settings = try store.trainingPlan.load()
         let trendStore = NutritionTrendStore(metadata: store.appMetadata)
         let trend = try trendStore.load()
+        let bodyProfileStore = BodyProfileStore(metadata: store.appMetadata)
+        var storedProfile = bodyProfileStore.load()
 
         let gauges = days.compactMap { day -> EnergyBalanceGauge? in
             guard let intake = day.totalEnergy?.kilocalories else { return nil }
@@ -232,8 +234,17 @@ enum TrendsDataBuilder {
                 .first?
                 .mass
                 .kilograms
+            var bodyProfile = storedProfile
+            if let bodyMassKg, bodyMassKg > 1, var profile = bodyProfile {
+                profile = profile.withUpdatedBodyMassKg(bodyMassKg)
+                bodyProfile = profile
+            }
             let targets = NutritionKit.targets(
-                for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: .rest, loggedDay: day),
+                for: NutritionTargetContext(
+                    bodyProfile: bodyProfile,
+                    dayType: .rest,
+                    loggedDay: day
+                ),
                 phase: settings.phaseGoal,
                 trend: trend
             )

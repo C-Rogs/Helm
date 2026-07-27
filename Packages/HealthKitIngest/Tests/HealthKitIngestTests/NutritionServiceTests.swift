@@ -7,10 +7,23 @@ import Testing
 
 @Suite("Nutrition service")
 struct NutritionServiceTests {
+    private func saveDefaultBodyProfile(in store: PersistenceStore) throws {
+        let calendar = Calendar(identifier: .gregorian)
+        let dob = calendar.date(byAdding: .year, value: -30, to: Date())!
+        let profile = BodyProfile(
+            bodyMassKg: 80,
+            heightCm: 175,
+            biologicalSex: .male,
+            dateOfBirth: dob
+        )
+        try BodyProfileStore(metadata: store.appMetadata).save(profile)
+    }
+
     @Test("fixture intake renders targets vs actual with alcohol gap")
     func targetsVsActualWithGap() async throws {
         let store = try PersistenceStore.inMemory()
         try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
 
         let day = HelmDay(year: 2026, month: 7, day: 23)
         let alcoholDay = NutritionDay(
@@ -33,19 +46,12 @@ struct NutritionServiceTests {
         #expect(snapshot.dayType == .rest)
     }
 
-    @Test("zero body mass still yields macro targets and MFP aggregates resolve")
-    func zeroBodyMassTargets() async throws {
+    @Test("missing body profile yields pending macro targets")
+    func pendingWithoutBodyProfile() async throws {
         let store = try PersistenceStore.inMemory()
         try store.trainingPlan.save(.default)
 
         let day = HelmDay(year: 2026, month: 7, day: 23)
-        try store.bodyComposition.upsert(
-            BodyComposition(
-                helmDay: day,
-                mass: Mass(kilograms: 0),
-                measuredAt: Date()
-            )
-        )
         try store.dailyMetrics.upsert(
             DailyMetrics(
                 helmDay: day,
@@ -60,16 +66,15 @@ struct NutritionServiceTests {
         let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil)
 
         #expect(snapshot.actual?.totalEnergy?.kilocalories == 2_100)
-        #expect(snapshot.targets.caloriesKcal > 0)
-        #expect(snapshot.targets.proteinGrams > 0)
-        #expect(snapshot.targets.carbohydrateGrams > 0)
-        #expect(snapshot.targets.fatGrams > 0)
+        #expect(snapshot.targets.caloriesKcal == 0)
+        #expect(snapshot.targets.proteinGrams == 0)
     }
 
     @Test("weekly trend persists across snapshots")
     func trendPersistence() async throws {
         let store = try PersistenceStore.inMemory()
         try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
 
         let endDay = HelmDay(year: 2026, month: 7, day: 23)
         for offset in 0 ..< 7 {

@@ -66,6 +66,16 @@ public struct FoodLogRepository: Sendable {
         }
     }
 
+    public func fetchCacheEntries(limit: Int = 200) throws -> [FoodProductCacheEntry] {
+        try pool.read { db in
+            let rows = try FoodProductCacheRow
+                .order(Column("updated_at").desc)
+                .limit(limit)
+                .fetchAll(db)
+            return try rows.map { try $0.toValue() }
+        }
+    }
+
     public func deleteCacheEntry(ref: FoodProductRef) throws {
         _ = try pool.write { db in
             try FoodProductCacheRow.deleteOne(db, key: FoodRefColumn.encode(ref))

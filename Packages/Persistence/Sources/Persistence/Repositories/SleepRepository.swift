@@ -34,6 +34,33 @@ public struct SleepRepository: Sendable {
         }
     }
 
+    /// Returns sleep intervals overlapping `[start, end)`.
+    public func fetchOverlapping(start: Date, end: Date) throws -> [SleepRecord] {
+        let startString = ISO8601Coding.string(from: start)
+        let endString = ISO8601Coding.string(from: end)
+        return try pool.read { db in
+            let rows = try SleepIntervalRecord.fetchAll(
+                db,
+                sql: """
+                    SELECT * FROM sleep_record
+                    WHERE end_at > ? AND start_at < ?
+                    ORDER BY start_at
+                    """,
+                arguments: [startString, endString]
+            )
+            return try rows.map { try $0.toValue() }
+        }
+    }
+
+    /// Total asleep hours for a wake day using the 18:00–18:00 window and overlap merge.
+    public func totalSleepHours(for helmDay: HelmDay, calendar: Calendar = .current) throws -> Double? {
+        guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { return nil }
+        let windowStart = SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
+        let windowEnd = SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
+        let records = try fetchOverlapping(start: windowStart, end: windowEnd)
+        return SleepAggregation.totalHours(from: records, windowStart: windowStart, windowEnd: windowEnd)
+    }
+
     public func listDays() throws -> [HelmDay] {
         try pool.read { db in
             let rows = try String.fetchAll(

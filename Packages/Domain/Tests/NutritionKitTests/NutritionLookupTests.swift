@@ -87,9 +87,18 @@ struct NutritionLookupTests {
 
         let almond = lookup.resolve(item: "almond butter")
         #expect(almond != nil)
-        let renamed = MacroAggregator.recomputeLineItem(
-            original,
+        let renamedItem = MealLineItem(
             name: "almond butter",
+            grams: original.grams,
+            caloriesKcal: original.caloriesKcal,
+            proteinG: original.proteinG,
+            carbsG: original.carbsG,
+            fatG: original.fatG,
+            usdaMatchID: original.usdaMatchID,
+            matchConfidence: original.matchConfidence
+        )
+        let renamed = MacroAggregator.recomputeLineItem(
+            renamedItem,
             grams: 30,
             lookup: lookup
         )
@@ -99,10 +108,32 @@ struct NutritionLookupTests {
         #expect(renamed.usdaMatchID == almond?.record.fdcId)
     }
 
+    @Test("apple search prefers whole fruit over juice variants")
+    func appleSearchRanking() {
+        let suggestions = lookup.suggestionNames(matching: "apple", limit: 10)
+        #expect(!suggestions.isEmpty)
+        let first = suggestions[0].lowercased()
+        #expect(first.contains("apple"))
+        #expect(!first.contains("juice"))
+    }
+
     @Test("food suggestions return prefix matches")
     func foodSuggestions() {
         let suggestions = lookup.suggestionNames(matching: "almond")
         #expect(suggestions.contains { $0.lowercased().contains("almond") })
+    }
+
+    @Test("multi-word queries match token intersections")
+    func multiWordSuggestions() {
+        let suggestions = lookup.suggestionNames(matching: "greek yogurt", limit: 10)
+        #expect(!suggestions.isEmpty)
+        #expect(suggestions.contains { $0.lowercased().contains("greek") && $0.lowercased().contains("yogurt") })
+    }
+
+    @Test("protein yogurt has no generic CoFID hits")
+    func brandedStyleQueryMissesCoFID() {
+        let suggestions = lookup.suggestionNames(matching: "protein yogurt", limit: 10)
+        #expect(suggestions.isEmpty)
     }
 
     @Test("CoFID attribution exposes OGL notice")

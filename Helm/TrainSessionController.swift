@@ -93,14 +93,14 @@ final class TrainSessionController {
         await refreshMetadata()
     }
 
-    /// App-launch recovery: restore an in-progress session or auto-start today's prescription once.
+    /// App-launch recovery: restore an in-progress session or show today's prescription on the idle card.
     func recoverOnLaunch() async {
         await recoverPersistedSession()
+        await abandonUntouchedPrescriptionIfNeeded()
         if let snapshot = store.snapshot {
             await sideEffects.onSessionStarted(snapshot)
         } else {
             await refreshPrescriptionState()
-            await tryAutoStartTodaysPrescription()
         }
     }
 
@@ -585,11 +585,22 @@ final class TrainSessionController {
         exerciseTargets[exerciseID]
     }
 
-    private func tryAutoStartTodaysPrescription() async {
-        guard prescriptionAutoStartStore.shouldAutoStart(for: todayHelmDay()) else { return }
-        guard !store.hasActiveSession else { return }
-        guard let summary = prescriptionSummary, !summary.exercises.isEmpty else { return }
-        await startTodaysPrescription()
+    private func abandonUntouchedPrescriptionIfNeeded() async {
+        guard let snapshot = store.snapshot,
+              ActiveSessionRecoveryPolicy.shouldAbandonUntouchedPrescription(snapshot) else {
+            return
+        }
+        let sessionID = snapshot.session.id
+        do {
+            try await store.discard()
+            exerciseTargets = [:]
+            resetCoachSessionState()
+            prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
+            await refreshMetadata()
+            await sideEffects.onSessionDiscarded(sessionID: sessionID)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     private func todayHelmDay() -> HelmDay {

@@ -9,12 +9,14 @@ struct NutritionFoodLogFAB: View {
     let onPhoto: () -> Void
     let onQuickAdd: () -> Void
     let onAlcohol: () -> Void
+    let onLogTemplate: () -> Void
 
     var body: some View {
         VStack(alignment: .trailing, spacing: HelmSpacing.sm) {
             if isExpanded {
                 actionButton(label: "Search", icon: .search, action: onSearch)
                 actionButton(label: "Barcode", icon: .barcode, action: onBarcode)
+                actionButton(label: "Template", icon: .nutrition, action: onLogTemplate)
                 if isPhotoAvailable {
                     actionButton(label: "Photo", icon: .photo, action: onPhoto)
                 }
@@ -85,7 +87,8 @@ struct NutritionFoodLogFAB: View {
             onBarcode: {},
             onPhoto: {},
             onQuickAdd: {},
-            onAlcohol: {}
+            onAlcohol: {},
+            onLogTemplate: {}
         )
         .padding(HelmSpacing.lg)
     }
@@ -102,7 +105,8 @@ struct NutritionFoodLogFAB: View {
             onBarcode: {},
             onPhoto: {},
             onQuickAdd: {},
-            onAlcohol: {}
+            onAlcohol: {},
+            onLogTemplate: {}
         )
         .padding(HelmSpacing.lg)
     }

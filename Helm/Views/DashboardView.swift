@@ -544,7 +544,7 @@ struct DashboardView: View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
             HelmNumericText(snapshot.targets.caloriesKcal)
                 .helmType(.bigNumber)
-            Text("kcal")
+            Text("kcal target")
                 .helmType(.body, color: HelmColor.fgMuted)
             Spacer()
             Text(snapshot.dayType.rawValue.capitalized)

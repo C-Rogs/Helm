@@ -15,6 +15,7 @@ public enum OpenRouterKeyProvisioner {
 
     public static func provisionIfNeeded(
         keyStore: APIKeyStore = APIKeyStore(),
+        metadataStore: OpenRouterKeyMetadataStore = OpenRouterKeyMetadataStore(),
         client: CoachKeyServiceClient = CoachKeyServiceClient()
     ) async -> ProvisionResult {
         #if DEBUG
@@ -33,6 +34,7 @@ public enum OpenRouterKeyProvisioner {
             let deviceId = try HelmDeviceIdentity.deviceId()
             let response = try await client.provision(deviceId: deviceId)
             try keyStore.save(response.key, kind: .openRouter)
+            metadataStore.recordProvisionedKey(freeModelsOnly: response.freeModelsOnly)
             logger.info("openrouter key provisioned (new=\(response.provisioned, privacy: .public))")
             return .provisioned(wasNew: response.provisioned)
         } catch {

@@ -12,6 +12,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let trend: NutritionTrendState
     public let dayType: NutritionDayType
     public let phase: TrainingPhase
+    /// Profile-based maintenance estimate (Mifflin-St Jeor seed) for transparency.
+    public let profileMaintenanceKcal: Int?
 
     public init(
         helmDay: HelmDay,
@@ -19,7 +21,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         actual: NutritionDay?,
         trend: NutritionTrendState,
         dayType: NutritionDayType,
-        phase: TrainingPhase
+        phase: TrainingPhase,
+        profileMaintenanceKcal: Int? = nil
     ) {
         self.helmDay = helmDay
         self.targets = targets
@@ -27,6 +30,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         self.trend = trend
         self.dayType = dayType
         self.phase = phase
+        self.profileMaintenanceKcal = profileMaintenanceKcal
     }
 }
 
@@ -48,7 +52,6 @@ public actor NutritionEngine {
         self.cutoff = cutoff
     }
 
-    /// Always returns a snapshot with non-zero macro targets when training plan data is readable.
     public func snapshot(
         for day: HelmDay,
         prescriptionSummary: PrescribedSessionSummary?
@@ -63,8 +66,11 @@ public actor NutritionEngine {
             dailyMetrics: dailyMetrics,
             meals: meals
         )
-        let bodyMassKg = try? persistence.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
-        let safeBodyMassKg = NutritionKit.resolvedBodyMassKg(bodyMassKg)
+        let bodyProfile = resolvedBodyProfile(for: day)
+        let profileMaintenanceKcal = bodyProfile
+            .flatMap { BodyProfileTDEE.seedTDEEKcal(profile: $0) }
+            .map { Int($0.rounded()) }
+
         let targetMuscles = targetMuscles(for: day, emphasis: settings.phaseGoal.emphasis)
         let mesocycleState = loadMesocycleState()
         let dayType = NutritionDayTypeResolver.resolve(
@@ -74,24 +80,23 @@ public actor NutritionEngine {
         )
 
         var trend = trendStore.loadSafely()
-        NutritionKit.healTrendState(&trend, bodyMassKg: safeBodyMassKg)
+        NutritionKit.healTrendState(&trend, bodyProfile: bodyProfile)
         var workingTrend = trend
         if let updated = try? NutritionTrendBuilder.updatedTrend(
             from: persistence,
             state: &workingTrend,
             through: day,
+            bodyProfile: bodyProfile,
             calendar: calendar
         ) {
             trend = updated
         }
-        NutritionKit.healTrendState(&trend, bodyMassKg: safeBodyMassKg)
+        NutritionKit.healTrendState(&trend, bodyProfile: bodyProfile)
         try? trendStore.save(trend)
 
-        let targets = Self.ensuredTargets(
-            bodyMassKg: safeBodyMassKg,
-            dayType: dayType,
+        let targets = NutritionKit.targets(
+            for: NutritionTargetContext(bodyProfile: bodyProfile, dayType: dayType, loggedDay: actual),
             phase: settings.phaseGoal,
-            loggedDay: actual,
             trend: trend
         )
 
@@ -101,68 +106,39 @@ public actor NutritionEngine {
             actual: actual,
             trend: trend,
             dayType: dayType,
-            phase: settings.phaseGoal.phase
+            phase: settings.phaseGoal.phase,
+            profileMaintenanceKcal: profileMaintenanceKcal
         )
     }
 
     public func refreshTrend(through day: HelmDay) throws {
+        let bodyProfile = resolvedBodyProfile(for: day)
         var trend = trendStore.loadSafely()
         trend = try NutritionTrendBuilder.updatedTrend(
             from: persistence,
             state: &trend,
             through: day,
+            bodyProfile: bodyProfile,
             calendar: calendar
         )
         try trendStore.save(trend)
     }
 
-    private static func ensuredTargets(
-        bodyMassKg: Double,
-        dayType: NutritionDayType,
-        phase: PhaseGoal,
-        loggedDay: NutritionDay?,
-        trend: NutritionTrendState
-    ) -> MacroTargets {
-        let context = NutritionTargetContext(
-            bodyMassKg: bodyMassKg,
-            dayType: dayType,
-            loggedDay: loggedDay
-        )
-        let primary = NutritionKit.targets(for: context, phase: phase, trend: trend)
-        if primary.caloriesKcal > 0, primary.proteinGrams > 0 {
-            return primary
+    private func resolvedBodyProfile(for day: HelmDay) -> BodyProfile? {
+        let store = BodyProfileStore(metadata: persistence.appMetadata)
+        guard var profile = store.load(), profile.isComplete else { return nil }
+        if
+            let bodyMassKg = try? persistence.bodyComposition
+                .fetchLatest(onOrBefore: day, limit: 1)
+                .first?
+                .mass
+                .kilograms,
+            bodyMassKg > 1
+        {
+            profile = profile.withUpdatedBodyMassKg(bodyMassKg)
         }
-
-        Task {
-            await DiagnosticsLog.shared.record(
-                category: .nutritionKit,
-                level: .info,
-                message: "Macro targets cold-start fallback",
-                context: [
-                    "primaryCalories": String(primary.caloriesKcal),
-                    "estimatedTDEE": String(primary.estimatedTDEEKcal)
-                ]
-            )
-        }
-
-        let fallback = NutritionKit.targets(
-            for: NutritionTargetContext(bodyMassKg: bodyMassKg, dayType: dayType, loggedDay: loggedDay),
-            phase: phase,
-            trend: NutritionTrendState()
-        )
-        if fallback.caloriesKcal > 0, fallback.proteinGrams > 0 {
-            return fallback
-        }
-
-        return NutritionKit.targets(
-            for: NutritionTargetContext(
-                bodyMassKg: NutritionKit.resolvedBodyMassKg(nil),
-                dayType: dayType,
-                loggedDay: loggedDay
-            ),
-            phase: PhaseGoal(phase: .maintain),
-            trend: NutritionTrendState()
-        )
+        guard profile.ageYears() >= 13 else { return nil }
+        return profile
     }
 
     private func targetMuscles(for day: HelmDay, emphasis: String?) -> [MuscleGroup] {

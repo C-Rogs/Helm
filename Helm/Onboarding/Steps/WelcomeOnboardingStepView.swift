@@ -6,6 +6,7 @@ struct WelcomeOnboardingStepView: View {
     var stepIndex: Int = 1
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
+    var onBack: (() -> Void)? = nil
     var onSkip: () -> Void = {}
 
     @Environment(\.helmReduceMotion) private var reduceMotion
@@ -17,6 +18,7 @@ struct WelcomeOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             onPrimary: onContinue,
+            onBack: onBack,
             onSkip: onSkip
         ) {
             VStack(spacing: HelmSpacing.lg) {

@@ -1,0 +1,19 @@
+{
+  "count": 1,
+  "page": 1,
+  "page_size": 20,
+  "page_count": 1,
+  "hits": [
+    {
+      "code": "5060360507477",
+      "product_name": "GetPRO Blueberry Flavour",
+      "brands": ["Danone", "GetPro"],
+      "nutriments": {
+        "energy-kcal_100g": 53.1,
+        "proteins_100g": 9.38,
+        "carbohydrates_100g": 3.69,
+        "fat_100g": 0.125
+      }
+    }
+  ]
+}

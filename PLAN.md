@@ -1,6 +1,6 @@
 # Plan: Helm (unified adaptive health coach, clean-slate iOS build)
 
-> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT6). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
+> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT7). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
 
 ## Invocation (for Cameron)
 
@@ -18,7 +18,7 @@ or `build F-DT1.1` for a fix section. The agent loads this plan and the Helm bui
 
 | Cameron | Build agent |
 |---|---|
-| Runs DT1 to DT6 on a physical device when a gate's milestones are done | Builds one plan section per session |
+| Runs DT1 to DT7 on a physical device when a gate's milestones are done | Builds one plan section per session |
 | Files fix sections (F-DT#.#) when a gate fails | Implements fix sections like any other section |
 | Does **not** review diffs, run the app, or approve commits between sections | Commits and updates `PROGRESS.md` before ending the turn |
 | Does **not** answer "should I commit?" | **Always commits.** No prompt, no confirmation, no waiting |
@@ -158,7 +158,7 @@ The plan is the product. It adapts continuously as metrics arrive and as Cameron
 | Science / evidence | Exercise selection and periodisation are evidence-driven. The LLM grounds prescriptions in curated research and cites it. A Sources / Methodology area lets Cameron learn, see citations, and negotiate methodology and preferences. Evidence is grounding, not medical advice; keep the "coaching, not diagnosis" boundary. |
 | Plan horizon | The app silently runs a managed mesocycle (RP-style MEV to MRV ramp with scheduled deload) and always points to the optimal route. Heavy readiness-driven adaptation. **Missed-workout and schedule-drift handling is core logic, not an edge case** (see PlanKit). |
 | Goal model | Primary phase (cut / maintain / gain) + rate + target, plus a training emphasis (for example V-taper: shoulders and back). Changing phase re-plans everything. |
-| Nutrition | HealthKit is the single source of truth. MyFitnessPal keeps feeding it (barcode + manual, already syncs to Apple Health); read HealthKit live, drop the bioharvest hop. Adaptive-TDEE engine on top. **Native photo-to-macro logging is in v1** (Gemini vision, editable confirm, writes meals back to Apple Health): MFP gates photo logging behind premium, so this fills a real gap. |
+| Nutrition | **Helm-native food logging is source of truth** (search, barcode, templates, photo, quick-add, alcohol); GRDB holds rich meal detail; **Apple Health write-through** for dietary aggregates with source-bundle filtering (no re-ingest loop). Adaptive-TDEE engine on top. Brief MFP overlap during transition uses dedup policy (M14.8). Full spec: `Docs/NUTRITION-LOGGING-SPEC.md`. Photo-to-macro shipped M9.3–M9.6. |
 | Training text import | Hevy "import" is a copy-paste of the day's workout text, parsed into structured sets. Not an API or CSV integration. Superseded once the built-in logger is primary. |
 | Memory | Editable rolling profile the LLM reads every turn and Cameron can inspect and correct in Settings (baselines, mesocycle position, phase, preferences, standing constraints, what has worked). Ordered as a stable prefix so Gemini implicit caching applies. |
 | Proactivity | Fully local. A Shortcuts automation fires an on-device App Intent (harvest + compute + Gemini + local notification). **Triggered on alarm-off / first unlock, not a fixed clock time** (HealthKit is unreadable while locked; see below). Generate-on-open fallback guarantees it is never missed. No server, no push service. |
@@ -224,8 +224,9 @@ App (iPhone)   WatchApp   WidgetsLiveActivity   ShareExtension   AppIntents
 ```
 HealthKit (live, observer) ─┐
 Logger sessions / pasted text ─┼─► Persistence ─► ReadinessKit ─┐
-HealthKit nutrition (MFP) ─────┘                 PlanKit ───────┼─► numeric prescription (ready-to-go workout + targets)
+Helm food log (GRDB + HK) ─────┘                 PlanKit ───────┼─► numeric prescription (ready-to-go workout + targets)
 photo-vision meals ────────────────────────────► NutritionKit ─┘        │
+(MFP overlap: dedup during transition) ──────────────────────────────────┘
                                                                         ▼
               editable memory profile + baselines + evidence ─► CoachLLM (Gemini)
                                                                         │
@@ -292,9 +293,11 @@ ARC-Readiness morning score from sleep-window SDNN HRV (HealthKit does not expos
 - **Prescription output**: a structured, ready-to-go session (exercises, ordered, target sets/reps/load/RPE), consumed by the Train screen. Plus an override API: flagged context or in-workout requests produce structured adjustments (swap via canonical-exercise + muscle map, reorder, drop/move), each **clamped to safe bounds** before applying. The swap request carries an **exclude list** of already-unavailable movements so the coach never re-proposes a machine that is also taken; the engine returns the next best evidence-appropriate movement not on the list.
 
 ### NutritionKit (new)
-Adaptive TDEE by reconciling smoothed trend weight against logged intake (MacroFactor-style), updating weekly. Calorie target = expenditure minus phase deficit/surplus; protein per kg bodyweight; carbs/fat periodised (higher on hard days, tighter on rest/deload). Reads HealthKit intake; consumes photo-vision meals (v1).
+Adaptive TDEE by reconciling smoothed trend weight against logged intake (MacroFactor-style), updating weekly. Calorie target = expenditure minus phase deficit/surplus; protein per kg bodyweight; carbs/fat periodised (higher on hard days, tighter on rest/deload). Reads logged intake from GRDB meals + HealthKit dietary aggregates (write-through from Helm logging; external sources during MFP transition with dedup).
 
-**Macro-gap / alcohol handling**: HealthKit has no alcohol macro bucket, so when MFP writes 4 beers the total kcal exceeds protein×4 + carbs×4 + fat×9. NutritionKit computes the gap = total kcal minus reconstructed-macro kcal; a significantly positive gap is attributed to alcohol / untracked energy and surfaced separately, and must **not** distort the carb/fat periodisation logic (the day is not read as a huge carb overshoot). The gap is a first-class field the coach can narrate.
+**Food reference data**: on-device **CoFID** (UK Composition of Foods, full bundle, OGL) for generic search; **Open Food Facts** API for UK branded barcode + text search with local product cache. USDA subset from M9.4 is **replaced by CoFID in M14.1**. Resolution chain: recents → CoFID → OFF → custom food. Offline: CoFID + cache only; pending import queue for branded misses.
+
+**Macro-gap / alcohol handling**: explicit alcohol entries (M14.4) carry kcal toward TDEE; `MacroGapCalculator` attributes remaining untracked kcal (gap = total kcal minus reconstructed-macro kcal minus explicit alcohol) and must **not** distort carb/fat periodisation. Quick-add kcal-only entries count toward TDEE. Gap is a first-class field the coach can narrate.
 
 ### CoachLLM (new, clean provider layer)
 Provider protocol with a registry owning one instance per backend and a local-inference gate reserved for a future on-device model. Gemini (48k budget) is the v1 backend; OpenRouter behind the same protocol for later; the FoundationModelsProvider slot is reserved (4k budget in the map) but not built in v1. Context builder trims oldest days first, skips re-sending health context on follow-up turns. Memory profile prepended every turn, ordered as a stable prefix for implicit caching. Structured output for in-session adjustments and photo-macro extraction, **with a prompt-version and output-schema-version stamped on every stored artefact** so old chat history stays parseable. Failure policy: rate limit / timeout / offline mid-rest-timer degrade cleanly to engine-only. System prompt terse, numbers-first, instructional, evidence-citing, no filler.
@@ -321,7 +324,7 @@ Provider protocol with a registry owning one instance per backend and a local-in
 - **Dashboard (home)**: today's ARC readiness (with confidence label), the generated brief, the prescribed session summary (with any adjustment), and nutrition targets, as cards. Prominent Ask Coach into chat. Everything shown is something an engine acts on. Built incrementally: readiness card at M2.2, prescription card at M5.6, brief at M6.3, nutrition card at M9.2.
 - **Train (logger, prescription-driven)**: opens today's prescribed workout ready to go. Each exercise row shows the prescribed target and the previous performance inline, plus input fields with the custom numpad. Checkmark to complete a set, auto rest timer (timestamp-projected, survives backgrounding), finish, editable history, templates, PRs. An in-workout Ask Coach applies live structural changes (reorder, swap when a machine is taken, adjust remaining sets) with undo. Paste-a-workout parses unstructured text into sets.
 - **Chat**: persistent, memory-backed, one tap away. For why, learning methodology, negotiating changes. Chat history persists in GRDB (its own migration, M4.5) with prompt/schema versions stamped.
-- **Nutrition**: targets vs actual for the day; quick add via HealthKit/MFP and native photo logging with an editable confirm.
+- **Nutrition**: targets vs actual for the day (targets-first layout); native food logging via multi-action FAB (search, barcode, photo, quick-add, alcohol); four meal buckets (breakfast/lunch/dinner/snacks); saved templates, recents, copy meal; editable confirm sheet shared across photo and manual paths. Spec: `Docs/NUTRITION-LOGGING-SPEC.md`.
 - **Trends**: focused chart set first.
 - **Sources / Methodology**: the science area above.
 - **Settings**: all configuration (keys, providers, phase/goal/emphasis, notification triggers, editable memory profile, units, Watch, export/paste fallback, data export/backup, diagnostics export, Advanced).
@@ -665,6 +668,7 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Scope**: `NutritionKit` package additions: bundle USDA FoodData Central SR Legacy subset (~1,500–2,500 athlete-relevant foods) as compressed JSON in `NutritionKit/Resources/`; `NutritionFoodRecord` (fdc_id, description, per-100g kcal/P/C/F); `NutritionLookup` with normalized string match + synonym table; `MacroAggregator.sum(lineItems:) -> MealEstimate` (totals + confidence = min item confidence). Extend `MealEstimate` + `MealLineItem` in Core.
 - **Depends on**: M9.3.
 - **Acceptance**: lookup resolves ≥90% of a 20-item fixture list; aggregator tests pass; no network; bundle < 5 MB.
+- **Note**: USDA bundle **superseded by full UK CoFID in M14.1**; interfaces (`NutritionLookup`, `NutritionFoodRecord`, `MacroAggregator`) remain.
 
 #### M9.5 Grounded photo pipeline
 - **Goal**: replace direct macro hallucination with decompose → lookup → sum.
@@ -684,6 +688,64 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Depends on**: M9.6, DT5 photo accuracy feedback.
 - **Acceptance**: DT5 subset shows improved gram estimates vs RGB-only on same meals.
 - **Status**: deferred until DT5 photo feedback.
+
+### M14 Native food logging
+
+Full spec: `Docs/NUTRITION-LOGGING-SPEC.md`. Replaces MFP on phone. GRDB rich detail + HealthKit write-through. CoFID on-device + Open Food Facts online.
+
+#### M14.1 CoFID bundle replaces USDA
+- **Goal**: UK food reference data on-device for search and photo grounding.
+- **Scope**: Download full McCance & Widdowson CoFID 2021 dataset; convert to `NutritionKit/Resources/cofid_foods.json`; remove USDA bundle; update `NutritionLookup` + tests + `GroundedPhotoMacroEstimator` to resolve against CoFID; OGL attribution string in Sources/Methodology. Keep `NutritionFoodRecord` shape (food code in `fdcId` column or rename with migration note in code comments only).
+- **Depends on**: M9.4, M9.5.
+- **Acceptance**: lookup resolves ≥90% of a 20-item UK fixture list; photo pipeline fixture tests pass with CoFID; bundle builds; no network; SwiftLint clean; migrate-up tests still pass.
+
+#### M14.2 Food log persistence (GRDB v10)
+- **Goal**: schema for rich meals, line items, templates, cache, offline queue.
+- **Scope**: `v10_food_logging` migration: `meal.bucket`, `meal_line_item`, `food_product_cache`, `food_portion_preference`, `meal_template` + `meal_template_item`, `pending_food_import`, `food_log_recent`; Core models (`MealBucket`, `FoodProductRef`, `MealLineItemRecord`, `FoodPortionPreference`, `MealTemplate`, `PendingFoodImport`); extend `MealRecord.Source`; repositories in Persistence; `SchemaVersion.latest = 10`.
+- **Depends on**: M14.1, M1.1.
+- **Acceptance**: migrate-up from v9; round-trip CRUD fixture tests for meals, line items, templates; no force unwraps.
+
+#### M14.3 Food resolver + Open Food Facts client
+- **Goal**: branded UK lookup chain with local cache.
+- **Scope**: `OpenFoodFactsClient` in HealthKitIngest (or new `FoodIngest` target if needed, prefer HealthKitIngest to stay within package budget): barcode GET + text search per OFF API guide; `FoodResolver` actor: recents → CoFID → OFF → custom; `food_product_cache` writes; offline detection + `NetworkGate` for OFF calls; no API key; user-agent header per OFF requirements; never log full URLs with query params in production logs.
+- **Depends on**: M14.2.
+- **Acceptance**: fixture tests with recorded OFF JSON (no live network in CI); resolver chain unit tests; cache hit skips network.
+
+#### M14.4 ManualMealService + HK write-through
+- **Goal**: log food without photo; quick-add and alcohol.
+- **Scope**: `ManualMealService` parallel to `PhotoMealService`: search pick → portion → bucket → GRDB persist + `MealHealthKitWriter`; quick-add kcal-only (`MealRecord.Source.quickAdd`); explicit alcohol entry type with drink presets; extend `HelmHealthKitMetadata.meal_source` values; `NutritionActualResolver` prefers GRDB meal sums; quick-add kcal counts toward TDEE in `NutritionTrendBuilder`.
+- **Depends on**: M14.3, M9.2.
+- **Acceptance**: fixture meal logs to GRDB + fake HK writer; TDEE test includes quick-add kcal; alcohol entry reduces macro gap correctly; dedup test: own HK writes not re-ingested.
+
+#### M14.5 Search + barcode UI + MealLineItemEditor
+- **Goal**: add food from Nutrition tab.
+- **Scope**: Extract shared `MealLineItemEditor` from `PhotoMealConfirmSheet` (photo path adopts it); `FoodSearchView` (CoFID local + OFF remote results, offline banner); `BarcodeScannerView` (AVFoundation); add-food flow with smart portion step (packaged = last serving, produce = grams); wire to `ManualMealService`.
+- **Depends on**: M14.4, M0.7.
+- **Acceptance**: previews for search, scanner, editor; search resolves fixture foods; barcode fixture flow logs meal; photo confirm still works via shared editor; SwiftLint clean.
+
+#### M14.6 Nutrition tab meal buckets + multi-action FAB
+- **Goal**: log-first meal list below targets card.
+- **Scope**: `NutritionView` keeps targets-first `NutritionDaySummaryCard` hero; below: four bucket sections with today's `MealRecord` + line item summaries; multi-action FAB (search / barcode / photo / quick-add / alcohol); `FoodLogTipStore` one-time tip (not onboarding step); empty states per bucket per DESIGN-SYSTEM.
+- **Depends on**: M14.5, F-DT5.3.
+- **Acceptance**: previews per bucket state; FAB presents all actions; logged meal appears in correct bucket without relaunch; haptics on log success (`HapticEngine` confirm pattern).
+
+#### M14.7 Recents, portion memory, templates, copy meal
+- **Goal**: repeat logging in ≤3 taps.
+- **Scope**: `food_portion_preference` read/write on log; recents strip on search; `MealTemplate` CRUD + "log template" (1-tap with confirm); copy single bucket to today; copy yesterday's meals to today; template save from bucket header.
+- **Depends on**: M14.6.
+- **Acceptance**: fixture: log yogurt twice → second log defaults to "1 pot"; template logs 7-item breakfast in one action; copy meal duplicates line items to target day; unit tests for portion preference round-trip.
+
+#### M14.8 Edit/delete history + HK sync + MFP dedup
+- **Goal**: retroactive edits; safe MFP overlap.
+- **Scope**: Edit past meal (any day): update GRDB line items + re-write HK samples (delete-by-meal_id + save); delete meal removes GRDB + HK; `DietarySourceMerger` in HealthKitIngest: Settings toggle `Helm only | Merge external`; merge mode dedups overlapping external HK entries (±15 min, ±10% kcal → prefer Helm); edit propagates to `nutrition_day` aggregates.
+- **Depends on**: M14.7, M1.3.
+- **Acceptance**: fixture edit changes totals; delete removes HK samples in fake store; merger tests: Helm+MFP duplicate → single count; migrate-up passes.
+
+#### M14.9 Offline pending import queue
+- **Goal**: log at work without network; enrich later.
+- **Scope**: Offline banner on search when OFF unreachable; barcode/search miss while offline → `PendingFoodImport` row + provisional meal OR block with photo suggestion; on reconnect background task resolves queue via OFF; user notification optional (local only); retroactive edit of resolved imports.
+- **Depends on**: M14.8.
+- **Acceptance**: fixture offline log creates pending row; simulated reconnect resolves to cached product; CoFID search works airplane-mode in simulator; build clean.
 
 ### M10 Analytics and methodology
 
@@ -992,6 +1054,20 @@ Suggested order: M12.2 (rhythm) first so later sections lay out on a fixed grid,
 - Empty/loading/error states verified on device with real (and absent) data.
 - Largest Dynamic Type pass on Dashboard and the set row.
 - `DeviationBand` reads correctly against real HealthKit-derived baselines on device (right units, band the right width, verdict matches the engine); the recovery detail view, progression view, and muscle-volume board reconcile with the engine numbers.
+
+### DT7 after M14.9: native food logging (MFP deleted 7 days)
+
+Cameron uninstalls MFP and logs all food in Helm for 7 consecutive days.
+
+- **Repeat breakfast**: saved template logs in ≤2 taps; portion memory defaults to last serving (e.g. 1 pot).
+- **Branded snacks**: barcode or type-to-find (Grenade, Arla, PhD) resolves via OFF or cache; manual custom food for misses.
+- **Generic produce**: CoFID search offline at work; offline banner when OFF unavailable.
+- **Leftovers dinner**: photo path still works; shared `MealLineItemEditor` for manual correction.
+- **Alcohol**: explicit beer log; not misread as carb overshoot; gap field sane on mixed days.
+- **History**: edit yesterday's meal; delete entry; copy Tuesday breakfast to today.
+- **HealthKit**: confirmed meals in Apple Health; no double-count from Helm re-ingest; no double-count during any brief overlap testing.
+- **TDEE**: weekly trend responds to logged intake including quick-add kcal.
+- **Regression**: DT5 photo scenarios still pass (ingredient breakdown, gram edit recompute, ±25% kcal bar).
 
 ### M13 Schedule and calendar (post-DT5)
 

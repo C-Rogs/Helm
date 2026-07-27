@@ -27,9 +27,12 @@ public final class NutritionService {
     }
 
     public func refresh(prescriptionSummary: PrescribedSessionSummary?) async {
-        let day = today()
+        await refresh(for: today(), prescriptionSummary: prescriptionSummary)
+    }
+
+    public func refresh(for helmDay: HelmDay, prescriptionSummary: PrescribedSessionSummary?) async {
         let snapshot = await engine.snapshot(
-            for: day,
+            for: helmDay,
             prescriptionSummary: prescriptionSummary
         )
         state = .ready(snapshot)
