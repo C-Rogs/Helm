@@ -4,6 +4,7 @@ import SwiftUI
 
 struct SettingsView: View {
     @Bindable private var coordinator = HelmThemeCoordinator.shared
+    @Bindable private var trainPreferences = TrainPreferences.shared
 
     var body: some View {
         NavigationStack {
@@ -44,6 +45,11 @@ struct SettingsView: View {
                 Section("Feedback") {
                     Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
                     Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
+                }
+
+                Section("Train") {
+                    Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
+                    Toggle("Rest timer sound", isOn: $trainPreferences.restTimerSoundEnabled)
                 }
 
                 Section("Setup") {
@@ -107,6 +113,9 @@ struct SettingsView: View {
                     #if DEBUG
                     NavigationLink("Stored Data") {
                         DataBrowserView()
+                    }
+                    NavigationLink("In-Session Coach Debug") {
+                        InSessionCoachDebugView()
                     }
                     #endif
                 }

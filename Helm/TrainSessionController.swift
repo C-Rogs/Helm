@@ -14,6 +14,23 @@ enum NumpadFieldKind: Hashable, Sendable {
     case rpe
 }
 
+struct InSessionCoachMessage: Identifiable, Equatable, Sendable {
+    enum Role: Sendable, Equatable {
+        case user
+        case assistant
+    }
+
+    let id: UUID
+    let role: Role
+    let text: String
+
+    init(id: UUID = UUID(), role: Role, text: String) {
+        self.id = id
+        self.role = role
+        self.text = text
+    }
+}
+
 struct NumpadTarget: Hashable, Sendable {
     let setID: String
     let sessionExerciseID: String
@@ -36,6 +53,10 @@ final class TrainSessionController {
     private(set) var exerciseTargets: [String: String] = [:]
     private(set) var prescriptionSummary: PrescribedSessionSummary?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
+    private(set) var lastSetPersonalRecords: [DetectedPersonalRecord] = []
+    private(set) var sessionPRRecordsBySetID: [String: [DetectedPersonalRecord]] = [:]
+    private(set) var encouragementGlyphBySetID: [String: EncouragementGlyph] = [:]
+    private(set) var prCelebrationSetID: String?
     private(set) var lastFinishSummary: WorkoutFinishSummary?
 
     var numpadTarget: NumpadTarget?
@@ -44,14 +65,23 @@ final class TrainSessionController {
     var isShowingExercisePicker = false
     var isShowingFinishConfirmation = false
     var isShowingDiscardConfirmation = false
+    var pendingDeleteExerciseID: String?
+    var numpadValidationError: String?
+    var numpadShakeToken = 0
     var isShowingFinishSummary = false
     var isShowingPersonalRecords = false
     var errorMessage: String?
 
     var coachPromptText = ""
     var isShowingCoachPrompt = false
-    private(set) var isCoachAdjusting = false
+    private(set) var coachMessages: [InSessionCoachMessage] = []
+    private(set) var pendingCoachProposal: CoachSessionProposal?
+    private(set) var isCoachThinking = false
+    var showCoachApplyWave = false
+    private(set) var lastCoachRequestID: UUID?
     private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
+
+    private var coachThread = CoachThreadState.empty
 
     private var excludedExerciseIDs: Set<String> = []
     private var undoStack: [AppliedSessionAdjustment] = []
@@ -60,6 +90,20 @@ final class TrainSessionController {
     private var wasRestRunningOnBackground = false
     private var trackedRestTimerID: String?
     private let prescriptionAutoStartStore: PrescriptionAutoStartStore
+    private let trainPreferences: TrainPreferences
+
+    private var sessionPersonalRecordKeys: Set<String> = []
+    private var lastEncouragementGlyph: EncouragementGlyph?
+    private var sessionNoteSaveTask: Task<Void, Never>?
+    private var coachMessageTask: Task<Void, Never>?
+    private var sessionNoteIsDirty = false
+    private var lastSyncedRestRemaining: Int?
+    private var lastLiveActivitySyncDate: Date?
+
+    var sessionNoteText = ""
+    private(set) var sessionNoteSavedConfirmation = false
+    var isReorderMode = false
+    private(set) var reorderDraftIDs: [String] = []
 
     init(
         store: ActiveSessionStore,
@@ -68,7 +112,8 @@ final class TrainSessionController {
         prescriptionService: PrescriptionService,
         inSessionCoach: InSessionCoachService? = nil,
         providerPreferences: ProviderPreferencesStore = ProviderPreferencesStore(),
-        prescriptionAutoStartStore: PrescriptionAutoStartStore = PrescriptionAutoStartStore()
+        prescriptionAutoStartStore: PrescriptionAutoStartStore = PrescriptionAutoStartStore(),
+        trainPreferences: TrainPreferences = .shared
     ) {
         self.store = store
         self.persistence = persistence
@@ -77,6 +122,7 @@ final class TrainSessionController {
         self.inSessionCoach = inSessionCoach ?? InSessionCoachService(persistence: persistence)
         self.providerPreferences = providerPreferences
         self.prescriptionAutoStartStore = prescriptionAutoStartStore
+        self.trainPreferences = trainPreferences
     }
 
     var snapshot: ActiveSessionSnapshot? {
@@ -87,10 +133,15 @@ final class TrainSessionController {
         store.hasActiveSession
     }
 
+    var isRestTimerRunning: Bool {
+        snapshot?.restTimer?.phase == .running
+    }
+
     /// Reloads the persisted active session from the database (kill-recover, tab return).
     func recoverPersistedSession() async {
         await store.recover()
         await refreshMetadata()
+        syncSessionNoteFromSnapshot()
     }
 
     /// App-launch recovery: restore an in-progress session or show today's prescription on the idle card.
@@ -102,6 +153,7 @@ final class TrainSessionController {
         } else {
             await refreshPrescriptionState()
         }
+        await sideEffects.reconcileLiveActivitiesOnLaunch(hasActiveSession: store.snapshot != nil)
     }
 
     func refreshPrescriptionState() async {
@@ -155,6 +207,39 @@ final class TrainSessionController {
                 return
             }
             try await store.startFromTemplate(template)
+            WorkoutHapticCoordinator.resetRestState()
+            await refreshMetadata()
+            if let snapshot = store.snapshot {
+                await sideEffects.onSessionStarted(snapshot)
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startWorkout(fromImportedPlan plan: ImportedWorkoutPlan, saveTemplate: Bool) async {
+        do {
+            exerciseTargets = [:]
+            resetCoachSessionState()
+            if saveTemplate {
+                let template = WorkoutTemplateDraft(
+                    name: plan.title,
+                    exercises: plan.exercises.map { exercise in
+                        let reps = exercise.sets.compactMap(\.reps)
+                        return WorkoutTemplateExerciseDraft(
+                            exerciseID: exercise.exerciseID,
+                            displayOrder: exercise.displayOrder,
+                            targetSetCount: max(exercise.sets.count, 1),
+                            targetRepMin: reps.min(),
+                            targetRepMax: reps.max(),
+                            targetMass: exercise.sets.compactMap(\.mass).first,
+                            defaultRestSeconds: exercise.restDurationSeconds ?? 90
+                        )
+                    }
+                )
+                try persistence.workoutTemplates.insert(template)
+            }
+            try await store.startFromImport(plan)
             WorkoutHapticCoordinator.resetRestState()
             await refreshMetadata()
             if let snapshot = store.snapshot {
@@ -232,6 +317,20 @@ final class TrainSessionController {
         }
     }
 
+    func requestRemoveExercise(sessionExerciseID: String) {
+        pendingDeleteExerciseID = sessionExerciseID
+    }
+
+    func cancelRemoveExercise() {
+        pendingDeleteExerciseID = nil
+    }
+
+    func confirmRemoveExercise() async {
+        guard let sessionExerciseID = pendingDeleteExerciseID else { return }
+        pendingDeleteExerciseID = nil
+        await removeExercise(sessionExerciseID: sessionExerciseID)
+    }
+
     func removeExercise(sessionExerciseID: String) async {
         do {
             try await store.removeExercise(sessionExerciseID: sessionExerciseID)
@@ -278,49 +377,243 @@ final class TrainSessionController {
     func completeSet(sessionExerciseID: String, setID: String) async {
         do {
             guard let existingSet = findSet(setID: setID) else { return }
-            guard existingSet.status != .completed else { return }
 
-            if existingSet.mass == nil || existingSet.reps == nil,
-               let previous = previousFor(set: existingSet, exerciseID: exerciseID(for: sessionExerciseID)) {
-                var mass = existingSet.mass
-                var reps = existingSet.reps
+            if existingSet.status == .completed {
+                try await store.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
+                HapticEngine.shared.play(.selection)
+                numpadTarget = nil
+                sessionPRRecordsBySetID.removeValue(forKey: setID)
+                encouragementGlyphBySetID.removeValue(forKey: setID)
+                if prCelebrationSetID == setID {
+                    prCelebrationSetID = nil
+                }
+                lastSetPersonalRecords = []
+                await refreshMetadata()
+                await syncSideEffects(force: true)
+                return
+            }
+
+            if let target = numpadTarget, target.setID == setID {
+                guard await applyNumpadInput() else { return }
+            }
+
+            guard let refreshedSet = findSet(setID: setID) else { return }
+
+            if refreshedSet.mass == nil || refreshedSet.reps == nil,
+               let previous = previousFor(set: refreshedSet, exerciseID: exerciseID(for: sessionExerciseID)) {
+                var mass = refreshedSet.mass
+                var reps = refreshedSet.reps
                 if mass == nil { mass = previous.mass }
                 if reps == nil { reps = previous.reps }
                 try await store.logSet(
                     setID: setID,
-                    update: SetLogUpdate(mass: mass, reps: reps, rpe: existingSet.rpe)
+                    update: SetLogUpdate(mass: mass, reps: reps, rpe: refreshedSet.rpe)
                 )
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
-            WorkoutHapticCoordinator.playSetCompletion(wasAlreadyCompleted: false)
             numpadTarget = nil
             await refreshMetadata()
-            await syncSideEffects()
+
+            let exerciseID = exerciseID(for: sessionExerciseID)
+            let completedSet = findSet(setID: setID) ?? refreshedSet
+            let personalRecords = registerPersonalRecords(
+                for: completedSet,
+                exerciseID: exerciseID,
+                setID: setID
+            )
+            lastSetPersonalRecords = personalRecords
+
+            if personalRecords.isEmpty {
+                WorkoutHapticCoordinator.playSetCompletion(wasAlreadyCompleted: false)
+                registerEncouragementGlyphIfNeeded(
+                    for: completedSet,
+                    sessionExerciseID: sessionExerciseID,
+                    setID: setID
+                )
+            } else {
+                WorkoutHapticCoordinator.playPersonalRecords(personalRecords)
+                prCelebrationSetID = setID
+                schedulePRCelebrationClear(for: setID)
+            }
+
+            await syncSideEffects(force: true)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    func badgeText(forSetID setID: String) -> String? {
+        guard let records = sessionPRRecordsBySetID[setID], !records.isEmpty else { return nil }
+        return WorkoutPersonalRecordFormatter.badgeText(for: records)
+    }
+
+    func showsPRCelebration(forSetID setID: String) -> Bool {
+        prCelebrationSetID == setID
+    }
+
+    func encouragementGlyph(forSetID setID: String) -> EncouragementGlyph? {
+        encouragementGlyphBySetID[setID]
     }
 
     func skipRest() async {
         do {
             try await store.skipRest()
             await refreshMetadata()
-            await syncSideEffects()
+            await syncSideEffects(force: true)
         } catch {
             errorMessage = error.localizedDescription
         }
     }
 
+    func adjustRestTimer(deltaSeconds: Int) async {
+        do {
+            try await store.adjustRestTimer(deltaSeconds: deltaSeconds)
+            HapticEngine.shared.play(.selection)
+            await refreshMetadata()
+            await syncSideEffects(force: true)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func updateSessionNote(_ text: String) {
+        sessionNoteText = text
+        sessionNoteIsDirty = true
+        sessionNoteSavedConfirmation = false
+        sessionNoteSaveTask?.cancel()
+        sessionNoteSaveTask = Task { @MainActor in
+            try? await Task.sleep(for: .milliseconds(500))
+            guard !Task.isCancelled else { return }
+            await persistSessionNote()
+        }
+    }
+
+    func saveSessionNoteToMemory() async {
+        let trimmed = sessionNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            await persistSessionNote()
+            var profile = try persistence.memoryProfile.load()
+            let formatter = ISO8601DateFormatter()
+            formatter.formatOptions = [.withFullDate]
+            let dateLine = formatter.string(from: Date())
+            let line = "\(dateLine): \(trimmed)"
+            if profile.standingConstraints.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                profile.standingConstraints = line
+            } else {
+                profile.standingConstraints += "\n" + line
+            }
+            try persistence.memoryProfile.save(profile)
+            sessionNoteSavedConfirmation = true
+            HapticEngine.shared.play(.mealConfirmed)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func enterReorderMode() {
+        guard let exercises = store.snapshot?.session.exercises, !exercises.isEmpty else { return }
+        reorderDraftIDs = exercises.map(\.id)
+        isReorderMode = true
+    }
+
+    func cancelReorderMode() {
+        isReorderMode = false
+        reorderDraftIDs = []
+    }
+
+    func moveExerciseInDraft(from sourceID: String, to destinationID: String) {
+        guard isReorderMode, sourceID != destinationID,
+              let fromIndex = reorderDraftIDs.firstIndex(of: sourceID),
+              let toIndex = reorderDraftIDs.firstIndex(of: destinationID),
+              fromIndex != toIndex else {
+            return
+        }
+        reorderDraftIDs.move(
+            fromOffsets: IndexSet(integer: fromIndex),
+            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
+        )
+        HapticEngine.shared.play(.selection)
+    }
+
+    func commitReorder() async {
+        guard isReorderMode else { return }
+        let orderedIDs = reorderDraftIDs
+        isReorderMode = false
+        reorderDraftIDs = []
+        do {
+            try await store.reorderExercises(orderedSessionExerciseIDs: orderedIDs)
+            await refreshMetadata()
+            pushWatchCompanionState()
+            await syncSideEffects(force: true)
+            HapticEngine.shared.play(.coachAdjust)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func updateExerciseRest(sessionExerciseID: String, seconds: Int) async {
+        guard (15 ... 600).contains(seconds) else {
+            errorMessage = "Rest must be between 15 and 600 seconds."
+            return
+        }
+        do {
+            try await store.updateExerciseRest(sessionExerciseID: sessionExerciseID, seconds: seconds)
+            await refreshMetadata()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func exercisesForDisplay() -> [WorkoutSessionExerciseDraft] {
+        guard isReorderMode, !reorderDraftIDs.isEmpty,
+              let exercises = store.snapshot?.session.exercises else {
+            return store.snapshot?.session.exercises ?? []
+        }
+        let byID = Dictionary(uniqueKeysWithValues: exercises.map { ($0.id, $0) })
+        return reorderDraftIDs.compactMap { byID[$0] }
+    }
+
+    private func persistSessionNote() async {
+        guard let sessionID = store.snapshot?.session.id else { return }
+        let trimmed = sessionNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let notes = trimmed.isEmpty ? nil : trimmed
+        do {
+            try await store.updateSessionNotes(notes)
+            sessionNoteIsDirty = false
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    private func syncSessionNoteFromSnapshot() {
+        guard !sessionNoteIsDirty, sessionNoteSaveTask == nil else { return }
+        let notes = store.snapshot?.session.notes ?? ""
+        guard sessionNoteText != notes else { return }
+        sessionNoteText = notes
+    }
+
     func handleScenePhase(_ phase: ScenePhase) async {
-        guard let snapshot = store.snapshot else { return }
+        guard store.snapshot != nil else { return }
         switch phase {
         case .background:
-            wasRestRunningOnBackground = snapshot.restTimer?.phase == .running
-            trackedRestTimerID = snapshot.restTimer?.id
-            await sideEffects.onEnterBackground(snapshot: snapshot)
+            coachMessageTask?.cancel()
+            coachMessageTask = nil
+            isCoachThinking = false
+            if let snapshot = store.snapshot {
+                wasRestRunningOnBackground = snapshot.restTimer?.phase == .running
+                trackedRestTimerID = snapshot.restTimer?.id
+                await sideEffects.onEnterBackground(
+                    snapshot: snapshot,
+                    restTimerSoundEnabled: trainPreferences.restTimerSoundEnabled
+                )
+            }
         case .active:
-            await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
-            let currentRemaining = await remainingRestSeconds()
+            if let snapshot = store.snapshot {
+                await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+            }
+            await reconcileExpiredRestTimer()
+            let currentRemaining = localRemainingRestSeconds()
             WorkoutHapticCoordinator.handleForegroundReturn(
                 timerID: trackedRestTimerID,
                 wasRunningOnBackground: wasRestRunningOnBackground,
@@ -344,18 +637,55 @@ final class TrainSessionController {
         trackedRestTimerID = timerID
     }
 
-    func syncSideEffects() async {
+    func syncSideEffects(restRemainingOverride: Int? = nil, force: Bool = false) async {
         guard let snapshot = store.snapshot else { return }
-        let rest = try? await store.remainingRestSeconds()
+        let rest = restRemainingOverride ?? localRemainingRestSeconds()
+        guard shouldSyncLiveActivity(restRemaining: rest, force: force) else { return }
+        lastSyncedRestRemaining = rest
+        lastLiveActivitySyncDate = Date()
         await sideEffects.onSessionUpdated(snapshot, restRemainingSeconds: rest)
     }
 
-    func remainingRestSeconds(at date: Date = Date()) async -> Int? {
-        try? await store.remainingRestSeconds(at: date)
+    func localRemainingRestSeconds(at date: Date = Date()) -> Int? {
+        guard let timer = snapshot?.restTimer, timer.phase == .running else { return nil }
+        return timer.remainingSeconds(at: date)
+    }
+
+    func reconcileExpiredRestTimer(at date: Date = Date()) async {
+        guard let timer = snapshot?.restTimer,
+              timer.phase == .running,
+              timer.hasExpired(at: date) else {
+            return
+        }
+        await store.recover()
+        await refreshMetadata(scope: .light)
+        await syncSideEffects(restRemainingOverride: 0, force: true)
+    }
+
+    private func shouldSyncLiveActivity(restRemaining: Int?, force: Bool) -> Bool {
+        if force { return true }
+        if restRemaining == nil || restRemaining == 0 {
+            return lastSyncedRestRemaining != restRemaining
+        }
+        if let last = lastSyncedRestRemaining,
+           let rest = restRemaining,
+           abs(last - rest) < 15,
+           let lastSync = lastLiveActivitySyncDate,
+           Date().timeIntervalSince(lastSync) < 15 {
+            return false
+        }
+        return true
     }
 
     func displayName(for exerciseID: String) -> String {
         exerciseSummaries[exerciseID]?.displayName ?? exerciseID
+    }
+
+    func displayName(forExerciseSessionID sessionExerciseID: String) -> String {
+        guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return "this exercise"
+        }
+        return displayName(for: exercise.exerciseID)
     }
 
     func previousFor(set: SetEntryDraft, exerciseID: String) -> PreviousPerformance? {
@@ -367,20 +697,88 @@ final class TrainSessionController {
         sessionExerciseID: String,
         field: NumpadFieldKind,
         currentSet: SetEntryDraft
-    ) {
+    ) async {
+        let nextTarget = NumpadTarget(setID: setID, sessionExerciseID: sessionExerciseID, field: field)
+        if numpadTarget == nextTarget {
+            numpadWorkingText = ""
+            numpadValidationError = nil
+            return
+        }
+
+        if numpadTarget != nil {
+            guard await applyNumpadInput() else { return }
+        }
+
         let exerciseID = exerciseID(for: sessionExerciseID)
-        numpadTarget = NumpadTarget(setID: setID, sessionExerciseID: sessionExerciseID, field: field)
-        numpadWorkingText = initialNumpadText(for: field, set: currentSet, exerciseID: exerciseID)
+        let set = findSet(setID: setID) ?? currentSet
+        numpadTarget = nextTarget
+        numpadValidationError = nil
+        numpadWorkingText = initialNumpadText(for: field, set: set, exerciseID: exerciseID)
     }
 
-    func applyNumpadInput() async {
+    @discardableResult
+    func applyNumpadInput() async -> Bool {
         guard let target = numpadTarget,
-              let set = findSet(setID: target.setID) else { return }
+              let set = findSet(setID: target.setID) else { return true }
 
-        let update = numpadUpdate(for: target.field, text: numpadWorkingText, existing: set)
+        if let error = SetLogValidation.validate(field: target.field, text: numpadWorkingText) {
+            rejectNumpadValidation(error)
+            return false
+        }
+
+        let normalized = SetLogValidation.normalizedNumpadText(numpadWorkingText)
+        let update = numpadUpdate(for: target.field, text: normalized, existing: set)
         do {
             try await store.logSet(setID: target.setID, update: update)
+            await refreshMetadata(scope: .light)
+            numpadValidationError = nil
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    func advanceNumpad() async {
+        guard let target = numpadTarget else { return }
+        guard await applyNumpadInput() else { return }
+
+        guard let set = findSet(setID: target.setID) else {
+            numpadTarget = nil
+            return
+        }
+
+        let exerciseID = exerciseID(for: target.sessionExerciseID)
+        let nextField: NumpadFieldKind? = switch target.field {
+        case .weight: .reps
+        case .reps: .rpe
+        case .rpe: nil
+        }
+
+        if let nextField {
+            numpadTarget = NumpadTarget(
+                setID: target.setID,
+                sessionExerciseID: target.sessionExerciseID,
+                field: nextField
+            )
+            numpadValidationError = nil
+            numpadWorkingText = initialNumpadText(for: nextField, set: set, exerciseID: exerciseID)
+        } else {
+            numpadTarget = nil
+            numpadValidationError = nil
+        }
+    }
+
+    func cycleSetType(setID: String) async {
+        if let target = numpadTarget, target.setID != setID {
+            guard await applyNumpadInput() else { return }
+        }
+        guard let set = findSet(setID: setID) else { return }
+        let nextType = set.setType.cycledForLogger()
+        do {
+            try await store.updateSetType(setID: setID, setType: nextType)
             await refreshMetadata()
+            HapticEngine.shared.play(.selection)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -388,6 +786,10 @@ final class TrainSessionController {
 
     func appendNumpadDigit(_ digit: String) {
         guard !digit.isEmpty else { return }
+        if digit == ".", !SetLogValidation.allowsAppendingDecimal(to: numpadWorkingText) {
+            return
+        }
+        numpadValidationError = nil
         if numpadWorkingText == "0", digit != "." {
             numpadWorkingText = digit
         } else {
@@ -437,43 +839,129 @@ final class TrainSessionController {
         isShowingPersonalRecords = true
     }
 
-    func submitCoachPrompt() async {
+    func sendCoachMessage() async {
         let trimmed = coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isCoachAdjusting else { return }
+        guard !trimmed.isEmpty, !isCoachThinking else { return }
+        guard store.snapshot != nil else {
+            errorMessage = "No active session."
+            return
+        }
+
+        coachMessageTask?.cancel()
+        coachMessageTask = Task { @MainActor in
+            await performSendCoachMessage(trimmed)
+        }
+        await coachMessageTask?.value
+    }
+
+    private func performSendCoachMessage(_ trimmed: String) async {
+        guard !Task.isCancelled else { return }
         guard let snapshot = store.snapshot else {
             errorMessage = "No active session."
             return
         }
 
-        isCoachAdjusting = true
-        isShowingCoachPrompt = false
-        defer { isCoachAdjusting = false }
+        coachMessages.append(InSessionCoachMessage(role: .user, text: trimmed))
+        coachPromptText = ""
+        pendingCoachProposal = nil
+        isCoachThinking = true
+        defer {
+            isCoachThinking = false
+            coachMessageTask = nil
+        }
 
         do {
+            guard !Task.isCancelled else { return }
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
             let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
-            let applied = try await inSessionCoach.askCoachInSession(
+            let proposal = try await inSessionCoach.proposeAdjustment(
                 userMessage: trimmed,
                 snapshot: snapshot,
                 excludedExerciseIDs: excludedExerciseIDs,
                 provider: provider,
                 profile: profile,
-                contextDays: contextDays.recent
+                contextDays: contextDays.recent,
+                thread: coachThread
             )
 
-            try await finishApplyingAdjustment(applied)
-            coachPromptText = ""
-        } catch InSessionCoachError.adjustmentRejected {
-            WorkoutHapticCoordinator.play(.clampRejected)
-            errorMessage = "That adjustment is outside safe bounds."
+            coachThread.messages.append(CoachMessage(role: .user, text: trimmed))
+            coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
+            coachMessages.append(InSessionCoachMessage(role: .assistant, text: proposal.reply))
+            lastCoachRequestID = proposal.requestID
+
+            if proposal.requiresConfirmation {
+                pendingCoachProposal = proposal
+            } else {
+                pendingCoachProposal = nil
+                if let failureNotice = proposal.failureNotice {
+                    coachMessages.append(InSessionCoachMessage(role: .assistant, text: failureNotice))
+                    coachThread.messages.append(CoachMessage(role: .assistant, text: failureNotice))
+                }
+            }
         } catch InSessionCoachError.providerUnavailable(let message) {
             errorMessage = message
         } catch {
             errorMessage = CoachUserFacingError.message(for: error)
         }
+    }
+
+    func confirmCoachProposal() async {
+        guard let proposal = pendingCoachProposal else { return }
+        guard let snapshot = store.snapshot else {
+            errorMessage = "No active session."
+            return
+        }
+
+        isCoachThinking = true
+        defer { isCoachThinking = false }
+
+        do {
+            let applied = try inSessionCoach.applyProposal(
+                proposal,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs
+            )
+            pendingCoachProposal = nil
+            isShowingCoachPrompt = false
+            try await finishApplyingAdjustment(applied)
+            showCoachApplyWave = true
+        } catch InSessionCoachError.adjustmentRejected {
+            WorkoutHapticCoordinator.play(.clampRejected)
+            pendingCoachProposal = nil
+            appendCoachFailureNotice("That adjustment is outside safe bounds.")
+        } catch InSessionCoachError.noApplicableChange {
+            pendingCoachProposal = nil
+            appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
+        } catch {
+            pendingCoachProposal = nil
+            appendCoachFailureNotice(error.localizedDescription)
+        }
+    }
+
+    private func appendCoachFailureNotice(_ text: String) {
+        coachMessages.append(InSessionCoachMessage(role: .assistant, text: text))
+        coachThread.messages.append(CoachMessage(role: .assistant, text: text))
+    }
+
+    func dismissCoachProposal() async {
+        guard let proposal = pendingCoachProposal else { return }
+
+        do {
+            try inSessionCoach.dismissProposal(recommendationID: proposal.recommendationID)
+            pendingCoachProposal = nil
+            let acknowledgement = "Keeping the current plan."
+            coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
+            coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func submitCoachPrompt() async {
+        await sendCoachMessage()
     }
 
     func applyFixtureAdjustment(_ payload: SessionAdjustmentPayload) async throws {
@@ -505,7 +993,7 @@ final class TrainSessionController {
                 exerciseTargets = targets
             }
             await refreshMetadata()
-            await syncSideEffects()
+            await syncSideEffects(force: true)
             WorkoutHapticCoordinator.playCoachAdjustment()
         } catch {
             errorMessage = error.localizedDescription
@@ -545,8 +1033,32 @@ final class TrainSessionController {
         )
     }
 
+    func displayText(for field: NumpadFieldKind, set: SetEntryDraft, exerciseID: String) -> String {
+        guard let target = numpadTarget, target.setID == set.id, target.field == field else {
+            switch field {
+            case .weight:
+                guard let mass = set.mass else { return "" }
+                return formatWeight(mass.kilograms)
+            case .reps:
+                return set.reps.map(String.init) ?? ""
+            case .rpe:
+                guard let rpe = set.rpe else { return "" }
+                return rpe.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(format: "%.0f", rpe)
+                    : String(format: "%.1f", rpe)
+            }
+        }
+        return numpadWorkingText
+    }
+
+    private func rejectNumpadValidation(_ message: String) {
+        numpadValidationError = message
+        numpadShakeToken += 1
+        HapticEngine.shared.play(.clampRejected)
+    }
+
     private func numpadUpdate(for field: NumpadFieldKind, text: String, existing: SetEntryDraft) -> SetLogUpdate {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = SetLogValidation.normalizedNumpadText(text)
         switch field {
         case .weight:
             let mass: Mass?
@@ -615,7 +1127,12 @@ final class TrainSessionController {
         exerciseTargets = targets
     }
 
-    private func refreshMetadata() async {
+    private enum MetadataRefreshScope {
+        case full
+        case light
+    }
+
+    private func refreshMetadata(scope: MetadataRefreshScope = .full) async {
         guard let snapshot = store.snapshot else {
             exerciseSummaries = [:]
             previousPerformance = [:]
@@ -635,31 +1152,41 @@ final class TrainSessionController {
             exerciseTargets = [:]
         }
 
-        var summaries: [String: ExerciseSummary] = [:]
-        var previous: [String: PreviousPerformance] = [:]
+        if scope == .full {
+            var summaries: [String: ExerciseSummary] = [:]
+            var previous: [String: PreviousPerformance] = [:]
 
-        for exercise in snapshot.session.exercises {
-            if summaries[exercise.exerciseID] == nil,
-               let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
-                summaries[exercise.exerciseID] = summary
+            for exercise in snapshot.session.exercises {
+                if summaries[exercise.exerciseID] == nil,
+                   let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
+                    summaries[exercise.exerciseID] = summary
+                }
+
+                for set in exercise.sets {
+                    let key = previousKey(exerciseID: exercise.exerciseID, setIndex: set.setIndex, setType: set.setType)
+                    if previous[key] == nil,
+                       let perf = try? persistence.workoutSessions.previousPerformance(
+                        exerciseID: exercise.exerciseID,
+                        setIndex: set.setIndex,
+                        setType: set.setType,
+                        excludingSessionID: snapshot.session.id
+                       ) {
+                        previous[key] = perf
+                    }
+                }
             }
 
-            for set in exercise.sets {
-                let key = previousKey(exerciseID: exercise.exerciseID, setIndex: set.setIndex, setType: set.setType)
-                if previous[key] == nil,
-                   let perf = try? persistence.workoutSessions.previousPerformance(
-                    exerciseID: exercise.exerciseID,
-                    setIndex: set.setIndex,
-                    setType: set.setType,
-                    excludingSessionID: snapshot.session.id
-                   ) {
-                    previous[key] = perf
+            exerciseSummaries = summaries
+            previousPerformance = previous
+            syncSessionNoteFromSnapshot()
+        } else {
+            for exercise in snapshot.session.exercises where exerciseSummaries[exercise.exerciseID] == nil {
+                if let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
+                    exerciseSummaries[exercise.exerciseID] = summary
                 }
             }
         }
 
-        exerciseSummaries = summaries
-        previousPerformance = previous
         pushWatchCompanionState()
     }
 
@@ -725,8 +1252,89 @@ final class TrainSessionController {
         undoStack = []
         adjustmentBanner = nil
         coachPromptText = ""
+        coachMessages = []
+        pendingCoachProposal = nil
+        coachThread = .empty
         isShowingCoachPrompt = false
-        isCoachAdjusting = false
+        isCoachThinking = false
+        showCoachApplyWave = false
+        lastCoachRequestID = nil
+        resetSessionFeedbackState()
+        sessionNoteText = ""
+        sessionNoteSavedConfirmation = false
+        sessionNoteSaveTask?.cancel()
+        sessionNoteSaveTask = nil
+        cancelReorderMode()
+    }
+
+    private func resetSessionFeedbackState() {
+        lastSetPersonalRecords = []
+        sessionPRRecordsBySetID = [:]
+        encouragementGlyphBySetID = [:]
+        prCelebrationSetID = nil
+        sessionPersonalRecordKeys = []
+        lastEncouragementGlyph = nil
+    }
+
+    private func registerPersonalRecords(
+        for set: SetEntryDraft,
+        exerciseID: String,
+        setID: String
+    ) -> [DetectedPersonalRecord] {
+        guard let sessionID = store.snapshot?.session.id else { return [] }
+
+        let detected = (try? PersonalRecordDetector.detectIncremental(
+            set: set,
+            exerciseID: exerciseID,
+            excludingSessionID: sessionID,
+            repository: persistence.workoutSessions
+        )) ?? []
+
+        let newRecords = detected.filter { record in
+            let key = PersonalRecordHapticPolicy.stableKey(
+                exerciseID: record.exerciseID,
+                metricType: record.metricType.rawValue
+            )
+            guard !sessionPersonalRecordKeys.contains(key) else { return false }
+            sessionPersonalRecordKeys.insert(key)
+            return true
+        }
+
+        if !newRecords.isEmpty {
+            sessionPRRecordsBySetID[setID] = newRecords
+        }
+
+        return newRecords
+    }
+
+    private func registerEncouragementGlyphIfNeeded(
+        for completedSet: SetEntryDraft,
+        sessionExerciseID: String,
+        setID: String
+    ) {
+        guard trainPreferences.workoutFeedbackEnabled else { return }
+        guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return
+        }
+
+        guard let glyph = WorkoutSetMilestonePolicy.encouragementGlyph(
+            for: completedSet,
+            in: exercise.sets,
+            excludingLast: lastEncouragementGlyph
+        ) else {
+            return
+        }
+
+        lastEncouragementGlyph = glyph
+        encouragementGlyphBySetID[setID] = glyph
+    }
+
+    private func schedulePRCelebrationClear(for setID: String) {
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(1.1))
+            guard prCelebrationSetID == setID else { return }
+            prCelebrationSetID = nil
+        }
     }
 
     private func finishApplyingAdjustment(_ applied: AppliedSessionAdjustment) async throws {
@@ -743,7 +1351,7 @@ final class TrainSessionController {
             exerciseTargets = targets
         }
         await refreshMetadata()
-        await syncSideEffects()
+        await syncSideEffects(force: true)
         WorkoutHapticCoordinator.playCoachAdjustment()
     }
 }

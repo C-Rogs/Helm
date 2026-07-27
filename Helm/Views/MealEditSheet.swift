@@ -7,13 +7,17 @@ import SwiftUI
 struct MealEditSheet: View {
     let display: LoggedMealDisplay
     let isSaving: Bool
-    let onSave: (String, [MealLineItemEditor.EditableLineItem], Double?) -> Void
+    let onSave: (String, [MealLineItemEditor.EditableLineItem], FoodPortionMacros?, MealBucket) -> Void
     let onDelete: () -> Void
     let onCancel: () -> Void
 
     @State private var name: String
     @State private var lineItems: [MealLineItemEditor.EditableLineItem]
     @State private var quickAddKcalText: String
+    @State private var quickAddProteinText: String
+    @State private var quickAddCarbsText: String
+    @State private var quickAddFatText: String
+    @State private var bucket: MealBucket
     @State private var showsDeleteConfirm = false
 
     private let hasStoredLineItems: Bool
@@ -22,7 +26,7 @@ struct MealEditSheet: View {
     init(
         display: LoggedMealDisplay,
         isSaving: Bool,
-        onSave: @escaping (String, [MealLineItemEditor.EditableLineItem], Double?) -> Void,
+        onSave: @escaping (String, [MealLineItemEditor.EditableLineItem], FoodPortionMacros?, MealBucket) -> Void,
         onDelete: @escaping () -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -48,12 +52,18 @@ struct MealEditSheet: View {
         })
         let kcal = display.meal.energy?.kilocalories ?? 0
         _quickAddKcalText = State(initialValue: kcal > 0 ? String(Int(kcal.rounded())) : "")
+        _quickAddProteinText = State(initialValue: Self.macroText(display.meal.proteinGrams))
+        _quickAddCarbsText = State(initialValue: Self.macroText(display.meal.carbohydrateGrams))
+        _quickAddFatText = State(initialValue: Self.macroText(display.meal.fatGrams))
+        _bucket = State(initialValue: display.meal.bucket)
     }
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                    MealBucketPicker(selection: $bucket)
+
                     if hasStoredLineItems {
                         MealLineItemEditor(
                             description: $name,
@@ -68,7 +78,7 @@ struct MealEditSheet: View {
                     Button(role: .destructive) {
                         showsDeleteConfirm = true
                     } label: {
-                        Text("Delete meal")
+                        Text("Delete entry")
                             .frame(maxWidth: .infinity)
                     }
                     .buttonStyle(.helmSecondary)
@@ -76,7 +86,7 @@ struct MealEditSheet: View {
                 }
                 .padding(HelmSpacing.md)
             }
-            .navigationTitle("Edit meal")
+            .navigationTitle("Edit entry")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -94,14 +104,14 @@ struct MealEditSheet: View {
                 }
             }
             .confirmationDialog(
-                "Delete this meal?",
+                "Delete this entry?",
                 isPresented: $showsDeleteConfirm,
                 titleVisibility: .visible
             ) {
                 Button("Delete", role: .destructive, action: onDelete)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This removes the meal from Helm and Apple Health.")
+                Text("This removes the entry from Helm and Apple Health.")
             }
         }
     }
@@ -126,7 +136,47 @@ struct MealEditSheet: View {
                     .padding(HelmSpacing.sm)
                     .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
             }
+
+            quickAddMacroField(title: "Protein", text: $quickAddProteinText, unit: "g")
+            quickAddMacroField(title: "Carbohydrates", text: $quickAddCarbsText, unit: "g")
+            quickAddMacroField(title: "Fat", text: $quickAddFatText, unit: "g")
         }
+    }
+
+    private func quickAddMacroField(title: String, text: Binding<String>, unit: String) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(title)
+                .helmType(.label)
+            HStack(spacing: HelmSpacing.sm) {
+                TextField(unit, text: text)
+                    .keyboardType(.decimalPad)
+                    .helmType(.body)
+                    .padding(HelmSpacing.sm)
+                    .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                Text(unit)
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        }
+    }
+
+    private static func macroText(_ value: Double?) -> String {
+        guard let value, value > 0 else { return "" }
+        if value.rounded() == value {
+            return String(Int(value.rounded()))
+        }
+        return String(format: "%.1f", value)
+    }
+
+    private var quickAddMacros: FoodPortionMacros? {
+        guard let kcal = Double(quickAddKcalText.trimmingCharacters(in: .whitespacesAndNewlines)), kcal > 0 else {
+            return nil
+        }
+        return FoodPortionMacros(
+            energyKcal: kcal,
+            proteinG: Double(quickAddProteinText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+            carbsG: Double(quickAddCarbsText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0,
+            fatG: Double(quickAddFatText.trimmingCharacters(in: .whitespacesAndNewlines)) ?? 0
+        )
     }
 
     private var simpleMealFields: some View {
@@ -155,8 +205,7 @@ struct MealEditSheet: View {
     }
 
     private func saveTapped() {
-        let quickAddKcal = Double(quickAddKcalText.trimmingCharacters(in: .whitespacesAndNewlines))
-        onSave(name, lineItems, isQuickAddStyle ? quickAddKcal : nil)
+        onSave(name, lineItems, isQuickAddStyle ? quickAddMacros : nil, bucket)
     }
 }
 
@@ -181,7 +230,7 @@ struct MealEditSheet: View {
             ]
         ),
         isSaving: false,
-        onSave: { _, _, _ in },
+        onSave: { _, _, _, _ in },
         onDelete: {},
         onCancel: {}
     )

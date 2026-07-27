@@ -157,6 +157,26 @@ public enum GeminiRequestBuilder {
     }
 
     public static func sessionAdjustmentSchema() -> [String: Any] {
+        sessionAdjustmentV2Schema()
+    }
+
+    public static func sessionAdjustmentV2Schema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue),
+                "reply": ["type": "string"],
+                "rationale": ["type": "string"],
+                "operations": [
+                    "type": "array",
+                    "items": operationSchemaV2()
+                ]
+            ],
+            "required": ["schemaVersion", "reply", "operations"]
+        ]
+    }
+
+    public static func sessionAdjustmentV1Schema() -> [String: Any] {
         [
             "type": "object",
             "properties": [
@@ -252,6 +272,35 @@ public enum GeminiRequestBuilder {
         [
             "type": "string",
             "enum": [version]
+        ]
+    }
+
+    private static func operationSchemaV2() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "kind": [
+                    "type": "string",
+                    "enum": ["swap", "reorder", "adjustSets", "adjustLoad", "adjustRPE"]
+                ],
+                "fromExerciseID": ["type": "string"],
+                "toExerciseID": ["type": "string"],
+                "excludeExerciseIDs": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ],
+                "orderedExerciseIDs": [
+                    "type": "array",
+                    "items": ["type": "string"]
+                ],
+                "exerciseID": ["type": "string"],
+                "setDelta": ["type": "integer"],
+                "massDeltaKg": ["type": "number"],
+                "targetMassKg": ["type": "number"],
+                "rpeDelta": ["type": "number"],
+                "targetRPE": ["type": "number"]
+            ],
+            "required": ["kind"]
         ]
     }
 

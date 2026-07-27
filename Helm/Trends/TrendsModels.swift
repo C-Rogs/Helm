@@ -49,6 +49,9 @@ struct EnergyBalanceGauge: Identifiable, Sendable, Hashable {
 }
 
 struct TrendsSnapshot: Sendable, Equatable {
+    /// Daily scale readings (unsmoothed).
+    var bodyWeight: [TrendWeightPoint]
+    /// EWMA-smoothed trend used for TDEE and dashboard at-a-glance.
     var trendWeight: [TrendWeightPoint]
     var targetWeightKg: Double?
     var readinessHistory: [ReadinessHistoryPoint]
@@ -60,6 +63,7 @@ struct TrendsSnapshot: Sendable, Equatable {
     var canLoadMoreHistory: Bool
 
     static let empty = TrendsSnapshot(
+        bodyWeight: [],
         trendWeight: [],
         targetWeightKg: nil,
         readinessHistory: [],

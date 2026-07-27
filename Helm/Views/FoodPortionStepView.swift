@@ -28,6 +28,7 @@ struct FoodPortionStepView: View {
         product: ResolvedFoodProduct,
         defaults: FoodPortionDefaults,
         isSaving: Bool,
+        initialBucket: MealBucket = .snacks,
         onLog: @escaping (Double, String?, MealBucket) -> Void,
         onCancel: @escaping () -> Void
     ) {
@@ -52,7 +53,7 @@ struct FoodPortionStepView: View {
         )
         _gramsText = State(initialValue: Self.format(defaults.grams))
         _servingLabel = State(initialValue: defaults.servingLabel ?? "")
-        _bucket = State(initialValue: MealBucket.snacks)
+        _bucket = State(initialValue: initialBucket)
         _selectedChipLabel = State(initialValue: defaults.servingLabel)
         _quantity = State(initialValue: defaults.defaultQuantity)
         _selectedSizeLabel = State(initialValue: defaults.defaultSizeLabel)
@@ -295,16 +296,7 @@ struct FoodPortionStepView: View {
     }
 
     private var bucketPicker: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Meal")
-                .helmType(.label)
-            Picker("Meal", selection: $bucket) {
-                ForEach(MealBucket.allCases, id: \.self) { mealBucket in
-                    Text(mealBucket.displayName).tag(mealBucket)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
+        MealBucketPicker(selection: $bucket)
     }
 
     private var servingSection: some View {

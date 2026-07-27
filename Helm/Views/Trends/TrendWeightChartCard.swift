@@ -3,15 +3,60 @@ import Core
 import DesignSystem
 import SwiftUI
 
+enum TrendWeightChartMode {
+    /// Full-range daily scale readings (Trends tab).
+    case detail
+    /// Smoothed trend with a tight Y-axis on recent readings (Dashboard).
+    case dashboard
+}
+
 struct TrendWeightChartCard: View {
     let points: [TrendWeightPoint]
     let targetWeightKg: Double?
+    var mode: TrendWeightChartMode = .detail
     var showsSparkline = false
 
     @State private var selectedDay: Date?
 
     private var latestState: HelmState {
         points.last?.state ?? .ready
+    }
+
+    private var chartTitle: String {
+        switch mode {
+        case .detail: "Body weight"
+        case .dashboard: "Trend weight"
+        }
+    }
+
+    private var chartSubtitle: String {
+        switch mode {
+        case .detail: "Daily scale readings vs target"
+        case .dashboard: "Smoothed body mass vs target"
+        }
+    }
+
+    private var interpolation: InterpolationMethod {
+        switch mode {
+        case .detail: .linear
+        case .dashboard: .catmullRom
+        }
+    }
+
+    private var focusedYDomain: ClosedRange<Double>? {
+        guard mode == .dashboard else { return nil }
+        let recent = Array(points.suffix(7))
+        guard !recent.isEmpty else { return nil }
+
+        var values = recent.map(\.trendWeightKg)
+        if let targetWeightKg {
+            values.append(targetWeightKg)
+        }
+
+        guard let minValue = values.min(), let maxValue = values.max() else { return nil }
+        let span = max(maxValue - minValue, 0.5)
+        let padding = max(span * 0.15, 0.2)
+        return (minValue - padding)...(maxValue + padding)
     }
 
     private var sparklinePoints: [HelmSparklinePoint] {
@@ -43,8 +88,8 @@ struct TrendWeightChartCard: View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 chartHeader(
-                    title: "Trend weight",
-                    subtitle: "Smoothed body mass vs target"
+                    title: chartTitle,
+                    subtitle: chartSubtitle
                 )
 
                 if showsSparkline {
@@ -88,7 +133,7 @@ struct TrendWeightChartCard: View {
                     x: .value("Day", day),
                     y: .value("Weight", point.trendWeightKg)
                 )
-                .interpolationMethod(.catmullRom)
+                .interpolationMethod(interpolation)
                 .foregroundStyle(HelmColor.color(for: point.state))
                 .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
 
@@ -107,6 +152,7 @@ struct TrendWeightChartCard: View {
             }
         }
         .helmChartStyle()
+        .modifier(TrendWeightYScaleModifier(domain: focusedYDomain))
         .helmChartScrub(selection: $selectedDay)
         .chartOverlay { proxy in
             TrendsChartSupport.scrubCalloutOverlay(
@@ -117,6 +163,27 @@ struct TrendWeightChartCard: View {
         }
         .frame(height: HelmChartStyle.standardHeight)
     }
+}
+
+private struct TrendWeightYScaleModifier: ViewModifier {
+    let domain: ClosedRange<Double>?
+
+    func body(content: Content) -> some View {
+        if let domain {
+            content.chartYScale(domain: domain)
+        } else {
+            content
+        }
+    }
+}
+
+#Preview("Body weight detail") {
+    TrendWeightChartCard(
+        points: TrendChartFixtures.bodyWeight,
+        targetWeightKg: TrendChartFixtures.targetWeightKg
+    )
+    .padding()
+    .helmTheme()
 }
 
 #Preview("Trend weight") {
@@ -132,6 +199,7 @@ struct TrendWeightChartCard: View {
     TrendWeightChartCard(
         points: TrendChartFixtures.trendWeight,
         targetWeightKg: TrendChartFixtures.targetWeightKg,
+        mode: .dashboard,
         showsSparkline: true
     )
     .padding()

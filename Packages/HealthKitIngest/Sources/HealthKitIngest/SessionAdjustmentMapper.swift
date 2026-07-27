@@ -16,7 +16,11 @@ enum SessionAdjustmentMapper {
             excludeExerciseIDs: operation.excludeExerciseIDs,
             orderedExerciseIDs: operation.orderedExerciseIDs,
             exerciseID: operation.exerciseID,
-            setDelta: operation.setDelta
+            setDelta: operation.setDelta,
+            massDeltaKg: operation.massDeltaKg,
+            targetMassKg: operation.targetMassKg,
+            rpeDelta: operation.rpeDelta,
+            targetRPE: operation.targetRPE
         )
     }
 
@@ -25,6 +29,8 @@ enum SessionAdjustmentMapper {
         case .swap: .swap
         case .reorder: .reorder
         case .adjustSets: .adjustSets
+        case .adjustLoad: .adjustLoad
+        case .adjustRPE: .adjustRPE
         }
     }
 }

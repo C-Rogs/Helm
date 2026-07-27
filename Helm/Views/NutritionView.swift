@@ -35,7 +35,6 @@ struct NutritionView: View {
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
-    @State private var isFABExpanded = false
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
     @State private var currentHelmDay: HelmDay?
@@ -85,50 +84,32 @@ struct NutritionView: View {
 
     private var navigationStack: some View {
         NavigationStack {
-            ZStack(alignment: .bottomTrailing) {
-                ScrollView {
-                    HelmScreenStack {
-                        switch nutritionService.state {
-                        case .loading:
-                            loadingCard
-                        case let .ready(snapshot):
-                            NutritionDaySummaryCard(
-                                snapshot: snapshot,
-                                showTrend: true,
-                                explainMetric: ExplainableMetricMappers.nutrition(
-                                    snapshot,
-                                    coachAvailable: chatController.isCoachAvailable
-                                ),
-                                onAskCoach: chatController.requestCoachHandoff(prompt:)
-                            )
+            ScrollView {
+                HelmScreenStack {
+                    switch nutritionService.state {
+                    case .loading:
+                        loadingCard
+                    case let .ready(snapshot):
+                        NutritionDaySummaryCard(
+                            snapshot: snapshot,
+                            showTrend: true,
+                            explainMetric: ExplainableMetricMappers.nutrition(
+                                snapshot,
+                                coachAvailable: chatController.isCoachAvailable
+                            ),
+                            onAskCoach: chatController.requestCoachHandoff(prompt:)
+                        )
 
-                            if foodLogTipStore.isVisible {
-                                foodLogTipCard
-                            }
-
-                            mealBucketsSection
+                        if foodLogTipStore.isVisible {
+                            foodLogTipCard
                         }
-                    }
-                    .helmScreenPadding()
-                    .padding(.bottom, HelmSpacing.xl * 2)
-                }
-                .helmScreenBackground()
 
-                NutritionFoodLogFAB(
-                    isExpanded: $isFABExpanded,
-                    isPhotoAvailable: photoMealController.isAvailable,
-                    onSearch: { manualFoodLogController.startSearch() },
-                    onBarcode: { manualFoodLogController.startBarcode() },
-                    onPhoto: { showsPhotoOptions = true },
-                    onQuickAdd: { manualFoodLogController.startQuickAdd() },
-                    onAlcohol: { manualFoodLogController.startAlcohol() },
-                    onLogTemplate: {
-                        mealActionsController.reloadTemplates()
-                        showsTemplates = true
+                        mealBucketsSection
                     }
-                )
-                .padding(HelmSpacing.lg)
+                }
+                .helmScreenPadding()
             }
+            .helmScreenBackground()
         }
     }
 
@@ -191,6 +172,7 @@ struct NutritionView: View {
                 NutritionMealBucketSection(
                     bucket: bucket,
                     meals: mealsStore.mealsByBucket[bucket] ?? [],
+                    isPhotoAvailable: photoMealController.isAvailable,
                     onCopyToToday: {
                         Task {
                             guard let today = currentHelmDay else { return }
@@ -203,9 +185,28 @@ struct NutritionView: View {
                     },
                     onMealTap: { display in
                         mealEditController.beginEdit(display)
+                    },
+                    onAddFood: { action in
+                        handleBucketAddFood(action, bucket: bucket)
                     }
                 )
             }
+        }
+    }
+
+    private func handleBucketAddFood(_ action: BucketFoodLogAction, bucket: MealBucket) {
+        switch action {
+        case .search:
+            manualFoodLogController.start(.search, bucket: bucket)
+        case .barcode:
+            manualFoodLogController.start(.barcode, bucket: bucket)
+        case .quickAdd:
+            manualFoodLogController.start(.quickAdd, bucket: bucket)
+        case .alcohol:
+            manualFoodLogController.start(.alcohol, bucket: bucket)
+        case .photo:
+            photoMealController.preferredBucket = bucket
+            showsPhotoOptions = true
         }
     }
 
@@ -214,7 +215,7 @@ struct NutritionView: View {
             HStack(alignment: .top, spacing: HelmSpacing.sm) {
                 VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                     HelmSectionEyebrow("LOG FOOD", showsArcMark: true)
-                    Text("Tap + to search, scan, photo, or quick-add. Pick a meal bucket when you save.")
+                    Text("Tap + on a meal panel to search, scan, photo, or quick-add. Food logs to that meal by default.")
                         .helmType(.body, color: HelmColor.fgSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
@@ -370,12 +371,13 @@ private struct NutritionLoggingSheets: ViewModifier {
                 MealEditSheet(
                     display: display,
                     isSaving: mealEditController.isSaving,
-                    onSave: { name, lineItems, quickAddKcal in
+                    onSave: { name, lineItems, quickAddMacros, bucket in
                         Task {
                             await mealEditController.save(
                                 name: name,
                                 lineItems: lineItems,
-                                quickAddKcal: quickAddKcal
+                                quickAddMacros: quickAddMacros,
+                                bucket: bucket
                             )
                             onMealsChanged()
                         }
@@ -392,7 +394,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                 )
             }
             .alert(
-                "Edit meal",
+                "Edit entry",
                 isPresented: mealEditErrorBinding,
                 actions: {
                     Button("OK", role: .cancel) {

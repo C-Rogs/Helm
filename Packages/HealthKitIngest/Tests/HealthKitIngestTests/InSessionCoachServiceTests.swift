@@ -231,4 +231,85 @@ struct InSessionCoachServiceTests {
         let final = try store.activeSessions.fetchActiveSnapshot(at: Date())
         #expect(final?.session.exercises.first?.exerciseID == cableFlyID)
     }
+
+    @Test("advisory payload does not apply session changes")
+    func advisoryPayloadDoesNotApply() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Stay at 80 kg today.",
+            operations: []
+        )
+
+        do {
+            _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+            Issue.record("Expected noApplicableChange for advisory payload")
+        } catch InSessionCoachError.noApplicableChange {
+            #expect(true)
+        }
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        #expect(refreshed?.session.exercises.first?.exerciseID == benchPressID)
+        #expect(refreshed?.session.exercises.first?.sets.count == 3)
+    }
+
+    @Test("load adjustment applies and logs on confirm")
+    func adjustLoadAppliesAndLogs() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Bump bench to 82.5 kg.",
+            rationale: "Progression bump.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    massDeltaKg: 2.5
+                )
+            ]
+        )
+
+        let stored = try store.coachRecommendations.insert(
+            CoachRecommendationInsert(
+                scope: .session,
+                workoutSessionID: snapshot.session.id,
+                recommendationType: .sessionAdjustment,
+                payloadJSON: "{}",
+                modelVersion: payload.schemaVersion
+            )
+        )
+
+        let proposal = CoachSessionProposal(
+            reply: payload.reply,
+            payload: payload,
+            recommendationID: stored.id,
+            previewBanner: SessionAdjustmentBannerModel(
+                fromLabel: "Bench Press",
+                toLabel: "82.5 kg",
+                reason: payload.bannerReason,
+                recommendationID: stored.id
+            ),
+            status: .confirmable
+        )
+
+        let applied = try service.applyProposal(
+            proposal,
+            snapshot: snapshot,
+            excludedExerciseIDs: []
+        )
+
+        #expect(applied.banner.toLabel == "82.5 kg")
+
+        let recommendations = try store.coachRecommendations.fetchForSession(sessionID: snapshot.session.id)
+        #expect(recommendations.count == 1)
+        #expect(recommendations[0].actedOnAt != nil)
+    }
 }

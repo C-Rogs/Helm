@@ -6,6 +6,7 @@ public enum HelmSignpostName: Sendable {
     case readinessCompute
     case prescriptionCompute
     case geminiStream
+    case inSessionCoachPropose
     case briefIntentRun
     case workoutSessionLifecycle
     case liveWorkoutBuilderTeardown
@@ -45,6 +46,7 @@ public struct HelmSignpost: Sendable {
         case .readinessCompute: "ReadinessCompute"
         case .prescriptionCompute: "PrescriptionCompute"
         case .geminiStream: "GeminiStream"
+        case .inSessionCoachPropose: "InSessionCoachPropose"
         case .briefIntentRun: "BriefIntentRun"
         case .workoutSessionLifecycle: "WorkoutSessionLifecycle"
         case .liveWorkoutBuilderTeardown: "LiveWorkoutBuilderTeardown"

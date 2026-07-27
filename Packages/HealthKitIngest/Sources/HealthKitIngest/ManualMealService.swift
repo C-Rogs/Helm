@@ -67,6 +67,9 @@ public struct ManualMealService: Sendable {
 
     public func logQuickAdd(
         kilocalories: Double,
+        proteinG: Double = 0,
+        carbsG: Double = 0,
+        fatG: Double = 0,
         label: String? = nil,
         bucket: MealBucket,
         loggedAt: Date = Date(),
@@ -80,9 +83,9 @@ public struct ManualMealService: Sendable {
         let name = trimmedLabel?.isEmpty == false ? trimmedLabel! : "Quick add"
         let macros = FoodPortionMacros(
             energyKcal: kilocalories,
-            proteinG: 0,
-            carbsG: 0,
-            fatG: 0
+            proteinG: max(0, proteinG),
+            carbsG: max(0, carbsG),
+            fatG: max(0, fatG)
         )
 
         return try await persist(

@@ -6,6 +6,7 @@ import Testing
 @Suite("Active session engine")
 struct ActiveSessionEngineTests {
     private let benchPressID = "exercise-bench-press"
+    private let squatID = "exercise-squat"
 
     private func makeHarness(at instant: Date = Date(timeIntervalSince1970: 1_700_000_000)) throws -> (
         store: PersistenceStore,
@@ -25,6 +26,16 @@ struct ActiveSessionEngineTests {
             displayName: "Bench Press (Barbell)",
             exerciseMode: .weightReps,
             primaryMuscleGroup: "chest"
+        )
+    }
+
+    private func seedSquat(in store: PersistenceStore) throws {
+        try store.exercises.upsert(
+            id: squatID,
+            canonicalName: "squat (barbell)",
+            displayName: "Squat (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "quads"
         )
     }
 
@@ -172,6 +183,35 @@ struct ActiveSessionEngineTests {
         #expect(afterSkip.restTimer == nil)
     }
 
+    @Test("uncomplete set reverts status and cancels linked rest timer")
+    func uncompleteSetRevertsStatusAndClearsRestTimer() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (persistence, engine, _) = try makeHarness(at: start)
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID, defaultRestSeconds: 90)
+        let exercise = try #require(withExercise.session.exercises.first)
+        let set = try #require(exercise.sets.first)
+
+        _ = try await engine.logSet(
+            setID: set.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 60), reps: 10)
+        )
+        let afterComplete = try await engine.completeSet(sessionExerciseID: exercise.id, setID: set.id)
+
+        #expect(afterComplete.restTimer?.phase == .running)
+        let completedSet = try #require(afterComplete.session.exercises.first?.sets.first)
+        #expect(completedSet.status == .completed)
+
+        let afterUncomplete = try await engine.uncompleteSet(sessionExerciseID: exercise.id, setID: set.id)
+
+        #expect(afterUncomplete.restTimer == nil)
+        let revertedSet = try #require(afterUncomplete.session.exercises.first?.sets.first)
+        #expect(revertedSet.status == .planned)
+        #expect(revertedSet.completedAt == nil)
+    }
+
     @Test("remove exercise drops it from the active session")
     func removeExerciseUpdatesSession() async throws {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
@@ -231,6 +271,125 @@ struct ActiveSessionEngineTests {
         #expect(firstSet.reps == 8)
         #expect(firstSet.rpe == 8)
         #expect(firstSet.status == .planned)
+    }
+
+    @Test("remove then add set does not violate set_index uniqueness")
+    func removeThenAddSet() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID)
+        let exercise = try #require(withExercise.session.exercises.first)
+        #expect(exercise.sets.count == 3)
+
+        let afterRemove = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: exercise.id,
+            targetSetCount: 2
+        )
+        #expect(afterRemove.session.exercises.first?.sets.count == 2)
+
+        let afterAdd = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: exercise.id,
+            targetSetCount: 3
+        )
+        let sets = try #require(afterAdd.session.exercises.first?.sets)
+        #expect(sets.count == 3)
+        #expect(Set(sets.map(\.setIndex)).count == 3)
+    }
+
+    @Test("update set type persists through snapshot")
+    func updateSetTypePersists() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID)
+        let exercise = try #require(withExercise.session.exercises.first)
+        let set = try #require(exercise.sets.first)
+
+        let updated = try await engine.updateSetType(setID: set.id, setType: .warmup)
+        let warmupSet = try #require(updated.session.exercises.first?.sets.first)
+        #expect(warmupSet.setType == .warmup)
+
+        let dropSet = try await engine.updateSetType(setID: set.id, setType: .dropSet)
+        let typedSet = try #require(dropSet.session.exercises.first?.sets.first)
+        #expect(typedSet.setType == .dropSet)
+    }
+
+    @Test("reorder exercises preserves sets on each exercise")
+    func reorderExercisesPreservesSets() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+        try seedSquat(in: persistence)
+
+        _ = try await engine.start()
+        let withBench = try await engine.addExercise(exerciseID: benchPressID)
+        let benchExercise = try #require(withBench.session.exercises.first)
+        let withBoth = try await engine.addExercise(exerciseID: squatID)
+        let squatExercise = try #require(withBoth.session.exercises.last)
+
+        let benchSet = try #require(benchExercise.sets.first)
+        let squatSet = try #require(squatExercise.sets.first)
+
+        _ = try await engine.logSet(
+            setID: benchSet.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 80), reps: 8)
+        )
+        _ = try await engine.logSet(
+            setID: squatSet.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 100), reps: 5)
+        )
+
+        let reordered = try await engine.reorderExercises(
+            orderedSessionExerciseIDs: [squatExercise.id, benchExercise.id]
+        )
+
+        #expect(reordered.session.exercises.count == 2)
+        #expect(reordered.session.exercises[0].exerciseID == squatID)
+        #expect(reordered.session.exercises[1].exerciseID == benchPressID)
+        #expect(reordered.session.exercises[0].sets.count == 3)
+        #expect(reordered.session.exercises[1].sets.count == 3)
+
+        let reorderedSquatSet = try #require(reordered.session.exercises[0].sets.first)
+        let reorderedBenchSet = try #require(reordered.session.exercises[1].sets.first)
+        #expect(reorderedSquatSet.id == squatSet.id)
+        #expect(reorderedSquatSet.mass?.kilograms == 100)
+        #expect(reorderedSquatSet.reps == 5)
+        #expect(reorderedBenchSet.id == benchSet.id)
+        #expect(reorderedBenchSet.mass?.kilograms == 80)
+        #expect(reorderedBenchSet.reps == 8)
+    }
+
+    @Test("adjust rest timer clamps remaining at zero")
+    func adjustRestTimerClampsAtZero() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        var clock = FixedClock(instant: start)
+        let persistence = try PersistenceStore.inMemory()
+        let engine = ActiveSessionEngine(repository: persistence.activeSessions, clock: clock)
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID, defaultRestSeconds: 90)
+        let exercise = try #require(withExercise.session.exercises.first)
+        let set = try #require(exercise.sets.first)
+
+        _ = try await engine.logSet(
+            setID: set.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 60), reps: 10)
+        )
+        let afterComplete = try await engine.completeSet(sessionExerciseID: exercise.id, setID: set.id)
+        let timer = try #require(afterComplete.restTimer)
+        #expect(timer.remainingSeconds(at: start) == 90)
+
+        let afterExtend = try await engine.adjustRestTimer(deltaSeconds: 30)
+        let extendedTimer = try #require(afterExtend.restTimer)
+        #expect(extendedTimer.remainingSeconds(at: start) == 120)
+
+        clock.instant = start.addingTimeInterval(115)
+        let afterSubtract = try await engine.adjustRestTimer(deltaSeconds: -20)
+        let adjustedTimer = try #require(afterSubtract.restTimer)
+        #expect(adjustedTimer.remainingSeconds(at: clock.instant) == 0)
     }
 }
 

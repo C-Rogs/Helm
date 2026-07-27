@@ -4,11 +4,11 @@ import Persistence
 import SwiftUI
 
 struct WorkoutImportPreviewView: View {
-    @Environment(\.dismiss) private var dismiss
     @Bindable var controller: WorkoutImportController
-    let onImported: () -> Void
+    let onStartWorkout: () async -> Void
 
     @State private var mappingExerciseTitle: String?
+    @State private var isStarting = false
 
     var body: some View {
         NavigationStack {
@@ -25,9 +25,10 @@ struct WorkoutImportPreviewView: View {
                             .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
                     }
 
-                    DatePicker("Workout date", selection: $controller.workoutDate, displayedComponents: [.date, .hourAndMinute])
+                    Toggle("Save as template", isOn: $controller.saveAsTemplate)
                         .font(HelmTypography.body)
                         .foregroundStyle(HelmColor.textPrimary)
+                        .tint(HelmColor.accent)
 
                     if let skippedCount = controller.parsedWorkout?.skippedLines.count, skippedCount > 0 {
                         Text("\(skippedCount) line(s) could not be parsed and were skipped.")
@@ -54,19 +55,20 @@ struct WorkoutImportPreviewView: View {
                             .foregroundStyle(HelmColor.destructive)
                     }
 
-                    Button("Import to history") {
-                        controller.importToHistory {
-                            onImported()
-                            dismiss()
+                    Button(isStarting ? "Starting…" : "Start workout") {
+                        Task {
+                            isStarting = true
+                            defer { isStarting = false }
+                            await onStartWorkout()
                         }
                     }
                     .buttonStyle(.helmPrimary)
-                    .disabled(!controller.canImport)
+                    .disabled(!controller.canStartWorkout || isStarting)
                 }
                 .helmScreenPadding()
             }
             .helmScreenBackground()
-            .navigationTitle("Import preview")
+            .navigationTitle("Workout preview")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -177,6 +179,6 @@ struct WorkoutImportPreviewView: View {
 #Preview {
     WorkoutImportPreviewView(
         controller: WorkoutImportController(persistence: try! PersistenceStore.inMemory()),
-        onImported: {}
+        onStartWorkout: {}
     )
 }

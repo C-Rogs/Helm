@@ -112,6 +112,7 @@ public struct WorkoutSessionExerciseDraft: Sendable, Hashable, Codable, Identifi
     public let exerciseID: String
     public let displayOrder: Int
     public let exerciseMode: ExerciseMode
+    public let targetRestSeconds: Int?
     public let sets: [SetEntryDraft]
 
     public init(
@@ -119,12 +120,14 @@ public struct WorkoutSessionExerciseDraft: Sendable, Hashable, Codable, Identifi
         exerciseID: String,
         displayOrder: Int,
         exerciseMode: ExerciseMode,
+        targetRestSeconds: Int? = nil,
         sets: [SetEntryDraft]
     ) {
         self.id = id
         self.exerciseID = exerciseID
         self.displayOrder = displayOrder
         self.exerciseMode = exerciseMode
+        self.targetRestSeconds = targetRestSeconds
         self.sets = sets
     }
 }
@@ -132,6 +135,7 @@ public struct WorkoutSessionExerciseDraft: Sendable, Hashable, Codable, Identifi
 public struct WorkoutSessionDraft: Sendable, Hashable, Codable, Identifiable {
     public let id: String
     public let title: String?
+    public let notes: String?
     public let startedAt: Date
     public let endedAt: Date?
     public let status: WorkoutSessionStatus
@@ -141,6 +145,7 @@ public struct WorkoutSessionDraft: Sendable, Hashable, Codable, Identifiable {
     public init(
         id: String = UUID().uuidString,
         title: String? = nil,
+        notes: String? = nil,
         startedAt: Date,
         endedAt: Date? = nil,
         status: WorkoutSessionStatus = .completed,
@@ -149,6 +154,7 @@ public struct WorkoutSessionDraft: Sendable, Hashable, Codable, Identifiable {
     ) {
         self.id = id
         self.title = title
+        self.notes = notes
         self.startedAt = startedAt
         self.endedAt = endedAt
         self.status = status

@@ -53,6 +53,7 @@ struct PhotoMealServiceTests {
         let saved = try await service.confirm(
             estimate: edited,
             name: edited.description,
+            bucket: .lunch,
             loggedAt: Date(timeIntervalSince1970: 1_700_000_000),
             mealID: "fixture-meal"
         )
@@ -72,5 +73,6 @@ struct PhotoMealServiceTests {
         #expect(meals.count == 1)
         #expect(meals[0].source == .photo)
         #expect(meals[0].name == "Large chicken bowl")
+        #expect(meals[0].bucket == .lunch)
     }
 }

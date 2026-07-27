@@ -14,6 +14,8 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         case swap
         case reorder
         case adjustSets
+        case adjustLoad
+        case adjustRPE
     }
 
     public let kind: Kind
@@ -23,6 +25,10 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
     public let orderedExerciseIDs: [String]?
     public let exerciseID: String?
     public let setDelta: Int?
+    public let massDeltaKg: Double?
+    public let targetMassKg: Double?
+    public let rpeDelta: Double?
+    public let targetRPE: Double?
 
     public init(
         kind: Kind,
@@ -31,7 +37,11 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         excludeExerciseIDs: [String]? = nil,
         orderedExerciseIDs: [String]? = nil,
         exerciseID: String? = nil,
-        setDelta: Int? = nil
+        setDelta: Int? = nil,
+        massDeltaKg: Double? = nil,
+        targetMassKg: Double? = nil,
+        rpeDelta: Double? = nil,
+        targetRPE: Double? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -40,6 +50,10 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         self.orderedExerciseIDs = orderedExerciseIDs
         self.exerciseID = exerciseID
         self.setDelta = setDelta
+        self.massDeltaKg = massDeltaKg
+        self.targetMassKg = targetMassKg
+        self.rpeDelta = rpeDelta
+        self.targetRPE = targetRPE
     }
 }
 
@@ -50,6 +64,9 @@ public enum PrescriptionClampReason: Sendable, Hashable, Codable, Equatable {
     case swapNoAlternativeAvailable(fromExerciseID: String)
     case invalidReorder(missingExerciseIDs: [String])
     case exerciseNotFound(exerciseID: String)
+    case loadMissing(exerciseID: String)
+    case loadOutOfBounds(exerciseID: String)
+    case rpeOutOfBounds(exerciseID: String)
 }
 
 public enum PrescriptionAdjustmentResult: Sendable, Hashable, Equatable {
@@ -122,6 +139,10 @@ enum PrescriptionAdjustmentEngine {
             return applyReorder(operation, to: &exercises)
         case .adjustSets:
             return applySetAdjustment(operation, to: &exercises)
+        case .adjustLoad:
+            return applyLoadAdjustment(operation, to: &exercises)
+        case .adjustRPE:
+            return applyRPEAdjustment(operation, to: &exercises)
         }
     }
 
@@ -236,11 +257,81 @@ enum PrescriptionAdjustmentEngine {
         return .success
     }
 
+    private static func applyLoadAdjustment(
+        _ operation: PrescriptionAdjustmentOperation,
+        to exercises: inout [PrescribedExercise]
+    ) -> OperationOutcome {
+        guard let exerciseID = operation.exerciseID else {
+            return .failure(.exerciseNotFound(exerciseID: ""))
+        }
+        guard let index = exercises.firstIndex(where: { $0.exerciseID == exerciseID }) else {
+            return .failure(.exerciseNotFound(exerciseID: exerciseID))
+        }
+
+        guard let currentMass = exercises[index].targetMass else {
+            return .failure(.loadMissing(exerciseID: exerciseID))
+        }
+
+        let proposedKg: Double
+        if let targetMassKg = operation.targetMassKg {
+            proposedKg = targetMassKg
+        } else if let delta = operation.massDeltaKg {
+            proposedKg = currentMass.kilograms + delta
+        } else {
+            return .failure(.loadMissing(exerciseID: exerciseID))
+        }
+
+        guard PrescriptionBounds.isLoadWithinBounds(
+            currentKg: currentMass.kilograms,
+            proposedKg: proposedKg
+        ) else {
+            return .failure(.loadOutOfBounds(exerciseID: exerciseID))
+        }
+
+        exercises[index] = replacing(
+            exercises[index],
+            targetMass: Mass(kilograms: proposedKg)
+        )
+        return .success
+    }
+
+    private static func applyRPEAdjustment(
+        _ operation: PrescriptionAdjustmentOperation,
+        to exercises: inout [PrescribedExercise]
+    ) -> OperationOutcome {
+        guard let exerciseID = operation.exerciseID else {
+            return .failure(.exerciseNotFound(exerciseID: ""))
+        }
+        guard let index = exercises.firstIndex(where: { $0.exerciseID == exerciseID }) else {
+            return .failure(.exerciseNotFound(exerciseID: exerciseID))
+        }
+
+        let currentRPE = exercises[index].targetRPE ?? PrescriptionBounds.minRPE
+        let proposedRPE: Double
+        if let targetRPE = operation.targetRPE {
+            proposedRPE = targetRPE
+        } else if let delta = operation.rpeDelta {
+            proposedRPE = currentRPE + delta
+        } else {
+            return .failure(.rpeOutOfBounds(exerciseID: exerciseID))
+        }
+
+        let clamped = PrescriptionBounds.clampRPE(proposedRPE)
+        if abs(clamped - proposedRPE) > 0.001 {
+            return .failure(.rpeOutOfBounds(exerciseID: exerciseID))
+        }
+
+        exercises[index] = replacing(exercises[index], targetRPE: clamped)
+        return .success
+    }
+
     private static func replacing(
         _ exercise: PrescribedExercise,
         exerciseID: String? = nil,
         order: Int? = nil,
         targetSets: Int? = nil,
+        targetMass: Mass? = nil,
+        targetRPE: Double? = nil,
         rationale: String? = nil,
         evidenceIDs: [String]? = nil
     ) -> PrescribedExercise {
@@ -251,10 +342,43 @@ enum PrescriptionAdjustmentEngine {
             targetSets: targetSets ?? exercise.targetSets,
             targetRepMin: exercise.targetRepMin,
             targetRepMax: exercise.targetRepMax,
-            targetMass: exercise.targetMass,
-            targetRPE: exercise.targetRPE,
+            targetMass: targetMass ?? exercise.targetMass,
+            targetRPE: targetRPE ?? exercise.targetRPE,
             rationale: rationale ?? exercise.rationale,
             evidenceIDs: evidenceIDs ?? exercise.evidenceIDs
         )
+    }
+}
+
+public enum PrescriptionDiff {
+    public static func exercisesChanged(
+        from previous: SessionPrescription,
+        to adjusted: SessionPrescription
+    ) -> Bool {
+        let lhs = normalized(previous.exercises)
+        let rhs = normalized(adjusted.exercises)
+        return lhs != rhs
+    }
+
+    private static func normalized(_ exercises: [PrescribedExercise]) -> [NormalizedExercise] {
+        exercises
+            .sorted { $0.order < $1.order }
+            .map {
+                NormalizedExercise(
+                    exerciseID: $0.exerciseID,
+                    order: $0.order,
+                    targetSets: $0.targetSets,
+                    targetMassKg: $0.targetMass?.kilograms,
+                    targetRPE: $0.targetRPE
+                )
+            }
+    }
+
+    private struct NormalizedExercise: Equatable {
+        let exerciseID: String
+        let order: Int
+        let targetSets: Int
+        let targetMassKg: Double?
+        let targetRPE: Double?
     }
 }

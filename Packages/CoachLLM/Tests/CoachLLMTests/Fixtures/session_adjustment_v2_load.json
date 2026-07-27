@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "Bump bench to 82.5 kg for remaining sets; you hit the top of the rep range last week.",
+  "rationale": "Progression bump after clean top-of-range work.",
+  "operations": [
+    {
+      "kind": "adjustLoad",
+      "exerciseID": "bench_press",
+      "massDeltaKg": 2.5
+    }
+  ]
+}

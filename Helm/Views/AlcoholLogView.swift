@@ -5,94 +5,75 @@ import SwiftUI
 
 struct AlcoholLogView: View {
     @Bindable var controller: ManualFoodLogController
-    @Environment(\.dismiss) private var dismiss
 
     @State private var preset: AlcoholDrinkPreset = .beer
     @State private var quantity = 1
-    @State private var bucket: MealBucket = .snacks
+    @State private var bucket: MealBucket
+
+    init(controller: ManualFoodLogController) {
+        self.controller = controller
+        _bucket = State(initialValue: controller.preferredBucket)
+    }
 
     private var macros: FoodPortionMacros {
         preset.macros(quantity: quantity)
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                    Text("Explicit alcohol kcal counts toward TDEE. Macro gap covers any untracked remainder.")
-                        .helmType(.body, color: HelmColor.fgMuted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                Text("Explicit alcohol kcal counts toward TDEE. Macro gap covers any untracked remainder.")
+                    .helmType(.body, color: HelmColor.fgMuted)
 
-                    bucketPicker
+                bucketPicker
 
-                    VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                        Text("Drink")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                        Picker("Drink", selection: $preset) {
-                            ForEach(AlcoholDrinkPreset.allCases, id: \.self) { drink in
-                                Text(drink.displayName).tag(drink)
-                            }
-                        }
-                        .pickerStyle(.segmented)
-                    }
-
-                    Stepper(value: $quantity, in: 1 ... 12) {
-                        HStack {
-                            Text("Quantity")
-                                .helmType(.body)
-                            Spacer()
-                            Text("\(quantity)")
-                                .helmType(.number)
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text("Drink")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    Picker("Drink", selection: $preset) {
+                        ForEach(AlcoholDrinkPreset.allCases, id: \.self) { drink in
+                            Text(drink.displayName).tag(drink)
                         }
                     }
+                    .pickerStyle(.segmented)
+                }
 
-                    macroSummary
-                }
-                .padding(HelmSpacing.md)
-            }
-            .helmScreenBackground()
-            .navigationTitle("Alcohol")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        controller.cancel()
+                Stepper(value: $quantity, in: 1 ... 12) {
+                    HStack {
+                        Text("Quantity")
+                            .helmType(.body)
+                        Spacer()
+                        Text("\(quantity)")
+                            .helmType(.number)
                     }
                 }
+
+                macroSummary
             }
-            .safeAreaInset(edge: .bottom) {
-                Button("Log alcohol") {
-                    Task {
-                        await controller.logAlcohol(
-                            preset: preset,
-                            quantity: quantity,
-                            bucket: bucket
-                        )
-                    }
-                }
-                .buttonStyle(.helmPrimary)
-                .disabled(controller.isBusy)
-                .padding(HelmSpacing.md)
-                .background(HelmColor.surface.opacity(0.96))
-            }
-            .onChange(of: controller.phase) { _, newPhase in
-                if case .idle = newPhase {
-                    dismiss()
+            .padding(HelmSpacing.md)
+        }
+        .helmScreenBackground()
+        .navigationTitle("Alcohol")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            Button("Log alcohol") {
+                Task {
+                    await controller.logAlcohol(
+                        preset: preset,
+                        quantity: quantity,
+                        bucket: bucket
+                    )
                 }
             }
+            .buttonStyle(.helmPrimary)
+            .disabled(controller.isBusy)
+            .padding(HelmSpacing.md)
+            .background(HelmColor.surface.opacity(0.96))
         }
     }
 
     private var bucketPicker: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Text("Meal")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
-            Picker("Meal", selection: $bucket) {
-                ForEach(MealBucket.allCases, id: \.self) { mealBucket in
-                    Text(mealBucket.displayName).tag(mealBucket)
-                }
-            }
-            .pickerStyle(.segmented)
-        }
+        MealBucketPicker(selection: $bucket, labelStyle: .muted)
     }
 
     private var macroSummary: some View {
@@ -115,6 +96,8 @@ struct AlcoholLogView: View {
 }
 
 #Preview("Alcohol log") {
-    AlcoholLogView(controller: ManualFoodLogController.previewController(online: true))
-        .helmTheme()
+    NavigationStack {
+        AlcoholLogView(controller: ManualFoodLogController.previewController(online: true))
+    }
+    .helmTheme()
 }

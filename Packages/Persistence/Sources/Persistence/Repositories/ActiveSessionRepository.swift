@@ -14,7 +14,7 @@ public struct ActiveSessionRepository: Sendable {
             guard let header = try Row.fetchOne(
                 db,
                 sql: """
-                    SELECT ws.id, ws.title, ws.started_at, ws.status, ws.source,
+                    SELECT ws.id, ws.title, ws.notes, ws.started_at, ws.status, ws.source,
                            aws.recovery_state
                     FROM workout_session ws
                     JOIN active_workout_state aws ON aws.workout_session_id = ws.id
@@ -31,6 +31,7 @@ public struct ActiveSessionRepository: Sendable {
             let recoveryState = ActiveWorkoutRecoveryState(rawValue: header["recovery_state"] as String) ?? .active
             let source = WorkoutSessionSource(rawValue: header["source"] as String) ?? .manual
             let title: String? = header["title"]
+            let notes: String? = header["notes"]
 
             let exercises = try Self.fetchExercises(db: db, sessionID: sessionID)
             let restTimer = try Self.fetchRunningRestTimer(db: db, sessionID: sessionID, now: now)
@@ -38,6 +39,7 @@ public struct ActiveSessionRepository: Sendable {
             let draft = WorkoutSessionDraft(
                 id: sessionID,
                 title: title,
+                notes: notes,
                 startedAt: startedAt,
                 endedAt: nil,
                 status: .active,
@@ -210,6 +212,77 @@ public struct ActiveSessionRepository: Sendable {
         return sessionID
     }
 
+    public func startSessionFromImport(
+        _ plan: ImportedWorkoutPlan,
+        startedAt: Date
+    ) throws -> String {
+        let sessionID = UUID().uuidString
+        let nowString = ISO8601Coding.string(from: startedAt)
+        try pool.write { db in
+            try Self.assertNoActiveSession(db: db)
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session (
+                        id, title, started_at, ended_at, status, source,
+                        total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, NULL, 'active', 'import', 0, 0, 0, ?, ?)
+                    """,
+                arguments: [sessionID, plan.title, nowString, nowString, nowString]
+            )
+            try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
+
+            for exercise in plan.exercises.sorted(by: { $0.displayOrder < $1.displayOrder }) {
+                let sessionExerciseID = UUID().uuidString
+                let restSeconds = exercise.restDurationSeconds ?? 90
+
+                try db.execute(
+                    sql: """
+                        INSERT INTO workout_session_exercise (
+                            id, workout_session_id, exercise_id, display_order, exercise_mode,
+                            target_rest_seconds, is_collapsed, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?)
+                        """,
+                    arguments: [
+                        sessionExerciseID,
+                        sessionID,
+                        exercise.exerciseID,
+                        exercise.displayOrder,
+                        exercise.exerciseMode.rawValue,
+                        restSeconds,
+                        nowString,
+                        nowString
+                    ]
+                )
+
+                for set in exercise.sets.sorted(by: { $0.setIndex < $1.setIndex }) {
+                    let setID = UUID().uuidString
+                    try db.execute(
+                        sql: """
+                            INSERT INTO set_entry (
+                                id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                                weight_kg, reps, rpe, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            setID,
+                            sessionExerciseID,
+                            exercise.exerciseID,
+                            set.setIndex,
+                            set.setType.rawValue,
+                            set.mass?.kilograms,
+                            set.reps,
+                            set.rpe,
+                            nowString,
+                            nowString
+                        ]
+                    )
+                }
+            }
+        }
+        return sessionID
+    }
+
     public func logSet(setID: String, update: SetLogUpdate, timestamp: Date) throws {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in
@@ -233,6 +306,26 @@ public struct ActiveSessionRepository: Sendable {
                     now,
                     setID
                 ]
+            )
+            if let sessionID = try Self.activeSessionID(forSetID: setID, db: db) {
+                try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+            }
+        }
+    }
+
+    public func updateSetType(setID: String, setType: SetType, timestamp: Date) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard try Self.activeSessionID(forSetID: setID, db: db) != nil else {
+                throw PersistenceError.recordNotFound("set \(setID)")
+            }
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET set_type = ?, updated_at = ?
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [setType.rawValue, now, setID]
             )
             if let sessionID = try Self.activeSessionID(forSetID: setID, db: db) {
                 try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
@@ -308,6 +401,48 @@ public struct ActiveSessionRepository: Sendable {
                     arguments: [UUID().uuidString, timerID, startedAt]
                 )
             }
+
+            try Self.recomputeSessionCaches(db: db, sessionID: sessionID, now: now)
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func uncompleteSet(
+        sessionID: String,
+        sessionExerciseID: String,
+        setID: String,
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            let before = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT status FROM set_entry
+                    WHERE id = ? AND workout_session_exercise_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [setID, sessionExerciseID]
+            )
+            guard (before?["status"] as String?) == SetStatus.completed.rawValue else { return }
+
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET status = 'planned', completed_at = NULL, updated_at = ?
+                    WHERE id = ? AND workout_session_exercise_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [now, setID, sessionExerciseID]
+            )
+
+            try db.execute(
+                sql: """
+                    UPDATE rest_timer_state
+                    SET state = 'skipped', updated_at = ?, last_action_at = ?
+                    WHERE workout_session_id = ? AND source_set_entry_id = ?
+                      AND state IN ('running', 'paused')
+                    """,
+                arguments: [now, now, sessionID, setID]
+            )
 
             try Self.recomputeSessionCaches(db: db, sessionID: sessionID, now: now)
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
@@ -410,6 +545,133 @@ public struct ActiveSessionRepository: Sendable {
             }
 
             try Self.recomputeSessionCaches(db: db, sessionID: sessionID, now: now)
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func updateSessionNotes(sessionID: String, notes: String?, timestamp: Date) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE workout_session
+                    SET notes = ?, updated_at = ?
+                    WHERE id = ? AND status = 'active' AND deleted_at IS NULL
+                    """,
+                arguments: [notes, now, sessionID]
+            )
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func reorderExercises(
+        sessionID: String,
+        orderedSessionExerciseIDs: [String],
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            let existingIDs = try String.fetchAll(
+                db,
+                sql: """
+                    SELECT id FROM workout_session_exercise
+                    WHERE workout_session_id = ? AND deleted_at IS NULL
+                    ORDER BY display_order ASC
+                    """,
+                arguments: [sessionID]
+            )
+            let existingSet = Set(existingIDs)
+            let orderedSet = Set(orderedSessionExerciseIDs)
+            guard existingSet == orderedSet,
+                  orderedSessionExerciseIDs.count == existingIDs.count else {
+                throw PersistenceError.invalidReorder
+            }
+
+            for (index, sessionExerciseID) in orderedSessionExerciseIDs.enumerated() {
+                try db.execute(
+                    sql: """
+                        UPDATE workout_session_exercise
+                        SET display_order = ?, updated_at = ?
+                        WHERE id = ? AND workout_session_id = ?
+                        """,
+                    arguments: [index, now, sessionExerciseID, sessionID]
+                )
+            }
+
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func adjustRestTimer(sessionID: String, deltaSeconds: Int, timestamp: Date) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT id, ends_at, user_adjusted_seconds
+                    FROM rest_timer_state
+                    WHERE workout_session_id = ? AND state = 'running'
+                    ORDER BY last_action_at DESC
+                    LIMIT 1
+                    """,
+                arguments: [sessionID]
+            ) else {
+                throw PersistenceError.recordNotFound("running rest timer")
+            }
+
+            let timerID: String = row["id"]
+            guard let endsString: String = row["ends_at"],
+                  let endsAt = try? ISO8601Coding.date(from: endsString) else {
+                throw PersistenceError.recordNotFound("running rest timer ends_at")
+            }
+
+            let remaining = max(0, endsAt.timeIntervalSince(timestamp))
+            let adjustedRemaining = max(0, remaining + TimeInterval(deltaSeconds))
+            let newEndsAt = timestamp.addingTimeInterval(adjustedRemaining)
+            let appliedDelta = Int(adjustedRemaining - remaining)
+            let newEndsString = ISO8601Coding.string(from: newEndsAt)
+            let userAdjusted: Int = row["user_adjusted_seconds"] ?? 0
+
+            guard appliedDelta != 0 else { return }
+
+            try db.execute(
+                sql: """
+                    UPDATE rest_timer_state
+                    SET ends_at = ?, user_adjusted_seconds = ?, updated_at = ?, last_action_at = ?
+                    WHERE id = ? AND state = 'running'
+                    """,
+                arguments: [newEndsString, userAdjusted + appliedDelta, now, now, timerID]
+            )
+
+            try db.execute(
+                sql: """
+                    INSERT INTO rest_timer_event (
+                        id, rest_timer_state_id, event_type, timestamp, delta_seconds, source, note
+                    ) VALUES (?, ?, 'adjusted', ?, ?, 'user', NULL)
+                    """,
+                arguments: [UUID().uuidString, timerID, now, appliedDelta]
+            )
+
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func updateExerciseRest(
+        sessionID: String,
+        sessionExerciseID: String,
+        seconds: Int,
+        timestamp: Date
+    ) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE workout_session_exercise
+                    SET target_rest_seconds = ?, updated_at = ?
+                    WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [seconds, now, sessionExerciseID, sessionID]
+            )
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
         }
     }
@@ -639,7 +901,7 @@ extension ActiveSessionRepository {
         let exerciseRows = try Row.fetchAll(
             db,
             sql: """
-                SELECT id, exercise_id, display_order, exercise_mode
+                SELECT id, exercise_id, display_order, exercise_mode, target_rest_seconds
                 FROM workout_session_exercise
                 WHERE workout_session_id = ? AND deleted_at IS NULL
                 ORDER BY display_order ASC
@@ -688,6 +950,7 @@ extension ActiveSessionRepository {
                 exerciseID: row["exercise_id"],
                 displayOrder: row["display_order"],
                 exerciseMode: ExerciseMode(rawValue: row["exercise_mode"] as String) ?? .weightReps,
+                targetRestSeconds: row["target_rest_seconds"],
                 sets: sets
             )
         }
@@ -907,7 +1170,16 @@ extension ActiveSessionRepository {
 
         if plannedSets.count + completedSets.count < effectiveTarget {
             let toAdd = effectiveTarget - existingSets.count
-            let startIndex = existingSets.count
+            let maxIndex = try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COALESCE(MAX(set_index), -1)
+                    FROM set_entry
+                    WHERE workout_session_exercise_id = ?
+                    """,
+                arguments: [sessionExerciseID]
+            ) ?? -1
+            let startIndex = maxIndex + 1
             for offset in 0 ..< toAdd {
                 let setID = UUID().uuidString
                 try db.execute(
@@ -927,8 +1199,8 @@ extension ActiveSessionRepository {
             var toRemove = existingSets.count - effectiveTarget
             for set in removable where toRemove > 0 {
                 try db.execute(
-                    sql: "UPDATE set_entry SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL",
-                    arguments: [now, set.id]
+                    sql: "DELETE FROM set_entry WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [set.id]
                 )
                 toRemove -= 1
             }

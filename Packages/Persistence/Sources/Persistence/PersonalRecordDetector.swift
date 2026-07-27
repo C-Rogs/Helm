@@ -12,58 +12,80 @@ public enum PersonalRecordDetector {
 
         for exercise in session.exercises {
             for set in exercise.sets where set.status == .completed && !set.setType.isWarmup {
-                if let mass = set.mass {
-                    let historicalMax = try repository.maxWeight(
+                try detected.append(
+                    contentsOf: detectIncremental(
+                        set: set,
                         exerciseID: exercise.exerciseID,
-                        excludingSessionID: session.id
+                        excludingSessionID: session.id,
+                        repository: repository
                     )
-                    if historicalMax == nil || mass.kilograms > (historicalMax ?? 0) {
-                        detected.append(
-                            DetectedPersonalRecord(
-                                exerciseID: exercise.exerciseID,
-                                metricType: .maxWeight,
-                                metricValue: mass.kilograms,
-                                sourceSetEntryID: set.id,
-                                previousBest: historicalMax
-                            )
-                        )
-                    }
+                )
+            }
+        }
 
-                    if let reps = set.reps, reps > 0 {
-                        let e1rm = EpleyOneRepMax.estimate(mass: mass, reps: reps).kilograms
-                        let historicalE1RM = try repository.estimatedOneRM(
-                            exerciseID: exercise.exerciseID,
-                            excludingSessionID: session.id
-                        )?.kilograms
-                        if historicalE1RM == nil || e1rm > (historicalE1RM ?? 0) {
-                            detected.append(
-                                DetectedPersonalRecord(
-                                    exerciseID: exercise.exerciseID,
-                                    metricType: .bestEstimated1RM,
-                                    metricValue: e1rm,
-                                    sourceSetEntryID: set.id,
-                                    previousBest: historicalE1RM
-                                )
-                            )
-                        }
+        return deduplicated(detected)
+    }
 
-                        let historicalReps = try repository.maxReps(
-                            exerciseID: exercise.exerciseID,
-                            atWeightKilograms: mass.kilograms,
-                            excludingSessionID: session.id
+    public static func detectIncremental(
+        set: SetEntryDraft,
+        exerciseID: String,
+        excludingSessionID: String,
+        repository: WorkoutSessionRepository
+    ) throws -> [DetectedPersonalRecord] {
+        guard set.status == .completed, !set.setType.isWarmup else { return [] }
+
+        var detected: [DetectedPersonalRecord] = []
+
+        if let mass = set.mass {
+            let historicalMax = try repository.maxWeight(
+                exerciseID: exerciseID,
+                excludingSessionID: excludingSessionID
+            )
+            if historicalMax == nil || mass.kilograms > (historicalMax ?? 0) {
+                detected.append(
+                    DetectedPersonalRecord(
+                        exerciseID: exerciseID,
+                        metricType: .maxWeight,
+                        metricValue: mass.kilograms,
+                        sourceSetEntryID: set.id,
+                        previousBest: historicalMax
+                    )
+                )
+            }
+
+            if let reps = set.reps, reps > 0 {
+                let e1rm = EpleyOneRepMax.estimate(mass: mass, reps: reps).kilograms
+                let historicalE1RM = try repository.estimatedOneRM(
+                    exerciseID: exerciseID,
+                    excludingSessionID: excludingSessionID
+                )?.kilograms
+                if historicalE1RM == nil || e1rm > (historicalE1RM ?? 0) {
+                    detected.append(
+                        DetectedPersonalRecord(
+                            exerciseID: exerciseID,
+                            metricType: .bestEstimated1RM,
+                            metricValue: e1rm,
+                            sourceSetEntryID: set.id,
+                            previousBest: historicalE1RM
                         )
-                        if historicalReps == nil || reps > (historicalReps ?? 0) {
-                            detected.append(
-                                DetectedPersonalRecord(
-                                    exerciseID: exercise.exerciseID,
-                                    metricType: .maxRepsAtWeight,
-                                    metricValue: Double(reps),
-                                    sourceSetEntryID: set.id,
-                                    previousBest: historicalReps.map(Double.init)
-                                )
-                            )
-                        }
-                    }
+                    )
+                }
+
+                let historicalReps = try repository.maxReps(
+                    exerciseID: exerciseID,
+                    atWeightKilograms: mass.kilograms,
+                    excludingSessionID: excludingSessionID
+                )
+                if historicalReps == nil || reps > (historicalReps ?? 0) {
+                    detected.append(
+                        DetectedPersonalRecord(
+                            exerciseID: exerciseID,
+                            metricType: .maxRepsAtWeight,
+                            metricValue: Double(reps),
+                            sourceSetEntryID: set.id,
+                            previousBest: historicalReps.map(Double.init)
+                        )
+                    )
                 }
             }
         }

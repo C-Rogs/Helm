@@ -7,35 +7,80 @@ struct SetRowView: View {
     let setNumber: Int
     let previous: PreviousPerformance?
     let activeField: NumpadTarget?
+    let validationMessage: String?
+    let shakeToken: Int
+    let badgeText: String?
+    let encouragementGlyph: EncouragementGlyph?
+    let showsPRCelebration: Bool
+    let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
     let sessionExerciseID: String
     let onOpenField: (NumpadFieldKind) -> Void
     let onFillPrevious: () -> Void
+    let onCycleSetType: () -> Void
     let onComplete: () -> Void
+
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private var isCompleted: Bool { setEntry.status == .completed }
 
+    private var rowValidationMessage: String? {
+        guard let activeField, activeField.setID == setEntry.id else { return nil }
+        return validationMessage
+    }
+
+    private var rowShakeToken: Int {
+        guard let activeField, activeField.setID == setEntry.id else { return 0 }
+        return shakeToken
+    }
+
     var body: some View {
-        SetRow(
-            setNumber: setNumber,
-            weight: weightText,
-            weightPlaceholder: previousWeightPlaceholder,
-            reps: repsText,
-            repsPlaceholder: previousRepsPlaceholder,
-            rpe: rpeText,
-            rpePlaceholder: "-",
-            previousValue: previous.map(previousLabel),
-            isCompleted: isCompleted,
-            activeField: activeSetRowField,
-            onPreviousTap: previous == nil ? nil : onFillPrevious,
-            onFieldTap: { field in
-                switch field {
-                case .weight: onOpenField(.weight)
-                case .reps: onOpenField(.reps)
-                case .rpe: onOpenField(.rpe)
-                }
-            },
-            onComplete: onComplete
-        )
+        ZStack(alignment: .topTrailing) {
+            SetRow(
+                setNumber: setNumber,
+                setTypeLabel: setEntry.setType.loggerAbbreviation,
+                setTypeAccent: setTypeAccent,
+                setIndexAccessibilityLabel: setIndexAccessibilityLabel,
+                weight: fieldDisplayText(setEntry, .weight),
+                weightPlaceholder: previousWeightPlaceholder,
+                reps: fieldDisplayText(setEntry, .reps),
+                repsPlaceholder: previousRepsPlaceholder,
+                rpe: fieldDisplayText(setEntry, .rpe),
+                rpePlaceholder: "-",
+                previousValue: previous.map(previousLabel),
+                isCompleted: isCompleted,
+                activeField: activeSetRowField,
+                validationMessage: rowValidationMessage,
+                shakeToken: rowShakeToken,
+                badgeText: badgeText,
+                onPreviousTap: previous == nil ? nil : onFillPrevious,
+                onSetIndexTap: onCycleSetType,
+                onFieldTap: { field in
+                    switch field {
+                    case .weight: onOpenField(.weight)
+                    case .reps: onOpenField(.reps)
+                    case .rpe: onOpenField(.rpe)
+                    }
+                },
+                onComplete: onComplete
+            )
+
+            if let encouragementGlyph {
+                EncouragementGlyphView(glyph: encouragementGlyph)
+                    .offset(x: -8, y: -12)
+                    .allowsHitTesting(false)
+            }
+        }
+        .overlay {
+            if showsPRCelebration {
+                RoundedRectangle(cornerRadius: HelmRadius.sm)
+                    .strokeBorder(HelmColor.accent.opacity(0.8), lineWidth: 2)
+                    .scaleEffect(showsPRCelebration ? 1.02 : 1)
+                    .animation(
+                        reduceMotion ? nil : .easeOut(duration: 0.35).repeatCount(2, autoreverses: true),
+                        value: showsPRCelebration
+                    )
+            }
+        }
     }
 
     private var activeSetRowField: SetRowField? {
@@ -47,20 +92,28 @@ struct SetRowView: View {
         }
     }
 
-    private var weightText: String {
-        guard let mass = setEntry.mass else { return "" }
-        return formatWeight(mass.kilograms)
+    private var setTypeAccent: Color? {
+        switch setEntry.setType {
+        case .warmup: HelmColor.fgSecondary
+        case .dropSet: HelmColor.accent
+        case .failure: HelmColor.destructive
+        default: nil
+        }
     }
 
-    private var repsText: String {
-        setEntry.reps.map(String.init) ?? ""
-    }
-
-    private var rpeText: String {
-        guard let rpe = setEntry.rpe else { return "" }
-        return rpe.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f", rpe)
-            : String(format: "%.1f", rpe)
+    private var setIndexAccessibilityLabel: String {
+        switch setEntry.setType {
+        case .normal:
+            "Set \(setNumber), working set. Tap to change set type."
+        case .warmup:
+            "Set \(setNumber), warmup set. Tap to change set type."
+        case .dropSet:
+            "Set \(setNumber), drop set. Tap to change set type."
+        case .failure:
+            "Set \(setNumber), failure set. Tap to change set type."
+        default:
+            "Set \(setNumber). Tap to change set type."
+        }
     }
 
     private var previousWeightPlaceholder: String {
@@ -95,39 +148,24 @@ struct SetRowView: View {
             rpe: 8
         ),
         setNumber: 1,
-        previous: PreviousPerformance(
-            exerciseID: "ex-1",
-            setIndex: 0,
-            setType: .normal,
-            mass: Mass(kilograms: 77.5),
-            reps: 8,
-            completedAt: Date()
-        ),
-        activeField: nil,
-        sessionExerciseID: "session-ex-1",
-        onOpenField: { _ in },
-        onFillPrevious: {},
-        onComplete: {}
-    )
-    .padding()
-    .helmTheme()
-}
-
-#Preview("Set row completed") {
-    SetRowView(
-        setEntry: SetEntryDraft(
-            setIndex: 1,
-            status: .completed,
-            mass: Mass(kilograms: 80),
-            reps: 8,
-            completedAt: Date()
-        ),
-        setNumber: 2,
         previous: nil,
         activeField: nil,
+        validationMessage: nil,
+        shakeToken: 0,
+        badgeText: nil,
+        encouragementGlyph: nil,
+        showsPRCelebration: false,
+        fieldDisplayText: { set, field in
+            switch field {
+            case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""
+            case .reps: set.reps.map(String.init) ?? ""
+            case .rpe: set.rpe.map { String(format: "%.0f", $0) } ?? ""
+            }
+        },
         sessionExerciseID: "session-ex-1",
         onOpenField: { _ in },
         onFillPrevious: {},
+        onCycleSetType: {},
         onComplete: {}
     )
     .padding()

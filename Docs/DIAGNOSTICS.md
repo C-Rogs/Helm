@@ -39,6 +39,7 @@ Named intervals for every critical path, so Instruments and the overnight batter
 | `ReadinessCompute` | `ReadinessKit` | per day | M2.1 |
 | `PrescriptionCompute` | `PlanKit` | per day | M5.3 |
 | `GeminiStream` | `CoachLLM` | per request (UUID) | M4.2 |
+| `InSessionCoachPropose` | `CoachLLM` | per in-session turn (UUID) | in-session coach reliability |
 | `BriefIntentRun` | `AppIntents` | per invocation (UUID) | M7.1 |
 | `WorkoutSessionLifecycle` | `Logger` (phone side) / `Watch` (Watch side) | per session (UUID), begin at start, event at pause/resume, end at finish/discard | M3.4 (phone HK write), M8.1 (Watch session) |
 | `LiveWorkoutBuilderTeardown` | `Watch` | per session (UUID) | M8.1 |

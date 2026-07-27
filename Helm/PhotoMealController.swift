@@ -20,6 +20,7 @@ final class PhotoMealController {
     var phase: Phase = .idle
     var pickerItem: PhotosPickerItem?
     var showsCamera = false
+    var preferredBucket: MealBucket = .snacks
 
     var isBusy: Bool {
         switch phase {
@@ -68,7 +69,7 @@ final class PhotoMealController {
         await estimate(imageJPEGData: jpeg, preview: image)
     }
 
-    func confirm(estimate: MealEstimate, name: String) async {
+    func confirm(estimate: MealEstimate, name: String, bucket: MealBucket) async {
         guard let service else {
             phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
             return
@@ -76,7 +77,7 @@ final class PhotoMealController {
 
         phase = .saving
         do {
-            _ = try await service.confirm(estimate: estimate, name: name)
+            _ = try await service.confirm(estimate: estimate, name: name, bucket: bucket)
             HapticEngine.shared.play(.mealConfirmed)
             phase = .idle
             NutritionBootstrap.refreshNutrition()

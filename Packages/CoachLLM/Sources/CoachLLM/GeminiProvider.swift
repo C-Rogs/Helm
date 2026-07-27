@@ -163,7 +163,8 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         return CoachStructuredArtefact(
             payload: payload,
             schemaVersion: expectedSchema,
-            promptVersion: promptVersion
+            promptVersion: promptVersion,
+            requestID: requestID
         )
     }
 
@@ -179,8 +180,8 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             contextBlock: contextBlock,
             userMessage: userMessage,
             thread: thread,
-            expectedSchema: .sessionAdjustmentV1,
-            promptVersion: .sessionAdjustmentV1
+            expectedSchema: .sessionAdjustmentV2,
+            promptVersion: .sessionAdjustmentV2
         ) {
             try GeminiRequestBuilder.sessionAdjustmentBody(
                 systemInstructions: systemInstructions,

@@ -1,6 +1,19 @@
 import SwiftUI
 import UIKit
 
+public enum HelmNumpadMetrics {
+    public static let keyHeight: CGFloat = 52
+    public static let prominentKeyHeight: CGFloat = 48
+    public static let rowSpacing: CGFloat = 8
+
+    public static var preferredHeight: CGFloat {
+        let padding = HelmSpacing.sm * 2
+        let rowHeights = keyHeight * 4 + prominentKeyHeight
+        let spacing = rowSpacing * 4
+        return padding + rowHeights + spacing
+    }
+}
+
 public struct HelmNumpad: UIViewRepresentable {
     public let allowsDecimal: Bool
     public let onDigit: (String) -> Void
@@ -44,12 +57,16 @@ public final class HelmNumpadView: UIView {
 
     private let stack = UIStackView()
 
+    public override var intrinsicContentSize: CGSize {
+        CGSize(width: UIView.noIntrinsicMetric, height: HelmNumpadMetrics.preferredHeight)
+    }
+
     public init(allowsDecimal: Bool) {
         self.allowsDecimal = allowsDecimal
         super.init(frame: .zero)
         backgroundColor = UIColor(HelmColor.canvas)
         stack.axis = .vertical
-        stack.spacing = 8
+        stack.spacing = HelmNumpadMetrics.rowSpacing
         stack.translatesAutoresizingMaskIntoConstraints = false
         addSubview(stack)
         NSLayoutConstraint.activate([
@@ -111,7 +128,7 @@ public final class HelmNumpadView: UIView {
             ? UIColor(HelmColor.buttonPrimaryBackground)
             : UIColor(HelmColor.surfaceElevated)
         button.layer.cornerRadius = HelmRadius.sm
-        button.heightAnchor.constraint(equalToConstant: prominent ? 48 : 52).isActive = true
+        button.heightAnchor.constraint(equalToConstant: prominent ? HelmNumpadMetrics.prominentKeyHeight : HelmNumpadMetrics.keyHeight).isActive = true
         button.addAction(UIAction { [weak self] _ in
             guard let self else { return }
             switch title {
@@ -136,6 +153,6 @@ public final class HelmNumpadView: UIView {
         onBackspace: {},
         onNext: {}
     )
-    .frame(height: 320)
+    .frame(height: HelmNumpadMetrics.preferredHeight)
     .helmTheme()
 }

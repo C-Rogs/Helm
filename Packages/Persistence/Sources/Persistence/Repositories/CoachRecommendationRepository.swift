@@ -59,6 +59,16 @@ public struct CoachRecommendationRepository: Sendable {
         }
     }
 
+    public func markDismissed(id: String, at date: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: date)
+        try pool.write { db in
+            try db.execute(
+                sql: "UPDATE coach_recommendation SET dismissed_at = ? WHERE id = ?",
+                arguments: [now, id]
+            )
+        }
+    }
+
     public func fetch(id: String) throws -> StoredCoachRecommendation? {
         try pool.read { db in
             guard let row = try Row.fetchOne(

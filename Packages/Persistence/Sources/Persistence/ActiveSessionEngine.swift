@@ -45,9 +45,24 @@ public actor ActiveSessionEngine {
         return snapshot
     }
 
+    public func startFromImport(_ plan: ImportedWorkoutPlan) throws -> ActiveSessionSnapshot {
+        let startedAt = clock.now()
+        _ = try repository.startSessionFromImport(plan, startedAt: startedAt)
+        guard let snapshot = try repository.fetchActiveSnapshot(at: startedAt) else {
+            throw PersistenceError.recordNotFound("active session after import start")
+        }
+        return snapshot
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) throws -> ActiveSessionSnapshot {
         let now = clock.now()
         try repository.logSet(setID: setID, update: update, timestamp: now)
+        return try requireSnapshot(at: now)
+    }
+
+    public func updateSetType(setID: String, setType: SetType) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        try repository.updateSetType(setID: setID, setType: setType, timestamp: now)
         return try requireSnapshot(at: now)
     }
 
@@ -61,6 +76,20 @@ public actor ActiveSessionEngine {
             sessionExerciseID: sessionExerciseID,
             setID: setID,
             completedAt: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func uncompleteSet(sessionExerciseID: String, setID: String) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.uncompleteSet(
+            sessionID: snapshot.session.id,
+            sessionExerciseID: sessionExerciseID,
+            setID: setID,
+            timestamp: now
         )
         return try requireSnapshot(at: now)
     }
@@ -167,6 +196,59 @@ public actor ActiveSessionEngine {
         try repository.restoreExerciseLayout(
             sessionID: snapshot.session.id,
             exercises: exercises,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func updateSessionNotes(_ notes: String?) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.updateSessionNotes(
+            sessionID: snapshot.session.id,
+            notes: notes,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func reorderExercises(orderedSessionExerciseIDs: [String]) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.reorderExercises(
+            sessionID: snapshot.session.id,
+            orderedSessionExerciseIDs: orderedSessionExerciseIDs,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func adjustRestTimer(deltaSeconds: Int) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.adjustRestTimer(
+            sessionID: snapshot.session.id,
+            deltaSeconds: deltaSeconds,
+            timestamp: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
+    public func updateExerciseRest(sessionExerciseID: String, seconds: Int) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        try repository.updateExerciseRest(
+            sessionID: snapshot.session.id,
+            sessionExerciseID: sessionExerciseID,
+            seconds: seconds,
             timestamp: now
         )
         return try requireSnapshot(at: now)

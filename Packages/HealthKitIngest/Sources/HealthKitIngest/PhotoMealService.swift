@@ -46,6 +46,7 @@ public struct PhotoMealService: Sendable {
     public func confirm(
         estimate: MealEstimate,
         name: String,
+        bucket: MealBucket = .snacks,
         loggedAt: Date = Date(),
         mealID: String = UUID().uuidString
     ) async throws -> SavedMealSamples {
@@ -60,7 +61,7 @@ public struct PhotoMealService: Sendable {
 
         do {
             let saved = try await writer.saveMeal(request)
-            try localStore?.recordSavedMeal(request, saved: saved)
+            try localStore?.recordSavedMeal(request, saved: saved, bucket: bucket)
             photoMealLog.debug("Photo meal saved mealID=\(saved.mealID, privacy: .public)")
             return saved
         } catch {

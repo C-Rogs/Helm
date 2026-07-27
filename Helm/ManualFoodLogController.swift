@@ -26,6 +26,7 @@ final class ManualFoodLogController {
 
     var phase: Phase = .idle
     var isOnline = true
+    var preferredBucket: MealBucket = .snacks
 
     private let foodResolver: FoodResolver
     private let manualMealService: ManualMealService
@@ -68,20 +69,25 @@ final class ManualFoodLogController {
         isOnline = nowOnline
     }
 
-    func startSearch() {
-        phase = .flow(.search)
+    func start(_ mode: AddFoodEntryMode, bucket: MealBucket) {
+        preferredBucket = bucket
+        phase = .flow(mode)
     }
 
-    func startBarcode() {
-        phase = .flow(.barcode)
+    func startSearch(bucket: MealBucket = .snacks) {
+        start(.search, bucket: bucket)
     }
 
-    func startQuickAdd() {
-        phase = .flow(.quickAdd)
+    func startBarcode(bucket: MealBucket = .snacks) {
+        start(.barcode, bucket: bucket)
     }
 
-    func startAlcohol() {
-        phase = .flow(.alcohol)
+    func startQuickAdd(bucket: MealBucket = .snacks) {
+        start(.quickAdd, bucket: bucket)
+    }
+
+    func startAlcohol(bucket: MealBucket = .snacks) {
+        start(.alcohol, bucket: bucket)
     }
 
     func cancel() {
@@ -144,14 +150,17 @@ final class ManualFoodLogController {
     }
 
     func logQuickAdd(
-        kilocalories: Double,
+        macros: FoodPortionMacros,
         label: String?,
         bucket: MealBucket
     ) async {
         phase = .saving
         do {
             _ = try await manualMealService.logQuickAdd(
-                kilocalories: kilocalories,
+                kilocalories: macros.energyKcal,
+                proteinG: macros.proteinG,
+                carbsG: macros.carbsG,
+                fatG: macros.fatG,
                 label: label,
                 bucket: bucket
             )

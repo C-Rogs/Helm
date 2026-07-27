@@ -2,13 +2,69 @@ import Foundation
 
 public struct SessionAdjustmentPayload: Codable, Sendable, Equatable {
     public let schemaVersion: String
-    public let rationale: String
+    public let reply: String
+    public let rationale: String?
     public let operations: [SessionAdjustmentOperation]
 
-    public init(schemaVersion: String, rationale: String, operations: [SessionAdjustmentOperation]) {
+    /// v2 and unified initializer.
+    public init(
+        schemaVersion: String,
+        reply: String,
+        rationale: String? = nil,
+        operations: [SessionAdjustmentOperation]
+    ) {
         self.schemaVersion = schemaVersion
+        self.reply = reply
         self.rationale = rationale
         self.operations = operations
+    }
+
+    /// v1 compatibility: rationale doubles as chat reply.
+    public init(
+        schemaVersion: String,
+        rationale: String,
+        operations: [SessionAdjustmentOperation]
+    ) {
+        self.init(
+            schemaVersion: schemaVersion,
+            reply: rationale,
+            rationale: rationale,
+            operations: operations
+        )
+    }
+
+    public var bannerReason: String {
+        rationale ?? reply
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        operations = try container.decode([SessionAdjustmentOperation].self, forKey: .operations)
+
+        if let decodedReply = try container.decodeIfPresent(String.self, forKey: .reply) {
+            reply = decodedReply
+            rationale = try container.decodeIfPresent(String.self, forKey: .rationale)
+        } else {
+            let legacyRationale = try container.decode(String.self, forKey: .rationale)
+            reply = legacyRationale
+            rationale = legacyRationale
+        }
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(reply, forKey: .reply)
+        try container.encodeIfPresent(rationale, forKey: .rationale)
+        try container.encode(operations, forKey: .operations)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case reply
+        case rationale
+        case operations
     }
 }
 
@@ -17,6 +73,8 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         case swap
         case reorder
         case adjustSets
+        case adjustLoad
+        case adjustRPE
     }
 
     public let kind: Kind
@@ -26,6 +84,10 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
     public let orderedExerciseIDs: [String]?
     public let exerciseID: String?
     public let setDelta: Int?
+    public let massDeltaKg: Double?
+    public let targetMassKg: Double?
+    public let rpeDelta: Double?
+    public let targetRPE: Double?
 
     public init(
         kind: Kind,
@@ -34,7 +96,11 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         excludeExerciseIDs: [String]? = nil,
         orderedExerciseIDs: [String]? = nil,
         exerciseID: String? = nil,
-        setDelta: Int? = nil
+        setDelta: Int? = nil,
+        massDeltaKg: Double? = nil,
+        targetMassKg: Double? = nil,
+        rpeDelta: Double? = nil,
+        targetRPE: Double? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -43,6 +109,10 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         self.orderedExerciseIDs = orderedExerciseIDs
         self.exerciseID = exerciseID
         self.setDelta = setDelta
+        self.massDeltaKg = massDeltaKg
+        self.targetMassKg = targetMassKg
+        self.rpeDelta = rpeDelta
+        self.targetRPE = targetRPE
     }
 }
 

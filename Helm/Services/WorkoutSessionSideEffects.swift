@@ -23,10 +23,18 @@ final class WorkoutSessionSideEffects {
     func onSessionStarted(_ snapshot: ActiveSessionSnapshot) async {
         await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
-        liveActivity.start(
+        await liveActivity.start(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot)
         )
+    }
+
+    func reconcileLiveActivitiesOnLaunch(hasActiveSession: Bool) async {
+        await liveActivity.reconcileOrphanedActivities(hasActiveSession: hasActiveSession)
+    }
+
+    func endLiveActivitiesForTermination() {
+        liveActivity.endAllForTermination()
     }
 
     func onSessionUpdated(_ snapshot: ActiveSessionSnapshot, restRemainingSeconds: Int?) async {
@@ -37,7 +45,7 @@ final class WorkoutSessionSideEffects {
         )
     }
 
-    func onEnterBackground(snapshot: ActiveSessionSnapshot, now: Date = Date()) async {
+    func onEnterBackground(snapshot: ActiveSessionSnapshot, restTimerSoundEnabled: Bool = true, now: Date = Date()) async {
         guard let timer = snapshot.restTimer,
               timer.phase == .running,
               let endsAt = timer.endsAt else {
@@ -47,6 +55,7 @@ final class WorkoutSessionSideEffects {
             sessionID: snapshot.session.id,
             timerID: timer.id,
             endsAt: endsAt,
+            soundEnabled: restTimerSoundEnabled,
             now: now
         )
     }
@@ -82,7 +91,10 @@ final class WorkoutSessionSideEffects {
     }
 
     private func currentExerciseName(in snapshot: ActiveSessionSnapshot) -> String? {
-        guard let exercise = snapshot.session.exercises.last else { return nil }
+        let exercise = snapshot.session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        } ?? snapshot.session.exercises.last
+        guard let exercise else { return nil }
         return (try? persistence.exercises.fetchSummary(id: exercise.exerciseID))?.displayName
     }
 }

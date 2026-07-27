@@ -15,14 +15,7 @@ struct OfflineBarcodeQueueSheet: View {
                     .helmType(.body, color: HelmColor.fgSecondary)
 
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    Text("Meal bucket")
-                        .helmType(.label)
-                    Picker("Meal bucket", selection: $bucket) {
-                        ForEach(MealBucket.allCases, id: \.self) { mealBucket in
-                            Text(mealBucket.displayName).tag(mealBucket)
-                        }
-                    }
-                    .pickerStyle(.segmented)
+                    MealBucketPicker(selection: $bucket)
                 }
 
                 Spacer()

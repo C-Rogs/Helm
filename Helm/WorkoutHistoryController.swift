@@ -132,6 +132,19 @@ enum WorkoutPersonalRecordFormatter {
         }
     }
 
+    static func badgeText(for records: [DetectedPersonalRecord]) -> String {
+        if records.contains(where: { $0.metricType == .bestEstimated1RM }) {
+            return "e1RM PR"
+        }
+        if records.contains(where: { $0.metricType == .maxWeight }) {
+            return "Weight PR"
+        }
+        if records.contains(where: { $0.metricType == .maxRepsAtWeight }) {
+            return "Rep PR"
+        }
+        return "PR"
+    }
+
     private static func formatWeight(_ kilograms: Double) -> String {
         kilograms.truncatingRemainder(dividingBy: 1) == 0
             ? String(format: "%.0f kg", kilograms)

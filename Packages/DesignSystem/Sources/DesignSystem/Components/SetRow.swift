@@ -8,6 +8,9 @@ public enum SetRowField: Hashable, Sendable {
 
 public struct SetRow: View {
     public let setNumber: Int
+    public let setTypeLabel: String?
+    public let setTypeAccent: Color?
+    public let setIndexAccessibilityLabel: String?
     public let weight: String
     public let weightPlaceholder: String
     public let reps: String
@@ -17,7 +20,11 @@ public struct SetRow: View {
     public let previousValue: String?
     public let isCompleted: Bool
     public let activeField: SetRowField?
+    public let validationMessage: String?
+    public let shakeToken: Int
+    public let badgeText: String?
     public let onPreviousTap: (() -> Void)?
+    public let onSetIndexTap: (() -> Void)?
     public let onFieldTap: (SetRowField) -> Void
     public let onComplete: () -> Void
 
@@ -25,6 +32,9 @@ public struct SetRow: View {
 
     public init(
         setNumber: Int,
+        setTypeLabel: String? = nil,
+        setTypeAccent: Color? = nil,
+        setIndexAccessibilityLabel: String? = nil,
         weight: String,
         weightPlaceholder: String = "-",
         reps: String,
@@ -34,11 +44,18 @@ public struct SetRow: View {
         previousValue: String? = nil,
         isCompleted: Bool,
         activeField: SetRowField? = nil,
+        validationMessage: String? = nil,
+        shakeToken: Int = 0,
+        badgeText: String? = nil,
         onPreviousTap: (() -> Void)? = nil,
+        onSetIndexTap: (() -> Void)? = nil,
         onFieldTap: @escaping (SetRowField) -> Void,
         onComplete: @escaping () -> Void
     ) {
         self.setNumber = setNumber
+        self.setTypeLabel = setTypeLabel
+        self.setTypeAccent = setTypeAccent
+        self.setIndexAccessibilityLabel = setIndexAccessibilityLabel
         self.weight = weight
         self.weightPlaceholder = weightPlaceholder
         self.reps = reps
@@ -48,16 +65,30 @@ public struct SetRow: View {
         self.previousValue = previousValue
         self.isCompleted = isCompleted
         self.activeField = activeField
+        self.validationMessage = validationMessage
+        self.shakeToken = shakeToken
+        self.badgeText = badgeText
         self.onPreviousTap = onPreviousTap
+        self.onSetIndexTap = onSetIndexTap
         self.onFieldTap = onFieldTap
         self.onComplete = onComplete
     }
 
     public var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            rowContent
+            if let validationMessage {
+                Text(validationMessage)
+                    .helmType(.monoTag, color: HelmColor.destructive)
+                    .padding(.horizontal, HelmSpacing.xs)
+            }
+        }
+        .helmShake(trigger: shakeToken, reduceMotion: reduceMotion)
+    }
+
+    private var rowContent: some View {
         HStack(spacing: HelmSpacing.xs) {
-            Text("\(setNumber)")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
-                .frame(width: 22, alignment: .leading)
+            setIndexColumn
 
             previousColumn
 
@@ -66,13 +97,21 @@ public struct SetRow: View {
             valueField(title: "RPE", value: rpe, placeholder: rpePlaceholder, field: .rpe)
                 .frame(width: 56)
 
+            if let badgeText {
+                Text(badgeText)
+                    .helmType(.monoTag, color: HelmColor.accent)
+                    .padding(.horizontal, HelmSpacing.xxs)
+                    .padding(.vertical, 2)
+                    .background(HelmColor.accent.opacity(0.15), in: Capsule())
+            }
+
             Button(action: onComplete) {
                 HelmIconView(isCompleted ? .checkmarkFilled : .circle, context: .inline)
                     .foregroundStyle(isCompleted ? HelmColor.accent : HelmColor.fgMuted)
                     .frame(width: 44, height: 44)
             }
             .buttonStyle(.helmPressable)
-            .accessibilityLabel(isCompleted ? "Set completed" : "Complete set")
+            .accessibilityLabel(isCompleted ? "Mark set incomplete" : "Complete set")
         }
         .padding(.horizontal, HelmSpacing.xs)
         .padding(.vertical, HelmSpacing.xxs)
@@ -89,6 +128,30 @@ public struct SetRow: View {
         if isCompleted { return HelmColor.accent.opacity(0.55) }
         if activeField != nil { return HelmColor.fg }
         return HelmColor.hairline
+    }
+
+    @ViewBuilder
+    private var setIndexColumn: some View {
+        let label = setTypeLabel ?? "\(setNumber)"
+        let color = setTypeAccent ?? HelmColor.fgMuted
+        Group {
+            if let onSetIndexTap {
+                Button(action: onSetIndexTap) {
+                    Text(label)
+                        .helmType(.monoTag, color: color)
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel(resolvedSetIndexAccessibilityLabel)
+            } else {
+                Text(label)
+                    .helmType(.monoTag, color: color)
+            }
+        }
+        .frame(width: 22, alignment: .leading)
+    }
+
+    private var resolvedSetIndexAccessibilityLabel: String {
+        setIndexAccessibilityLabel ?? "Set \(setNumber), change set type"
     }
 
     @ViewBuilder
@@ -145,6 +208,25 @@ public struct SetRow: View {
         .buttonStyle(.helmPressable)
         .accessibilityLabel("\(title) \(value.isEmpty ? placeholder : value)")
     }
+}
+
+#Preview("Set row warmup") {
+    SetRow(
+        setNumber: 1,
+        setTypeLabel: "W",
+        setTypeAccent: HelmColor.fgSecondary,
+        weight: "40",
+        reps: "10",
+        rpe: "",
+        previousValue: "40×10",
+        isCompleted: false,
+        onPreviousTap: {},
+        onSetIndexTap: {},
+        onFieldTap: { _ in },
+        onComplete: {}
+    )
+    .padding()
+    .helmTheme()
 }
 
 #Preview("Set row active") {

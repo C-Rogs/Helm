@@ -14,9 +14,60 @@ extension WorkoutTextParseError: LocalizedError {
     }
 }
 
-/// Parses pasted Hevy-style day text into structured exercises and sets.
+/// Parses pasted Hevy-style day text and planner checklist prescriptions into structured exercises and sets.
 public enum WorkoutTextParser {
     private static let lbToKg = 0.453_592_37
+    private static let nearFailureDefaultReps = 12
+
+    private static let prescriptionExerciseHeaderPattern: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"^\[\s*\]\s*(.+)$"#)
+    }()
+
+    private static let prescriptionBulletPattern: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"^[•\-\*]\s*(.+)$"#)
+    }()
+
+    private static let prescriptionSetsPattern: NSRegularExpression = {
+        let pattern = #"(?i)^sets?:\s*(\d+)\s*x\s*(.+)$"#
+        return try! NSRegularExpression(pattern: pattern)
+    }()
+
+    private static let prescriptionTargetWeightPattern: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"(?i)^target\s+weight:\s*(.+)$"#)
+    }()
+
+    private static let prescriptionIntensityPattern: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"(?i)^intensity:\s*(.+)$"#)
+    }()
+
+    private static let prescriptionRestPattern: NSRegularExpression = {
+        try! NSRegularExpression(pattern: #"(?i)^rest:\s*(.+)$"#)
+    }()
+
+    private static let weightRangePattern: NSRegularExpression = {
+        let pattern = #"([\d.]+)\s*(kg|lb)\s*[–\-]\s*([\d.]+)\s*(kg|lb)?"#
+        return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+    }()
+
+    private static let singleWeightPattern: NSRegularExpression = {
+        let pattern = #"([\d.]+)\s*(kg|lb)"#
+        return try! NSRegularExpression(pattern: pattern, options: [.caseInsensitive])
+    }()
+
+    private static let repRangePattern: NSRegularExpression = {
+        let pattern = #"(\d+)\s*[–\-]\s*(\d+)"#
+        return try! NSRegularExpression(pattern: pattern)
+    }()
+
+    private static let rpeRangePattern: NSRegularExpression = {
+        let pattern = #"(?i)rpe\s+([\d.]+)\s*[–\-]\s*([\d.]+)"#
+        return try! NSRegularExpression(pattern: pattern)
+    }()
+
+    private static let singleRPEPattern: NSRegularExpression = {
+        let pattern = #"(?i)rpe\s+([\d.]+)"#
+        return try! NSRegularExpression(pattern: pattern)
+    }()
 
     private static let setLinePattern: NSRegularExpression = {
         let pattern = #"(?i)^(?:set\s+(\d+)\s*:\s*)?([\d.]+)\s*(kg|lb)(?:\s+dbs?)?\s*[x×]\s*(\d+)(?:\s*@\s*([\d.]+)(?:\s*rpe)?)?(?:\s*\(([^)]+)\))?\s*$"#
@@ -64,6 +115,16 @@ public enum WorkoutTextParser {
             return ParsedWorkout(title: "Workout", exercises: [], skippedLines: [])
         }
 
+        let lineContents = nonBlankLines.map(\.content)
+        if isPrescriptionFormat(lineContents),
+           let prescription = parsePrescription(lines: lineContents) {
+            return prescription
+        }
+
+        return parseHevyStyle(nonBlankLines: nonBlankLines)
+    }
+
+    private static func parseHevyStyle(nonBlankLines: [(index: Int, content: String)]) -> ParsedWorkout {
         var skippedLines: [String] = []
         var title: String?
         var exercises: [ParsedWorkoutExercise] = []
@@ -425,6 +486,294 @@ public enum WorkoutTextParser {
             return (sets, startingSetIndex + repsValues.count)
         }
 
+        return nil
+    }
+
+    // MARK: - Prescription / checklist format
+
+    private static func isPrescriptionFormat(_ lines: [String]) -> Bool {
+        var signals = 0
+        for line in lines {
+            if prescriptionExerciseTitle(from: line) != nil { signals += 1 }
+            if prescriptionBulletBody(from: line) != nil { signals += 1 }
+        }
+        return signals >= 2
+    }
+
+    private static func parsePrescription(lines: [String]) -> ParsedWorkout? {
+        var skippedLines: [String] = []
+        var title: String?
+        var exercises: [ParsedWorkoutExercise] = []
+        var lineIndex = 0
+
+        if let first = lines.first {
+            title = stripLeadingEmoji(from: first)
+            lineIndex = 1
+        }
+
+        while lineIndex < lines.count {
+            let line = lines[lineIndex]
+
+            if isPrescriptionPreamble(line) {
+                skippedLines.append(line)
+                lineIndex += 1
+                continue
+            }
+
+            guard let exerciseTitle = prescriptionExerciseTitle(from: line) else {
+                if prescriptionBulletBody(from: line) != nil {
+                    skippedLines.append(line)
+                }
+                lineIndex += 1
+                continue
+            }
+
+            lineIndex += 1
+            var targetWeightText: String?
+            var setsText: String?
+            var intensityText: String?
+            var restText: String?
+
+            while lineIndex < lines.count {
+                let nextLine = lines[lineIndex]
+                if prescriptionExerciseTitle(from: nextLine) != nil { break }
+                if isPrescriptionPreamble(nextLine) {
+                    skippedLines.append(nextLine)
+                    lineIndex += 1
+                    continue
+                }
+
+                guard let bulletBody = prescriptionBulletBody(from: nextLine) else {
+                    lineIndex += 1
+                    continue
+                }
+
+                let bodyRange = NSRange(bulletBody.startIndex..<bulletBody.endIndex, in: bulletBody)
+                if prescriptionTargetWeightPattern.firstMatch(in: bulletBody, range: bodyRange) != nil {
+                    targetWeightText = bulletBody
+                } else if prescriptionSetsPattern.firstMatch(in: bulletBody, range: bodyRange) != nil {
+                    setsText = bulletBody
+                } else if prescriptionIntensityPattern.firstMatch(in: bulletBody, range: bodyRange) != nil {
+                    intensityText = bulletBody
+                } else if prescriptionRestPattern.firstMatch(in: bulletBody, range: bodyRange) != nil {
+                    restText = bulletBody
+                } else {
+                    skippedLines.append(nextLine)
+                }
+                lineIndex += 1
+            }
+
+            guard let setsText,
+                  let parsedSets = parsePrescriptionSetsLine(setsText)
+            else {
+                skippedLines.append("[ ] \(exerciseTitle)")
+                continue
+            }
+
+            let weight = targetWeightText.flatMap(parsePrescriptionWeight)
+            let intensity = intensityText.flatMap(parsePrescriptionIntensity)
+            let restSeconds = restText.flatMap(parsePrescriptionRestLine)
+
+            var prescriptionNotes: [String] = []
+            if let weightNote = weight?.note { prescriptionNotes.append(weightNote) }
+            if let setsNote = parsedSets.note { prescriptionNotes.append(setsNote) }
+            if let intensityNote = intensity?.note { prescriptionNotes.append(intensityNote) }
+            let combinedNote = prescriptionNotes.isEmpty ? nil : prescriptionNotes.joined(separator: "; ")
+
+            let setType: SetType = weight?.isBodyweight == true ? .bodyweight : .normal
+            let sets = (0..<parsedSets.count).map { offset in
+                ParsedWorkoutSet(
+                    setIndex: offset + 1,
+                    setType: setType,
+                    mass: weight?.mass,
+                    reps: parsedSets.reps,
+                    rpe: intensity?.rpe,
+                    prescriptionNote: combinedNote
+                )
+            }
+
+            guard !sets.isEmpty else { continue }
+            exercises.append(
+                ParsedWorkoutExercise(
+                    exerciseTitle: exerciseTitle,
+                    sets: sets,
+                    restDurationSeconds: restSeconds
+                )
+            )
+        }
+
+        guard !exercises.isEmpty else { return nil }
+        return ParsedWorkout(
+            title: title ?? "Workout",
+            exercises: exercises,
+            skippedLines: skippedLines
+        )
+    }
+
+    private static func prescriptionExerciseTitle(from line: String) -> String? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionExerciseHeaderPattern.firstMatch(in: line, range: range),
+              let title = stringCapture(1, in: line, match: match)
+        else { return nil }
+        let trimmed = title.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func prescriptionBulletBody(from line: String) -> String? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionBulletPattern.firstMatch(in: line, range: range),
+              let body = stringCapture(1, in: line, match: match)
+        else { return nil }
+        let trimmed = body.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func isPrescriptionPreamble(_ line: String) -> Bool {
+        let lower = line.lowercased()
+        if lower.hasPrefix("bodyweight baseline:") { return true }
+        if lower.hasPrefix("warm-up:") || lower.hasPrefix("warmup:") { return true }
+        return false
+    }
+
+    private static func stripLeadingEmoji(from text: String) -> String {
+        var result = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        while let first = result.unicodeScalars.first,
+              !first.isASCII || !CharacterSet.alphanumerics.contains(first) {
+            result = String(result.dropFirst()).trimmingCharacters(in: .whitespacesAndNewlines)
+            if result.isEmpty { break }
+        }
+        return result.isEmpty ? text.trimmingCharacters(in: .whitespacesAndNewlines) : result
+    }
+
+    private static func parsePrescriptionSetsLine(_ line: String) -> (count: Int, reps: Int, note: String?)? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionSetsPattern.firstMatch(in: line, range: range),
+              let count = intCapture(1, in: line, match: match),
+              let repsPart = stringCapture(2, in: line, match: match),
+              count > 0
+        else { return nil }
+
+        let normalizedReps = repsPart.trimmingCharacters(in: .whitespacesAndNewlines)
+        let lower = normalizedReps.lowercased()
+        var note: String?
+
+        if lower.contains("near-failure") || lower.contains("near failure") {
+            if normalizedReps.contains("(") || normalizedReps.contains("+") {
+                note = normalizedReps
+            } else {
+                note = "to near-failure"
+            }
+            return (count, nearFailureDefaultReps, note)
+        }
+
+        if normalizedReps.contains("(") || normalizedReps.contains("+") {
+            if let parenStart = normalizedReps.firstIndex(of: "(") {
+                note = String(normalizedReps[parenStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            } else if let plusRange = normalizedReps.range(of: #"(\+"#, options: .regularExpression) {
+                note = String(normalizedReps[plusRange.lowerBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+        }
+
+        let repsToken = normalizedReps
+            .replacingOccurrences(of: #"(?i)\breps?\b"#, with: "", options: .regularExpression)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+
+        if let reps = parseMidpointInt(from: repsToken) ?? Int(repsToken) {
+            return (count, reps, note)
+        }
+        return nil
+    }
+
+    private static func parsePrescriptionWeight(_ line: String) -> (mass: Mass?, isBodyweight: Bool, note: String?)? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionTargetWeightPattern.firstMatch(in: line, range: range),
+              let body = stringCapture(1, in: line, match: match)
+        else { return nil }
+
+        let lower = body.lowercased()
+        if lower.contains("bodyweight") {
+            var note = body
+            if let bracketStart = body.firstIndex(of: "[") {
+                note = String(body[bracketStart...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
+            return (nil, true, note.isEmpty ? "Bodyweight" : note)
+        }
+
+        var noteParts: [String] = []
+        if lower.contains("per db") || lower.contains("per dumbbell") {
+            noteParts.append("per DB")
+        }
+        if let bracketStart = body.firstIndex(of: "[") {
+            noteParts.append(String(body[bracketStart...]).trimmingCharacters(in: .whitespacesAndNewlines))
+        }
+
+        let weightPart = body.split(separator: "[").first.map(String.init) ?? body
+        guard let kilograms = parseMidpointWeight(from: weightPart) else { return nil }
+        let note = noteParts.isEmpty ? nil : noteParts.joined(separator: "; ")
+        return (Mass(kilograms: kilograms), false, note)
+    }
+
+    private static func parsePrescriptionIntensity(_ line: String) -> (rpe: Double?, note: String?)? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionIntensityPattern.firstMatch(in: line, range: range),
+              let body = stringCapture(1, in: line, match: match)
+        else { return nil }
+
+        let bodyRange = NSRange(body.startIndex..<body.endIndex, in: body)
+        var rpe: Double?
+
+        if let rpeMatch = rpeRangePattern.firstMatch(in: body, range: bodyRange),
+           let low = doubleCapture(1, in: body, match: rpeMatch),
+           let high = doubleCapture(2, in: body, match: rpeMatch) {
+            rpe = (low + high) / 2
+        } else if let rpeMatch = singleRPEPattern.firstMatch(in: body, range: bodyRange),
+                  let value = doubleCapture(1, in: body, match: rpeMatch) {
+            rpe = value
+        }
+
+        var note: String?
+        if let parenStart = body.firstIndex(of: "("), let parenEnd = body.lastIndex(of: ")"), parenStart < parenEnd {
+            note = String(body[body.index(after: parenStart)..<parenEnd]).trimmingCharacters(in: .whitespacesAndNewlines)
+        }
+
+        return (rpe, note)
+    }
+
+    private static func parsePrescriptionRestLine(_ line: String) -> Int? {
+        let range = NSRange(line.startIndex..<line.endIndex, in: line)
+        guard let match = prescriptionRestPattern.firstMatch(in: line, range: range),
+              let body = stringCapture(1, in: line, match: match)
+        else { return nil }
+        return parseRestLine(body)
+    }
+
+    private static func parseMidpointWeight(from text: String) -> Double? {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        if let match = weightRangePattern.firstMatch(in: text, range: range),
+           let low = doubleCapture(1, in: text, match: match),
+           let high = doubleCapture(3, in: text, match: match) {
+            let lowUnit = stringCapture(2, in: text, match: match)?.lowercased() ?? "kg"
+            let highUnit = stringCapture(4, in: text, match: match)?.lowercased() ?? lowUnit
+            let lowKg = lowUnit == "lb" ? low * lbToKg : low
+            let highKg = highUnit == "lb" ? high * lbToKg : high
+            return (lowKg + highKg) / 2
+        }
+
+        if let match = singleWeightPattern.firstMatch(in: text, range: range),
+           let value = doubleCapture(1, in: text, match: match),
+           let unit = stringCapture(2, in: text, match: match)?.lowercased() {
+            return unit == "lb" ? value * lbToKg : value
+        }
+        return nil
+    }
+
+    private static func parseMidpointInt(from text: String) -> Int? {
+        let range = NSRange(text.startIndex..<text.endIndex, in: text)
+        if let match = repRangePattern.firstMatch(in: text, range: range),
+           let low = intCapture(1, in: text, match: match),
+           let high = intCapture(2, in: text, match: match) {
+            return (low + high) / 2
+        }
         return nil
     }
 

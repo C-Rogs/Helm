@@ -10,8 +10,14 @@ struct AddFoodFlowView: View {
     @State private var selectedProduct: ResolvedFoodProduct?
     @State private var pendingBarcode: String?
     @State private var barcodePhase: BarcodeScanPhase = .scanning
-    @State private var pendingQueueBucket: MealBucket = .snacks
+    @State private var pendingQueueBucket: MealBucket
     @Environment(\.dismiss) private var dismiss
+
+    init(controller: ManualFoodLogController, entryMode: AddFoodEntryMode) {
+        self.controller = controller
+        self.entryMode = entryMode
+        _pendingQueueBucket = State(initialValue: controller.preferredBucket)
+    }
 
     private enum BarcodeScanPhase: Equatable {
         case scanning
@@ -27,6 +33,7 @@ struct AddFoodFlowView: View {
                         product: selectedProduct,
                         defaults: controller.portionDefaults(for: selectedProduct),
                         isSaving: controller.isBusy,
+                        initialBucket: controller.preferredBucket,
                         onLog: { grams, servingLabel, bucket in
                             Task {
                                 await controller.logFood(

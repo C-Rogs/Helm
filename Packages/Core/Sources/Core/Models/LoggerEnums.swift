@@ -68,4 +68,23 @@ public enum ActiveWorkoutRecoveryState: String, Codable, CaseIterable, Sendable 
 
 public extension SetType {
     var isWarmup: Bool { self == .warmup }
+
+    /// Set types cycled when tapping the set index during logging (Hevy-style).
+    static let loggerCycle: [SetType] = [.normal, .warmup, .dropSet, .failure]
+
+    func cycledForLogger() -> SetType {
+        guard let index = Self.loggerCycle.firstIndex(of: self) else { return .normal }
+        return Self.loggerCycle[(index + 1) % Self.loggerCycle.count]
+    }
+
+    /// Short label shown in the set-index column; nil for normal working sets.
+    var loggerAbbreviation: String? {
+        switch self {
+        case .normal: nil
+        case .warmup: "W"
+        case .dropSet: "D"
+        case .failure: "F"
+        default: nil
+        }
+    }
 }

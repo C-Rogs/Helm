@@ -81,7 +81,8 @@ final class TrendsController {
 
             if appendHistory {
                 snapshot = TrendsSnapshot(
-                    trendWeight: mergeTrendWeight(snapshot.trendWeight, weightPage.points),
+                    bodyWeight: mergeTrendWeight(snapshot.bodyWeight, weightPage.bodyWeight),
+                    trendWeight: mergeTrendWeight(snapshot.trendWeight, weightPage.trendWeight),
                     targetWeightKg: targetKg,
                     readinessHistory: mergeReadiness(snapshot.readinessHistory, readinessPage.points),
                     muscleVolume: muscleVolume,
@@ -96,7 +97,8 @@ final class TrendsController {
                 )
             } else {
                 snapshot = TrendsSnapshot(
-                    trendWeight: weightPage.points,
+                    bodyWeight: weightPage.bodyWeight,
+                    trendWeight: weightPage.trendWeight,
                     targetWeightKg: targetKg,
                     readinessHistory: readinessPage.points,
                     muscleVolume: muscleVolume,

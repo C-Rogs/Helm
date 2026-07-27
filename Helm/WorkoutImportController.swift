@@ -11,16 +11,16 @@ final class WorkoutImportController {
     private let importService: WorkoutImportService
     private let resolver: WorkoutImportResolver
 
-    private(set) var parsedWorkout: ParsedWorkout?
     private(set) var resolutions: [WorkoutImportExerciseResolution] = []
     private(set) var manualMappings: [String: String] = [:]
 
     var pasteText = ""
     var workoutTitle = ""
-    var workoutDate = Date()
+    var saveAsTemplate = true
     var errorMessage: String?
     var isShowingPreview = false
-    var lastImportedPersonalRecords: [DetectedPersonalRecord] = []
+
+    private(set) var parsedWorkout: ParsedWorkout?
 
     init(persistence: PersistenceStore) {
         self.persistence = persistence
@@ -74,27 +74,26 @@ final class WorkoutImportController {
         (try? persistence.exercises.fetchSummary(id: exerciseID))?.displayName ?? exerciseID
     }
 
-    var canImport: Bool {
+    var canStartWorkout: Bool {
         resolutions.allSatisfy(\.isResolved) && !workoutTitle.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
-    func importToHistory(onComplete: () -> Void) {
-        guard let parsedWorkout else { return }
-        errorMessage = nil
+    func buildPlan() throws -> ImportedWorkoutPlan {
+        guard let parsedWorkout else {
+            throw WorkoutImportServiceError.unresolvedExercise("Workout")
+        }
 
         var mappings: [String: String] = [:]
         for resolution in resolutions {
             guard let exerciseID = resolution.exerciseID else {
-                errorMessage = "Map all exercises before importing."
-                return
+                throw WorkoutImportServiceError.unresolvedExercise(resolution.importedTitle)
             }
             mappings[resolution.importedTitle] = exerciseID
         }
 
         let title = workoutTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !title.isEmpty else {
-            errorMessage = "Workout title is required."
-            return
+            throw WorkoutImportServiceError.unresolvedExercise("Workout title")
         }
 
         let parsedWithTitle = ParsedWorkout(
@@ -103,26 +102,13 @@ final class WorkoutImportController {
             skippedLines: parsedWorkout.skippedLines
         )
 
-        do {
-            let result = try importService.importToHistory(
-                parsed: parsedWithTitle,
-                mappings: mappings,
-                startedAt: workoutDate,
-                endedAt: workoutDate
-            )
-            lastImportedPersonalRecords = result.personalRecords
-            WorkoutHapticCoordinator.playPersonalRecords(result.personalRecords)
-            reset()
-            onComplete()
-        } catch {
-            errorMessage = error.localizedDescription
-        }
+        return try importService.buildPlan(parsed: parsedWithTitle, mappings: mappings)
     }
 
     func reset() {
         pasteText = ""
         workoutTitle = ""
-        workoutDate = Date()
+        saveAsTemplate = true
         parsedWorkout = nil
         resolutions = []
         manualMappings = [:]

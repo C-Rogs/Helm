@@ -14,6 +14,10 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
         notificationDelegate.configure()
         return true
     }
+
+    func applicationWillTerminate(_ application: UIApplication) {
+        TrainBootstrap.sideEffects.endLiveActivitiesForTermination()
+    }
 }
 
 final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {

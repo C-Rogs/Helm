@@ -77,8 +77,8 @@ public enum HelmLayout {
     public static let progressTrackHeight: CGFloat = HelmSpacing.xs - 2
     public static let arcReadoutMaxWidth: CGFloat = HelmSpacing.lg * 10
     public static let trainScrollBottomInset: CGFloat = HelmSpacing.lg * 6 + HelmSpacing.sm
-    public static let trainScrollBottomInsetWithNumpad: CGFloat = HelmSpacing.xl * 9 + HelmSpacing.md
-    public static let numpadHeight: CGFloat = HelmSpacing.xl * 9 + HelmSpacing.md
+    public static let numpadHeight: CGFloat = HelmNumpadMetrics.preferredHeight
+    public static let trainScrollBottomInsetWithNumpad: CGFloat = numpadHeight + HelmSpacing.xl
     public static let compactArcWidth: CGFloat = HelmSpacing.sm * 10
     public static let compactEnergyArcWidth: CGFloat = HelmSpacing.md * 6
 }

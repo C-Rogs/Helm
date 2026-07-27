@@ -32,10 +32,19 @@ struct WatchCompanionView: View {
             if store.phase == .active || store.phase == .paused {
                 WatchActiveWorkoutView(store: store)
             } else if store.isHealthKitAuthorized {
-                ProgressView("Starting HR…")
-                    .task {
-                        await store.startWorkout()
-                    }
+                VStack(spacing: 6) {
+                    ProgressView("Starting HR…")
+                    Text("Waiting for heart rate…")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    Text("Wear your Watch and keep the Helm workout open on phone.")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
+                .task {
+                    await store.startWorkout()
+                }
             } else {
                 Text("HealthKit access required")
                     .font(.caption2)

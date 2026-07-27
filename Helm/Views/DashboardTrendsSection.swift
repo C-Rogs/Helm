@@ -39,6 +39,7 @@ struct DashboardTrendsSection: View {
         TrendWeightChartCard(
             points: controller.snapshot.trendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg,
+            mode: .dashboard,
             showsSparkline: true
         )
 

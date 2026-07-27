@@ -11,10 +11,9 @@ struct TrainView: View {
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    @State private var restRemainingSeconds: Int?
     @State private var isShowingImport = false
     @State private var didTrackInitialRestRemaining = false
-    @FocusState private var isCoachPromptFocused: Bool
+    @State private var restEditorExerciseID: String?
 
     var body: some View {
         NavigationStack {
@@ -28,14 +27,40 @@ struct TrainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                if controller.numpadTarget != nil {
-                    numpadOverlay
+                VStack(spacing: 0) {
+                    if controller.hasActiveSession,
+                       let endsAt = controller.snapshot?.restTimer?.endsAt,
+                       controller.isRestTimerRunning {
+                        RestTimerBanner(
+                            endsAt: endsAt,
+                            onSkip: {
+                                Task { await controller.skipRest() }
+                            },
+                            onAdjust: { delta in
+                                Task { await controller.adjustRestTimer(deltaSeconds: delta) }
+                            },
+                            onRemainingSecondsChange: { remaining in
+                                handleRestTimerTick(remaining)
+                            }
+                        )
+                        .padding(.horizontal, HelmSpacing.screenGutter)
+                        .padding(.bottom, HelmSpacing.xs)
+                    }
+
+                    if controller.numpadTarget != nil {
+                        numpadOverlay
+                    }
                 }
             }
             .helmScreenBackground()
             .navigationTitle("Train")
             .sheet(isPresented: $isShowingImport) {
-                WorkoutImportView(controller: importController)
+                WorkoutImportView(controller: importController) { plan, saveTemplate in
+                    await controller.startWorkout(fromImportedPlan: plan, saveTemplate: saveTemplate)
+                    if saveTemplate {
+                        history.refresh()
+                    }
+                }
             }
             .sheet(isPresented: $controller.isShowingExercisePicker) {
                 ExercisePickerView(
@@ -73,6 +98,45 @@ struct TrainView: View {
             } message: {
                 Text("All progress in this session will be lost.")
             }
+            .confirmationDialog(
+                "Remove exercise?",
+                isPresented: Binding(
+                    get: { controller.pendingDeleteExerciseID != nil },
+                    set: { if !$0 { controller.cancelRemoveExercise() } }
+                ),
+                titleVisibility: .visible
+            ) {
+                Button("Remove exercise", role: .destructive) {
+                    Task { await controller.confirmRemoveExercise() }
+                }
+                Button("Cancel", role: .cancel) {
+                    controller.cancelRemoveExercise()
+                }
+            } message: {
+                if let id = controller.pendingDeleteExerciseID {
+                    Text("Remove \(controller.displayName(forExerciseSessionID: id))? Logged sets for this exercise will be deleted.")
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { restEditorExerciseID != nil },
+                set: { if !$0 { restEditorExerciseID = nil } }
+            )) {
+                if let sessionExerciseID = restEditorExerciseID,
+                   let exercise = controller.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) {
+                    ExerciseRestEditorSheet(
+                        exerciseName: controller.displayName(for: exercise.exerciseID),
+                        currentSeconds: exercise.targetRestSeconds ?? 90
+                    ) { seconds in
+                        Task {
+                            await controller.updateExerciseRest(
+                                sessionExerciseID: sessionExerciseID,
+                                seconds: seconds
+                            )
+                            restEditorExerciseID = nil
+                        }
+                    }
+                }
+            }
             .alert(
                 "Workout error",
                 isPresented: Binding(
@@ -85,7 +149,7 @@ struct TrainView: View {
                 Text(controller.errorMessage ?? "")
             }
             .sheet(isPresented: $controller.isShowingCoachPrompt) {
-                coachPromptSheet
+                InSessionCoachSheet(controller: controller)
             }
             .sheet(isPresented: $controller.isShowingFinishSummary) {
                 NavigationStack {
@@ -173,13 +237,6 @@ struct TrainView: View {
             }
             .helmScreenPadding()
         }
-        .onChange(of: isShowingImport) { _, isPresented in
-            if !isPresented, !importController.lastImportedPersonalRecords.isEmpty {
-                history.refresh()
-                history.setRecentPersonalRecords(importController.lastImportedPersonalRecords)
-                importController.lastImportedPersonalRecords = []
-            }
-        }
     }
 
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
@@ -232,7 +289,7 @@ struct TrainView: View {
             }
             .buttonStyle(.helmSecondary)
 
-            Button("Import workout") {
+            Button("Paste workout plan") {
                 isShowingImport = true
             }
             .buttonStyle(.helmSecondary)
@@ -245,14 +302,14 @@ struct TrainView: View {
         VStack(spacing: HelmSpacing.lg) {
             HelmEmptyState(
                 title: "No active session",
-                message: "Start a workout or import a session from text.",
+                message: "Start a workout or paste a plan from your coach.",
                 icon: .train,
                 actionTitle: "Start workout"
             ) {
                 Task { await controller.startWorkout() }
             }
 
-            Button("Import workout") {
+            Button("Paste workout plan") {
                 isShowingImport = true
             }
             .buttonStyle(.helmSecondary)
@@ -289,17 +346,29 @@ struct TrainView: View {
             exercise: exercise,
             displayName: controller.displayName(for: exercise.exerciseID),
             targetSummary: controller.targetSummary(for: exercise.exerciseID),
+            restSeconds: exercise.targetRestSeconds ?? 90,
+            isReorderMode: controller.isReorderMode,
             previousLookup: { set in
                 controller.previousFor(set: set, exerciseID: exercise.exerciseID)
             },
             activeField: controller.numpadTarget,
+            validationMessage: controller.numpadValidationError,
+            shakeToken: controller.numpadShakeToken,
+            fieldDisplayText: { set, field in
+                controller.displayText(for: field, set: set, exerciseID: exercise.exerciseID)
+            },
+            badgeText: { setID in controller.badgeText(forSetID: setID) },
+            encouragementGlyph: { setID in controller.encouragementGlyph(forSetID: setID) },
+            showsPRCelebration: { setID in controller.showsPRCelebration(forSetID: setID) },
             onOpenField: { sessionExerciseID, field, set in
-                controller.openNumpad(
-                    setID: set.id,
-                    sessionExerciseID: sessionExerciseID,
-                    field: field,
-                    currentSet: set
-                )
+                Task {
+                    await controller.openNumpad(
+                        setID: set.id,
+                        sessionExerciseID: sessionExerciseID,
+                        field: field,
+                        currentSet: set
+                    )
+                }
             },
             onFillPrevious: { setID in
                 Task {
@@ -308,6 +377,9 @@ struct TrainView: View {
                         sessionExerciseID: exercise.id
                     )
                 }
+            },
+            onCycleSetType: { setID in
+                Task { await controller.cycleSetType(setID: setID) }
             },
             onCompleteSet: { sessionExerciseID, setID in
                 Task {
@@ -324,91 +396,140 @@ struct TrainView: View {
                 Task { await controller.removeSet(sessionExerciseID: exercise.id) }
             },
             onRemove: {
-                Task { await controller.removeExercise(sessionExerciseID: exercise.id) }
+                controller.requestRemoveExercise(sessionExerciseID: exercise.id)
+            },
+            onEnterReorderMode: {
+                controller.enterReorderMode()
+            },
+            onEditRest: {
+                restEditorExerciseID = exercise.id
+            },
+            onDropExercise: { sourceID in
+                controller.moveExerciseInDraft(from: sourceID, to: exercise.id)
             }
         )
     }
 
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
-        VStack(spacing: 0) {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                    if let banner = controller.adjustmentBanner {
-                        AdjustmentBanner(
-                            fromLabel: banner.fromLabel,
-                            toLabel: banner.toLabel,
-                            reason: banner.reason
-                        ) {
-                            Task { await controller.undoLastAdjustment() }
-                        }
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity
+        ZStack {
+            VStack(spacing: 0) {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        SessionHeartRateChip()
+
+                        if let banner = controller.adjustmentBanner {
+                            AdjustmentBanner(
+                                fromLabel: banner.fromLabel,
+                                toLabel: banner.toLabel,
+                                reason: banner.reason
+                            ) {
+                                Task { await controller.undoLastAdjustment() }
+                            }
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .opacity
+                                )
                             )
-                        )
-                    }
-
-                    if let remaining = restRemainingSeconds {
-                        RestTimerBanner(remainingSeconds: remaining) {
-                            Task { await controller.skipRest() }
                         }
-                    }
 
-                    if snapshot.session.exercises.isEmpty {
-                        Text("Add your first exercise to begin logging sets.")
-                            .helmType(.body, color: HelmColor.fgSecondary)
-                            .padding(.horizontal, HelmSpacing.xs)
-                    }
+                        SessionCoachNoteField(
+                            text: $controller.sessionNoteText,
+                            onTextChange: { controller.updateSessionNote($0) },
+                            onSaveToMemory: {
+                                Task { await controller.saveSessionNoteToMemory() }
+                            },
+                            savedConfirmation: controller.sessionNoteSavedConfirmation
+                        )
 
-                    ForEach(snapshot.session.exercises) { exercise in
-                        exerciseSection(for: exercise)
-                    }
+                        if snapshot.session.exercises.isEmpty {
+                            Text("Add your first exercise to begin logging sets.")
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .padding(.horizontal, HelmSpacing.xs)
+                        }
 
-                    Button {
-                        controller.isShowingExercisePicker = true
-                    } label: {
-                        Label("Add exercise", helmIcon: .plus, context: .inline)
-                    }
-                    .buttonStyle(.helmSecondary)
+                        ForEach(controller.exercisesForDisplay()) { exercise in
+                            exerciseSection(for: exercise)
+                        }
 
-                    Spacer(minLength: bottomContentInset)
+                        if !controller.isReorderMode {
+                            Button {
+                                controller.isShowingExercisePicker = true
+                            } label: {
+                                Label("Add exercise", helmIcon: .plus, context: .inline)
+                            }
+                            .buttonStyle(.helmSecondary)
+                        }
+
+                        if controller.numpadTarget == nil, !controller.isReorderMode {
+                            sessionActionBar
+                        }
+
+                        if controller.isReorderMode {
+                            reorderActionBar
+                        }
+
+                        Spacer(minLength: bottomContentInset)
+                    }
+                    .padding(HelmSpacing.screenGutter)
+                    .padding(.bottom, HelmSpacing.md)
                 }
-                .padding(HelmSpacing.screenGutter)
-                .padding(.bottom, HelmSpacing.md)
-            }
-            .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                value: controller.adjustmentBanner
-            )
+                .animation(
+                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                    value: controller.adjustmentBanner
+                )
 
-            if controller.numpadTarget == nil {
-                inSessionCoachBar
-                sessionActionBar
+                if controller.numpadTarget == nil, !controller.isReorderMode {
+                    inSessionCoachBar
+                }
             }
-        }
-        .timelineViewRestTimer(controller: controller, restRemainingSeconds: $restRemainingSeconds)
-        .onChange(of: restRemainingSeconds) { _, newValue in
-            guard didTrackInitialRestRemaining else {
-                didTrackInitialRestRemaining = true
-                controller.handleRestRemainingSecondsChange(newValue)
-                return
-            }
-            controller.handleRestRemainingSecondsChange(newValue)
-        }
-        .task(id: restRemainingSeconds) {
-            await controller.syncSideEffects()
+
+            HelmCoachApplyWave(isActive: $controller.showCoachApplyWave)
         }
     }
 
+    private func handleRestTimerTick(_ remaining: Int) {
+        let current = remaining > 0 ? remaining : nil
+        if !didTrackInitialRestRemaining {
+            didTrackInitialRestRemaining = true
+            controller.handleRestRemainingSecondsChange(current)
+            return
+        }
+        controller.handleRestRemainingSecondsChange(current)
+        if remaining == 0 {
+            Task { await controller.reconcileExpiredRestTimer() }
+        }
+    }
+
+    private var reorderActionBar: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            Button("Cancel") {
+                controller.cancelReorderMode()
+            }
+            .buttonStyle(.helmSecondary)
+
+            Button("Done") {
+                Task { await controller.commitReorder() }
+            }
+            .buttonStyle(.helmPrimary)
+        }
+        .padding(.bottom, HelmSpacing.sm)
+    }
+
     private var bottomContentInset: CGFloat {
-        controller.numpadTarget == nil ? 140 : 300
+        var inset = controller.numpadTarget == nil
+            ? HelmLayout.trainScrollBottomInset
+            : HelmLayout.trainScrollBottomInsetWithNumpad
+        if controller.isRestTimerRunning {
+            inset += 88
+        }
+        return inset
     }
 
     private var inSessionCoachBar: some View {
         AskCoachBar(
-            prompt: controller.isCoachAdjusting ? "Adjusting session" : "Ask coach",
-            isLoading: controller.isCoachAdjusting
+            prompt: controller.isCoachThinking ? "Coach thinking" : "Ask coach",
+            isLoading: controller.isCoachThinking
         ) {
             controller.isShowingCoachPrompt = true
         }
@@ -416,47 +537,12 @@ struct TrainView: View {
         .padding(.bottom, HelmSpacing.xs)
     }
 
-    private var coachPromptSheet: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                Text("Tell the coach what to change in this session.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-
-                TextField("Cable fly is taken", text: $controller.coachPromptText, axis: .vertical)
-                    .textFieldStyle(.roundedBorder)
-                    .lineLimit(3 ... 6)
-                    .focused($isCoachPromptFocused)
-
-                Spacer()
-            }
-            .padding(HelmSpacing.md)
-            .helmScreenBackground()
-            .navigationTitle("Ask coach")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        controller.isShowingCoachPrompt = false
-                    }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Send") {
-                        Task { await controller.submitCoachPrompt() }
-                    }
-                    .disabled(controller.coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
-                }
-            }
-            .onAppear {
-                isCoachPromptFocused = true
-            }
-        }
-        .presentationDetents([.medium])
-    }
-
     private var sessionActionBar: some View {
-        VStack(spacing: HelmSpacing.xs) {
+        VStack(spacing: HelmSpacing.sm) {
             Divider()
                 .overlay(HelmColor.hairline)
+                .padding(.top, HelmSpacing.md)
+
             HStack(spacing: HelmSpacing.sm) {
                 Button("Discard") {
                     controller.isShowingDiscardConfirmation = true
@@ -468,11 +554,8 @@ struct TrainView: View {
                 }
                 .buttonStyle(.helmPrimary)
             }
-            .padding(.horizontal, HelmSpacing.screenGutter)
-            .padding(.top, HelmSpacing.xs)
-            .padding(.bottom, HelmSpacing.sm)
-            .background(HelmColor.canvas)
         }
+        .padding(.bottom, HelmSpacing.sm)
     }
 
     private var numpadOverlay: some View {
@@ -490,39 +573,35 @@ struct TrainView: View {
                 onDigit: { controller.appendNumpadDigit($0) },
                 onBackspace: { controller.backspaceNumpad() },
                 onNext: {
-                    Task {
-                        await controller.applyNumpadInput()
-                        controller.numpadTarget = nil
-                    }
+                    Task { await controller.advanceNumpad() }
                 }
             )
-            .frame(height: 300)
+            .frame(height: HelmLayout.numpadHeight)
         }
         .background(HelmColor.canvas)
         .transition(.move(edge: .bottom))
     }
 }
 
-private struct RestTimerTimelineModifier: ViewModifier {
-    let controller: TrainSessionController
-    @Binding var restRemainingSeconds: Int?
+private struct SessionHeartRateChip: View {
+    @Bindable private var watchCoordinator = WatchReadinessBootstrap.coordinator
 
-    func body(content: Content) -> some View {
-        TimelineView(.periodic(from: .now, by: 1)) { context in
-            content
-                .task(id: context.date) {
-                    restRemainingSeconds = await controller.remainingRestSeconds(at: context.date)
-                }
+    var body: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            Image(systemName: "heart.fill")
+                .foregroundStyle(HelmColor.destructive)
+            if let bpm = watchCoordinator.latestLiveHeartRateBPM {
+                Text("\(bpm) BPM")
+                    .helmType(.monoTag, color: HelmColor.fg)
+            } else {
+                Text("Waiting for heart rate…")
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+            }
+            Spacer()
         }
-    }
-}
-
-private extension View {
-    func timelineViewRestTimer(
-        controller: TrainSessionController,
-        restRemainingSeconds: Binding<Int?>
-    ) -> some View {
-        modifier(RestTimerTimelineModifier(controller: controller, restRemainingSeconds: restRemainingSeconds))
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.vertical, HelmSpacing.xs)
+        .background(HelmColor.surfaceElevated, in: Capsule())
     }
 }
 
@@ -548,7 +627,7 @@ private extension View {
     ScrollView {
         HelmEmptyState(
             title: "No active session",
-            message: "Start a workout or import a session from text.",
+            message: "Start a workout or paste a plan from your coach.",
             icon: .train,
             actionTitle: "Start workout"
         ) {}

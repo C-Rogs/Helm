@@ -6,6 +6,19 @@ import PlanKit
 enum TrendChartFixtures {
     static let today = HelmDay(year: 2026, month: 7, day: 23)
 
+    static var bodyWeight: [TrendWeightPoint] {
+        let noise: [Double] = [0.3, -0.2, 0.5, -0.4, 0.1, -0.3, 0.2, -0.1, 0.4, -0.5, 0.15, -0.25, 0.35, -0.15]
+        return (0 ..< 14).map { offset in
+            let day = today.adding(days: -(13 - offset))
+            let weight = 78.4 + Double(offset) * 0.08 + noise[offset]
+            return TrendWeightPoint(
+                helmDay: day,
+                trendWeightKg: weight,
+                state: HelmState.readiness(score: 55 + Double(offset) * 2)
+            )
+        }
+    }
+
     static var trendWeight: [TrendWeightPoint] {
         (0 ..< 14).map { offset in
             let day = today.adding(days: -(13 - offset))
@@ -91,6 +104,7 @@ enum TrendChartFixtures {
 
     static var snapshot: TrendsSnapshot {
         TrendsSnapshot(
+            bodyWeight: bodyWeight,
             trendWeight: trendWeight,
             targetWeightKg: targetWeightKg,
             readinessHistory: readinessHistory,

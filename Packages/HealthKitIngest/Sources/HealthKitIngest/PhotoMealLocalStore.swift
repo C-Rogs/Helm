@@ -19,7 +19,11 @@ public struct PhotoMealLocalStore: Sendable {
         self.cutoff = cutoff
     }
 
-    public func recordSavedMeal(_ request: MealWriteRequest, saved: SavedMealSamples) throws {
+    public func recordSavedMeal(
+        _ request: MealWriteRequest,
+        saved: SavedMealSamples,
+        bucket: MealBucket = .snacks
+    ) throws {
         let mealID = UUID(uuidString: request.mealID) ?? saved.energy.id
         let helmDay = HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
         let meal = MealRecord(
@@ -27,6 +31,7 @@ public struct PhotoMealLocalStore: Sendable {
             helmDay: helmDay,
             name: request.name,
             loggedAt: request.loggedAt,
+            bucket: bucket,
             energy: Energy(kilocalories: request.caloriesKcal),
             proteinGrams: request.proteinG,
             carbohydrateGrams: request.carbsG,

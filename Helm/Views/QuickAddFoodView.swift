@@ -1,109 +1,117 @@
 import Core
 import DesignSystem
+import HealthKitIngest
 import SwiftUI
 
 struct QuickAddFoodView: View {
     @Bindable var controller: ManualFoodLogController
-    @Environment(\.dismiss) private var dismiss
 
     @State private var kilocaloriesText = ""
+    @State private var proteinText = ""
+    @State private var carbsText = ""
+    @State private var fatText = ""
     @State private var label = ""
-    @State private var bucket: MealBucket = .snacks
+    @State private var bucket: MealBucket
     @FocusState private var kilocaloriesFocused: Bool
 
-    private var kilocalories: Double? {
-        Double(kilocaloriesText.trimmingCharacters(in: .whitespacesAndNewlines))
+    init(controller: ManualFoodLogController) {
+        self.controller = controller
+        _bucket = State(initialValue: controller.preferredBucket)
+    }
+
+    private var macros: FoodPortionMacros? {
+        guard let kilocalories = parsedDouble(kilocaloriesText), kilocalories > 0 else { return nil }
+        return FoodPortionMacros(
+            energyKcal: kilocalories,
+            proteinG: parsedDouble(proteinText) ?? 0,
+            carbsG: parsedDouble(carbsText) ?? 0,
+            fatG: parsedDouble(fatText) ?? 0
+        )
     }
 
     private var isValid: Bool {
-        guard let kilocalories else { return false }
-        return kilocalories > 0
+        macros != nil
     }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                    Text("Log calories without macros. They count toward your TDEE trend.")
-                        .helmType(.body, color: HelmColor.fgMuted)
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                Text("Log calories and optional macros.")
+                    .helmType(.body, color: HelmColor.fgMuted)
 
-                    bucketPicker
+                bucketPicker
 
-                    VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                        Text("Calories")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                        TextField("kcal", text: $kilocaloriesText)
-                            .keyboardType(.decimalPad)
-                            .focused($kilocaloriesFocused)
-                            .helmType(.number)
-                            .padding(HelmSpacing.sm)
-                            .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-                    }
+                macroField(title: "Calories", text: $kilocaloriesText, unit: "kcal")
+                    .focused($kilocaloriesFocused)
 
-                    VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                        Text("Label (optional)")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                        TextField("e.g. Beer", text: $label)
-                            .helmType(.body)
-                            .padding(HelmSpacing.sm)
-                            .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-                    }
-                }
-                .padding(HelmSpacing.md)
-            }
-            .helmScreenBackground()
-            .navigationTitle("Quick add")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        controller.cancel()
-                    }
+                macroField(title: "Protein", text: $proteinText, unit: "g")
+                macroField(title: "Carbohydrates", text: $carbsText, unit: "g")
+                macroField(title: "Fat", text: $fatText, unit: "g")
+
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text("Label (optional)")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    TextField("e.g. Protein shake", text: $label)
+                        .helmType(.body)
+                        .padding(HelmSpacing.sm)
+                        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
                 }
             }
-            .safeAreaInset(edge: .bottom) {
-                Button("Log calories") {
-                    guard let kilocalories else { return }
-                    let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-                    Task {
-                        await controller.logQuickAdd(
-                            kilocalories: kilocalories,
-                            label: trimmedLabel.isEmpty ? nil : trimmedLabel,
-                            bucket: bucket
-                        )
-                    }
-                }
-                .buttonStyle(.helmPrimary)
-                .disabled(!isValid || controller.isBusy)
-                .padding(HelmSpacing.md)
-                .background(HelmColor.surface.opacity(0.96))
-            }
-            .onAppear {
-                kilocaloriesFocused = true
-            }
-            .onChange(of: controller.phase) { _, newPhase in
-                if case .idle = newPhase {
-                    dismiss()
+            .padding(HelmSpacing.md)
+        }
+        .helmScreenBackground()
+        .navigationTitle("Quick add")
+        .navigationBarTitleDisplayMode(.inline)
+        .safeAreaInset(edge: .bottom) {
+            Button("Log entry") {
+                guard let macros else { return }
+                let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+                Task {
+                    await controller.logQuickAdd(
+                        macros: macros,
+                        label: trimmedLabel.isEmpty ? nil : trimmedLabel,
+                        bucket: bucket
+                    )
                 }
             }
+            .buttonStyle(.helmPrimary)
+            .disabled(!isValid || controller.isBusy)
+            .padding(HelmSpacing.md)
+            .background(HelmColor.surface.opacity(0.96))
+        }
+        .onAppear {
+            kilocaloriesFocused = true
         }
     }
 
     private var bucketPicker: some View {
+        MealBucketPicker(selection: $bucket, labelStyle: .muted)
+    }
+
+    private func macroField(title: String, text: Binding<String>, unit: String) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Text("Meal")
+            Text(title)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
-            Picker("Meal", selection: $bucket) {
-                ForEach(MealBucket.allCases, id: \.self) { mealBucket in
-                    Text(mealBucket.displayName).tag(mealBucket)
-                }
+            HStack(spacing: HelmSpacing.sm) {
+                TextField(unit, text: text)
+                    .keyboardType(.decimalPad)
+                    .helmType(.number)
+                    .padding(HelmSpacing.sm)
+                    .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                Text(unit)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
             }
-            .pickerStyle(.segmented)
         }
+    }
+
+    private func parsedDouble(_ text: String) -> Double? {
+        Double(text.trimmingCharacters(in: .whitespacesAndNewlines))
     }
 }
 
 #Preview("Quick add") {
-    QuickAddFoodView(controller: ManualFoodLogController.previewController(online: true))
-        .helmTheme()
+    NavigationStack {
+        QuickAddFoodView(controller: ManualFoodLogController.previewController(online: true))
+    }
+    .helmTheme()
 }

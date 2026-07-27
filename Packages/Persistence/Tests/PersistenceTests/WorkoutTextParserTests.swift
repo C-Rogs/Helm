@@ -115,6 +115,100 @@ struct WorkoutTextParserTests {
         #expect(parsed.exercises[0].sets[0].restDurationSeconds == 60)
         #expect(parsed.exercises[0].restDurationSeconds == 90)
     }
+
+    private static let mondayPushPrescription = """
+        🏋️ Monday: Push (Shoulder & Tricep Focus)
+        Bodyweight Baseline: ~72.5 kg
+
+        Warm-up: 5 mins light cardio + shoulder rotations
+
+        [ ] Dumbbell Shoulder Press (Heavy)
+            • Target Weight: 18 kg – 22 kg per DB
+            • Sets: 3 x 8 reps
+            • Intensity: RPE 8–9 (1–2 reps in the tank)
+            • Rest: 2 mins
+
+        [ ] Incline Dumbbell Bench Press
+            • Target Weight: 20 kg – 26 kg per DB
+            • Sets: 3 x 8–10 reps
+            • Intensity: RPE 8
+            • Rest: 90 secs
+
+        [ ] Cable / DB Lateral Raises (Side Delts)
+            • Target Weight: 5 kg – 9 kg
+            • Sets: 3 x 12–15 reps
+            • Intensity: RPE 8–9 (Strict form, no swinging)
+            • Rest: 60 secs
+
+        [ ] Dips (or Deficit Push-Ups)
+            • Target Weight: Bodyweight (~72.5 kg) [Add +5–10 kg belt if easy]
+            • Sets: 3 x to near-failure
+            • Intensity: RPE 9
+            • Rest: 90 secs
+
+        [ ] Overhead Cable Tricep Extension (Long Head)
+            • Target Weight: 17.5 kg – 25 kg
+            • Sets: 3 x 10–12 reps
+            • Intensity: RPE 8
+            • Rest: 60 secs
+
+        [ ] Tricep Rope Pushdowns
+            • Target Weight: 20 kg – 27.5 kg
+            • Sets: 3 x 12–15 reps (+ Drop set on set 3)
+            • Intensity: RPE 9 (Full burn)
+            • Rest: 60 secs
+        """
+
+    @Test("planner checklist prescription parses exercises with range midpoints")
+    func prescriptionChecklistParses() {
+        let parsed = WorkoutTextParser.parse(Self.mondayPushPrescription)
+        #expect(parsed.title == "Monday: Push (Shoulder & Tricep Focus)")
+        #expect(parsed.exercises.count == 6)
+        #expect(parsed.skippedLines.contains("Bodyweight Baseline: ~72.5 kg"))
+        #expect(parsed.skippedLines.contains("Warm-up: 5 mins light cardio + shoulder rotations"))
+
+        let shoulderPress = parsed.exercises[0]
+        #expect(shoulderPress.exerciseTitle == "Dumbbell Shoulder Press (Heavy)")
+        #expect(shoulderPress.sets.count == 3)
+        #expect(shoulderPress.sets[0].reps == 8)
+        #expect(shoulderPress.sets[0].mass?.kilograms == 20)
+        #expect(shoulderPress.sets[0].rpe == 8.5)
+        #expect(shoulderPress.restDurationSeconds == 120)
+        #expect(shoulderPress.sets[0].prescriptionNote?.contains("per DB") == true)
+
+        let inclineBench = parsed.exercises[1]
+        #expect(inclineBench.sets[0].mass?.kilograms == 23)
+        #expect(inclineBench.sets[0].reps == 9)
+        #expect(inclineBench.sets[0].rpe == 8)
+        #expect(inclineBench.restDurationSeconds == 90)
+
+        let lateralRaises = parsed.exercises[2]
+        #expect(lateralRaises.sets[0].mass?.kilograms == 7)
+        #expect(lateralRaises.sets[0].reps == 13)
+        #expect(lateralRaises.sets[0].rpe == 8.5)
+
+        let dips = parsed.exercises[3]
+        #expect(dips.sets[0].setType == .bodyweight)
+        #expect(dips.sets[0].mass == nil)
+        #expect(dips.sets[0].reps == 12)
+        #expect(dips.sets[0].rpe == 9)
+
+        let tricepExtension = parsed.exercises[4]
+        #expect(tricepExtension.sets[0].mass?.kilograms == 21.25)
+        #expect(tricepExtension.sets[0].reps == 11)
+
+        let pushdowns = parsed.exercises[5]
+        #expect(pushdowns.sets[0].mass?.kilograms == 23.75)
+        #expect(pushdowns.sets[0].reps == 13)
+        #expect(pushdowns.sets[0].prescriptionNote?.contains("Drop set") == true)
+    }
+
+    @Test("hevy format still parses when checklist markers absent")
+    func hevyFormatUnchanged() {
+        let parsed = WorkoutTextParser.parse(Self.cleanSample)
+        #expect(parsed.exercises.count == 2)
+        #expect(parsed.exercises[0].sets.count == 3)
+    }
 }
 
 @Suite("Workout import")
@@ -232,5 +326,57 @@ struct WorkoutImportTests {
 
         let remapped = try store.exercises.resolveImportedTitle("Bench Press")
         #expect(remapped?.exerciseID == benchPressID)
+    }
+
+    @Test("build plan and start active session with planned sets")
+    func startImportedPlan() throws {
+        let store = try makeStore()
+        try seedExercises(in: store)
+
+        let parsed = WorkoutTextParser.parse("""
+            PUSH
+
+            Bench Press
+            Set 1: 80 kg x 8 @ 8 RPE
+            Set 2: 85 kg x 6 @ 8.5 RPE
+            Set 3: 85 kg x 6 @ 9 RPE
+            """)
+
+        let service = WorkoutImportService(
+            sessions: store.workoutSessions,
+            exercises: store.exercises,
+            personalRecords: store.personalRecords
+        )
+
+        let plan = try service.buildPlan(
+            parsed: parsed,
+            mappings: ["Bench Press": benchPressID]
+        )
+        #expect(plan.title == "PUSH")
+        #expect(plan.exercises.count == 1)
+        #expect(plan.exercises[0].sets.count == 3)
+        #expect(plan.exercises[0].sets[0].mass?.kilograms == 80)
+        #expect(plan.exercises[0].sets[0].rpe == 8)
+
+        let template = try service.buildTemplate(
+            parsed: parsed,
+            mappings: ["Bench Press": benchPressID]
+        )
+        #expect(template.name == "PUSH")
+        #expect(template.exercises.count == 1)
+        #expect(template.exercises[0].targetSetCount == 3)
+
+        let startedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        _ = try store.activeSessions.startSessionFromImport(plan, startedAt: startedAt)
+
+        let snapshot = try store.activeSessions.fetchActiveSnapshot(at: startedAt)
+        #expect(snapshot?.session.status == .active)
+        #expect(snapshot?.session.source == .importSource)
+        #expect(snapshot?.session.title == "PUSH")
+        #expect(snapshot?.session.exercises.count == 1)
+        #expect(snapshot?.session.exercises[0].sets.count == 3)
+        #expect(snapshot?.session.exercises[0].sets.allSatisfy { $0.status == .planned } == true)
+        #expect(snapshot?.session.exercises[0].sets[0].mass?.kilograms == 80)
+        #expect(snapshot?.session.exercises[0].sets[0].rpe == 8)
     }
 }

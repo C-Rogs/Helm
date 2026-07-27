@@ -20,7 +20,7 @@ struct GeminiRequestSchemaTests {
         let schema = GeminiRequestBuilder.sessionAdjustmentSchema()
         let properties = schema["properties"] as? [String: Any]
         let schemaVersion = properties?["schemaVersion"] as? [String: Any]
-        #expect(schemaVersion?["enum"] as? [String] == ["session_adjustment.v1"])
+        #expect(schemaVersion?["enum"] as? [String] == ["session_adjustment.v2"])
     }
 }
 
@@ -32,6 +32,31 @@ struct GeminiStructuredDecodeTests {
             return ""
         }
         return try String(contentsOf: url, encoding: .utf8)
+    }
+
+    @Test("session adjustment v2 advisory fixture decodes")
+    func sessionAdjustmentV2Advisory() throws {
+        let json = try fixtureText(named: "session_adjustment_v2_advisory")
+        let payload = try CoachStructuredOutputDecoder.decode(
+            SessionAdjustmentPayload.self,
+            from: json,
+            expectedSchema: .sessionAdjustmentV2
+        )
+        #expect(payload.operations.isEmpty)
+        #expect(payload.reply.contains("Stay at 80 kg"))
+    }
+
+    @Test("session adjustment v2 load fixture decodes")
+    func sessionAdjustmentV2Load() throws {
+        let json = try fixtureText(named: "session_adjustment_v2_load")
+        let payload = try CoachStructuredOutputDecoder.decode(
+            SessionAdjustmentPayload.self,
+            from: json,
+            expectedSchema: .sessionAdjustmentV2
+        )
+        #expect(payload.operations.count == 1)
+        #expect(payload.operations[0].kind == .adjustLoad)
+        #expect(payload.operations[0].massDeltaKg == 2.5)
     }
 
     @Test("session adjustment fixture decodes with schema stamp")
@@ -136,8 +161,9 @@ struct GeminiProviderFixtureTests {
             thread: .empty
         )
 
-        #expect(artefact.schemaVersion == .sessionAdjustmentV1)
-        #expect(artefact.promptVersion == .sessionAdjustmentV1)
+        #expect(artefact.schemaVersion == .sessionAdjustmentV2)
+        #expect(artefact.promptVersion == .sessionAdjustmentV2)
+        #expect(artefact.payload.reply.isEmpty == false)
         #expect(artefact.payload.operations.count == 1)
         #expect(client.lastGenerateRequestID != nil)
     }

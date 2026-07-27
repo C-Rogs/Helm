@@ -4,7 +4,7 @@
       "content": {
         "parts": [
           {
-            "text": "{\n  \"schemaVersion\": \"session_adjustment.v1\",\n  \"rationale\": \"Cable station is taken; swap to dumbbells.\",\n  \"operations\": [\n    {\n      \"kind\": \"swap\",\n      \"fromExerciseID\": \"cable-fly\",\n      \"toExerciseID\": \"db-fly\",\n      \"excludeExerciseIDs\": [\"pec-deck\"]\n    }\n  ]\n}\n"
+            "text": "{\n  \"schemaVersion\": \"session_adjustment.v2\",\n  \"reply\": \"Swap cable fly to dumbbell fly; the station is taken.\",\n  \"rationale\": \"Cable station is taken; swap to dumbbells.\",\n  \"operations\": [\n    {\n      \"kind\": \"swap\",\n      \"fromExerciseID\": \"cable-fly\",\n      \"toExerciseID\": \"db-fly\",\n      \"excludeExerciseIDs\": [\"pec-deck\"]\n    }\n  ]\n}\n"
           }
         ]
       }

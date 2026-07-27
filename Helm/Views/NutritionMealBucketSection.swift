@@ -5,9 +5,11 @@ import SwiftUI
 struct NutritionMealBucketSection: View {
     let bucket: MealBucket
     let meals: [LoggedMealDisplay]
+    var isPhotoAvailable = false
     var onCopyToToday: (() -> Void)?
     var onSaveTemplate: (() -> Void)?
     var onMealTap: ((LoggedMealDisplay) -> Void)?
+    var onAddFood: ((BucketFoodLogAction) -> Void)?
 
     var body: some View {
         Card {
@@ -47,19 +49,25 @@ struct NutritionMealBucketSection: View {
                     }
                 }
             }
+            .padding(.bottom, onAddFood == nil ? 0 : HelmSpacing.xl)
+        }
+        .overlay(alignment: .bottomTrailing) {
+            if let onAddFood {
+                BucketFoodLogMenu(
+                    bucket: bucket,
+                    isPhotoAvailable: isPhotoAvailable,
+                    onAction: onAddFood
+                )
+                .padding(HelmSpacing.sm)
+            }
         }
     }
 
     private var bucketEmptyState: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text("Nothing logged")
-                .helmType(.body, color: HelmColor.fgSecondary)
-            Text("Tap + to add \(bucket.displayName.lowercased()).")
-                .helmType(.body, color: HelmColor.fgMuted)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, HelmSpacing.xs)
-        .accessibilityElement(children: .combine)
+        Text("Nothing logged")
+            .helmType(.body, color: HelmColor.fgSecondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.vertical, HelmSpacing.xs)
     }
 
     @ViewBuilder

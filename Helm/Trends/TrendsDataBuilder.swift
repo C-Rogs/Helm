@@ -19,33 +19,37 @@ enum TrendsDataBuilder {
         offset: Int,
         targetWeightKg: Double?,
         calendar: Calendar = .current
-    ) throws -> (points: [TrendWeightPoint], canLoadMore: Bool) {
+    ) throws -> (bodyWeight: [TrendWeightPoint], trendWeight: [TrendWeightPoint], canLoadMore: Bool) {
         let samples = try store.bodyComposition.fetchDailyWeights(
             endingAt: endDay,
             limit: pageSize,
             offset: offset
         )
         guard !samples.isEmpty else {
-            return ([], false)
+            return ([], [], false)
         }
 
         let chronological = samples.reversed()
         var smoothed: Double?
-        let alpha = 1.0 - exp(log(0.5) / 10.0)
-        var points: [TrendWeightPoint] = []
+        let alpha = TrendWeightSmoother.alpha
+        var bodyWeight: [TrendWeightPoint] = []
+        var trendWeight: [TrendWeightPoint] = []
 
         for (day, massKg) in chronological {
+            let rawState = trendWeightState(trendKg: massKg, targetKg: targetWeightKg)
+            bodyWeight.append(TrendWeightPoint(helmDay: day, trendWeightKg: massKg, state: rawState))
+
             if let previous = smoothed {
                 smoothed = alpha * massKg + (1 - alpha) * previous
             } else {
                 smoothed = massKg
             }
             guard let trend = smoothed else { continue }
-            let state = trendWeightState(trendKg: trend, targetKg: targetWeightKg)
-            points.append(TrendWeightPoint(helmDay: day, trendWeightKg: trend, state: state))
+            let trendState = trendWeightState(trendKg: trend, targetKg: targetWeightKg)
+            trendWeight.append(TrendWeightPoint(helmDay: day, trendWeightKg: trend, state: trendState))
         }
 
-        return (points, samples.count == pageSize)
+        return (bodyWeight, trendWeight, samples.count == pageSize)
     }
 
     static func buildReadinessPage(

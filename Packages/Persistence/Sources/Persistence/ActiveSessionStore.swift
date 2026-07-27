@@ -33,12 +33,24 @@ public final class ActiveSessionStore {
         snapshot = try await engine.startFromPrescription(prescription)
     }
 
+    public func startFromImport(_ plan: ImportedWorkoutPlan) async throws {
+        snapshot = try await engine.startFromImport(plan)
+    }
+
     public func logSet(setID: String, update: SetLogUpdate) async throws {
         snapshot = try await engine.logSet(setID: setID, update: update)
     }
 
+    public func updateSetType(setID: String, setType: SetType) async throws {
+        snapshot = try await engine.updateSetType(setID: setID, setType: setType)
+    }
+
     public func completeSet(sessionExerciseID: String, setID: String) async throws {
         snapshot = try await engine.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
+    }
+
+    public func uncompleteSet(sessionExerciseID: String, setID: String) async throws {
+        snapshot = try await engine.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
     }
 
     public func addExercise(exerciseID: String, defaultSetCount: Int = 3, defaultRestSeconds: Int = 90) async throws {
@@ -91,5 +103,21 @@ public final class ActiveSessionStore {
 
     public func restoreExerciseLayout(_ exercises: [WorkoutSessionExerciseDraft]) async throws {
         snapshot = try await engine.restoreExerciseLayout(exercises)
+    }
+
+    public func updateSessionNotes(_ notes: String?) async throws {
+        snapshot = try await engine.updateSessionNotes(notes)
+    }
+
+    public func reorderExercises(orderedSessionExerciseIDs: [String]) async throws {
+        snapshot = try await engine.reorderExercises(orderedSessionExerciseIDs: orderedSessionExerciseIDs)
+    }
+
+    public func adjustRestTimer(deltaSeconds: Int) async throws {
+        snapshot = try await engine.adjustRestTimer(deltaSeconds: deltaSeconds)
+    }
+
+    public func updateExerciseRest(sessionExerciseID: String, seconds: Int) async throws {
+        snapshot = try await engine.updateExerciseRest(sessionExerciseID: sessionExerciseID, seconds: seconds)
     }
 }

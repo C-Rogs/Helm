@@ -44,7 +44,7 @@ struct TrendsView: View {
     @ViewBuilder
     private var trendCards: some View {
         TrendWeightChartCard(
-            points: controller.snapshot.trendWeight,
+            points: controller.snapshot.bodyWeight,
             targetWeightKg: controller.snapshot.targetWeightKg
         )
 

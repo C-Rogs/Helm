@@ -5,6 +5,7 @@ public enum PersistenceError: Error, Sendable, Equatable {
     case recordNotFound(String)
     case activeSessionAlreadyExists
     case noActiveSession
+    case invalidReorder
 }
 
 extension PersistenceError: LocalizedError {
@@ -18,6 +19,8 @@ extension PersistenceError: LocalizedError {
             return "An active workout session is already in progress"
         case .noActiveSession:
             return "No active workout session"
+        case .invalidReorder:
+            return "Exercise reorder request does not match the active session"
         }
     }
 }

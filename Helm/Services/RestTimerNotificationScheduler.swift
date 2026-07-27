@@ -38,6 +38,7 @@ final class RestTimerNotificationScheduler {
         sessionID: String,
         timerID: String,
         endsAt: Date,
+        soundEnabled: Bool = true,
         now: Date = Date()
     ) async {
         guard RestTimerNotificationPlanner.shouldScheduleRestEndNotification(endsAt: endsAt, now: now),
@@ -49,7 +50,7 @@ final class RestTimerNotificationScheduler {
         let content = UNMutableNotificationContent()
         content.title = "Rest complete"
         content.body = "Time for your next set."
-        content.sound = .default
+        content.sound = soundEnabled ? .default : nil
         content.categoryIdentifier = RestTimerNotificationPlanner.notificationCategoryID
         content.userInfo = [
             RestTimerNotificationPlanner.sessionIDKey: sessionID,

@@ -6,14 +6,26 @@ struct ExerciseSectionView: View {
     let exercise: WorkoutSessionExerciseDraft
     let displayName: String
     let targetSummary: String?
+    let restSeconds: Int
+    let isReorderMode: Bool
     let previousLookup: (SetEntryDraft) -> PreviousPerformance?
     let activeField: NumpadTarget?
+    let validationMessage: String?
+    let shakeToken: Int
+    let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
+    let badgeText: (String) -> String?
+    let encouragementGlyph: (String) -> EncouragementGlyph?
+    let showsPRCelebration: (String) -> Bool
     let onOpenField: (String, NumpadFieldKind, SetEntryDraft) -> Void
     let onFillPrevious: (String) -> Void
+    let onCycleSetType: (String) -> Void
     let onCompleteSet: (String, String) -> Void
     let onAddSet: () -> Void
     let onRemoveSet: () -> Void
     let onRemove: () -> Void
+    let onEnterReorderMode: () -> Void
+    let onEditRest: () -> Void
+    let onDropExercise: (String) -> Void
 
     private var completedSetCount: Int {
         exercise.sets.filter { $0.status == .completed }.count
@@ -24,56 +36,109 @@ struct ExerciseSectionView: View {
     }
 
     var body: some View {
+        Group {
+            if isReorderMode {
+                cardContent
+                    .draggable(exercise.id) {
+                        Text(displayName)
+                            .padding(HelmSpacing.sm)
+                            .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                    }
+                    .dropDestination(for: String.self) { items, _ in
+                        guard let sourceID = items.first else { return false }
+                        onDropExercise(sourceID)
+                        return true
+                    }
+            } else {
+                cardContent
+                    .contextMenu {
+                        Button("Reorder exercises") {
+                            onEnterReorderMode()
+                        }
+                    }
+            }
+        }
+    }
+
+    private var cardContent: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 HStack(alignment: .top, spacing: HelmSpacing.sm) {
-                    if let targetSummary {
-                        PrescriptionRow(label: displayName, target: targetSummary)
-                    } else {
-                        Text(displayName)
-                            .font(HelmTypography.headline)
-                            .foregroundStyle(HelmColor.textPrimary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    if isReorderMode {
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundStyle(HelmColor.fgMuted)
+                            .padding(.top, 4)
                     }
 
-                    Button(role: .destructive, action: onRemove) {
-                        HelmIconView(.trash, context: .inline)
-                            .foregroundStyle(HelmColor.destructive)
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        if let targetSummary {
+                            PrescriptionRow(label: displayName, target: targetSummary)
+                        } else {
+                            Text(displayName)
+                                .font(HelmTypography.headline)
+                                .foregroundStyle(HelmColor.textPrimary)
+                        }
+
+                        Button {
+                            onEditRest()
+                        } label: {
+                            Text("Rest \(restSeconds)s")
+                                .helmType(.monoTag, color: HelmColor.fgSecondary)
+                        }
+                        .buttonStyle(.plain)
+                        .disabled(isReorderMode)
                     }
-                    .buttonStyle(.helmPressable)
-                    .accessibilityLabel("Remove exercise")
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                    if !isReorderMode {
+                        Button(role: .destructive, action: onRemove) {
+                            HelmIconView(.trash, context: .inline)
+                                .foregroundStyle(HelmColor.destructive)
+                        }
+                        .buttonStyle(.helmPressable)
+                        .accessibilityLabel("Remove exercise")
+                    }
                 }
 
-                ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
-                    SetRowView(
-                        setEntry: set,
-                        setNumber: index + 1,
-                        previous: previousLookup(set),
-                        activeField: activeField,
-                        sessionExerciseID: exercise.id,
-                        onOpenField: { field in
-                            onOpenField(exercise.id, field, set)
-                        },
-                        onFillPrevious: { onFillPrevious(set.id) },
-                        onComplete: { onCompleteSet(exercise.id, set.id) }
-                    )
-                }
-
-                HStack(spacing: HelmSpacing.sm) {
-                    Button {
-                        onRemoveSet()
-                    } label: {
-                        Label("Remove set", systemImage: "minus.circle")
+                if !isReorderMode {
+                    ForEach(Array(exercise.sets.enumerated()), id: \.element.id) { index, set in
+                        SetRowView(
+                            setEntry: set,
+                            setNumber: index + 1,
+                            previous: previousLookup(set),
+                            activeField: activeField,
+                            validationMessage: validationMessage,
+                            shakeToken: shakeToken,
+                            badgeText: badgeText(set.id),
+                            encouragementGlyph: encouragementGlyph(set.id),
+                            showsPRCelebration: showsPRCelebration(set.id),
+                            fieldDisplayText: fieldDisplayText,
+                            sessionExerciseID: exercise.id,
+                            onOpenField: { field in
+                                onOpenField(exercise.id, field, set)
+                            },
+                            onFillPrevious: { onFillPrevious(set.id) },
+                            onCycleSetType: { onCycleSetType(set.id) },
+                            onComplete: { onCompleteSet(exercise.id, set.id) }
+                        )
                     }
-                    .buttonStyle(.helmSecondary)
-                    .disabled(!canRemoveSet)
 
-                    Button {
-                        onAddSet()
-                    } label: {
-                        Label("Add set", systemImage: "plus.circle")
+                    HStack(spacing: HelmSpacing.sm) {
+                        Button {
+                            onRemoveSet()
+                        } label: {
+                            Label("Remove set", systemImage: "minus.circle")
+                        }
+                        .buttonStyle(.helmSecondary)
+                        .disabled(!canRemoveSet)
+
+                        Button {
+                            onAddSet()
+                        } label: {
+                            Label("Add set", systemImage: "plus.circle")
+                        }
+                        .buttonStyle(.helmSecondary)
                     }
-                    .buttonStyle(.helmSecondary)
                 }
             }
         }
@@ -86,6 +151,7 @@ struct ExerciseSectionView: View {
             exerciseID: "bench",
             displayOrder: 0,
             exerciseMode: .weightReps,
+            targetRestSeconds: 90,
             sets: [
                 SetEntryDraft(setIndex: 0, status: .planned),
                 SetEntryDraft(setIndex: 1, status: .planned, mass: Mass(kilograms: 60), reps: 10)
@@ -93,24 +159,32 @@ struct ExerciseSectionView: View {
         ),
         displayName: "Bench Press (Barbell)",
         targetSummary: "3×8 · 80kg · RPE 8",
-        previousLookup: { set in
-            guard set.setIndex == 0 else { return nil }
-            return PreviousPerformance(
-                exerciseID: "bench",
-                setIndex: 0,
-                setType: .normal,
-                mass: Mass(kilograms: 57.5),
-                reps: 10,
-                completedAt: Date()
-            )
-        },
+        restSeconds: 90,
+        isReorderMode: false,
+        previousLookup: { _ in nil },
         activeField: nil,
+        validationMessage: nil,
+        shakeToken: 0,
+        fieldDisplayText: { set, field in
+            switch field {
+            case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""
+            case .reps: set.reps.map(String.init) ?? ""
+            case .rpe: set.rpe.map { String(format: "%.0f", $0) } ?? ""
+            }
+        },
+        badgeText: { _ in nil },
+        encouragementGlyph: { _ in nil },
+        showsPRCelebration: { _ in false },
         onOpenField: { _, _, _ in },
         onFillPrevious: { _ in },
+        onCycleSetType: { _ in },
         onCompleteSet: { _, _ in },
         onAddSet: {},
         onRemoveSet: {},
-        onRemove: {}
+        onRemove: {},
+        onEnterReorderMode: {},
+        onEditRest: {},
+        onDropExercise: { _ in }
     )
     .padding()
     .helmTheme()

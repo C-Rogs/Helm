@@ -20,10 +20,92 @@ public struct AppliedSessionAdjustment: Sendable, Equatable {
     }
 }
 
+public enum CoachProposalFailure: Sendable, Equatable {
+    case clamp(PrescriptionClampReason)
+    case exerciseNotFound(String)
+    case noDiff
+    case unresolvedExerciseIDs(ids: [String], sessionLabels: [String])
+
+    public var userMessage: String {
+        switch self {
+        case .clamp(let reason):
+            return clampMessage(reason)
+        case .exerciseNotFound(let id):
+            let label = ExerciseDisplayFormatter.humanizeID(id)
+            return "Couldn't apply that change: \(label) isn't in this session. Ask again using the exercise name from your plan."
+        case .noDiff:
+            return "Couldn't apply that change: your plan is already at that target."
+        case .unresolvedExerciseIDs(let ids, let sessionLabels):
+            let unmatched = ids.map { "\"\($0)\"" }.joined(separator: ", ")
+            let available = sessionLabels.joined(separator: ", ")
+            return "Couldn't apply that change: \(unmatched) doesn't match any exercise in this session. Available exercises: \(available)."
+        }
+    }
+
+    private func clampMessage(_ reason: PrescriptionClampReason) -> String {
+        switch reason {
+        case .setsBelowMinimum, .setsAboveMaximum:
+            return "Couldn't apply that change: set count is outside safe bounds."
+        case .loadMissing, .loadOutOfBounds:
+            return "Couldn't apply that change: load is outside safe bounds."
+        case .rpeOutOfBounds:
+            return "Couldn't apply that change: RPE is outside safe bounds."
+        case .swapTargetExcluded, .swapNoAlternativeAvailable:
+            return "Couldn't apply that change: no suitable swap is available."
+        case .invalidReorder:
+            return "Couldn't apply that change: exercise order didn't match this session."
+        case .exerciseNotFound:
+            return "Couldn't apply that change: exercise not found in this session."
+        }
+    }
+}
+
+public enum CoachProposalStatus: Sendable, Equatable {
+    case advisory
+    case confirmable
+    case failed(CoachProposalFailure)
+}
+
+public struct CoachSessionProposal: Sendable, Equatable {
+    public let reply: String
+    public let payload: SessionAdjustmentPayload
+    public let recommendationID: String
+    public let previewBanner: SessionAdjustmentBannerModel?
+    public let status: CoachProposalStatus
+    public let requestID: UUID?
+
+    public var requiresConfirmation: Bool {
+        if case .confirmable = status { return true }
+        return false
+    }
+
+    public var failureNotice: String? {
+        guard case .failed(let failure) = status else { return nil }
+        return failure.userMessage
+    }
+
+    public init(
+        reply: String,
+        payload: SessionAdjustmentPayload,
+        recommendationID: String,
+        previewBanner: SessionAdjustmentBannerModel?,
+        status: CoachProposalStatus,
+        requestID: UUID? = nil
+    ) {
+        self.reply = reply
+        self.payload = payload
+        self.recommendationID = recommendationID
+        self.previewBanner = previewBanner
+        self.status = status
+        self.requestID = requestID
+    }
+}
+
 public enum InSessionCoachError: Error, Sendable, Equatable {
     case noActiveSession
     case adjustmentRejected(PrescriptionClampReason)
     case providerUnavailable(String)
+    case noApplicableChange
 }
 
 public struct InSessionCoachService: Sendable {
@@ -33,14 +115,15 @@ public struct InSessionCoachService: Sendable {
         self.persistence = persistence
     }
 
-    public func askCoachInSession(
+    public func proposeAdjustment(
         userMessage: String,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>,
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay]
-    ) async throws -> AppliedSessionAdjustment {
+        contextDays: [CoachContextDay],
+        thread: CoachThreadState = .empty
+    ) async throws -> CoachSessionProposal {
         let availability = await provider.availability()
         guard availability.isAvailable else {
             let message: String
@@ -67,26 +150,98 @@ public struct InSessionCoachService: Sendable {
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: userMessage,
-            thread: .empty
+            thread: thread
         )
 
-        return try applyAdjustment(
+        let proposal = try buildProposal(
             payload: artefact.payload,
             snapshot: snapshot,
             excludedExerciseIDs: excludedExerciseIDs,
-            modelVersion: artefact.schemaVersion.rawValue
+            modelVersion: artefact.schemaVersion.rawValue,
+            requestID: artefact.requestID
         )
+
+        await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
+        return proposal
+    }
+
+    public func applyProposal(
+        _ proposal: CoachSessionProposal,
+        snapshot: ActiveSessionSnapshot,
+        excludedExerciseIDs: Set<String>
+    ) throws -> AppliedSessionAdjustment {
+        guard proposal.requiresConfirmation else {
+            throw InSessionCoachError.noApplicableChange
+        }
+
+        let applied = try applyAdjustment(
+            payload: proposal.payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs,
+            modelVersion: proposal.payload.schemaVersion,
+            recommendationID: proposal.recommendationID,
+            markActedOn: true
+        )
+
+        try persistence.coachRecommendations.markActedOn(id: proposal.recommendationID)
+        return applied
+    }
+
+    public func dismissProposal(recommendationID: String) throws {
+        try persistence.coachRecommendations.markDismissed(id: recommendationID)
+    }
+
+    @available(*, deprecated, message: "Use proposeAdjustment and applyProposal instead.")
+    public func askCoachInSession(
+        userMessage: String,
+        snapshot: ActiveSessionSnapshot,
+        excludedExerciseIDs: Set<String>,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        contextDays: [CoachContextDay]
+    ) async throws -> AppliedSessionAdjustment {
+        let proposal = try await proposeAdjustment(
+            userMessage: userMessage,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs,
+            provider: provider,
+            profile: profile,
+            contextDays: contextDays
+        )
+        guard proposal.requiresConfirmation else {
+            throw InSessionCoachError.noApplicableChange
+        }
+        return try applyProposal(proposal, snapshot: snapshot, excludedExerciseIDs: excludedExerciseIDs)
     }
 
     public func applyAdjustment(
         payload: SessionAdjustmentPayload,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>,
-        modelVersion: String? = CoachOutputSchemaVersion.sessionAdjustmentV1.rawValue
+        modelVersion: String? = CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+        recommendationID: String? = nil,
+        markActedOn: Bool = true
     ) throws -> AppliedSessionAdjustment {
+        let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
+        let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
+        let normalized = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: sessionExerciseIDs,
+            exerciseDisplayNames: displayNames,
+            persistence: persistence
+        )
+
+        guard normalized.unresolvedExerciseIDs.isEmpty else {
+            throw InSessionCoachError.noApplicableChange
+        }
+
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
         let (catalog, familiarExerciseIDs) = try loadCatalog()
-        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: payload)
+        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
+
+        guard !adjustment.operations.isEmpty else {
+            throw InSessionCoachError.noApplicableChange
+        }
 
         let result = PlanKit.apply(
             adjustment: adjustment,
@@ -100,6 +255,16 @@ public struct InSessionCoachService: Sendable {
         case .rejected(let reason):
             throw InSessionCoachError.adjustmentRejected(reason)
         case .applied(let adjusted):
+            guard PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted) else {
+                throw InSessionCoachError.noApplicableChange
+            }
+
+            let bannerLabels = try makeBanner(
+                payload: normalized.payload,
+                previous: currentPrescription,
+                adjusted: adjusted
+            )
+
             let previousExercises = snapshot.session.exercises
             try persistence.activeSessions.syncFromPrescription(
                 sessionID: snapshot.session.id,
@@ -107,31 +272,145 @@ public struct InSessionCoachService: Sendable {
                 timestamp: Date()
             )
 
-            let recommendation = try logRecommendation(
-                sessionID: snapshot.session.id,
-                payload: payload,
-                modelVersion: modelVersion
-            )
+            let resolvedRecommendationID: String
+            if let recommendationID {
+                resolvedRecommendationID = recommendationID
+            } else {
+                let stored = try logRecommendation(
+                    sessionID: snapshot.session.id,
+                    payload: normalized.payload,
+                    modelVersion: modelVersion,
+                    markActedOn: markActedOn
+                )
+                resolvedRecommendationID = stored.id
+            }
 
-            let banner = try makeBanner(
+            return AppliedSessionAdjustment(
+                banner: SessionAdjustmentBannerModel(
+                    fromLabel: bannerLabels.fromLabel,
+                    toLabel: bannerLabels.toLabel,
+                    reason: normalized.payload.bannerReason,
+                    recommendationID: resolvedRecommendationID
+                ),
+                previousExercises: previousExercises,
+                swappedExerciseIDs: swappedExerciseIDs(
+                    payload: normalized.payload,
+                    previous: currentPrescription,
+                    adjusted: adjusted
+                )
+            )
+        }
+    }
+
+    func buildProposal(
+        payload: SessionAdjustmentPayload,
+        snapshot: ActiveSessionSnapshot,
+        excludedExerciseIDs: Set<String>,
+        modelVersion: String?,
+        requestID: UUID? = nil
+    ) throws -> CoachSessionProposal {
+        let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
+        let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
+        let normalized = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: sessionExerciseIDs,
+            exerciseDisplayNames: displayNames,
+            persistence: persistence
+        )
+
+        let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : payload
+        let recommendation = try logRecommendation(
+            sessionID: snapshot.session.id,
+            payload: storedPayload,
+            modelVersion: modelVersion,
+            markActedOn: false
+        )
+
+        if payload.operations.isEmpty {
+            return CoachSessionProposal(
+                reply: payload.reply,
                 payload: payload,
+                recommendationID: recommendation.id,
+                previewBanner: nil,
+                status: .advisory,
+                requestID: requestID
+            )
+        }
+
+        if !normalized.unresolvedExerciseIDs.isEmpty {
+            let sessionLabels = snapshot.session.exercises
+                .sorted { $0.displayOrder < $1.displayOrder }
+                .map { exercise in
+                    ExerciseDisplayFormatter.friendlyName(
+                        for: exercise.exerciseID,
+                        displayNames: displayNames
+                    )
+                }
+            return CoachSessionProposal(
+                reply: payload.reply,
+                payload: normalized.payload,
+                recommendationID: recommendation.id,
+                previewBanner: nil,
+                status: .failed(.unresolvedExerciseIDs(
+                    ids: normalized.unresolvedExerciseIDs,
+                    sessionLabels: sessionLabels
+                )),
+                requestID: requestID
+            )
+        }
+
+        let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
+        let (catalog, familiarExerciseIDs) = try loadCatalog()
+        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
+
+        let result = PlanKit.apply(
+            adjustment: adjustment,
+            to: currentPrescription,
+            excluding: excludedExerciseIDs,
+            catalog: catalog,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+
+        switch result {
+        case .rejected(let reason):
+            return CoachSessionProposal(
+                reply: payload.reply,
+                payload: normalized.payload,
+                recommendationID: recommendation.id,
+                previewBanner: nil,
+                status: .failed(.clamp(reason)),
+                requestID: requestID
+            )
+        case .applied(let adjusted):
+            guard PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted) else {
+                return CoachSessionProposal(
+                    reply: payload.reply,
+                    payload: normalized.payload,
+                    recommendationID: recommendation.id,
+                    previewBanner: nil,
+                    status: .failed(.noDiff),
+                    requestID: requestID
+                )
+            }
+
+            let bannerLabels = try makeBanner(
+                payload: normalized.payload,
                 previous: currentPrescription,
                 adjusted: adjusted
             )
 
-            return AppliedSessionAdjustment(
-                banner: SessionAdjustmentBannerModel(
-                    fromLabel: banner.fromLabel,
-                    toLabel: banner.toLabel,
-                    reason: payload.rationale,
+            return CoachSessionProposal(
+                reply: payload.reply,
+                payload: normalized.payload,
+                recommendationID: recommendation.id,
+                previewBanner: SessionAdjustmentBannerModel(
+                    fromLabel: bannerLabels.fromLabel,
+                    toLabel: bannerLabels.toLabel,
+                    reason: normalized.payload.bannerReason,
                     recommendationID: recommendation.id
                 ),
-                previousExercises: previousExercises,
-                swappedExerciseIDs: swappedExerciseIDs(
-                    payload: payload,
-                    previous: currentPrescription,
-                    adjusted: adjusted
-                )
+                status: .confirmable,
+                requestID: requestID
             )
         }
     }
@@ -149,14 +428,39 @@ public struct InSessionCoachService: Sendable {
             turn: .followUp
         ).contextBlock
 
+        let exerciseIDs = snapshot.session.exercises.map(\.exerciseID)
+        let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
+
+        let allowedExerciseLines = snapshot.session.exercises
+            .sorted { $0.displayOrder < $1.displayOrder }
+            .map { exercise in
+                let label = ExerciseDisplayFormatter.friendlyName(
+                    for: exercise.exerciseID,
+                    displayNames: displayNames
+                )
+                return "- \(exercise.exerciseID) | \(label)"
+            }
+            .joined(separator: "\n")
+
         let exerciseLines = snapshot.session.exercises
             .sorted { $0.displayOrder < $1.displayOrder }
             .map { exercise in
                 let completed = exercise.sets.filter { $0.status == .completed }.count
-                return "\(exercise.exerciseID) (sets \(exercise.sets.count), completed \(completed))"
+                let label = ExerciseDisplayFormatter.friendlyName(
+                    for: exercise.exerciseID,
+                    displayNames: displayNames
+                )
+                return "- \(exercise.exerciseID) | \(label) (\(exercise.sets.count) sets, \(completed) completed)"
             }
             .joined(separator: "\n")
 
+        if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !notes.isEmpty {
+            context += "\n\nAthlete session note:\n\(notes)"
+        }
+        if !allowedExerciseLines.isEmpty {
+            context += "\n\nAllowed exercise IDs (use exact exerciseID in operations):\n\(allowedExerciseLines)"
+        }
         if !exerciseLines.isEmpty {
             context += "\n\nActive session exercises:\n\(exerciseLines)"
         }
@@ -166,7 +470,7 @@ public struct InSessionCoachService: Sendable {
         }
 
         return CoachPrompt(
-            systemInstructions: CoachSystemPrompt.sessionAdjustmentV1,
+            systemInstructions: CoachSystemPrompt.sessionAdjustmentV2,
             contextBlock: context,
             estimatedTokens: TokenBudget.estimateTokens(characterCount: context.count),
             includedDayCount: contextDays.count,
@@ -192,7 +496,8 @@ public struct InSessionCoachService: Sendable {
     private func logRecommendation(
         sessionID: String,
         payload: SessionAdjustmentPayload,
-        modelVersion: String?
+        modelVersion: String?,
+        markActedOn: Bool
     ) throws -> StoredCoachRecommendation {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -208,7 +513,9 @@ public struct InSessionCoachService: Sendable {
                 modelVersion: modelVersion
             )
         )
-        try persistence.coachRecommendations.markActedOn(id: stored.id)
+        if markActedOn {
+            try persistence.coachRecommendations.markActedOn(id: stored.id)
+        }
         return stored
     }
 
@@ -217,33 +524,63 @@ public struct InSessionCoachService: Sendable {
         previous: SessionPrescription,
         adjusted: SessionPrescription
     ) throws -> (fromLabel: String, toLabel: String) {
-        let names = try persistence.exercises.displayNames(
-            for: Array(Set(previous.exercises.map(\.exerciseID) + adjusted.exercises.map(\.exerciseID)))
-        )
+        let ids = Array(Set(previous.exercises.map(\.exerciseID) + adjusted.exercises.map(\.exerciseID)))
+        let names = try persistence.exercises.displayNames(for: ids)
 
-        if let operation = payload.operations.first {
-            switch operation.kind {
-            case .swap:
-                let fromID = operation.fromExerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
-                let toID = operation.toExerciseID
-                    ?? adjusted.exercises.first(where: { $0.exerciseID != fromID })?.exerciseID
-                    ?? adjusted.exercises.first?.exerciseID
-                    ?? fromID
-                return (
-                    names[fromID] ?? fromID,
-                    names[toID] ?? toID
-                )
-            case .reorder:
-                return ("Exercise order", "Updated")
-            case .adjustSets:
-                let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
-                let delta = operation.setDelta ?? 0
-                let sign = delta > 0 ? "+\(delta)" : "\(delta)"
-                return (names[exerciseID] ?? exerciseID, "\(sign) sets")
-            }
+        guard let operation = payload.operations.first else {
+            throw InSessionCoachError.noApplicableChange
         }
 
-        return ("Session", "Updated")
+        switch operation.kind {
+        case .swap:
+            let fromID = operation.fromExerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
+            let toID = operation.toExerciseID
+                ?? adjusted.exercises.first(where: { $0.exerciseID != fromID })?.exerciseID
+                ?? adjusted.exercises.first?.exerciseID
+                ?? fromID
+            return (
+                ExerciseDisplayFormatter.friendlyName(for: fromID, displayNames: names),
+                ExerciseDisplayFormatter.friendlyName(for: toID, displayNames: names)
+            )
+        case .reorder:
+            return ("Exercise order", "Updated")
+        case .adjustSets:
+            let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
+            let delta = operation.setDelta ?? 0
+            let sign = delta > 0 ? "+\(delta)" : "\(delta)"
+            return (
+                ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names),
+                "\(sign) sets"
+            )
+        case .adjustLoad:
+            let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
+            let toExercise = adjusted.exercises.first { $0.exerciseID == exerciseID }
+            let fromLabel = ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names)
+            guard let toMass = toExercise?.targetMass?.kilograms else {
+                throw InSessionCoachError.noApplicableChange
+            }
+            return (fromLabel, formatMass(toMass))
+        case .adjustRPE:
+            let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
+            let toExercise = adjusted.exercises.first { $0.exerciseID == exerciseID }
+            let fromLabel = ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names)
+            guard let toRPE = toExercise?.targetRPE else {
+                throw InSessionCoachError.noApplicableChange
+            }
+            return (fromLabel, formatRPE(toRPE))
+        }
+    }
+
+    private func formatMass(_ kilograms: Double) -> String {
+        kilograms.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f kg", kilograms)
+            : String(format: "%.1f kg", kilograms)
+    }
+
+    private func formatRPE(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "RPE %.0f", value)
+            : String(format: "RPE %.1f", value)
     }
 
     private func swappedExerciseIDs(
@@ -265,5 +602,30 @@ public struct InSessionCoachService: Sendable {
             }
         }
         return ids
+    }
+
+    private func logProposalDiagnostics(proposal: CoachSessionProposal, sessionID: String) async {
+        let statusLabel: String
+        let rejectReason: String?
+        switch proposal.status {
+        case .advisory:
+            statusLabel = "advisory"
+            rejectReason = nil
+        case .confirmable:
+            statusLabel = "confirmable"
+            rejectReason = nil
+        case .failed(let failure):
+            statusLabel = "failed"
+            rejectReason = String(describing: failure)
+        }
+
+        await InSessionCoachDiagnostics.recordPropose(
+            sessionID: sessionID,
+            requestID: proposal.requestID,
+            opCount: proposal.payload.operations.count,
+            status: statusLabel,
+            rejectReason: rejectReason,
+            schemaVersion: proposal.payload.schemaVersion
+        )
     }
 }

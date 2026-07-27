@@ -10,6 +10,7 @@ struct PhotoMealConfirmSheet: View {
 
     @State private var description: String
     @State private var lineItems: [MealLineItemEditor.EditableLineItem]
+    @State private var bucket: MealBucket
 
     private let lookup = NutritionLookup()
 
@@ -25,6 +26,7 @@ struct PhotoMealConfirmSheet: View {
         }
         _description = State(initialValue: initialEstimate.description)
         _lineItems = State(initialValue: editableItems)
+        _bucket = State(initialValue: controller.preferredBucket)
     }
 
     private var currentEstimate: MealEstimate {
@@ -60,6 +62,8 @@ struct PhotoMealConfirmSheet: View {
 
                     confidenceLabel
 
+                    MealBucketPicker(selection: $bucket)
+
                     MealLineItemEditor(description: $description, lineItems: $lineItems)
                 }
                 .padding(HelmSpacing.md)
@@ -78,7 +82,11 @@ struct PhotoMealConfirmSheet: View {
                 VStack(spacing: HelmSpacing.sm) {
                     Button("Log to Health") {
                         Task {
-                            await controller.confirm(estimate: currentEstimate, name: description)
+                            await controller.confirm(
+                                estimate: currentEstimate,
+                                name: description,
+                                bucket: bucket
+                            )
                         }
                     }
                     .buttonStyle(.helmPrimary)

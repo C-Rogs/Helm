@@ -40,7 +40,8 @@ final class MealEditController {
     func save(
         name: String,
         lineItems: [MealLineItemEditor.EditableLineItem],
-        quickAddKcal: Double?
+        quickAddMacros: FoodPortionMacros?,
+        bucket: MealBucket
     ) async {
         guard let display = selectedMeal else { return }
         let meal = display.meal
@@ -57,13 +58,8 @@ final class MealEditController {
             let records: [MealLineItemRecord]
             let macros: FoodPortionMacros
 
-            if lineItems.isEmpty, let quickAddKcal {
-                macros = FoodPortionMacros(
-                    energyKcal: quickAddKcal,
-                    proteinG: meal.proteinGrams ?? 0,
-                    carbsG: meal.carbohydrateGrams ?? 0,
-                    fatG: meal.fatGrams ?? 0
-                )
+            if lineItems.isEmpty, let quickAddMacros {
+                macros = quickAddMacros
                 records = []
             } else {
                 records = lineItems.enumerated().map { index, entry in
@@ -85,7 +81,7 @@ final class MealEditController {
             _ = try await manualMealService.updateMeal(
                 mealID: meal.id,
                 name: trimmedName,
-                bucket: meal.bucket,
+                bucket: bucket,
                 loggedAt: meal.loggedAt,
                 macros: macros,
                 lineItems: records,
@@ -110,7 +106,7 @@ final class MealEditController {
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
         } catch {
-            errorMessage = "Could not delete meal. Try again."
+            errorMessage = "Could not delete entry. Try again."
         }
     }
 

@@ -322,4 +322,70 @@ struct PrescriptionAdjustmentTests {
         }
         #expect(exerciseID == "incline_db_press")
     }
+
+    @Test("load adjustment applies within bounds")
+    func adjustLoadApplies() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: 2.5
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected load adjustment to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 82.5)
+    }
+
+    @Test("load adjustment rejects out-of-bounds delta")
+    func rejectsOutOfBoundsLoad() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: 20
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .rejected(.loadOutOfBounds(let exerciseID)) = result else {
+            Issue.record("Expected loadOutOfBounds rejection")
+            return
+        }
+        #expect(exerciseID == "bench_press")
+    }
+
+    @Test("RPE adjustment applies within bounds")
+    func adjustRPEApplies() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustRPE,
+                    exerciseID: "bench_press",
+                    rpeDelta: 0.5
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected RPE adjustment to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetRPE == 8.5)
+    }
 }
