@@ -38,6 +38,14 @@ targets:
     platform: iOS
     sources:
       - path: Helm
+        excludes:
+          - Resources
+      - path: Helm/Resources/ExerciseSeed
+        type: folder
+        buildPhase: resources
+      - path: Helm/Resources/MethodologySeed
+        type: folder
+        buildPhase: resources
       - path: HelmIntents
       - path: Shared/WatchSync
         name: WatchSync
@@ -51,6 +59,21 @@ targets:
           if [ ! -f Helm.xcodeproj/project.pbxproj ] || [ project.yml -nt Helm.xcodeproj/project.pbxproj ]; then
             xcodegen generate
           fi
+        basedOnDependencyAnalysis: false
+      - name: Verify bundled seed resources
+        script: |
+          set -e
+          cd "$SRCROOT"
+          for path in \
+            Helm/Resources/ExerciseSeed/exercises.json \
+            Helm/Resources/ExerciseSeed/free-exercise-db.json \
+            Helm/Resources/MethodologySeed/methodology.json
+          do
+            if [ ! -f "$path" ]; then
+              echo "error: Missing required resource: $path"
+              exit 1
+            fi
+          done
         basedOnDependencyAnalysis: false
       - name: Bundle Debug Secrets
         script: |
