@@ -79,6 +79,7 @@ public enum BriefPromptBuilder {
         lines.append("nutrition_carbs_g=\(nutrition.carbohydrateGrams)")
         lines.append("nutrition_fat_g=\(nutrition.fatGrams)")
         lines.append("nutrition_day_type=\(nutrition.dayType)")
+        lines.append("intake_logging_complete=\(nutrition.intakeLoggingComplete)")
 
         return lines.joined(separator: "\n")
     }

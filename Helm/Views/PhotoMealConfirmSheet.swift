@@ -65,6 +65,17 @@ struct PhotoMealConfirmSheet: View {
                     MealBucketPicker(selection: $bucket)
 
                     MealLineItemEditor(description: $description, lineItems: $lineItems)
+
+                    if !controller.userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        Text("Context: \(controller.userNotes)")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                    }
+
+                    Button("Re-estimate with context") {
+                        Task { await controller.reestimateFromConfirm() }
+                    }
+                    .buttonStyle(.helmSecondary)
+                    .disabled(controller.isBusy)
                 }
                 .padding(HelmSpacing.md)
             }

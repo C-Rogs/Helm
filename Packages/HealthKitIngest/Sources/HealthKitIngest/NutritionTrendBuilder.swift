@@ -15,12 +15,17 @@ enum NutritionTrendBuilder {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let nutritionDays = try store.nutrition.fetchRange(from: startDay, through: endDay)
         let nutritionByDay = Dictionary(uniqueKeysWithValues: nutritionDays.map { ($0.helmDay, $0) })
+        let completeDays = try store.nutritionLogStatus.completeDays(from: startDay, through: endDay)
 
         var inputs: [NutritionTrendDayInput] = []
         var day = startDay
         while day <= endDay {
             let bodyMassKg = try store.bodyComposition.fetchLatest(onOrBefore: day, limit: 1).first?.mass.kilograms
-            let loggedIntakeKcal = nutritionByDay[day]?.totalEnergy?.kilocalories
+            let loggedIntakeKcal: Double? = if completeDays.contains(day) {
+                nutritionByDay[day]?.totalEnergy?.kilocalories
+            } else {
+                nil
+            }
             inputs.append(
                 NutritionTrendDayInput(
                     helmDay: day,

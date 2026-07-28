@@ -16,28 +16,29 @@ struct NutritionView: View {
         portionPreferenceLoader: { ref in
             try PersistenceBootstrap.persistenceStore.foodLog.fetchPortionPreference(ref: ref)
         },
-        onLogged: {
-            NutritionBootstrap.refreshNutrition()
+        onLogged: { helmDay in
+            NutritionBootstrap.refreshNutrition(for: helmDay)
         }
     )
     @State private var mealsStore = NutritionDayMealsStore()
     @State private var mealActionsController = NutritionMealActionsController(
         mealRepeatService: NutritionBootstrap.mealRepeatService,
         onChanged: {
-            NutritionBootstrap.refreshNutrition()
+            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
         }
     )
     @State private var mealEditController = MealEditController(
         manualMealService: NutritionBootstrap.manualMealService,
         onChanged: {
-            NutritionBootstrap.refreshNutrition()
+            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
         }
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
+    @State private var isDayCompleteSaving = false
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
-    @State private var currentHelmDay: HelmDay?
+    @State private var selectedHelmDay: HelmDay?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -54,7 +55,7 @@ struct NutritionView: View {
             }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
-                    await nutritionService.refresh(prescriptionSummary: newState.summary)
+                    await refreshSelectedDay(prescriptionSummary: newState.summary)
                 }
             }
             .onChange(of: nutritionService.state) { _, newState in
@@ -75,7 +76,7 @@ struct NutritionView: View {
                 mealEditController: mealEditController,
                 showsPhotoOptions: $showsPhotoOptions,
                 showsTemplates: $showsTemplates,
-                currentHelmDay: currentHelmDay,
+                currentHelmDay: selectedHelmDay,
                 onMealsChanged: {
                     reloadMeals(from: nutritionService.state)
                 }
@@ -90,6 +91,16 @@ struct NutritionView: View {
                     case .loading:
                         loadingCard
                     case let .ready(snapshot):
+                        if let selectedHelmDay, let todayHelmDay {
+                            NutritionDiaryHeader(
+                                selectedDay: selectedHelmDay,
+                                today: todayHelmDay,
+                                onSelectDay: { day in
+                                    Task { await selectDay(day) }
+                                }
+                            )
+                        }
+
                         NutritionDaySummaryCard(
                             snapshot: snapshot,
                             showTrend: false,
@@ -104,7 +115,18 @@ struct NutritionView: View {
                             foodLogTipCard
                         }
 
-                        mealBucketsSection
+                        mealBucketsSection(snapshot: snapshot)
+
+                        NutritionDayCompleteSection(
+                            loggingComplete: snapshot.loggingComplete,
+                            isSaving: isDayCompleteSaving,
+                            onMarkComplete: {
+                                Task { await markDayComplete() }
+                            },
+                            onReopen: {
+                                Task { await reopenDay() }
+                            }
+                        )
                     }
                 }
                 .helmScreenPadding()
@@ -123,9 +145,9 @@ struct NutritionView: View {
                 }
                 Button("Copy yesterday's meals") {
                     Task {
-                        guard let today = currentHelmDay else { return }
-                        await mealActionsController.copyYesterdayToToday(today: today)
-                        reloadMeals(from: nutritionService.state)
+                        guard let day = selectedHelmDay else { return }
+                        await mealActionsController.copyYesterdayToToday(today: day)
+                        await refreshSelectedDay()
                     }
                 }
             } label: {
@@ -151,20 +173,81 @@ struct NutritionView: View {
     private func refreshTargets() async {
         isRefreshing = true
         defer { isRefreshing = false }
-        await nutritionService.refresh(
-            prescriptionSummary: prescriptionService.state.summary
-        )
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        if selectedHelmDay == nil {
+            selectedHelmDay = today
+        }
+        syncLoggingContext()
+        await refreshSelectedDay()
+    }
+
+    @MainActor
+    private func refreshSelectedDay(
+        prescriptionSummary: PrescribedSessionSummary? = PlanBootstrap.prescriptionService.state.summary
+    ) async {
+        guard let day = selectedHelmDay else { return }
+        NutritionBootstrap.lastViewedHelmDay = day
+        await nutritionService.refresh(for: day, prescriptionSummary: prescriptionSummary)
         reloadMeals(from: nutritionService.state)
+    }
+
+    @MainActor
+    private func selectDay(_ day: HelmDay) async {
+        selectedHelmDay = day
+        syncLoggingContext()
+        await refreshSelectedDay()
+    }
+
+    private var todayHelmDay: HelmDay? {
+        HelmDay.day(for: Date(), calendar: .current)
+    }
+
+    private func syncLoggingContext() {
+        let today = todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        manualFoodLogController.todayHelmDay = today
+        manualFoodLogController.loggingHelmDay = selectedHelmDay ?? today
+        photoMealController.todayHelmDay = today
+        photoMealController.loggingHelmDay = selectedHelmDay ?? today
+    }
+
+    @MainActor
+    private func markDayComplete() async {
+        guard let day = selectedHelmDay else { return }
+        isDayCompleteSaving = true
+        defer { isDayCompleteSaving = false }
+        do {
+            try PersistenceBootstrap.persistenceStore.nutritionLogStatus.markComplete(helmDay: day)
+            HapticEngine.shared.play(.mealConfirmed)
+            await refreshSelectedDay()
+        } catch {
+            // Non-fatal; refresh will show current state.
+        }
+    }
+
+    @MainActor
+    private func reopenDay() async {
+        guard let day = selectedHelmDay else { return }
+        isDayCompleteSaving = true
+        defer { isDayCompleteSaving = false }
+        do {
+            try PersistenceBootstrap.persistenceStore.nutritionLogStatus.clearComplete(helmDay: day)
+            await refreshSelectedDay()
+        } catch {
+            // Non-fatal.
+        }
     }
 
     private func reloadMeals(from state: NutritionDashboardState) {
         guard case let .ready(snapshot) = state else { return }
-        currentHelmDay = snapshot.helmDay
+        if selectedHelmDay == nil {
+            selectedHelmDay = snapshot.helmDay
+            syncLoggingContext()
+        }
         mealsStore.reload(for: snapshot.helmDay)
     }
 
     @ViewBuilder
-    private var mealBucketsSection: some View {
+    private func mealBucketsSection(snapshot: NutritionDaySnapshot) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             HelmSectionEyebrow("MEALS", showsArcMark: true)
 
@@ -175,9 +258,9 @@ struct NutritionView: View {
                     isPhotoAvailable: photoMealController.isAvailable,
                     onCopyToToday: {
                         Task {
-                            guard let today = currentHelmDay else { return }
-                            await mealActionsController.copyBucketToToday(bucket: bucket, today: today)
-                            reloadMeals(from: nutritionService.state)
+                            guard let day = selectedHelmDay else { return }
+                            await mealActionsController.copyBucketToToday(bucket: bucket, today: day)
+                            await refreshSelectedDay()
                         }
                     },
                     onSaveTemplate: {
@@ -195,6 +278,9 @@ struct NutritionView: View {
     }
 
     private func handleBucketAddFood(_ action: BucketFoodLogAction, bucket: MealBucket) {
+        syncLoggingContext()
+        manualFoodLogController.preferredBucket = bucket
+        photoMealController.preferredBucket = bucket
         switch action {
         case .search:
             manualFoodLogController.start(.search, bucket: bucket)
@@ -274,6 +360,10 @@ private struct NutritionLoggingSheets: ViewModifier {
                     pickerItem: Binding(
                         get: { photoMealController.pickerItem },
                         set: { photoMealController.pickerItem = $0 }
+                    ),
+                    userNotes: Binding(
+                        get: { photoMealController.userNotes },
+                        set: { photoMealController.userNotes = $0 }
                     ),
                     onCamera: { photoMealController.showsCamera = true },
                     onCancel: { showsPhotoOptions = false }

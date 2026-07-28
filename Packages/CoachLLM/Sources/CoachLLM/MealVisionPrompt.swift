@@ -30,5 +30,13 @@ enum MealVisionPrompt {
     Do not output calories or macros.
     Round grams to whole numbers.
     Return only JSON matching the schema.
+    When user context is provided, apply it to ingredient names and gram estimates.
     """
+
+    static func userMessage(notes: String?) -> String {
+        let base = "Decompose this meal photo into ingredients and estimated grams."
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return base }
+        return "\(base) User context (must apply): \(trimmed)"
+    }
 }

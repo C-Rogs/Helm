@@ -18,7 +18,7 @@ public struct GeminiMealVisionProvider: Sendable {
         self.models = models.isEmpty ? GeminiModel.mealVisionCandidates : models
     }
 
-    public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+    public func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
         let apiKey = try requireAPIKey()
         var lastError: Error?
 
@@ -28,7 +28,8 @@ public struct GeminiMealVisionProvider: Sendable {
                 return try await decompose(
                     imageJPEGData: imageJPEGData,
                     apiKey: apiKey,
-                    model: model
+                    model: model,
+                    userNotes: userNotes
                 )
             } catch let error as CoachProviderError {
                 guard Self.shouldRetryWithAlternateModel(error) else {
@@ -47,14 +48,16 @@ public struct GeminiMealVisionProvider: Sendable {
     private func decompose(
         imageJPEGData: Data,
         apiKey: String,
-        model: GeminiModel
+        model: GeminiModel,
+        userNotes: String?
     ) async throws -> MealDecomposition {
         let base64 = imageJPEGData.base64EncodedString()
         let requestID = UUID()
 
         let body = try GeminiRequestBuilder.mealDecompositionPhotoBody(
             systemInstructions: MealVisionPrompt.systemInstructions,
-            imageJPEGBase64: base64
+            imageJPEGBase64: base64,
+            userMessage: MealVisionPrompt.userMessage(notes: userNotes)
         ).encoded()
 
         let request = GeminiGenerateHTTPRequest(

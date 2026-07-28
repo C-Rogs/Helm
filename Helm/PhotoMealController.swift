@@ -21,6 +21,12 @@ final class PhotoMealController {
     var pickerItem: PhotosPickerItem?
     var showsCamera = false
     var preferredBucket: MealBucket = .snacks
+    var userNotes = ""
+    var loggingHelmDay: HelmDay?
+    var todayHelmDay: HelmDay?
+
+    private var pendingImageJPEG: Data?
+    private var pendingPreview: UIImage?
 
     var isBusy: Bool {
         switch phase {
@@ -69,24 +75,42 @@ final class PhotoMealController {
         await estimate(imageJPEGData: jpeg, preview: image)
     }
 
+    func reestimateFromConfirm() async {
+        guard let pendingImageJPEG else { return }
+        await estimate(imageJPEGData: pendingImageJPEG, preview: pendingPreview)
+    }
+
     func confirm(estimate: MealEstimate, name: String, bucket: MealBucket) async {
         guard let service else {
             phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
             return
         }
 
+        let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        let today = todayHelmDay ?? helmDay
+        let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
+
         phase = .saving
         do {
-            _ = try await service.confirm(estimate: estimate, name: name, bucket: bucket)
+            _ = try await service.confirm(
+                estimate: estimate,
+                name: name,
+                bucket: bucket,
+                loggedAt: loggedAt
+            )
             HapticEngine.shared.play(.mealConfirmed)
+            pendingImageJPEG = nil
+            pendingPreview = nil
             phase = .idle
-            NutritionBootstrap.refreshNutrition()
+            NutritionBootstrap.refreshNutrition(for: helmDay)
         } catch {
             phase = .failed(PhotoMealService.userMessage(for: error))
         }
     }
 
     func cancel() {
+        pendingImageJPEG = nil
+        pendingPreview = nil
         phase = .idle
     }
 
@@ -102,9 +126,13 @@ final class PhotoMealController {
             return
         }
 
+        pendingImageJPEG = imageJPEGData
+        pendingPreview = preview
         phase = .estimating
+        let notes = userNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let userNotesPayload = notes.isEmpty ? nil : notes
         do {
-            let estimate = try await service.estimate(from: imageJPEGData)
+            let estimate = try await service.estimate(from: imageJPEGData, userNotes: userNotesPayload)
             phase = .confirm(estimate, previewImage: preview)
         } catch {
             phase = .failed(PhotoMealService.userMessage(for: error))

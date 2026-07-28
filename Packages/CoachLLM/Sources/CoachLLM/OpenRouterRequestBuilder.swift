@@ -156,7 +156,8 @@ public enum OpenRouterRequestBuilder {
         systemInstructions: String,
         imageJPEGBase64: String,
         model: MealVisionModel = .openRouterGemmaFree,
-        useStructuredOutput: Bool = false
+        useStructuredOutput: Bool = false,
+        userMessage: String = "Decompose this meal photo into ingredients and estimated grams."
     ) throws -> Data {
         let jsonInstructions = """
         \(systemInstructions)
@@ -177,7 +178,7 @@ public enum OpenRouterRequestBuilder {
             messages: [
                 .init(role: "user", content: [
                     .text(jsonInstructions),
-                    .text("Decompose this meal photo into ingredients and estimated grams."),
+                    .text(userMessage),
                     .image(jpegBase64: imageJPEGBase64)
                 ])
             ],

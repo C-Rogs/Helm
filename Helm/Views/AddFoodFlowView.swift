@@ -79,7 +79,10 @@ struct AddFoodFlowView: View {
         .task {
             await controller.refreshConnectivity()
         }
-        .onChange(of: controller.phase) { _, newPhase in
+        .onChange(of: controller.phase) { oldPhase, newPhase in
+            if case .saving = oldPhase, case .flow(.search) = newPhase {
+                selectedProduct = nil
+            }
             if case .idle = newPhase {
                 dismiss()
             }

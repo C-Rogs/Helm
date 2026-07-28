@@ -26,7 +26,7 @@ public struct PhotoMealService: Sendable {
         self.localStore = localStore
     }
 
-    public func estimate(from imageJPEGData: Data) async throws -> MealEstimate {
+    public func estimate(from imageJPEGData: Data, userNotes: String? = nil) async throws -> MealEstimate {
         guard !imageJPEGData.isEmpty else {
             throw PhotoMealError.invalidImage
         }
@@ -35,7 +35,7 @@ public struct PhotoMealService: Sendable {
         }
 
         do {
-            return try await estimator.estimateMacros(imageJPEGData: imageJPEGData)
+            return try await estimator.estimateMacros(imageJPEGData: imageJPEGData, userNotes: userNotes)
         } catch {
             photoMealLog.error("Photo macro estimate failed: \(String(describing: type(of: error)), privacy: .public)")
             Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo macro estimate failed") }

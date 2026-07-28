@@ -7,6 +7,7 @@ import Persistence
 public struct ManualMealLocalStore: Sendable {
     private let nutrition: NutritionRepository
     private let foodLog: FoodLogRepository
+    private let nutritionLogStatus: NutritionLogStatusRepository
     private let calendar: Calendar
     private let cutoff: DayCutoff
     private let now: @Sendable () -> Date
@@ -19,6 +20,7 @@ public struct ManualMealLocalStore: Sendable {
     ) {
         nutrition = store.nutrition
         foodLog = store.foodLog
+        nutritionLogStatus = store.nutritionLogStatus
         self.calendar = calendar
         self.cutoff = cutoff
         self.now = now
@@ -85,6 +87,7 @@ public struct ManualMealLocalStore: Sendable {
         }
 
         try recomputeNutritionDay(helmDay: helmDay)
+        try nutritionLogStatus.clearComplete(helmDay: helmDay)
         _ = now
     }
 
@@ -126,7 +129,9 @@ public struct ManualMealLocalStore: Sendable {
         try recomputeNutritionDay(helmDay: helmDay)
         if helmDay != previousHelmDay {
             try recomputeNutritionDay(helmDay: previousHelmDay)
+            try nutritionLogStatus.clearComplete(helmDay: previousHelmDay)
         }
+        try nutritionLogStatus.clearComplete(helmDay: helmDay)
     }
 
     @discardableResult

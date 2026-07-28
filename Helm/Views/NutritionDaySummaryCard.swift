@@ -172,7 +172,7 @@ struct NutritionDaySummaryCard: View {
     private var header: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             HStack(alignment: .firstTextBaseline) {
-                Text("Today")
+                Text(dayTitle)
                     .helmType(.label)
                 Spacer()
                 Text(snapshot.dayType.rawValue.capitalized)
@@ -217,6 +217,24 @@ struct NutritionDaySummaryCard: View {
                     .helmType(.body, color: HelmColor.depleted)
             }
         }
+    }
+
+    private var dayTitle: String {
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        if snapshot.helmDay == today {
+            return "Today"
+        }
+        let calendar = Calendar(identifier: .gregorian)
+        guard let date = calendar.date(from: DateComponents(
+            year: snapshot.helmDay.year,
+            month: snapshot.helmDay.month,
+            day: snapshot.helmDay.day
+        )) else {
+            return snapshot.helmDay.formatted
+        }
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE d MMM"
+        return formatter.string(from: date)
     }
 
     private var energyTargetSubtitle: String {

@@ -75,6 +75,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M12.7 Recovery detail view | done | 2026-07-24 | 6657228 | RecoveryDetailView from Dashboard ARC card; DeviationBand contributors, band-overlay history, coach read + hand-off; snapshot tests. |
 | M12.8 Progression / plan-model view | done | 2026-07-24 | 274023c | Mesocycle position, scheme, per-lift e1RM ladders; Dashboard + Train navigation; absorbs M13.1/M13.2 plan-visibility |
 | M12.9 Muscle-volume promotion and recency | done | 2026-07-24 | c5061fc | MuscleVolumeBoardModel + recency from ledger; Dashboard summary + Train board; ArcGauge grid kept in Trends. |
+| M15.1 Nutrition diary navigation | done | 2026-07-28 | b199772 | Diary header, selected-day refresh, log-to-selected-day via MealLogInstant. |
 
 ## Device Test Gates
 
@@ -85,9 +86,10 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT1 (after M2.2): foundation + ingest + readiness | done | 2026-07-22 | HealthKit connected after relaunch, dashboard polish, Watch round-trip complete, ARC/battery/diagnostics pass. Design re-check (haptics + reveal) pending M0.7 + M2.3. |
 | DT2 (after M3.6 + F-DESIGN-M3): the logger, in the gym | done | 2026-07-23 | Logger works on device: workout log, rest timer, numpad, paste import, history/templates/PRs. Rest-done haptic while suspended + set-logged/PR-hit feel verified. |
 | DT3 (after M6.4): the loop replaces Gemini (go-live gate) | done | 2026-07-23 | Go-live verified on device: grounded chat, prescription Train, in-session coach swaps, morning brief, onboarding. F-DT3.1–3.7 landed. Manual Gemini workflow retired. |
-| DT4 (after M8.2): proactivity + Watch | on hold | 2026-07-23 | Overnight battery pass (`helm-diagnostics-2026-07-23T15-41-35Z`; no `HealthKitObserverFetch` / `BackfillChunk` churn in export). Watch + rest of checklist paused: corp network blocks Watch deploy; resume off-network. Build `60a85e7`. |
-| DT5 (after M11.1): nutrition, analytics, full regression | not started | | |
-| DT6 (after M12.5 and M0.8): the polish gate | not started | | | Motion feel, skins, states, DeviationBand on device |
+| DT4 (after M8.2): proactivity + Watch | done | 2026-07-28 | Proactivity + Watch checklist complete off corp network. |
+| DT5 (after M11.1): nutrition, analytics, full regression | done | 2026-07-28 | Photo meals, HK dedup, trends, export regression, F-DT5.1–5.11 verified on device. |
+| DT6 (after M12.5 and M0.8): the polish gate | done | 2026-07-28 | Haptics, skins, states, DeviationBand, volume board verified; F-DT6.1–6.3 landed. |
+| DT7 (after M14.9): native food logging (MFP deleted 7 days) | in progress | 2026-07-28 | 7-day Helm-only food soak; file failures as F-DT7.#. Build HEAD `7d9df8c`. |
 
 ## Fix sections
 
@@ -114,6 +116,12 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT5.9 Train sets + picker | done | 2026-07-24 | 3c65441 | Manual +/- sets; recent exercises + muscle filters in picker. |
 | F-DT5.10 Watch companion | done | 2026-07-24 | 3c65441 | Phone-led companion payload; WatchCompanionView; HR auto-start. |
 | F-DT5.11 Coach-editable settings | done | 2026-07-24 | 3c65441 | settings_adjustment.v1 JSON apply from chat; re-plans prescription. |
+| F-DT6.1 Rest timer haptics | done | 2026-07-28 | | 5s rising per-second count-in; notification-grade restDone max amplitude. |
+| F-DT6.2 Train page layout | done | 2026-07-28 | | SessionDesignedCard header fix; idle scroll bottom inset; Plan/phase metadata row. |
+| F-DT6.3 Dashboard history button | done | 2026-07-28 | | Hide Load earlier history when charts have data; silent auto-prefetch retained. |
+| F-DT7.4 Continuous search logging | done | 2026-07-28 | b199772 | Stay in search sheet after each log; phase returns to .flow(.search). |
+| F-DT7.5 Photo meal user notes | done | 2026-07-28 | b199772 | Notes on photo sheet; threaded through MealVisionProviding to Gemini/OpenRouter userMessage. |
+| F-DT7.6 Day complete button | done | 2026-07-28 | b199772 | GRDB v11 nutrition_day_log_status; coach/brief flag; TDEE excludes incomplete days. |
 | M13.1 Planned workout UI | deferred | | | Plan-visibility absorbed by M12.8; calendar scope remains |
 | M13.2 Drift policy UI | deferred | | | Mesocycle visibility absorbed by M12.8; drift indicators remain |
 | M13.3 EventKit hints | deferred | | | Post-DT5 |

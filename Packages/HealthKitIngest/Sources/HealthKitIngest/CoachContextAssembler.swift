@@ -64,7 +64,8 @@ public enum CoachContextAssembler {
         .joined(separator: "\n")
 
         let recent = try days.sorted().map { helmDay in
-            CoachContextDay(
+            let loggingComplete = (try? store.nutritionLogStatus.isLoggingComplete(helmDay: helmDay)) ?? false
+            return CoachContextDay(
                 helmDay: helmDay,
                 text: dayText(
                     helmDay: helmDay,
@@ -73,7 +74,8 @@ public enum CoachContextAssembler {
                     nutrition: try store.nutrition.fetchDay(helmDay: helmDay),
                     workouts: workoutsByDay[helmDay] ?? [],
                     sleepHours: try store.sleep.totalSleepHours(for: helmDay, calendar: calendar),
-                    bodyComposition: bodyCompositionByDay[helmDay]
+                    bodyComposition: bodyCompositionByDay[helmDay],
+                    loggingComplete: loggingComplete
                 )
             )
         }
@@ -118,7 +120,8 @@ public enum CoachContextAssembler {
         nutrition: NutritionDay?,
         workouts: [WorkoutSessionSummary],
         sleepHours: Double?,
-        bodyComposition: BodyComposition?
+        bodyComposition: BodyComposition?,
+        loggingComplete: Bool
     ) -> String {
         var parts: [String] = []
 
@@ -150,6 +153,10 @@ public enum CoachContextAssembler {
         }
 
         if let nutrition {
+            parts.append("intake_logging_complete=\(loggingComplete)")
+            if !loggingComplete {
+                parts.append("intake_may_be_incomplete=true")
+            }
             if let kcal = nutrition.totalEnergy?.kilocalories {
                 parts.append("kcal=\(format(kcal))")
             }

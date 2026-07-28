@@ -43,6 +43,9 @@ struct AppMigrator {
         if version >= 10 {
             FoodLoggingSchemaMigration.register(on: &migrator)
         }
+        if version >= 11 {
+            NutritionLogStatusSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

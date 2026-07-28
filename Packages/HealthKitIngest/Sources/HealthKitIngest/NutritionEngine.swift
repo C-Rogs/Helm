@@ -16,6 +16,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let profileMaintenanceKcal: Int?
     /// Active energy burned today from HealthKit (informational).
     public let activeEnergyKcal: Int?
+    /// User marked logging complete for this day.
+    public let loggingComplete: Bool
 
     public init(
         helmDay: HelmDay,
@@ -25,7 +27,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         dayType: NutritionDayType,
         phase: TrainingPhase,
         profileMaintenanceKcal: Int? = nil,
-        activeEnergyKcal: Int? = nil
+        activeEnergyKcal: Int? = nil,
+        loggingComplete: Bool = false
     ) {
         self.helmDay = helmDay
         self.targets = targets
@@ -35,6 +38,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         self.phase = phase
         self.profileMaintenanceKcal = profileMaintenanceKcal
         self.activeEnergyKcal = activeEnergyKcal
+        self.loggingComplete = loggingComplete
     }
 }
 
@@ -103,6 +107,7 @@ public actor NutritionEngine {
             phase: settings.phaseGoal,
             trend: trend
         )
+        let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: day)) ?? false
 
         return NutritionDaySnapshot(
             helmDay: day,
@@ -112,7 +117,8 @@ public actor NutritionEngine {
             dayType: dayType,
             phase: settings.phaseGoal.phase,
             profileMaintenanceKcal: profileMaintenanceKcal,
-            activeEnergyKcal: dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }
+            activeEnergyKcal: dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) },
+            loggingComplete: loggingComplete
         )
     }
 

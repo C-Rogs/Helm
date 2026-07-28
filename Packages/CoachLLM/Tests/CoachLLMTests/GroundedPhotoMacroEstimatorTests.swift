@@ -7,8 +7,9 @@ import Testing
 @Suite("Grounded photo macro pipeline")
 struct GroundedPhotoMacroEstimatorTests {
     private struct FixtureVision: MealVisionProviding {
-        func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+        func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
             _ = imageJPEGData
+            _ = userNotes
             let payload = MealDecompositionPayload(
                 schemaVersion: CoachOutputSchemaVersion.mealDecompositionV1.rawValue,
                 mealDescription: "Chicken rice bowl",
@@ -28,7 +29,7 @@ struct GroundedPhotoMacroEstimatorTests {
     @Test("fixture decomposition aggregates grounded totals with line items")
     func groundedPipeline() async throws {
         let estimator = GroundedPhotoMacroEstimator(vision: FixtureVision())
-        let estimate = try await estimator.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let estimate = try await estimator.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
 
         #expect(estimate.description == "Chicken rice bowl")
         #expect(estimate.lineItems.count == 3)
@@ -47,7 +48,7 @@ struct GroundedPhotoMacroEstimatorTests {
             httpClient: FixtureGeminiHTTPClient(bundle: .module)
         )
 
-        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
         #expect(decomposition.mealDescription == "Chicken rice bowl")
         #expect(decomposition.items.count == 2)
         #expect(decomposition.implicitFats.count == 1)
@@ -62,7 +63,7 @@ struct GroundedPhotoMacroEstimatorTests {
             httpClient: FixtureOpenRouterHTTPClient(bundle: .module)
         )
 
-        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
         #expect(decomposition.mealDescription == "Chicken rice bowl")
         #expect(decomposition.items.count == 2)
     }
@@ -109,7 +110,7 @@ struct GroundedPhotoMacroEstimatorTests {
             models: [.flashLite, .flash]
         )
 
-        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
         #expect(decomposition.mealDescription == "Chicken rice bowl")
         #expect(httpClient.recordedAttempts() == [
             GeminiModel.flashLite.rawValue,
@@ -129,7 +130,7 @@ struct GroundedPhotoMacroEstimatorTests {
         preferences.backendPreference = .auto
 
         struct GeminiOnlyVision: MealVisionProviding {
-            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
                 _ = imageJPEGData
                 return MealDecomposition(
                     payload: MealDecompositionPayload(
@@ -144,7 +145,7 @@ struct GroundedPhotoMacroEstimatorTests {
         }
 
         struct FailingOpenRouter: MealVisionProviding {
-            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
                 throw CoachProviderError.requestFailed("OpenRouter should not be called")
             }
         }
@@ -156,7 +157,7 @@ struct GroundedPhotoMacroEstimatorTests {
             openRouterVision: FailingOpenRouter()
         )
 
-        let decomposition = try await router.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let decomposition = try await router.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
         #expect(decomposition.mealDescription == "Gemini routed meal")
     }
 
@@ -198,7 +199,7 @@ struct GroundedPhotoMacroEstimatorTests {
             httpClient: httpClient
         )
 
-        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
         #expect(decomposition.mealDescription == "Chicken rice bowl")
         #expect(httpClient.recordedAttempts() == [
             MealVisionModel.openRouterGemma.rawValue,
@@ -209,7 +210,7 @@ struct GroundedPhotoMacroEstimatorTests {
     @Test("router falls back to gemini when openrouter fails")
     func routerFallsBackToGemini() async throws {
         struct FailingOpenRouter: MealVisionProviding {
-            func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
                 throw CoachProviderError.requestFailed("OpenRouter request failed with status 404.")
             }
         }
@@ -228,7 +229,8 @@ struct GroundedPhotoMacroEstimatorTests {
         )
 
         let estimate = try await PhotoMacroEstimator(router: router).estimateMacros(
-            imageJPEGData: Data([0xFF, 0xD8, 0xFF])
+            imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
+            userNotes: nil
         )
         #expect(estimate.lineItems.count == 3)
     }

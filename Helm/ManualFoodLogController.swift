@@ -27,14 +27,17 @@ final class ManualFoodLogController {
     var phase: Phase = .idle
     var isOnline = true
     var preferredBucket: MealBucket = .snacks
+    var loggingHelmDay: HelmDay?
+    var todayHelmDay: HelmDay?
 
     private let foodResolver: FoodResolver
     private let manualMealService: ManualMealService
     private let pendingImportService: PendingFoodImportService
     private let networkGate: any NetworkGating
     private let portionPreferenceLoader: @Sendable (FoodProductRef) throws -> FoodPortionPreference?
-    private let onLogged: @MainActor () -> Void
+    private let onLogged: @MainActor (HelmDay) -> Void
     private var wasOnline = true
+    private var continuousSearchLogging = false
 
     init(
         foodResolver: FoodResolver,
@@ -42,7 +45,7 @@ final class ManualFoodLogController {
         pendingImportService: PendingFoodImportService,
         networkGate: any NetworkGating = LiveNetworkGate(),
         portionPreferenceLoader: @escaping @Sendable (FoodProductRef) throws -> FoodPortionPreference? = { _ in nil },
-        onLogged: @escaping @MainActor () -> Void = {}
+        onLogged: @escaping @MainActor (HelmDay) -> Void = { _ in }
     ) {
         self.foodResolver = foodResolver
         self.manualMealService = manualMealService
@@ -63,7 +66,9 @@ final class ManualFoodLogController {
         let nowOnline = await networkGate.isOnline()
         if !wasOnline && nowOnline {
             _ = await pendingImportService.resolvePendingImports()
-            onLogged()
+            if let day = loggingHelmDay ?? todayHelmDay {
+                onLogged(day)
+            }
         }
         wasOnline = nowOnline
         isOnline = nowOnline
@@ -71,6 +76,7 @@ final class ManualFoodLogController {
 
     func start(_ mode: AddFoodEntryMode, bucket: MealBucket) {
         preferredBucket = bucket
+        continuousSearchLogging = mode == .search
         phase = .flow(mode)
     }
 
@@ -91,6 +97,7 @@ final class ManualFoodLogController {
     }
 
     func cancel() {
+        continuousSearchLogging = false
         phase = .idle
     }
 
@@ -133,17 +140,21 @@ final class ManualFoodLogController {
         source: MealRecord.Source
     ) async {
         phase = .saving
+        let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        let today = todayHelmDay ?? helmDay
+        let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
             _ = try await manualMealService.logFood(
                 product: product,
                 grams: grams,
                 servingLabel: servingLabel,
                 bucket: bucket,
+                loggedAt: loggedAt,
                 source: source
             )
             HapticEngine.shared.play(.mealConfirmed)
-            phase = .idle
-            onLogged()
+            finishLogging(entryMode: source == .barcode ? .barcode : .search)
+            onLogged(helmDay)
         } catch {
             phase = .failed(userMessage(for: error))
         }
@@ -155,6 +166,9 @@ final class ManualFoodLogController {
         bucket: MealBucket
     ) async {
         phase = .saving
+        let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        let today = todayHelmDay ?? helmDay
+        let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
             _ = try await manualMealService.logQuickAdd(
                 kilocalories: macros.energyKcal,
@@ -162,11 +176,12 @@ final class ManualFoodLogController {
                 carbsG: macros.carbsG,
                 fatG: macros.fatG,
                 label: label,
-                bucket: bucket
+                bucket: bucket,
+                loggedAt: loggedAt
             )
             HapticEngine.shared.play(.mealConfirmed)
-            phase = .idle
-            onLogged()
+            finishLogging(entryMode: .quickAdd)
+            onLogged(helmDay)
         } catch {
             phase = .failed(quickAddMessage(for: error))
         }
@@ -177,14 +192,15 @@ final class ManualFoodLogController {
         bucket: MealBucket
     ) async {
         phase = .saving
+        let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
         do {
             _ = try await pendingImportService.queueOfflineBarcode(
                 barcode: barcode,
                 bucket: bucket
             )
             HapticEngine.shared.play(.mealConfirmed)
-            phase = .idle
-            onLogged()
+            finishLogging(entryMode: .barcode)
+            onLogged(helmDay)
         } catch {
             phase = .failed("Could not save that barcode for later. Try again.")
         }
@@ -196,17 +212,30 @@ final class ManualFoodLogController {
         bucket: MealBucket
     ) async {
         phase = .saving
+        let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        let today = todayHelmDay ?? helmDay
+        let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
             _ = try await manualMealService.logAlcohol(
                 preset: preset,
                 quantity: quantity,
-                bucket: bucket
+                bucket: bucket,
+                loggedAt: loggedAt
             )
             HapticEngine.shared.play(.mealConfirmed)
-            phase = .idle
-            onLogged()
+            finishLogging(entryMode: .alcohol)
+            onLogged(helmDay)
         } catch {
             phase = .failed(alcoholMessage(for: error))
+        }
+    }
+
+    private func finishLogging(entryMode: AddFoodEntryMode) {
+        if continuousSearchLogging && entryMode == .search {
+            phase = .flow(.search)
+        } else {
+            continuousSearchLogging = false
+            phase = .idle
         }
     }
 

@@ -21,6 +21,7 @@ public actor PersistenceStore {
     public nonisolated let brief: BriefStore
     public nonisolated let appMetadata: AppMetadataStore
     public nonisolated let coachRecommendations: CoachRecommendationRepository
+    public nonisolated let nutritionLogStatus: NutritionLogStatusRepository
 
     public let databaseURL: URL
     private let pool: DatabasePool
@@ -49,6 +50,7 @@ public actor PersistenceStore {
         brief = BriefStore(pool: pool)
         appMetadata = AppMetadataStore(pool: pool)
         coachRecommendations = CoachRecommendationRepository(pool: pool)
+        nutritionLogStatus = NutritionLogStatusRepository(pool: pool)
     }
 
     public static func openDefault() throws -> PersistenceStore {

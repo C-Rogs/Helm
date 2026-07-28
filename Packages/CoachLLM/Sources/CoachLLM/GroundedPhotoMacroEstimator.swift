@@ -11,8 +11,8 @@ public struct GroundedPhotoMacroEstimator: Sendable {
         self.lookup = lookup
     }
 
-    public func estimateMacros(imageJPEGData: Data) async throws -> MealEstimate {
-        let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData)
+    public func estimateMacros(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+        let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
         return aggregate(decomposition)
     }
 

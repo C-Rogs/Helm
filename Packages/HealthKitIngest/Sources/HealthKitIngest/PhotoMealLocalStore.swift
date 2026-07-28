@@ -6,6 +6,7 @@ import Persistence
 /// so photo meals must land in GRDB explicitly for Dashboard and Trends to update.
 public struct PhotoMealLocalStore: Sendable {
     private let nutrition: NutritionRepository
+    private let nutritionLogStatus: NutritionLogStatusRepository
     private let calendar: Calendar
     private let cutoff: DayCutoff
 
@@ -15,6 +16,7 @@ public struct PhotoMealLocalStore: Sendable {
         cutoff: DayCutoff = .default
     ) {
         nutrition = store.nutrition
+        nutritionLogStatus = store.nutritionLogStatus
         self.calendar = calendar
         self.cutoff = cutoff
     }
@@ -47,5 +49,6 @@ public struct PhotoMealLocalStore: Sendable {
         let dayMeals = try nutrition.fetchMeals(for: helmDay)
         let nutritionDay = HealthKitDayAggregator.nutritionDay(from: dayMeals, helmDay: helmDay)
         try nutrition.upsertDay(nutritionDay)
+        try nutritionLogStatus.clearComplete(helmDay: helmDay)
     }
 }

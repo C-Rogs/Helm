@@ -1,4 +1,5 @@
 import CoachLLM
+import Core
 import Foundation
 import HealthKitIngest
 import Persistence
@@ -73,10 +74,14 @@ enum NutritionBootstrap {
     }
 
     @MainActor
-    static func refreshNutrition() {
+    static var lastViewedHelmDay: HelmDay?
+
+    @MainActor
+    static func refreshNutrition(for helmDay: HelmDay? = nil) {
         Task {
             let summary = PlanBootstrap.prescriptionService.state.summary
-            await nutritionService.refresh(prescriptionSummary: summary)
+            let day = helmDay ?? lastViewedHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+            await nutritionService.refresh(for: day, prescriptionSummary: summary)
         }
     }
 

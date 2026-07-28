@@ -24,8 +24,8 @@ public struct PhotoMacroEstimator: Sendable, MealMacroEstimating {
         _ = provider
     }
 
-    public func estimateMacros(imageJPEGData: Data) async throws -> MealEstimate {
-        try await grounded.estimateMacros(imageJPEGData: imageJPEGData)
+    public func estimateMacros(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+        try await grounded.estimateMacros(imageJPEGData: imageJPEGData, userNotes: userNotes)
     }
 }
 

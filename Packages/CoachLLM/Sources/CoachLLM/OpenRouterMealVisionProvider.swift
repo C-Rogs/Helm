@@ -15,7 +15,7 @@ public struct OpenRouterMealVisionProvider: Sendable {
         self.metadataStore = metadataStore
     }
 
-    public func decompose(imageJPEGData: Data) async throws -> MealDecomposition {
+    public func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
         let apiKey = try requireAPIKey()
         let models = MealVisionModel.openRouterCandidates(freeModelsOnly: metadataStore.freeModelsOnly)
         var lastError: Error?
@@ -25,7 +25,8 @@ public struct OpenRouterMealVisionProvider: Sendable {
                 return try await decompose(
                     imageJPEGData: imageJPEGData,
                     apiKey: apiKey,
-                    model: model
+                    model: model,
+                    userNotes: userNotes
                 )
             } catch let error as CoachProviderError {
                 guard Self.shouldRetryWithAlternateModel(error) else {
@@ -41,7 +42,8 @@ public struct OpenRouterMealVisionProvider: Sendable {
     private func decompose(
         imageJPEGData: Data,
         apiKey: String,
-        model: MealVisionModel
+        model: MealVisionModel,
+        userNotes: String?
     ) async throws -> MealDecomposition {
         let base64 = imageJPEGData.base64EncodedString()
         let requestID = UUID()
@@ -49,7 +51,8 @@ public struct OpenRouterMealVisionProvider: Sendable {
         let body = try OpenRouterRequestBuilder.mealDecompositionPhotoBody(
             systemInstructions: MealVisionPrompt.systemInstructions,
             imageJPEGBase64: base64,
-            model: model
+            model: model,
+            userMessage: MealVisionPrompt.userMessage(notes: userNotes)
         )
 
         let request = OpenRouterHTTPRequest(requestID: requestID, apiKey: apiKey, body: body)

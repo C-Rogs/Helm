@@ -7,18 +7,22 @@ public struct NutritionTargetsSummary: Sendable, Hashable, Codable, Equatable {
     public let fatGrams: Int
     public let dayType: String
 
+    public let intakeLoggingComplete: Bool
+
     public init(
         caloriesKcal: Int,
         proteinGrams: Int,
         carbohydrateGrams: Int,
         fatGrams: Int,
-        dayType: String
+        dayType: String,
+        intakeLoggingComplete: Bool = false
     ) {
         self.caloriesKcal = caloriesKcal
         self.proteinGrams = proteinGrams
         self.carbohydrateGrams = carbohydrateGrams
         self.fatGrams = fatGrams
         self.dayType = dayType
+        self.intakeLoggingComplete = intakeLoggingComplete
     }
 }
 

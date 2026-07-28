@@ -32,12 +32,20 @@ public enum BriefInputComposer {
         }
 
         let nutrition = nutritionSnapshot.targets.summary
+        let nutritionWithStatus = NutritionTargetsSummary(
+            caloriesKcal: nutrition.caloriesKcal,
+            proteinGrams: nutrition.proteinGrams,
+            carbohydrateGrams: nutrition.carbohydrateGrams,
+            fatGrams: nutrition.fatGrams,
+            dayType: nutrition.dayType,
+            intakeLoggingComplete: nutritionSnapshot.loggingComplete
+        )
 
         return BriefInputsSnapshot(
             helmDay: helmDay,
             readiness: readinessSnapshot,
             prescription: prescriptionSnapshot,
-            nutrition: nutrition
+            nutrition: nutritionWithStatus
         )
     }
 }

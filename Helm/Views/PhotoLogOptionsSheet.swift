@@ -4,6 +4,7 @@ import SwiftUI
 
 struct PhotoLogOptionsSheet: View {
     @Binding var pickerItem: PhotosPickerItem?
+    @Binding var userNotes: String
     let onCamera: () -> Void
     let onCancel: () -> Void
 
@@ -12,6 +13,14 @@ struct PhotoLogOptionsSheet: View {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 Text("Estimate macros from a meal photo.")
                     .helmType(.body, color: HelmColor.fgMuted)
+
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text("Context (optional)")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    TextField("e.g. didn't eat the skin", text: $userNotes, axis: .vertical)
+                        .textFieldStyle(.roundedBorder)
+                        .lineLimit(2 ... 4)
+                }
 
                 PhotosPicker(
                     selection: $pickerItem,
@@ -66,11 +75,16 @@ struct PhotoLogOptionsSheet: View {
                 }
             }
         }
-        .presentationDetents([.medium])
+        .presentationDetents([.medium, .large])
     }
 }
 
 #Preview("Photo options") {
-    PhotoLogOptionsSheet(pickerItem: .constant(nil), onCamera: {}, onCancel: {})
-        .helmTheme()
+    PhotoLogOptionsSheet(
+        pickerItem: .constant(nil),
+        userNotes: .constant(""),
+        onCamera: {},
+        onCancel: {}
+    )
+    .helmTheme()
 }
