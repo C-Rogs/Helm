@@ -122,6 +122,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT7.4 Continuous search logging | done | 2026-07-28 | b199772 | Stay in search sheet after each log; phase returns to .flow(.search). |
 | F-DT7.5 Photo meal user notes | done | 2026-07-28 | b199772 | Notes on photo sheet; threaded through MealVisionProviding to Gemini/OpenRouter userMessage. |
 | F-DT7.6 Day complete button | done | 2026-07-28 | b199772 | GRDB v11 nutrition_day_log_status; coach/brief flag; TDEE excludes incomplete days. |
+| F-DT7.7 Photo meal grounding and add-flow toolbars | done | 2026-07-28 | 0ce2f3d | Analysing overlay; CoFID plural/generic fix; hybrid vision; accuracy picker; Cancel/Add toolbars. |
 | M13.1 Planned workout UI | deferred | | | Plan-visibility absorbed by M12.8; calendar scope remains |
 | M13.2 Drift policy UI | deferred | | | Mesocycle visibility absorbed by M12.8; drift indicators remain |
 | M13.3 EventKit hints | deferred | | | Post-DT5 |

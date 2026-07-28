@@ -1069,6 +1069,13 @@ Cameron uninstalls MFP and logs all food in Helm for 7 consecutive days.
 - **TDEE**: weekly trend responds to logged intake including quick-add kcal.
 - **Regression**: DT5 photo scenarios still pass (ingredient breakdown, gram edit recompute, ±25% kcal bar).
 
+#### F-DT7.7 - Photo meal grounding, loading UX, and add-flow toolbars
+
+- **Depends on:** M14.9, F-DT7.5
+- **Goal:** Photo scan shows immediate loading feedback; CoFID grounding improves accuracy vs vision-only; add-food sheets use standard toolbar Cancel/Add.
+- **Scope:** `PhotoMealEstimatingView` full-screen overlay with cancellable estimate tasks; CoFID plural-token matching and generic-produce fallback; per-line CoFID labels on confirm sheet; hybrid direct-vision comparison when grounding confidence is low; diagnostics audit JSON; Settings photo accuracy picker (`MealVisionPreferencesStore`); Cancel left / Add right on portion, quick-add, alcohol, and photo confirm sheets.
+- **Acceptance:** Build passes; `GroundedPhotoMacroEstimatorTests` pass; overlay blocks interaction during estimate; errors clear loading state.
+
 ### M13 Schedule and calendar (post-DT5)
 
 #### M13.1 Planned workout UI
