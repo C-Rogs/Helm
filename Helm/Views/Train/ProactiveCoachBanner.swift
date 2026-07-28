@@ -4,7 +4,7 @@ import SwiftUI
 struct ProactiveCoachBanner: View {
     let message: String
     let onDismiss: () -> Void
-    let onDiscuss: () -> Void
+    let onCoach: () -> Void
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -20,7 +20,7 @@ struct ProactiveCoachBanner: View {
             Text(message)
                 .helmType(.body, color: HelmColor.fg)
 
-            Button("Discuss", action: onDiscuss)
+            Button("Coach", action: onCoach)
                 .buttonStyle(.helmSecondary)
         }
         .padding(HelmSpacing.md)

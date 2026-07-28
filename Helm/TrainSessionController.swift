@@ -173,11 +173,6 @@ final class TrainSessionController {
         evaluatePrescriptionStaleness(readiness: readiness)
     }
 
-    func dismissStaleSessionBanner() {
-        staleSessionMessage = nil
-        PrescriptionStaleTracker.dismiss(for: todayHelmDay())
-    }
-
     func regenerateTodaysPrescription() async {
         let day = todayHelmDay()
         PrescriptionDayStore.clear(for: day)

@@ -117,14 +117,7 @@ struct TrainView: View {
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.lg) {
             if let staleMessage = controller.staleSessionMessage {
-                StaleSessionBanner(
-                    message: staleMessage,
-                    onDiscuss: { controller.discussTodaysSession() },
-                    onRegenerate: {
-                        Task { await controller.regenerateTodaysPrescription() }
-                    },
-                    onDismiss: { controller.dismissStaleSessionBanner() }
-                )
+                StaleSessionBanner(message: staleMessage)
             }
 
             SessionDesignedCard(
@@ -348,7 +341,7 @@ struct TrainView: View {
                             ProactiveCoachBanner(
                                 message: proactiveBanner,
                                 onDismiss: { controller.dismissProactiveCoachBanner() },
-                                onDiscuss: { controller.isShowingCoachPrompt = true }
+                                onCoach: { controller.isShowingCoachPrompt = true }
                             )
                         }
 

@@ -29,8 +29,8 @@ enum PrescriptionStaleTracker {
 
     static func staleMessage(readinessScore: Int?) -> String {
         if let readinessScore {
-            return "Today's plan may be outdated after recent activity (ARC now \(readinessScore)). Discuss or regenerate before you start."
+            return "Today's plan may be outdated after recent activity (ARC now \(readinessScore)). Coach or Regenerate below before you start."
         }
-        return "Today's plan may be outdated after recent activity. Discuss or regenerate before you start."
+        return "Today's plan may be outdated after recent activity. Coach or Regenerate below before you start."
     }
 }
