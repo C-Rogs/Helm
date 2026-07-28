@@ -1076,6 +1076,13 @@ Cameron uninstalls MFP and logs all food in Helm for 7 consecutive days.
 - **Scope:** `PhotoMealEstimatingView` full-screen overlay with cancellable estimate tasks; CoFID plural-token matching and generic-produce fallback; per-line CoFID labels on confirm sheet; hybrid direct-vision comparison when grounding confidence is low; diagnostics audit JSON; Settings photo accuracy picker (`MealVisionPreferencesStore`); Cancel left / Add right on portion, quick-add, alcohol, and photo confirm sheets.
 - **Acceptance:** Build passes; `GroundedPhotoMacroEstimatorTests` pass; overlay blocks interaction during estimate; errors clear loading state.
 
+#### F-DT7.9 - Coach-styled meal vision loading overlay
+
+- **Depends on:** F-DT7.7
+- **Goal:** Photo analysing overlay reuses the same coach AI design vocabulary as Ask Coach; photo backdrop stays inside screen gutters.
+- **Scope:** `CoachAIProgressCard` and `CoachAIPulseIndicator` in DesignSystem; `AskCoachBar` shares the pulse indicator; `PhotoMealEstimatingView` refactored to `CoachAIProgressCard` with `helmScreenPadding`, clipped photo backdrop, and coach eyebrow/surface/hairline treatment.
+- **Acceptance:** Build passes; overlay uses shared coach components; card respects horizontal gutters (no bleed past screen edges).
+
 ### M13 Schedule and calendar (post-DT5)
 
 #### M13.1 Planned workout UI
