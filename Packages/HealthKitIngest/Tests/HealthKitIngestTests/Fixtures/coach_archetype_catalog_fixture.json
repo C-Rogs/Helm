@@ -1,0 +1,59 @@
+{
+  "schemaVersion": "coach_archetype_catalog.v1",
+  "generatedAt": "2026-07-27T00:00:00Z",
+  "archetypes": [
+    {
+      "id": "bench_press",
+      "displayName": "Bench Press",
+      "priority": "core",
+      "coachAliases": ["flat bench", "bb bench", "barbell bench press"]
+    },
+    {
+      "id": "incline_press",
+      "displayName": "Incline Bench Press",
+      "priority": "core",
+      "coachAliases": ["incline db", "incline dumbbell press", "incline bench press"]
+    },
+    {
+      "id": "chest_fly",
+      "displayName": "Chest Fly",
+      "priority": "core",
+      "coachAliases": ["pec deck", "chest fly machine"]
+    },
+    {
+      "id": "shoulder_press",
+      "displayName": "Shoulder Press",
+      "priority": "core",
+      "coachAliases": ["seated dumbbell shoulder press", "overhead press"]
+    }
+  ],
+  "mapping": {
+    "seed-bench-press": "bench_press",
+    "seed-incline-db-press": "incline_press",
+    "Barbell_Bench_Press_-_Medium_Grip": "bench_press",
+    "Incline_Dumbbell_Press": "incline_press",
+    "Pec_Deck": "chest_fly",
+    "Dumbbell_Shoulder_Press": "shoulder_press"
+  },
+  "variants": {
+    "bench_press": {
+      "members": ["seed-bench-press", "Barbell_Bench_Press_-_Medium_Grip"],
+      "preferredDefaultExerciseId": "seed-bench-press"
+    },
+    "incline_press": {
+      "members": ["seed-incline-db-press", "Incline_Dumbbell_Press"],
+      "preferredDefaultExerciseId": "seed-incline-db-press"
+    },
+    "chest_fly": {
+      "members": ["Pec_Deck"],
+      "preferredDefaultExerciseId": "Pec_Deck"
+    },
+    "shoulder_press": {
+      "members": ["Dumbbell_Shoulder_Press"],
+      "preferredDefaultExerciseId": "Dumbbell_Shoulder_Press"
+    }
+  },
+  "validation": {
+    "totalArchetypes": 4
+  }
+}

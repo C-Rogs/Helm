@@ -1,0 +1,390 @@
+{
+  "count": 77,
+  "staples": [
+    {
+      "canonical": "squat (barbell)",
+      "display": "Squat (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "front squat (barbell)",
+      "display": "Front Squat (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "bench press (barbell)",
+      "display": "Bench Press (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "deadlift (barbell)",
+      "display": "Deadlift (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "romanian deadlift (barbell)",
+      "display": "Romanian Deadlift (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "overhead press (barbell)",
+      "display": "Overhead Press (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "hip thrust (barbell)",
+      "display": "Hip Thrust (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "bent over row (barbell)",
+      "display": "Bent Over Row (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "incline bench press (barbell)",
+      "display": "Incline Bench Press (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "decline bench press (barbell)",
+      "display": "Decline Bench Press (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "sumo deadlift (barbell)",
+      "display": "Sumo Deadlift (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "rack pull (barbell)",
+      "display": "Rack Pull (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "shrugs (barbell)",
+      "display": "Shrugs (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "curl (barbell)",
+      "display": "Curl (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "skullcrusher (barbell)",
+      "display": "Skullcrusher (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "bench press (dumbbell)",
+      "display": "Bench Press (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "incline bench press (dumbbell)",
+      "display": "Incline Bench Press (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "shoulder press (dumbbell)",
+      "display": "Shoulder Press (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "lateral raise (dumbbell)",
+      "display": "Lateral Raise (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "rear delt fly (dumbbell)",
+      "display": "Rear Delt Fly (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "chest fly (dumbbell)",
+      "display": "Chest Fly (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "row (dumbbell)",
+      "display": "Row (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "romanian deadlift (dumbbell)",
+      "display": "Romanian Deadlift (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "goblet squat (dumbbell)",
+      "display": "Goblet Squat (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "lunges (dumbbell)",
+      "display": "Lunges (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "bulgarian split squat (dumbbell)",
+      "display": "Bulgarian Split Squat (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "curl (dumbbell)",
+      "display": "Curl (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "hammer curl (dumbbell)",
+      "display": "Hammer Curl (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "tricep kickback (dumbbell)",
+      "display": "Tricep Kickback (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "leg press",
+      "display": "Leg Press",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "horizontal leg press",
+      "display": "Leg Press Horizontal (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "seated leg curl",
+      "display": "Seated Leg Curl (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "lying leg curl",
+      "display": "Lying Leg Curl (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "calf extension",
+      "display": "Calf Extension (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "machine crunch",
+      "display": "Crunch (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "chest-supported machine row",
+      "display": "Iso-Lateral Row (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "single-arm cable lateral raise",
+      "display": "Single Arm Lateral Raise (Cable)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "machine chest press",
+      "display": "Chest Press (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "machine rear delt fly",
+      "display": "Rear Delt Reverse Fly (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "seated dumbbell shoulder press",
+      "display": "Seated Dumbbell Shoulder Press",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "single-arm dumbbell row",
+      "display": "Single Arm Dumbbell Row",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "ez bar biceps curl",
+      "display": "Heavy EZ Bar Biceps Curl",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "triceps rope pushdown",
+      "display": "Triceps Rope Pushdown",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "hack squat",
+      "display": "Hack Squat",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "leg extension",
+      "display": "Leg Extension",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "leg curl",
+      "display": "Leg Curl",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "calf press on leg press",
+      "display": "Calf Press on Leg Press",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "standing calf raise",
+      "display": "Standing Calf Raise",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "seated calf raise",
+      "display": "Seated Calf Raise",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "lat pulldown (cable)",
+      "display": "Lat Pulldown (Cable)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "seated cable row",
+      "display": "Seated Cable Row",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "cable crossover",
+      "display": "Cable Crossover",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "tricep pushdown (cable)",
+      "display": "Tricep Pushdown (Cable)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "face pull (cable)",
+      "display": "Face Pull (Cable)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "curl (cable)",
+      "display": "Curl (Cable)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "pull up",
+      "display": "Pull Up",
+      "mode": "bodyweightReps"
+    },
+    {
+      "canonical": "chin up",
+      "display": "Chin Up",
+      "mode": "bodyweightReps"
+    },
+    {
+      "canonical": "push up",
+      "display": "Push Up",
+      "mode": "bodyweightReps"
+    },
+    {
+      "canonical": "dip",
+      "display": "Dip",
+      "mode": "bodyweightReps"
+    },
+    {
+      "canonical": "hanging leg raise",
+      "display": "Hanging Leg Raise",
+      "mode": "bodyweightReps"
+    },
+    {
+      "canonical": "plank",
+      "display": "Plank",
+      "mode": "duration"
+    },
+    {
+      "canonical": "treadmill run",
+      "display": "Treadmill Run",
+      "mode": "distanceDuration"
+    },
+    {
+      "canonical": "rowing machine",
+      "display": "Rowing Machine",
+      "mode": "distanceDuration"
+    },
+    {
+      "canonical": "assault bike",
+      "display": "Assault Bike",
+      "mode": "distanceDuration"
+    },
+    {
+      "canonical": "pec deck",
+      "display": "Pec Deck",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "chest press (machine)",
+      "display": "Chest Press (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "shoulder press (machine)",
+      "display": "Shoulder Press (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "lat pulldown (machine)",
+      "display": "Lat Pulldown (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "iso-lateral row (machine)",
+      "display": "Iso-Lateral Row (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "hip abduction (machine)",
+      "display": "Hip Abduction (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "hip adduction (machine)",
+      "display": "Hip Adduction (Machine)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "smith machine squat",
+      "display": "Smith Machine Squat",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "smith machine bench press",
+      "display": "Smith Machine Bench Press",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "arnold press (dumbbell)",
+      "display": "Arnold Press (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "concentration curl (dumbbell)",
+      "display": "Concentration Curl (Dumbbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "wrist curl (barbell)",
+      "display": "Wrist Curl (Barbell)",
+      "mode": "weightReps"
+    },
+    {
+      "canonical": "farmers walk (dumbbell)",
+      "display": "Farmers Walk (Dumbbell)",
+      "mode": "distanceDuration"
+    }
+  ]
+}

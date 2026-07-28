@@ -224,11 +224,14 @@ public struct InSessionCoachService: Sendable {
     ) throws -> AppliedSessionAdjustment {
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
+        let (catalog, familiarExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
             payload: payload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
-            persistence: persistence
+            persistence: persistence,
+            excludedExerciseIDs: excludedExerciseIDs,
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         guard normalized.unresolvedExerciseIDs.isEmpty else {
@@ -236,7 +239,6 @@ public struct InSessionCoachService: Sendable {
         }
 
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
-        let (catalog, familiarExerciseIDs) = try loadCatalog()
         let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
 
         guard !adjustment.operations.isEmpty else {
@@ -311,11 +313,14 @@ public struct InSessionCoachService: Sendable {
     ) throws -> CoachSessionProposal {
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
+        let (catalog, familiarExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
             payload: payload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
-            persistence: persistence
+            persistence: persistence,
+            excludedExerciseIDs: excludedExerciseIDs,
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : payload
@@ -360,7 +365,6 @@ public struct InSessionCoachService: Sendable {
         }
 
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
-        let (catalog, familiarExerciseIDs) = try loadCatalog()
         let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
 
         let result = PlanKit.apply(
@@ -431,42 +435,50 @@ public struct InSessionCoachService: Sendable {
         let exerciseIDs = snapshot.session.exercises.map(\.exerciseID)
         let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
 
-        let allowedExerciseLines = snapshot.session.exercises
-            .sorted { $0.displayOrder < $1.displayOrder }
-            .map { exercise in
-                let label = ExerciseDisplayFormatter.friendlyName(
-                    for: exercise.exerciseID,
-                    displayNames: displayNames
-                )
-                return "- \(exercise.exerciseID) | \(label)"
-            }
-            .joined(separator: "\n")
-
-        let exerciseLines = snapshot.session.exercises
-            .sorted { $0.displayOrder < $1.displayOrder }
-            .map { exercise in
+        let sortedExercises = snapshot.session.exercises.sorted { $0.displayOrder < $1.displayOrder }
+        let exerciseLines = sortedExercises
+            .enumerated()
+            .map { index, exercise in
                 let completed = exercise.sets.filter { $0.status == .completed }.count
                 let label = ExerciseDisplayFormatter.friendlyName(
                     for: exercise.exerciseID,
                     displayNames: displayNames
                 )
-                return "- \(exercise.exerciseID) | \(label) (\(exercise.sets.count) sets, \(completed) completed)"
+                let archetypeID = CoachArchetypeSupport.archetype(for: exercise.exerciseID)?.id ?? exercise.exerciseID
+                return "- slot \(index + 1) | \(archetypeID) | \(label) (\(exercise.sets.count) sets, \(completed) completed)"
             }
+            .joined(separator: "\n")
+
+        let sessionArchetypeIDs = Set(
+            CoachArchetypeSupport.sessionArchetypeIDs(
+                for: sortedExercises.map(\.exerciseID)
+            )
+        )
+        let archetypeLines = CoachArchetypeSupport.catalog.archetypes
+            .filter { sessionArchetypeIDs.contains($0.id) || $0.priority == "core" || $0.priority == "common" }
+            .sorted { lhs, rhs in
+                let lhsInSession = sessionArchetypeIDs.contains(lhs.id)
+                let rhsInSession = sessionArchetypeIDs.contains(rhs.id)
+                if lhsInSession != rhsInSession { return lhsInSession }
+                return lhs.displayName < rhs.displayName
+            }
+            .map { "- \($0.id) | \($0.displayName)" }
             .joined(separator: "\n")
 
         if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !notes.isEmpty {
             context += "\n\nAthlete session note:\n\(notes)"
         }
-        if !allowedExerciseLines.isEmpty {
-            context += "\n\nAllowed exercise IDs (use exact exerciseID in operations):\n\(allowedExerciseLines)"
+        if !archetypeLines.isEmpty {
+            context += "\n\nAllowed archetype IDs (use exact archetypeId in operations):\n\(archetypeLines)"
         }
         if !exerciseLines.isEmpty {
             context += "\n\nActive session exercises:\n\(exerciseLines)"
         }
         if !excludedExerciseIDs.isEmpty {
-            context += "\n\nExcluded exercise IDs (already swapped this session):\n"
-                + excludedExerciseIDs.sorted().joined(separator: ", ")
+            let excludedArchetypes = excludedExerciseIDs.compactMap { CoachArchetypeSupport.archetype(for: $0)?.id }
+            context += "\n\nExcluded archetype IDs (already swapped this session):\n"
+                + excludedArchetypes.sorted().joined(separator: ", ")
         }
 
         return CoachPrompt(

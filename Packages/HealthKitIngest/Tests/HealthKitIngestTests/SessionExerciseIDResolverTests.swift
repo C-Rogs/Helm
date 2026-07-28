@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import Foundation
 import Persistence
@@ -107,6 +108,43 @@ struct SessionExerciseIDResolverTests {
         )
 
         #expect(result.unresolvedExerciseIDs.contains("totally-unknown-lift"))
+    }
+
+    @Test("archetype ID resolves swap target to catalog exercise")
+    func archetypeSwapTarget() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+
+        let fixtureURL = try #require(
+            Bundle.module.url(
+                forResource: "coach_archetype_catalog_fixture",
+                withExtension: "json"
+            )
+        )
+        CoachArchetypeSupport.configure(with: try CoachArchetypeLibrary.load(from: fixtureURL))
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Swap to incline.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .swap,
+                    fromExerciseID: "bench_press",
+                    toExerciseID: "incline_press"
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [benchPressID],
+            exerciseDisplayNames: [benchPressID: "Bench Press"],
+            persistence: store
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.payload.operations.first?.fromExerciseID == benchPressID)
+        #expect(result.payload.operations.first?.toExerciseID == inclineID)
     }
 }
 

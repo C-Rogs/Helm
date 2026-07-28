@@ -40,9 +40,11 @@ public enum CoachSystemPrompt {
     - Put a short provenance line in rationale for the undo banner.
     - Return the matching operations array.
 
-    adjustLoad: use massDeltaKg or targetMassKg for one exerciseID.
-    adjustRPE: use rpeDelta or targetRPE for one exerciseID.
+    adjustLoad: use massDeltaKg or targetMassKg for one archetypeId.
+    adjustRPE: use rpeDelta or targetRPE for one archetypeId.
     Ground swaps in equipment availability when the user mentions it.
-    Never invent exercise IDs; copy the exact exerciseID from the active session list in context.
+    Never invent archetype IDs; copy exact archetypeId values from the allowed archetype list in context.
+    For swap operations, fromExerciseID and toExerciseID must be archetypeId strings (snake_case), not raw catalog exercise IDs.
+    For adjustSets, adjustLoad, and adjustRPE, exerciseID must be the archetypeId of an exercise in the active session list.
     """
 }

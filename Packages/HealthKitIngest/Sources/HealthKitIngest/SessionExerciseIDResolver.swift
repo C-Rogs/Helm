@@ -13,7 +13,9 @@ enum SessionExerciseIDResolver {
         payload: SessionAdjustmentPayload,
         sessionExerciseIDs: Set<String>,
         exerciseDisplayNames: [String: String],
-        persistence: PersistenceStore
+        persistence: PersistenceStore,
+        excludedExerciseIDs: Set<String> = [],
+        familiarExerciseIDs: Set<String> = []
     ) throws -> Result {
         var unresolved: [String] = []
         let normalizedOps = payload.operations.map { operation in
@@ -22,6 +24,8 @@ enum SessionExerciseIDResolver {
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs,
+                familiarExerciseIDs: familiarExerciseIDs,
                 unresolved: &unresolved
             )
         }
@@ -44,6 +48,8 @@ enum SessionExerciseIDResolver {
         sessionExerciseIDs: Set<String>,
         exerciseDisplayNames: [String: String],
         persistence: PersistenceStore,
+        excludedExerciseIDs: Set<String>,
+        familiarExerciseIDs: Set<String>,
         unresolved: inout [String]
     ) -> SessionAdjustmentOperation {
         switch operation.kind {
@@ -53,6 +59,8 @@ enum SessionExerciseIDResolver {
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs,
+                familiarExerciseIDs: familiarExerciseIDs,
                 mustBeInSession: true,
                 unresolved: &unresolved
             )
@@ -61,6 +69,8 @@ enum SessionExerciseIDResolver {
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs,
+                familiarExerciseIDs: familiarExerciseIDs,
                 mustBeInSession: false,
                 unresolved: &unresolved
             )
@@ -84,6 +94,8 @@ enum SessionExerciseIDResolver {
                     sessionExerciseIDs: sessionExerciseIDs,
                     exerciseDisplayNames: exerciseDisplayNames,
                     persistence: persistence,
+                    excludedExerciseIDs: excludedExerciseIDs,
+                    familiarExerciseIDs: familiarExerciseIDs,
                     mustBeInSession: true,
                     unresolved: &unresolved
                 ) ?? id
@@ -98,6 +110,8 @@ enum SessionExerciseIDResolver {
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs,
+                familiarExerciseIDs: familiarExerciseIDs,
                 mustBeInSession: true,
                 unresolved: &unresolved
             )
@@ -118,82 +132,26 @@ enum SessionExerciseIDResolver {
         sessionExerciseIDs: Set<String>,
         exerciseDisplayNames: [String: String],
         persistence: PersistenceStore,
+        excludedExerciseIDs: Set<String>,
+        familiarExerciseIDs: Set<String>,
         mustBeInSession: Bool,
         unresolved: inout [String]
     ) -> String? {
         guard let rawID, !rawID.isEmpty else { return rawID }
 
-        if sessionExerciseIDs.contains(rawID) {
-            return rawID
-        }
-
-        if let matched = displayNameMatch(
-            rawID,
+        let context = ExerciseResolver.Context(
             sessionExerciseIDs: sessionExerciseIDs,
-            exerciseDisplayNames: exerciseDisplayNames
-        ) {
-            return matched
-        }
-
-        if let matched = fuzzyMatch(rawID, against: sessionExerciseIDs) {
-            return matched
-        }
-
-        if let resolved = try? persistence.exercises.resolveImportedTitle(rawID)?.exerciseID {
-            if !mustBeInSession || sessionExerciseIDs.contains(resolved) {
-                return resolved
-            }
-        }
-
-        let normalized = normalizeToken(rawID)
-        if let aliasMatch = try? persistence.exercises.resolveExerciseID(normalizedAlias: normalized) {
-            if !mustBeInSession || sessionExerciseIDs.contains(aliasMatch) {
-                return aliasMatch
-            }
+            exerciseDisplayNames: exerciseDisplayNames,
+            excludedExerciseIDs: excludedExerciseIDs,
+            familiarExerciseIDs: familiarExerciseIDs,
+            mustBeInSession: mustBeInSession
+        )
+        let resolved = ExerciseResolver.resolve(rawID, context: context, persistence: persistence)
+        if let exerciseID = resolved.exerciseID {
+            return exerciseID
         }
 
         unresolved.append(rawID)
         return rawID
-    }
-
-    private static func displayNameMatch(
-        _ rawID: String,
-        sessionExerciseIDs: Set<String>,
-        exerciseDisplayNames: [String: String]
-    ) -> String? {
-        let rawCandidates = Set(ExerciseSearchNormalizer.searchCandidates(for: rawID))
-        guard !rawCandidates.isEmpty else { return nil }
-
-        for sessionID in sessionExerciseIDs {
-            let label = ExerciseDisplayFormatter.friendlyName(
-                for: sessionID,
-                displayNames: exerciseDisplayNames
-            )
-            let labelCandidates = Set(ExerciseSearchNormalizer.searchCandidates(for: label))
-            if !rawCandidates.isDisjoint(with: labelCandidates) {
-                return sessionID
-            }
-        }
-        return nil
-    }
-
-    private static func fuzzyMatch(_ rawID: String, against sessionExerciseIDs: Set<String>) -> String? {
-        let needle = normalizeToken(rawID)
-        for sessionID in sessionExerciseIDs {
-            if normalizeToken(sessionID) == needle {
-                return sessionID
-            }
-        }
-        return nil
-    }
-
-    private static func normalizeToken(_ value: String) -> String {
-        var token = value.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
-        if token.hasPrefix("seed-") {
-            token = String(token.dropFirst(5))
-        }
-        return token
-            .replacingOccurrences(of: "_", with: "-")
-            .replacingOccurrences(of: " ", with: "-")
     }
 }

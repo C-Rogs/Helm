@@ -1,0 +1,697 @@
+{
+  "source": "/Users/cameronro/Downloads/HevyExport 4.csv",
+  "exerciseCount": 115,
+  "totalSetRows": 5227,
+  "exercises": [
+    {
+      "name": "Bench Press (Dumbbell)",
+      "setCount": 299,
+      "workoutCount": 61,
+      "lastUsed": "2026-04-27"
+    },
+    {
+      "name": "Squat (Barbell)",
+      "setCount": 254,
+      "workoutCount": 41,
+      "lastUsed": "2026-04-25"
+    },
+    {
+      "name": "Lateral Raise (Dumbbell)",
+      "setCount": 214,
+      "workoutCount": 49,
+      "lastUsed": "2026-05-26"
+    },
+    {
+      "name": "Pull Up",
+      "setCount": 201,
+      "workoutCount": 66,
+      "lastUsed": "2026-04-29"
+    },
+    {
+      "name": "Bench Press (Barbell)",
+      "setCount": 194,
+      "workoutCount": 30,
+      "lastUsed": "2026-01-03"
+    },
+    {
+      "name": "EZ Bar Biceps Curl",
+      "setCount": 187,
+      "workoutCount": 52,
+      "lastUsed": "2026-04-29"
+    },
+    {
+      "name": "Face Pull",
+      "setCount": 159,
+      "workoutCount": 53,
+      "lastUsed": "2026-04-09"
+    },
+    {
+      "name": "Triceps Extension (Machine)",
+      "setCount": 154,
+      "workoutCount": 47,
+      "lastUsed": "2026-04-03"
+    },
+    {
+      "name": "Lat Pulldown (Cable)",
+      "setCount": 151,
+      "workoutCount": 43,
+      "lastUsed": "2026-05-29"
+    },
+    {
+      "name": "Shoulder Press (Machine Plates)",
+      "setCount": 149,
+      "workoutCount": 39,
+      "lastUsed": "2026-05-31"
+    },
+    {
+      "name": "Hammer Curl (Cable)",
+      "setCount": 145,
+      "workoutCount": 46,
+      "lastUsed": "2026-05-31"
+    },
+    {
+      "name": "Triceps Rope Pushdown",
+      "setCount": 144,
+      "workoutCount": 50,
+      "lastUsed": "2026-05-31"
+    },
+    {
+      "name": "Hammer Curl (Dumbbell)",
+      "setCount": 142,
+      "workoutCount": 43,
+      "lastUsed": "2026-04-29"
+    },
+    {
+      "name": "Leg Extension (Machine)",
+      "setCount": 139,
+      "workoutCount": 43,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Bent Over Row (Barbell)",
+      "setCount": 138,
+      "workoutCount": 31,
+      "lastUsed": "2026-04-29"
+    },
+    {
+      "name": "Crunch (Machine)",
+      "setCount": 130,
+      "workoutCount": 45,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Triceps Pushdown",
+      "setCount": 130,
+      "workoutCount": 41,
+      "lastUsed": "2026-05-18"
+    },
+    {
+      "name": "Calf Extension (Machine)",
+      "setCount": 123,
+      "workoutCount": 37,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Chest Fly (Machine)",
+      "setCount": 119,
+      "workoutCount": 40,
+      "lastUsed": "2026-05-26"
+    },
+    {
+      "name": "Shoulder Press (Dumbbell)",
+      "setCount": 100,
+      "workoutCount": 28,
+      "lastUsed": "2026-05-18"
+    },
+    {
+      "name": "Rear Delt Reverse Fly (Machine)",
+      "setCount": 92,
+      "workoutCount": 29,
+      "lastUsed": "2026-05-22"
+    },
+    {
+      "name": "Lying Leg Curl (Machine)",
+      "setCount": 90,
+      "workoutCount": 29,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Lateral Raise (Machine)",
+      "setCount": 82,
+      "workoutCount": 23,
+      "lastUsed": "2025-08-25"
+    },
+    {
+      "name": "Triceps Dip",
+      "setCount": 80,
+      "workoutCount": 29,
+      "lastUsed": "2026-03-05"
+    },
+    {
+      "name": "Hip Thrust (Machine)",
+      "setCount": 78,
+      "workoutCount": 24,
+      "lastUsed": "2026-04-25"
+    },
+    {
+      "name": "Iso-Lateral Row (Machine)",
+      "setCount": 71,
+      "workoutCount": 22,
+      "lastUsed": "2026-05-29"
+    },
+    {
+      "name": "Overhead Triceps Extension (Cable)",
+      "setCount": 70,
+      "workoutCount": 22,
+      "lastUsed": "2026-05-26"
+    },
+    {
+      "name": "Incline Bench Press (Dumbbell)",
+      "setCount": 69,
+      "workoutCount": 17,
+      "lastUsed": "2026-05-29"
+    },
+    {
+      "name": "Triceps Extension (Dumbbell)",
+      "setCount": 67,
+      "workoutCount": 20,
+      "lastUsed": "2025-12-08"
+    },
+    {
+      "name": "Seated Incline Curl (Dumbbell)",
+      "setCount": 62,
+      "workoutCount": 19,
+      "lastUsed": "2026-05-31"
+    },
+    {
+      "name": "Seated Row (Machine)",
+      "setCount": 61,
+      "workoutCount": 19,
+      "lastUsed": "2026-05-18"
+    },
+    {
+      "name": "Reverse Curl (Barbell)",
+      "setCount": 53,
+      "workoutCount": 17,
+      "lastUsed": "2026-02-06"
+    },
+    {
+      "name": "Rear Delt Reverse Fly (Cable)",
+      "setCount": 49,
+      "workoutCount": 14,
+      "lastUsed": "2025-11-21"
+    },
+    {
+      "name": "Deadlift (Barbell)",
+      "setCount": 48,
+      "workoutCount": 7,
+      "lastUsed": "2026-02-02"
+    },
+    {
+      "name": "Preacher Curl (Barbell)",
+      "setCount": 48,
+      "workoutCount": 15,
+      "lastUsed": "2026-04-11"
+    },
+    {
+      "name": "Seated Leg Curl (Machine)",
+      "setCount": 47,
+      "workoutCount": 16,
+      "lastUsed": "2026-03-23"
+    },
+    {
+      "name": "Seated Cable Row - V Grip (Cable)",
+      "setCount": 45,
+      "workoutCount": 14,
+      "lastUsed": "2026-04-14"
+    },
+    {
+      "name": "Bicep Curl (Dumbbell)",
+      "setCount": 43,
+      "workoutCount": 14,
+      "lastUsed": "2026-04-09"
+    },
+    {
+      "name": "Romanian Deadlift (Barbell)",
+      "setCount": 41,
+      "workoutCount": 11,
+      "lastUsed": "2026-04-25"
+    },
+    {
+      "name": "Chest Press (Machine)",
+      "setCount": 39,
+      "workoutCount": 11,
+      "lastUsed": "2026-05-26"
+    },
+    {
+      "name": "Leg Press Horizontal (Machine)",
+      "setCount": 37,
+      "workoutCount": 11,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Single Arm Lateral Raise (Cable)",
+      "setCount": 35,
+      "workoutCount": 9,
+      "lastUsed": "2026-05-31"
+    },
+    {
+      "name": "Lat Pulldown (Machine)",
+      "setCount": 34,
+      "workoutCount": 10,
+      "lastUsed": "2026-04-11"
+    },
+    {
+      "name": "Back Extension (Weighted Hyperextension)",
+      "setCount": 30,
+      "workoutCount": 9,
+      "lastUsed": "2026-03-23"
+    },
+    {
+      "name": "Skullcrusher (Barbell)",
+      "setCount": 30,
+      "workoutCount": 10,
+      "lastUsed": "2026-02-01"
+    },
+    {
+      "name": "Seated Shoulder Press (Machine)",
+      "setCount": 29,
+      "workoutCount": 9,
+      "lastUsed": "2026-05-26"
+    },
+    {
+      "name": "Lateral Raise (Cable)",
+      "setCount": 27,
+      "workoutCount": 9,
+      "lastUsed": "2025-12-30"
+    },
+    {
+      "name": "Seated Calf Raise",
+      "setCount": 27,
+      "workoutCount": 8,
+      "lastUsed": "2026-04-10"
+    },
+    {
+      "name": "Shrug (Dumbbell)",
+      "setCount": 25,
+      "workoutCount": 9,
+      "lastUsed": "2026-04-09"
+    },
+    {
+      "name": "Hack Squat (Machine)",
+      "setCount": 24,
+      "workoutCount": 4,
+      "lastUsed": "2026-03-23"
+    },
+    {
+      "name": "Calf Press (Machine)",
+      "setCount": 23,
+      "workoutCount": 8,
+      "lastUsed": "2026-04-05"
+    },
+    {
+      "name": "Bicep Curl (Barbell)",
+      "setCount": 20,
+      "workoutCount": 7,
+      "lastUsed": "2026-03-05"
+    },
+    {
+      "name": "Butterfly (Pec Deck)",
+      "setCount": 19,
+      "workoutCount": 7,
+      "lastUsed": "2026-01-19"
+    },
+    {
+      "name": "Lat Pulldown - Close Grip (Cable)",
+      "setCount": 19,
+      "workoutCount": 6,
+      "lastUsed": "2026-03-02"
+    },
+    {
+      "name": "Cable Fly Crossovers",
+      "setCount": 18,
+      "workoutCount": 6,
+      "lastUsed": "2026-04-13"
+    },
+    {
+      "name": "Seated Dip Machine",
+      "setCount": 16,
+      "workoutCount": 5,
+      "lastUsed": "2025-11-28"
+    },
+    {
+      "name": "Bicep Curl (Cable)",
+      "setCount": 15,
+      "workoutCount": 6,
+      "lastUsed": "2026-04-24"
+    },
+    {
+      "name": "Preacher Curl (Machine)",
+      "setCount": 15,
+      "workoutCount": 4,
+      "lastUsed": "2026-03-28"
+    },
+    {
+      "name": "Skullcrusher (Dumbbell)",
+      "setCount": 14,
+      "workoutCount": 5,
+      "lastUsed": "2026-02-18"
+    },
+    {
+      "name": "Decline Crunch (Weighted)",
+      "setCount": 12,
+      "workoutCount": 4,
+      "lastUsed": "2026-02-06"
+    },
+    {
+      "name": "Push Up",
+      "setCount": 11,
+      "workoutCount": 4,
+      "lastUsed": "2025-01-29"
+    },
+    {
+      "name": "Triceps Extension (Cable)",
+      "setCount": 11,
+      "workoutCount": 3,
+      "lastUsed": "2025-05-26"
+    },
+    {
+      "name": "Bench Press - Close Grip (Barbell)",
+      "setCount": 10,
+      "workoutCount": 3,
+      "lastUsed": "2026-01-26"
+    },
+    {
+      "name": "Bulgarian Split Squat",
+      "setCount": 10,
+      "workoutCount": 3,
+      "lastUsed": "2025-04-11"
+    },
+    {
+      "name": "Hip Abduction (Machine)",
+      "setCount": 10,
+      "workoutCount": 3,
+      "lastUsed": "2026-02-12"
+    },
+    {
+      "name": "Low Cable Fly Crossovers",
+      "setCount": 9,
+      "workoutCount": 3,
+      "lastUsed": "2025-04-26"
+    },
+    {
+      "name": "Reverse Fly Single Arm (Cable)",
+      "setCount": 9,
+      "workoutCount": 3,
+      "lastUsed": "2026-04-14"
+    },
+    {
+      "name": "Reverse Grip Tricep Pushdown",
+      "setCount": 9,
+      "workoutCount": 4,
+      "lastUsed": "2025-04-07"
+    },
+    {
+      "name": "Triceps Kickback (Cable)",
+      "setCount": 9,
+      "workoutCount": 3,
+      "lastUsed": "2025-10-05"
+    },
+    {
+      "name": "Preacher Curl (Dumbbell)",
+      "setCount": 8,
+      "workoutCount": 2,
+      "lastUsed": "2025-05-28"
+    },
+    {
+      "name": "Rear Delt Reverse Fly (Dumbbell)",
+      "setCount": 8,
+      "workoutCount": 2,
+      "lastUsed": "2025-01-23"
+    },
+    {
+      "name": "Seated Overhead Press (Dumbbell)",
+      "setCount": 8,
+      "workoutCount": 2,
+      "lastUsed": "2026-02-15"
+    },
+    {
+      "name": "Bicep Curl (Machine)",
+      "setCount": 7,
+      "workoutCount": 2,
+      "lastUsed": "2025-06-10"
+    },
+    {
+      "name": "Chest Supported Y Raise (Dumbbell)",
+      "setCount": 7,
+      "workoutCount": 2,
+      "lastUsed": "2025-10-20"
+    },
+    {
+      "name": "Dumbbell Row",
+      "setCount": 7,
+      "workoutCount": 2,
+      "lastUsed": "2026-03-04"
+    },
+    {
+      "name": "Single Arm Tricep Extension (Dumbbell)",
+      "setCount": 6,
+      "workoutCount": 2,
+      "lastUsed": "2026-02-26"
+    },
+    {
+      "name": "Single Leg Romanian Deadlift (Dumbbell)",
+      "setCount": 6,
+      "workoutCount": 2,
+      "lastUsed": "2025-04-11"
+    },
+    {
+      "name": "Upright Row (Barbell)",
+      "setCount": 5,
+      "workoutCount": 1,
+      "lastUsed": "2025-12-09"
+    },
+    {
+      "name": "Hip Thrust (Barbell)",
+      "setCount": 4,
+      "workoutCount": 1,
+      "lastUsed": "2024-12-03"
+    },
+    {
+      "name": "Nordic Hamstrings Curls",
+      "setCount": 4,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-08"
+    },
+    {
+      "name": "Overhead Press (Barbell)",
+      "setCount": 4,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-22"
+    },
+    {
+      "name": "Running",
+      "setCount": 4,
+      "workoutCount": 3,
+      "lastUsed": "2026-05-18"
+    },
+    {
+      "name": "Standing Calf Raise",
+      "setCount": 4,
+      "workoutCount": 2,
+      "lastUsed": "2025-01-08"
+    },
+    {
+      "name": "Behind the Back Curl (Cable)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2026-05-13"
+    },
+    {
+      "name": "Bench Dip",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-02-13"
+    },
+    {
+      "name": "Chest Dip",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-22"
+    },
+    {
+      "name": "Chest Fly (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-20"
+    },
+    {
+      "name": "Cross Body Hammer Curl",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-11"
+    },
+    {
+      "name": "Diamond Push Up",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-29"
+    },
+    {
+      "name": "Hanging Leg Raise",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-22"
+    },
+    {
+      "name": "Hex Press (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-10-26"
+    },
+    {
+      "name": "Hip Adduction (Machine)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2024-12-17"
+    },
+    {
+      "name": "Incline Chest Fly (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-24"
+    },
+    {
+      "name": "Incline Chest Press (Machine)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-03-28"
+    },
+    {
+      "name": "JM Press (Barbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-10-18"
+    },
+    {
+      "name": "Pullover (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-20"
+    },
+    {
+      "name": "Rear Kick (Machine)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2026-02-27"
+    },
+    {
+      "name": "Romanian Deadlift (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2026-05-27"
+    },
+    {
+      "name": "Shrug (Cable)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-09-24"
+    },
+    {
+      "name": "Single Arm Triceps Pushdown (Cable)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-12-22"
+    },
+    {
+      "name": "Single Leg Standing Calf Raise (Machine)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-26"
+    },
+    {
+      "name": "Standing Calf Raise (Dumbbell)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-04-11"
+    },
+    {
+      "name": "Straight Arm Lat Pulldown (Cable)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-02-26"
+    },
+    {
+      "name": "T Bar Row",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2026-04-01"
+    },
+    {
+      "name": "Treadmill",
+      "setCount": 3,
+      "workoutCount": 3,
+      "lastUsed": "2025-12-30"
+    },
+    {
+      "name": "Upright Row (Cable)",
+      "setCount": 3,
+      "workoutCount": 1,
+      "lastUsed": "2025-03-26"
+    },
+    {
+      "name": "Push Up - Close Grip",
+      "setCount": 2,
+      "workoutCount": 1,
+      "lastUsed": "2025-03-25"
+    },
+    {
+      "name": "Side Plank",
+      "setCount": 2,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-18"
+    },
+    {
+      "name": "Triceps Extension (Barbell)",
+      "setCount": 2,
+      "workoutCount": 1,
+      "lastUsed": "2025-01-06"
+    },
+    {
+      "name": "Aerobics",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2026-01-15"
+    },
+    {
+      "name": "Cycling",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2025-03-16"
+    },
+    {
+      "name": "Pilates",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2026-01-09"
+    },
+    {
+      "name": "Plank",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2025-11-18"
+    },
+    {
+      "name": "Walking",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2026-05-05"
+    },
+    {
+      "name": "Warm Up",
+      "setCount": 1,
+      "workoutCount": 1,
+      "lastUsed": "2026-02-01"
+    }
+  ]
+}
