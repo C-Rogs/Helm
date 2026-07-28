@@ -66,7 +66,10 @@ struct NutritionView: View {
                     reloadMeals(from: nutritionService.state)
                 }
             }
-            .onChange(of: photoMealController.pickerItem) { _, _ in
+            .onChange(of: photoMealController.pickerItem) { _, newValue in
+                if newValue != nil {
+                    showsPhotoOptions = false
+                }
                 Task { await photoMealController.handlePickerItemChange() }
             }
             .modifier(NutritionLoggingSheets(
@@ -337,6 +340,12 @@ private struct NutritionLoggingSheets: ViewModifier {
 
     func body(content: Content) -> some View {
         content
+            .fullScreenCover(isPresented: photoEstimatingBinding) {
+                PhotoMealEstimatingView(
+                    message: photoMealController.busyMessage,
+                    previewImage: photoMealController.estimatingPreviewImage
+                )
+            }
             .sheet(isPresented: photoConfirmBinding) {
                 if case let .confirm(estimate, previewImage) = photoMealController.phase {
                     PhotoMealConfirmSheet(
@@ -554,6 +563,17 @@ private struct NutritionLoggingSheets: ViewModifier {
             set: { isPresented in
                 if !isPresented {
                     mealEditController.dismissError()
+                }
+            }
+        )
+    }
+
+    private var photoEstimatingBinding: Binding<Bool> {
+        Binding(
+            get: { photoMealController.isEstimating },
+            set: { isPresented in
+                if !isPresented, photoMealController.isEstimating {
+                    photoMealController.cancel()
                 }
             }
         )

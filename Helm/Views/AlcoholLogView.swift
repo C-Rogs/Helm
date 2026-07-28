@@ -55,20 +55,22 @@ struct AlcoholLogView: View {
         .helmScreenBackground()
         .navigationTitle("Alcohol")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            Button("Log alcohol") {
-                Task {
-                    await controller.logAlcohol(
-                        preset: preset,
-                        quantity: quantity,
-                        bucket: bucket
-                    )
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                if controller.isBusy {
+                    ProgressView()
+                } else {
+                    Button("Add") {
+                        Task {
+                            await controller.logAlcohol(
+                                preset: preset,
+                                quantity: quantity,
+                                bucket: bucket
+                            )
+                        }
+                    }
                 }
             }
-            .buttonStyle(.helmPrimary)
-            .disabled(controller.isBusy)
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface.opacity(0.96))
         }
     }
 

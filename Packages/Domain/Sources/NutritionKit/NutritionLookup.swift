@@ -55,9 +55,13 @@ public struct NutritionLookup: Sendable {
             let candidates = [record.description] + record.synonyms
             for candidate in candidates {
                 let candidateTokens = Set(Self.normalize(candidate).split(separator: " ").map(String.init))
-                let overlap = tokens.intersection(candidateTokens).count
-                if overlap >= 2, overlap > (best?.score ?? 0) {
-                    best = (record, overlap)
+                let overlap = Self.tokenOverlapScore(queryTokens: tokens, candidateTokens: candidateTokens)
+                let primaryWord = Self.primaryFoodToken(from: candidate)
+                let boostedOverlap = primaryWord.map { primary in
+                    tokens.contains(where: { Self.tokensEquivalent($0, primary) }) ? max(overlap, 2) : overlap
+                } ?? overlap
+                if boostedOverlap >= 2, boostedOverlap > (best?.score ?? 0) {
+                    best = (record, boostedOverlap)
                 }
             }
         }
@@ -93,12 +97,15 @@ public struct NutritionLookup: Sendable {
             }
 
             let primaryWord = description.split(separator: " ").first.map(String.init) ?? description
-            if primaryWord == normalized {
+            if primaryWord == normalized || Self.tokensEquivalent(primaryWord, normalized) {
                 scored.append((record.description, 180))
                 continue
             }
 
-            if Self.wordBoundaryMatch(description: description, query: normalized) {
+            if Self.wordBoundaryMatch(description: description, query: normalized)
+                || queryTokens.contains(where: { token in
+                    description.split(separator: " ").contains(where: { Self.tokensEquivalent(token, String($0)) })
+                }) {
                 var score = 150
                 if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
                     score -= 80
@@ -129,11 +136,14 @@ public struct NutritionLookup: Sendable {
                 let candidates = [record.description] + record.synonyms
                 if candidates.contains(where: { candidate in
                     let normalizedCandidate = Self.normalize(candidate)
-                    return queryTokens.allSatisfy { normalizedCandidate.contains($0) }
+                    return queryTokens.allSatisfy { token in
+                        normalizedCandidate.split(separator: " ").contains(where: { Self.tokensEquivalent(token, String($0)) })
+                            || normalizedCandidate.contains(token)
+                    }
                 }) {
                     let normalizedDescription = Self.normalize(record.description)
                     let descriptionTokens = Set(normalizedDescription.split(separator: " ").map(String.init))
-                    let overlap = queryTokens.intersection(descriptionTokens).count
+                    let overlap = Self.tokenOverlapScore(queryTokens: queryTokens, candidateTokens: descriptionTokens)
                     scored.append((record.description, 55 + overlap * 15))
                     continue
                 }
@@ -169,10 +179,38 @@ public struct NutritionLookup: Sendable {
         let parts = description.split(separator: " ").map(String.init)
         for part in parts {
             let token = part.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-            if token == query || token.hasPrefix(query) {
+            if tokensEquivalent(token, query) || token.hasPrefix(query) {
                 return true
             }
         }
+        return false
+    }
+
+    private static func primaryFoodToken(from candidate: String) -> String? {
+        let head = candidate.split(separator: ",").first.map(String.init) ?? candidate
+        let token = head.split(separator: " ").first.map(String.init) ?? head
+        let normalized = normalize(token)
+        return normalized.isEmpty ? nil : normalized
+    }
+
+    private static func tokenOverlapScore(queryTokens: Set<String>, candidateTokens: Set<String>) -> Int {
+        var overlap = 0
+        for query in queryTokens {
+            for candidate in candidateTokens where tokensEquivalent(query, candidate) {
+                overlap += 1
+                break
+            }
+        }
+        return overlap
+    }
+
+    static func tokensEquivalent(_ lhs: String, _ rhs: String) -> Bool {
+        if lhs == rhs { return true }
+        if lhs == rhs + "s" || rhs == lhs + "s" { return true }
+        if lhs.hasSuffix("es") && lhs.dropLast(2) == rhs { return true }
+        if rhs.hasSuffix("es") && rhs.dropLast(2) == lhs { return true }
+        if lhs.hasSuffix("ies") && lhs.dropLast(3) + "y" == rhs { return true }
+        if rhs.hasSuffix("ies") && rhs.dropLast(3) + "y" == lhs { return true }
         return false
     }
 

@@ -123,6 +123,8 @@ struct MealLineItemEditor: View {
                             .helmType(.body)
                         Text("\(detail) · \(Self.format(item.caloriesKcal)) kcal")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
+                        Text(cofidMatchLabel(for: item))
+                            .helmType(.monoTag, color: cofidMatchColor(for: item))
                     }
                     Spacer()
                     HelmIconView(isExpanded ? .chevronUp : .chevronDown, context: .inline)
@@ -478,6 +480,31 @@ struct MealLineItemEditor: View {
         }
         .padding(HelmSpacing.sm)
         .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+    }
+
+    private func cofidMatchLabel(for item: MealLineItem) -> String {
+        if item.usesGenericCofidFallback {
+            return "CoFID: generic dish (no match)"
+        }
+        if let cofid = item.cofidDescription {
+            let quality = switch item.matchConfidence {
+            case .high: "strong match"
+            case .medium: "partial match"
+            case .low: "weak match"
+            }
+            return "CoFID: \(cofid) · \(quality)"
+        }
+        return "CoFID match unknown"
+    }
+
+    private func cofidMatchColor(for item: MealLineItem) -> Color {
+        if item.usesGenericCofidFallback || item.matchConfidence == .low {
+            return HelmColor.compromised
+        }
+        if item.matchConfidence == .medium {
+            return HelmColor.fgSecondary
+        }
+        return HelmColor.fgMuted
     }
 
     private static func format(_ value: Double) -> String {

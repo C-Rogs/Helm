@@ -114,7 +114,18 @@ struct CoachSettingsView: View {
                     Text("OpenRouter").tag(MealVisionBackendPreference.openRouter)
                 }
 
-                Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Macro math stays on-device.")
+                Picker("Photo accuracy", selection: Binding(
+                    get: { photoVisionPreferences.qualityPreference },
+                    set: { newValue in
+                        photoVisionPreferences.qualityPreference = newValue
+                        HapticEngine.shared.play(.selection)
+                    }
+                )) {
+                    Text("Accurate (slower)").tag(MealVisionQualityPreference.accurate)
+                    Text("Fast").tag(MealVisionQualityPreference.fast)
+                }
+
+                Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Macro math stays on-device via CoFID.")
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgSecondary)
             }

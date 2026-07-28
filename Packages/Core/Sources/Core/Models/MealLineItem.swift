@@ -12,6 +12,8 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
     public var fatG: Double
     public var usdaMatchID: String?
     public var matchConfidence: MealEstimate.Confidence
+    /// CoFID record description used for macro math (nil when scaled without re-resolve).
+    public var cofidDescription: String?
 
     public init(
         name: String,
@@ -21,7 +23,8 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
         carbsG: Double,
         fatG: Double,
         usdaMatchID: String? = nil,
-        matchConfidence: MealEstimate.Confidence
+        matchConfidence: MealEstimate.Confidence,
+        cofidDescription: String? = nil
     ) {
         self.name = name
         self.grams = grams
@@ -31,5 +34,10 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
         self.fatG = fatG
         self.usdaMatchID = usdaMatchID
         self.matchConfidence = matchConfidence
+        self.cofidDescription = cofidDescription
+    }
+
+    public var usesGenericCofidFallback: Bool {
+        usdaMatchID == "generic_mixed"
     }
 }

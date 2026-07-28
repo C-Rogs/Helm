@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import OSLog
 
@@ -6,18 +7,18 @@ private let mealVisionLog = Logger(subsystem: "com.cameronro.helm", category: "N
 public struct MealVisionRouter: Sendable {
     private let apiKeyStore: APIKeyStore
     private let preferences: MealVisionPreferencesStore
-    private let geminiVision: any MealVisionProviding
+    private let geminiVision: any MealMacroVisionProviding
     private let openRouterVision: any MealVisionProviding
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         preferences: MealVisionPreferencesStore = MealVisionPreferencesStore(),
-        geminiVision: (any MealVisionProviding)? = nil,
+        geminiVision: (any MealMacroVisionProviding)? = nil,
         openRouterVision: (any MealVisionProviding)? = nil
     ) {
         self.apiKeyStore = apiKeyStore
         self.preferences = preferences
-        self.geminiVision = geminiVision ?? GeminiMealVisionProvider(apiKeyStore: apiKeyStore)
+        self.geminiVision = geminiVision ?? GeminiMealVisionProvider(apiKeyStore: apiKeyStore, preferences: preferences)
         self.openRouterVision = openRouterVision ?? OpenRouterMealVisionProvider(apiKeyStore: apiKeyStore)
     }
 
@@ -76,6 +77,15 @@ public struct MealVisionRouter: Sendable {
 
     private var hasGeminiKey: Bool {
         (try? apiKeyStore.load(kind: .gemini)).map { !$0.isEmpty } ?? false
+    }
+}
+
+extension MealVisionRouter: MealMacroVisionProviding {
+    public func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+        if hasGeminiKey {
+            return try await geminiVision.estimateMacrosDirect(imageJPEGData: imageJPEGData, userNotes: userNotes)
+        }
+        throw CoachProviderError.unavailable("Direct macro vision needs a Gemini API key.")
     }
 }
 

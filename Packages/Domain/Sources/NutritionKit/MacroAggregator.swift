@@ -20,7 +20,8 @@ public enum MacroAggregator: Sendable {
             carbsG: per100g.carbsG * scale,
             fatG: per100g.fatG * scale,
             usdaMatchID: resolved.record.fdcId,
-            matchConfidence: matchConfidence
+            matchConfidence: matchConfidence,
+            cofidDescription: resolved.record.description
         )
     }
 
@@ -35,7 +36,8 @@ public enum MacroAggregator: Sendable {
                 carbsG: item.carbsG * scale,
                 fatG: item.fatG * scale,
                 usdaMatchID: item.usdaMatchID,
-                matchConfidence: item.matchConfidence
+                matchConfidence: item.matchConfidence,
+                cofidDescription: item.cofidDescription
             )
         }
 
@@ -47,7 +49,13 @@ public enum MacroAggregator: Sendable {
         )
     }
 
-    public static func sum(description: String, lineItems: [MealLineItem]) -> MealEstimate {
+    public static func sum(
+        description: String,
+        lineItems: [MealLineItem],
+        groundingWarnings: [String] = [],
+        decompositionAuditJSON: String? = nil,
+        visionDirectEstimate: MealEstimate.VisionMacroComparison? = nil
+    ) -> MealEstimate {
         let calories = lineItems.reduce(0) { $0 + $1.caloriesKcal }
         let protein = lineItems.reduce(0) { $0 + $1.proteinG }
         let carbs = lineItems.reduce(0) { $0 + $1.carbsG }
@@ -61,7 +69,10 @@ public enum MacroAggregator: Sendable {
             carbsG: carbs.rounded(to: 1),
             fatG: fat.rounded(to: 1),
             confidence: confidence,
-            lineItems: lineItems
+            lineItems: lineItems,
+            visionDirectEstimate: visionDirectEstimate,
+            groundingWarnings: groundingWarnings,
+            decompositionAuditJSON: decompositionAuditJSON
         )
     }
 

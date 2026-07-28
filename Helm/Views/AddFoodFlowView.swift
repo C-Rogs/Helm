@@ -69,9 +69,11 @@ struct AddFoodFlowView: View {
                 }
             }
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
-                        controller.cancel()
+                if selectedProduct == nil {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            controller.cancel()
+                        }
                     }
                 }
             }

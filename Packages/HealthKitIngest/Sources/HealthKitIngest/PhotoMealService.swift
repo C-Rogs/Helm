@@ -35,7 +35,35 @@ public struct PhotoMealService: Sendable {
         }
 
         do {
-            return try await estimator.estimateMacros(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            let estimate = try await estimator.estimateMacros(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            photoMealLog.debug(
+                "Photo estimate kcal=\(estimate.caloriesKcal, privacy: .public) confidence=\(estimate.confidence.rawValue, privacy: .public) items=\(estimate.lineItems.count, privacy: .public)"
+            )
+            Task {
+                var context: [String: String] = [
+                    "kcal": String(Int(estimate.caloriesKcal.rounded())),
+                    "protein_g": String(format: "%.1f", estimate.proteinG),
+                    "confidence": estimate.confidence.rawValue,
+                    "line_items": String(estimate.lineItems.count)
+                ]
+                if !estimate.groundingWarnings.isEmpty {
+                    context["warnings"] = estimate.groundingWarnings.joined(separator: " | ")
+                }
+                if let direct = estimate.visionDirectEstimate {
+                    context["vision_kcal"] = String(Int(direct.caloriesKcal.rounded()))
+                }
+                if let audit = estimate.decompositionAuditJSON {
+                    let capped = audit.count > 4000 ? String(audit.prefix(4000)) + "…" : audit
+                    context["decomposition_json"] = capped
+                }
+                await DiagnosticsLog.shared.record(
+                    category: .nutritionKit,
+                    level: .debug,
+                    message: "Photo meal grounded estimate",
+                    context: context
+                )
+            }
+            return estimate
         } catch {
             photoMealLog.error("Photo macro estimate failed: \(String(describing: type(of: error)), privacy: .public)")
             Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo macro estimate failed") }

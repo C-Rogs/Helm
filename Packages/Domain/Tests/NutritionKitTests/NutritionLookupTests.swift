@@ -136,6 +136,24 @@ struct NutritionLookupTests {
         #expect(suggestions.isEmpty)
     }
 
+    @Test("sliced cucumbers resolves to cucumber not generic dish")
+    func slicedCucumbersResolveToCucumber() {
+        let match = lookup.resolve(item: "sliced cucumbers")
+        #expect(match != nil)
+        guard let match else { return }
+        #expect(match.record.fdcId == "13-523")
+        #expect(match.matchConfidence != .fallback)
+
+        let lineItem = MacroAggregator.lineItem(
+            name: "sliced cucumbers",
+            grams: 75,
+            resolved: match,
+            itemConfidence: .high
+        )
+        #expect(lineItem.caloriesKcal < 20)
+        #expect(!lineItem.usesGenericCofidFallback)
+    }
+
     @Test("CoFID attribution exposes OGL notice")
     func cofidAttribution() {
         #expect(CoFIDAttribution.licenceNotice.contains("Open Government Licence"))

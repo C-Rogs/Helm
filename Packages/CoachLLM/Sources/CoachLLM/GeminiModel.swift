@@ -10,7 +10,7 @@ public enum GeminiModel: String, Sendable, Equatable {
 extension GeminiModel {
     public static let `default` = GeminiModel.flashLite
     /// Same family as coach chat; `gemini-2.5-flash` often 404s on newer API keys.
-    public static let mealVision = GeminiModel.flashLite
+    public static let mealVision = GeminiModel.flash
 
-    public static let mealVisionCandidates: [GeminiModel] = [.flashLite, .flash]
+    public static let mealVisionCandidates: [GeminiModel] = [.flash, .flashLite]
 }

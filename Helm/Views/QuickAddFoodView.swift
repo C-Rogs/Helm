@@ -62,22 +62,25 @@ struct QuickAddFoodView: View {
         .helmScreenBackground()
         .navigationTitle("Quick add")
         .navigationBarTitleDisplayMode(.inline)
-        .safeAreaInset(edge: .bottom) {
-            Button("Log entry") {
-                guard let macros else { return }
-                let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
-                Task {
-                    await controller.logQuickAdd(
-                        macros: macros,
-                        label: trimmedLabel.isEmpty ? nil : trimmedLabel,
-                        bucket: bucket
-                    )
+        .toolbar {
+            ToolbarItem(placement: .confirmationAction) {
+                if controller.isBusy {
+                    ProgressView()
+                } else {
+                    Button("Add") {
+                        guard let macros else { return }
+                        let trimmedLabel = label.trimmingCharacters(in: .whitespacesAndNewlines)
+                        Task {
+                            await controller.logQuickAdd(
+                                macros: macros,
+                                label: trimmedLabel.isEmpty ? nil : trimmedLabel,
+                                bucket: bucket
+                            )
+                        }
+                    }
+                    .disabled(!isValid)
                 }
             }
-            .buttonStyle(.helmPrimary)
-            .disabled(!isValid || controller.isBusy)
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface.opacity(0.96))
         }
         .onAppear {
             kilocaloriesFocused = true

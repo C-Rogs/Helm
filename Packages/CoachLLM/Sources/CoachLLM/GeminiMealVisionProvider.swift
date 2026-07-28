@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import OSLog
 
@@ -6,23 +7,33 @@ private let mealVisionLog = Logger(subsystem: "com.cameronro.helm", category: "N
 public struct GeminiMealVisionProvider: Sendable {
     private let apiKeyStore: APIKeyStore
     private let httpClient: any GeminiHTTPClient
-    private let models: [GeminiModel]
+    private let preferences: MealVisionPreferencesStore
+    private let fixedModels: [GeminiModel]?
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         httpClient: any GeminiHTTPClient = LiveGeminiHTTPClient(),
-        models: [GeminiModel] = GeminiModel.mealVisionCandidates
+        preferences: MealVisionPreferencesStore = MealVisionPreferencesStore(),
+        models: [GeminiModel]? = nil
     ) {
         self.apiKeyStore = apiKeyStore
         self.httpClient = httpClient
-        self.models = models.isEmpty ? GeminiModel.mealVisionCandidates : models
+        self.preferences = preferences
+        self.fixedModels = models
+    }
+
+    private var modelCandidates: [GeminiModel] {
+        if let fixedModels, !fixedModels.isEmpty {
+            return fixedModels
+        }
+        return preferences.geminiModelCandidates
     }
 
     public func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
         let apiKey = try requireAPIKey()
         var lastError: Error?
 
-        for model in models {
+        for model in modelCandidates {
             do {
                 mealVisionLog.debug("Gemini meal vision begin model=\(model.rawValue, privacy: .public)")
                 return try await decompose(
@@ -77,6 +88,61 @@ public struct GeminiMealVisionProvider: Sendable {
         return MealDecomposition(payload: payload)
     }
 
+    public func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+        let apiKey = try requireAPIKey()
+        var lastError: Error?
+
+        for model in modelCandidates {
+            do {
+                return try await estimateMacrosDirect(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model,
+                    userNotes: userNotes
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("Gemini meal vision is unavailable.")
+    }
+
+    private func estimateMacrosDirect(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: GeminiModel,
+        userNotes: String?
+    ) async throws -> MealEstimate {
+        let base64 = imageJPEGData.base64EncodedString()
+        let requestID = UUID()
+
+        let body = try GeminiRequestBuilder.mealEstimatePhotoBody(
+            systemInstructions: MealVisionPrompt.directMacroSystemInstructions,
+            imageJPEGBase64: base64,
+            userMessage: MealVisionPrompt.directMacroUserMessage(notes: userNotes)
+        ).encoded()
+
+        let request = GeminiGenerateHTTPRequest(
+            requestID: requestID,
+            model: model,
+            apiKey: apiKey,
+            body: body
+        )
+
+        let responseData = try await httpClient.generateContent(request)
+        let jsonText = try GeminiSSEParser.responseText(from: responseData)
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MealEstimatePayload.self,
+            from: jsonText,
+            expectedSchema: .mealEstimateV1
+        )
+        return MealEstimate(payload: payload)
+    }
+
     private static func shouldRetryWithAlternateModel(_ error: CoachProviderError) -> Bool {
         guard case .requestFailed(let detail) = error else { return false }
         let normalized = detail.lowercased()
@@ -93,4 +159,4 @@ public struct GeminiMealVisionProvider: Sendable {
     }
 }
 
-extension GeminiMealVisionProvider: MealVisionProviding {}
+extension GeminiMealVisionProvider: MealMacroVisionProviding {}

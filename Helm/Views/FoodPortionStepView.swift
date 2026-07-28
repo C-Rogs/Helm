@@ -132,18 +132,19 @@ struct FoodPortionStepView: View {
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
-                Button("Back", action: onCancel)
+                Button("Cancel", action: onCancel)
             }
-        }
-        .safeAreaInset(edge: .bottom) {
-            Button("Log food") {
-                guard let grams else { return }
-                onLog(grams, resolvedServingLabel, bucket)
+            ToolbarItem(placement: .confirmationAction) {
+                if isSaving {
+                    ProgressView()
+                } else {
+                    Button("Add") {
+                        guard let grams else { return }
+                        onLog(grams, resolvedServingLabel, bucket)
+                    }
+                    .disabled(!isValid)
+                }
             }
-            .buttonStyle(.helmPrimary)
-            .disabled(!isValid || isSaving)
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface.opacity(0.96))
         }
         .onChange(of: quantity) { _, _ in
             syncCountableGramsFromSelection()

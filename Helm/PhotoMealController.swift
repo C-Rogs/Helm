@@ -27,6 +27,16 @@ final class PhotoMealController {
 
     private var pendingImageJPEG: Data?
     private var pendingPreview: UIImage?
+    private var estimateTask: Task<Void, Never>?
+
+    var estimatingPreviewImage: UIImage? {
+        pendingPreview
+    }
+
+    var isEstimating: Bool {
+        if case .estimating = phase { return true }
+        return false
+    }
 
     var isBusy: Bool {
         switch phase {
@@ -53,31 +63,43 @@ final class PhotoMealController {
     }
 
     func handlePickerItemChange() async {
-        guard let pickerItem else { return }
-        defer { self.pickerItem = nil }
+        guard pickerItem != nil else { return }
+        startEstimateTask { [self] in
+            guard let pickerItem else { return }
+            phase = .estimating
+            defer { self.pickerItem = nil }
 
-        guard let data = try? await pickerItem.loadTransferable(type: Data.self),
-              let image = UIImage(data: data),
-              let jpeg = image.jpegData(compressionQuality: 0.82)
-        else {
-            phase = .failed("Could not read that photo.")
-            return
+            guard let data = try? await pickerItem.loadTransferable(type: Data.self),
+                  let image = UIImage(data: data),
+                  let jpeg = image.jpegData(compressionQuality: 0.88)
+            else {
+                failUnlessCancelled("Could not read that photo.")
+                return
+            }
+
+            pendingPreview = image
+            await runEstimate(imageJPEGData: jpeg, preview: image)
         }
-
-        await estimate(imageJPEGData: jpeg, preview: image)
+        await estimateTask?.value
     }
 
     func handleCameraImage(_ image: UIImage) async {
-        guard let jpeg = image.jpegData(compressionQuality: 0.82) else {
-            phase = .failed("Could not read that photo.")
-            return
+        startEstimateTask { [self] in
+            guard let jpeg = image.jpegData(compressionQuality: 0.88) else {
+                failUnlessCancelled("Could not read that photo.")
+                return
+            }
+            await runEstimate(imageJPEGData: jpeg, preview: image)
         }
-        await estimate(imageJPEGData: jpeg, preview: image)
+        await estimateTask?.value
     }
 
     func reestimateFromConfirm() async {
         guard let pendingImageJPEG else { return }
-        await estimate(imageJPEGData: pendingImageJPEG, preview: pendingPreview)
+        startEstimateTask { [self] in
+            await runEstimate(imageJPEGData: pendingImageJPEG, preview: pendingPreview)
+        }
+        await estimateTask?.value
     }
 
     func confirm(estimate: MealEstimate, name: String, bucket: MealBucket) async {
@@ -109,6 +131,8 @@ final class PhotoMealController {
     }
 
     func cancel() {
+        estimateTask?.cancel()
+        estimateTask = nil
         pendingImageJPEG = nil
         pendingPreview = nil
         phase = .idle
@@ -120,9 +144,21 @@ final class PhotoMealController {
         }
     }
 
-    private func estimate(imageJPEGData: Data, preview: UIImage?) async {
+    private func startEstimateTask(_ operation: @escaping @MainActor () async -> Void) {
+        estimateTask?.cancel()
+        estimateTask = Task {
+            await operation()
+        }
+    }
+
+    private func runEstimate(imageJPEGData: Data, preview: UIImage?) async {
+        guard !Task.isCancelled else {
+            cancel()
+            return
+        }
+
         guard let service else {
-            phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
+            failUnlessCancelled("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
             return
         }
 
@@ -133,10 +169,30 @@ final class PhotoMealController {
         let userNotesPayload = notes.isEmpty ? nil : notes
         do {
             let estimate = try await service.estimate(from: imageJPEGData, userNotes: userNotesPayload)
+            guard !Task.isCancelled else {
+                cancel()
+                return
+            }
             phase = .confirm(estimate, previewImage: preview)
         } catch {
+            guard !Task.isCancelled else {
+                cancel()
+                return
+            }
+            if error is CancellationError {
+                cancel()
+                return
+            }
             phase = .failed(PhotoMealService.userMessage(for: error))
         }
+    }
+
+    private func failUnlessCancelled(_ message: String) {
+        guard !Task.isCancelled else {
+            cancel()
+            return
+        }
+        phase = .failed(message)
     }
 }
 

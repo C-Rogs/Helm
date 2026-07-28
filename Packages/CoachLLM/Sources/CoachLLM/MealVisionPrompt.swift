@@ -6,6 +6,11 @@ public enum MealVisionBackendPreference: String, Sendable, CaseIterable, Codable
     case openRouter
 }
 
+public enum MealVisionQualityPreference: String, Sendable, CaseIterable, Codable {
+    case accurate
+    case fast
+}
+
 public enum MealVisionModel: String, Sendable, Equatable {
     case geminiFlash = "gemini-2.5-flash"
     case openRouterGemmaFree = "google/gemma-3-27b-it:free"
@@ -35,6 +40,19 @@ enum MealVisionPrompt {
 
     static func userMessage(notes: String?) -> String {
         let base = "Decompose this meal photo into ingredients and estimated grams."
+        let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        guard !trimmed.isEmpty else { return base }
+        return "\(base) User context (must apply): \(trimmed)"
+    }
+
+    static let directMacroSystemInstructions = """
+    You estimate meal macros from photos for a training athlete.
+    Return only JSON matching the schema. Round macros to whole grams and calories.
+    When user context is provided, apply it to the estimate.
+    """
+
+    static func directMacroUserMessage(notes: String?) -> String {
+        let base = "Estimate total meal macros from this photo."
         let trimmed = notes?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         guard !trimmed.isEmpty else { return base }
         return "\(base) User context (must apply): \(trimmed)"

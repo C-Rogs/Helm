@@ -6,7 +6,7 @@ import Testing
 
 @Suite("Grounded photo macro pipeline")
 struct GroundedPhotoMacroEstimatorTests {
-    private struct FixtureVision: MealVisionProviding {
+    private struct FixtureVision: MealMacroVisionProviding {
         func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
             _ = imageJPEGData
             _ = userNotes
@@ -23,6 +23,19 @@ struct GroundedPhotoMacroEstimatorTests {
                 portionNotes: "Half standard dinner plate"
             )
             return MealDecomposition(payload: payload)
+        }
+
+        func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+            _ = imageJPEGData
+            _ = userNotes
+            return MealEstimate(
+                description: "Fixture direct",
+                caloriesKcal: 650,
+                proteinG: 55,
+                carbsG: 40,
+                fatG: 25,
+                confidence: .medium
+            )
         }
     }
 
@@ -129,7 +142,7 @@ struct GroundedPhotoMacroEstimatorTests {
         )
         preferences.backendPreference = .auto
 
-        struct GeminiOnlyVision: MealVisionProviding {
+        struct GeminiOnlyVision: MealMacroVisionProviding {
             func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
                 _ = imageJPEGData
                 return MealDecomposition(
@@ -140,6 +153,17 @@ struct GroundedPhotoMacroEstimatorTests {
                         implicitFats: [],
                         portionNotes: nil
                     )
+                )
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                MealEstimate(
+                    description: "Gemini routed meal",
+                    caloriesKcal: 0,
+                    proteinG: 0,
+                    carbsG: 0,
+                    fatG: 0,
+                    confidence: .low
                 )
             }
         }
