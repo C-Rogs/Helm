@@ -16,6 +16,7 @@ final class ChatController {
     private(set) var degradedState: CoachDegradedState?
     private(set) var isCoachAvailable = true
     private(set) var lastTurnError: String?
+    private(set) var lastFailedUserMessage: String?
     private(set) var handoffGeneration = 0
     private(set) var pendingHandoffPrompt: String?
 
@@ -37,7 +38,13 @@ final class ChatController {
     }
 
     func onDisappear() {
-        cancelStreaming()
+        // Keep streaming when switching tabs so Chat and in-session coach can run in parallel.
+    }
+
+    func retryLastTurn() {
+        guard let lastFailedUserMessage, !isStreaming else { return }
+        draftText = lastFailedUserMessage
+        send()
     }
 
     func loadHistory() {
@@ -66,6 +73,10 @@ final class ChatController {
     func send() {
         let trimmed = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isStreaming else { return }
+        if CoachActivityGate.shared.isBlocked(for: .chat) {
+            lastTurnError = CoachActivityGate.shared.blockingMessage(for: .chat)
+            return
+        }
 
         draftText = ""
         streamTask?.cancel()
@@ -114,6 +125,9 @@ final class ChatController {
         isCoachAvailable = true
         degradedState = nil
         lastTurnError = nil
+        lastFailedUserMessage = text
+        CoachActivityGate.shared.begin(.chat)
+        defer { CoachActivityGate.shared.end(.chat) }
 
         do {
             let userMessage = try persistence.chat.append(
@@ -185,6 +199,8 @@ final class ChatController {
                 )
             )
             messages.append(assistantMessage)
+            lastFailedUserMessage = nil
+            CoachDiagnosticsStore.shared.clear()
 
             if (try? CoachPlanSettingsAdjuster.tryApplyEmbeddedJSON(in: assembled, persistence: persistence)) == true {
                 await PlanBootstrap.prescriptionService.refresh(
@@ -203,6 +219,7 @@ final class ChatController {
             streamingText = nil
             degradedState = CoachFailurePolicy.degradedState(for: error)
             lastTurnError = degradedState?.userMessage
+            CoachDiagnosticsStore.shared.recordFailure(surface: "chat", error: error)
             await logTurn(
                 status: "failed",
                 promptVersion: CoachPromptVersion.chatV1.rawValue,

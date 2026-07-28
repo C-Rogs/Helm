@@ -14,6 +14,8 @@ struct TrainView: View {
     @State private var isShowingImport = false
     @State private var didTrackInitialRestRemaining = false
     @State private var restEditorExerciseID: String?
+    @State private var isShowingSavePrescriptionTemplate = false
+    @State private var prescriptionTemplateName = ""
 
     var body: some View {
         navigationRoot
@@ -26,6 +28,7 @@ struct TrainView: View {
                 restEditorExerciseID: $restEditorExerciseID
             )
             .task {
+                WatchReadinessBootstrap.coordinator.hydrateFromReceivedApplicationContext()
                 await controller.recoverPersistedSession()
                 history.refresh()
                 muscleVolumeStore.refresh()
@@ -64,7 +67,12 @@ struct TrainView: View {
                             }
                         )
                         .padding(.horizontal, HelmSpacing.screenGutter)
-                        .padding(.bottom, HelmSpacing.xs)
+                    }
+
+                    if controller.hasActiveSession,
+                       controller.numpadTarget == nil,
+                       !controller.isReorderMode {
+                        inSessionCoachBar
                     }
 
                     if controller.numpadTarget != nil {
@@ -107,6 +115,17 @@ struct TrainView: View {
 
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            if let staleMessage = controller.staleSessionMessage {
+                StaleSessionBanner(
+                    message: staleMessage,
+                    onDiscuss: { controller.discussTodaysSession() },
+                    onRegenerate: {
+                        Task { await controller.regenerateTodaysPrescription() }
+                    },
+                    onDismiss: { controller.dismissStaleSessionBanner() }
+                )
+            }
+
             Card {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
                     HStack {
@@ -150,6 +169,17 @@ struct TrainView: View {
             }
             .buttonStyle(.helmPrimary)
 
+            Button("Discuss today's session") {
+                controller.discussTodaysSession()
+            }
+            .buttonStyle(.helmSecondary)
+
+            Button("Save as template") {
+                prescriptionTemplateName = "Today's session"
+                isShowingSavePrescriptionTemplate = true
+            }
+            .buttonStyle(.helmSecondary)
+
             Button("Empty workout") {
                 Task { await controller.startWorkout() }
             }
@@ -162,6 +192,20 @@ struct TrainView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
+        .alert("Save as template", isPresented: $isShowingSavePrescriptionTemplate) {
+            TextField("Template name", text: $prescriptionTemplateName)
+            Button("Save") {
+                let name = prescriptionTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
+                guard !name.isEmpty else { return }
+                Task {
+                    await controller.saveTodaysPrescriptionAsTemplate(name: name)
+                    history.refresh()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Save today's engine prescription as a reusable workout template.")
+        }
     }
 
     private var manualIdleCard: some View {
@@ -299,6 +343,14 @@ struct TrainView: View {
                             )
                         }
 
+                        if let proactiveBanner = controller.proactiveCoachBanner {
+                            ProactiveCoachBanner(
+                                message: proactiveBanner,
+                                onDismiss: { controller.dismissProactiveCoachBanner() },
+                                onDiscuss: { controller.isShowingCoachPrompt = true }
+                            )
+                        }
+
                         SessionCoachNoteField(
                             text: $controller.sessionNoteText,
                             onTextChange: { controller.updateSessionNote($0) },
@@ -344,10 +396,6 @@ struct TrainView: View {
                     HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                     value: controller.adjustmentBanner
                 )
-
-                if controller.numpadTarget == nil, !controller.isReorderMode {
-                    inSessionCoachBar
-                }
             }
 
             HelmCoachApplyWave(isActive: $controller.showCoachApplyWave)
@@ -363,6 +411,7 @@ struct TrainView: View {
         }
         controller.handleRestRemainingSecondsChange(current)
         if remaining == 0 {
+            controller.handleRestExpiredProactiveCoach()
             Task { await controller.reconcileExpiredRestTimer() }
         }
     }
@@ -395,6 +444,7 @@ struct TrainView: View {
     private var inSessionCoachBar: some View {
         AskCoachBar(
             prompt: controller.isCoachThinking ? "Coach thinking" : "Ask coach",
+            peekSnippet: ProactiveCoachPreferences.peekEnabled ? controller.coachPeekSnippet : nil,
             isLoading: controller.isCoachThinking
         ) {
             controller.isShowingCoachPrompt = true
@@ -453,6 +503,16 @@ private struct SessionHeartRateChip: View {
     @Bindable private var watchCoordinator = WatchReadinessBootstrap.coordinator
 
     var body: some View {
+        #if os(iOS)
+        if watchCoordinator.isPaired {
+            chipContent
+        }
+        #else
+        chipContent
+        #endif
+    }
+
+    private var chipContent: some View {
         HStack(spacing: HelmSpacing.sm) {
             Image(systemName: "heart.fill")
                 .foregroundStyle(HelmColor.destructive)

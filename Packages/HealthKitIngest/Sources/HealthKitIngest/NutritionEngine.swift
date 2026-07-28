@@ -14,6 +14,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let phase: TrainingPhase
     /// Profile-based maintenance estimate (Mifflin-St Jeor seed) for transparency.
     public let profileMaintenanceKcal: Int?
+    /// Active energy burned today from HealthKit (informational).
+    public let activeEnergyKcal: Int?
 
     public init(
         helmDay: HelmDay,
@@ -22,7 +24,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         trend: NutritionTrendState,
         dayType: NutritionDayType,
         phase: TrainingPhase,
-        profileMaintenanceKcal: Int? = nil
+        profileMaintenanceKcal: Int? = nil,
+        activeEnergyKcal: Int? = nil
     ) {
         self.helmDay = helmDay
         self.targets = targets
@@ -31,6 +34,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         self.dayType = dayType
         self.phase = phase
         self.profileMaintenanceKcal = profileMaintenanceKcal
+        self.activeEnergyKcal = activeEnergyKcal
     }
 }
 
@@ -107,7 +111,8 @@ public actor NutritionEngine {
             trend: trend,
             dayType: dayType,
             phase: settings.phaseGoal.phase,
-            profileMaintenanceKcal: profileMaintenanceKcal
+            profileMaintenanceKcal: profileMaintenanceKcal,
+            activeEnergyKcal: dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }
         )
     }
 

@@ -63,7 +63,6 @@ struct RecoveryDetailView: View {
                         .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
                 .frame(maxWidth: .infinity, alignment: .center)
-                .modifier(MatchedCardModifier(id: "arc-readiness", namespace: matchedCardNamespace))
 
                 DeviationBand(
                     label: "Target band",
@@ -98,7 +97,8 @@ struct RecoveryDetailView: View {
                         unit: contributor.unit,
                         state: contributor.state,
                         verdictTag: contributor.verdictTag,
-                        decimalPlaces: contributor.decimalPlaces
+                        decimalPlaces: contributor.decimalPlaces,
+                        isValueAvailable: contributor.isValueAvailable
                     )
 
                     if contributor.id != model.contributors.last?.id {

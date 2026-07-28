@@ -72,6 +72,25 @@ final class WorkoutHistoryController {
         }
     }
 
+    func updateTemplate(_ draft: WorkoutTemplateDraft) {
+        do {
+            try persistence.workoutTemplates.update(draft)
+            templates = try persistence.workoutTemplates.fetchSummaries()
+            refreshExerciseNames()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func deleteTemplate(id: String) {
+        do {
+            try persistence.workoutTemplates.delete(id: id)
+            templates = try persistence.workoutTemplates.fetchSummaries()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func fetchTemplate(id: String) -> WorkoutTemplateDraft? {
         try? persistence.workoutTemplates.fetch(id: id)
     }

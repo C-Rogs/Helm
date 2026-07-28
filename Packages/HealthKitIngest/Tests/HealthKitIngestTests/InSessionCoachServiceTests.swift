@@ -129,6 +129,78 @@ struct InSessionCoachServiceTests {
         #expect(exercises[1].exerciseID == benchPressID)
     }
 
+    @Test("reorder adjustment preserves logged set weights on each exercise")
+    func reorderPreservesLoggedWeights() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let engine = ActiveSessionEngine(repository: store.activeSessions)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 7, day: 23),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 80),
+                    targetRPE: 8
+                ),
+                PrescribedExercise(
+                    exerciseID: inclineDBPressID,
+                    order: 1,
+                    targetSets: 3,
+                    targetRepMin: 10,
+                    targetRepMax: 10,
+                    targetMass: Mass(kilograms: 30),
+                    targetRPE: 8
+                )
+            ]
+        )
+        var snapshot = try await engine.startFromPrescription(prescription)
+
+        let benchExercise = try #require(snapshot.session.exercises.first { $0.exerciseID == benchPressID })
+        let inclineExercise = try #require(snapshot.session.exercises.first { $0.exerciseID == inclineDBPressID })
+        let benchSet = try #require(benchExercise.sets.first)
+        let inclineSet = try #require(inclineExercise.sets.first)
+
+        snapshot = try await engine.logSet(
+            setID: benchSet.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 82.5), reps: 8)
+        )
+        snapshot = try await engine.logSet(
+            setID: inclineSet.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 32.5), reps: 10)
+        )
+
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV1.rawValue,
+            rationale: "Prioritise incline while fresh.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .reorder,
+                    orderedExerciseIDs: [inclineDBPressID, benchPressID]
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let exercises = try #require(refreshed?.session.exercises.sorted { $0.displayOrder < $1.displayOrder })
+        #expect(exercises[0].exerciseID == inclineDBPressID)
+        #expect(exercises[1].exerciseID == benchPressID)
+
+        let reorderedInclineSet = try #require(exercises[0].sets.first)
+        let reorderedBenchSet = try #require(exercises[1].sets.first)
+        #expect(reorderedInclineSet.id == inclineSet.id)
+        #expect(reorderedInclineSet.mass?.kilograms == 32.5)
+        #expect(reorderedBenchSet.id == benchSet.id)
+        #expect(reorderedBenchSet.mass?.kilograms == 82.5)
+    }
+
     @Test("set adjustment applies cleanly")
     func adjustSetsApplies() async throws {
         let store = try PersistenceStore.inMemory()

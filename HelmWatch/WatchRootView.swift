@@ -36,9 +36,13 @@ struct WatchRootView: View {
             coordinator.hydrateFromReceivedApplicationContext()
         }
         .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
-            guard isActive else { return }
-            guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
-            Task { await workoutStore.startWorkout() }
+            if isActive {
+                guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
+                Task { await workoutStore.startWorkout() }
+                return
+            }
+            guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
+            Task { await workoutStore.endWorkout(discard: true) }
         }
         .onChange(of: workoutStore.heartRateBPM) { _, bpm in
             guard let bpm else { return }

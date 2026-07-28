@@ -61,26 +61,33 @@ struct NutritionMacroProgressRow: View {
 
 struct NutritionAlcoholGapRow: View {
     let gapKilocalories: Double
+    var onExplain: (() -> Void)?
 
     var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("Untracked energy")
-                    .helmType(.body)
-                Text("Not folded into macro targets")
-                    .helmType(.body, color: HelmColor.fgMuted)
+        Button {
+            onExplain?()
+        } label: {
+            HStack(alignment: .firstTextBaseline) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    Text("Untracked energy")
+                        .helmType(.body)
+                    Text("Energy logged without full macros. Tap to learn more.")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                }
+                Spacer()
+                HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                    Text("+")
+                        .helmType(.monoTag, color: HelmColor.depleted)
+                    HelmNumericText(Int(gapKilocalories.rounded()))
+                        .helmType(.monoTag, color: HelmColor.depleted)
+                    Text("kcal")
+                        .helmType(.monoTag, color: HelmColor.depleted)
+                }
             }
-            Spacer()
-            HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
-                Text("+")
-                    .helmType(.monoTag, color: HelmColor.depleted)
-                HelmNumericText(Int(gapKilocalories.rounded()))
-                    .helmType(.monoTag, color: HelmColor.depleted)
-                Text("kcal")
-                    .helmType(.monoTag, color: HelmColor.depleted)
-            }
+            .padding(.vertical, HelmSpacing.xxs)
         }
-        .padding(.vertical, HelmSpacing.xxs)
+        .buttonStyle(.plain)
+        .disabled(onExplain == nil)
     }
 }
 
@@ -89,6 +96,9 @@ struct NutritionDaySummaryCard: View {
     var showTrend: Bool = false
     var explainMetric: ExplainableMetric?
     var onAskCoach: ((String) -> Void)?
+
+    @State private var isShowingUntrackedExplain = false
+    @State private var isShowingTargetExplain = false
 
     private var targets: MacroTargets {
         snapshot.targets
@@ -128,7 +138,9 @@ struct NutritionDaySummaryCard: View {
 
                 if let gap = targets.macroGapKilocalories,
                    gap > MacroGapCalculator.significanceThresholdKcal {
-                    NutritionAlcoholGapRow(gapKilocalories: gap)
+                    NutritionAlcoholGapRow(gapKilocalories: gap) {
+                        isShowingUntrackedExplain = true
+                    }
                 }
 
                 if showTrend {
@@ -136,21 +148,25 @@ struct NutritionDaySummaryCard: View {
                 }
             }
         }
+        .sheet(isPresented: $isShowingUntrackedExplain) {
+            if let explainMetric, let onAskCoach {
+                ExplainSheet(metric: explainMetric, onAskCoach: onAskCoach)
+            }
+        }
+        .sheet(isPresented: $isShowingTargetExplain) {
+            if let explainMetric, let onAskCoach {
+                ExplainSheet(metric: explainMetric, onAskCoach: onAskCoach)
+            }
+        }
     }
 
-    @ViewBuilder
     private var calorieRow: some View {
-        let row = NutritionMacroProgressRow(
+        NutritionMacroProgressRow(
             label: "Calories",
             actual: actualCalories,
             target: targets.caloriesKcal,
             unit: "kcal"
         )
-        if let explainMetric, let onAskCoach {
-            row.explainable(explainMetric, onAskCoach: onAskCoach)
-        } else {
-            row
-        }
     }
 
     private var header: some View {
@@ -161,7 +177,16 @@ struct NutritionDaySummaryCard: View {
                 Spacer()
                 Text(snapshot.dayType.rawValue.capitalized)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                    .padding(.trailing, explainMetric == nil ? 0 : HelmSpacing.lg)
+                if let explainMetric, onAskCoach != nil {
+                    Button {
+                        isShowingTargetExplain = true
+                    } label: {
+                        HelmIconView(.info, context: .inline)
+                            .foregroundStyle(HelmColor.fgMuted)
+                    }
+                    .buttonStyle(.helmPressable)
+                    .accessibilityLabel("Show how targets are calculated")
+                }
             }
 
             HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
@@ -182,7 +207,7 @@ struct NutritionDaySummaryCard: View {
             }
 
             if hasCalculatedTargets {
-                Text(targetCaption)
+                Text(energyTargetSubtitle)
                     .helmType(.body, color: HelmColor.fgMuted)
             } else if !hasCalculatedTargets {
                 Text("Complete body profile in onboarding or Settings to calculate calorie targets.")
@@ -192,6 +217,15 @@ struct NutritionDaySummaryCard: View {
                     .helmType(.body, color: HelmColor.depleted)
             }
         }
+    }
+
+    private var energyTargetSubtitle: String {
+        let base = targets.caloriesKcal
+        guard let burned = snapshot.activeEnergyKcal, burned > 0 else {
+            return targetCaption
+        }
+        let net = base + burned
+        return "\(base) base · \(net) with +\(burned) burned"
     }
 
     private var targetCaption: String {
@@ -213,7 +247,38 @@ struct NutritionDaySummaryCard: View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             Text("Energy estimates")
                 .helmType(.label)
+            NutritionEnergyEstimatesSection(
+                snapshot: snapshot,
+                hasCalculatedTargets: hasCalculatedTargets
+            )
+        }
+    }
 
+    private var actualCalories: Int? {
+        snapshot.actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
+    }
+
+    private var actualProtein: Int? {
+        snapshot.actual?.totalProteinGrams.map { Int($0.rounded()) }
+    }
+
+    private var actualCarbs: Int? {
+        snapshot.actual?.totalCarbohydrateGrams.map { Int($0.rounded()) }
+    }
+
+    private var actualFat: Int? {
+        snapshot.actual?.totalFatGrams.map { Int($0.rounded()) }
+    }
+}
+
+struct NutritionEnergyEstimatesSection: View {
+    let snapshot: NutritionDaySnapshot
+    let hasCalculatedTargets: Bool
+
+    private var targets: MacroTargets { snapshot.targets }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             if let profileMaintenance = snapshot.profileMaintenanceKcal {
                 StatRow(
                     label: "Profile maintenance",
@@ -238,15 +303,15 @@ struct NutritionDaySummaryCard: View {
                 StatRow(
                     label: "Current TDEE estimate",
                     value: "Pending",
-                    detail: "Complete body profile to calculate"
+                    detail: "Complete body profile to seed adaptive TDEE"
                 )
             }
 
-            if let intake = snapshot.trend.weeklyIntakeAverageKcal {
+            if let average = snapshot.trend.weeklyIntakeAverageKcal, average > 0 {
                 StatRow(
                     label: "7-day diet average",
-                    value: "\(Int(intake.rounded())) kcal",
-                    detail: "Food you logged. This is not maintenance unless weight is stable."
+                    value: "\(Int(average.rounded())) kcal",
+                    detail: "Logged intake over the last week"
                 )
             }
 
@@ -254,6 +319,14 @@ struct NutritionDaySummaryCard: View {
                 StatRow(
                     label: "Trend weight",
                     value: String(format: "%.1f kg", weight)
+                )
+            }
+
+            if let burned = snapshot.activeEnergyKcal, burned > 0 {
+                StatRow(
+                    label: "Active energy today",
+                    value: "\(burned) kcal",
+                    detail: "From Apple Health activity"
                 )
             }
         }
@@ -281,22 +354,6 @@ struct NutritionDaySummaryCard: View {
             return "Below profile maintenance based on recent weight and intake"
         }
         return "Above profile maintenance based on recent weight and intake"
-    }
-
-    private var actualCalories: Int? {
-        snapshot.actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
-    }
-
-    private var actualProtein: Int? {
-        snapshot.actual?.totalProteinGrams.map { Int($0.rounded()) }
-    }
-
-    private var actualCarbs: Int? {
-        snapshot.actual?.totalCarbohydrateGrams.map { Int($0.rounded()) }
-    }
-
-    private var actualFat: Int? {
-        snapshot.actual?.totalFatGrams.map { Int($0.rounded()) }
     }
 }
 

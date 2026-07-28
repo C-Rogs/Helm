@@ -1,17 +1,24 @@
-import CoachLLM
 import DesignSystem
+import CoachLLM
 import Persistence
 import SwiftUI
 
 struct ChatView: View {
     @Bindable private var controller = ChatBootstrap.controller
+    @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
+
+    private var coachName: String { CoachDisplayNameStore.name }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
                 if let degradedState = controller.degradedState {
                     offlineBanner(degradedState)
+                }
+
+                if let message = activityGate.blockingMessage(for: .chat) {
+                    blockingBanner(message)
                 }
 
                 ScrollViewReader { proxy in
@@ -38,6 +45,13 @@ struct ChatView: View {
                         }
                         .padding(HelmSpacing.md)
                     }
+                    .scrollDismissesKeyboard(.interactively)
+                    .onTapGesture {
+                        isInputFocused = false
+                    }
+                    .onAppear {
+                        scrollToBottom(proxy: proxy, animated: false)
+                    }
                     .onChange(of: controller.messages.count) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
@@ -61,6 +75,15 @@ struct ChatView: View {
                 controller.onDisappear()
             }
         }
+    }
+
+    private func blockingBanner(_ message: String) -> some View {
+        Text(message)
+            .helmType(.body, color: HelmColor.depleted)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(.horizontal, HelmSpacing.md)
+            .padding(.vertical, HelmSpacing.sm)
+            .background(HelmColor.surface)
     }
 
     private var emptyState: some View {
@@ -104,6 +127,7 @@ struct ChatView: View {
             Text(text)
                 .helmType(.body)
                 .foregroundStyle(HelmColor.fg)
+                .textSelection(.enabled)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
                 .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
@@ -113,10 +137,11 @@ struct ChatView: View {
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
         HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                HelmSectionEyebrow("COACH", showsArcMark: false)
+                HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
                 Text(text.isEmpty && isStreaming ? "..." : text)
                     .helmType(.body)
                     .foregroundStyle(HelmColor.fg)
+                    .textSelection(.enabled)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
@@ -127,11 +152,19 @@ struct ChatView: View {
 
     private func errorBubble(_ message: String) -> some View {
         HStack {
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("COACH")
-                    .helmType(.monoTag, color: HelmColor.depleted)
-                Text("Could not respond. \(message)")
-                    .helmType(.body, color: HelmColor.depleted)
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    Text(coachName.uppercased())
+                        .helmType(.monoTag, color: HelmColor.depleted)
+                    Text("Could not respond. \(message)")
+                        .helmType(.body, color: HelmColor.depleted)
+                }
+                if controller.lastFailedUserMessage != nil {
+                    Button("Try again") {
+                        controller.retryLastTurn()
+                    }
+                    .buttonStyle(.helmSecondary)
+                }
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
@@ -149,7 +182,7 @@ struct ChatView: View {
                 .padding(.vertical, HelmSpacing.sm)
                 .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 .focused($isInputFocused)
-                .disabled(!controller.isCoachAvailable || controller.isStreaming)
+                .disabled(!controller.isCoachAvailable || controller.isStreaming || activityGate.isBlocked(for: .chat))
 
             Button {
                 HapticEngine.shared.play(.selection)
@@ -172,16 +205,24 @@ struct ChatView: View {
     private var canSend: Bool {
         controller.isCoachAvailable
             && !controller.isStreaming
+            && !activityGate.isBlocked(for: .chat)
             && !controller.draftText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 
-    private func scrollToBottom(proxy: ScrollViewProxy) {
-        withAnimation {
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
+        let scroll = {
             if controller.isStreaming {
                 proxy.scrollTo("streaming", anchor: .bottom)
+            } else if controller.lastTurnError != nil {
+                proxy.scrollTo("last-turn-error", anchor: .bottom)
             } else if let lastID = controller.messages.last?.id {
                 proxy.scrollTo(lastID, anchor: .bottom)
             }
+        }
+        if animated {
+            withAnimation { scroll() }
+        } else {
+            scroll()
         }
     }
 }

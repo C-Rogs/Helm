@@ -166,6 +166,7 @@ enum RecoveryDetailBuilder {
         score: ReadinessScore,
         baseline: ReadinessBaseline?
     ) -> RecoveryContributorRow {
+        let hasValue = score.restingHeartRate != nil
         let value = Double(score.restingHeartRate ?? 0)
         let band = personalBand(baseline)
         let state = contributorState(zScore: score.contributors.zRestingHR)
@@ -176,8 +177,11 @@ enum RecoveryDetailBuilder {
             band: band,
             unit: "bpm",
             state: state,
-            verdictTag: verdictTag(zScore: score.contributors.zRestingHR, higherIsBetter: false),
-            decimalPlaces: 0
+            verdictTag: hasValue
+                ? verdictTag(zScore: score.contributors.zRestingHR, higherIsBetter: false)
+                : "N/A",
+            decimalPlaces: 0,
+            isValueAvailable: hasValue
         )
     }
 
@@ -186,6 +190,7 @@ enum RecoveryDetailBuilder {
         zScore: Double?,
         baseline: ReadinessBaseline?
     ) -> RecoveryContributorRow {
+        let hasValue = hours != nil
         let value = hours ?? 0
         let band = personalBand(baseline)
         let state = contributorState(zScore: zScore)
@@ -197,7 +202,8 @@ enum RecoveryDetailBuilder {
             band: band,
             unit: "h",
             state: state,
-            verdictTag: tag
+            verdictTag: tag,
+            isValueAvailable: hasValue
         )
     }
 

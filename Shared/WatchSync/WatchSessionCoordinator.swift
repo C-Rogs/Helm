@@ -102,6 +102,10 @@ final class WatchSessionCoordinator: NSObject {
         guard role == .phone else { return }
         guard activationState == .activated else { return }
 
+        if !active {
+            latestLiveHeartRateBPM = nil
+        }
+
         let payload = makePayload(
             origin: .phone,
             messageKind: .workoutCompanion,
@@ -113,6 +117,10 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: targetSummary
         )
         push(payload)
+    }
+
+    func clearLiveHeartRate() {
+        latestLiveHeartRateBPM = nil
     }
 
     func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay) {
@@ -131,8 +139,35 @@ final class WatchSessionCoordinator: NSObject {
             helmDay: helmDay,
             liveHeartRateBPM: bpm
         )
-        push(payload)
+        pushLiveHeartRatePayload(payload)
         lastLiveHeartRatePushAt = now
+    }
+
+    private func pushLiveHeartRatePayload(_ payload: WatchSyncPayload) {
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode sync payload"
+            return
+        }
+
+        lastSent = payload
+        lastError = nil
+        applyDisplayFields(from: payload)
+
+        if session.isReachable {
+            session.sendMessage(message, replyHandler: nil) { [weak self] error in
+                Task { @MainActor in
+                    self?.lastError = error.localizedDescription
+                }
+            }
+        }
+
+        do {
+            try session.updateApplicationContext(message)
+        } catch {
+            lastError = error.localizedDescription
+        }
     }
 
     private func makePayload(
@@ -246,6 +281,9 @@ final class WatchSessionCoordinator: NSObject {
             companionSetNumber = payload.companionSetNumber
             companionSetCount = payload.companionSetCount
             companionTargetSummary = payload.companionTargetSummary
+            if workoutCompanionActive == false {
+                latestLiveHeartRateBPM = nil
+            }
         }
     }
 
@@ -311,6 +349,15 @@ extension WatchSessionCoordinator: WCSessionDelegate {
 
     nonisolated func session(_ session: WCSession, didReceiveApplicationContext applicationContext: [String: Any]) {
         guard let payload = WatchSyncPayload.from(applicationContext: applicationContext) else { return }
+
+        Task { @MainActor in
+            self.refreshSessionFlags()
+            self.handleReceived(payload)
+        }
+    }
+
+    nonisolated func session(_ session: WCSession, didReceiveMessage message: [String: Any]) {
+        guard let payload = WatchSyncPayload.from(applicationContext: message) else { return }
 
         Task { @MainActor in
             self.refreshSessionFlags()

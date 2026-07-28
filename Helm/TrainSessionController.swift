@@ -52,6 +52,7 @@ final class TrainSessionController {
     private(set) var previousPerformance: [String: PreviousPerformance] = [:]
     private(set) var exerciseTargets: [String: String] = [:]
     private(set) var prescriptionSummary: PrescribedSessionSummary?
+    private(set) var staleSessionMessage: String?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var lastSetPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var sessionPRRecordsBySetID: [String: [DetectedPersonalRecord]] = [:]
@@ -77,9 +78,15 @@ final class TrainSessionController {
     private(set) var coachMessages: [InSessionCoachMessage] = []
     private(set) var pendingCoachProposal: CoachSessionProposal?
     private(set) var isCoachThinking = false
+    private(set) var coachTurnError: String?
+    private(set) var lastFailedCoachMessage: String?
     var showCoachApplyWave = false
     private(set) var lastCoachRequestID: UUID?
     private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
+    private(set) var proactiveCoachBanner: String?
+    private(set) var coachPeekSnippet: String?
+
+    private var didSurfaceRestOverrunProactive = false
 
     private var coachThread = CoachThreadState.empty
 
@@ -160,6 +167,113 @@ final class TrainSessionController {
         let readiness = ReadinessBootstrap.readinessService.state.score
         await prescriptionService.refresh(readiness: readiness)
         prescriptionSummary = prescriptionService.state.summary
+        evaluatePrescriptionStaleness(readiness: readiness)
+    }
+
+    func dismissStaleSessionBanner() {
+        staleSessionMessage = nil
+        PrescriptionStaleTracker.dismiss(for: todayHelmDay())
+    }
+
+    func regenerateTodaysPrescription() async {
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        await prescriptionService.refresh(readiness: readiness)
+        prescriptionSummary = prescriptionService.state.summary
+        recordPrescriptionFingerprint(readiness: readiness)
+        staleSessionMessage = nil
+    }
+
+    func discussTodaysSession() {
+        if !hasActiveSession, let summary = prescriptionSummary {
+            let exerciseList = summary.exercises.map(\.displayName).joined(separator: ", ")
+            coachMessages = [
+                InSessionCoachMessage(
+                    role: .assistant,
+                    text: "Today's session: \(exerciseList). Ask about volume, swaps, or readiness before you start."
+                )
+            ]
+        }
+        isShowingCoachPrompt = true
+    }
+
+    func saveTodaysPrescriptionAsTemplate(name: String) async {
+        do {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            guard !prescription.exercises.isEmpty else {
+                errorMessage = "No prescription available to save."
+                return
+            }
+            _ = try persistence.workoutTemplates.createFromPrescription(
+                prescription,
+                name: name
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func setCoachPeekSnippet(_ snippet: String) {
+        coachPeekSnippet = snippet
+    }
+
+    func setProactiveCoachBanner(_ message: String) {
+        proactiveCoachBanner = message
+    }
+
+    func dismissProactiveCoachBanner() {
+        proactiveCoachBanner = nil
+    }
+
+    func insertProactiveCoachMessage(_ message: String) {
+        coachMessages.append(InSessionCoachMessage(role: .assistant, text: message))
+        coachThread.messages.append(CoachMessage(role: .assistant, text: message))
+    }
+
+    func handleRestExpiredProactiveCoach() {
+        guard hasActiveSession, !didSurfaceRestOverrunProactive else { return }
+        didSurfaceRestOverrunProactive = true
+        let message = "Rest is over. Start your next set when you are ready, or ask if you need more time."
+        ProactiveCoachRouter.surface(
+            message,
+            sessionID: snapshot?.session.id,
+            on: self
+        )
+    }
+
+    private func evaluatePrescriptionStaleness(readiness: ReadinessScore?) {
+        guard prescriptionSummary != nil else {
+            staleSessionMessage = nil
+            return
+        }
+        let day = todayHelmDay()
+        let fingerprint = prescriptionFingerprint(readiness: readiness)
+        if PrescriptionStaleTracker.isStale(currentFingerprint: fingerprint, day: day) {
+            staleSessionMessage = PrescriptionStaleTracker.staleMessage(readinessScore: readiness?.score)
+        } else {
+            staleSessionMessage = nil
+            let hasBaseline = UserDefaults.standard.string(forKey: "helm.prescription.stale.day") == day.formatted
+                && UserDefaults.standard.string(forKey: "helm.prescription.stale.fingerprint") != nil
+            if !hasBaseline {
+                PrescriptionStaleTracker.recordFingerprint(fingerprint, for: day)
+            }
+        }
+    }
+
+    private func recordPrescriptionFingerprint(readiness: ReadinessScore?) {
+        PrescriptionStaleTracker.recordFingerprint(
+            prescriptionFingerprint(readiness: readiness),
+            for: todayHelmDay()
+        )
+    }
+
+    private func prescriptionFingerprint(readiness: ReadinessScore?) -> String {
+        let summary = prescriptionSummary
+        return [
+            todayHelmDay().formatted,
+            readiness.map { String($0.score) } ?? "nil",
+            summary.map { "\($0.phase)-\($0.totalSets)-\($0.exercises.count)-\($0.readinessAdjusted)" } ?? "none"
+        ].joined(separator: "|")
     }
 
     func startWorkout() async {
@@ -627,6 +741,9 @@ final class TrainSessionController {
     }
 
     func handleRestRemainingSecondsChange(_ currentRemaining: Int?) {
+        if let currentRemaining, currentRemaining > 0 {
+            didSurfaceRestOverrunProactive = false
+        }
         let timerID = snapshot?.restTimer?.id
         WorkoutHapticCoordinator.handleForegroundTransition(
             timerID: timerID,
@@ -843,7 +960,11 @@ final class TrainSessionController {
         let trimmed = coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isCoachThinking else { return }
         guard store.snapshot != nil else {
-            errorMessage = "No active session."
+            coachTurnError = "No active session."
+            return
+        }
+        if CoachActivityGate.shared.isBlocked(for: .inSession) {
+            coachTurnError = CoachActivityGate.shared.blockingMessage(for: .inSession)
             return
         }
 
@@ -852,6 +973,12 @@ final class TrainSessionController {
             await performSendCoachMessage(trimmed)
         }
         await coachMessageTask?.value
+    }
+
+    func retryLastCoachMessage() async {
+        guard let lastFailedCoachMessage, !isCoachThinking else { return }
+        coachPromptText = lastFailedCoachMessage
+        await sendCoachMessage()
     }
 
     private func performSendCoachMessage(_ trimmed: String) async {
@@ -864,10 +991,14 @@ final class TrainSessionController {
         coachMessages.append(InSessionCoachMessage(role: .user, text: trimmed))
         coachPromptText = ""
         pendingCoachProposal = nil
+        coachTurnError = nil
+        lastFailedCoachMessage = trimmed
         isCoachThinking = true
+        CoachActivityGate.shared.begin(.inSession)
         defer {
             isCoachThinking = false
             coachMessageTask = nil
+            CoachActivityGate.shared.end(.inSession)
         }
 
         do {
@@ -891,6 +1022,8 @@ final class TrainSessionController {
             coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
             coachMessages.append(InSessionCoachMessage(role: .assistant, text: proposal.reply))
             lastCoachRequestID = proposal.requestID
+            lastFailedCoachMessage = nil
+            CoachDiagnosticsStore.shared.clear()
 
             if proposal.requiresConfirmation {
                 pendingCoachProposal = proposal
@@ -902,9 +1035,18 @@ final class TrainSessionController {
                 }
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
-            errorMessage = message
+            coachTurnError = message
+            CoachDiagnosticsStore.shared.recordFailure(
+                surface: "inSession",
+                error: InSessionCoachError.providerUnavailable(message)
+            )
         } catch {
-            errorMessage = CoachUserFacingError.message(for: error)
+            coachTurnError = CoachUserFacingError.message(for: error)
+            CoachDiagnosticsStore.shared.recordFailure(
+                surface: "inSession",
+                error: error,
+                requestID: lastCoachRequestID
+            )
         }
     }
 
@@ -1251,9 +1393,14 @@ final class TrainSessionController {
         excludedExerciseIDs = []
         undoStack = []
         adjustmentBanner = nil
+        proactiveCoachBanner = nil
+        coachPeekSnippet = nil
+        didSurfaceRestOverrunProactive = false
         coachPromptText = ""
         coachMessages = []
         pendingCoachProposal = nil
+        coachTurnError = nil
+        lastFailedCoachMessage = nil
         coachThread = .empty
         isShowingCoachPrompt = false
         isCoachThinking = false

@@ -783,11 +783,18 @@ public struct ActiveSessionRepository: Sendable {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in
             let existing = try Self.fetchExercises(db: db, sessionID: sessionID)
+            let existingSorted = existing.sorted { $0.displayOrder < $1.displayOrder }
             let sorted = prescription.exercises.sorted { $0.order < $1.order }
 
             for (index, prescribed) in sorted.enumerated() {
-                guard index < existing.count else { continue }
-                let sessionExercise = existing[index]
+                let sessionExercise: WorkoutSessionExerciseDraft
+                if let matched = existing.first(where: { $0.exerciseID == prescribed.exerciseID }) {
+                    sessionExercise = matched
+                } else if index < existingSorted.count {
+                    sessionExercise = existingSorted[index]
+                } else {
+                    continue
+                }
                 let sessionExerciseID = sessionExercise.id
 
                 if sessionExercise.exerciseID != prescribed.exerciseID {
@@ -842,12 +849,12 @@ public struct ActiveSessionRepository: Sendable {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in
             let existing = try Self.fetchExercises(db: db, sessionID: sessionID)
+            let existingByID = Dictionary(uniqueKeysWithValues: existing.map { ($0.id, $0) })
             let sorted = exercises.sorted { $0.displayOrder < $1.displayOrder }
 
-            for (index, saved) in sorted.enumerated() {
-                guard index < existing.count else { continue }
-                let current = existing[index]
-                let sessionExerciseID = current.id
+            for saved in sorted {
+                guard let current = existingByID[saved.id] else { continue }
+                let sessionExerciseID = saved.id
 
                 if current.exerciseID != saved.exerciseID {
                     try db.execute(
@@ -876,7 +883,7 @@ public struct ActiveSessionRepository: Sendable {
                         SET display_order = ?, updated_at = ?
                         WHERE id = ? AND workout_session_id = ?
                         """,
-                    arguments: [index, now, sessionExerciseID, sessionID]
+                    arguments: [saved.displayOrder, now, sessionExerciseID, sessionID]
                 )
 
                 try Self.adjustSetCount(

@@ -6,6 +6,7 @@ struct NutritionSettingsView: View {
     @State private var dietarySourceMode: DietarySourceMode
 
     private let preferences: NutritionPreferencesStore
+    private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
 
     init(preferences: NutritionPreferencesStore = .shared) {
         self.preferences = preferences
@@ -31,6 +32,21 @@ struct NutritionSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Nutrition")
+            }
+
+            if case .ready(let snapshot) = nutritionService.state {
+                Section {
+                    NutritionEnergyEstimatesSection(
+                        snapshot: snapshot,
+                        hasCalculatedTargets: snapshot.targets.caloriesKcal > 0
+                            && snapshot.targets.proteinGrams > 0
+                    )
+                } header: {
+                    Text("Energy estimates")
+                } footer: {
+                    Text("Static estimates used to derive daily targets. Logged intake stays on the Nutrition tab.")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                }
             }
         }
         .listStyle(.plain)

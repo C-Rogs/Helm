@@ -92,7 +92,7 @@ struct NutritionView: View {
                     case let .ready(snapshot):
                         NutritionDaySummaryCard(
                             snapshot: snapshot,
-                            showTrend: true,
+                            showTrend: false,
                             explainMetric: ExplainableMetricMappers.nutrition(
                                 snapshot,
                                 coachAvailable: chatController.isCoachAvailable

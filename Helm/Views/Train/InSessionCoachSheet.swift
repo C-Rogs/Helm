@@ -4,29 +4,51 @@ import SwiftUI
 
 struct InSessionCoachSheet: View {
     @Bindable var controller: TrainSessionController
+    @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
+
+    private var coachName: String { CoachDisplayNameStore.name }
 
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
+                if let message = activityGate.blockingMessage(for: .inSession) {
+                    Text(message)
+                        .helmType(.body, color: HelmColor.depleted)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(HelmSpacing.md)
+                        .background(HelmColor.surface)
+                }
+
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
-                            if controller.coachMessages.isEmpty, !controller.isCoachThinking {
+                            if controller.coachMessages.isEmpty, !controller.isCoachThinking, controller.coachTurnError == nil {
                                 emptyState
                             }
 
                             ForEach(controller.coachMessages) { message in
                                 CoachMessageBubble(
                                     role: message.role == .user ? .user : .assistant,
-                                    text: message.text
+                                    text: message.text,
+                                    coachName: coachName
                                 )
                                 .id(message.id)
                             }
 
+                            if let coachTurnError = controller.coachTurnError {
+                                coachErrorBubble(coachTurnError)
+                                    .id("coach-turn-error")
+                            }
+
                             if controller.isCoachThinking {
-                                CoachMessageBubble(role: .assistant, text: "", isStreaming: true)
-                                    .id("coach-thinking")
+                                CoachMessageBubble(
+                                    role: .assistant,
+                                    text: "",
+                                    isStreaming: true,
+                                    coachName: coachName
+                                )
+                                .id("coach-thinking")
                             }
 
                             if let proposal = controller.pendingCoachProposal {
@@ -35,6 +57,9 @@ struct InSessionCoachSheet: View {
                             }
                         }
                         .padding(HelmSpacing.md)
+                    }
+                    .onAppear {
+                        scrollToBottom(proxy: proxy, animated: false)
                     }
                     .onChange(of: controller.coachMessages.count) { _, _ in
                         scrollToBottom(proxy: proxy)
@@ -45,12 +70,15 @@ struct InSessionCoachSheet: View {
                     .onChange(of: controller.pendingCoachProposal?.recommendationID) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
+                    .onChange(of: controller.coachTurnError) { _, _ in
+                        scrollToBottom(proxy: proxy)
+                    }
                 }
 
                 composer
             }
             .helmScreenBackground()
-            .navigationTitle("Coach")
+            .navigationTitle(coachName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -63,7 +91,8 @@ struct InSessionCoachSheet: View {
                 isInputFocused = true
             }
         }
-        .presentationDetents([.large])
+        .presentationDetents([.fraction(0.28), .medium, .large])
+        .presentationDragIndicator(.visible)
     }
 
     private var emptyState: some View {
@@ -74,6 +103,22 @@ struct InSessionCoachSheet: View {
                 .helmType(.body, color: HelmColor.fgSecondary)
         }
         .padding(.top, HelmSpacing.sm)
+    }
+
+    private func coachErrorBubble(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            CoachMessageBubble(
+                role: .assistant,
+                text: "Could not respond. \(message)",
+                coachName: coachName
+            )
+            if controller.lastFailedCoachMessage != nil {
+                Button("Try again") {
+                    Task { await controller.retryLastCoachMessage() }
+                }
+                .buttonStyle(.helmSecondary)
+            }
+        }
     }
 
     private func confirmationRow(_ proposal: CoachSessionProposal) -> some View {
@@ -111,7 +156,7 @@ struct InSessionCoachSheet: View {
                 .padding(.vertical, HelmSpacing.sm)
                 .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 .focused($isInputFocused)
-                .disabled(controller.isCoachThinking)
+                .disabled(controller.isCoachThinking || activityGate.isBlocked(for: .inSession))
 
             Button {
                 HapticEngine.shared.play(.selection)
@@ -123,21 +168,29 @@ struct InSessionCoachSheet: View {
             .disabled(
                 controller.coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                     || controller.isCoachThinking
+                    || activityGate.isBlocked(for: .inSession)
             )
         }
         .padding(HelmSpacing.md)
         .background(HelmColor.surface.opacity(0.96))
     }
 
-    private func scrollToBottom(proxy: ScrollViewProxy) {
-        withAnimation(HelmMotion.standardAnimation) {
+    private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
+        let scroll = {
             if controller.pendingCoachProposal != nil {
                 proxy.scrollTo("coach-confirmation", anchor: .bottom)
+            } else if controller.coachTurnError != nil {
+                proxy.scrollTo("coach-turn-error", anchor: .bottom)
             } else if controller.isCoachThinking {
                 proxy.scrollTo("coach-thinking", anchor: .bottom)
             } else if let last = controller.coachMessages.last {
                 proxy.scrollTo(last.id, anchor: .bottom)
             }
+        }
+        if animated {
+            withAnimation(HelmMotion.standardAnimation) { scroll() }
+        } else {
+            scroll()
         }
     }
 }

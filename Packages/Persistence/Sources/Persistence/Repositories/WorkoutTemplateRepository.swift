@@ -145,4 +145,89 @@ public struct WorkoutTemplateRepository: Sendable {
         try insert(template, timestamp: timestamp)
         return template
     }
+
+    public func update(_ draft: WorkoutTemplateDraft, timestamp: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE workout_template
+                    SET name = ?, notes = ?, updated_at = ?
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [draft.name, draft.notes, now, draft.id]
+            )
+
+            try db.execute(
+                sql: """
+                    UPDATE workout_template_exercise
+                    SET deleted_at = ?
+                    WHERE workout_template_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [now, draft.id]
+            )
+
+            for exercise in draft.exercises {
+                try db.execute(
+                    sql: """
+                        INSERT INTO workout_template_exercise (
+                            id, workout_template_id, exercise_id, display_order,
+                            target_set_count, target_rep_min, target_rep_max, target_weight_kg,
+                            default_rest_seconds, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                    arguments: [
+                        exercise.id,
+                        draft.id,
+                        exercise.exerciseID,
+                        exercise.displayOrder,
+                        exercise.targetSetCount,
+                        exercise.targetRepMin,
+                        exercise.targetRepMax,
+                        exercise.targetMass?.kilograms,
+                        exercise.defaultRestSeconds,
+                        now,
+                        now
+                    ]
+                )
+            }
+        }
+    }
+
+    public func delete(id: String, timestamp: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            try db.execute(
+                sql: "UPDATE workout_template SET deleted_at = ?, updated_at = ? WHERE id = ?",
+                arguments: [now, now, id]
+            )
+        }
+    }
+
+    public func createFromPrescription(
+        _ prescription: SessionPrescription,
+        name: String,
+        notes: String? = nil,
+        timestamp: Date = Date()
+    ) throws -> WorkoutTemplateDraft {
+        let exercises = prescription.exercises.sorted(by: { $0.order < $1.order }).enumerated().map { index, exercise in
+            WorkoutTemplateExerciseDraft(
+                exerciseID: exercise.exerciseID,
+                displayOrder: index,
+                targetSetCount: exercise.targetSets,
+                targetRepMin: exercise.targetRepMin,
+                targetRepMax: exercise.targetRepMax,
+                targetMass: exercise.targetMass,
+                defaultRestSeconds: 90
+            )
+        }
+
+        let template = WorkoutTemplateDraft(
+            name: name,
+            notes: notes,
+            exercises: exercises
+        )
+        try insert(template, timestamp: timestamp)
+        return template
+    }
 }

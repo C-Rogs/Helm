@@ -6,16 +6,13 @@ struct WorkoutTemplatesListView: View {
     @Bindable var history: WorkoutHistoryController
     let onStartTemplate: (String) -> Void
 
-    @State private var isShowingNamePrompt = false
-    @State private var templateName = ""
-
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             Text("Templates")
                 .helmType(.label)
 
             if history.templates.isEmpty {
-                Text("Save a finished workout as a template from its detail screen.")
+                Text("Save today's prescription or a finished workout as a reusable template.")
                     .helmType(.body, color: HelmColor.fgSecondary)
             } else {
                 Card {
@@ -23,15 +20,26 @@ struct WorkoutTemplatesListView: View {
                         ForEach(history.templates) { template in
                             HelmRuledRow {
                                 HStack(alignment: .center, spacing: HelmSpacing.sm) {
-                                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                                        Text(template.name)
-                                            .helmType(.body)
-                                        if let notes = template.notes, !notes.isEmpty {
-                                            Text(notes)
-                                                .helmType(.body, color: HelmColor.fgSecondary)
+                                    NavigationLink {
+                                        WorkoutTemplateDetailView(
+                                            history: history,
+                                            templateID: template.id,
+                                            onStart: { onStartTemplate(template.id) }
+                                        )
+                                    } label: {
+                                        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                                            Text(template.name)
+                                                .helmType(.body)
+                                            if let notes = template.notes, !notes.isEmpty {
+                                                Text(notes)
+                                                    .helmType(.body, color: HelmColor.fgSecondary)
+                                            }
                                         }
                                     }
+                                    .buttonStyle(.plain)
+
                                     Spacer()
+
                                     Button("Start") {
                                         onStartTemplate(template.id)
                                     }
@@ -47,7 +55,9 @@ struct WorkoutTemplatesListView: View {
 }
 
 #Preview {
-    WorkoutTemplatesListView(history: TrainBootstrap.historyController, onStartTemplate: { _ in })
-        .helmScreenPadding()
-        .helmTheme()
+    NavigationStack {
+        WorkoutTemplatesListView(history: TrainBootstrap.historyController, onStartTemplate: { _ in })
+            .helmScreenPadding()
+    }
+    .helmTheme()
 }

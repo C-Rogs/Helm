@@ -70,7 +70,9 @@ public actor BriefEngine {
         }
 
         let engineText = BriefEngineTextComposer.compose(from: inputs)
-        var narrationText = engineText
+        let progression = BriefProgressionComposer.deltaSentence(nutritionSnapshot: nutritionSnapshot)
+        let combinedEngineText = [engineText, progression].compactMap { $0 }.joined(separator: " ")
+        var narrationText = combinedEngineText
         var citationIDs: [String] = []
         var source: BriefNarrationSource = .engineOnly
         var promptVersion: String?
@@ -101,7 +103,7 @@ public actor BriefEngine {
         let brief = StoredDailyBrief(
             helmDay: day,
             inputFingerprint: fingerprint,
-            engineText: engineText,
+            engineText: combinedEngineText,
             narrationText: narrationText,
             citationIDs: citationIDs,
             source: source,

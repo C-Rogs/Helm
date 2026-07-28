@@ -22,32 +22,35 @@ struct RestTimerBanner: View {
 
     @ViewBuilder
     private func bannerContent(remainingSeconds: Int) -> some View {
-        HStack(spacing: HelmSpacing.sm) {
+        HStack(spacing: HelmSpacing.xs) {
             if let onAdjust {
-                Button("-15") { onAdjust(-15) }
-                    .buttonStyle(.helmSecondary)
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 44)
+                adjustButton(systemImage: "minus", label: "Minus 15 seconds") {
+                    onAdjust(-15)
+                }
             }
 
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text("REST")
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .lineLimit(1)
                 HelmNumericText(formattedTime(remainingSeconds))
                     .helmType(.bigNumber, color: HelmColor.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.8)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+            .layoutPriority(1)
 
             if let onAdjust {
-                Button("+15") { onAdjust(15) }
-                    .buttonStyle(.helmSecondary)
-                    .font(.caption.monospacedDigit())
-                    .frame(width: 44)
+                adjustButton(systemImage: "plus", label: "Plus 15 seconds") {
+                    onAdjust(15)
+                }
             }
 
             Button("Skip", action: onSkip)
                 .buttonStyle(.helmSecondary)
-                .frame(width: 72)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
         }
         .padding(HelmSpacing.md)
         .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
@@ -55,6 +58,16 @@ struct RestTimerBanner: View {
             RoundedRectangle(cornerRadius: HelmRadius.md)
                 .strokeBorder(HelmColor.accent.opacity(0.35), lineWidth: 1)
         }
+    }
+
+    private func adjustButton(systemImage: String, label: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: systemImage)
+                .font(.body.weight(.semibold))
+                .frame(width: 36, height: 36)
+        }
+        .buttonStyle(.helmSecondary)
+        .accessibilityLabel(label)
     }
 
     private func formattedTime(_ remainingSeconds: Int) -> String {

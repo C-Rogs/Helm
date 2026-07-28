@@ -39,7 +39,7 @@ struct TrendWeightChartCard: View {
     private var interpolation: InterpolationMethod {
         switch mode {
         case .detail: .linear
-        case .dashboard: .catmullRom
+        case .dashboard: .monotone
         }
     }
 
@@ -160,8 +160,10 @@ struct TrendWeightChartCard: View {
                 selectedX: selectedDay,
                 label: selectedLabel
             )
+            .clipped()
         }
         .frame(height: HelmChartStyle.standardHeight)
+        .clipped()
     }
 }
 

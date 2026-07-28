@@ -12,6 +12,12 @@ struct CoachSettingsView: View {
     @State private var isSavingOpenRouter = false
     @State private var isProvisioningOpenRouter = false
     @State private var photoVisionPreferences = MealVisionPreferencesStore()
+    @State private var coachDisplayName = CoachDisplayNameStore.name
+    @State private var allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
+    @State private var proactivePeekEnabled = ProactiveCoachPreferences.peekEnabled
+    @State private var proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
+    @State private var proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
+    @State private var proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
 
     private let keyStore = APIKeyStore()
     private let openRouterMetadata = OpenRouterKeyMetadataStore()
@@ -21,6 +27,46 @@ struct CoachSettingsView: View {
             Section {
                 Text("Coach chat uses Gemini. OpenRouter powers photo meal vision below.")
                     .font(HelmTypography.body)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
+
+            Section("Coach name") {
+                TextField("Display name", text: $coachDisplayName)
+                    .textInputAutocapitalization(.words)
+                    .onChange(of: coachDisplayName) { _, newValue in
+                        CoachDisplayNameStore.name = newValue
+                    }
+                Text("Used in Chat and in-session coach.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
+
+            Section("Concurrency") {
+                Toggle("Allow Chat and workout coach at the same time", isOn: $allowsParallelCoaches)
+                    .onChange(of: allowsParallelCoaches) { _, newValue in
+                        CoachActivityGate.shared.allowsParallelCoaches = newValue
+                    }
+            }
+
+            Section("Proactive coach") {
+                Toggle("Peek on Ask coach bar", isOn: $proactivePeekEnabled)
+                    .onChange(of: proactivePeekEnabled) { _, newValue in
+                        ProactiveCoachPreferences.peekEnabled = newValue
+                    }
+                Toggle("Inline banner during workout", isOn: $proactiveBannerEnabled)
+                    .onChange(of: proactiveBannerEnabled) { _, newValue in
+                        ProactiveCoachPreferences.bannerEnabled = newValue
+                    }
+                Toggle("Auto-insert coach messages", isOn: $proactiveAutoChatEnabled)
+                    .onChange(of: proactiveAutoChatEnabled) { _, newValue in
+                        ProactiveCoachPreferences.autoChatEnabled = newValue
+                    }
+                Toggle("Push notifications", isOn: $proactivePushEnabled)
+                    .onChange(of: proactivePushEnabled) { _, newValue in
+                        ProactiveCoachPreferences.pushEnabled = newValue
+                    }
+                Text("All proactive channels are on by default. Turn off any you do not want during workouts.")
+                    .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgSecondary)
             }
 
@@ -112,6 +158,12 @@ struct CoachSettingsView: View {
         .navigationTitle("Coach")
         .helmScreenBackground()
         .onAppear {
+            coachDisplayName = CoachDisplayNameStore.name
+            allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
+            proactivePeekEnabled = ProactiveCoachPreferences.peekEnabled
+            proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
+            proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
+            proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
             if geminiKey.isEmpty {
                 geminiKey = keyStore.displayValue(for: .gemini)
             }

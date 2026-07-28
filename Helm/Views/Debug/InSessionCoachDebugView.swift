@@ -32,6 +32,15 @@ struct InSessionCoachDebugView: View {
                 }
             }
 
+            Section("Last failure") {
+                LabeledContent("Surface", value: CoachDiagnosticsStore.shared.lastSurface ?? "None")
+                LabeledContent("Error code", value: CoachDiagnosticsStore.shared.lastErrorCode ?? "None")
+                LabeledContent("Request ID", value: CoachDiagnosticsStore.shared.lastRequestID ?? "None")
+                if let rejectReason = CoachDiagnosticsStore.shared.lastRejectReason {
+                    LabeledContent("Reject reason", value: rejectReason)
+                }
+            }
+
             Section("Ephemeral chat (this workout)") {
                 if sessionController.coachMessages.isEmpty {
                     Text("No in-session coach messages yet.")

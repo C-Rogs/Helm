@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct AskCoachBar: View {
     public let prompt: String
+    public let peekSnippet: String?
     public let isLoading: Bool
     public let action: () -> Void
 
@@ -10,12 +11,21 @@ public struct AskCoachBar: View {
 
     public init(
         prompt: String = "Ask coach",
+        peekSnippet: String? = nil,
         isLoading: Bool = false,
         action: @escaping () -> Void
     ) {
         self.prompt = prompt
+        self.peekSnippet = peekSnippet
         self.isLoading = isLoading
         self.action = action
+    }
+
+    private var displayPrompt: String {
+        if let peekSnippet, !peekSnippet.isEmpty {
+            return peekSnippet
+        }
+        return prompt
     }
 
     public var body: some View {
@@ -23,8 +33,9 @@ public struct AskCoachBar: View {
             HStack(spacing: HelmSpacing.sm) {
                 statusIndicator
 
-                Text(prompt)
+                Text(displayPrompt)
                     .helmType(.body, color: HelmColor.fg)
+                    .lineLimit(peekSnippet == nil ? 1 : 2)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, HelmSpacing.md)

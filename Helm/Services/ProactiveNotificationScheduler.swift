@@ -110,4 +110,21 @@ final class ProactiveNotificationScheduler {
 
         try? await center.add(request)
     }
+
+    func postIntraWorkoutCoach(message: String, sessionID: String) async {
+        guard ProactiveCoachPreferences.pushEnabled else { return }
+        await requestPermissionIfNeeded()
+
+        let content = UNMutableNotificationContent()
+        content.title = "Coach"
+        content.body = message
+        content.sound = .default
+        content.userInfo = [
+            PostWorkoutNotificationPlanner.sessionIDUserInfoKey: sessionID
+        ]
+
+        let identifier = "helm.intra-workout.\(sessionID).\(UUID().uuidString)"
+        let request = UNNotificationRequest(identifier: identifier, content: content, trigger: nil)
+        try? await center.add(request)
+    }
 }
