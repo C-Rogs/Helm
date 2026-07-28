@@ -10,32 +10,45 @@ final class WeekAheadScheduleStore {
     private(set) var model: WeekAheadScheduleModel?
     private(set) var isLoading = false
     private(set) var errorMessage: String?
+    private(set) var calendarAuthorizationStatus = CalendarAuthorizationStatus.notDetermined
 
     private let store: PersistenceStore
+    private let calendarHintService: CalendarHintService
     private let calendar: Calendar
     private let cutoff: DayCutoff
 
     init(
         store: PersistenceStore,
+        calendarHintService: CalendarHintService = CalendarHintBootstrap.service,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) {
         self.store = store
+        self.calendarHintService = calendarHintService
         self.calendar = calendar
         self.cutoff = cutoff
     }
 
-    func refresh() {
+    func refresh() async {
         isLoading = true
         errorMessage = nil
+        calendarAuthorizationStatus = calendarHintService.currentStatus()
 
         do {
             let today = HelmDay.day(for: .now, cutoff: cutoff, calendar: calendar)
+            let endDay = today.adding(days: WeekAheadScheduleBuilder.horizonDays - 1, calendar: calendar)
+            let busyDayHints = await calendarHintService.busyDayHints(
+                from: today,
+                through: endDay,
+                calendar: calendar,
+                cutoff: cutoff
+            )
             model = try WeekAheadScheduleBuilder.build(
                 store: store,
                 today: today,
                 calendar: calendar,
-                cutoff: cutoff
+                cutoff: cutoff,
+                busyDayHints: busyDayHints
             )
         } catch {
             model = WeekAheadScheduleModel(rows: [])
@@ -43,6 +56,11 @@ final class WeekAheadScheduleStore {
         }
 
         isLoading = false
+    }
+
+    func requestCalendarAccess() async {
+        calendarAuthorizationStatus = await calendarHintService.requestAccess()
+        await refresh()
     }
 }
 

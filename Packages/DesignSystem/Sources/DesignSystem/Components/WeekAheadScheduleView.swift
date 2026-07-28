@@ -98,6 +98,9 @@ public struct WeekAheadScheduleView: View {
         if let note = row.note {
             parts.append(note)
         }
+        if let busyDayHint = row.busyDayHint {
+            parts.append(busyDayHint)
+        }
         return parts.joined(separator: ", ")
     }
 }
@@ -124,6 +127,15 @@ public struct WeekAheadScheduleView: View {
 #Preview("Week ahead drift") {
     Card {
         WeekAheadScheduleView(model: .driftScenarioFixture)
+    }
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Week ahead busy day") {
+    Card {
+        WeekAheadScheduleView(model: .busyDayFixture)
     }
     .padding()
     .helmTheme()

@@ -12,7 +12,8 @@ enum WeekAheadScheduleBuilder {
         store: PersistenceStore,
         today: HelmDay,
         calendar: Calendar = .current,
-        cutoff: DayCutoff = .default
+        cutoff: DayCutoff = .default,
+        busyDayHints: [HelmDay: String] = [:]
     ) throws -> WeekAheadScheduleModel {
         let endDay = today.adding(days: horizonDays - 1, calendar: calendar)
         let records = try store.plan.fetchPlannedWorkouts(from: today, through: endDay)
@@ -47,6 +48,7 @@ enum WeekAheadScheduleBuilder {
                 note: note,
                 status: status,
                 driftNote: driftNote(for: record, helmDay: helmDay, calendar: calendar),
+                busyDayHint: busyDayHints[helmDay],
                 isToday: helmDay == today
             )
         }

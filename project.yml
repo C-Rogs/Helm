@@ -95,6 +95,7 @@ targets:
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Helm writes workouts and meals you log back to Apple Health.
         INFOPLIST_KEY_NSCameraUsageDescription: Helm uses the camera to estimate meal macros from photos.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Helm uses your photo library to estimate meal macros from meal photos.
+        INFOPLIST_KEY_NSCalendarsUsageDescription: Helm reads your calendar to flag busy days on your training schedule. Events are never written back.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
         INFOPLIST_KEY_CFBundleURLTypes:
           - CFBundleURLName: com.cameronro.helm

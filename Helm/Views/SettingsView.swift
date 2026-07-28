@@ -96,6 +96,9 @@ struct SettingsView: View {
                     NavigationLink("HealthKit") {
                         HealthKitStatusView()
                     }
+                    NavigationLink("Calendar Hints") {
+                        CalendarHintStatusView()
+                    }
                     NavigationLink("Watch Sync") {
                         WatchSyncStatusView()
                     }

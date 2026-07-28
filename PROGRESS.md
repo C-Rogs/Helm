@@ -125,7 +125,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT7.7 Photo meal grounding and add-flow toolbars | done | 2026-07-28 | 0ce2f3d | Analysing overlay; CoFID plural/generic fix; hybrid vision; accuracy picker; Cancel/Add toolbars. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
-| M13.3 EventKit hints | deferred | | | Post-DT5 |
+| M13.3 EventKit hints | done | 2026-07-28 | 90801da | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
 | M14.1 CoFID bundle replaces USDA | done | 2026-07-24 | a158e24 | Full CoFID 2021 bundle; NutritionLookup on cofid_foods.json; OGL attribution in Sources; USDA removed; lookup + grounded photo tests pass. |
 | M14.2 Food log persistence (GRDB v10) | done | 2026-07-24 | a755461 | GRDB v10 food-logging schema; Core models; FoodLogRepository + MealTemplateRepository; migrate-up + CRUD fixture tests pass. |
 | M14.3 Food resolver + Open Food Facts client | done | 2026-07-24 | d220e56 | FoodResolver actor (recents→CoFID→OFF→custom); OpenFoodFactsClient + NetworkGate; product cache writes; OFF JSON fixtures; cache hit skips network. |

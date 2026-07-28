@@ -33,7 +33,7 @@ struct TrainView: View {
                 await controller.recoverPersistedSession()
                 history.refresh()
                 muscleVolumeStore.refresh()
-                weekAheadStore.refresh()
+                await weekAheadStore.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 Task { await controller.handleScenePhase(newPhase) }
