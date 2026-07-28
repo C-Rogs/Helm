@@ -64,12 +64,6 @@ public final class HapticEngine: HapticPlaying {
     private func playFallback(_ pattern: HelmHaptic) async {
         let fallback = HapticFallbackResolver.fallback(for: pattern)
         switch pattern {
-        case .restCountIn:
-            fallback.fire()
-            try? await Task.sleep(for: .milliseconds(300))
-            fallback.fire()
-            try? await Task.sleep(for: .milliseconds(300))
-            fallback.fire()
         case .coachAdjust:
             fallback.fire()
             try? await Task.sleep(for: .milliseconds(100))
@@ -84,7 +78,7 @@ public final class HapticEngine: HapticPlaying {
             error: error,
             category: .ui,
             message: "HapticEngine \(phase) failed",
-            context: ["pattern": pattern.rawValue]
+            context: ["pattern": pattern.diagnosticName]
         )
     }
 }

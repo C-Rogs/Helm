@@ -110,6 +110,7 @@ struct TrainView: View {
                 WorkoutHistoryListView(history: history)
             }
             .helmScreenPadding()
+            .padding(.bottom, HelmLayout.trainScrollBottomInset)
         }
     }
 
@@ -136,7 +137,7 @@ struct TrainView: View {
                 }
             ) {
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    HStack {
+                    HStack(spacing: HelmSpacing.sm) {
                         NavigationLink {
                             ProgressionDetailContainer()
                         } label: {
@@ -148,9 +149,11 @@ struct TrainView: View {
                             }
                         }
                         .buttonStyle(.plain)
-                        Spacer()
+
                         Text(summary.phase.label)
                             .helmType(.monoTag, color: HelmColor.accent)
+
+                        Spacer(minLength: 0)
                     }
 
                     if summary.readinessAdjusted {

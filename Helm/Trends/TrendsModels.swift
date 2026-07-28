@@ -62,6 +62,13 @@ struct TrendsSnapshot: Sendable, Equatable {
     var energyBalance: [EnergyBalanceGauge]
     var canLoadMoreHistory: Bool
 
+    var hasDisplayedHistory: Bool {
+        !trendWeight.isEmpty
+            || !readinessHistory.isEmpty
+            || !e1RMHistory.isEmpty
+            || !energyBalance.isEmpty
+    }
+
     static let empty = TrendsSnapshot(
         bodyWeight: [],
         trendWeight: [],

@@ -27,8 +27,8 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
 | `setLogged` | one dry, crisp transient | transient `i 0.8 / s 0.9 @ 0` | `impact(.rigid)` |
-| `restCountIn` | three soft rising ticks | transients `i 0.4/0.5/0.6`, `s 0.4` @ 0, 0.3, 0.6 | `impact(.light)` x3 |
-| `restDone` | urgent double pulse, felt through a gym | transient `i 1.0 / s 0.8 @ 0`, transient `i 1.0 / s 0.8 @ 0.12` | `.notificationWarning` + notification |
+| `restCountIn` | one rising tick per second for the final 5s | single transient per second: `i 0.35/0.45/0.55/0.7/0.85`, `s 0.45-0.6` | escalating `impact(.light/.medium/.rigid)` |
+| `restDone` | notification-grade completion, max amplitude | transient `i 1.0 / s 1.0 @ 0`, short swell `i 0.8->0` over 0.18s | `.notificationError` |
 
 **Group 3 — milestones and confirmations**
 
@@ -56,7 +56,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `phaseChange` | deload week begins, new mesocycle starts, or phase (cut/maintain/gain) changes | M5.6 / M5.2 |
 | `thresholdInsight` | a silent insight surfaces in-app (a trend crossed a threshold); off by default | M7.2 |
 | `setLogged` | a set row completes (checkmark), not on an already-complete row | M3.3 |
-| `restCountIn` | final few seconds of a running rest timer, in-foreground | M3.4 |
+| `restCountIn` | one tick per second while rest timer counts down 5, 4, 3, 2, 1 in-foreground | M3.4 |
 | `restDone` | rest timer reaches zero, including while suspended (via the scheduled notification) | M3.4 |
 | `prHit` | a qualifying PR is detected, exactly once per record | M3.5 |
 | `sessionFinished` | a workout is finished (not discarded) | M3.2 / M3.3 |
@@ -80,7 +80,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 - Settings: a single "Haptics" toggle (default on) read on every `play`. Independent of Reduce Motion (a user may want haptics with reduced motion, or the reverse).
 - Low power: skip continuous patterns (`readinessReveal` swell degrades to its crest transient only) under Low Power Mode.
 - Diagnostics: route engine start/stop/reset failures to the Diagnostics ring buffer per `Docs/DIAGNOSTICS.md`; never crash, never phone home.
-- AHAP: bundle the custom continuous/multi-event patterns (`readinessReveal`, `phaseChange`, `restDone`, `restCountIn`, `prHit`, `sessionFinished`, `clampRejected`, `thresholdInsight`) as `.ahap` resources loaded by name; `setLogged`, `coachAdjust`, `mealConfirmed`, and `selection` may be code-built.
+- AHAP: bundle the custom continuous/multi-event patterns (`readinessReveal`, `phaseChange`, `restDone`, `prHit`, `sessionFinished`, `clampRejected`, `thresholdInsight`) as `.ahap` resources loaded by name; `setLogged`, `restCountIn`, `coachAdjust`, `mealConfirmed`, and `selection` are code-built.
 
 ## Verification split
 

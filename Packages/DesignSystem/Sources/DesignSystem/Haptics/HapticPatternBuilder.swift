@@ -29,10 +29,17 @@ public enum HapticFallbackResolver {
             .impact(.soft)
         case .setLogged:
             .impact(.rigid)
-        case .restCountIn:
-            .impact(.light)
+        case .restCountInStep(let remainingSeconds):
+            switch remainingSeconds {
+            case 1, 2:
+                .impact(.rigid)
+            case 3:
+                .impact(.medium)
+            default:
+                .impact(.light)
+            }
         case .restDone:
-            .notification(.warning)
+            .notification(.error)
         case .mealConfirmed, .coachAdjust:
             .impact(.soft)
         case .clampRejected:
@@ -54,8 +61,8 @@ enum HapticPatternBuilder {
             return try thresholdInsight(lowPowerMode: lowPowerMode)
         case .setLogged:
             return try transient(intensity: 0.8, sharpness: 0.9)
-        case .restCountIn:
-            return try restCountIn()
+        case .restCountInStep(let remainingSeconds):
+            return try restCountInStep(remainingSeconds: remainingSeconds)
         case .restDone:
             return try restDone()
         case .prHit:
@@ -156,33 +163,50 @@ enum HapticPatternBuilder {
         return try CHHapticPattern(events: [event], parameterCurves: [curve])
     }
 
-    private static func restCountIn() throws -> CHHapticPattern {
-        let intensities: [Float] = [0.4, 0.5, 0.6]
-        let events = intensities.enumerated().map { index, intensity in
-            CHHapticEvent(
-                eventType: .hapticTransient,
-                parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.4)
-                ],
-                relativeTime: TimeInterval(index) * 0.3
-            )
+    private static func restCountInStep(remainingSeconds: Int) throws -> CHHapticPattern {
+        let intensity = restCountInStepIntensity(remainingSeconds: remainingSeconds)
+        let sharpness: Float = remainingSeconds <= 2 ? 0.6 : 0.45
+        return try transient(intensity: intensity, sharpness: sharpness)
+    }
+
+    private static func restCountInStepIntensity(remainingSeconds: Int) -> Float {
+        switch remainingSeconds {
+        case 5: 0.35
+        case 4: 0.45
+        case 3: 0.55
+        case 2: 0.7
+        case 1: 0.85
+        default: 0.4
         }
-        return try CHHapticPattern(events: events, parameters: [])
     }
 
     private static func restDone() throws -> CHHapticPattern {
-        let events = [0.0, 0.12].map { time in
-            CHHapticEvent(
-                eventType: .hapticTransient,
-                parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8)
-                ],
-                relativeTime: time
-            )
-        }
-        return try CHHapticPattern(events: events, parameters: [])
+        let hit = CHHapticEvent(
+            eventType: .hapticTransient,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 1.0),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 1.0)
+            ],
+            relativeTime: 0
+        )
+        let swell = CHHapticEvent(
+            eventType: .hapticContinuous,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.8),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.9)
+            ],
+            relativeTime: 0.04,
+            duration: 0.18
+        )
+        let curve = CHHapticParameterCurve(
+            parameterID: .hapticIntensityControl,
+            controlPoints: [
+                .init(relativeTime: 0.04, value: 0.8),
+                .init(relativeTime: 0.22, value: 0)
+            ],
+            relativeTime: 0
+        )
+        return try CHHapticPattern(events: [hit, swell], parameterCurves: [curve])
     }
 
     private static func prHit() throws -> CHHapticPattern {

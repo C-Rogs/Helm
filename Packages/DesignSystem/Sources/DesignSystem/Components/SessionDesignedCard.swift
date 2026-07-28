@@ -6,7 +6,7 @@ public struct SessionDesignedCard<Content: View>: View {
     public let rationale: [String]
     public let onCoach: () -> Void
     public let onRegenerate: () -> Void
-  @ViewBuilder public let content: () -> Content
+    @ViewBuilder public let content: () -> Content
 
     public init(
         title: String,
@@ -26,32 +26,35 @@ public struct SessionDesignedCard<Content: View>: View {
 
     public var body: some View {
         Card {
-            ZStack(alignment: .topTrailing) {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                HStack(alignment: .top, spacing: HelmSpacing.md) {
                     VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                         Text(title)
                             .helmType(.title)
                         Text(summary)
                             .helmType(.body, color: HelmColor.fgSecondary)
+                            .fixedSize(horizontal: false, vertical: true)
                     }
+                    .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !rationale.isEmpty {
-                        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                            ForEach(rationale, id: \.self) { line in
-                                Text(line)
-                                    .helmType(.body, color: HelmColor.fgMuted)
-                            }
+                    VStack(alignment: .trailing, spacing: HelmSpacing.xs) {
+                        sessionChip(title: "Coach", action: onCoach)
+                        sessionChip(title: "Regenerate", action: onRegenerate)
+                    }
+                    .layoutPriority(1)
+                }
+
+                if !rationale.isEmpty {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        ForEach(rationale, id: \.self) { line in
+                            Text(line)
+                                .helmType(.body, color: HelmColor.fgMuted)
+                                .fixedSize(horizontal: false, vertical: true)
                         }
                     }
-
-                    content()
                 }
-                .padding(.trailing, HelmSpacing.xl)
 
-                VStack(spacing: HelmSpacing.xs) {
-                    sessionChip(title: "Coach", action: onCoach)
-                    sessionChip(title: "Regenerate", action: onRegenerate)
-                }
+                content()
             }
         }
     }
@@ -122,4 +125,23 @@ public struct SessionExercisePreviewList: View {
     }
     .padding()
     .helmTheme()
+}
+
+#Preview("Session designed card long summary") {
+    SessionDesignedCard(
+        title: "Arm Focus",
+        summary: "Biceps + Triceps + Shoulders · 3 sets · week 1 weekly accumulating · Arms",
+        rationale: [
+            "ARC 57 (balanced) sets today's volume and RPE cap.",
+            "Cut phase with 1 exercises prescribed.",
+            "Biceps: 0.0/6 hard sets this week."
+        ],
+        onCoach: {},
+        onRegenerate: {}
+    ) {
+        SessionExercisePreviewList(exercises: ["Bent Over Row (Barbell)"])
+    }
+    .padding()
+    .helmTheme()
+    .dynamicTypeSize(.accessibility5)
 }

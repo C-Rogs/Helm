@@ -24,16 +24,59 @@ struct WorkoutHapticPolicyTests {
         )
     }
 
-    @Test("Rest count-in fires entering final seconds")
-    func restCountInThreshold() {
+    @Test("Rest count-in fires once per second in final five seconds")
+    func restCountInPerSecond() {
+        let transitions: [(Int?, Int, Int)] = [
+            (6, 5, 5),
+            (5, 4, 4),
+            (4, 3, 3),
+            (3, 2, 2),
+            (2, 1, 1)
+        ]
+
+        var state = RestTimerHapticPolicy.State()
+        for (previous, current, expectedSecond) in transitions {
+            let evaluation = RestTimerHapticPolicy.evaluateForegroundTransition(
+                timerID: "timer-1",
+                previousRemaining: previous,
+                currentRemaining: current,
+                state: state
+            )
+            #expect(evaluation.patterns == [.restCountInStep(remainingSeconds: expectedSecond)])
+            #expect(evaluation.markCountInPlayedSecond == expectedSecond)
+            state.apply(evaluation)
+        }
+    }
+
+    @Test("Rest count-in does not repeat the same second")
+    func restCountInDedupedPerSecond() {
+        var state = RestTimerHapticPolicy.State()
+        let first = RestTimerHapticPolicy.evaluateForegroundTransition(
+            timerID: "timer-1",
+            previousRemaining: 6,
+            currentRemaining: 5,
+            state: state
+        )
+        state.apply(first)
+
+        let repeatTick = RestTimerHapticPolicy.evaluateForegroundTransition(
+            timerID: "timer-1",
+            previousRemaining: 6,
+            currentRemaining: 5,
+            state: state
+        )
+        #expect(repeatTick.patterns.isEmpty)
+    }
+
+    @Test("Rest count-in does not fire above threshold")
+    func restCountInAboveThreshold() {
         let evaluation = RestTimerHapticPolicy.evaluateForegroundTransition(
             timerID: "timer-1",
-            previousRemaining: 4,
-            currentRemaining: 3,
+            previousRemaining: 7,
+            currentRemaining: 6,
             state: .init()
         )
-        #expect(evaluation.patterns == [.restCountIn])
-        #expect(evaluation.markCountInPlayed)
+        #expect(evaluation.patterns.isEmpty)
     }
 
     @Test("Rest done fires when countdown reaches zero")

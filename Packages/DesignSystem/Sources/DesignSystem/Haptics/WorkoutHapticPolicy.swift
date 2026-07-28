@@ -20,42 +20,45 @@ public enum PersonalRecordHapticPolicy {
 }
 
 public enum RestTimerHapticPolicy {
-    public static let countInThresholdSeconds = 3
+    public static let countInThresholdSeconds = 5
 
     public struct Evaluation: Equatable, Sendable {
         public let patterns: [HelmHaptic]
         public let timerID: String?
-        public let markCountInPlayed: Bool
+        public let markCountInPlayedSecond: Int?
         public let markRestDonePlayed: Bool
 
         public init(
             patterns: [HelmHaptic],
             timerID: String? = nil,
-            markCountInPlayed: Bool = false,
+            markCountInPlayedSecond: Int? = nil,
             markRestDonePlayed: Bool = false
         ) {
             self.patterns = patterns
             self.timerID = timerID
-            self.markCountInPlayed = markCountInPlayed
+            self.markCountInPlayedSecond = markCountInPlayedSecond
             self.markRestDonePlayed = markRestDonePlayed
         }
     }
 
     public struct State: Equatable, Sendable {
-        public var countInPlayedForTimerID: String?
+        public var countInPlayedSecondsByTimer: [String: Set<Int>]
         public var restDonePlayedForTimerIDs: Set<String>
 
         public init(
-            countInPlayedForTimerID: String? = nil,
+            countInPlayedSecondsByTimer: [String: Set<Int>] = [:],
             restDonePlayedForTimerIDs: Set<String> = []
         ) {
-            self.countInPlayedForTimerID = countInPlayedForTimerID
+            self.countInPlayedSecondsByTimer = countInPlayedSecondsByTimer
             self.restDonePlayedForTimerIDs = restDonePlayedForTimerIDs
         }
 
         public mutating func apply(_ evaluation: Evaluation) {
-            if evaluation.markCountInPlayed, let timerID = evaluation.timerID {
-                countInPlayedForTimerID = timerID
+            if let timerID = evaluation.timerID,
+               let second = evaluation.markCountInPlayedSecond {
+                var played = countInPlayedSecondsByTimer[timerID] ?? []
+                played.insert(second)
+                countInPlayedSecondsByTimer[timerID] = played
             }
             if evaluation.markRestDonePlayed, let timerID = evaluation.timerID {
                 restDonePlayedForTimerIDs.insert(timerID)
@@ -72,15 +75,17 @@ public enum RestTimerHapticPolicy {
         guard let timerID else { return Evaluation(patterns: []) }
 
         var patterns: [HelmHaptic] = []
-        var markCountIn = false
+        var markCountInSecond: Int?
         var markRestDone = false
 
         if let current = currentRemaining,
            current > 0,
-           current <= countInThresholdSeconds,
-           state.countInPlayedForTimerID != timerID {
-            patterns.append(.restCountIn)
-            markCountIn = true
+           current <= countInThresholdSeconds {
+            let played = state.countInPlayedSecondsByTimer[timerID] ?? []
+            if !played.contains(current) {
+                patterns.append(.restCountInStep(remainingSeconds: current))
+                markCountInSecond = current
+            }
         }
 
         if let previous = previousRemaining,
@@ -94,7 +99,7 @@ public enum RestTimerHapticPolicy {
         return Evaluation(
             patterns: patterns,
             timerID: timerID,
-            markCountInPlayed: markCountIn,
+            markCountInPlayedSecond: markCountInSecond,
             markRestDonePlayed: markRestDone
         )
     }

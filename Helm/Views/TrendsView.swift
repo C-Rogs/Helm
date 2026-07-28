@@ -70,15 +70,20 @@ struct TrendsView: View {
             gauges: controller.snapshot.energyBalance
         )
 
-        if controller.snapshot.canLoadMoreHistory {
+        if controller.snapshot.canLoadMoreHistory, !controller.snapshot.hasDisplayedHistory {
             Button("Load earlier history") {
                 controller.loadMoreHistoryIfNeeded()
             }
             .buttonStyle(.helmSecondary)
             .frame(maxWidth: .infinity)
-            .onAppear {
-                controller.loadMoreHistoryIfNeeded()
-            }
+        }
+
+        if controller.snapshot.canLoadMoreHistory {
+            Color.clear
+                .frame(height: 0)
+                .onAppear {
+                    controller.loadMoreHistoryIfNeeded()
+                }
         }
 
         if let errorMessage = controller.errorMessage {
