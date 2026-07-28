@@ -1,0 +1,125 @@
+import SwiftUI
+
+public struct SessionDesignedCard<Content: View>: View {
+    public let title: String
+    public let summary: String
+    public let rationale: [String]
+    public let onCoach: () -> Void
+    public let onRegenerate: () -> Void
+  @ViewBuilder public let content: () -> Content
+
+    public init(
+        title: String,
+        summary: String,
+        rationale: [String],
+        onCoach: @escaping () -> Void,
+        onRegenerate: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.summary = summary
+        self.rationale = rationale
+        self.onCoach = onCoach
+        self.onRegenerate = onRegenerate
+        self.content = content
+    }
+
+    public var body: some View {
+        Card {
+            ZStack(alignment: .topTrailing) {
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        Text(title)
+                            .helmType(.title)
+                        Text(summary)
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                    }
+
+                    if !rationale.isEmpty {
+                        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                            ForEach(rationale, id: \.self) { line in
+                                Text(line)
+                                    .helmType(.body, color: HelmColor.fgMuted)
+                            }
+                        }
+                    }
+
+                    content()
+                }
+                .padding(.trailing, HelmSpacing.xl)
+
+                VStack(spacing: HelmSpacing.xs) {
+                    sessionChip(title: "Coach", action: onCoach)
+                    sessionChip(title: "Regenerate", action: onRegenerate)
+                }
+            }
+        }
+    }
+
+    private func sessionChip(title: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Text(title)
+                .helmType(.monoTag, color: HelmColor.accent)
+                .padding(.horizontal, HelmSpacing.sm)
+                .padding(.vertical, HelmSpacing.xxs)
+                .background(HelmColor.accent.opacity(0.12), in: Capsule())
+                .overlay(
+                    Capsule()
+                        .stroke(HelmColor.hairline, lineWidth: 1)
+                )
+        }
+        .buttonStyle(.helmPressable)
+    }
+}
+
+public struct SessionExercisePreviewList: View {
+    public let exercises: [String]
+    public let collapsedVisibleCount: Int
+
+    public init(exercises: [String], collapsedVisibleCount: Int = 2) {
+        self.exercises = exercises
+        self.collapsedVisibleCount = collapsedVisibleCount
+    }
+
+    public var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            ForEach(visibleExercises, id: \.self) { name in
+                Text(name)
+                    .helmType(.body)
+            }
+            if hiddenCount > 0 {
+                Text("+\(hiddenCount) more")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
+        }
+    }
+
+    private var visibleExercises: [String] {
+        Array(exercises.prefix(collapsedVisibleCount))
+    }
+
+    private var hiddenCount: Int {
+        max(0, exercises.count - collapsedVisibleCount)
+    }
+}
+
+#Preview("Session designed card") {
+    SessionDesignedCard(
+        title: "Pull",
+        summary: "Back + Biceps · 16 sets · week 3 accumulating",
+        rationale: [
+            "ARC 72 (primed) sets today's volume and RPE cap.",
+            "Back: 8/14 hard sets this week."
+        ],
+        onCoach: {},
+        onRegenerate: {}
+    ) {
+        SessionExercisePreviewList(exercises: [
+            "Bent Over Row (Barbell)",
+            "Lat Pulldown (Cable)",
+            "Barbell Curl"
+        ])
+    }
+    .padding()
+    .helmTheme()
+}

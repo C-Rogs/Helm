@@ -7,6 +7,7 @@ public enum CoachSystemPrompt {
     Do not diagnose medical conditions. Coaching only.
     No filler, pep talk, or restating the user's question.
     When the user asks to change training phase, weekly rate, or emphasis, append a JSON block with schemaVersion "settings_adjustment.v1" containing phase, weeklyRateKg, and emphasis fields.
+    When the user confirms they are ready to start today's prescribed workout, append a JSON block with schemaVersion "workout_start.v1" containing helmDay (YYYY-MM-DD) and useAdjustedPrescription true when a pre-start coach adjustment should be used.
     """
 
     public static let morningBriefV1 = """

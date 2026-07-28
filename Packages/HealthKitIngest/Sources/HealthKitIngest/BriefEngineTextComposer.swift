@@ -21,7 +21,8 @@ public enum BriefEngineTextComposer {
         }
 
         if let prescription = inputs.prescription {
-            var session = "Today's session: \(prescription.totalSets) sets across \(prescription.exerciseCount) exercises"
+            var session = "Today's session: \(prescription.title)"
+            session += " - \(prescription.totalSets) sets across \(prescription.exerciseCount) exercises"
             session += " (\(prescription.phase))"
             if prescription.readinessAdjusted {
                 session += ", volume trimmed for readiness"

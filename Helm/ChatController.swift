@@ -208,6 +208,15 @@ final class ChatController {
                 )
             }
 
+            let today = HelmDay.day(for: .now, calendar: .current)
+            _ = try? await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(in: assembled, helmDay: today) {
+                try await WorkoutStartCoordinator.startTodaysSession(
+                    controller: TrainBootstrap.sessionController,
+                    prescriptionService: PlanBootstrap.prescriptionService,
+                    openTrainTab: true
+                )
+            }
+
             await logTurn(
                 status: "completed",
                 promptVersion: CoachPromptVersion.chatV1.rawValue,

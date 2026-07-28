@@ -126,12 +126,17 @@ struct TrainView: View {
                 )
             }
 
-            Card {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            SessionDesignedCard(
+                title: summary.title,
+                summary: summary.summary,
+                rationale: summary.rationale,
+                onCoach: { controller.discussTodaysSession() },
+                onRegenerate: {
+                    Task { await controller.regenerateTodaysPrescription() }
+                }
+            ) {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                     HStack {
-                        Text("Today's session")
-                            .helmType(.label)
-                        Spacer()
                         NavigationLink {
                             ProgressionDetailContainer()
                         } label: {
@@ -143,6 +148,7 @@ struct TrainView: View {
                             }
                         }
                         .buttonStyle(.plain)
+                        Spacer()
                         Text(summary.phase.label)
                             .helmType(.monoTag, color: HelmColor.accent)
                     }
@@ -152,12 +158,9 @@ struct TrainView: View {
                             .helmType(.monoTag, color: HelmColor.depleted)
                     }
 
-                    ForEach(summary.exercises) { exercise in
-                        PrescriptionRow(
-                            label: exercise.displayName,
-                            target: prescriptionTargetText(for: exercise)
-                        )
-                    }
+                    SessionExercisePreviewList(
+                        exercises: summary.exercises.map(\.displayName)
+                    )
 
                     Text("\(summary.totalSets) total sets")
                         .helmType(.body, color: HelmColor.fgSecondary)
@@ -169,13 +172,8 @@ struct TrainView: View {
             }
             .buttonStyle(.helmPrimary)
 
-            Button("Discuss today's session") {
-                controller.discussTodaysSession()
-            }
-            .buttonStyle(.helmSecondary)
-
             Button("Save as template") {
-                prescriptionTemplateName = "Today's session"
+                prescriptionTemplateName = summary.title
                 isShowingSavePrescriptionTemplate = true
             }
             .buttonStyle(.helmSecondary)

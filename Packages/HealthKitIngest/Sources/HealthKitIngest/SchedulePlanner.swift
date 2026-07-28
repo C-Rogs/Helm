@@ -1,0 +1,156 @@
+import Core
+import Foundation
+import Persistence
+import PlanKit
+
+public struct SchedulePlanResult: Sendable, Equatable {
+    public let splitKind: SessionSplitKind
+    public let targetMuscles: [MuscleGroup]
+    public let scheduleNotes: [String]
+
+    public init(splitKind: SessionSplitKind, targetMuscles: [MuscleGroup], scheduleNotes: [String]) {
+        self.splitKind = splitKind
+        self.targetMuscles = targetMuscles
+        self.scheduleNotes = scheduleNotes
+    }
+}
+
+public enum SchedulePlanner {
+    public static let defaultSessionsPerWeek = 3
+
+    public static func plan(
+        for day: HelmDay,
+        emphasis: String?,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        calendar: Calendar = .current,
+        sessionsPerWeek: Int = defaultSessionsPerWeek
+    ) -> SchedulePlanResult {
+        let rotation = SessionSplitPlanner.rotationSplits(emphasis: emphasis)
+        if rotation.count == 1, let only = rotation.first {
+            return SchedulePlanResult(
+                splitKind: only,
+                targetMuscles: only.muscles,
+                scheduleNotes: []
+            )
+        }
+
+        let completedSplits = completedSplitKinds(
+            in: history,
+            through: day,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        let pending = rotation.filter { !completedSplits.contains($0) }
+        var notes: [String] = []
+
+        let splitKind: SessionSplitKind
+        if let next = pending.first {
+            splitKind = next
+            if completedSplits.isEmpty == false, pending.count < rotation.count {
+                let doneLabels = completedSplits.map(\.label).joined(separator: ", ")
+                notes.append("\(doneLabels) already logged this week - \(next.label) is next.")
+            }
+        } else {
+            splitKind = SessionSplitPlanner.splitKind(for: day, emphasis: emphasis, calendar: calendar)
+            notes.append("Weekly split rotation complete - repeating \(splitKind.label) from schedule.")
+        }
+
+        let completedCount = PrescriptionHistoryBuilder.completedSessionsThisWeek(in: history, through: day)
+        if completedCount >= sessionsPerWeek {
+            notes.append("Planned \(sessionsPerWeek) sessions this week are complete.")
+        }
+
+        return SchedulePlanResult(
+            splitKind: splitKind,
+            targetMuscles: splitKind.muscles,
+            scheduleNotes: notes
+        )
+    }
+
+    public static func plannedWorkoutRecords(
+        startingAt startDay: HelmDay,
+        dayCount: Int,
+        emphasis: String?,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        calendar: Calendar = .current
+    ) -> [PlannedWorkoutRecord] {
+        var records: [PlannedWorkoutRecord] = []
+        var simulatedHistory = history
+
+        for offset in 0 ..< dayCount {
+            let day = startDay.adding(days: offset, calendar: calendar)
+            let result = plan(
+                for: day,
+                emphasis: emphasis,
+                history: simulatedHistory,
+                muscleMaps: muscleMaps,
+                calendar: calendar
+            )
+            let payload = PlannedWorkoutSessionPayload(
+                splitLabel: result.splitKind.label,
+                splitKind: result.splitKind.rawValue,
+                targetMuscles: result.targetMuscles.map(\.rawValue),
+                scheduleNotes: result.scheduleNotes
+            )
+            let encoder = JSONEncoder()
+            guard let data = try? encoder.encode(payload),
+                  let json = String(data: data, encoding: .utf8)
+            else {
+                continue
+            }
+            records.append(
+                PlannedWorkoutRecord(
+                    id: "planned-\(day.formatted)",
+                    helmDay: day,
+                    status: day < startDay ? "pending" : "pending",
+                    trainingLoad: Double(result.targetMuscles.count),
+                    sessionJSON: json
+                )
+            )
+        }
+        return records
+    }
+
+    private static func completedSplitKinds(
+        in history: PrescriptionHistory,
+        through endDay: HelmDay,
+        muscleMaps: [String: ExerciseMuscleMap],
+        calendar: Calendar
+    ) -> [SessionSplitKind] {
+        let weekDays = (0 ..< 7).map { history.weekStart.adding(days: $0, calendar: calendar) }
+        let weekDaySet = Set(weekDays)
+        var completed: [SessionSplitKind] = []
+
+        for session in history.sessions where weekDaySet.contains(session.helmDay) && session.helmDay <= endDay {
+            let muscleSet = musclesTrained(in: session, muscleMaps: muscleMaps)
+            if let kind = SessionSplitPlanner.inferSplitKind(from: muscleSet), !completed.contains(kind) {
+                completed.append(kind)
+            }
+        }
+        return completed
+    }
+
+    private static func musclesTrained(
+        in session: WorkoutSession,
+        muscleMaps: [String: ExerciseMuscleMap]
+    ) -> Set<MuscleGroup> {
+        var muscles = Set<MuscleGroup>()
+        let exerciseIDs = Set(session.sets.map(\.exerciseID))
+        for exerciseID in exerciseIDs {
+            guard let map = muscleMaps[exerciseID] else { continue }
+            for contribution in map.contributions where contribution.fraction >= 0.25 {
+                muscles.insert(contribution.muscle)
+            }
+        }
+        return muscles
+    }
+}
+
+struct PlannedWorkoutSessionPayload: Codable, Sendable {
+    let splitLabel: String
+    let splitKind: String
+    let targetMuscles: [String]
+    let scheduleNotes: [String]
+}

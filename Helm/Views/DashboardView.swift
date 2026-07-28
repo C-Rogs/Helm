@@ -157,39 +157,53 @@ struct DashboardView: View {
             NavigationLink {
                 ProgressionDetailContainer(matchedCardNamespace: prescriptionNamespace)
             } label: {
-                prescriptionShell(
-                    subtitle: prescriptionSubtitle(for: summary),
-                    phase: summary.phase,
-                    showsChevron: true
-                ) {
-                    VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                        if summary.readinessAdjusted {
-                            Text("Volume trimmed for readiness")
-                                .helmType(.monoTag, color: HelmColor.depleted)
-                        }
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HelmSectionEyebrow("TODAY'S SESSION")
 
-                        ForEach(summary.exercises) { exercise in
-                            prescriptionExerciseRow(exercise)
+                    SessionDesignedCard(
+                        title: summary.title,
+                        summary: summary.summary,
+                        rationale: summary.rationale,
+                        onCoach: {
+                            chatController.requestCoachHandoff(prompt: summary.coachPromptSeed)
+                            AppTabRouter.shared.openTrain()
+                            TrainBootstrap.sessionController.discussTodaysSession()
+                        },
+                        onRegenerate: {
+                            Task { await TrainBootstrap.sessionController.regenerateTodaysPrescription() }
                         }
-
-                        HStack {
-                            HStack(spacing: HelmSpacing.xxs) {
-                                HelmNumericText(summary.totalSets)
-                                Text("total sets")
-                                    .helmType(.body, color: HelmColor.fgSecondary)
+                    ) {
+                        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                            if summary.readinessAdjusted {
+                                Text("Volume trimmed for readiness")
+                                    .helmType(.monoTag, color: HelmColor.depleted)
                             }
-                            Spacer()
-                            Text(summary.phase.label)
-                                .helmType(.monoTag, color: HelmColor.fgMuted)
+
+                            SessionExercisePreviewList(
+                                exercises: summary.exercises.map(\.displayName)
+                            )
+
+                            HStack {
+                                HStack(spacing: HelmSpacing.xxs) {
+                                    HelmNumericText(summary.totalSets)
+                                    Text("total sets")
+                                        .helmType(.body, color: HelmColor.fgSecondary)
+                                }
+                                Spacer()
+                                Text(summary.phase.label)
+                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                                HelmIconView(.chevronRight, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                            }
+                            .explainable(
+                                ExplainableMetricMappers.prescriptionVolume(
+                                    summary,
+                                    baselineSets: estimatedBaselineSets(for: summary),
+                                    coachAvailable: chatController.isCoachAvailable
+                                ),
+                                onAskCoach: chatController.requestCoachHandoff(prompt:)
+                            )
                         }
-                        .explainable(
-                            ExplainableMetricMappers.prescriptionVolume(
-                                summary,
-                                baselineSets: estimatedBaselineSets(for: summary),
-                                coachAvailable: chatController.isCoachAvailable
-                            ),
-                            onAskCoach: chatController.requestCoachHandoff(prompt:)
-                        )
                     }
                 }
                 .helmMatchedCardDetail(id: "plan-progression", in: prescriptionNamespace)

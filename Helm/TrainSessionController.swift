@@ -46,6 +46,7 @@ final class TrainSessionController {
     private let persistence: PersistenceStore
     private let prescriptionService: PrescriptionService
     private let inSessionCoach: InSessionCoachService
+    private let preStartCoach: PreStartCoachService
     private let providerPreferences: ProviderPreferencesStore
 
     private(set) var exerciseSummaries: [String: ExerciseSummary] = [:]
@@ -118,6 +119,7 @@ final class TrainSessionController {
         sideEffects: WorkoutSessionSideEffects,
         prescriptionService: PrescriptionService,
         inSessionCoach: InSessionCoachService? = nil,
+        preStartCoach: PreStartCoachService? = nil,
         providerPreferences: ProviderPreferencesStore = ProviderPreferencesStore(),
         prescriptionAutoStartStore: PrescriptionAutoStartStore = PrescriptionAutoStartStore(),
         trainPreferences: TrainPreferences = .shared
@@ -127,6 +129,7 @@ final class TrainSessionController {
         self.sideEffects = sideEffects
         self.prescriptionService = prescriptionService
         self.inSessionCoach = inSessionCoach ?? InSessionCoachService(persistence: persistence)
+        self.preStartCoach = preStartCoach ?? PreStartCoachService(persistence: persistence)
         self.providerPreferences = providerPreferences
         self.prescriptionAutoStartStore = prescriptionAutoStartStore
         self.trainPreferences = trainPreferences
@@ -176,6 +179,8 @@ final class TrainSessionController {
     }
 
     func regenerateTodaysPrescription() async {
+        let day = todayHelmDay()
+        PrescriptionDayStore.clear(for: day)
         let readiness = ReadinessBootstrap.readinessService.state.score
         await prescriptionService.refresh(readiness: readiness)
         prescriptionSummary = prescriptionService.state.summary
@@ -184,16 +189,48 @@ final class TrainSessionController {
     }
 
     func discussTodaysSession() {
-        if !hasActiveSession, let summary = prescriptionSummary {
-            let exerciseList = summary.exercises.map(\.displayName).joined(separator: ", ")
-            coachMessages = [
-                InSessionCoachMessage(
-                    role: .assistant,
-                    text: "Today's session: \(exerciseList). Ask about volume, swaps, or readiness before you start."
-                )
-            ]
+        guard !hasActiveSession else {
+            isShowingCoachPrompt = true
+            return
         }
         isShowingCoachPrompt = true
+        coachMessageTask?.cancel()
+        coachMessageTask = Task { @MainActor in
+            await loadPreStartCoachIntro()
+        }
+    }
+
+    private func loadPreStartCoachIntro() async {
+        guard let summary = prescriptionSummary else { return }
+        isCoachThinking = true
+        defer { isCoachThinking = false }
+
+        let brief = SessionDesignBrief(
+            title: summary.title,
+            summary: summary.summary,
+            rationale: summary.rationale,
+            splitKind: summary.splitKind
+        )
+
+        do {
+            let profile = try persistence.memoryProfile.load()
+            let endDay = todayHelmDay()
+            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
+            let intro = try await preStartCoach.generateIntro(
+                brief: brief,
+                summary: summary,
+                provider: provider,
+                profile: profile,
+                contextDays: contextDays.recent
+            )
+            coachMessages = [InSessionCoachMessage(role: .assistant, text: intro.text)]
+            coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: intro.text)])
+        } catch {
+            let fallback = preStartCoach.engineIntro(for: brief, summary: summary)
+            coachMessages = [InSessionCoachMessage(role: .assistant, text: fallback.text)]
+            coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: fallback.text)])
+        }
     }
 
     func saveTodaysPrescriptionAsTemplate(name: String) async {
@@ -293,12 +330,21 @@ final class TrainSessionController {
 
     func startTodaysPrescription() async {
         do {
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
-            guard !prescription.exercises.isEmpty else {
-                errorMessage = "No prescription available for today."
-                return
-            }
+            try await WorkoutStartCoordinator.startTodaysSession(
+                controller: self,
+                prescriptionService: prescriptionService
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startPrescription(_ prescription: SessionPrescription) async {
+        guard !prescription.exercises.isEmpty else {
+            errorMessage = "No prescription available for today."
+            return
+        }
+        do {
             applyPrescriptionTargets(from: prescription)
             resetCoachSessionState()
             try await store.startFromPrescription(prescription)
@@ -959,18 +1005,23 @@ final class TrainSessionController {
     func sendCoachMessage() async {
         let trimmed = coachPromptText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isCoachThinking else { return }
-        guard store.snapshot != nil else {
-            coachTurnError = "No active session."
-            return
-        }
-        if CoachActivityGate.shared.isBlocked(for: .inSession) {
-            coachTurnError = CoachActivityGate.shared.blockingMessage(for: .inSession)
+        if hasActiveSession {
+            if CoachActivityGate.shared.isBlocked(for: .inSession) {
+                coachTurnError = CoachActivityGate.shared.blockingMessage(for: .inSession)
+                return
+            }
+        } else if prescriptionSummary == nil {
+            coachTurnError = "No prescription available."
             return
         }
 
         coachMessageTask?.cancel()
         coachMessageTask = Task { @MainActor in
-            await performSendCoachMessage(trimmed)
+            if hasActiveSession {
+                await performSendCoachMessage(trimmed)
+            } else {
+                await performSendPreStartCoachMessage(trimmed)
+            }
         }
         await coachMessageTask?.value
     }
@@ -979,6 +1030,64 @@ final class TrainSessionController {
         guard let lastFailedCoachMessage, !isCoachThinking else { return }
         coachPromptText = lastFailedCoachMessage
         await sendCoachMessage()
+    }
+
+    private func performSendPreStartCoachMessage(_ trimmed: String) async {
+        guard !Task.isCancelled else { return }
+
+        coachMessages.append(InSessionCoachMessage(role: .user, text: trimmed))
+        coachPromptText = ""
+        pendingCoachProposal = nil
+        coachTurnError = nil
+        lastFailedCoachMessage = trimmed
+        isCoachThinking = true
+        CoachActivityGate.shared.begin(.inSession)
+        defer {
+            isCoachThinking = false
+            coachMessageTask = nil
+            CoachActivityGate.shared.end(.inSession)
+        }
+
+        do {
+            guard !Task.isCancelled else { return }
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            let profile = try persistence.memoryProfile.load()
+            let endDay = todayHelmDay()
+            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
+
+            let proposal = try await preStartCoach.proposeAdjustment(
+                userMessage: trimmed,
+                prescription: prescription,
+                excludedExerciseIDs: excludedExerciseIDs,
+                provider: provider,
+                profile: profile,
+                contextDays: contextDays.recent,
+                thread: coachThread
+            )
+
+            coachThread.messages.append(CoachMessage(role: .user, text: trimmed))
+            coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
+            coachMessages.append(InSessionCoachMessage(role: .assistant, text: proposal.reply))
+            lastCoachRequestID = proposal.requestID
+            lastFailedCoachMessage = nil
+            CoachDiagnosticsStore.shared.clear()
+
+            if proposal.requiresConfirmation {
+                pendingCoachProposal = proposal
+            } else {
+                pendingCoachProposal = nil
+                if let failureNotice = proposal.failureNotice {
+                    coachMessages.append(InSessionCoachMessage(role: .assistant, text: failureNotice))
+                    coachThread.messages.append(CoachMessage(role: .assistant, text: failureNotice))
+                }
+            }
+        } catch InSessionCoachError.providerUnavailable(let message) {
+            coachTurnError = message
+        } catch {
+            coachTurnError = CoachUserFacingError.message(for: error)
+        }
     }
 
     private func performSendCoachMessage(_ trimmed: String) async {
@@ -1052,31 +1161,53 @@ final class TrainSessionController {
 
     func confirmCoachProposal() async {
         guard let proposal = pendingCoachProposal else { return }
-        guard let snapshot = store.snapshot else {
-            errorMessage = "No active session."
-            return
-        }
 
         isCoachThinking = true
         defer { isCoachThinking = false }
 
+        if let snapshot = store.snapshot {
+            do {
+                let applied = try inSessionCoach.applyProposal(
+                    proposal,
+                    snapshot: snapshot,
+                    excludedExerciseIDs: excludedExerciseIDs
+                )
+                pendingCoachProposal = nil
+                isShowingCoachPrompt = false
+                try await finishApplyingAdjustment(applied)
+                showCoachApplyWave = true
+            } catch InSessionCoachError.adjustmentRejected {
+                WorkoutHapticCoordinator.play(.clampRejected)
+                pendingCoachProposal = nil
+                appendCoachFailureNotice("That adjustment is outside safe bounds.")
+            } catch InSessionCoachError.noApplicableChange {
+                pendingCoachProposal = nil
+                appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
+            } catch {
+                pendingCoachProposal = nil
+                appendCoachFailureNotice(error.localizedDescription)
+            }
+            return
+        }
+
         do {
-            let applied = try inSessionCoach.applyProposal(
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            let adjusted = try preStartCoach.applyProposal(
                 proposal,
-                snapshot: snapshot,
-                excludedExerciseIDs: excludedExerciseIDs
+                prescription: prescription,
+                excludedExerciseIDs: excludedExerciseIDs,
+                day: todayHelmDay()
             )
             pendingCoachProposal = nil
-            isShowingCoachPrompt = false
-            try await finishApplyingAdjustment(applied)
+            await prescriptionService.refresh(readiness: readiness)
+            prescriptionSummary = prescriptionService.state.summary
+            applyPrescriptionTargets(from: adjusted)
+            let names = try persistence.exercises.displayNames(for: adjusted.exercises.map(\.exerciseID))
+            let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
+            coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
+            coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
             showCoachApplyWave = true
-        } catch InSessionCoachError.adjustmentRejected {
-            WorkoutHapticCoordinator.play(.clampRejected)
-            pendingCoachProposal = nil
-            appendCoachFailureNotice("That adjustment is outside safe bounds.")
-        } catch InSessionCoachError.noApplicableChange {
-            pendingCoachProposal = nil
-            appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
         } catch {
             pendingCoachProposal = nil
             appendCoachFailureNotice(error.localizedDescription)

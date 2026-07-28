@@ -156,7 +156,7 @@ public struct ActiveSessionRepository: Sendable {
                         created_at, updated_at
                     ) VALUES (?, ?, ?, NULL, 'active', 'prescription', 0, 0, 0, ?, ?)
                     """,
-                arguments: [sessionID, "Today's session", nowString, nowString, nowString]
+                arguments: [sessionID, prescription.title ?? "Today's session", nowString, nowString, nowString]
             )
             try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
 

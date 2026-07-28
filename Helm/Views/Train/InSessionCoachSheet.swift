@@ -86,6 +86,16 @@ struct InSessionCoachSheet: View {
                         controller.isShowingCoachPrompt = false
                     }
                 }
+                if !controller.hasActiveSession, controller.prescriptionSummary != nil {
+                    ToolbarItem(placement: .confirmationAction) {
+                        Button("Start") {
+                            Task {
+                                await controller.startTodaysPrescription()
+                                controller.isShowingCoachPrompt = false
+                            }
+                        }
+                    }
+                }
             }
             .onAppear {
                 isInputFocused = true

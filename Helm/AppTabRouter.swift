@@ -10,4 +10,8 @@ final class AppTabRouter {
     func openNutrition() {
         selectedTab = .nutrition
     }
+
+    func openTrain() {
+        selectedTab = .train
+    }
 }

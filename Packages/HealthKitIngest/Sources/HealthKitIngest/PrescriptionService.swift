@@ -47,6 +47,10 @@ public struct PrescribedExerciseSummary: Sendable, Equatable, Identifiable {
 public struct PrescribedSessionSummary: Sendable, Equatable {
     public let phase: TrainingPhase
     public let emphasis: String?
+    public let title: String
+    public let summary: String
+    public let rationale: [String]
+    public let splitKind: SessionSplitKind
     public let exercises: [PrescribedExerciseSummary]
     public let totalSets: Int
     public let readinessAdjusted: Bool
@@ -54,15 +58,28 @@ public struct PrescribedSessionSummary: Sendable, Equatable {
     public init(
         phase: TrainingPhase,
         emphasis: String?,
+        title: String = "",
+        summary: String = "",
+        rationale: [String] = [],
+        splitKind: SessionSplitKind = .custom,
         exercises: [PrescribedExerciseSummary],
         totalSets: Int,
         readinessAdjusted: Bool
     ) {
         self.phase = phase
         self.emphasis = emphasis
+        self.title = title
+        self.summary = summary
+        self.rationale = rationale
+        self.splitKind = splitKind
         self.exercises = exercises
         self.totalSets = totalSets
         self.readinessAdjusted = readinessAdjusted
+    }
+
+    public var coachPromptSeed: String {
+        let bullets = rationale.map { "• \($0)" }.joined(separator: "\n")
+        return "Today's session is \(title): \(summary).\n\(bullets)"
     }
 }
 
@@ -177,12 +194,26 @@ public actor PlanPrescriptionEngine {
             )
         }
 
+        let totalSets = exercises.reduce(0) { $0 + $1.targetSets }
+        let brief = try sessionDesignBrief(
+            for: day,
+            settings: settings,
+            session: session,
+            totalSets: totalSets,
+            exerciseCount: exercises.count,
+            readiness: readiness
+        )
+
         return .prescribed(
             PrescribedSessionSummary(
                 phase: settings.phaseGoal.phase,
                 emphasis: settings.phaseGoal.emphasis,
+                title: brief.title,
+                summary: brief.summary,
+                rationale: brief.rationale,
+                splitKind: brief.splitKind,
                 exercises: exercises,
-                totalSets: exercises.reduce(0) { $0 + $1.targetSets },
+                totalSets: totalSets,
                 readinessAdjusted: readinessAdjusted
             )
         )
@@ -192,6 +223,12 @@ public actor PlanPrescriptionEngine {
         for day: HelmDay,
         readiness: ReadinessScore?
     ) throws -> PrescribedSession {
+        PrescriptionDayStore.clearIfStale(currentDay: day)
+
+        if let adjusted = PrescriptionDayStore.load(for: day), !adjusted.exercises.isEmpty {
+            return adjusted
+        }
+
         let settings = try persistence.trainingPlan.load()
         let experience = TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
         let catalogRows = try persistence.exercises.fetchCatalogRows()
@@ -210,11 +247,17 @@ public actor PlanPrescriptionEngine {
             return PrescribedSession(helmDay: day, exercises: [])
         }
 
-        let targetMuscles = SessionSplitPlanner.targetMuscles(
+        let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
+            ($0.exerciseID, $0.muscleMap)
+        })
+        let schedule = SchedulePlanner.plan(
             for: day,
             emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
             calendar: calendar
         )
+        let targetMuscles = schedule.targetMuscles
         let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
             in: history,
             through: day
@@ -242,15 +285,115 @@ public actor PlanPrescriptionEngine {
 
         let signpostID = signpost.makeSignpostID()
         signpost.begin(id: signpostID)
-        let session = PlanKit.prescription(
+        var session = PlanKit.prescription(
             for: profile,
             givenReadiness: readiness,
             history: history
         )
         signpost.end(id: signpostID)
 
+        let brief = SessionDesignBriefBuilder.build(
+            splitKind: schedule.splitKind,
+            targetMuscles: targetMuscles,
+            phaseGoal: settings.phaseGoal,
+            mesocycleState: mesocycleState,
+            totalSets: session.exercises.reduce(0) { $0 + $1.targetSets },
+            exerciseCount: session.exercises.count,
+            readiness: readiness,
+            scheduleNotes: schedule.scheduleNotes,
+            weeklyLedger: PlanKit.weeklyHardSetTotals(
+                sessions: history.sessions,
+                muscleMaps: muscleMaps,
+                weekStart: history.weekStart
+            )
+        )
+        session = PrescribedSession(
+            id: session.id,
+            helmDay: session.helmDay,
+            title: brief.title,
+            exercises: session.exercises
+        )
+
         try persistMesocycleState(mesocycleState)
+        try persistPlannedWorkouts(
+            startingAt: day,
+            emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps
+        )
         return session
+    }
+
+    public func saveAdjustedPrescription(_ prescription: PrescribedSession, for day: HelmDay) {
+        PrescriptionDayStore.save(prescription, for: day)
+    }
+
+    private func sessionDesignBrief(
+        for day: HelmDay,
+        settings: StoredTrainingPlanSettings,
+        session: PrescribedSession,
+        totalSets: Int,
+        exerciseCount: Int,
+        readiness: ReadinessScore?
+    ) throws -> SessionDesignBrief {
+        let history = try PrescriptionHistoryBuilder.history(
+            from: persistence,
+            endingAt: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        let catalogRows = try persistence.exercises.fetchCatalogRows()
+        let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(
+            from: catalogRows,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+        let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
+            ($0.exerciseID, $0.muscleMap)
+        })
+        let schedule = SchedulePlanner.plan(
+            for: day,
+            emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        let mesocycleState = try loadOrCreateMesocycleState(
+            targetMuscles: schedule.targetMuscles,
+            experience: TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
+        )
+        return SessionDesignBriefBuilder.build(
+            splitKind: schedule.splitKind,
+            targetMuscles: schedule.targetMuscles,
+            phaseGoal: settings.phaseGoal,
+            mesocycleState: mesocycleState,
+            totalSets: totalSets,
+            exerciseCount: exerciseCount,
+            readiness: readiness,
+            scheduleNotes: schedule.scheduleNotes,
+            weeklyLedger: PlanKit.weeklyHardSetTotals(
+                sessions: history.sessions,
+                muscleMaps: muscleMaps,
+                weekStart: history.weekStart
+            )
+        )
+    }
+
+    private func persistPlannedWorkouts(
+        startingAt day: HelmDay,
+        emphasis: String?,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap]
+    ) throws {
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: day,
+            dayCount: 7,
+            emphasis: emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        try persistence.plan.replacePlannedWorkouts(records)
     }
 
     private func loadOrCreateMesocycleState(

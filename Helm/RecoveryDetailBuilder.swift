@@ -8,6 +8,7 @@ import ReadinessKit
 enum RecoveryDetailBuilder {
     struct BuildContext {
         let score: ReadinessScore
+        let displayRestingHeartRate: Int?
         let baseline: ReadinessBaselineState?
         let sleepHours: Double?
         let history: [ReadinessHistoryPoint]
@@ -29,7 +30,11 @@ enum RecoveryDetailBuilder {
 
         let contributors = [
             hrvContributor(score: score, baseline: context.baseline?.hrvChronic),
-            restingHRContributor(score: score, baseline: context.baseline?.restingHR),
+            restingHRContributor(
+                score: score,
+                displayValue: context.displayRestingHeartRate,
+                baseline: context.baseline?.restingHR
+            ),
             sleepContributor(
                 hours: context.sleepHours,
                 zScore: score.contributors.zSleep,
@@ -71,6 +76,13 @@ enum RecoveryDetailBuilder {
         let today = HelmDay.day(for: .now, calendar: calendar)
         let baseline = try loadBaseline(from: store)
         let sleepHours = try store.sleep.totalSleepHours(for: today, calendar: calendar)
+        let todayMetrics = try store.dailyMetrics.fetch(helmDay: today)
+        let yesterdayMetrics = try store.dailyMetrics.fetch(
+            helmDay: today.adding(days: -1, calendar: calendar)
+        )
+        let displayRestingHeartRate = score.restingHeartRate
+            ?? todayMetrics?.restingHeartRate
+            ?? yesterdayMetrics?.restingHeartRate
         let (history, _) = try TrendsDataBuilder.buildReadinessPage(
             store: store,
             endingAt: today,
@@ -80,6 +92,7 @@ enum RecoveryDetailBuilder {
         let model = build(
             context: BuildContext(
                 score: score,
+                displayRestingHeartRate: displayRestingHeartRate,
                 baseline: baseline,
                 sleepHours: sleepHours,
                 history: history,
@@ -164,10 +177,11 @@ enum RecoveryDetailBuilder {
 
     private static func restingHRContributor(
         score: ReadinessScore,
+        displayValue: Int?,
         baseline: ReadinessBaseline?
     ) -> RecoveryContributorRow {
-        let hasValue = score.restingHeartRate != nil
-        let value = Double(score.restingHeartRate ?? 0)
+        let hasValue = displayValue != nil
+        let value = Double(displayValue ?? 0)
         let band = personalBand(baseline)
         let state = contributorState(zScore: score.contributors.zRestingHR)
         return RecoveryContributorRow(

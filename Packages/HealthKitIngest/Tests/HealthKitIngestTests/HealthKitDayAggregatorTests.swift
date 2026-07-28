@@ -48,6 +48,33 @@ struct HealthKitDayAggregatorTests {
         #expect(patches[0].hrvSDNN?.milliseconds == 50)
     }
 
+    @Test("resting HR buckets to wake calendar day, not pre-cutoff helm day")
+    func restingHeartRateWakeDay() throws {
+        // 03:30 Tuesday: under default 04:00 cutoff this is Monday's helm day for HRV,
+        // but Health shows overnight RHR on Tuesday's calendar date.
+        let overnight = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 28, hour: 3, minute: 30))
+        )
+        let sample = IngestQuantitySample(
+            id: UUID(),
+            start: overnight,
+            end: overnight,
+            value: 52,
+            unitSymbol: "count/min",
+            sourceBundleID: "com.apple.health"
+        )
+
+        let patches = HealthKitDayAggregator.aggregateQuantity(
+            kind: .restingHeartRate,
+            samples: [sample],
+            calendar: calendar
+        )
+
+        #expect(patches.count == 1)
+        #expect(patches[0].helmDay == HelmDay(year: 2026, month: 7, day: 28))
+        #expect(patches[0].restingHeartRate == 52)
+    }
+
     @Test("sums dietary energy in kilocalories")
     func dietaryEnergySum() throws {
         let loggedAt = try #require(

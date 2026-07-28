@@ -13,7 +13,7 @@ public enum HealthKitDayAggregator {
 
         var buckets: [HelmDay: [IngestQuantitySample]] = [:]
         for sample in samples {
-            let day = HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
+            let day = helmDay(for: sample, kind: kind, cutoff: cutoff, calendar: calendar)
             buckets[day, default: []].append(sample)
         }
 
@@ -247,5 +247,28 @@ public enum HealthKitDayAggregator {
     private static func sumOptionalDoubles(_ values: [Double]) -> Double? {
         guard !values.isEmpty else { return nil }
         return values.reduce(0, +)
+    }
+
+    /// Resting HR is measured overnight; Health attributes it to the wake calendar day.
+    private static func helmDay(
+        for sample: IngestQuantitySample,
+        kind: HealthKitSampleKind,
+        cutoff: DayCutoff,
+        calendar: Calendar
+    ) -> HelmDay {
+        switch kind {
+        case .restingHeartRate:
+            calendarDayHelmDay(for: sample.end, calendar: calendar)
+        default:
+            HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
+        }
+    }
+
+    private static func calendarDayHelmDay(for instant: Date, calendar: Calendar) -> HelmDay {
+        let components = calendar.dateComponents([.year, .month, .day], from: instant)
+        guard let day = HelmDay(components: components) else {
+            preconditionFailure("calendar produced incomplete day components")
+        }
+        return day
     }
 }

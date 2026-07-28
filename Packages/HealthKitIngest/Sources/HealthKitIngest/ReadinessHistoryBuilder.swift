@@ -69,7 +69,12 @@ public enum ReadinessHistoryBuilder {
                 ReadinessDayInput(
                     helmDay: helmDay,
                     hrvDailyAverage: dayMetrics?.hrvSDNN,
-                    restingHeartRate: dayMetrics?.restingHeartRate,
+                    restingHeartRate: resolvedRestingHeartRate(
+                        for: helmDay,
+                        dayMetrics: dayMetrics,
+                        metricsByDay: metricsByDay,
+                        calendar: calendar
+                    ),
                     sleepDurationHours: sleepDurationHours,
                     respiratoryRate: dayMetrics?.respiratoryRate,
                     wristTemperatureDeltaCelsius: dayMetrics?.wristTemperatureDeltaCelsius,
@@ -79,6 +84,20 @@ public enum ReadinessHistoryBuilder {
         }
 
         return history
+    }
+
+    /// When today's bucket is empty, use yesterday's stored RHR (overnight reading Health shows as today).
+    private static func resolvedRestingHeartRate(
+        for helmDay: HelmDay,
+        dayMetrics: DailyMetrics?,
+        metricsByDay: [HelmDay: DailyMetrics],
+        calendar: Calendar
+    ) -> Int? {
+        if let restingHeartRate = dayMetrics?.restingHeartRate {
+            return restingHeartRate
+        }
+        let priorDay = helmDay.adding(days: -1, calendar: calendar)
+        return metricsByDay[priorDay]?.restingHeartRate
     }
 
     private static func sleepHistoryWindowStart(for startDay: HelmDay, calendar: Calendar) -> Date {

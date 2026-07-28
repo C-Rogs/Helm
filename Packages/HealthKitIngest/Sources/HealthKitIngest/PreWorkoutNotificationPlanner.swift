@@ -18,7 +18,7 @@ public enum PreWorkoutNotificationPlanner {
         readinessScore: Int?
     ) -> String {
         var parts: [String] = [
-            "\(summary.totalSets) sets · \(summary.exercises.count) exercises"
+            "\(summary.title) · \(summary.totalSets) sets · \(summary.exercises.count) exercises"
         ]
 
         if summary.readinessAdjusted {

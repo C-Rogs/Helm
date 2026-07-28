@@ -37,6 +37,7 @@ public struct BriefReadinessSnapshot: Sendable, Hashable, Codable, Equatable {
 }
 
 public struct BriefPrescriptionSnapshot: Sendable, Hashable, Codable, Equatable {
+    public let title: String
     public let phase: String
     public let emphasis: String?
     public let exerciseCount: Int
@@ -45,6 +46,7 @@ public struct BriefPrescriptionSnapshot: Sendable, Hashable, Codable, Equatable 
     public let evidenceIDs: [String]
 
     public init(
+        title: String,
         phase: String,
         emphasis: String?,
         exerciseCount: Int,
@@ -52,6 +54,7 @@ public struct BriefPrescriptionSnapshot: Sendable, Hashable, Codable, Equatable 
         readinessAdjusted: Bool,
         evidenceIDs: [String]
     ) {
+        self.title = title
         self.phase = phase
         self.emphasis = emphasis
         self.exerciseCount = exerciseCount

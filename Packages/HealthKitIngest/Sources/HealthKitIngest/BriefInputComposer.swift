@@ -21,6 +21,7 @@ public enum BriefInputComposer {
         let prescriptionSnapshot = prescriptionSummary.map { summary in
             let evidenceIDs = prescriptionSession?.exercises.flatMap(\.evidenceIDs) ?? []
             return BriefPrescriptionSnapshot(
+                title: summary.title,
                 phase: summary.phase.label,
                 emphasis: summary.emphasis,
                 exerciseCount: summary.exercises.count,

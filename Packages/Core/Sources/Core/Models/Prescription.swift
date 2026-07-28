@@ -79,15 +79,18 @@ public extension PrescribedExercise {
 public struct SessionPrescription: Sendable, Hashable, Codable, Identifiable {
     public let id: UUID
     public let helmDay: HelmDay
+    public let title: String?
     public let exercises: [PrescribedExercise]
 
     public init(
         id: UUID = UUID(),
         helmDay: HelmDay,
+        title: String? = nil,
         exercises: [PrescribedExercise]
     ) {
         self.id = id
         self.helmDay = helmDay
+        self.title = title
         self.exercises = exercises
     }
 }
