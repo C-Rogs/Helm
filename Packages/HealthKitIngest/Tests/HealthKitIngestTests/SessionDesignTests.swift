@@ -75,6 +75,28 @@ struct SchedulePlannerTests {
 
         #expect(result.splitKind == .pull)
     }
+
+    @Test("planned workout records encode decodable week payload")
+    func plannedWorkoutRecordsPayload() {
+        let start = HelmDay(year: 2026, month: 7, day: 28)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: HelmDay(year: 2026, month: 7, day: 27)
+        )
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:]
+        )
+
+        #expect(records.count == 7)
+        let payload = PlannedWorkoutSessionDecoder.decode(from: records[0].sessionJSON)
+        #expect(payload?.splitLabel.isEmpty == false)
+    }
 }
 
 @Suite("Prescription day store")

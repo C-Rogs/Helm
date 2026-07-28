@@ -148,9 +148,32 @@ public enum SchedulePlanner {
     }
 }
 
-struct PlannedWorkoutSessionPayload: Codable, Sendable {
-    let splitLabel: String
-    let splitKind: String
-    let targetMuscles: [String]
-    let scheduleNotes: [String]
+public struct PlannedWorkoutSessionPayload: Codable, Sendable {
+    public let splitLabel: String
+    public let splitKind: String
+    public let targetMuscles: [String]
+    public let scheduleNotes: [String]
+
+    public init(
+        splitLabel: String,
+        splitKind: String,
+        targetMuscles: [String],
+        scheduleNotes: [String]
+    ) {
+        self.splitLabel = splitLabel
+        self.splitKind = splitKind
+        self.targetMuscles = targetMuscles
+        self.scheduleNotes = scheduleNotes
+    }
+
+    public var primaryNote: String? {
+        scheduleNotes.first
+    }
+}
+
+public enum PlannedWorkoutSessionDecoder {
+    public static func decode(from sessionJSON: String) -> PlannedWorkoutSessionPayload? {
+        guard let data = sessionJSON.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(PlannedWorkoutSessionPayload.self, from: data)
+    }
 }

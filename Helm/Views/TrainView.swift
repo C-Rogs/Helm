@@ -8,6 +8,7 @@ struct TrainView: View {
     @Bindable private var history = TrainBootstrap.historyController
     @Bindable private var importController = TrainBootstrap.importController
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
+    @Bindable private var weekAheadStore = WeekAheadScheduleBootstrap.store
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -32,6 +33,7 @@ struct TrainView: View {
                 await controller.recoverPersistedSession()
                 history.refresh()
                 muscleVolumeStore.refresh()
+                weekAheadStore.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 Task { await controller.handleScenePhase(newPhase) }
@@ -93,6 +95,8 @@ struct TrainView: View {
                 } else {
                     manualIdleCard
                 }
+
+                weekAheadSection
 
                 if !history.recentPersonalRecords.isEmpty {
                     PersonalRecordsCelebrationView(
@@ -220,6 +224,10 @@ struct TrainView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
+    }
+
+    private var weekAheadSection: some View {
+        WeekAheadScheduleSection(store: weekAheadStore)
     }
 
     @ViewBuilder
