@@ -46,6 +46,7 @@ enum WeekAheadScheduleBuilder {
                 splitLabel: splitLabel,
                 note: note,
                 status: status,
+                driftNote: driftNote(for: record, helmDay: helmDay, calendar: calendar),
                 isToday: helmDay == today
             )
         }
@@ -61,10 +62,12 @@ enum WeekAheadScheduleBuilder {
     ) -> WeekAheadSessionStatus {
         if let plannedStatus = PlannedSessionStatus(rawValue: storedStatus) {
             switch plannedStatus {
-            case .completed, .shifted:
+            case .completed:
                 return .completed
+            case .shifted:
+                return .shifted
             case .skipped:
-                return .missed
+                return .skipped
             case .pending:
                 break
             }
@@ -80,6 +83,51 @@ enum WeekAheadScheduleBuilder {
             return .missed
         }
         return .upcoming
+    }
+
+    private static func driftNote(
+        for record: PlannedWorkoutRecord,
+        helmDay: HelmDay,
+        calendar: Calendar
+    ) -> String? {
+        guard let plannedStatus = PlannedSessionStatus(rawValue: record.status) else {
+            return nil
+        }
+        switch plannedStatus {
+        case .shifted:
+            guard let originalDay = originalPlannedDay(from: record.id), originalDay != helmDay else {
+                return nil
+            }
+            return "Was \(shortDayLabel(for: originalDay, calendar: calendar))"
+        case .skipped, .completed, .pending:
+            return nil
+        }
+    }
+
+    private static func originalPlannedDay(from recordID: String) -> HelmDay? {
+        let prefix = "planned-"
+        guard recordID.hasPrefix(prefix) else { return nil }
+        let suffix = String(recordID.dropFirst(prefix.count))
+        let parts = suffix.split(separator: "-")
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2])
+        else {
+            return nil
+        }
+        return HelmDay(year: year, month: month, day: day)
+    }
+
+    private static func shortDayLabel(for helmDay: HelmDay, calendar: Calendar) -> String {
+        let formatter = DateFormatter()
+        formatter.calendar = calendar
+        formatter.locale = Locale(identifier: "en_US_POSIX")
+        formatter.dateFormat = "EEE · MMM d"
+        guard let date = calendar.date(from: helmDay.dateComponents()) else {
+            return helmDay.formatted
+        }
+        return formatter.string(from: date)
     }
 
     private static func dayLabel(for helmDay: HelmDay, today: HelmDay, calendar: Calendar) -> String {

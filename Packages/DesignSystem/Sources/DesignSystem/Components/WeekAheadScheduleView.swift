@@ -48,6 +48,10 @@ public struct WeekAheadScheduleView: View {
                     Text(note)
                         .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
+                if let busyDayHint = row.busyDayHint {
+                    Text(busyDayHint)
+                        .helmType(.monoTag, color: HelmColor.compromised)
+                }
             }
 
             Spacer(minLength: HelmSpacing.sm)
@@ -58,6 +62,10 @@ public struct WeekAheadScheduleView: View {
                 if let statusLabel = row.statusLabel {
                     Text(statusLabel)
                         .helmType(.monoTag, color: statusColor(for: row.status))
+                }
+                if let driftNote = row.driftNote {
+                    Text(driftNote)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
             }
         }
@@ -70,8 +78,10 @@ public struct WeekAheadScheduleView: View {
         switch status {
         case .completed:
             HelmColor.ready
-        case .missed:
+        case .missed, .skipped:
             HelmColor.depleted
+        case .shifted:
+            HelmColor.compromised
         case .today, .upcoming:
             HelmColor.fgMuted
         }
@@ -81,6 +91,9 @@ public struct WeekAheadScheduleView: View {
         var parts = [row.dayLabel, row.splitLabel]
         if let statusLabel = row.statusLabel {
             parts.append(statusLabel)
+        }
+        if let driftNote = row.driftNote {
+            parts.append(driftNote)
         }
         if let note = row.note {
             parts.append(note)
@@ -106,6 +119,15 @@ public struct WeekAheadScheduleView: View {
     .padding()
     .helmTheme()
     .environment(\.helmSkin, .dataSheet)
+}
+
+#Preview("Week ahead drift") {
+    Card {
+        WeekAheadScheduleView(model: .driftScenarioFixture)
+    }
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .instrument)
 }
 
 #Preview("Week ahead empty") {

@@ -5,6 +5,8 @@ public enum WeekAheadSessionStatus: String, Sendable, Hashable, Equatable {
     case today
     case completed
     case missed
+    case shifted
+    case skipped
 }
 
 public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable {
@@ -13,6 +15,8 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
     public let splitLabel: String
     public let note: String?
     public let status: WeekAheadSessionStatus
+    public let driftNote: String?
+    public let busyDayHint: String?
     public let isToday: Bool
 
     public init(
@@ -21,6 +25,8 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
         splitLabel: String,
         note: String? = nil,
         status: WeekAheadSessionStatus,
+        driftNote: String? = nil,
+        busyDayHint: String? = nil,
         isToday: Bool
     ) {
         self.id = id
@@ -28,6 +34,8 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
         self.splitLabel = splitLabel
         self.note = note
         self.status = status
+        self.driftNote = driftNote
+        self.busyDayHint = busyDayHint
         self.isToday = isToday
     }
 
@@ -37,6 +45,10 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
             "Done"
         case .missed:
             "Missed"
+        case .shifted:
+            "Moved"
+        case .skipped:
+            "Skipped"
         case .today, .upcoming:
             nil
         }
@@ -61,8 +73,10 @@ public enum WeekAheadScheduleSnapshot {
         } else {
             for row in model.rows {
                 let note = row.note.map { " | note=\($0)" } ?? ""
+                let drift = row.driftNote.map { " | drift=\($0)" } ?? ""
+                let busy = row.busyDayHint.map { " | busy=\($0)" } ?? ""
                 lines.append(
-                    "- \(row.dayLabel): \(row.splitLabel) | status=\(row.status.rawValue) | today=\(row.isToday)\(note)"
+                    "- \(row.dayLabel): \(row.splitLabel) | status=\(row.status.rawValue) | today=\(row.isToday)\(note)\(drift)\(busy)"
                 )
             }
         }
