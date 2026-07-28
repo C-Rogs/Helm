@@ -18,6 +18,9 @@ public struct GroundedPhotoMacroEstimator: Sendable {
         progress: MealMacroEstimateProgress? = nil
     ) async throws -> MealEstimate {
         let visionNotes = MealPortionAssist.augmentedUserNotes(base: userNotes, assist: portionAssist)
+        if portionAssist != nil {
+            progress?("Applying LiDAR depth to portion scale…")
+        }
         progress?("Identifying ingredients from photo…")
         let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData, userNotes: visionNotes)
         let scaledDecomposition = portionAssist.map {

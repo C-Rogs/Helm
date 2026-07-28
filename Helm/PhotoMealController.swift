@@ -36,6 +36,10 @@ final class PhotoMealController {
         pendingPreview
     }
 
+    var usesLidarPortionAssist: Bool {
+        pendingPortionAssist != nil
+    }
+
     var isEstimating: Bool {
         if case .estimating = phase { return true }
         return false
@@ -153,7 +157,9 @@ final class PhotoMealController {
 
     private func resetEstimateProgress() {
         estimateCompletedSteps = []
-        estimateCurrentStep = "Reading photo…"
+        estimateCurrentStep = pendingPortionAssist == nil
+            ? "Reading photo…"
+            : "Reading photo with LiDAR depth…"
     }
 
     private func reportEstimateProgress(_ step: String) {

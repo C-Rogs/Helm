@@ -89,7 +89,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT4 (after M8.2): proactivity + Watch | done | 2026-07-28 | Proactivity + Watch checklist complete off corp network. |
 | DT5 (after M11.1): nutrition, analytics, full regression | done | 2026-07-28 | Photo meals, HK dedup, trends, export regression, F-DT5.1–5.11 verified on device. |
 | DT6 (after M12.5 and M0.8): the polish gate | done | 2026-07-28 | Haptics, skins, states, DeviationBand, volume board verified; F-DT6.1–6.3 landed. |
-| DT7 (after M14.9): native food logging (MFP deleted 7 days) | in progress | 2026-07-28 | 7-day Helm-only food soak; file failures as F-DT7.#. Build HEAD `7d9df8c`. |
+| DT7 (after M14.9): native food logging (MFP deleted 7 days) | in progress | 2026-07-28 | 7-day Helm-only food soak; file failures as F-DT7.#. Build HEAD `2fcfa54`. |
 
 ## Fix sections
 
@@ -123,9 +123,10 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT7.5 Photo meal user notes | done | 2026-07-28 | b199772 | Notes on photo sheet; threaded through MealVisionProviding to Gemini/OpenRouter userMessage. |
 | F-DT7.6 Day complete button | done | 2026-07-28 | b199772 | GRDB v11 nutrition_day_log_status; coach/brief flag; TDEE excludes incomplete days. |
 | F-DT7.7 Photo meal grounding and add-flow toolbars | done | 2026-07-28 | 0ce2f3d | Analysing overlay; CoFID plural/generic fix; hybrid vision; accuracy picker; Cancel/Add toolbars. |
+| F-DT7.8 LiDAR portion assist estimating UX | done | 2026-07-28 | 991ed2e | LiDAR progress step, eyebrow, footnote, and accessibility on PhotoMealEstimatingView when depth assist active. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
-| M13.3 EventKit hints | done | 2026-07-28 | 90801da | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
+| M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
 | M14.1 CoFID bundle replaces USDA | done | 2026-07-24 | a158e24 | Full CoFID 2021 bundle; NutritionLookup on cofid_foods.json; OGL attribution in Sources; USDA removed; lookup + grounded photo tests pass. |
 | M14.2 Food log persistence (GRDB v10) | done | 2026-07-24 | a755461 | GRDB v10 food-logging schema; Core models; FoodLogRepository + MealTemplateRepository; migrate-up + CRUD fixture tests pass. |
 | M14.3 Food resolver + Open Food Facts client | done | 2026-07-24 | d220e56 | FoodResolver actor (recents→CoFID→OFF→custom); OpenFoodFactsClient + NetworkGate; product cache writes; OFF JSON fixtures; cache hit skips network. |
