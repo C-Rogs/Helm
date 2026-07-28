@@ -36,6 +36,8 @@ enum MealVisionPrompt {
     Round grams to whole numbers.
     Return only JSON matching the schema.
     When user context is provided, apply it to ingredient names and gram estimates.
+    Name ingredients in UK CoFID style when possible (e.g. "Cucumber, raw", "Cod, flesh only, grilled", "Cabbage, Chinese, raw", "Chicken, breast, grilled").
+    Prefer a specific food species over generic words like "fish meat" or "white fish".
     """
 
     static func userMessage(notes: String?) -> String {

@@ -11,16 +11,24 @@ public struct GroundedPhotoMacroEstimator: Sendable {
         self.lookup = lookup
     }
 
-    public func estimateMacros(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+    public func estimateMacros(
+        imageJPEGData: Data,
+        userNotes: String?,
+        progress: MealMacroEstimateProgress? = nil
+    ) async throws -> MealEstimate {
+        progress?("Identifying ingredients from photo…")
         let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
         let auditJSON = encodeDecompositionAudit(decomposition)
+        progress?("Matching ingredients to CoFID…")
         var estimate = aggregate(decomposition, decompositionAuditJSON: auditJSON)
 
         let needsDirectCheck = estimate.confidence == .low
             || estimate.lineItems.contains(where: \.usesGenericCofidFallback)
+            || estimate.lineItems.contains(where: { $0.matchConfidence == .low })
             || !estimate.groundingWarnings.isEmpty
 
         if needsDirectCheck {
+            progress?("Cross-checking with direct vision estimate…")
             if let direct = try? await vision.estimateMacrosDirect(imageJPEGData: imageJPEGData, userNotes: userNotes) {
                 let comparison = MealEstimate.VisionMacroComparison(
                     caloriesKcal: direct.caloriesKcal,
@@ -30,7 +38,8 @@ public struct GroundedPhotoMacroEstimator: Sendable {
                     confidence: direct.confidence
                 )
                 estimate.visionDirectEstimate = comparison
-                if let divergence = Self.calorieDivergencePercent(grounded: estimate, direct: comparison), divergence > 15 {
+                if let divergence = Self.calorieDivergencePercent(grounded: estimate, direct: comparison),
+                   divergence > 15 {
                     estimate.groundingWarnings.append(
                         "CoFID totals differ from direct vision by \(Int(divergence.rounded()))% on calories. Review ingredients."
                     )
@@ -38,6 +47,7 @@ public struct GroundedPhotoMacroEstimator: Sendable {
             }
         }
 
+        progress?("Finalising estimate…")
         return estimate
     }
 
@@ -57,6 +67,8 @@ public struct GroundedPhotoMacroEstimator: Sendable {
             let confidence = MealEstimate.Confidence(rawValue: item.confidence.rawValue) ?? .medium
             if resolved.matchConfidence == .fallback {
                 warnings.append("\(item.name) had no CoFID match. Using generic dish macros. Tap the ingredient to fix.")
+            } else if resolved.matchConfidence == .partial {
+                warnings.append("\(item.name) matched \(resolved.record.description). Tap to pick a better CoFID row if needed.")
             }
             return MacroAggregator.lineItem(
                 name: item.name,

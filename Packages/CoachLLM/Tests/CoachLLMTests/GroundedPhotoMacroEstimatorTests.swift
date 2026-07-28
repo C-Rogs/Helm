@@ -42,7 +42,7 @@ struct GroundedPhotoMacroEstimatorTests {
     @Test("fixture decomposition aggregates grounded totals with line items")
     func groundedPipeline() async throws {
         let estimator = GroundedPhotoMacroEstimator(vision: FixtureVision())
-        let estimate = try await estimator.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
+        let estimate = try await estimator.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil, progress: nil)
 
         #expect(estimate.description == "Chicken rice bowl")
         #expect(estimate.lineItems.count == 3)
@@ -254,7 +254,8 @@ struct GroundedPhotoMacroEstimatorTests {
 
         let estimate = try await PhotoMacroEstimator(router: router).estimateMacros(
             imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
-            userNotes: nil
+            userNotes: nil,
+            progress: nil
         )
         #expect(estimate.lineItems.count == 3)
     }

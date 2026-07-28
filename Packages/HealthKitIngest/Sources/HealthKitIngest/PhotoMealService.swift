@@ -26,7 +26,7 @@ public struct PhotoMealService: Sendable {
         self.localStore = localStore
     }
 
-    public func estimate(from imageJPEGData: Data, userNotes: String? = nil) async throws -> MealEstimate {
+    public func estimate(from imageJPEGData: Data, userNotes: String? = nil, progress: MealMacroEstimateProgress? = nil) async throws -> MealEstimate {
         guard !imageJPEGData.isEmpty else {
             throw PhotoMealError.invalidImage
         }
@@ -35,7 +35,11 @@ public struct PhotoMealService: Sendable {
         }
 
         do {
-            let estimate = try await estimator.estimateMacros(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            let estimate = try await estimator.estimateMacros(
+                imageJPEGData: imageJPEGData,
+                userNotes: userNotes,
+                progress: progress
+            )
             photoMealLog.debug(
                 "Photo estimate kcal=\(estimate.caloriesKcal, privacy: .public) confidence=\(estimate.confidence.rawValue, privacy: .public) items=\(estimate.lineItems.count, privacy: .public)"
             )

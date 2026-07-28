@@ -136,6 +136,41 @@ struct NutritionLookupTests {
         #expect(suggestions.isEmpty)
     }
 
+    @Test("cooked fish does not match bacon via modifier tokens")
+    func cookedFishAvoidsBaconMatch() {
+        let match = lookup.resolve(item: "cooked fish meat no skin")
+        #expect(match != nil)
+        guard let match else { return }
+        #expect(!match.record.description.lowercased().contains("bacon"))
+        let lineItem = MacroAggregator.lineItem(
+            name: "cooked fish meat",
+            grams: 90,
+            resolved: match,
+            itemConfidence: .medium
+        )
+        #expect(lineItem.caloriesKcal < 200)
+    }
+
+    @Test("napa cabbage resolves to chinese cabbage")
+    func napaCabbageResolvesCorrectly() {
+        let match = lookup.resolve(item: "napa cabbage")
+        #expect(match?.record.description.lowercased().contains("chinese") == true)
+        let lineItem = MacroAggregator.lineItem(
+            name: "napa cabbage",
+            grams: 100,
+            resolved: match!,
+            itemConfidence: .high
+        )
+        #expect(lineItem.caloriesKcal < 40)
+    }
+
+    @Test("sliced cucumbers resolves to cucumber not avocado")
+    func slicedCucumbersAvoidAvocado() {
+        let match = lookup.resolve(item: "sliced cucumbers")
+        #expect(match?.record.fdcId == "13-523")
+        #expect(!match!.record.description.lowercased().contains("avocado"))
+    }
+
     @Test("sliced cucumbers resolves to cucumber not generic dish")
     func slicedCucumbersResolveToCucumber() {
         let match = lookup.resolve(item: "sliced cucumbers")

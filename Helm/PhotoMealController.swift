@@ -28,6 +28,8 @@ final class PhotoMealController {
     private var pendingImageJPEG: Data?
     private var pendingPreview: UIImage?
     private var estimateTask: Task<Void, Never>?
+    var estimateCompletedSteps: [String] = []
+    var estimateCurrentStep = "Reading photo…"
 
     var estimatingPreviewImage: UIImage? {
         pendingPreview
@@ -135,6 +137,7 @@ final class PhotoMealController {
         estimateTask = nil
         pendingImageJPEG = nil
         pendingPreview = nil
+        resetEstimateProgress()
         phase = .idle
     }
 
@@ -142,6 +145,19 @@ final class PhotoMealController {
         if case .failed = phase {
             phase = .idle
         }
+    }
+
+    private func resetEstimateProgress() {
+        estimateCompletedSteps = []
+        estimateCurrentStep = "Reading photo…"
+    }
+
+    private func reportEstimateProgress(_ step: String) {
+        guard estimateCurrentStep != step else { return }
+        if !estimateCurrentStep.isEmpty {
+            estimateCompletedSteps.append(estimateCurrentStep)
+        }
+        estimateCurrentStep = step
     }
 
     private func startEstimateTask(_ operation: @escaping @MainActor () async -> Void) {
@@ -164,11 +180,20 @@ final class PhotoMealController {
 
         pendingImageJPEG = imageJPEGData
         pendingPreview = preview
+        resetEstimateProgress()
         phase = .estimating
         let notes = userNotes.trimmingCharacters(in: .whitespacesAndNewlines)
         let userNotesPayload = notes.isEmpty ? nil : notes
         do {
-            let estimate = try await service.estimate(from: imageJPEGData, userNotes: userNotesPayload)
+            let estimate = try await service.estimate(
+                from: imageJPEGData,
+                userNotes: userNotesPayload,
+                progress: { [weak self] step in
+                    Task { @MainActor in
+                        self?.reportEstimateProgress(step)
+                    }
+                }
+            )
             guard !Task.isCancelled else {
                 cancel()
                 return

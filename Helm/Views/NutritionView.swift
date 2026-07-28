@@ -342,8 +342,10 @@ private struct NutritionLoggingSheets: ViewModifier {
         content
             .fullScreenCover(isPresented: photoEstimatingBinding) {
                 PhotoMealEstimatingView(
-                    message: photoMealController.busyMessage,
-                    previewImage: photoMealController.estimatingPreviewImage
+                    previewImage: photoMealController.estimatingPreviewImage,
+                    completedSteps: photoMealController.estimateCompletedSteps,
+                    currentStep: photoMealController.estimateCurrentStep,
+                    onCancel: { photoMealController.cancel() }
                 )
             }
             .sheet(isPresented: photoConfirmBinding) {

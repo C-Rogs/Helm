@@ -10,9 +10,14 @@ private let testCalendar = Calendar(identifier: .gregorian)
 private struct StubMealMacroEstimator: MealMacroEstimating {
     let estimate: MealEstimate
 
-    func estimateMacros(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+    func estimateMacros(
+        imageJPEGData: Data,
+        userNotes: String?,
+        progress: MealMacroEstimateProgress?
+    ) async throws -> MealEstimate {
         _ = imageJPEGData
         _ = userNotes
+        _ = progress
         return estimate
     }
 }

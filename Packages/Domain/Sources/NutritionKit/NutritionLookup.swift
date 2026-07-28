@@ -36,7 +36,7 @@ public struct NutritionLookup: Sendable {
     }
 
     public func resolve(item name: String) -> ResolvedNutrition? {
-        let normalized = Self.normalize(name)
+        let normalized = Self.aliasedQuery(for: Self.normalize(name))
         guard !normalized.isEmpty else { return nil }
 
         if let record = normalizedIndex[normalized] {
@@ -49,20 +49,17 @@ public struct NutritionLookup: Sendable {
             return ResolvedNutrition(record: record, matchConfidence: .synonym)
         }
 
-        let tokens = Set(normalized.split(separator: " ").map(String.init))
+        let foodTokens = Self.foodTokens(from: normalized)
+        guard !foodTokens.isEmpty else {
+            return ResolvedNutrition(record: fallbackRecord, matchConfidence: .fallback)
+        }
+
         var best: (record: NutritionFoodRecord, score: Int)?
         for record in records {
-            let candidates = [record.description] + record.synonyms
-            for candidate in candidates {
-                let candidateTokens = Set(Self.normalize(candidate).split(separator: " ").map(String.init))
-                let overlap = Self.tokenOverlapScore(queryTokens: tokens, candidateTokens: candidateTokens)
-                let primaryWord = Self.primaryFoodToken(from: candidate)
-                let boostedOverlap = primaryWord.map { primary in
-                    tokens.contains(where: { Self.tokensEquivalent($0, primary) }) ? max(overlap, 2) : overlap
-                } ?? overlap
-                if boostedOverlap >= 2, boostedOverlap > (best?.score ?? 0) {
-                    best = (record, boostedOverlap)
-                }
+            let score = Self.matchScore(queryFoodTokens: foodTokens, recordDescription: record.description)
+            guard score.overlap >= 1 else { continue }
+            if best == nil || score.total > best!.score {
+                best = (record, score.total)
             }
         }
 
@@ -78,6 +75,77 @@ public struct NutritionLookup: Sendable {
 
         return ResolvedNutrition(record: fallbackRecord, matchConfidence: .fallback)
     }
+
+    private struct MatchScore {
+        let overlap: Int
+        let total: Int
+    }
+
+    private static func matchScore(queryFoodTokens: Set<String>, recordDescription: String) -> MatchScore {
+        let candidateFoodTokens = foodTokens(from: normalize(recordDescription))
+        let overlap = tokenOverlapScore(queryTokens: queryFoodTokens, candidateTokens: candidateFoodTokens)
+        let primary = primaryFoodToken(from: recordDescription)
+        let primaryMatch = primary.map { p in
+            queryFoodTokens.contains(where: { tokensEquivalent($0, p) })
+        } ?? false
+        let descriptionTokens = Set(normalize(recordDescription).split(separator: " ").map(String.init))
+        let complexity = descriptionTokens.intersection(complexDishTokens).count
+        let lengthPenalty = max(0, descriptionTokens.count - 5)
+        let total = overlap * 10 + (primaryMatch ? 5 : 0) - complexity * 3 - lengthPenalty
+        return MatchScore(overlap: overlap, total: total)
+    }
+
+    private static func foodTokens(from normalized: String) -> Set<String> {
+        Set(
+            normalized
+                .split(separator: " ")
+                .map(String.init)
+                .filter { token in
+                    token.count >= 3 && !modifierTokens.contains(token)
+                }
+        )
+    }
+
+    private static func aliasedQuery(for normalized: String) -> String {
+        if let alias = phraseAliases[normalized] {
+            return alias
+        }
+        if normalized.contains("napa") && normalized.contains("cabbage") {
+            return "cabbage chinese raw"
+        }
+        if normalized.contains("fish") && normalized.contains("cooked") {
+            return "cod flesh only grilled"
+        }
+        if normalized.contains("white fish") || normalized == "white fish" {
+            return "cod flesh only grilled"
+        }
+        return normalized
+    }
+
+    private static let modifierTokens: Set<String> = [
+        "raw", "cooked", "fried", "grilled", "baked", "boiled", "steamed", "roasted", "smoked",
+        "fresh", "frozen", "canned", "dried", "drained", "sliced", "diced", "chopped", "minced", "grated",
+        "average", "lean", "fat", "only", "flesh", "skin", "without", "with", "no", "not",
+        "and", "the", "of", "in", "on", "a", "from", "type", "style",
+        "large", "small", "medium", "whole", "half", "thin", "thick",
+        "boneless", "skinless", "free", "range", "organic", "hass", "including", "excluding",
+        "weighed", "approx", "meat", "portion", "pieces", "piece",
+    ]
+
+    private static let complexDishTokens: Set<String> = [
+        "stuffed", "homemade", "retail", "pie", "cake", "fingers", "coated", "breadcrumbs",
+        "curry", "sauce", "sandwich", "burger", "pizza", "croute", "crusted", "topped", "balls", "ball", "paste",
+    ]
+
+    private static let phraseAliases: [String: String] = [
+        "napa cabbage": "cabbage chinese raw",
+        "chinese cabbage": "cabbage chinese raw",
+        "cooked fish meat": "cod flesh only grilled",
+        "cooked fish": "cod flesh only grilled",
+        "white fish": "cod flesh only grilled",
+        "sliced cucumbers": "cucumber raw",
+        "sliced cucumber": "cucumber raw",
+    ]
 
     /// Prefix/substring matches for inline food correction while editing photo meal line items.
     public func suggestionNames(matching query: String, limit: Int = 5) -> [String] {
