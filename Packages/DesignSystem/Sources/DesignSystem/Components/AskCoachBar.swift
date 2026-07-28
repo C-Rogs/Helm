@@ -6,9 +6,6 @@ public struct AskCoachBar: View {
     public let isLoading: Bool
     public let action: () -> Void
 
-    @Environment(\.helmReduceMotion) private var reduceMotion
-    @State private var pulse = false
-
     public init(
         prompt: String = "Ask coach",
         peekSnippet: String? = nil,
@@ -48,38 +45,11 @@ public struct AskCoachBar: View {
         }
         .buttonStyle(.helmPressable)
         .disabled(isLoading)
-        .onAppear {
-            if !isLoading {
-                pulse = true
-            }
-        }
-        .onChange(of: isLoading) { _, loading in
-            pulse = !loading
-        }
     }
 
     @ViewBuilder
     private var statusIndicator: some View {
-        ZStack {
-            if isLoading {
-                ProgressView()
-                    .tint(HelmColor.accent)
-            } else {
-                Circle()
-                    .fill(HelmColor.accent)
-                    .overlay {
-                        Circle()
-                            .fill(HelmColor.accent)
-                            .scaleEffect(pulse && !reduceMotion ? 1.25 : 1)
-                            .opacity(pulse && !reduceMotion ? 0.65 : 1)
-                    }
-                    .animation(
-                        reduceMotion ? nil : HelmMotion.pulseAnimation.repeatForever(autoreverses: true),
-                        value: pulse
-                    )
-            }
-        }
-        .frame(width: 16, height: 16)
+        CoachAIPulseIndicator(isLoading: isLoading)
     }
 }
 
