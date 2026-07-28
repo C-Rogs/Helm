@@ -41,6 +41,8 @@ public enum CoachSystemPrompt {
     - Return the matching operations array.
 
     adjustLoad: use massDeltaKg or targetMassKg for one archetypeId.
+    Keep coach-suggested load increases within about 10% or 2.5 kg of the current target.
+    When the athlete gives an explicit weight ("+10 kg", "set to 100 kg", "drop 15"), honour that load in operations.
     adjustRPE: use rpeDelta or targetRPE for one archetypeId.
     Ground swaps in equipment availability when the user mentions it.
     Never invent archetype IDs; copy exact archetypeId values from the allowed archetype list in context.

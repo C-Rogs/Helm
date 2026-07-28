@@ -345,7 +345,7 @@ struct PrescriptionAdjustmentTests {
         #expect(adjusted.exercises[0].targetMass?.kilograms == 82.5)
     }
 
-    @Test("load adjustment rejects out-of-bounds delta")
+    @Test("load adjustment rejects out-of-bounds coach-suggested increase")
     func rejectsOutOfBoundsLoad() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [
@@ -365,6 +365,98 @@ struct PrescriptionAdjustmentTests {
             return
         }
         #expect(exerciseID == "bench_press")
+    }
+
+    @Test("user-directed load increase bypasses coach cap")
+    func userDirectedIncreaseApplies() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: 20,
+                    loadAdjustmentIntent: .userDirected
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected user-directed load increase to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 100)
+    }
+
+    @Test("user-directed load decrease bypasses coach cap")
+    func userDirectedDecreaseApplies() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: -15,
+                    loadAdjustmentIntent: .userDirected
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected user-directed load decrease to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 65)
+    }
+
+    @Test("coach-suggested load decrease is not capped above floor")
+    func coachSuggestedDecreaseApplies() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: -15,
+                    loadAdjustmentIntent: .coachSuggested
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected coach-suggested load decrease to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 65)
+    }
+
+    @Test("load adjustment clamps to zero floor")
+    func loadClampsToZero() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    massDeltaKg: -100,
+                    loadAdjustmentIntent: .userDirected
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected load to clamp to zero")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 0)
     }
 
     @Test("RPE adjustment applies within bounds")

@@ -312,4 +312,64 @@ struct InSessionCoachServiceTests {
         #expect(recommendations.count == 1)
         #expect(recommendations[0].actedOnAt != nil)
     }
+
+    @Test("user-directed large load increase applies with user message")
+    func userDirectedLargeLoadApplies() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Bench to 100 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 100
+                )
+            ]
+        )
+
+        let applied = try service.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            userMessage: "Set bench to 100 kg"
+        )
+
+        #expect(applied.banner.toLabel == "100 kg")
+    }
+
+    @Test("coach-suggested large load increase is rejected")
+    func coachSuggestedLargeLoadRejected() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Jumping bench to 100 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 100
+                )
+            ]
+        )
+
+        do {
+            _ = try service.applyAdjustment(
+                payload: payload,
+                snapshot: snapshot,
+                excludedExerciseIDs: []
+            )
+            Issue.record("Expected coach-suggested large load to be rejected")
+        } catch InSessionCoachError.adjustmentRejected(.loadOutOfBounds) {
+            #expect(true)
+        }
+    }
 }

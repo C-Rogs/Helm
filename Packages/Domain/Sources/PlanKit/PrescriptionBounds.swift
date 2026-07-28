@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// Safe bounds for prescription targets and in-session adjustments.
@@ -21,8 +22,26 @@ public enum PrescriptionBounds {
         max(currentKg * maxLoadAdjustmentFraction, minLoadAdjustmentKg)
     }
 
-    public static func isLoadWithinBounds(currentKg: Double, proposedKg: Double) -> Bool {
-        let delta = maxLoadDelta(for: currentKg)
-        return proposedKg >= currentKg - delta && proposedKg <= currentKg + delta
+    public static func isLoadWithinBounds(
+        currentKg: Double,
+        proposedKg: Double,
+        intent: LoadAdjustmentIntent = .coachSuggested
+    ) -> Bool {
+        guard proposedKg >= 0 else { return false }
+
+        switch intent {
+        case .userDirected:
+            return true
+        case .coachSuggested:
+            if proposedKg > currentKg {
+                let maxIncrease = maxLoadDelta(for: currentKg)
+                return proposedKg <= currentKg + maxIncrease
+            }
+            return true
+        }
+    }
+
+    public static func clampedLoadKg(_ proposedKg: Double) -> Double {
+        max(0, proposedKg)
     }
 }

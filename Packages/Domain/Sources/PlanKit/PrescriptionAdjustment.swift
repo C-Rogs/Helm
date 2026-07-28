@@ -29,6 +29,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
     public let targetMassKg: Double?
     public let rpeDelta: Double?
     public let targetRPE: Double?
+    public let loadAdjustmentIntent: LoadAdjustmentIntent
 
     public init(
         kind: Kind,
@@ -41,7 +42,8 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         massDeltaKg: Double? = nil,
         targetMassKg: Double? = nil,
         rpeDelta: Double? = nil,
-        targetRPE: Double? = nil
+        targetRPE: Double? = nil,
+        loadAdjustmentIntent: LoadAdjustmentIntent = .coachSuggested
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -54,6 +56,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         self.targetMassKg = targetMassKg
         self.rpeDelta = rpeDelta
         self.targetRPE = targetRPE
+        self.loadAdjustmentIntent = loadAdjustmentIntent
     }
 }
 
@@ -281,16 +284,18 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.loadMissing(exerciseID: exerciseID))
         }
 
+        let boundedKg = PrescriptionBounds.clampedLoadKg(proposedKg)
         guard PrescriptionBounds.isLoadWithinBounds(
             currentKg: currentMass.kilograms,
-            proposedKg: proposedKg
+            proposedKg: boundedKg,
+            intent: operation.loadAdjustmentIntent
         ) else {
             return .failure(.loadOutOfBounds(exerciseID: exerciseID))
         }
 
         exercises[index] = replacing(
             exercises[index],
-            targetMass: Mass(kilograms: proposedKg)
+            targetMass: Mass(kilograms: boundedKg)
         )
         return .success
     }

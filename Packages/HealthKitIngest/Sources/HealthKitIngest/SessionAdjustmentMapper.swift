@@ -20,7 +20,8 @@ enum SessionAdjustmentMapper {
             massDeltaKg: operation.massDeltaKg,
             targetMassKg: operation.targetMassKg,
             rpeDelta: operation.rpeDelta,
-            targetRPE: operation.targetRPE
+            targetRPE: operation.targetRPE,
+            loadAdjustmentIntent: operation.loadAdjustmentIntent ?? .coachSuggested
         )
     }
 

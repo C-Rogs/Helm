@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 public struct SessionAdjustmentPayload: Codable, Sendable, Equatable {
@@ -88,6 +89,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
     public let targetMassKg: Double?
     public let rpeDelta: Double?
     public let targetRPE: Double?
+    public let loadAdjustmentIntent: LoadAdjustmentIntent?
 
     public init(
         kind: Kind,
@@ -100,7 +102,8 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         massDeltaKg: Double? = nil,
         targetMassKg: Double? = nil,
         rpeDelta: Double? = nil,
-        targetRPE: Double? = nil
+        targetRPE: Double? = nil,
+        loadAdjustmentIntent: LoadAdjustmentIntent? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -113,6 +116,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         self.targetMassKg = targetMassKg
         self.rpeDelta = rpeDelta
         self.targetRPE = targetRPE
+        self.loadAdjustmentIntent = loadAdjustmentIntent
     }
 }
 

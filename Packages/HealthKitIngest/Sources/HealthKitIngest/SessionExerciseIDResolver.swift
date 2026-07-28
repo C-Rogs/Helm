@@ -85,7 +85,8 @@ enum SessionExerciseIDResolver {
                 massDeltaKg: operation.massDeltaKg,
                 targetMassKg: operation.targetMassKg,
                 rpeDelta: operation.rpeDelta,
-                targetRPE: operation.targetRPE
+                targetRPE: operation.targetRPE,
+                loadAdjustmentIntent: operation.loadAdjustmentIntent
             )
         case .reorder:
             let ordered = operation.orderedExerciseIDs?.map { id in
@@ -122,7 +123,8 @@ enum SessionExerciseIDResolver {
                 massDeltaKg: operation.massDeltaKg,
                 targetMassKg: operation.targetMassKg,
                 rpeDelta: operation.rpeDelta,
-                targetRPE: operation.targetRPE
+                targetRPE: operation.targetRPE,
+                loadAdjustmentIntent: operation.loadAdjustmentIntent
             )
         }
     }

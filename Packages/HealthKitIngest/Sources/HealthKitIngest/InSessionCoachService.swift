@@ -47,7 +47,7 @@ public enum CoachProposalFailure: Sendable, Equatable {
         case .setsBelowMinimum, .setsAboveMaximum:
             return "Couldn't apply that change: set count is outside safe bounds."
         case .loadMissing, .loadOutOfBounds:
-            return "Couldn't apply that change: load is outside safe bounds."
+            return "Couldn't apply that change: coach-suggested load increase is outside safe bounds. Tell me the exact weight you want."
         case .rpeOutOfBounds:
             return "Couldn't apply that change: RPE is outside safe bounds."
         case .swapTargetExcluded, .swapNoAlternativeAvailable:
@@ -155,6 +155,7 @@ public struct InSessionCoachService: Sendable {
 
         let proposal = try buildProposal(
             payload: artefact.payload,
+            userMessage: userMessage,
             snapshot: snapshot,
             excludedExerciseIDs: excludedExerciseIDs,
             modelVersion: artefact.schemaVersion.rawValue,
@@ -218,15 +219,20 @@ public struct InSessionCoachService: Sendable {
         payload: SessionAdjustmentPayload,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>,
+        userMessage: String? = nil,
         modelVersion: String? = CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
         recommendationID: String? = nil,
         markActedOn: Bool = true
     ) throws -> AppliedSessionAdjustment {
+        let stampedPayload = LoadAdjustmentIntentClassifier.stamp(
+            payload: payload,
+            userMessage: userMessage
+        )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
         let (catalog, familiarExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
-            payload: payload,
+            payload: stampedPayload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
             persistence: persistence,
@@ -306,16 +312,21 @@ public struct InSessionCoachService: Sendable {
 
     func buildProposal(
         payload: SessionAdjustmentPayload,
+        userMessage: String? = nil,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>,
         modelVersion: String?,
         requestID: UUID? = nil
     ) throws -> CoachSessionProposal {
+        let stampedPayload = LoadAdjustmentIntentClassifier.stamp(
+            payload: payload,
+            userMessage: userMessage
+        )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
         let (catalog, familiarExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
-            payload: payload,
+            payload: stampedPayload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
             persistence: persistence,
@@ -323,7 +334,7 @@ public struct InSessionCoachService: Sendable {
             familiarExerciseIDs: familiarExerciseIDs
         )
 
-        let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : payload
+        let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : stampedPayload
         let recommendation = try logRecommendation(
             sessionID: snapshot.session.id,
             payload: storedPayload,

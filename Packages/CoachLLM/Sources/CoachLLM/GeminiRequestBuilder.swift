@@ -297,6 +297,10 @@ public enum GeminiRequestBuilder {
                 "setDelta": ["type": "integer"],
                 "massDeltaKg": ["type": "number"],
                 "targetMassKg": ["type": "number"],
+                "loadAdjustmentIntent": [
+                    "type": "string",
+                    "enum": ["userDirected", "coachSuggested"]
+                ],
                 "rpeDelta": ["type": "number"],
                 "targetRPE": ["type": "number"]
             ],
