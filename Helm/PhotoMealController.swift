@@ -27,6 +27,7 @@ final class PhotoMealController {
 
     private var pendingImageJPEG: Data?
     private var pendingPreview: UIImage?
+    private var pendingPortionAssist: MealPortionAssistContext?
     private var estimateTask: Task<Void, Never>?
     var estimateCompletedSteps: [String] = []
     var estimateCurrentStep = "Reading photo…"
@@ -85,12 +86,13 @@ final class PhotoMealController {
         await estimateTask?.value
     }
 
-    func handleCameraImage(_ image: UIImage) async {
+    func handleCameraImage(_ image: UIImage, portionAssist: MealPortionAssistContext? = nil) async {
         startEstimateTask { [self] in
             guard let jpeg = image.jpegData(compressionQuality: 0.88) else {
                 failUnlessCancelled("Could not read that photo.")
                 return
             }
+            pendingPortionAssist = portionAssist
             await runEstimate(imageJPEGData: jpeg, preview: image)
         }
         await estimateTask?.value
@@ -125,6 +127,7 @@ final class PhotoMealController {
             HapticEngine.shared.play(.mealConfirmed)
             pendingImageJPEG = nil
             pendingPreview = nil
+            pendingPortionAssist = nil
             phase = .idle
             NutritionBootstrap.refreshNutrition(for: helmDay)
         } catch {
@@ -137,6 +140,7 @@ final class PhotoMealController {
         estimateTask = nil
         pendingImageJPEG = nil
         pendingPreview = nil
+        pendingPortionAssist = nil
         resetEstimateProgress()
         phase = .idle
     }
@@ -188,6 +192,7 @@ final class PhotoMealController {
             let estimate = try await service.estimate(
                 from: imageJPEGData,
                 userNotes: userNotesPayload,
+                portionAssist: pendingPortionAssist,
                 progress: { [weak self] step in
                     Task { @MainActor in
                         self?.reportEstimateProgress(step)

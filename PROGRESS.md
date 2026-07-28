@@ -61,7 +61,7 @@ Status values: `not started`, `in progress (agent: <name/session>)`, `done`, `bl
 | M9.4 USDA reference bundle + NutritionLookup | done | 2026-07-24 | 6e97c46 | USDA SR subset bundle; NutritionLookup + MacroAggregator; MealLineItem in Core; lookup fixture tests pass. |
 | M9.5 Grounded photo pipeline | done | 2026-07-24 | 6e97c46 | meal_decomposition.v1; MealVisionProviding; GroundedPhotoMacroEstimator; fixture pipeline tests (no live API). |
 | M9.6 OpenRouter vision + confirm sheet v2 | done | 2026-07-24 | 6e97c46 | OpenRouterMealVisionProvider + MealVisionRouter; confirm sheet v2 line items + on-device recompute; PhotoMealLocalStore; Settings photo model picker. PrescriptionAutoStartStore fix for relaunch auto-start. |
-| M9.7 LiDAR portion assist (optional) | deferred | | | Post-DT5; depth-assisted portion hints. |
+| M9.7 LiDAR portion assist (optional) | done | 2026-07-28 | 0ec19c0 | LiDAR depth camera on Pro iPhones; depth-derived gram scale + vision prompt context; library/camera-without-depth unchanged. |
 | M10.1 Trends charts | done | 2026-07-23 | 2745fd6 | Five chart cards on Trends tab with paginated repository queries, ArcGauge for volume/energy, state-ramp line charts, fixture previews. |
 | M10.2 Sources / Methodology screen | done | 2026-07-23 | 612b1c3 | Bundled placeholder methodology seed; Sources screen with topic browser + citations; equipment/selection-bias preferences persist to MemoryProfile and re-plan prescription. |
 | M11.1 Schema-v2 export + Share Extension | done | 2026-07-23 | 8184f95 | ExportKit byte-compatible schema-v2 JSON; Settings export/copy/share; HelmShare extension imports via app group. |

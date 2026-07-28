@@ -13,10 +13,12 @@ private struct StubMealMacroEstimator: MealMacroEstimating {
     func estimateMacros(
         imageJPEGData: Data,
         userNotes: String?,
+        portionAssist: MealPortionAssistContext?,
         progress: MealMacroEstimateProgress?
     ) async throws -> MealEstimate {
         _ = imageJPEGData
         _ = userNotes
+        _ = portionAssist
         _ = progress
         return estimate
     }

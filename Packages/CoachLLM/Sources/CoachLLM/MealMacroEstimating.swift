@@ -7,6 +7,7 @@ public protocol MealMacroEstimating: Sendable {
     func estimateMacros(
         imageJPEGData: Data,
         userNotes: String?,
+        portionAssist: MealPortionAssistContext?,
         progress: MealMacroEstimateProgress?
     ) async throws -> MealEstimate
 }

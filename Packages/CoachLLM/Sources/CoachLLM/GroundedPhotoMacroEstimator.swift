@@ -14,13 +14,21 @@ public struct GroundedPhotoMacroEstimator: Sendable {
     public func estimateMacros(
         imageJPEGData: Data,
         userNotes: String?,
+        portionAssist: MealPortionAssistContext? = nil,
         progress: MealMacroEstimateProgress? = nil
     ) async throws -> MealEstimate {
+        let visionNotes = MealPortionAssist.augmentedUserNotes(base: userNotes, assist: portionAssist)
         progress?("Identifying ingredients from photo…")
-        let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
-        let auditJSON = encodeDecompositionAudit(decomposition)
+        let decomposition = try await vision.decompose(imageJPEGData: imageJPEGData, userNotes: visionNotes)
+        let scaledDecomposition = portionAssist.map {
+            MealPortionAssist.scaledDecomposition(decomposition, scaleFactor: $0.gramScaleFactor)
+        } ?? decomposition
+        let auditJSON = encodeDecompositionAudit(scaledDecomposition)
         progress?("Matching ingredients to CoFID…")
-        var estimate = aggregate(decomposition, decompositionAuditJSON: auditJSON)
+        var estimate = aggregate(scaledDecomposition, decompositionAuditJSON: auditJSON)
+        if let portionAssist {
+            estimate.groundingWarnings.insert(MealPortionAssist.lidarWarning(for: portionAssist), at: 0)
+        }
 
         let needsDirectCheck = estimate.confidence == .low
             || estimate.lineItems.contains(where: \.usesGenericCofidFallback)
@@ -29,7 +37,7 @@ public struct GroundedPhotoMacroEstimator: Sendable {
 
         if needsDirectCheck {
             progress?("Cross-checking with direct vision estimate…")
-            if let direct = try? await vision.estimateMacrosDirect(imageJPEGData: imageJPEGData, userNotes: userNotes) {
+            if let direct = try? await vision.estimateMacrosDirect(imageJPEGData: imageJPEGData, userNotes: visionNotes) {
                 let comparison = MealEstimate.VisionMacroComparison(
                     caloriesKcal: direct.caloriesKcal,
                     proteinG: direct.proteinG,

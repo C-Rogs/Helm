@@ -687,7 +687,7 @@ Ordered by dependency. Each section lists Goal, Scope, Interfaces, Depends on, a
 - **Scope**: on Pro iPhones, attach depth metadata or scale factor from `AVDepthData` / ARKit to vision prompt context; or multiply gram estimates by depth-derived volume ratio.
 - **Depends on**: M9.6, DT5 photo accuracy feedback.
 - **Acceptance**: DT5 subset shows improved gram estimates vs RGB-only on same meals.
-- **Status**: deferred until DT5 photo feedback.
+- **Status**: done (agent-verifiable pipeline + unit tests; device gram improvement verified at next photo soak).
 
 ### M14 Native food logging
 

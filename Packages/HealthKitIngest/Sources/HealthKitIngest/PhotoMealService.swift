@@ -26,7 +26,12 @@ public struct PhotoMealService: Sendable {
         self.localStore = localStore
     }
 
-    public func estimate(from imageJPEGData: Data, userNotes: String? = nil, progress: MealMacroEstimateProgress? = nil) async throws -> MealEstimate {
+    public func estimate(
+        from imageJPEGData: Data,
+        userNotes: String? = nil,
+        portionAssist: MealPortionAssistContext? = nil,
+        progress: MealMacroEstimateProgress? = nil
+    ) async throws -> MealEstimate {
         guard !imageJPEGData.isEmpty else {
             throw PhotoMealError.invalidImage
         }
@@ -38,6 +43,7 @@ public struct PhotoMealService: Sendable {
             let estimate = try await estimator.estimateMacros(
                 imageJPEGData: imageJPEGData,
                 userNotes: userNotes,
+                portionAssist: portionAssist,
                 progress: progress
             )
             photoMealLog.debug(
@@ -59,6 +65,10 @@ public struct PhotoMealService: Sendable {
                 if let audit = estimate.decompositionAuditJSON {
                     let capped = audit.count > 4000 ? String(audit.prefix(4000)) + "…" : audit
                     context["decomposition_json"] = capped
+                }
+                if let portionAssist {
+                    context["lidar_scale"] = String(format: "%.2f", portionAssist.gramScaleFactor)
+                    context["lidar_depth_m"] = String(format: "%.2f", portionAssist.medianDepthMeters)
                 }
                 await DiagnosticsLog.shared.record(
                     category: .nutritionKit,

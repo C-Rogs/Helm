@@ -361,10 +361,17 @@ private struct NutritionLoggingSheets: ViewModifier {
                 get: { photoMealController.showsCamera },
                 set: { photoMealController.showsCamera = $0 }
             )) {
-                CameraImagePicker { image in
-                    Task { await photoMealController.handleCameraImage(image) }
+                if MealDepthPortionAssist.isAvailable {
+                    MealDepthCameraView { image, portionAssist in
+                        Task { await photoMealController.handleCameraImage(image, portionAssist: portionAssist) }
+                    }
+                    .ignoresSafeArea()
+                } else {
+                    CameraImagePicker { image in
+                        Task { await photoMealController.handleCameraImage(image) }
+                    }
+                    .ignoresSafeArea()
                 }
-                .ignoresSafeArea()
             }
             .sheet(isPresented: $showsPhotoOptions) {
                 PhotoLogOptionsSheet(

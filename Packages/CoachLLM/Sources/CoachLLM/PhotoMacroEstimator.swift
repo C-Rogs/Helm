@@ -27,11 +27,13 @@ public struct PhotoMacroEstimator: Sendable, MealMacroEstimating {
     public func estimateMacros(
         imageJPEGData: Data,
         userNotes: String?,
+        portionAssist: MealPortionAssistContext? = nil,
         progress: MealMacroEstimateProgress? = nil
     ) async throws -> MealEstimate {
         try await grounded.estimateMacros(
             imageJPEGData: imageJPEGData,
             userNotes: userNotes,
+            portionAssist: portionAssist,
             progress: progress
         )
     }
