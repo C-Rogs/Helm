@@ -8,6 +8,8 @@ struct InSessionCoachSheet: View {
     @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
     @State private var didCopyExport = false
+    @State private var isShowingShareSheet = false
+    @State private var shareExportText = ""
 
     private var coachName: String { CoachDisplayNameStore.name }
 
@@ -90,13 +92,15 @@ struct InSessionCoachSheet: View {
                 }
                 if !controller.hasActiveSession, controller.prescriptionSummary != nil {
                     ToolbarItem(placement: .topBarTrailing) {
-                        Button("Export") {
-                            Task {
-                                if let text = await controller.exportPrescriptionText() {
-                                    UIPasteboard.general.string = text
-                                    didCopyExport = true
-                                }
+                        Menu {
+                            Button("Copy") {
+                                Task { await copyPrescriptionExport() }
                             }
+                            Button("Share") {
+                                Task { await sharePrescriptionExport() }
+                            }
+                        } label: {
+                            Text("Export")
                         }
                     }
                     ToolbarItem(placement: .confirmationAction) {
@@ -120,6 +124,21 @@ struct InSessionCoachSheet: View {
         } message: {
             Text("Prescription copied for Gemini verification.")
         }
+        .sheet(isPresented: $isShowingShareSheet) {
+            HelmTextShareSheet(text: shareExportText)
+        }
+    }
+
+    private func copyPrescriptionExport() async {
+        guard let text = await controller.exportPrescriptionText() else { return }
+        UIPasteboard.general.string = text
+        didCopyExport = true
+    }
+
+    private func sharePrescriptionExport() async {
+        guard let text = await controller.exportPrescriptionText() else { return }
+        shareExportText = text
+        isShowingShareSheet = true
     }
 
     private var emptyState: some View {

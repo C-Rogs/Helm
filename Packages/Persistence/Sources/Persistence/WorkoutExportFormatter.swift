@@ -50,10 +50,18 @@ public enum WorkoutExportFormatter {
         prescription: SessionPrescription,
         displayNames: [String: String]
     ) -> String {
-        var lines = [
-            "Helm prescription export - paste into Gemini for verification.",
-            ""
-        ]
+        """
+        Helm prescription export - paste into Gemini for verification.
+
+        \(formatPrescriptionBody(prescription: prescription, displayNames: displayNames))
+        """
+    }
+
+    public static func formatPrescriptionBody(
+        prescription: SessionPrescription,
+        displayNames: [String: String]
+    ) -> String {
+        var lines: [String] = []
         if let title = prescription.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
             lines.append(title)
         }
@@ -61,18 +69,57 @@ public enum WorkoutExportFormatter {
             let name = displayNames[exercise.exerciseID] ?? exercise.exerciseID
             lines.append("")
             lines.append(name)
-            lines.append("  \(exercise.targetSummaryText)")
+            for setLine in formatPrescriptionSetLines(exercise) {
+                lines.append("  \(setLine)")
+            }
         }
         return lines.joined(separator: "\n")
+    }
+
+    private static func formatPrescriptionSetLines(_ exercise: PrescribedExercise) -> [String] {
+        let setCount = max(exercise.targetSets, 1)
+        let reps = resolvedTargetReps(for: exercise)
+        var lines: [String] = []
+        for index in 1...setCount {
+            var parts = ["Set \(index):"]
+            if let mass = exercise.targetMass, let reps {
+                parts.append("\(formatWeightKilograms(mass.kilograms)) kg x \(reps)")
+            } else if let reps {
+                parts.append("x \(reps)")
+            }
+            if let rpe = exercise.targetRPE {
+                parts.append("@ \(formatRPE(rpe))")
+            }
+            lines.append(parts.joined(separator: " "))
+        }
+        return lines
+    }
+
+    private static func resolvedTargetReps(for exercise: PrescribedExercise) -> Int? {
+        switch (exercise.targetRepMin, exercise.targetRepMax) {
+        case let (min?, max?) where min == max:
+            return min
+        case let (min?, max?):
+            return (min + max) / 2
+        case let (min?, nil):
+            return min
+        case let (nil, max?):
+            return max
+        default:
+            return nil
+        }
+    }
+
+    private static func formatWeightKilograms(_ kilograms: Double) -> String {
+        kilograms.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilograms)
+            : String(format: "%.1f", kilograms)
     }
 
     private static func formatSetLine(_ set: SetEntryDraft) -> String {
         var parts: [String] = []
         if let mass = set.mass, let reps = set.reps {
-            let weight = mass.kilograms.truncatingRemainder(dividingBy: 1) == 0
-                ? String(format: "%.0f", mass.kilograms)
-                : String(format: "%.1f", mass.kilograms)
-            parts.append("\(weight)kg x \(reps)")
+            parts.append("\(formatWeightKilograms(mass.kilograms)) kg x \(reps)")
         } else if let reps = set.reps {
             parts.append("x \(reps)")
         }
