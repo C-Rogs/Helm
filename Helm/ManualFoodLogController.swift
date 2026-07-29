@@ -150,6 +150,7 @@ final class ManualFoodLogController {
                 servingLabel: servingLabel,
                 bucket: bucket,
                 loggedAt: loggedAt,
+                helmDay: helmDay,
                 source: source
             )
             HapticEngine.shared.play(.mealConfirmed)
@@ -177,7 +178,8 @@ final class ManualFoodLogController {
                 fatG: macros.fatG,
                 label: label,
                 bucket: bucket,
-                loggedAt: loggedAt
+                loggedAt: loggedAt,
+                helmDay: helmDay
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .quickAdd)
@@ -220,7 +222,8 @@ final class ManualFoodLogController {
                 preset: preset,
                 quantity: quantity,
                 bucket: bucket,
-                loggedAt: loggedAt
+                loggedAt: loggedAt,
+                helmDay: helmDay
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .alcohol)

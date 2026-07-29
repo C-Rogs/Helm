@@ -31,6 +31,7 @@ public struct ManualMealService: Sendable {
         servingLabel: String? = nil,
         bucket: MealBucket,
         loggedAt: Date = Date(),
+        helmDay: HelmDay? = nil,
         mealID: String = UUID().uuidString,
         source: MealRecord.Source = .manual
     ) async throws -> SavedMealSamples {
@@ -57,6 +58,7 @@ public struct ManualMealService: Sendable {
                 name: product.ref.displayName,
                 bucket: bucket,
                 loggedAt: loggedAt,
+                helmDay: helmDay,
                 mealID: mealID,
                 source: source,
                 macros: macros,
@@ -73,6 +75,7 @@ public struct ManualMealService: Sendable {
         label: String? = nil,
         bucket: MealBucket,
         loggedAt: Date = Date(),
+        helmDay: HelmDay? = nil,
         mealID: String = UUID().uuidString
     ) async throws -> SavedMealSamples {
         guard kilocalories > 0 else {
@@ -93,6 +96,7 @@ public struct ManualMealService: Sendable {
                 name: name,
                 bucket: bucket,
                 loggedAt: loggedAt,
+                helmDay: helmDay,
                 mealID: mealID,
                 source: .quickAdd,
                 macros: macros
@@ -105,6 +109,7 @@ public struct ManualMealService: Sendable {
         quantity: Int,
         bucket: MealBucket,
         loggedAt: Date = Date(),
+        helmDay: HelmDay? = nil,
         mealID: String = UUID().uuidString
     ) async throws -> SavedMealSamples {
         guard quantity > 0 else {
@@ -119,6 +124,7 @@ public struct ManualMealService: Sendable {
                 name: name,
                 bucket: bucket,
                 loggedAt: loggedAt,
+                helmDay: helmDay,
                 mealID: mealID,
                 source: .alcohol,
                 macros: macros
@@ -157,6 +163,7 @@ public struct ManualMealService: Sendable {
                 name: name,
                 bucket: bucket,
                 loggedAt: loggedAt,
+                helmDay: nil,
                 mealID: mealID,
                 source: source,
                 macros: macros,
@@ -231,6 +238,7 @@ public struct ManualMealService: Sendable {
         let name: String
         let bucket: MealBucket
         let loggedAt: Date
+        let helmDay: HelmDay?
         let mealID: String
         let source: MealRecord.Source
         let macros: FoodPortionMacros
@@ -242,6 +250,7 @@ public struct ManualMealService: Sendable {
             mealID: meal.mealID,
             name: meal.name,
             loggedAt: meal.loggedAt,
+            helmDay: meal.helmDay,
             caloriesKcal: meal.macros.energyKcal,
             proteinG: meal.macros.proteinG,
             carbsG: meal.macros.carbsG,

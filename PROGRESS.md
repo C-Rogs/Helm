@@ -125,6 +125,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT7.7 Photo meal grounding and add-flow toolbars | done | 2026-07-28 | 0ce2f3d | Analysing overlay; CoFID plural/generic fix; hybrid vision; accuracy picker; Cancel/Add toolbars. |
 | F-DT7.8 LiDAR portion assist estimating UX | done | 2026-07-28 | ad5201a | LiDAR progress step, eyebrow, footnote, and accessibility on PhotoMealEstimatingView when depth assist active. |
 | F-DT7.9 Coach-styled meal vision loading overlay | done | 2026-07-28 | c8132da | CoachAIProgressCard + CoachAIPulseIndicator; AskCoachBar shares pulse; photo overlay clipped to gutters. |
+| F-DT8.1-F-DT8.14 DT8 improvement batch | done | 2026-07-29 | d89552b | Train timer/notifications, coach context+emphasis, meal helmDay, sleep h/m display, workout export. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

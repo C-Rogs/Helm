@@ -17,15 +17,18 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let readinessBaselines: String
     public let evidence: [EvidenceRecord]
     public let recent: [CoachContextDay]
+    public let recentWorkouts: String
 
     public init(
         readinessBaselines: String = "",
         evidence: [EvidenceRecord] = [],
-        recent: [CoachContextDay] = []
+        recent: [CoachContextDay] = [],
+        recentWorkouts: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
         self.recent = recent
+        self.recentWorkouts = recentWorkouts
     }
 
     public static let empty = CoachContextDays()

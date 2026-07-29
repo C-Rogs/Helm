@@ -18,6 +18,7 @@ public struct DeviationBand: View {
     private let layout: Layout
     private let decimalPlaces: Int
     private let isValueAvailable: Bool
+    private let valueDisplayText: String?
 
     public init(
         label: String? = nil,
@@ -28,7 +29,8 @@ public struct DeviationBand: View {
         verdictTag: String? = nil,
         layout: Layout = .bar,
         decimalPlaces: Int = 1,
-        isValueAvailable: Bool = true
+        isValueAvailable: Bool = true,
+        valueDisplayText: String? = nil
     ) {
         self.label = label
         self.value = value
@@ -39,6 +41,7 @@ public struct DeviationBand: View {
         self.layout = layout
         self.decimalPlaces = decimalPlaces
         self.isValueAvailable = isValueAvailable
+        self.valueDisplayText = valueDisplayText
     }
 
     public var body: some View {
@@ -115,7 +118,7 @@ public struct DeviationBand: View {
             Text(formattedValue)
                 .helmType(.number, color: isValueAvailable ? HelmColor.color(for: state) : HelmColor.fgMuted)
 
-            if isValueAvailable {
+            if isValueAvailable, valueDisplayText == nil {
                 Text(unit)
                     .helmType(.body, color: HelmColor.fgMuted)
             }
@@ -168,7 +171,10 @@ public struct DeviationBand: View {
     }
 
     private var formattedValue: String {
-        isValueAvailable ? format(value) : "--"
+        if let valueDisplayText, isValueAvailable {
+            return valueDisplayText
+        }
+        return isValueAvailable ? format(value) : "--"
     }
 
     private func format(_ number: Double) -> String {

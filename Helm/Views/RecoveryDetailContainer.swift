@@ -63,6 +63,7 @@ struct RecoveryDetailContainer: View {
                 context: RecoveryDetailBuilder.BuildContext(
                     score: score,
                     displayRestingHeartRate: score.restingHeartRate,
+                    restingHRIsStale: false,
                     baseline: nil,
                     sleepHours: nil,
                     history: [],

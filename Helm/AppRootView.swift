@@ -5,6 +5,7 @@ import SwiftUI
 
 struct AppRootView: View {
     @State private var onboardingStore = OnboardingStore.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
         Group {
@@ -15,6 +16,12 @@ struct AppRootView: View {
             }
         }
         .helmTheme()
+        .onChange(of: scenePhase) { _, newPhase in
+            AppLifecycleState.update(scenePhase: newPhase)
+        }
+        .onAppear {
+            AppLifecycleState.update(scenePhase: scenePhase)
+        }
         .onOpenURL { url in
             guard AppGroupExportStore.matchesImportURL(url) else { return }
             consumeSchemaV2ShareImportIfNeeded()

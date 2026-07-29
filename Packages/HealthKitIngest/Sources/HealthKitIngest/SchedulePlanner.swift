@@ -27,13 +27,6 @@ public enum SchedulePlanner {
         sessionsPerWeek: Int = defaultSessionsPerWeek
     ) -> SchedulePlanResult {
         let rotation = SessionSplitPlanner.rotationSplits(emphasis: emphasis)
-        if rotation.count == 1, let only = rotation.first {
-            return SchedulePlanResult(
-                splitKind: only,
-                targetMuscles: only.muscles,
-                scheduleNotes: []
-            )
-        }
 
         let completedSplits = completedSplitKinds(
             in: history,

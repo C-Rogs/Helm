@@ -86,6 +86,20 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func fetchInstructionText(id: String) throws -> String? {
+        try pool.read { db in
+            try String.fetchOne(
+                db,
+                sql: """
+                    SELECT instruction_text
+                    FROM exercise
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [id]
+            )
+        }
+    }
+
     public func listForPicker(search: String? = nil, limit: Int = 200) throws -> [ExerciseSummary] {
         try listForPicker(search: search, muscleGroup: nil, limit: limit)
     }

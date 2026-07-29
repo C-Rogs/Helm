@@ -30,6 +30,7 @@ enum TrainBootstrap {
         Task {
             historyController.refresh()
             await sessionController.recoverOnLaunch()
+            await RestNotificationRouter.processPendingLaunchNotificationIfNeeded()
         }
     }
 }

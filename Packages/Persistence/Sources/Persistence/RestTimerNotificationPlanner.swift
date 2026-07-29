@@ -18,4 +18,12 @@ public enum RestTimerNotificationPlanner {
         guard interval > 0 else { return nil }
         return interval
     }
+
+    /// Suppresses banner and sound while the app is foreground; haptics are handled separately.
+    public static func shouldSuppressForegroundPresentation(
+        categoryIdentifier: String,
+        isAppForeground: Bool
+    ) -> Bool {
+        isAppForeground && categoryIdentifier == notificationCategoryID
+    }
 }

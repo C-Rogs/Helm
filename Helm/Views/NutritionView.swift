@@ -246,7 +246,8 @@ struct NutritionView: View {
             selectedHelmDay = snapshot.helmDay
             syncLoggingContext()
         }
-        mealsStore.reload(for: snapshot.helmDay)
+        let day = selectedHelmDay ?? snapshot.helmDay
+        mealsStore.reload(for: day)
     }
 
     @ViewBuilder

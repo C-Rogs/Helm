@@ -10,6 +10,7 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
     public let verdictTag: String?
     public let decimalPlaces: Int
     public let isValueAvailable: Bool
+    public let valueDisplayText: String?
 
     public init(
         id: String,
@@ -20,7 +21,8 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
         state: HelmState,
         verdictTag: String? = nil,
         decimalPlaces: Int = 1,
-        isValueAvailable: Bool = true
+        isValueAvailable: Bool = true,
+        valueDisplayText: String? = nil
     ) {
         self.id = id
         self.label = label
@@ -31,6 +33,7 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
         self.verdictTag = verdictTag
         self.decimalPlaces = decimalPlaces
         self.isValueAvailable = isValueAvailable
+        self.valueDisplayText = valueDisplayText
     }
 }
 

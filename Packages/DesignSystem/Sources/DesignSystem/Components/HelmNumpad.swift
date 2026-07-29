@@ -41,11 +41,10 @@ public struct HelmNumpad: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: HelmNumpadView, context: Context) {
-        uiView.allowsDecimal = allowsDecimal
+        uiView.updateAllowsDecimal(allowsDecimal)
         uiView.onDigit = onDigit
         uiView.onBackspace = onBackspace
         uiView.onNext = onNext
-        uiView.setNeedsLayout()
     }
 }
 
@@ -85,7 +84,13 @@ public final class HelmNumpadView: UIView {
 
     public override var canBecomeFirstResponder: Bool { false }
 
-    private func rebuildKeys() {
+    public func updateAllowsDecimal(_ allowsDecimal: Bool) {
+        guard self.allowsDecimal != allowsDecimal else { return }
+        self.allowsDecimal = allowsDecimal
+        rebuildKeys()
+    }
+
+    func rebuildKeys() {
         stack.arrangedSubviews.forEach { $0.removeFromSuperview() }
         let rows: [[String]] = [
             ["1", "2", "3"],

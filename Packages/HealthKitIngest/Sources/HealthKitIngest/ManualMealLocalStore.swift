@@ -34,7 +34,7 @@ public struct ManualMealLocalStore: Sendable {
         lineItems: [MealLineItemRecord] = []
     ) throws {
         let mealID = UUID(uuidString: request.mealID) ?? saved.energy.id
-        let helmDay = HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
+        let helmDay = request.helmDay ?? HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
         let meal = MealRecord(
             id: mealID,
             helmDay: helmDay,
@@ -104,7 +104,7 @@ public struct ManualMealLocalStore: Sendable {
         source: MealRecord.Source,
         lineItems: [MealLineItemRecord]
     ) throws {
-        let helmDay = HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
+        let helmDay = request.helmDay ?? HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
         let meal = MealRecord(
             id: mealID,
             helmDay: helmDay,

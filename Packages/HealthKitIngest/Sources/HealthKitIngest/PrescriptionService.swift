@@ -257,7 +257,10 @@ public actor PlanPrescriptionEngine {
             muscleMaps: muscleMaps,
             calendar: calendar
         )
-        let targetMuscles = schedule.targetMuscles
+        let targetMuscles = EmphasisVolumePolicy.augmentedTargetMuscles(
+            base: schedule.targetMuscles,
+            emphasis: settings.phaseGoal.emphasis
+        )
         let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
             in: history,
             through: day

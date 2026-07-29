@@ -80,11 +80,30 @@ public enum CoachContextAssembler {
             )
         }
 
+        let recentWorkouts = try recentWorkoutsBlock(from: store, limit: 3)
+
         return CoachContextDays(
             readinessBaselines: baselines,
             evidence: evidence,
-            recent: recent
+            recent: recent,
+            recentWorkouts: recentWorkouts
         )
+    }
+
+    private static func recentWorkoutsBlock(
+        from store: PersistenceStore,
+        limit: Int
+    ) throws -> String {
+        let summaries = try store.workoutSessions.listSummaries(limit: limit)
+        guard !summaries.isEmpty else { return "" }
+
+        var blocks: [String] = []
+        for summary in summaries {
+            guard let draft = try store.workoutSessions.fetch(id: summary.id) else { continue }
+            let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
+            blocks.append(WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names))
+        }
+        return blocks.joined(separator: "\n\n---\n\n")
     }
 
     public static func bundledMethodologyEvidence() -> [EvidenceRecord] {
@@ -145,7 +164,7 @@ public enum CoachContextAssembler {
         }
 
         if let sleepHours {
-            parts.append("sleep=\(format(sleepHours))h")
+            parts.append("sleep=\(SleepDurationFormatting.hoursAndMinutes(from: sleepHours))")
         }
 
         if let trimp = metrics?.priorDayTRIMP {

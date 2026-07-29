@@ -104,6 +104,7 @@ final class TrainSessionController {
     private var lastEncouragementGlyph: EncouragementGlyph?
     private var sessionNoteSaveTask: Task<Void, Never>?
     private var coachMessageTask: Task<Void, Never>?
+    private var restTimerMonitorTask: Task<Void, Never>?
     private var sessionNoteIsDirty = false
     private var lastSyncedRestRemaining: Int?
     private var lastLiveActivitySyncDate: Date?
@@ -145,6 +146,19 @@ final class TrainSessionController {
 
     var isRestTimerRunning: Bool {
         snapshot?.restTimer?.phase == .running
+    }
+
+    func restTimerTotalSeconds(for timer: RestTimer) -> Int {
+        if let started = timer.startedAt, let ends = timer.endsAt {
+            return max(1, Int(ends.timeIntervalSince(started).rounded()))
+        }
+        if timer.defaultDurationSeconds > 0 {
+            return timer.defaultDurationSeconds
+        }
+        if let ends = timer.endsAt {
+            return max(1, Int(ends.timeIntervalSince(Date()).rounded()))
+        }
+        return 90
     }
 
     /// Reloads the persisted active session from the database (kill-recover, tab return).
@@ -222,6 +236,7 @@ final class TrainSessionController {
             coachMessages = [InSessionCoachMessage(role: .assistant, text: intro.text)]
             coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: intro.text)])
         } catch {
+            coachTurnError = CoachUserFacingError.message(for: error)
             let fallback = preStartCoach.engineIntro(for: brief, summary: summary)
             coachMessages = [InSessionCoachMessage(role: .assistant, text: fallback.text)]
             coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: fallback.text)])
@@ -263,14 +278,7 @@ final class TrainSessionController {
     }
 
     func handleRestExpiredProactiveCoach() {
-        guard hasActiveSession, !didSurfaceRestOverrunProactive else { return }
-        didSurfaceRestOverrunProactive = true
-        let message = "Rest is over. Start your next set when you are ready, or ask if you need more time."
-        ProactiveCoachRouter.surface(
-            message,
-            sessionID: snapshot?.session.id,
-            on: self
-        )
+        // Rest-over feedback is haptic/sound only (F-DT8.5); no proactive coach surfacing.
     }
 
     private func evaluatePrescriptionStaleness(readiness: ReadinessScore?) {
@@ -813,11 +821,36 @@ final class TrainSessionController {
         guard let timer = snapshot?.restTimer,
               timer.phase == .running,
               timer.hasExpired(at: date) else {
+            syncRestTimerMonitor()
             return
         }
         await store.recover()
         await refreshMetadata(scope: .light)
         await syncSideEffects(restRemainingOverride: 0, force: true)
+        syncRestTimerMonitor()
+    }
+
+    func syncRestTimerMonitor() {
+        restTimerMonitorTask?.cancel()
+        restTimerMonitorTask = nil
+
+        guard snapshot?.restTimer?.phase == .running,
+              snapshot?.restTimer?.endsAt != nil else {
+            return
+        }
+
+        restTimerMonitorTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self else { return }
+                let remaining = localRemainingRestSeconds() ?? 0
+                handleRestRemainingSecondsChange(remaining > 0 ? remaining : nil)
+                if remaining <= 0 {
+                    await reconcileExpiredRestTimer()
+                    return
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+        }
     }
 
     private func shouldSyncLiveActivity(restRemaining: Int?, force: Bool) -> Bool {
@@ -837,6 +870,16 @@ final class TrainSessionController {
 
     func displayName(for exerciseID: String) -> String {
         exerciseSummaries[exerciseID]?.displayName ?? exerciseID
+    }
+
+    func coachingCue(for exerciseID: String) -> String? {
+        guard let sessionID = snapshot?.session.id else { return nil }
+        let instruction = try? persistence.exercises.fetchInstructionText(id: exerciseID)
+        return ExerciseCoachingCuePicker.cue(
+            instructionText: instruction,
+            exerciseID: exerciseID,
+            sessionID: sessionID
+        )
     }
 
     func displayName(forExerciseSessionID sessionExerciseID: String) -> String {
@@ -871,7 +914,7 @@ final class TrainSessionController {
         let set = findSet(setID: setID) ?? currentSet
         numpadTarget = nextTarget
         numpadValidationError = nil
-        numpadWorkingText = initialNumpadText(for: field, set: set, exerciseID: exerciseID)
+        numpadWorkingText = ""
     }
 
     @discardableResult
@@ -920,7 +963,7 @@ final class TrainSessionController {
                 field: nextField
             )
             numpadValidationError = nil
-            numpadWorkingText = initialNumpadText(for: nextField, set: set, exerciseID: exerciseID)
+            numpadWorkingText = ""
         } else {
             numpadTarget = nil
             numpadValidationError = nil
@@ -1071,6 +1114,7 @@ final class TrainSessionController {
 
             if proposal.requiresConfirmation {
                 pendingCoachProposal = proposal
+                isShowingCoachPrompt = true
             } else {
                 pendingCoachProposal = nil
                 if let failureNotice = proposal.failureNotice {
@@ -1131,6 +1175,7 @@ final class TrainSessionController {
 
             if proposal.requiresConfirmation {
                 pendingCoachProposal = proposal
+                isShowingCoachPrompt = true
             } else {
                 pendingCoachProposal = nil
                 if let failureNotice = proposal.failureNotice {
@@ -1456,6 +1501,7 @@ final class TrainSessionController {
         }
 
         pushWatchCompanionState()
+        syncRestTimerMonitor()
     }
 
     private func findSet(setID: String) -> SetEntryDraft? {

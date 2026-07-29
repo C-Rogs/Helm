@@ -60,6 +60,11 @@ public enum ContextBuilder {
             sections.append("# Evidence Index\n\(evidence)")
         }
 
+        let workouts = normalized(days.recentWorkouts)
+        if !workouts.isEmpty {
+            sections.append("# Recent Workouts\n\(workouts)")
+        }
+
         return sections.joined(separator: "\n\n")
     }
 

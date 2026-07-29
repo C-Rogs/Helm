@@ -21,14 +21,22 @@ enum WorkoutStartCoordinator {
     static func startTodaysSession(
         controller: TrainSessionController,
         prescriptionService: PrescriptionService,
-        openTrainTab: Bool = false
+        openTrainTab: Bool = false,
+        useAdjustedPrescription: Bool = false
     ) async throws {
         guard !controller.hasActiveSession else {
             throw StartError.alreadyActive
         }
 
         let readiness = ReadinessBootstrap.readinessService.state.score
-        let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+        let prescription: SessionPrescription
+        if useAdjustedPrescription,
+           let adjusted = PrescriptionDayStore.load(for: HelmDay.day(for: .now, calendar: .current)),
+           !adjusted.exercises.isEmpty {
+            prescription = adjusted
+        } else {
+            prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+        }
         guard !prescription.exercises.isEmpty else {
             throw StartError.emptyPrescription
         }

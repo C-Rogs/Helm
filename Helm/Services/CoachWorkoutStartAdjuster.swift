@@ -13,7 +13,7 @@ enum CoachWorkoutStartAdjuster {
     static func tryStartFromEmbeddedJSON(
         in text: String,
         helmDay: HelmDay,
-        onStart: @MainActor () async throws -> Void
+        onStart: @MainActor (_ useAdjustedPrescription: Bool) async throws -> Void
     ) async throws -> Bool {
         guard let payload = extractPayload(from: text) else { return false }
         guard payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue else {
@@ -24,8 +24,8 @@ enum CoachWorkoutStartAdjuster {
            parsed != helmDay {
             return false
         }
-        _ = payload.useAdjustedPrescription
-        try await onStart()
+        let useAdjusted = payload.useAdjustedPrescription ?? false
+        try await onStart(useAdjusted)
         return true
     }
 

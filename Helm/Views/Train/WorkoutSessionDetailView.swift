@@ -1,6 +1,8 @@
 import Core
 import DesignSystem
+import Persistence
 import SwiftUI
+import UIKit
 
 struct WorkoutSessionDetailView: View {
     let sessionID: String
@@ -10,6 +12,7 @@ struct WorkoutSessionDetailView: View {
     @State private var draft: WorkoutSessionDraft?
     @State private var templateName = ""
     @State private var isShowingSaveTemplate = false
+    @State private var didCopyExport = false
     @Environment(\.dismiss) private var dismiss
 
     var body: some View {
@@ -60,6 +63,15 @@ struct WorkoutSessionDetailView: View {
         }
         .navigationTitle(draft?.title ?? "Workout")
         .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if draft != nil {
+                    Button("Export") {
+                        exportWorkout()
+                    }
+                }
+            }
+        }
         .task {
             draft = history.fetchSession(id: sessionID)
         }
@@ -73,6 +85,22 @@ struct WorkoutSessionDetailView: View {
             }
             Button("Cancel", role: .cancel) {}
         }
+        .alert("Copied", isPresented: $didCopyExport) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Workout copied for Gemini verification.")
+        }
+    }
+
+    private func exportWorkout() {
+        guard let draft else { return }
+        var names: [String: String] = [:]
+        for exercise in draft.exercises {
+            names[exercise.exerciseID] = history.displayName(for: exercise.exerciseID)
+        }
+        let text = WorkoutExportFormatter.formatForClipboard(draft: draft, displayNames: names)
+        UIPasteboard.general.string = text
+        didCopyExport = true
     }
 
     private func sessionHeaderCard(for draft: WorkoutSessionDraft) -> some View {

@@ -38,6 +38,7 @@ public struct MealWriteRequest: Sendable {
     public let mealID: String
     public let name: String
     public let loggedAt: Date
+    public let helmDay: HelmDay?
     public let caloriesKcal: Double
     public let proteinG: Double
     public let carbsG: Double
@@ -49,6 +50,7 @@ public struct MealWriteRequest: Sendable {
         mealID: String,
         name: String,
         loggedAt: Date,
+        helmDay: HelmDay? = nil,
         caloriesKcal: Double,
         proteinG: Double,
         carbsG: Double,
@@ -59,6 +61,7 @@ public struct MealWriteRequest: Sendable {
         self.mealID = mealID
         self.name = name
         self.loggedAt = loggedAt
+        self.helmDay = helmDay
         self.caloriesKcal = caloriesKcal
         self.proteinG = proteinG
         self.carbsG = carbsG

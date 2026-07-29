@@ -9,6 +9,7 @@ enum RecoveryDetailBuilder {
     struct BuildContext {
         let score: ReadinessScore
         let displayRestingHeartRate: Int?
+        let restingHRIsStale: Bool
         let baseline: ReadinessBaselineState?
         let sleepHours: Double?
         let history: [ReadinessHistoryPoint]
@@ -33,7 +34,8 @@ enum RecoveryDetailBuilder {
             restingHRContributor(
                 score: score,
                 displayValue: context.displayRestingHeartRate,
-                baseline: context.baseline?.restingHR
+                baseline: context.baseline?.restingHR,
+                isStale: context.restingHRIsStale
             ),
             sleepContributor(
                 hours: context.sleepHours,
@@ -83,6 +85,9 @@ enum RecoveryDetailBuilder {
         let displayRestingHeartRate = score.restingHeartRate
             ?? todayMetrics?.restingHeartRate
             ?? yesterdayMetrics?.restingHeartRate
+        let restingHRIsStale = todayMetrics?.restingHeartRate == nil
+            && yesterdayMetrics?.restingHeartRate != nil
+            && displayRestingHeartRate != nil
         let (history, _) = try TrendsDataBuilder.buildReadinessPage(
             store: store,
             endingAt: today,
@@ -93,6 +98,7 @@ enum RecoveryDetailBuilder {
             context: BuildContext(
                 score: score,
                 displayRestingHeartRate: displayRestingHeartRate,
+                restingHRIsStale: restingHRIsStale,
                 baseline: baseline,
                 sleepHours: sleepHours,
                 history: history,
@@ -178,12 +184,19 @@ enum RecoveryDetailBuilder {
     private static func restingHRContributor(
         score: ReadinessScore,
         displayValue: Int?,
-        baseline: ReadinessBaseline?
+        baseline: ReadinessBaseline?,
+        isStale: Bool
     ) -> RecoveryContributorRow {
         let hasValue = displayValue != nil
         let value = Double(displayValue ?? 0)
         let band = personalBand(baseline)
         let state = contributorState(zScore: score.contributors.zRestingHR)
+        var tag = hasValue
+            ? verdictTag(zScore: score.contributors.zRestingHR, higherIsBetter: false)
+            : "N/A"
+        if isStale {
+            tag = "YESTERDAY"
+        }
         return RecoveryContributorRow(
             id: "rhr",
             label: "Resting HR",
@@ -191,9 +204,7 @@ enum RecoveryDetailBuilder {
             band: band,
             unit: "bpm",
             state: state,
-            verdictTag: hasValue
-                ? verdictTag(zScore: score.contributors.zRestingHR, higherIsBetter: false)
-                : "N/A",
+            verdictTag: tag,
             decimalPlaces: 0,
             isValueAvailable: hasValue
         )
@@ -209,15 +220,17 @@ enum RecoveryDetailBuilder {
         let band = personalBand(baseline)
         let state = contributorState(zScore: zScore)
         let tag = band == nil ? "PROVISIONAL" : verdictTag(zScore: zScore, higherIsBetter: true)
+        let displayText = hours.map { SleepDurationFormatting.hoursAndMinutes(from: $0) }
         return RecoveryContributorRow(
             id: "sleep",
             label: "Sleep",
             value: value,
             band: band,
-            unit: "h",
+            unit: "",
             state: state,
             verdictTag: tag,
-            isValueAvailable: hasValue
+            isValueAvailable: hasValue,
+            valueDisplayText: displayText
         )
     }
 

@@ -6,6 +6,7 @@ struct ExerciseSectionView: View {
     let exercise: WorkoutSessionExerciseDraft
     let displayName: String
     let targetSummary: String?
+    let coachingCue: String?
     let restSeconds: Int
     let isReorderMode: Bool
     let previousLookup: (SetEntryDraft) -> PreviousPerformance?
@@ -87,6 +88,12 @@ struct ExerciseSectionView: View {
                         }
                         .buttonStyle(.plain)
                         .disabled(isReorderMode)
+
+                        if let coachingCue {
+                            Text(coachingCue)
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
@@ -159,6 +166,7 @@ struct ExerciseSectionView: View {
         ),
         displayName: "Bench Press (Barbell)",
         targetSummary: "3×8 · 80kg · RPE 8",
+        coachingCue: "Drive through your heels and keep your chest proud.",
         restSeconds: 90,
         isReorderMode: false,
         previousLookup: { _ in nil },

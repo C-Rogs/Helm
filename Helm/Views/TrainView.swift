@@ -54,10 +54,12 @@ struct TrainView: View {
 
                 VStack(spacing: 0) {
                     if controller.hasActiveSession,
-                       let endsAt = controller.snapshot?.restTimer?.endsAt,
+                       let timer = controller.snapshot?.restTimer,
+                       let endsAt = timer.endsAt,
                        controller.isRestTimerRunning {
                         RestTimerBanner(
                             endsAt: endsAt,
+                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
                             onSkip: {
                                 Task { await controller.skipRest() }
                             },
@@ -258,6 +260,7 @@ struct TrainView: View {
             exercise: exercise,
             displayName: controller.displayName(for: exercise.exerciseID),
             targetSummary: controller.targetSummary(for: exercise.exerciseID),
+            coachingCue: controller.coachingCue(for: exercise.exerciseID),
             restSeconds: exercise.targetRestSeconds ?? 90,
             isReorderMode: controller.isReorderMode,
             previousLookup: { set in
@@ -413,7 +416,6 @@ struct TrainView: View {
         }
         controller.handleRestRemainingSecondsChange(current)
         if remaining == 0 {
-            controller.handleRestExpiredProactiveCoach()
             Task { await controller.reconcileExpiredRestTimer() }
         }
     }

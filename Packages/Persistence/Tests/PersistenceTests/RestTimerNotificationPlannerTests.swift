@@ -27,4 +27,26 @@ struct RestTimerNotificationPlannerTests {
                 == "helm.rest.abc"
         )
     }
+
+    @Test("suppresses rest timer banner while app is foreground")
+    func suppressesForegroundRestBanner() {
+        #expect(
+            RestTimerNotificationPlanner.shouldSuppressForegroundPresentation(
+                categoryIdentifier: RestTimerNotificationPlanner.notificationCategoryID,
+                isAppForeground: true
+            )
+        )
+        #expect(
+            !RestTimerNotificationPlanner.shouldSuppressForegroundPresentation(
+                categoryIdentifier: RestTimerNotificationPlanner.notificationCategoryID,
+                isAppForeground: false
+            )
+        )
+        #expect(
+            !RestTimerNotificationPlanner.shouldSuppressForegroundPresentation(
+                categoryIdentifier: "other",
+                isAppForeground: true
+            )
+        )
+    }
 }

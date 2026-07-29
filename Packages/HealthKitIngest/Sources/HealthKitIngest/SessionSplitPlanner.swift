@@ -47,17 +47,11 @@ public enum SessionSplitPlanner {
     }
 
     public static func splitKind(for day: HelmDay, emphasis: String?, calendar: Calendar = .current) -> SessionSplitKind {
-        if let emphasisKind = emphasisSplitKind(emphasis) {
-            return emphasisKind
-        }
         let weekdayIndex = weekdayIndex(for: day, calendar: calendar)
         return rotation[weekdayIndex % rotation.count]
     }
 
     public static func splitLabel(for muscles: [MuscleGroup], emphasis: String?) -> String {
-        if let emphasisKind = emphasisSplitKind(emphasis) {
-            return emphasisKind.label
-        }
         if let matched = matchSplitKind(for: muscles) {
             return matched.label
         }
@@ -69,10 +63,7 @@ public enum SessionSplitPlanner {
     }
 
     public static func rotationSplits(emphasis: String?) -> [SessionSplitKind] {
-        if let emphasisKind = emphasisSplitKind(emphasis) {
-            return [emphasisKind]
-        }
-        return rotation
+        rotation
     }
 
     public static func matchSplitKind(for muscles: [MuscleGroup]) -> SessionSplitKind? {
