@@ -6,6 +6,7 @@ public struct SleepRecord: Sendable, Hashable, Codable, Identifiable {
     public let start: Date
     public let end: Date
     public let helmDay: HelmDay
+    public let stage: SleepAnalysisStage
     public let sourceBundleID: String?
 
     public var duration: TimeInterval {
@@ -17,12 +18,14 @@ public struct SleepRecord: Sendable, Hashable, Codable, Identifiable {
         start: Date,
         end: Date,
         helmDay: HelmDay,
+        stage: SleepAnalysisStage = .asleepUnspecified,
         sourceBundleID: String? = nil
     ) {
         self.id = id
         self.start = start
         self.end = end
         self.helmDay = helmDay
+        self.stage = stage
         self.sourceBundleID = sourceBundleID
     }
 

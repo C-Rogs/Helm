@@ -4,6 +4,7 @@ import Foundation
 ///
 /// Uses an 18:00–18:00 local window on the wake calendar day and merges overlapping
 /// intervals before summing. Matches `BioharvestHealthKitMath` / Schema V2 export math.
+/// See `Docs/SLEEP-METRICS.md` for the canonical "Time Asleep" definition.
 public enum SleepAggregation: Sendable {
     /// Start of the sleep window for a wake calendar day (18:00 on the previous day).
     public static func sleepWindowStart(for wakeDay: Date, calendar: Calendar) -> Date {
@@ -29,7 +30,11 @@ public enum SleepAggregation: Sendable {
         guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { return nil }
         let windowStart = sleepWindowStart(for: wakeDay, calendar: calendar)
         let windowEnd = sleepWindowEnd(for: wakeDay, calendar: calendar)
-        return totalHours(from: records, windowStart: windowStart, windowEnd: windowEnd)
+        return nightSummary(
+            from: records,
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        ).asleepHours
     }
 
     /// Merges overlapping clipped intervals and returns total asleep hours, if any.
@@ -38,11 +43,65 @@ public enum SleepAggregation: Sendable {
         windowStart: Date,
         windowEnd: Date
     ) -> Double? {
-        let intervals = records.compactMap { record -> (start: Date, end: Date)? in
-            clip(record.start ... record.end, to: windowStart ... windowEnd)
-        }
-        guard let minutes = mergedDurationMinutes(from: intervals) else { return nil }
-        return minutes / 60.0
+        nightSummary(from: records, windowStart: windowStart, windowEnd: windowEnd).asleepHours
+    }
+
+    /// Stage-aware nightly totals for a wake-day window.
+    public static func nightSummary(
+        from records: [SleepRecord],
+        windowStart: Date,
+        windowEnd: Date
+    ) -> SleepNightSummary {
+        let asleepStages: Set<SleepAnalysisStage> = [
+            .asleepUnspecified, .asleepCore, .asleepDeep, .asleepREM
+        ]
+
+        let asleepMinutes = mergedDurationMinutes(
+            from: records,
+            stages: asleepStages,
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+        let inBedMinutes = mergedDurationMinutes(
+            from: records,
+            stages: [.inBed],
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+        let awakeMinutes = mergedDurationMinutes(
+            from: records,
+            stages: [.awake],
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+        let deepMinutes = mergedDurationMinutes(
+            from: records,
+            stages: [.asleepDeep],
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+        let remMinutes = mergedDurationMinutes(
+            from: records,
+            stages: [.asleepREM],
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+
+        let asleepHours = asleepMinutes.map { $0 / 60.0 }
+        let efficiency = sleepEfficiency(
+            asleepMinutes: asleepMinutes,
+            inBedMinutes: inBedMinutes,
+            awakeMinutes: awakeMinutes
+        )
+
+        return SleepNightSummary(
+            asleepHours: asleepHours,
+            inBedHours: inBedMinutes.map { $0 / 60.0 },
+            awakeMinutes: awakeMinutes,
+            deepMinutes: deepMinutes,
+            remMinutes: remMinutes,
+            efficiency: efficiency
+        )
     }
 
     /// Merges overlapping intervals and returns total duration in minutes.
@@ -71,6 +130,36 @@ public enum SleepAggregation: Sendable {
 
         let totalSeconds = merged.reduce(0.0) { $0 + $1.end.timeIntervalSince($1.start) }
         return totalSeconds / 60.0
+    }
+
+    private static func mergedDurationMinutes(
+        from records: [SleepRecord],
+        stages: Set<SleepAnalysisStage>,
+        windowStart: Date,
+        windowEnd: Date
+    ) -> Double? {
+        let intervals = records.compactMap { record -> (start: Date, end: Date)? in
+            guard stages.contains(record.stage) else { return nil }
+            return clip(record.start ... record.end, to: windowStart ... windowEnd)
+        }
+        return mergedDurationMinutes(from: intervals)
+    }
+
+    private static func sleepEfficiency(
+        asleepMinutes: Double?,
+        inBedMinutes: Double?,
+        awakeMinutes: Double?
+    ) -> Double? {
+        guard let asleepMinutes, asleepMinutes > 0 else { return nil }
+        if let inBedMinutes, inBedMinutes > 0 {
+            return min(1.0, asleepMinutes / inBedMinutes)
+        }
+        if let awakeMinutes {
+            let denominator = asleepMinutes + awakeMinutes
+            guard denominator > 0 else { return nil }
+            return min(1.0, asleepMinutes / denominator)
+        }
+        return nil
     }
 
     private static func clip(

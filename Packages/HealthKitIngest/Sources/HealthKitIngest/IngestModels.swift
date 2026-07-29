@@ -31,22 +31,24 @@ public struct IngestSleepSample: Sendable, Hashable {
     public let id: UUID
     public let start: Date
     public let end: Date
-    public let isAsleep: Bool
+    public let stage: SleepAnalysisStage
     public let sourceBundleID: String?
 
     public init(
         id: UUID,
         start: Date,
         end: Date,
-        isAsleep: Bool,
+        stage: SleepAnalysisStage,
         sourceBundleID: String?
     ) {
         self.id = id
         self.start = start
         self.end = end
-        self.isAsleep = isAsleep
+        self.stage = stage
         self.sourceBundleID = sourceBundleID
     }
+
+    public var isAsleep: Bool { stage.isAsleep }
 }
 
 public struct IngestWorkoutSample: Sendable, Hashable {

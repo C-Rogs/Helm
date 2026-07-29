@@ -57,19 +57,33 @@ enum IngestSampleMapper {
             guard IngestSampleFilter.shouldIngest(sourceBundleID: bundleID, ownBundleID: ownBundleID) else {
                 return nil
             }
-            let asleepValues: Set<Int> = [
-                HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
-                HKCategoryValueSleepAnalysis.asleepCore.rawValue,
-                HKCategoryValueSleepAnalysis.asleepDeep.rawValue,
-                HKCategoryValueSleepAnalysis.asleepREM.rawValue
-            ]
+            guard let stage = sleepStage(for: categorySample.value) else { return nil }
             return IngestSleepSample(
                 id: categorySample.uuid,
                 start: categorySample.startDate,
                 end: categorySample.endDate,
-                isAsleep: asleepValues.contains(categorySample.value),
+                stage: stage,
                 sourceBundleID: bundleID
             )
+        }
+    }
+
+    static func sleepStage(for hkValue: Int) -> SleepAnalysisStage? {
+        switch hkValue {
+        case HKCategoryValueSleepAnalysis.inBed.rawValue:
+            .inBed
+        case HKCategoryValueSleepAnalysis.awake.rawValue:
+            .awake
+        case HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue:
+            .asleepUnspecified
+        case HKCategoryValueSleepAnalysis.asleepCore.rawValue:
+            .asleepCore
+        case HKCategoryValueSleepAnalysis.asleepDeep.rawValue:
+            .asleepDeep
+        case HKCategoryValueSleepAnalysis.asleepREM.rawValue:
+            .asleepREM
+        default:
+            nil
         }
     }
 

@@ -54,11 +54,25 @@ public struct SleepRepository: Sendable {
 
     /// Total asleep hours for a wake day using the 18:00–18:00 window and overlap merge.
     public func totalSleepHours(for helmDay: HelmDay, calendar: Calendar = .current) throws -> Double? {
+        try nightSummary(forWakeDay: helmDay, calendar: calendar)?.asleepHours
+    }
+
+    /// Stage-aware nightly totals for a wake calendar day derived from `helmDay`.
+    public func nightSummary(forWakeDay helmDay: HelmDay, calendar: Calendar = .current) throws -> SleepNightSummary? {
         guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { return nil }
+        return try nightSummary(forWakeCalendarDay: wakeDay, calendar: calendar)
+    }
+
+    /// Stage-aware nightly totals for a wake calendar day.
+    public func nightSummary(forWakeCalendarDay wakeDay: Date, calendar: Calendar = .current) throws -> SleepNightSummary {
         let windowStart = SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
         let windowEnd = SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
         let records = try fetchOverlapping(start: windowStart, end: windowEnd)
-        return SleepAggregation.totalHours(from: records, windowStart: windowStart, windowEnd: windowEnd)
+        return SleepAggregation.nightSummary(
+            from: records,
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
     }
 
     public func listDays() throws -> [HelmDay] {

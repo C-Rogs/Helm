@@ -3,6 +3,7 @@ import DesignSystem
 import Foundation
 import HealthKitIngest
 import NutritionKit
+import Persistence
 import ReadinessKit
 import SwiftUI
 
@@ -18,6 +19,7 @@ struct DashboardView: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
     @State private var contributorDetailsVisible = true
+    @State private var sleepSummary: SleepNightSummary?
     @Namespace private var readinessNamespace
     @Namespace private var prescriptionNamespace
     @Namespace private var muscleVolumeNamespace
@@ -38,14 +40,16 @@ struct DashboardView: View {
                         .helmStaggeredAppear(index: 2)
                     readinessCard
                         .helmStaggeredAppear(index: 3)
-                    prescriptionCard
+                    sleepCard
                         .helmStaggeredAppear(index: 4)
-                    muscleVolumeSummaryCard
+                    prescriptionCard
                         .helmStaggeredAppear(index: 5)
-                    nutritionTargetsCard
+                    muscleVolumeSummaryCard
                         .helmStaggeredAppear(index: 6)
-                    DashboardTrendsSection()
+                    nutritionTargetsCard
                         .helmStaggeredAppear(index: 7)
+                    DashboardTrendsSection()
+                        .helmStaggeredAppear(index: 8)
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -53,7 +57,7 @@ struct DashboardView: View {
                         Label("Ask Coach", helmIcon: .chat, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
-                    .helmStaggeredAppear(index: 8)
+                    .helmStaggeredAppear(index: 9)
                 }
                 .helmScreenPadding()
             }
@@ -62,6 +66,7 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.large)
             .task {
                 await readinessService.refresh()
+                await loadSleepSummary()
                 await prescriptionService.refresh(readiness: readinessService.state.score)
                 await nutritionService.refresh(
                     prescriptionSummary: prescriptionService.state.summary
@@ -75,6 +80,7 @@ struct DashboardView: View {
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
+                    await loadSleepSummary()
                     await prescriptionService.refresh(readiness: newState.score)
                     await nutritionService.refresh(
                         prescriptionSummary: prescriptionService.state.summary
@@ -95,6 +101,36 @@ struct DashboardView: View {
                     )
                 }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var sleepCard: some View {
+        if let sleepSummary, sleepSummary.asleepHours != nil {
+            if let score = readinessService.state.score {
+                NavigationLink {
+                    RecoveryDetailContainer(
+                        score: score,
+                        matchedCardNamespace: readinessNamespace
+                    )
+                } label: {
+                    DashboardSleepCard(summary: sleepSummary)
+                }
+                .buttonStyle(.helmPressableCard)
+            } else {
+                DashboardSleepCard(summary: sleepSummary)
+            }
+        }
+    }
+
+    private func loadSleepSummary() async {
+        let wakeDay = Calendar.current.startOfDay(for: Date())
+        do {
+            sleepSummary = try PersistenceBootstrap.persistenceStore.sleep.nightSummary(
+                forWakeCalendarDay: wakeDay
+            )
+        } catch {
+            sleepSummary = nil
         }
     }
 

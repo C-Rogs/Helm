@@ -46,6 +46,9 @@ struct AppMigrator {
         if version >= 11 {
             NutritionLogStatusSchemaMigration.register(on: &migrator)
         }
+        if version >= 12 {
+            SleepStageSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

@@ -119,7 +119,7 @@ struct IngestPersistenceWriterTests {
                     id: sampleID,
                     start: start,
                     end: end,
-                    isAsleep: true,
+                    stage: .asleepCore,
                     sourceBundleID: "com.apple.health"
                 )
             ]

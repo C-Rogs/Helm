@@ -59,10 +59,13 @@ public enum ReadinessHistoryBuilder {
 
         for helmDay in days.sorted() {
             let dayMetrics = metricsByDay[helmDay]
-            let sleepDurationHours = SleepAggregation.totalHours(
-                for: helmDay,
-                records: sleepRecords,
-                calendar: calendar
+            guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { continue }
+            let windowStart = SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
+            let windowEnd = SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
+            let nightSummary = SleepAggregation.nightSummary(
+                from: sleepRecords,
+                windowStart: windowStart,
+                windowEnd: windowEnd
             )
 
             history.append(
@@ -75,7 +78,10 @@ public enum ReadinessHistoryBuilder {
                         metricsByDay: metricsByDay,
                         calendar: calendar
                     ),
-                    sleepDurationHours: sleepDurationHours,
+                    sleepDurationHours: nightSummary.asleepHours,
+                    sleepEfficiency: nightSummary.efficiency,
+                    deepSleepMinutes: nightSummary.deepMinutes,
+                    remSleepMinutes: nightSummary.remMinutes,
                     respiratoryRate: dayMetrics?.respiratoryRate,
                     wristTemperatureDeltaCelsius: dayMetrics?.wristTemperatureDeltaCelsius,
                     priorDayTRIMP: dayMetrics?.priorDayTRIMP

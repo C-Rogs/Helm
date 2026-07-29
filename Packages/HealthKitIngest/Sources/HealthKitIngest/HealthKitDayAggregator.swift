@@ -56,17 +56,16 @@ public enum HealthKitDayAggregator {
         calendar: Calendar,
         cutoff: DayCutoff = .default
     ) -> [SleepRecord] {
-        samples
-            .filter(\.isAsleep)
-            .map { sample in
-                SleepRecord(
-                    id: sample.id,
-                    start: sample.start,
-                    end: sample.end,
-                    helmDay: SleepRecord.helmDay(forStart: sample.start, cutoff: cutoff, calendar: calendar),
-                    sourceBundleID: sample.sourceBundleID
-                )
-            }
+        samples.map { sample in
+            SleepRecord(
+                id: sample.id,
+                start: sample.start,
+                end: sample.end,
+                helmDay: SleepRecord.helmDay(forStart: sample.start, cutoff: cutoff, calendar: calendar),
+                stage: sample.stage,
+                sourceBundleID: sample.sourceBundleID
+            )
+        }
     }
 
     public static func mealDrafts(

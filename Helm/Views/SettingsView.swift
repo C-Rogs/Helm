@@ -113,6 +113,9 @@ struct SettingsView: View {
                             schemaVersion: PersistenceBootstrap.schemaVersion
                         ))
                     }
+                    NavigationLink("Sleep diagnostics") {
+                        SleepDiagnosticsView()
+                    }
                     #if DEBUG
                     NavigationLink("Stored Data") {
                         DataBrowserView()
