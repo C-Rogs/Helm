@@ -1,11 +1,13 @@
 import DesignSystem
 import HealthKitIngest
 import SwiftUI
+import UIKit
 
 struct InSessionCoachSheet: View {
     @Bindable var controller: TrainSessionController
     @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
+    @State private var didCopyExport = false
 
     private var coachName: String { CoachDisplayNameStore.name }
 
@@ -87,6 +89,16 @@ struct InSessionCoachSheet: View {
                     }
                 }
                 if !controller.hasActiveSession, controller.prescriptionSummary != nil {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Export") {
+                            Task {
+                                if let text = await controller.exportPrescriptionText() {
+                                    UIPasteboard.general.string = text
+                                    didCopyExport = true
+                                }
+                            }
+                        }
+                    }
                     ToolbarItem(placement: .confirmationAction) {
                         Button("Start") {
                             Task {
@@ -103,6 +115,11 @@ struct InSessionCoachSheet: View {
         }
         .presentationDetents([.fraction(0.28), .medium, .large])
         .presentationDragIndicator(.visible)
+        .alert("Copied", isPresented: $didCopyExport) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Prescription copied for Gemini verification.")
+        }
     }
 
     private var emptyState: some View {

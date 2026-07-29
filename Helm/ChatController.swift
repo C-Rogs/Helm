@@ -209,7 +209,12 @@ final class ChatController {
             }
 
             let today = HelmDay.day(for: .now, calendar: .current)
-            _ = try? await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(in: assembled, helmDay: today) { useAdjusted in
+            _ = try? await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
+                in: assembled,
+                helmDay: today,
+                persistence: persistence,
+                prescriptionService: PlanBootstrap.prescriptionService
+            ) { useAdjusted in
                 try await WorkoutStartCoordinator.startTodaysSession(
                     controller: TrainBootstrap.sessionController,
                     prescriptionService: PlanBootstrap.prescriptionService,

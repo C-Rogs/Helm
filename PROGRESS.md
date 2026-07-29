@@ -130,6 +130,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.12 Meal helmDay regression tests | done | 2026-07-29 | 88ae916 | Quick-add dinner regression for today/past/cutoff diary days; NutritionMealBucketProjection mirrors store bucketing. |
 | F-DT8.7 Arm emphasis weekly volume UX | done | 2026-07-29 | 47dbe5d | Reverted PlanKit keyword routing. Coach gets Training Plan Snapshot (verbatim emphasis + weekly ledger); engine keeps Push/Pull/Legs only. |
 | F-DT8.8 Coach recent workouts follow-up context | done | 2026-07-29 | 47dbe5d | Follow-up chat turns include Recent Workouts block only; coach services pass full assembled context. |
+| F-DT8.9 Pre-start coach reliability remainder | done | 2026-07-29 | 6f3c605 | Pre-train errors surfaced; coach diagnostics/signposts; workout_start exercises; prescription export on Train. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

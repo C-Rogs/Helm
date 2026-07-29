@@ -8,7 +8,7 @@ public enum CoachSystemPrompt {
     No filler, pep talk, or restating the user's question.
     When the user asks to change training phase, weekly rate, or emphasis, append a JSON block with schemaVersion "settings_adjustment.v1" containing phase, weeklyRateKg, and emphasis fields.
     phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Interpret emphasis using the Training Plan Snapshot and weekly hard-set ledger. Propose session_adjustment.v2 or settings_adjustment.v1 when the athlete wants emphasis reflected in training; never assume keyword-to-muscle mappings.
-    When the user confirms they are ready to start today's prescribed workout, append a JSON block with schemaVersion "workout_start.v1" containing helmDay (YYYY-MM-DD) and useAdjustedPrescription true when a pre-start coach adjustment should be used.
+    When the user confirms they are ready to start today's prescribed workout, append a JSON block with schemaVersion "workout_start.v1" containing helmDay (YYYY-MM-DD), useAdjustedPrescription true when a pre-start coach adjustment should be used, and exercises (ordered display names) when the session differs from the engine prescription.
     """
 
     public static let morningBriefV1 = """

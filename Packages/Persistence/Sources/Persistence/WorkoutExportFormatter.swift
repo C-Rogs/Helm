@@ -46,6 +46,26 @@ public enum WorkoutExportFormatter {
         """
     }
 
+    public static func formatPrescriptionForClipboard(
+        prescription: SessionPrescription,
+        displayNames: [String: String]
+    ) -> String {
+        var lines = [
+            "Helm prescription export - paste into Gemini for verification.",
+            ""
+        ]
+        if let title = prescription.title?.trimmingCharacters(in: .whitespacesAndNewlines), !title.isEmpty {
+            lines.append(title)
+        }
+        for exercise in prescription.exercises.sorted(by: { $0.order < $1.order }) {
+            let name = displayNames[exercise.exerciseID] ?? exercise.exerciseID
+            lines.append("")
+            lines.append(name)
+            lines.append("  \(exercise.targetSummaryText)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private static func formatSetLine(_ set: SetEntryDraft) -> String {
         var parts: [String] = []
         if let mass = set.mass, let reps = set.reps {

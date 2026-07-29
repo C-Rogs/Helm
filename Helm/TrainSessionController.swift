@@ -1,6 +1,7 @@
 import Core
 import CoachLLM
 import DesignSystem
+import Diagnostics
 import Foundation
 import HealthKitIngest
 import Observation
@@ -209,6 +210,21 @@ final class TrainSessionController {
         }
     }
 
+    func exportPrescriptionText() async -> String? {
+        do {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            guard !prescription.exercises.isEmpty else { return nil }
+            let names = try persistence.exercises.displayNames(for: prescription.exercises.map(\.exerciseID))
+            return WorkoutExportFormatter.formatPrescriptionForClipboard(
+                prescription: prescription,
+                displayNames: names
+            )
+        } catch {
+            return nil
+        }
+    }
+
     private func loadPreStartCoachIntro() async {
         guard let summary = prescriptionSummary else { return }
         isCoachThinking = true
@@ -235,11 +251,20 @@ final class TrainSessionController {
             )
             coachMessages = [InSessionCoachMessage(role: .assistant, text: intro.text)]
             coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: intro.text)])
+            coachTurnError = nil
+            CoachDiagnosticsStore.shared.clear()
         } catch {
             coachTurnError = CoachUserFacingError.message(for: error)
-            let fallback = preStartCoach.engineIntro(for: brief, summary: summary)
-            coachMessages = [InSessionCoachMessage(role: .assistant, text: fallback.text)]
-            coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: fallback.text)])
+            coachMessages = []
+            coachThread = .empty
+            CoachDiagnosticsStore.shared.recordFailure(surface: "preStartIntro", error: error)
+            Task {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .coachLLM,
+                    message: "Pre-start coach intro failed"
+                )
+            }
         }
     }
 
@@ -1124,8 +1149,33 @@ final class TrainSessionController {
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
             coachTurnError = message
+            CoachDiagnosticsStore.shared.recordFailure(
+                surface: "preStart",
+                error: InSessionCoachError.providerUnavailable(message)
+            )
+            Task {
+                await DiagnosticsLog.shared.record(
+                    category: .coachLLM,
+                    level: .error,
+                    message: "Pre-start coach turn failed",
+                    context: ["surface": "preStart", "error": String(describing: InSessionCoachError.providerUnavailable(message))]
+                )
+            }
         } catch {
             coachTurnError = CoachUserFacingError.message(for: error)
+            CoachDiagnosticsStore.shared.recordFailure(
+                surface: "preStart",
+                error: error,
+                requestID: lastCoachRequestID
+            )
+            Task {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .coachLLM,
+                    message: "Pre-start coach turn failed",
+                    context: ["surface": "preStart"]
+                )
+            }
         }
     }
 
@@ -1189,6 +1239,14 @@ final class TrainSessionController {
                 surface: "inSession",
                 error: InSessionCoachError.providerUnavailable(message)
             )
+            Task {
+                await DiagnosticsLog.shared.record(
+                    category: .coachLLM,
+                    level: .error,
+                    message: "In-session coach turn failed",
+                    context: ["surface": "inSession", "error": message]
+                )
+            }
         } catch {
             coachTurnError = CoachUserFacingError.message(for: error)
             CoachDiagnosticsStore.shared.recordFailure(
@@ -1196,6 +1254,14 @@ final class TrainSessionController {
                 error: error,
                 requestID: lastCoachRequestID
             )
+            Task {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .coachLLM,
+                    message: "In-session coach turn failed",
+                    context: ["surface": "inSession"]
+                )
+            }
         }
     }
 

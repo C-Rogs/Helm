@@ -1,5 +1,6 @@
 import CoachLLM
 import Core
+import Diagnostics
 import Foundation
 import Persistence
 import PlanKit
@@ -124,6 +125,11 @@ public struct InSessionCoachService: Sendable {
         context: CoachContextDays,
         thread: CoachThreadState = .empty
     ) async throws -> CoachSessionProposal {
+        let signpost = HelmSignpost(name: .inSessionCoachPropose, category: .coachLLM)
+        let signpostID = signpost.makeSignpostID()
+        signpost.begin(id: signpostID)
+        defer { signpost.end(id: signpostID) }
+
         let availability = await provider.availability()
         guard availability.isAvailable else {
             let message: String

@@ -2,6 +2,7 @@ import Core
 import DesignSystem
 import HealthKitIngest
 import SwiftUI
+import UIKit
 
 struct TrainView: View {
     @Bindable private var controller = TrainBootstrap.sessionController
@@ -17,6 +18,7 @@ struct TrainView: View {
     @State private var restEditorExerciseID: String?
     @State private var isShowingSavePrescriptionTemplate = false
     @State private var prescriptionTemplateName = ""
+    @State private var didCopyPrescriptionExport = false
 
     var body: some View {
         navigationRoot
@@ -180,6 +182,16 @@ struct TrainView: View {
             }
             .buttonStyle(.helmSecondary)
 
+            Button("Export") {
+                Task {
+                    if let text = await controller.exportPrescriptionText() {
+                        UIPasteboard.general.string = text
+                        didCopyPrescriptionExport = true
+                    }
+                }
+            }
+            .buttonStyle(.helmSecondary)
+
             Button("Empty workout") {
                 Task { await controller.startWorkout() }
             }
@@ -205,6 +217,11 @@ struct TrainView: View {
             Button("Cancel", role: .cancel) {}
         } message: {
             Text("Save today's engine prescription as a reusable workout template.")
+        }
+        .alert("Copied", isPresented: $didCopyPrescriptionExport) {
+            Button("OK", role: .cancel) {}
+        } message: {
+            Text("Prescription copied for Gemini verification.")
         }
     }
 

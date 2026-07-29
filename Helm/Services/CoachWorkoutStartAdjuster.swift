@@ -1,21 +1,19 @@
 import CoachLLM
 import Core
 import Foundation
-
-struct WorkoutStartPayload: Codable, Sendable, Equatable {
-    let schemaVersion: String
-    let helmDay: String?
-    let useAdjustedPrescription: Bool?
-}
+import HealthKitIngest
+import Persistence
 
 enum CoachWorkoutStartAdjuster {
     @MainActor
     static func tryStartFromEmbeddedJSON(
         in text: String,
         helmDay: HelmDay,
+        persistence: PersistenceStore,
+        prescriptionService: PrescriptionService,
         onStart: @MainActor (_ useAdjustedPrescription: Bool) async throws -> Void
     ) async throws -> Bool {
-        guard let payload = extractPayload(from: text) else { return false }
+        guard let payload = WorkoutStartPayloadParser.parse(from: text) else { return false }
         guard payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue else {
             return false
         }
@@ -24,8 +22,21 @@ enum CoachWorkoutStartAdjuster {
            parsed != helmDay {
             return false
         }
+
         let useAdjusted = payload.useAdjustedPrescription ?? false
-        try await onStart(useAdjusted)
+        if let exercises = payload.exercises, !exercises.isEmpty {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let base = try await prescriptionService.todaysPrescription(readiness: readiness)
+            if let adjusted = try WorkoutStartPrescriptionResolver.prescription(
+                exerciseLabels: exercises,
+                base: base,
+                persistence: persistence
+            ) {
+                PrescriptionDayStore.save(adjusted, for: helmDay)
+            }
+        }
+
+        try await onStart(useAdjusted || payload.exercises != nil)
         return true
     }
 
@@ -39,14 +50,5 @@ enum CoachWorkoutStartAdjuster {
             return nil
         }
         return HelmDay(year: year, month: month, day: day)
-    }
-
-    private static func extractPayload(from text: String) -> WorkoutStartPayload? {
-        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}") else {
-            return nil
-        }
-        let snippet = String(text[start ... end])
-        guard let data = snippet.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(WorkoutStartPayload.self, from: data)
     }
 }

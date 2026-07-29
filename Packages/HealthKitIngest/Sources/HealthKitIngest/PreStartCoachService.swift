@@ -73,7 +73,7 @@ public struct PreStartCoachService: Sendable {
         }
         let trimmed = assembled.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            return engineIntro(for: brief, summary: summary)
+            throw CoachStructuredOutputError.emptyResponse
         }
         return PreStartCoachIntro(text: trimmed, isEngineOnly: false)
     }
