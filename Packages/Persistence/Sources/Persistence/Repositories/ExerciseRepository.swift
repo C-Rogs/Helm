@@ -100,6 +100,26 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func fetchCoachingCues(id: String) throws -> [String] {
+        try pool.read { db in
+            guard let json = try String.fetchOne(
+                db,
+                sql: """
+                    SELECT coaching_cues_json
+                    FROM exercise
+                    WHERE id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [id]
+            ),
+            let data = json.data(using: .utf8),
+            let cues = try JSONSerialization.jsonObject(with: data) as? [String]
+            else {
+                return []
+            }
+            return cues.filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        }
+    }
+
     public func listForPicker(search: String? = nil, limit: Int = 200) throws -> [ExerciseSummary] {
         try listForPicker(search: search, muscleGroup: nil, limit: limit)
     }

@@ -899,8 +899,10 @@ final class TrainSessionController {
 
     func coachingCue(for exerciseID: String) -> String? {
         guard let sessionID = snapshot?.session.id else { return nil }
+        let coachingCues = (try? persistence.exercises.fetchCoachingCues(id: exerciseID)) ?? []
         let instruction = try? persistence.exercises.fetchInstructionText(id: exerciseID)
         return ExerciseCoachingCuePicker.cue(
+            coachingCues: coachingCues,
             instructionText: instruction,
             exerciseID: exerciseID,
             sessionID: sessionID

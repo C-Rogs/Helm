@@ -49,6 +49,9 @@ struct AppMigrator {
         if version >= 12 {
             SleepStageSchemaMigration.register(on: &migrator)
         }
+        if version >= 13 {
+            ExerciseCoachingCuesSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

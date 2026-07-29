@@ -77,11 +77,18 @@ enum ExerciseSeedMerger {
             movementPattern: overlay.movementPattern ?? base.movementPattern,
             sourceDatasetID: overlay.sourceDatasetID ?? base.sourceDatasetID,
             instructionText: overlay.instructionText ?? base.instructionText,
+            coachingCues: mergedCoachingCues(base: base.coachingCues, overlay: overlay.coachingCues),
             imageURL: overlay.imageURL ?? base.imageURL,
             isPickerDefault: overlay.isPickerDefault ?? base.isPickerDefault,
             isHevyLibrary: overlay.isHevyLibrary ?? base.isHevyLibrary,
             evidence: overlay.evidence ?? base.evidence
         )
+    }
+
+    private static func mergedCoachingCues(base: [String]?, overlay: [String]?) -> [String]? {
+        if let overlay, !overlay.isEmpty { return overlay }
+        if let base, !base.isEmpty { return base }
+        return nil
     }
 
     private static func normalizeCanonical(_ value: String) -> String {

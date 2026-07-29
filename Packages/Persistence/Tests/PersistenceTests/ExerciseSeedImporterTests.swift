@@ -77,6 +77,27 @@ struct ExerciseSeedImporterTests {
         #expect(deadlift?.displayName == "Deadlift (Barbell)")
     }
 
+    @Test("coaching cues import into GRDB on version bump")
+    func coachingCuesImport() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let entry = ExerciseSeedEntry(
+            id: "seed-bench-press",
+            canonicalName: "bench press (barbell)",
+            displayName: "Bench Press (Barbell)",
+            aliases: ["Bench Press"],
+            exerciseMode: .weightReps,
+            coachingCues: [
+                "Brace hard and pull shoulder blades together.",
+                "Press up and slightly back."
+            ]
+        )
+        _ = try importer.importEntries([entry], seedVersion: 1)
+        let cues = try store.exercises.fetchCoachingCues(id: "seed-bench-press")
+        #expect(cues.count == 2)
+        #expect(cues[0] == "Brace hard and pull shoulder blades together.")
+    }
+
     @Test("version bump retains previously imported exercises")
     func versionBumpRetainsExercises() throws {
         let store = try PersistenceStore.inMemory()

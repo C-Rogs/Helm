@@ -63,6 +63,33 @@ struct ExerciseSeedMergerTests {
         #expect(merged.explicitPickerIDs == ["seed-Face_Pull"])
     }
 
+    @Test("overlay coaching cues replace catalog cues")
+    func mergesCoachingCues() {
+        let catalog = [
+            ExerciseSeedEntry(
+                id: "seed-bench-press",
+                canonicalName: "bench press (barbell)",
+                displayName: "Bench Press (Barbell)",
+                aliases: [],
+                exerciseMode: .weightReps,
+                coachingCues: ["Old cue one is long.", "Old cue two is long."]
+            )
+        ]
+        let overlay = [
+            ExerciseSeedEntry(
+                id: "seed-bench-press",
+                canonicalName: "bench press (barbell)",
+                displayName: "Bench Press (Barbell)",
+                aliases: [],
+                exerciseMode: .weightReps,
+                coachingCues: ["Brace hard and pull shoulder blades together.", "Press up and slightly back."]
+            )
+        ]
+
+        let merged = ExerciseSeedMerger.merge(catalog: catalog, overlay: overlay)
+        #expect(merged.entries[0].coachingCues == overlay[0].coachingCues)
+    }
+
     @Test("overlay appends when no catalog match")
     func appendsUnmatchedOverlay() {
         let overlay = [

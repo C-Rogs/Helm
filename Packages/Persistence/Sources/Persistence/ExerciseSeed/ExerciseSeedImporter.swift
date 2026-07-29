@@ -88,6 +88,7 @@ public struct ExerciseSeedImporter: Sendable {
 
     private func upsertSeedEntry(_ entry: ExerciseSeedEntry, now: String, in db: Database) throws {
         let secondaryJSON = try encodeJSON(entry.secondaryMuscleGroups)
+        let coachingCuesJSON = try encodeJSON(entry.coachingCues ?? [])
         let isCustom = 0
         let isPickerDefault = (entry.isPickerDefault ?? false) ? 1 : 0
         let isHevyLibrary = (entry.isHevyLibrary ?? false) ? 1 : 0
@@ -97,9 +98,9 @@ public struct ExerciseSeedImporter: Sendable {
                 INSERT INTO exercise (
                     id, canonical_name, display_name, exercise_mode, equipment_type,
                     primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name,
-                    instruction_text, gif_url, source_dataset_id, is_hevy_library, is_picker_default,
+                    instruction_text, coaching_cues_json, gif_url, source_dataset_id, is_hevy_library, is_picker_default,
                     created_at, updated_at, deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 ON CONFLICT(id) DO UPDATE SET
                     canonical_name = excluded.canonical_name,
                     display_name = excluded.display_name,
@@ -108,6 +109,10 @@ public struct ExerciseSeedImporter: Sendable {
                     primary_muscle_group = excluded.primary_muscle_group,
                     secondary_muscle_groups_json = excluded.secondary_muscle_groups_json,
                     instruction_text = COALESCE(excluded.instruction_text, exercise.instruction_text),
+                    coaching_cues_json = CASE
+                        WHEN excluded.coaching_cues_json != '[]' THEN excluded.coaching_cues_json
+                        ELSE exercise.coaching_cues_json
+                    END,
                     gif_url = COALESCE(excluded.gif_url, exercise.gif_url),
                     source_dataset_id = excluded.source_dataset_id,
                     is_hevy_library = MAX(exercise.is_hevy_library, excluded.is_hevy_library),
@@ -127,6 +132,7 @@ public struct ExerciseSeedImporter: Sendable {
                 isCustom,
                 entry.displayName.lowercased(),
                 entry.instructionText,
+                coachingCuesJSON,
                 entry.imageURL,
                 entry.sourceDatasetID,
                 isHevyLibrary,

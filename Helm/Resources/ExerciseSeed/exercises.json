@@ -1,5 +1,5 @@
 {
-  "seedVersion": 3,
+  "seedVersion": 4,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -8,378 +8,669 @@
       "id": "seed-horizontal-leg-press",
       "canonicalName": "horizontal leg press",
       "displayName": "Leg Press Horizontal (Machine)",
-      "aliases": ["Leg Press Horizontal (Machine)", "Horizontal Leg Press", "Leg Press"],
+      "aliases": [
+        "Leg Press Horizontal (Machine)",
+        "Horizontal Leg Press",
+        "Leg Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "quadriceps",
-      "secondaryMuscleGroups": ["glutes"],
+      "secondaryMuscleGroups": [
+        "glutes"
+      ],
       "movementPattern": "squat",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Drive through mid-foot and keep knees tracking over toes.",
+        "Lower until thighs are near parallel without your low back peeling off the pad.",
+        "Press smoothly; do not lock out aggressively at the top."
+      ]
     },
     {
       "id": "seed-seated-leg-curl",
       "canonicalName": "seated leg curl",
       "displayName": "Seated Leg Curl (Machine)",
-      "aliases": ["Seated Leg Curl (Machine)", "Seated Leg Curl"],
+      "aliases": [
+        "Seated Leg Curl (Machine)",
+        "Seated Leg Curl"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "hamstrings",
       "secondaryMuscleGroups": [],
       "movementPattern": "hinge",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Set the pad on the lower calf and keep hips pinned to the seat.",
+        "Curl until hamstrings fully shorten, then control the return.",
+        "Pause briefly at the bottom stretch before the next rep."
+      ]
     },
     {
       "id": "seed-lying-leg-curl",
       "canonicalName": "lying leg curl",
       "displayName": "Lying Leg Curl (Machine)",
-      "aliases": ["Lying Leg Curl (Machine)", "Lying Leg Curl"],
+      "aliases": [
+        "Lying Leg Curl (Machine)",
+        "Lying Leg Curl"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "hamstrings",
       "secondaryMuscleGroups": [],
       "movementPattern": "hinge",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Keep hips down on the bench throughout the curl.",
+        "Squeeze hamstrings at the top without kicking the hips up.",
+        "Lower under control to feel a full stretch each rep."
+      ]
     },
     {
       "id": "seed-leg-extension",
       "canonicalName": "leg extension",
       "displayName": "Leg Extension (Machine)",
-      "aliases": ["Leg Extension (Machine)", "Leg Extension"],
+      "aliases": [
+        "Leg Extension (Machine)",
+        "Leg Extension"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "quadriceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "squat",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Align knee with the machine axis and point toes slightly out.",
+        "Extend until quads contract hard, then lower without slamming the stack.",
+        "Keep torso still; move only at the knee."
+      ]
     },
     {
       "id": "seed-calf-extension",
       "canonicalName": "calf extension",
       "displayName": "Calf Extension (Machine)",
-      "aliases": ["Calf Extension (Machine)", "Calf Extension"],
+      "aliases": [
+        "Calf Extension (Machine)",
+        "Calf Extension"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "calves",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Pause at the top with a one-second squeeze.",
+        "Use a full stretch at the bottom on every rep.",
+        "Keep knees slightly bent if you feel it in the joint, not the calf."
+      ]
     },
     {
       "id": "seed-machine-crunch",
       "canonicalName": "machine crunch",
       "displayName": "Crunch (Machine)",
-      "aliases": ["Crunch (Machine)", "Machine Crunch"],
+      "aliases": [
+        "Crunch (Machine)",
+        "Machine Crunch"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "abs",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Exhale as you crunch and keep the lower back supported.",
+        "Pause at peak contraction before returning slowly.",
+        "Keep neck neutral; lead with the ribs toward the hips."
+      ]
     },
     {
       "id": "seed-lat-pulldown",
       "canonicalName": "lat pulldown (cable)",
       "displayName": "Lat Pulldown (Cable)",
-      "aliases": ["Lat Pulldown (Cable)", "Lat Pulldown", "Wide Grip Lat Pulldown", "Wide-Grip Lat Pulldown"],
+      "aliases": [
+        "Lat Pulldown (Cable)",
+        "Lat Pulldown",
+        "Wide Grip Lat Pulldown",
+        "Wide-Grip Lat Pulldown"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "lats",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "verticalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Pull elbows down toward your sides, not straight back.",
+        "Lean slightly back and drive the bar to upper chest.",
+        "Control the ascent; do not let the weight yank your shoulders up."
+      ]
     },
     {
       "id": "seed-chest-supported-row",
       "canonicalName": "chest-supported machine row",
       "displayName": "Iso-Lateral Row (Machine)",
-      "aliases": ["Iso-Lateral Row (Machine)", "Chest-Supported Machine Row", "Chest Supported Row (Machine)"],
+      "aliases": [
+        "Iso-Lateral Row (Machine)",
+        "Chest-Supported Machine Row",
+        "Chest Supported Row (Machine)"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "upper back",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "horizontalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Keep chest glued to the pad and pull elbows back.",
+        "Squeeze shoulder blades together at the finish.",
+        "Lower until arms are long without shrugging."
+      ]
     },
     {
       "id": "seed-single-arm-cable-lateral-raise",
       "canonicalName": "single-arm cable lateral raise",
       "displayName": "Single Arm Lateral Raise (Cable)",
-      "aliases": ["Single Arm Lateral Raise (Cable)", "Single-Arm Cable Lateral Raise"],
+      "aliases": [
+        "Single Arm Lateral Raise (Cable)",
+        "Single-Arm Cable Lateral Raise"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "shoulders",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Lead with the elbow and stop around shoulder height.",
+        "Keep a soft bend in the elbow; no swinging.",
+        "Brace your core so the torso stays still."
+      ]
     },
     {
       "id": "seed-machine-chest-press",
       "canonicalName": "machine chest press",
       "displayName": "Chest Press (Machine)",
-      "aliases": ["Chest Press (Machine)", "Machine Chest Press"],
+      "aliases": [
+        "Chest Press (Machine)",
+        "Machine Chest Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "chest",
-      "secondaryMuscleGroups": ["triceps", "shoulders"],
+      "secondaryMuscleGroups": [
+        "triceps",
+        "shoulders"
+      ],
       "movementPattern": "horizontalPush",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Retract shoulders before you press and keep wrists stacked.",
+        "Press in a slight arc without locking elbows harshly.",
+        "Drive feet into the floor for a stable base."
+      ]
     },
     {
       "id": "seed-machine-rear-delt-fly",
       "canonicalName": "machine rear delt fly",
       "displayName": "Rear Delt Reverse Fly (Machine)",
-      "aliases": ["Rear Delt Reverse Fly (Machine)", "Machine Rear Delt Fly", "Reverse Fly (Machine)"],
+      "aliases": [
+        "Rear Delt Reverse Fly (Machine)",
+        "Machine Rear Delt Fly",
+        "Reverse Fly (Machine)"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "shoulders",
-      "secondaryMuscleGroups": ["upper back"],
+      "secondaryMuscleGroups": [
+        "upper back"
+      ],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Lead with the elbows and keep a slight bend in the arms.",
+        "Squeeze rear delts; do not shrug at the top.",
+        "Use a controlled tempo; momentum steals tension."
+      ]
     },
     {
       "id": "seed-cable-face-pull",
       "canonicalName": "cable face pull",
       "displayName": "Face Pull (Cable)",
-      "aliases": ["Face Pull", "Face Pull (Cable)", "Cable Face Pull"],
+      "aliases": [
+        "Face Pull",
+        "Face Pull (Cable)",
+        "Cable Face Pull"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "shoulders",
-      "secondaryMuscleGroups": ["upper back"],
+      "secondaryMuscleGroups": [
+        "upper back"
+      ],
       "movementPattern": "horizontalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Pull toward the forehead with elbows high and wide.",
+        "Externally rotate at the end so knuckles face back.",
+        "Keep ribs down; avoid arching through the low back."
+      ]
     },
     {
       "id": "seed-incline-dumbbell-press",
       "canonicalName": "incline dumbbell press",
       "displayName": "Incline Dumbbell Press",
-      "aliases": ["Incline Dumbbell Press", "Incline DB Press"],
+      "aliases": [
+        "Incline Dumbbell Press",
+        "Incline DB Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
       "primaryMuscleGroup": "chest",
-      "secondaryMuscleGroups": ["triceps", "shoulders"],
+      "secondaryMuscleGroups": [
+        "triceps",
+        "shoulders"
+      ],
       "movementPattern": "horizontalPush",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Set shoulder blades down and back before the first rep.",
+        "Press up and slightly in without clanking the bells.",
+        "Lower with control to upper chest level."
+      ]
     },
     {
       "id": "seed-single-arm-dumbbell-row",
       "canonicalName": "single-arm dumbbell row",
       "displayName": "Single Arm Dumbbell Row",
-      "aliases": ["Single Arm Dumbbell Row", "Single-Arm Dumbbell Row", "One Arm Dumbbell Row"],
+      "aliases": [
+        "Single Arm Dumbbell Row",
+        "Single-Arm Dumbbell Row",
+        "One Arm Dumbbell Row"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
       "primaryMuscleGroup": "upper back",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "horizontalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Brace on the bench and keep torso parallel to the floor.",
+        "Row to the hip, driving the elbow back.",
+        "Let the shoulder stretch at the bottom without twisting."
+      ]
     },
     {
       "id": "seed-seated-dumbbell-shoulder-press",
       "canonicalName": "seated dumbbell shoulder press",
       "displayName": "Seated Dumbbell Shoulder Press",
-      "aliases": ["Seated Dumbbell Shoulder Press", "Seated DB Shoulder Press"],
+      "aliases": [
+        "Seated Dumbbell Shoulder Press",
+        "Seated DB Shoulder Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
       "primaryMuscleGroup": "shoulders",
-      "secondaryMuscleGroups": ["triceps"],
+      "secondaryMuscleGroups": [
+        "triceps"
+      ],
       "movementPattern": "verticalPush",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Keep ribs down and press vertically over the shoulders.",
+        "Stop just shy of full lockout if elbows bother you.",
+        "Do not lean back; use a back support if needed."
+      ]
     },
     {
       "id": "seed-ez-bar-curl",
       "canonicalName": "ez bar biceps curl",
       "displayName": "Heavy EZ Bar Biceps Curl",
-      "aliases": ["Heavy EZ Bar Biceps Curl", "EZ Bar Biceps Curl", "EZ Bar Curl"],
+      "aliases": [
+        "Heavy EZ Bar Biceps Curl",
+        "EZ Bar Biceps Curl",
+        "EZ Bar Curl"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "biceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Keep elbows pinned to your sides.",
+        "Curl without swinging the hips or shoulders.",
+        "Squeeze at the top and lower for a full stretch."
+      ]
     },
     {
       "id": "seed-triceps-rope-pushdown",
       "canonicalName": "triceps rope pushdown",
       "displayName": "Triceps Rope Pushdown",
-      "aliases": ["Triceps Rope Pushdown", "Rope Tricep Pushdown", "Tricep Rope Pushdown"],
+      "aliases": [
+        "Triceps Rope Pushdown",
+        "Rope Tricep Pushdown",
+        "Tricep Rope Pushdown"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "triceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Pin elbows to your sides and split the rope at the bottom.",
+        "Fully extend without letting shoulders roll forward.",
+        "Control the return; do not let the stack jerk your arms up."
+      ]
     },
     {
       "id": "seed-bench-press",
       "canonicalName": "bench press (barbell)",
       "displayName": "Bench Press (Barbell)",
-      "aliases": ["Bench Press", "Barbell Bench Press", "Flat Bench Press"],
+      "aliases": [
+        "Bench Press",
+        "Barbell Bench Press",
+        "Flat Bench Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "chest",
-      "secondaryMuscleGroups": ["triceps", "shoulders"],
+      "secondaryMuscleGroups": [
+        "triceps",
+        "shoulders"
+      ],
       "movementPattern": "horizontalPush",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Plant feet, squeeze the bar, and pull shoulder blades together.",
+        "Touch the bar to mid-chest with forearms vertical at the bottom.",
+        "Press up and slightly back while keeping glutes on the bench."
+      ]
     },
     {
       "id": "seed-squat",
       "canonicalName": "squat (barbell)",
       "displayName": "Squat (Barbell)",
-      "aliases": ["Squat", "Back Squat", "Barbell Squat"],
+      "aliases": [
+        "Squat",
+        "Back Squat",
+        "Barbell Squat"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "quadriceps",
-      "secondaryMuscleGroups": ["glutes"],
+      "secondaryMuscleGroups": [
+        "glutes"
+      ],
       "movementPattern": "squat",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Brace hard, sit hips back, and keep knees tracking over toes.",
+        "Drive the floor away and keep the chest proud on the way up.",
+        "Maintain tripod foot contact through every rep."
+      ]
     },
     {
       "id": "seed-romanian-deadlift",
       "canonicalName": "romanian deadlift (barbell)",
       "displayName": "Romanian Deadlift (Barbell)",
-      "aliases": ["Romanian Deadlift", "RDL", "Barbell Romanian Deadlift"],
+      "aliases": [
+        "Romanian Deadlift",
+        "RDL",
+        "Barbell Romanian Deadlift"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "hamstrings",
-      "secondaryMuscleGroups": ["glutes", "lower back"],
+      "secondaryMuscleGroups": [
+        "glutes",
+        "lower back"
+      ],
       "movementPattern": "hinge",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Push hips back while keeping the bar close to your legs.",
+        "Stop when hamstrings stretch with a flat back.",
+        "Drive hips forward to stand tall without hyperextending."
+      ]
     },
     {
       "id": "seed-overhead-press",
       "canonicalName": "overhead press (barbell)",
       "displayName": "Overhead Press (Barbell)",
-      "aliases": ["Overhead Press", "OHP", "Military Press", "Barbell Overhead Press"],
+      "aliases": [
+        "Overhead Press",
+        "OHP",
+        "Military Press",
+        "Barbell Overhead Press"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "shoulders",
-      "secondaryMuscleGroups": ["triceps"],
+      "secondaryMuscleGroups": [
+        "triceps"
+      ],
       "movementPattern": "verticalPush",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Squeeze glutes and ribs down before each rep.",
+        "Press the bar in a straight line finishing over mid-foot.",
+        "Move your head back slightly so the bar clears your face."
+      ]
     },
     {
       "id": "seed-pull-up",
       "canonicalName": "pull up",
       "displayName": "Pull Up",
-      "aliases": ["Pull Up", "Pull-Up", "Pullups"],
+      "aliases": [
+        "Pull Up",
+        "Pull-Up",
+        "Pullups"
+      ],
       "exerciseMode": "bodyweight_reps",
       "equipment": "bodyweight",
       "primaryMuscleGroup": "lats",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "verticalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Start from a dead hang with shoulders engaged.",
+        "Drive elbows down and chest toward the bar.",
+        "Lower under control to full extension."
+      ]
     },
     {
       "id": "seed-seated-cable-row",
       "canonicalName": "seated cable row",
       "displayName": "Seated Cable Row",
-      "aliases": ["Seated Cable Row", "Cable Row", "Seated Row (Cable)"],
+      "aliases": [
+        "Seated Cable Row",
+        "Cable Row",
+        "Seated Row (Cable)"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "upper back",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "horizontalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Sit tall, pull to the lower ribs, and squeeze shoulder blades.",
+        "Keep chest up; do not round forward to finish the rep.",
+        "Return until arms are long without losing posture."
+      ]
     },
     {
       "id": "seed-dumbbell-curl",
       "canonicalName": "curl (dumbbell)",
       "displayName": "Curl (Dumbbell)",
-      "aliases": ["Dumbbell Curl", "Bicep Curl (Dumbbell)", "DB Curl"],
+      "aliases": [
+        "Dumbbell Curl",
+        "Bicep Curl (Dumbbell)",
+        "DB Curl"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
       "primaryMuscleGroup": "biceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Keep upper arms still and supinate through the curl.",
+        "Squeeze at the top without swinging the dumbbells.",
+        "Lower slowly to full extension."
+      ]
     },
     {
       "id": "seed-tricep-pushdown",
       "canonicalName": "tricep pushdown (cable)",
       "displayName": "Tricep Pushdown (Cable)",
-      "aliases": ["Tricep Pushdown (Cable)", "Triceps Pushdown", "Cable Tricep Pushdown"],
+      "aliases": [
+        "Tricep Pushdown (Cable)",
+        "Triceps Pushdown",
+        "Cable Tricep Pushdown"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
       "primaryMuscleGroup": "triceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Lock elbows beside your torso and extend fully.",
+        "Keep wrists neutral; do not let them bend back.",
+        "Control the eccentric; tension stays on the triceps."
+      ]
     },
     {
       "id": "seed-hip-thrust",
       "canonicalName": "hip thrust (barbell)",
       "displayName": "Hip Thrust (Barbell)",
-      "aliases": ["Hip Thrust", "Barbell Hip Thrust"],
+      "aliases": [
+        "Hip Thrust",
+        "Barbell Hip Thrust"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "glutes",
-      "secondaryMuscleGroups": ["hamstrings"],
+      "secondaryMuscleGroups": [
+        "hamstrings"
+      ],
       "movementPattern": "hinge",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Tuck the chin and ribs down at the top squeeze.",
+        "Drive through heels until hips fully extend.",
+        "Pause at lockout without over-arching the low back."
+      ]
     },
     {
       "id": "seed-standing-calf-raise",
       "canonicalName": "standing calf raise",
       "displayName": "Standing Calf Raise",
-      "aliases": ["Standing Calf Raise", "Calf Raise", "Calf Raises"],
+      "aliases": [
+        "Standing Calf Raise",
+        "Calf Raise",
+        "Calf Raises"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "machine",
       "primaryMuscleGroup": "calves",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Rise onto the ball of the foot with a deliberate pause.",
+        "Lower into a deep stretch at the bottom.",
+        "Keep knees soft but stable through the set."
+      ]
     },
     {
       "id": "seed-dumbbell-lateral-raise",
       "canonicalName": "lateral raise (dumbbell)",
       "displayName": "Lateral Raise (Dumbbell)",
-      "aliases": ["Lateral Raise (Dumbbell)", "Dumbbell Lateral Raise", "Side Lateral Raise"],
+      "aliases": [
+        "Lateral Raise (Dumbbell)",
+        "Dumbbell Lateral Raise",
+        "Side Lateral Raise"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
       "primaryMuscleGroup": "shoulders",
       "secondaryMuscleGroups": [],
       "movementPattern": "other",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Lead with elbows and stop near shoulder height.",
+        "Keep a slight bend in the elbow; no body english.",
+        "Lower under control to keep tension on the delts."
+      ]
     },
     {
       "id": "seed-barbell-row",
       "canonicalName": "bent over row (barbell)",
       "displayName": "Bent Over Row (Barbell)",
-      "aliases": ["Bent Over Row", "Barbell Row", "Bent-Over Row (Barbell)"],
+      "aliases": [
+        "Bent Over Row",
+        "Barbell Row",
+        "Bent-Over Row (Barbell)"
+      ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
       "primaryMuscleGroup": "upper back",
-      "secondaryMuscleGroups": ["biceps"],
+      "secondaryMuscleGroups": [
+        "biceps"
+      ],
       "movementPattern": "horizontalPull",
       "isPickerDefault": true,
-      "isHevyLibrary": true
+      "isHevyLibrary": true,
+      "coachingCues": [
+        "Hinge until torso is roughly 45 degrees with a flat back.",
+        "Row the bar to the lower ribs and squeeze the back.",
+        "Lower under control without dropping the chest."
+      ]
     }
   ]
 }

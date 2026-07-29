@@ -59,6 +59,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
     public let movementPattern: String?
     public let sourceDatasetID: String?
     public let instructionText: String?
+    public let coachingCues: [String]?
     public let imageURL: String?
     public let isPickerDefault: Bool?
     public let isHevyLibrary: Bool?
@@ -76,6 +77,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         movementPattern: String? = nil,
         sourceDatasetID: String? = nil,
         instructionText: String? = nil,
+        coachingCues: [String]? = nil,
         imageURL: String? = nil,
         isPickerDefault: Bool? = nil,
         isHevyLibrary: Bool? = nil,
@@ -92,6 +94,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         self.movementPattern = movementPattern
         self.sourceDatasetID = sourceDatasetID
         self.instructionText = instructionText
+        self.coachingCues = coachingCues
         self.imageURL = imageURL
         self.isPickerDefault = isPickerDefault
         self.isHevyLibrary = isHevyLibrary
