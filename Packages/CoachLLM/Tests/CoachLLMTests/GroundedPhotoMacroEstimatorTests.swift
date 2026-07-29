@@ -52,6 +52,44 @@ struct GroundedPhotoMacroEstimatorTests {
         #expect(estimate.confidence == .low)
     }
 
+    @Test("fish and chips drops duplicate cooking oil from implicit fats")
+    func fishAndChipsDropsDuplicateOil() async throws {
+        struct FishAndChipsVision: MealMacroVisionProviding {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                _ = imageJPEGData
+                _ = userNotes
+                return MealDecomposition(
+                    payload: MealDecompositionPayload(
+                        schemaVersion: CoachOutputSchemaVersion.mealDecompositionV1.rawValue,
+                        mealDescription: "Fish and chips",
+                        items: [
+                            .init(name: "battered cod", estimatedGrams: 180, confidence: .medium),
+                            .init(name: "Potato chips, fried in commercial oil", estimatedGrams: 220, confidence: .high)
+                        ],
+                        implicitFats: [
+                            .init(name: "cooking oil", estimatedGrams: 12, confidence: .low)
+                        ]
+                    )
+                )
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                throw CoachProviderError.cancelled
+            }
+        }
+
+        let estimate = try await GroundedPhotoMacroEstimator(vision: FishAndChipsVision()).estimateMacros(
+            imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
+            userNotes: nil,
+            progress: nil
+        )
+
+        #expect(estimate.lineItems.count == 2)
+        #expect(estimate.groundingWarnings.contains {
+            $0.contains("Cooking fat already included")
+        })
+    }
+
     @Test("gemini vision fixture decodes decomposition")
     func geminiVisionFixture() async throws {
         let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")

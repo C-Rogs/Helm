@@ -31,7 +31,11 @@ enum MealVisionPrompt {
     You decompose meal photos for a training athlete.
     List every visible and reasonably inferable edible component.
     Estimate grams per item; use plate, hand, or utensil scale when visible.
-    Include likely hidden fats (oil, butter, dressing) in implicitFats.
+    Name each item at UK CoFID specificity, including cooking method and fat medium when visible
+    (e.g. "Potato chips, fried in commercial oil", not "potatoes").
+    Put fats in implicitFats only when not already represented in item names:
+    dressing on salad, oil on plainly cooked veg, butter on bread.
+    Never add separate cooking oil when items are already fried, battered, coated, or named with a fat medium.
     Do not output calories or macros.
     Round grams to whole numbers.
     Return only JSON matching the schema.

@@ -3,6 +3,9 @@ import Core
 import Diagnostics
 import Foundation
 import OSLog
+#if canImport(UIKit)
+import UIKit
+#endif
 
 private let photoMealLog = Logger(subsystem: "com.cameronro.helm", category: "NutritionKit")
 
@@ -35,13 +38,11 @@ public struct PhotoMealService: Sendable {
         guard !imageJPEGData.isEmpty else {
             throw PhotoMealError.invalidImage
         }
-        guard imageJPEGData.count <= Self.maxJPEGBytes else {
-            throw PhotoMealError.imageTooLarge
-        }
+        let payload = try Self.normalizedPayload(from: imageJPEGData)
 
         do {
             let estimate = try await estimator.estimateMacros(
-                imageJPEGData: imageJPEGData,
+                imageJPEGData: payload,
                 userNotes: userNotes,
                 portionAssist: portionAssist,
                 progress: progress
@@ -149,5 +150,18 @@ public struct PhotoMealService: Sendable {
         }
     }
 
-    private static let maxJPEGBytes = 4 * 1_024 * 1_024
+    static let maxJPEGBytes = 4 * 1_024 * 1_024
+
+    private static func normalizedPayload(from imageJPEGData: Data) throws -> Data {
+        if imageJPEGData.count <= maxJPEGBytes {
+            return imageJPEGData
+        }
+        #if canImport(UIKit)
+        if let image = UIImage(data: imageJPEGData),
+           let prepared = MealPhotoJPEGPreparer.prepare(from: image) {
+            return prepared
+        }
+        #endif
+        throw PhotoMealError.imageTooLarge
+    }
 }

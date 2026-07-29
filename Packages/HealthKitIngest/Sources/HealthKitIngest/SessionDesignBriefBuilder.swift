@@ -50,7 +50,7 @@ public enum SessionDesignBriefBuilder {
         let mesoText = mesocycleSummary(for: targetMuscles, state: mesocycleState)
         var summaryParts = [muscleText, "\(totalSets) sets", mesoText]
         if let progress = weeklyLedger.flatMap({
-            PlanKit.EmphasisVolumePolicy.weeklyProgress(
+            EmphasisVolumePolicy.weeklyProgress(
                 emphasis: phaseGoal.emphasis,
                 ledger: $0,
                 mesocycleState: mesocycleState
@@ -70,7 +70,7 @@ public enum SessionDesignBriefBuilder {
         }
         rationale.append("\(phaseGoal.phase.rawValue.capitalized) phase with \(exerciseCount) exercises prescribed.")
         if let weeklyLedger {
-            let progress = PlanKit.EmphasisVolumePolicy.weeklyProgress(
+            let progress = EmphasisVolumePolicy.weeklyProgress(
                 emphasis: phaseGoal.emphasis,
                 ledger: weeklyLedger,
                 mesocycleState: mesocycleState
@@ -94,7 +94,7 @@ public enum SessionDesignBriefBuilder {
         }
 
         let emphasisProgressLabel = weeklyLedger.flatMap {
-            PlanKit.EmphasisVolumePolicy.weeklyProgress(
+            EmphasisVolumePolicy.weeklyProgress(
                 emphasis: phaseGoal.emphasis,
                 ledger: $0,
                 mesocycleState: mesocycleState

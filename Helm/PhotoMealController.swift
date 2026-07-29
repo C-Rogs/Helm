@@ -78,7 +78,7 @@ final class PhotoMealController {
 
             guard let data = try? await pickerItem.loadTransferable(type: Data.self),
                   let image = UIImage(data: data),
-                  let jpeg = image.jpegData(compressionQuality: 0.88)
+                  let jpeg = MealPhotoJPEGPreparer.prepare(from: image)
             else {
                 failUnlessCancelled("Could not read that photo.")
                 return
@@ -92,7 +92,7 @@ final class PhotoMealController {
 
     func handleCameraImage(_ image: UIImage, portionAssist: MealPortionAssistContext? = nil) async {
         startEstimateTask { [self] in
-            guard let jpeg = image.jpegData(compressionQuality: 0.88) else {
+            guard let jpeg = MealPhotoJPEGPreparer.prepare(from: image) else {
                 failUnlessCancelled("Could not read that photo.")
                 return
             }
@@ -151,8 +151,13 @@ final class PhotoMealController {
 
     func dismissError() {
         if case .failed = phase {
+            pickerItem = nil
             phase = .idle
         }
+    }
+
+    func prepareForNewPhotoSelection() {
+        pickerItem = nil
     }
 
     private func resetEstimateProgress() {

@@ -296,6 +296,7 @@ struct NutritionView: View {
             manualFoodLogController.start(.alcohol, bucket: bucket)
         case .photo:
             photoMealController.preferredBucket = bucket
+            photoMealController.prepareForNewPhotoSelection()
             showsPhotoOptions = true
         }
     }

@@ -66,20 +66,65 @@ public struct GroundedPhotoMacroEstimator: Sendable {
         _ decomposition: MealDecomposition,
         decompositionAuditJSON: String? = nil
     ) -> MealEstimate {
-        let allItems = decomposition.items + decomposition.implicitFats
         var warnings: [String] = []
         if let portionNotes = decomposition.portionNotes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !portionNotes.isEmpty {
             warnings.append("Portion notes: \(portionNotes)")
         }
 
-        let lineItems = allItems.compactMap { item -> MealLineItem? in
+        struct ResolvedDecompositionItem {
+            let item: MealDecompositionPayload.Item
+            let resolved: ResolvedNutrition
+        }
+
+        let resolvedItems: [ResolvedDecompositionItem] = decomposition.items.compactMap { item in
             guard let resolved = lookup.resolve(item: item.name) else { return nil }
-            let confidence = MealEstimate.Confidence(rawValue: item.confidence.rawValue) ?? .medium
             if resolved.matchConfidence == .fallback {
                 warnings.append("\(item.name) had no CoFID match. Using generic dish macros. Tap the ingredient to fix.")
             } else if resolved.matchConfidence == .partial {
                 warnings.append("\(item.name) matched \(resolved.record.description). Tap to pick a better CoFID row if needed.")
+            }
+            return ResolvedDecompositionItem(item: item, resolved: resolved)
+        }
+
+        let attributionInputs = resolvedItems.map { entry in
+            CookingFatReconciler.ResolvedItem(
+                name: entry.item.name,
+                attribution: CookingFatAttributionClassifier.classify(
+                    itemName: entry.item.name,
+                    cofidDescription: entry.resolved.record.description,
+                    fatGPer100g: entry.resolved.record.per100g.fatG
+                ),
+                cofidDescription: entry.resolved.record.description
+            )
+        }
+
+        let reconciliation = CookingFatReconciler.reconcile(
+            items: attributionInputs,
+            implicitFats: decomposition.implicitFats.map {
+                CookingFatReconciler.ImplicitFat(name: $0.name, grams: $0.estimatedGrams)
+            }
+        )
+        warnings.append(contentsOf: reconciliation.warnings)
+
+        let keptImplicitNames = Set(reconciliation.keptImplicitFats.map {
+            NutritionLookup.normalize($0.name)
+        })
+
+        let lineItems = resolvedItems.compactMap { entry -> MealLineItem? in
+            let confidence = MealEstimate.Confidence(rawValue: entry.item.confidence.rawValue) ?? .medium
+            return MacroAggregator.lineItem(
+                name: entry.item.name,
+                grams: entry.item.estimatedGrams,
+                resolved: entry.resolved,
+                itemConfidence: confidence
+            )
+        } + decomposition.implicitFats.compactMap { item -> MealLineItem? in
+            guard keptImplicitNames.contains(NutritionLookup.normalize(item.name)) else { return nil }
+            guard let resolved = lookup.resolve(item: item.name) else { return nil }
+            let confidence = MealEstimate.Confidence(rawValue: item.confidence.rawValue) ?? .medium
+            if resolved.matchConfidence == .fallback {
+                warnings.append("\(item.name) had no CoFID match. Using generic dish macros. Tap the ingredient to fix.")
             }
             return MacroAggregator.lineItem(
                 name: item.name,
