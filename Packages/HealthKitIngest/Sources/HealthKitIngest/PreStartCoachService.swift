@@ -35,7 +35,7 @@ public struct PreStartCoachService: Sendable {
         summary: PrescribedSessionSummary,
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay]
+        context: CoachContextDays
     ) async throws -> PreStartCoachIntro {
         let availability = await provider.availability()
         guard availability.isAvailable else {
@@ -48,14 +48,14 @@ public struct PreStartCoachService: Sendable {
         Summary: \(brief.summary)
         Rationale: \(brief.rationale.joined(separator: "; "))
         Exercises: \(summary.exercises.map(\.displayName).joined(separator: ", "))
-        Invite the athlete to ask about volume, swaps, or readiness before starting.
-        Do not propose plan changes unless asked.
+        Invite the athlete to ask about volume, swaps, readiness, or how today's session fits their training emphasis before starting.
+        If Training Plan Snapshot includes emphasis, explain briefly how it could fit today's \(brief.splitKind.label) session when relevant; do not rewrite the engine prescription unless asked.
         """
 
         let budget = TokenBudget.maxInputTokens(for: .gemini)
         let built = ContextBuilder.build(
             profile: profile,
-            days: CoachContextDays(recent: contextDays),
+            days: context,
             budget: budget,
             turn: .initial
         )
@@ -84,7 +84,7 @@ public struct PreStartCoachService: Sendable {
         excludedExerciseIDs: Set<String>,
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay],
+        context: CoachContextDays,
         thread: CoachThreadState = .empty
     ) async throws -> CoachSessionProposal {
         let snapshot = PrescriptionCoachSnapshotBuilder.snapshot(from: prescription)
@@ -94,7 +94,7 @@ public struct PreStartCoachService: Sendable {
             excludedExerciseIDs: excludedExerciseIDs,
             provider: provider,
             profile: profile,
-            contextDays: contextDays,
+            context: context,
             thread: thread
         )
     }

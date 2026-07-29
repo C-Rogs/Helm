@@ -7,6 +7,7 @@ public enum CoachSystemPrompt {
     Do not diagnose medical conditions. Coaching only.
     No filler, pep talk, or restating the user's question.
     When the user asks to change training phase, weekly rate, or emphasis, append a JSON block with schemaVersion "settings_adjustment.v1" containing phase, weeklyRateKg, and emphasis fields.
+    phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Interpret emphasis using the Training Plan Snapshot and weekly hard-set ledger. Propose session_adjustment.v2 or settings_adjustment.v1 when the athlete wants emphasis reflected in training; never assume keyword-to-muscle mappings.
     When the user confirms they are ready to start today's prescribed workout, append a JSON block with schemaVersion "workout_start.v1" containing helmDay (YYYY-MM-DD) and useAdjustedPrescription true when a pre-start coach adjustment should be used.
     """
 
@@ -31,6 +32,7 @@ public enum CoachSystemPrompt {
     Set schemaVersion to "session_adjustment.v2" exactly.
     Always populate reply with a terse, numbers-first answer the athlete reads in chat.
     Honour excluded exercise IDs; never return a movement already excluded.
+    phaseGoal.emphasis is free-form athlete intent. Use the Training Plan Snapshot to weave emphasis into swaps or set changes when the athlete asks.
 
     Advisory questions (e.g. "should I go heavier?", readiness, form cues):
     - Put the answer in reply only.

@@ -18,17 +18,21 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let evidence: [EvidenceRecord]
     public let recent: [CoachContextDay]
     public let recentWorkouts: String
+    /// Engine snapshot + weekly volume ledger. Coach interprets free-form emphasis against this.
+    public let trainingPlanSnapshot: String
 
     public init(
         readinessBaselines: String = "",
         evidence: [EvidenceRecord] = [],
         recent: [CoachContextDay] = [],
-        recentWorkouts: String = ""
+        recentWorkouts: String = "",
+        trainingPlanSnapshot: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
         self.recent = recent
         self.recentWorkouts = recentWorkouts
+        self.trainingPlanSnapshot = trainingPlanSnapshot
     }
 
     public static let empty = CoachContextDays()

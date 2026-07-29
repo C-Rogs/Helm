@@ -224,14 +224,14 @@ final class TrainSessionController {
         do {
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
             let intro = try await preStartCoach.generateIntro(
                 brief: brief,
                 summary: summary,
                 provider: provider,
                 profile: profile,
-                contextDays: contextDays.recent
+                context: context
             )
             coachMessages = [InSessionCoachMessage(role: .assistant, text: intro.text)]
             coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: intro.text)])
@@ -1092,7 +1092,7 @@ final class TrainSessionController {
             let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await preStartCoach.proposeAdjustment(
@@ -1101,7 +1101,7 @@ final class TrainSessionController {
                 excludedExerciseIDs: excludedExerciseIDs,
                 provider: provider,
                 profile: profile,
-                contextDays: contextDays.recent,
+                context: context,
                 thread: coachThread
             )
 
@@ -1153,7 +1153,7 @@ final class TrainSessionController {
             guard !Task.isCancelled else { return }
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
-            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await inSessionCoach.proposeAdjustment(
@@ -1162,7 +1162,7 @@ final class TrainSessionController {
                 excludedExerciseIDs: excludedExerciseIDs,
                 provider: provider,
                 profile: profile,
-                contextDays: contextDays.recent,
+                context: context,
                 thread: coachThread
             )
 

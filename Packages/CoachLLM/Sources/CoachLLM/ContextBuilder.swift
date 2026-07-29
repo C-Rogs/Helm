@@ -27,10 +27,16 @@ public enum ContextBuilder {
             )
         }
 
-        let contextBlock = assembleContextBlock(
-            stablePrefix: stablePrefix,
-            days: includedDays
-        )
+        let contextBlock: String
+        switch turn {
+        case .followUp:
+            contextBlock = followUpContextBlock(from: days)
+        case .initial:
+            contextBlock = assembleContextBlock(
+                stablePrefix: stablePrefix,
+                days: includedDays
+            )
+        }
 
         let estimatedTokens = TokenBudget.estimateTokens(
             characterCount: systemInstructions.count + contextBlock.count
@@ -65,6 +71,24 @@ public enum ContextBuilder {
             sections.append("# Recent Workouts\n\(workouts)")
         }
 
+        let trainingPlan = normalized(days.trainingPlanSnapshot)
+        if !trainingPlan.isEmpty {
+            sections.append("# Training Plan Snapshot\n\(trainingPlan)")
+        }
+
+        return sections.joined(separator: "\n\n")
+    }
+
+    private static func followUpContextBlock(from days: CoachContextDays) -> String {
+        var sections: [String] = []
+        let workouts = normalized(days.recentWorkouts)
+        if !workouts.isEmpty {
+            sections.append("# Recent Workouts\n\(workouts)")
+        }
+        let trainingPlan = normalized(days.trainingPlanSnapshot)
+        if !trainingPlan.isEmpty {
+            sections.append("# Training Plan Snapshot\n\(trainingPlan)")
+        }
         return sections.joined(separator: "\n\n")
     }
 

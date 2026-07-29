@@ -71,4 +71,72 @@ struct CoachContextAssemblerTests {
         #expect(context.recent[0].text.contains("hrv=49ms"))
         #expect(context.recent[0].text.contains("trimp=42"))
     }
+
+    @Test("assembles recent workouts block with full set detail")
+    func assemblesRecentWorkoutsBlock() throws {
+        let store = try PersistenceStore.inMemory()
+        let squatID = "exercise-squat"
+        try store.exercises.upsert(
+            id: squatID,
+            canonicalName: "squat (barbell)",
+            displayName: "Squat (Barbell)",
+            exerciseMode: .weightReps
+        )
+
+        let completedAt = Calendar.current.date(from: DateComponents(
+            timeZone: .current,
+            year: 2026,
+            month: 7,
+            day: 22,
+            hour: 18
+        ))!
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "session-recent",
+                title: "Leg Day",
+                startedAt: completedAt,
+                endedAt: completedAt,
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        id: "wse-1",
+                        exerciseID: squatID,
+                        displayOrder: 0,
+                        exerciseMode: .weightReps,
+                        sets: [
+                            SetEntryDraft(
+                                id: "set-1",
+                                setIndex: 0,
+                                mass: Mass(kilograms: 100),
+                                reps: 5,
+                                completedAt: completedAt
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+
+        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+
+        #expect(context.recentWorkouts.contains("Leg Day"))
+        #expect(context.recentWorkouts.contains("Squat (Barbell)"))
+        #expect(context.recentWorkouts.contains("100kg x 5"))
+    }
+
+    @Test("includes training plan snapshot with verbatim emphasis")
+    func includesTrainingPlanSnapshot() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(
+            StoredTrainingPlanSettings(
+                phaseGoal: PhaseGoal(phase: .maintain, emphasis: "calves"),
+                experienceRaw: TrainingExperience.intermediate.rawValue
+            )
+        )
+
+        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+
+        #expect(context.trainingPlanSnapshot.contains("emphasis=\"calves\""))
+        #expect(context.trainingPlanSnapshot.contains("engine_note=split_rotation_only"))
+        #expect(context.trainingPlanSnapshot.contains("weekly_hard_sets:"))
+    }
 }

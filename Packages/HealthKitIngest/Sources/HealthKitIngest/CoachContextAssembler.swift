@@ -2,6 +2,7 @@ import CoachLLM
 import Core
 import Foundation
 import Persistence
+import PlanKit
 import ReadinessKit
 
 /// Maps persisted health and training rows into coach context days.
@@ -81,13 +82,80 @@ public enum CoachContextAssembler {
         }
 
         let recentWorkouts = try recentWorkoutsBlock(from: store, limit: 3)
+        let trainingPlanSnapshot = try trainingPlanSnapshotBlock(
+            from: store,
+            endingAt: endDay,
+            calendar: calendar,
+            cutoff: cutoff
+        )
 
         return CoachContextDays(
             readinessBaselines: baselines,
             evidence: evidence,
             recent: recent,
-            recentWorkouts: recentWorkouts
+            recentWorkouts: recentWorkouts,
+            trainingPlanSnapshot: trainingPlanSnapshot
         )
+    }
+
+    private static func trainingPlanSnapshotBlock(
+        from store: PersistenceStore,
+        endingAt endDay: HelmDay,
+        calendar: Calendar,
+        cutoff: DayCutoff
+    ) throws -> String {
+        let settings = try store.trainingPlan.load()
+        let experience = TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
+        let history = try PrescriptionHistoryBuilder.history(
+            from: store,
+            endingAt: endDay,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        let catalogRows = try store.exercises.fetchCatalogRows()
+        let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(
+            from: catalogRows,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+        let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
+            ($0.exerciseID, $0.muscleMap)
+        })
+        let schedule = SchedulePlanner.plan(
+            for: endDay,
+            emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
+            in: history,
+            through: endDay
+        )
+        let mesocycleState = decodeMesocycleState(from: try store.plan.loadMesocycleStateJSON())
+        let ledger = PlanKit.weeklyHardSetTotals(
+            sessions: history.sessions,
+            muscleMaps: muscleMaps,
+            weekStart: history.weekStart
+        )
+
+        return TrainingPlanCoachContext.build(
+            from: TrainingPlanCoachContext.Input(
+                emphasis: settings.phaseGoal.emphasis,
+                todaySplit: schedule.splitKind,
+                weeklyLedger: ledger,
+                mesocycleState: mesocycleState,
+                experience: experience,
+                remainingSessionsThisWeek: SessionSplitPlanner.remainingSessionsThisWeek(
+                    completedThisWeek: completedThisWeek
+                )
+            )
+        )
+    }
+
+    private static func decodeMesocycleState(from json: String?) -> MesocycleState? {
+        guard let json, let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(MesocycleState.self, from: data)
     }
 
     private static func recentWorkoutsBlock(

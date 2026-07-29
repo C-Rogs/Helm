@@ -59,6 +59,40 @@ struct ContextBuilderTests {
         )
     }
 
+    @Test("training plan snapshot is included in stable prefix")
+    func trainingPlanSnapshotInPrefix() {
+        let days = CoachContextDays(
+            readinessBaselines: baselines,
+            evidence: evidence,
+            recent: fixtureDays().recent,
+            trainingPlanSnapshot: """
+            engine_note=split_rotation_only
+            emphasis="calves"
+            today_split=Push
+            weekly_hard_sets:
+              calves: 2 hard sets | MEV 6 MRV 14
+            """
+        )
+
+        let prefix = ContextBuilder.stablePrefixText(profile: profile, days: days)
+        #expect(prefix.contains("# Training Plan Snapshot"))
+        #expect(prefix.contains("emphasis=\"calves\""))
+    }
+
+    @Test("follow-up keeps training plan snapshot")
+    func followUpKeepsTrainingPlanSnapshot() {
+        let days = CoachContextDays(
+            trainingPlanSnapshot: "emphasis=\"agility\""
+        )
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: days,
+            budget: 48_000,
+            turn: .followUp
+        )
+        #expect(prompt.contextBlock.contains("emphasis=\"agility\""))
+    }
+
     @Test("prefix ordering is byte-stable across calls")
     func prefixByteStable() {
         let days = fixtureDays()
@@ -154,8 +188,41 @@ struct ContextBuilderTests {
         #expect(!prompt.contextBlock.contains("# Recent Days"))
     }
 
-    @Test("follow-up skips recent health context")
-    func followUpSkipsHealthContext() {
+    @Test("follow-up includes recent workouts only")
+    func followUpIncludesRecentWorkoutsOnly() {
+        let workouts = """
+        Push Day
+
+        Bench Press
+        100kg x 5
+        """
+        let days = CoachContextDays(
+            readinessBaselines: baselines,
+            evidence: evidence,
+            recent: [
+                day("2026-07-19", text: "readiness=58 hrv=49ms rhr=52 sleep=6.8h trimp=42"),
+                day("2026-07-20", text: "readiness=61 hrv=51ms rhr=51 sleep=7.1h trimp=35")
+            ],
+            recentWorkouts: workouts
+        )
+
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: days,
+            budget: 10_000,
+            turn: .followUp
+        )
+
+        #expect(prompt.contextBlock == "# Recent Workouts\n\(workouts)")
+        #expect(prompt.includedDayCount == 0)
+        #expect(prompt.droppedDayCount == 2)
+        #expect(!prompt.contextBlock.contains("# Memory Profile"))
+        #expect(!prompt.contextBlock.contains("# Recent Days"))
+        #expect(!prompt.contextBlock.contains("readiness=58"))
+    }
+
+    @Test("follow-up omits context when there are no recent workouts")
+    func followUpOmitsContextWithoutRecentWorkouts() {
         let prompt = ContextBuilder.build(
             profile: profile,
             days: fixtureDays(),
@@ -163,8 +230,7 @@ struct ContextBuilderTests {
             turn: .followUp
         )
 
-        let expectedPrefix = ContextBuilder.stablePrefixText(profile: profile, days: fixtureDays())
-        #expect(prompt.contextBlock == expectedPrefix)
+        #expect(prompt.contextBlock.isEmpty)
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 3)
         #expect(!prompt.contextBlock.contains("# Recent Days"))

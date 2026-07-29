@@ -302,8 +302,8 @@ struct DashboardView: View {
 
     private func prescriptionSubtitle(for summary: PrescribedSessionSummary) -> String {
         var parts = ["\(summary.exercises.count) exercises"]
-        if let progress = summary.emphasisProgressLabel {
-            parts.append(progress)
+        if let label = TrainingPlanCoachContext.emphasisDisplayLabel(summary.emphasis) {
+            parts.append(label)
         }
         return parts.joined(separator: " · ")
     }

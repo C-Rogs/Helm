@@ -121,7 +121,7 @@ public struct InSessionCoachService: Sendable {
         excludedExerciseIDs: Set<String>,
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay],
+        context: CoachContextDays,
         thread: CoachThreadState = .empty
     ) async throws -> CoachSessionProposal {
         let availability = await provider.availability()
@@ -142,7 +142,7 @@ public struct InSessionCoachService: Sendable {
         let prompt = buildPrompt(
             snapshot: snapshot,
             profile: profile,
-            contextDays: contextDays,
+            context: context,
             excludedExerciseIDs: excludedExerciseIDs
         )
 
@@ -199,7 +199,7 @@ public struct InSessionCoachService: Sendable {
         excludedExerciseIDs: Set<String>,
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay]
+        context: [CoachContextDay]
     ) async throws -> AppliedSessionAdjustment {
         let proposal = try await proposeAdjustment(
             userMessage: userMessage,
@@ -207,7 +207,8 @@ public struct InSessionCoachService: Sendable {
             excludedExerciseIDs: excludedExerciseIDs,
             provider: provider,
             profile: profile,
-            contextDays: contextDays
+            context: CoachContextDays(recent: context),
+            thread: .empty
         )
         guard proposal.requiresConfirmation else {
             throw InSessionCoachError.noApplicableChange
@@ -433,12 +434,12 @@ public struct InSessionCoachService: Sendable {
     private func buildPrompt(
         snapshot: ActiveSessionSnapshot,
         profile: MemoryProfile,
-        contextDays: [CoachContextDay],
+        context: CoachContextDays,
         excludedExerciseIDs: Set<String>
     ) -> CoachPrompt {
-        var context = ContextBuilder.build(
+        var contextBlock = ContextBuilder.build(
             profile: profile,
-            days: CoachContextDays(recent: contextDays),
+            days: context,
             budget: TokenBudget.maxInputTokens(for: .gemini),
             turn: .followUp
         ).contextBlock
@@ -478,25 +479,25 @@ public struct InSessionCoachService: Sendable {
 
         if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !notes.isEmpty {
-            context += "\n\nAthlete session note:\n\(notes)"
+            contextBlock += "\n\nAthlete session note:\n\(notes)"
         }
         if !archetypeLines.isEmpty {
-            context += "\n\nAllowed archetype IDs (use exact archetypeId in operations):\n\(archetypeLines)"
+            contextBlock += "\n\nAllowed archetype IDs (use exact archetypeId in operations):\n\(archetypeLines)"
         }
         if !exerciseLines.isEmpty {
-            context += "\n\nActive session exercises:\n\(exerciseLines)"
+            contextBlock += "\n\nActive session exercises:\n\(exerciseLines)"
         }
         if !excludedExerciseIDs.isEmpty {
             let excludedArchetypes = excludedExerciseIDs.compactMap { CoachArchetypeSupport.archetype(for: $0)?.id }
-            context += "\n\nExcluded archetype IDs (already swapped this session):\n"
+            contextBlock += "\n\nExcluded archetype IDs (already swapped this session):\n"
                 + excludedArchetypes.sorted().joined(separator: ", ")
         }
 
         return CoachPrompt(
             systemInstructions: CoachSystemPrompt.sessionAdjustmentV2,
-            contextBlock: context,
-            estimatedTokens: TokenBudget.estimateTokens(characterCount: context.count),
-            includedDayCount: contextDays.count,
+            contextBlock: contextBlock,
+            estimatedTokens: TokenBudget.estimateTokens(characterCount: contextBlock.count),
+            includedDayCount: context.recent.count,
             droppedDayCount: 0
         )
     }

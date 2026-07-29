@@ -22,7 +22,6 @@ enum PrescriptionEngine {
         var exercises: [PrescribedExercise] = []
         var order = 0
         var selectedExerciseIDs: Set<String> = []
-        let emphasisMuscles = Set(EmphasisVolumePolicy.trackedMuscles(for: profile.phaseGoal.emphasis))
 
         for muscle in profile.targetMuscles {
             guard let muscleState = profile.mesocycleState.muscles[muscle] else { continue }
@@ -32,8 +31,7 @@ enum PrescriptionEngine {
                 excluding: selectedExerciseIDs,
                 availableEquipment: profile.availableEquipment,
                 selectionBias: profile.selectionBias,
-                familiarExerciseIDs: profile.familiarExerciseIDs,
-                emphasisMuscles: emphasisMuscles
+                familiarExerciseIDs: profile.familiarExerciseIDs
             ) else { continue }
 
             let catalogExercise = selection.exercise
@@ -42,19 +40,10 @@ enum PrescriptionEngine {
             let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
             let doneThisWeek = weeklyLedger.totals[muscle, default: 0]
             let remaining = max(0, Double(weeklyTarget) - doneThisWeek)
-            var baseSets = max(
+            let baseSets = max(
                 1,
                 Int(ceil(remaining / Double(profile.remainingSessionsThisWeek)))
             )
-            if let floorSets = EmphasisVolumePolicy.minimumSetsThisSession(
-                for: muscle,
-                emphasis: profile.phaseGoal.emphasis,
-                ledger: weeklyLedger,
-                mesocycleState: profile.mesocycleState,
-                remainingSessionsThisWeek: profile.remainingSessionsThisWeek
-            ) {
-                baseSets = max(baseSets, floorSets)
-            }
             let gatedSets = PrescriptionBounds.clampSets(
                 Int((Double(baseSets) * gating.volumeMultiplier * phaseMultiplier).rounded())
             )

@@ -9,22 +9,19 @@ public struct SessionDesignBrief: Sendable, Equatable {
     public let rationale: [String]
     public let splitKind: SessionSplitKind
     public let scheduleNotes: [String]
-    public let emphasisProgressLabel: String?
 
     public init(
         title: String,
         summary: String,
         rationale: [String],
         splitKind: SessionSplitKind,
-        scheduleNotes: [String] = [],
-        emphasisProgressLabel: String? = nil
+        scheduleNotes: [String] = []
     ) {
         self.title = title
         self.summary = summary
         self.rationale = rationale
         self.splitKind = splitKind
         self.scheduleNotes = scheduleNotes
-        self.emphasisProgressLabel = emphasisProgressLabel
     }
 
     public var coachPromptSeed: String {
@@ -49,14 +46,8 @@ public enum SessionDesignBriefBuilder {
         let muscleText = SessionSplitPlanner.muscleSummary(for: targetMuscles)
         let mesoText = mesocycleSummary(for: targetMuscles, state: mesocycleState)
         var summaryParts = [muscleText, "\(totalSets) sets", mesoText]
-        if let progress = weeklyLedger.flatMap({
-            EmphasisVolumePolicy.weeklyProgress(
-                emphasis: phaseGoal.emphasis,
-                ledger: $0,
-                mesocycleState: mesocycleState
-            )
-        }) {
-            summaryParts.append(progress.displayText)
+        if let emphasisLabel = TrainingPlanCoachContext.emphasisDisplayLabel(phaseGoal.emphasis) {
+            summaryParts.append(emphasisLabel)
         }
         let summary = summaryParts.joined(separator: " · ")
 
@@ -70,17 +61,6 @@ public enum SessionDesignBriefBuilder {
         }
         rationale.append("\(phaseGoal.phase.rawValue.capitalized) phase with \(exerciseCount) exercises prescribed.")
         if let weeklyLedger {
-            let progress = EmphasisVolumePolicy.weeklyProgress(
-                emphasis: phaseGoal.emphasis,
-                ledger: weeklyLedger,
-                mesocycleState: mesocycleState
-            )
-            if let progress, !progress.hasMetFloor {
-                rationale.insert(
-                    "\(progress.label): \(progress.doneSets)/\(progress.targetSets) hard sets logged this week.",
-                    at: min(rationale.count, 2)
-                )
-            }
             let progressNotes = weeklyProgressNotes(
                 muscles: targetMuscles,
                 ledger: weeklyLedger,
@@ -93,21 +73,12 @@ public enum SessionDesignBriefBuilder {
             rationale = Array(rationale.prefix(4))
         }
 
-        let emphasisProgressLabel = weeklyLedger.flatMap {
-            EmphasisVolumePolicy.weeklyProgress(
-                emphasis: phaseGoal.emphasis,
-                ledger: $0,
-                mesocycleState: mesocycleState
-            )
-        }?.displayText
-
         return SessionDesignBrief(
             title: title,
             summary: summary,
             rationale: rationale,
             splitKind: splitKind,
-            scheduleNotes: scheduleNotes,
-            emphasisProgressLabel: emphasisProgressLabel
+            scheduleNotes: scheduleNotes
         )
     }
 

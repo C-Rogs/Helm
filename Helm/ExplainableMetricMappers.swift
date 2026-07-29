@@ -74,7 +74,7 @@ enum ExplainableMetricMappers {
                 id: "phase",
                 label: "Phase",
                 value: summary.phase.label,
-                detail: summary.emphasisProgressLabel ?? summary.emphasis
+                detail: TrainingPlanCoachContext.emphasisDisplayLabel(summary.emphasis) ?? summary.emphasis
             )
         )
 
