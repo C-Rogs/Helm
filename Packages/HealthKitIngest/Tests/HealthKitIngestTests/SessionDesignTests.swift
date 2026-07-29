@@ -14,12 +14,12 @@ struct SessionSplitPlannerTests {
         #expect(SessionSplitPlanner.splitLabel(for: [.quads, .hamstrings, .glutes], emphasis: nil) == "Legs")
     }
 
-    @Test("emphasis overrides weekday split")
-    func emphasisOverride() {
+    @Test("emphasis does not override weekday split rotation")
+    func emphasisDoesNotOverrideSplit() {
         let day = HelmDay(year: 2026, month: 7, day: 28)
-        let muscles = SessionSplitPlanner.targetMuscles(for: day, emphasis: "legs")
-        #expect(muscles.contains(.quads))
-        #expect(SessionSplitPlanner.splitKind(for: day, emphasis: "legs") == .legs)
+        let muscles = SessionSplitPlanner.targetMuscles(for: day, emphasis: "Arms")
+        #expect(muscles.contains(.chest) || muscles.contains(.back) || muscles.contains(.quads))
+        #expect(SessionSplitPlanner.splitKind(for: day, emphasis: "Arms") != .armFocus)
     }
 }
 

@@ -9,19 +9,22 @@ public struct SessionDesignBrief: Sendable, Equatable {
     public let rationale: [String]
     public let splitKind: SessionSplitKind
     public let scheduleNotes: [String]
+    public let emphasisProgressLabel: String?
 
     public init(
         title: String,
         summary: String,
         rationale: [String],
         splitKind: SessionSplitKind,
-        scheduleNotes: [String] = []
+        scheduleNotes: [String] = [],
+        emphasisProgressLabel: String? = nil
     ) {
         self.title = title
         self.summary = summary
         self.rationale = rationale
         self.splitKind = splitKind
         self.scheduleNotes = scheduleNotes
+        self.emphasisProgressLabel = emphasisProgressLabel
     }
 
     public var coachPromptSeed: String {
@@ -46,8 +49,14 @@ public enum SessionDesignBriefBuilder {
         let muscleText = SessionSplitPlanner.muscleSummary(for: targetMuscles)
         let mesoText = mesocycleSummary(for: targetMuscles, state: mesocycleState)
         var summaryParts = [muscleText, "\(totalSets) sets", mesoText]
-        if let emphasis = phaseGoal.emphasis, !emphasis.isEmpty {
-            summaryParts.append(emphasis)
+        if let progress = weeklyLedger.flatMap({
+            PlanKit.EmphasisVolumePolicy.weeklyProgress(
+                emphasis: phaseGoal.emphasis,
+                ledger: $0,
+                mesocycleState: mesocycleState
+            )
+        }) {
+            summaryParts.append(progress.displayText)
         }
         let summary = summaryParts.joined(separator: " · ")
 
@@ -61,24 +70,44 @@ public enum SessionDesignBriefBuilder {
         }
         rationale.append("\(phaseGoal.phase.rawValue.capitalized) phase with \(exerciseCount) exercises prescribed.")
         if let weeklyLedger {
-            let progress = weeklyProgressNotes(
+            let progress = PlanKit.EmphasisVolumePolicy.weeklyProgress(
+                emphasis: phaseGoal.emphasis,
+                ledger: weeklyLedger,
+                mesocycleState: mesocycleState
+            )
+            if let progress, !progress.hasMetFloor {
+                rationale.insert(
+                    "\(progress.label): \(progress.doneSets)/\(progress.targetSets) hard sets logged this week.",
+                    at: min(rationale.count, 2)
+                )
+            }
+            let progressNotes = weeklyProgressNotes(
                 muscles: targetMuscles,
                 ledger: weeklyLedger,
                 mesocycleState: mesocycleState
             )
-            rationale.append(contentsOf: progress)
+            rationale.append(contentsOf: progressNotes)
         }
         rationale.append(contentsOf: scheduleNotes)
         if rationale.count > 4 {
             rationale = Array(rationale.prefix(4))
         }
 
+        let emphasisProgressLabel = weeklyLedger.flatMap {
+            PlanKit.EmphasisVolumePolicy.weeklyProgress(
+                emphasis: phaseGoal.emphasis,
+                ledger: $0,
+                mesocycleState: mesocycleState
+            )
+        }?.displayText
+
         return SessionDesignBrief(
             title: title,
             summary: summary,
             rationale: rationale,
             splitKind: splitKind,
-            scheduleNotes: scheduleNotes
+            scheduleNotes: scheduleNotes,
+            emphasisProgressLabel: emphasisProgressLabel
         )
     }
 

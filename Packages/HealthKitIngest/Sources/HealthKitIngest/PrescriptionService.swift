@@ -47,6 +47,7 @@ public struct PrescribedExerciseSummary: Sendable, Equatable, Identifiable {
 public struct PrescribedSessionSummary: Sendable, Equatable {
     public let phase: TrainingPhase
     public let emphasis: String?
+    public let emphasisProgressLabel: String?
     public let title: String
     public let summary: String
     public let rationale: [String]
@@ -58,6 +59,7 @@ public struct PrescribedSessionSummary: Sendable, Equatable {
     public init(
         phase: TrainingPhase,
         emphasis: String?,
+        emphasisProgressLabel: String? = nil,
         title: String = "",
         summary: String = "",
         rationale: [String] = [],
@@ -68,6 +70,7 @@ public struct PrescribedSessionSummary: Sendable, Equatable {
     ) {
         self.phase = phase
         self.emphasis = emphasis
+        self.emphasisProgressLabel = emphasisProgressLabel
         self.title = title
         self.summary = summary
         self.rationale = rationale
@@ -208,6 +211,7 @@ public actor PlanPrescriptionEngine {
             PrescribedSessionSummary(
                 phase: settings.phaseGoal.phase,
                 emphasis: settings.phaseGoal.emphasis,
+                emphasisProgressLabel: brief.emphasisProgressLabel,
                 title: brief.title,
                 summary: brief.summary,
                 rationale: brief.rationale,
@@ -361,13 +365,17 @@ public actor PlanPrescriptionEngine {
             muscleMaps: muscleMaps,
             calendar: calendar
         )
+        let augmentedMuscles = EmphasisVolumePolicy.augmentedTargetMuscles(
+            base: schedule.targetMuscles,
+            emphasis: settings.phaseGoal.emphasis
+        )
         let mesocycleState = try loadOrCreateMesocycleState(
-            targetMuscles: schedule.targetMuscles,
+            targetMuscles: augmentedMuscles,
             experience: TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
         )
         return SessionDesignBriefBuilder.build(
             splitKind: schedule.splitKind,
-            targetMuscles: schedule.targetMuscles,
+            targetMuscles: augmentedMuscles,
             phaseGoal: settings.phaseGoal,
             mesocycleState: mesocycleState,
             totalSets: totalSets,

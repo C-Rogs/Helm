@@ -40,7 +40,8 @@ enum ExerciseSelectionEngine {
         excluding excludedExerciseIDs: Set<String>,
         availableEquipment: Set<String>?,
         selectionBias: MethodologyPreferences.SelectionBias = .balanced,
-        familiarExerciseIDs: Set<String> = []
+        familiarExerciseIDs: Set<String> = [],
+        emphasisMuscles: Set<MuscleGroup> = []
     ) -> ExerciseSelection? {
         let weights = Weights.forBias(selectionBias)
         let candidates = catalog.filter { exercise in
@@ -51,8 +52,20 @@ enum ExerciseSelectionEngine {
 
         guard
             let best = candidates.max(by: { lhs, rhs in
-                let lhsScore = score(lhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
-                let rhsScore = score(rhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+                let lhsScore = score(
+                    lhs,
+                    for: muscle,
+                    weights: weights,
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    emphasisMuscles: emphasisMuscles
+                )
+                let rhsScore = score(
+                    rhs,
+                    for: muscle,
+                    weights: weights,
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    emphasisMuscles: emphasisMuscles
+                )
                 if lhsScore != rhsScore { return lhsScore < rhsScore }
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.exerciseID > rhs.exerciseID
@@ -66,7 +79,13 @@ enum ExerciseSelectionEngine {
             exercise: best,
             rationale: rationalePayload.rationale,
             evidenceIDs: rationalePayload.evidenceIDs,
-            score: score(best, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+            score: score(
+                best,
+                for: muscle,
+                weights: weights,
+                familiarExerciseIDs: familiarExerciseIDs,
+                emphasisMuscles: emphasisMuscles
+            )
         )
     }
 
@@ -112,7 +131,8 @@ enum ExerciseSelectionEngine {
         _ exercise: CatalogExercise,
         for muscle: MuscleGroup,
         weights: Weights,
-        familiarExerciseIDs: Set<String>
+        familiarExerciseIDs: Set<String>,
+        emphasisMuscles: Set<MuscleGroup>
     ) -> Double {
         var total: Double
         if let evidence = exercise.evidence {
@@ -125,6 +145,15 @@ enum ExerciseSelectionEngine {
             }
         } else {
             total = 1.0 - (Double(exercise.priority) * 0.05)
+        }
+
+        if emphasisMuscles.contains(muscle) {
+            if isPrimaryTarget(exercise, muscle: muscle) {
+                total += 0.20
+            }
+            if let contribution = exercise.muscleMap.contributions.first(where: { $0.muscle == muscle }) {
+                total += contribution.fraction * 0.10
+            }
         }
 
         if familiarExerciseIDs.contains(exercise.exerciseID) {

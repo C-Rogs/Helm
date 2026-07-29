@@ -74,7 +74,7 @@ enum ExplainableMetricMappers {
                 id: "phase",
                 label: "Phase",
                 value: summary.phase.label,
-                detail: summary.emphasis
+                detail: summary.emphasisProgressLabel ?? summary.emphasis
             )
         )
 
