@@ -157,4 +157,132 @@ struct ManualFoodLogFlowTests {
         #expect(meals[0].source == .barcode)
         #expect(meals[0].name.contains("Grenade"))
     }
+
+    @Test("quick-add dinner on today diary day appears in fetch and dinner bucket")
+    func quickAddDinnerOnTodayDiaryDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = makeManualMealService(store: store)
+        let calendar = Calendar(identifier: .gregorian)
+        let todayHelmDay = HelmDay(year: 2023, month: 11, day: 15)
+        let loggedAt = try #require(
+            calendar.date(from: DateComponents(year: 2023, month: 11, day: 15, hour: 12))
+        )
+
+        try await logQuickAddLikeController(
+            service: service,
+            kilocalories: 700,
+            bucket: .dinner,
+            loggingHelmDay: todayHelmDay,
+            todayHelmDay: todayHelmDay,
+            loggedAt: loggedAt
+        )
+
+        try assertDinnerQuickAddVisible(in: store, helmDay: todayHelmDay)
+    }
+
+    @Test("quick-add dinner on past diary day appears in fetch and dinner bucket")
+    func quickAddDinnerOnPastDiaryDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = makeManualMealService(store: store)
+        let calendar = Calendar(identifier: .gregorian)
+        let todayHelmDay = HelmDay(year: 2023, month: 11, day: 15)
+        let pastHelmDay = HelmDay(year: 2023, month: 11, day: 14)
+        let loggedAt = MealLogInstant.loggedAt(
+            for: pastHelmDay,
+            bucket: .dinner,
+            today: todayHelmDay,
+            calendar: calendar
+        )
+
+        try await logQuickAddLikeController(
+            service: service,
+            kilocalories: 700,
+            bucket: .dinner,
+            loggingHelmDay: pastHelmDay,
+            todayHelmDay: todayHelmDay,
+            loggedAt: loggedAt
+        )
+
+        try assertDinnerQuickAddVisible(in: store, helmDay: pastHelmDay)
+
+        let todayMeals = try store.nutrition.fetchMeals(for: todayHelmDay)
+        #expect(todayMeals.isEmpty)
+    }
+
+    @Test("explicit helmDay keeps early-morning quick-add on selected diary day")
+    func quickAddHonorsExplicitHelmDayBeforeCutoff() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = makeManualMealService(store: store)
+        let calendar = Calendar(identifier: .gregorian)
+        let selectedHelmDay = HelmDay(year: 2023, month: 11, day: 15)
+        let loggedAt = try #require(
+            calendar.date(from: DateComponents(year: 2023, month: 11, day: 15, hour: 3))
+        )
+        let derivedHelmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(derivedHelmDay == HelmDay(year: 2023, month: 11, day: 14))
+
+        try await logQuickAddLikeController(
+            service: service,
+            kilocalories: 700,
+            bucket: .dinner,
+            loggingHelmDay: selectedHelmDay,
+            todayHelmDay: selectedHelmDay,
+            loggedAt: loggedAt
+        )
+
+        try assertDinnerQuickAddVisible(in: store, helmDay: selectedHelmDay)
+        #expect(try store.nutrition.fetchMeals(for: derivedHelmDay).isEmpty)
+    }
+}
+
+private extension ManualFoodLogFlowTests {
+    func makeManualMealService(store: PersistenceStore) -> ManualMealService {
+        ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+    }
+
+    func logQuickAddLikeController(
+        service: ManualMealService,
+        kilocalories: Double,
+        bucket: MealBucket,
+        loggingHelmDay: HelmDay,
+        todayHelmDay: HelmDay,
+        loggedAt: Date
+    ) async throws {
+        let controllerLoggedAt = MealLogInstant.loggedAt(
+            for: loggingHelmDay,
+            bucket: bucket,
+            today: todayHelmDay,
+            calendar: calendar,
+            now: loggedAt
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: kilocalories,
+            label: "Quick dinner",
+            bucket: bucket,
+            loggedAt: controllerLoggedAt,
+            helmDay: loggingHelmDay
+        )
+    }
+
+    func assertDinnerQuickAddVisible(
+        in store: PersistenceStore,
+        helmDay: HelmDay
+    ) throws {
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].helmDay == helmDay)
+        #expect(meals[0].bucket == .dinner)
+        #expect(meals[0].source == .quickAdd)
+        #expect(meals[0].energy?.kilocalories == 700)
+
+        let buckets = try NutritionMealBucketProjection.mealsByBucket(for: helmDay, store: store)
+        #expect(buckets[.dinner]?.count == 1)
+        #expect(buckets[.dinner]?.first?.id == meals[0].id)
+        #expect(buckets[.breakfast]?.isEmpty == true)
+        #expect(buckets[.lunch]?.isEmpty == true)
+        #expect(buckets[.snacks]?.isEmpty == true)
+    }
 }

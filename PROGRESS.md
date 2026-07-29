@@ -127,6 +127,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT7.9 Coach-styled meal vision loading overlay | done | 2026-07-28 | c8132da | CoachAIProgressCard + CoachAIPulseIndicator; AskCoachBar shares pulse; photo overlay clipped to gutters. |
 | F-DT8.1-F-DT8.14 DT8 improvement batch | done | 2026-07-29 | d89552b | Train timer/notifications, coach context+emphasis, meal helmDay, sleep h/m display, workout export. |
 | F-DT8.13 Sleep metrics remainder | done | 2026-07-29 | 85a20a0 | Stage-aware ingest, dashboard sleep card, diagnostics, ARC efficiency/deep/REM wiring. |
+| F-DT8.12 Meal helmDay regression tests | done | 2026-07-29 | 88ae916 | Quick-add dinner regression for today/past/cutoff diary days; NutritionMealBucketProjection mirrors store bucketing. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
