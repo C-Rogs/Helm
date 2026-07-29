@@ -28,6 +28,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let readinessBand: String?
     public let briefSummary: String?
     /// Opportunistic live HR from Watch during an active session. Never used as source of truth.
+    /// Live workout heart rate from the Watch. Train tab only; never Recovery or Dashboard.
     public let liveHeartRateBPM: Int?
     public let workoutCompanionActive: Bool?
     public let companionExerciseName: String?

@@ -20,6 +20,12 @@ struct HealthKitStatusView: View {
 
     var body: some View {
         List {
+            Section("Resting heart rate") {
+                Text(RestingHeartRateDisplay.settingsHealthExplanation)
+                    .font(.footnote)
+                    .foregroundStyle(.secondary)
+            }
+
             Section("Status") {
                 LabeledContent("Connection", value: status.connectionState.rawValue)
                 LabeledContent("Observing", value: status.isObserving ? "Yes" : "No")

@@ -11,6 +11,8 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
     public let decimalPlaces: Int
     public let isValueAvailable: Bool
     public let valueDisplayText: String?
+    public let subtitle: String?
+    public let isValueMuted: Bool
 
     public init(
         id: String,
@@ -22,7 +24,9 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
         verdictTag: String? = nil,
         decimalPlaces: Int = 1,
         isValueAvailable: Bool = true,
-        valueDisplayText: String? = nil
+        valueDisplayText: String? = nil,
+        subtitle: String? = nil,
+        isValueMuted: Bool = false
     ) {
         self.id = id
         self.label = label
@@ -34,6 +38,8 @@ public struct RecoveryContributorRow: Sendable, Hashable, Equatable, Identifiabl
         self.decimalPlaces = decimalPlaces
         self.isValueAvailable = isValueAvailable
         self.valueDisplayText = valueDisplayText
+        self.subtitle = subtitle
+        self.isValueMuted = isValueMuted
     }
 }
 
@@ -123,6 +129,12 @@ public enum RecoveryDetailSnapshot {
                 }
                 if let verdict = contributor.verdictTag {
                     row += " | \(verdict)"
+                }
+                if let subtitle = contributor.subtitle {
+                    row += " | \(subtitle)"
+                }
+                if contributor.isValueMuted {
+                    row += " | muted"
                 }
                 row += " | state=\(contributor.state.rawValue)"
                 lines.append(row)

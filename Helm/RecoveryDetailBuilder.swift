@@ -197,6 +197,10 @@ enum RecoveryDetailBuilder {
         if isStale {
             tag = "YESTERDAY"
         }
+        let presentation = RestingHeartRateDisplay.contributorPresentation(
+            hasValue: hasValue,
+            isStale: isStale
+        )
         return RecoveryContributorRow(
             id: "rhr",
             label: "Resting HR",
@@ -206,7 +210,9 @@ enum RecoveryDetailBuilder {
             state: state,
             verdictTag: tag,
             decimalPlaces: 0,
-            isValueAvailable: hasValue
+            isValueAvailable: hasValue,
+            subtitle: presentation.subtitle,
+            isValueMuted: presentation.isValueMuted
         )
     }
 

@@ -34,6 +34,16 @@ struct RecoveryDetailSnapshotTests {
         #expect(text.contains("validNights=6"))
     }
 
+    @Test("stale resting HR fixture snapshot")
+    func staleRestingHRSnapshot() {
+        let text = RecoveryDetailSnapshot.text(for: .staleRestingHRFixture)
+
+        #expect(text == staleRestingHRRecoverySnapshotText)
+        #expect(text.contains("YESTERDAY"))
+        #expect(text.contains("from Apple Health"))
+        #expect(text.contains("| muted"))
+    }
+
     @Test("offline fixture disables coach hand-off")
     func offlineSnapshot() {
         let text = RecoveryDetailSnapshot.text(for: .offlineFixture)
@@ -65,7 +75,7 @@ validNights=18
 citation=ev-readiness-arc
 ## Contributors
 - HRV: 48.2 ms | band 44.3-49.3 | GOOD | state=ready
-- Resting HR: 51 bpm | band 48-54 | GOOD | state=ready
+- Resting HR: 51 bpm | band 48-54 | GOOD | from Apple Health | state=ready
 - Sleep: 7.4 h | band 6.8-7.6 | GOOD | state=ready
 ## History
 - Jul 10: 55 | state=ready
@@ -117,4 +127,25 @@ validNights=6
 ## Coach hand-off
 enabled=true
 prompt=Why is my ARC score 58 today?
+"""
+
+private let staleRestingHRRecoverySnapshotText = """
+# Recovery
+## ARC Score
+68
+state=ready
+targetBand=34-66
+narration=Balanced recovery with 14 baseline nights.
+engineOnly=true
+validNights=14
+## Contributors
+- HRV: 47.0 ms | band 44.3-49.3 | TYPICAL | state=ready
+- Resting HR: 53 bpm | band 48-54 | YESTERDAY | from Apple Health | muted | state=ready
+- Sleep: 7.2 h | band 6.8-7.6 | TYPICAL | state=ready
+## History
+- Jul 22: 64 | state=ready
+- Jul 23: 68 | state=ready
+## Coach hand-off
+enabled=true
+prompt=Why is my ARC score 68 today?
 """

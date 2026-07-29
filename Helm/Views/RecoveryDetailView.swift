@@ -99,7 +99,9 @@ struct RecoveryDetailView: View {
                         verdictTag: contributor.verdictTag,
                         decimalPlaces: contributor.decimalPlaces,
                         isValueAvailable: contributor.isValueAvailable,
-                        valueDisplayText: contributor.valueDisplayText
+                        valueDisplayText: contributor.valueDisplayText,
+                        subtitle: contributor.subtitle,
+                        isValueMuted: contributor.isValueMuted
                     )
 
                     if contributor.id != model.contributors.last?.id {

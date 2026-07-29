@@ -19,6 +19,8 @@ public struct DeviationBand: View {
     private let decimalPlaces: Int
     private let isValueAvailable: Bool
     private let valueDisplayText: String?
+    private let subtitle: String?
+    private let isValueMuted: Bool
 
     public init(
         label: String? = nil,
@@ -30,7 +32,9 @@ public struct DeviationBand: View {
         layout: Layout = .bar,
         decimalPlaces: Int = 1,
         isValueAvailable: Bool = true,
-        valueDisplayText: String? = nil
+        valueDisplayText: String? = nil,
+        subtitle: String? = nil,
+        isValueMuted: Bool = false
     ) {
         self.label = label
         self.value = value
@@ -42,6 +46,8 @@ public struct DeviationBand: View {
         self.decimalPlaces = decimalPlaces
         self.isValueAvailable = isValueAvailable
         self.valueDisplayText = valueDisplayText
+        self.subtitle = subtitle
+        self.isValueMuted = isValueMuted
     }
 
     public var body: some View {
@@ -56,6 +62,11 @@ public struct DeviationBand: View {
     private var barLayout: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             headerRow
+
+            if let subtitle {
+                Text(subtitle)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
 
             valueRow
 
@@ -116,7 +127,10 @@ public struct DeviationBand: View {
     private var valueRow: some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
             Text(formattedValue)
-                .helmType(.number, color: isValueAvailable ? HelmColor.color(for: state) : HelmColor.fgMuted)
+                .helmType(
+                    .number,
+                    color: valueTextColor
+                )
 
             if isValueAvailable, valueDisplayText == nil {
                 Text(unit)
@@ -170,6 +184,12 @@ public struct DeviationBand: View {
             .background(HelmColor.color(for: state).opacity(0.15), in: Capsule())
     }
 
+    private var valueTextColor: Color {
+        guard isValueAvailable else { return HelmColor.fgMuted }
+        if isValueMuted { return HelmColor.fgMuted }
+        return HelmColor.color(for: state)
+    }
+
     private var formattedValue: String {
         if let valueDisplayText, isValueAvailable {
             return valueDisplayText
@@ -191,6 +211,7 @@ public struct DeviationBand: View {
             parts.append("baseline building")
         }
         if let verdictTag { parts.append(verdictTag) }
+        if let subtitle { parts.append(subtitle) }
         parts.append(state.label)
         return parts.joined(separator: ", ")
     }

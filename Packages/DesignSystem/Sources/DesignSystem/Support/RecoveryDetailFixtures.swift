@@ -26,7 +26,8 @@ public extension RecoveryDetailModel {
                 unit: "bpm",
                 state: .ready,
                 verdictTag: "GOOD",
-                decimalPlaces: 0
+                decimalPlaces: 0,
+                subtitle: "from Apple Health"
             ),
             RecoveryContributorRow(
                 id: "sleep",
@@ -138,6 +139,54 @@ public extension RecoveryDetailModel {
         ],
         validNights: 6,
         coachPrompt: "Why is my ARC score 58 today?",
+        isCoachHandoffEnabled: true
+    )
+
+    static let staleRestingHRFixture = RecoveryDetailModel(
+        score: 68,
+        helmState: .ready,
+        targetBand: 34 ... 66,
+        narration: "Balanced recovery with 14 baseline nights.",
+        isEngineOnly: true,
+        citationLabel: nil,
+        contributors: [
+            RecoveryContributorRow(
+                id: "hrv",
+                label: "HRV",
+                value: 47.0,
+                band: 44.3 ... 49.3,
+                unit: "ms",
+                state: .ready,
+                verdictTag: "TYPICAL"
+            ),
+            RecoveryContributorRow(
+                id: "rhr",
+                label: "Resting HR",
+                value: 53,
+                band: 48 ... 54,
+                unit: "bpm",
+                state: .ready,
+                verdictTag: "YESTERDAY",
+                decimalPlaces: 0,
+                subtitle: "from Apple Health",
+                isValueMuted: true
+            ),
+            RecoveryContributorRow(
+                id: "sleep",
+                label: "Sleep",
+                value: 7.2,
+                band: 6.8 ... 7.6,
+                unit: "h",
+                state: .ready,
+                verdictTag: "TYPICAL"
+            )
+        ],
+        history: [
+            RecoveryHistoryPoint(dayLabel: "Jul 22", score: 64, state: .ready),
+            RecoveryHistoryPoint(dayLabel: "Jul 23", score: 68, state: .ready)
+        ],
+        validNights: 14,
+        coachPrompt: "Why is my ARC score 68 today?",
         isCoachHandoffEnabled: true
     )
 
