@@ -190,10 +190,12 @@ final class ChatController {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
+            let userFacingText = CoachChatTextFormatter.userFacingText(from: assembled)
+
             let assistantMessage = try persistence.chat.append(
                 ChatMessageInsert(
                     role: .assistant,
-                    text: assembled,
+                    text: userFacingText,
                     promptVersion: CoachPromptVersion.chatV1.rawValue,
                     schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
                 )
@@ -209,18 +211,32 @@ final class ChatController {
             }
 
             let today = HelmDay.day(for: .now, calendar: .current)
-            _ = try? await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
-                in: assembled,
-                helmDay: today,
-                persistence: persistence,
-                prescriptionService: PlanBootstrap.prescriptionService
-            ) { useAdjusted in
-                try await WorkoutStartCoordinator.startTodaysSession(
-                    controller: TrainBootstrap.sessionController,
-                    prescriptionService: PlanBootstrap.prescriptionService,
-                    openTrainTab: true,
-                    useAdjustedPrescription: useAdjusted
-                )
+            do {
+                _ = try await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
+                    in: assembled,
+                    helmDay: today,
+                    persistence: persistence,
+                    prescriptionService: PlanBootstrap.prescriptionService
+                ) { action in
+                    switch action {
+                    case let .prescription(useAdjusted):
+                        try await WorkoutStartCoordinator.startTodaysSession(
+                            controller: TrainBootstrap.sessionController,
+                            prescriptionService: PlanBootstrap.prescriptionService,
+                            openTrainTab: true,
+                            useAdjustedPrescription: useAdjusted
+                        )
+                    case let .importedPlan(plan):
+                        try await WorkoutStartCoordinator.startImportedPlan(
+                            controller: TrainBootstrap.sessionController,
+                            plan: plan,
+                            openTrainTab: true
+                        )
+                    }
+                }
+            } catch {
+                CoachDiagnosticsStore.shared.recordFailure(surface: "workoutStart", error: error)
+                lastTurnError = error.localizedDescription
             }
 
             await logTurn(

@@ -21,7 +21,63 @@ struct WorkoutStartCommandTests {
         #expect(payload?.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue)
         #expect(payload?.helmDay == "2026-07-29")
         #expect(payload?.useAdjustedPrescription == true)
-        #expect(payload?.exercises == ["Bench Press", "Squat (Barbell)"])
+        #expect(payload?.exerciseLabels == ["Bench Press", "Squat (Barbell)"])
+    }
+
+    @Test("parses workout_start v2 with detailed sets")
+    func parsesPayloadV2WithSets() throws {
+        let text = """
+        Starting now.
+        {"schemaVersion":"workout_start.v2","helmDay":"2026-07-29","title":"Push","exercises":[{"name":"Bench Press","restSeconds":120,"sets":[{"setType":"warmup","reps":10,"massKg":60},{"setType":"normal","reps":8,"massKg":80,"rpe":8}]}]}
+        """
+        let payload = try #require(WorkoutStartPayloadParser.parse(from: text))
+        #expect(payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue)
+        #expect(payload.hasDetailedSets)
+        #expect(payload.exercises?.first?.sets?.count == 2)
+        #expect(payload.exercises?.first?.sets?.first?.setType == "warmup")
+    }
+
+    @Test("parses workout_start when prose contains braces after JSON")
+    func parsesPayloadWhenTrailingBracesExist() {
+        let text = """
+        Ready.
+        {"schemaVersion":"workout_start.v1","helmDay":"2026-07-29","useAdjustedPrescription":false}
+        Note: keep rest {short} between sets.
+        """
+        let payload = WorkoutStartPayloadParser.parse(from: text)
+        #expect(payload?.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue)
+    }
+
+    @Test("builds imported plan with warmup and working sets")
+    func buildsImportedPlanFromV2Payload() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+
+        let payload = WorkoutStartPayload(
+            schemaVersion: CoachOutputSchemaVersion.workoutStartV2.rawValue,
+            helmDay: "2026-07-29",
+            title: "Push",
+            exercises: [
+                WorkoutStartExerciseSpec(
+                    name: "Bench Press",
+                    restSeconds: 120,
+                    sets: [
+                        WorkoutStartSetSpec(setType: "warmup", reps: 10, massKg: 60),
+                        WorkoutStartSetSpec(setType: "drop_set", reps: 8, massKg: 80, rpe: 8)
+                    ]
+                )
+            ]
+        )
+
+        let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: store)
+        #expect(plan.exercises.count == 1)
+        #expect(plan.exercises[0].exerciseID == benchID)
+        #expect(plan.exercises[0].restDurationSeconds == 120)
+        #expect(plan.exercises[0].sets.count == 2)
+        #expect(plan.exercises[0].sets[0].setType == .warmup)
+        #expect(plan.exercises[0].sets[0].mass?.kilograms == 60)
+        #expect(plan.exercises[0].sets[1].setType == .dropSet)
+        #expect(plan.exercises[0].sets[1].reps == 8)
     }
 
     @Test("reorders prescription when chat exercise list differs")

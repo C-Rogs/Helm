@@ -134,6 +134,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.10 Static coaching cues from seed overlay | done | 2026-07-29 | 35276af | coachingCues on seed overlay (v4); GRDB v13; picker prefers seed cues, instruction_text fallback, sessionID rotation. |
 | F-DT8.11 Prescription export share sheet remainder | done | 2026-07-29 | 6c0eba3 | Coach sheet Copy/Share export; parseable prescription set lines via WorkoutExportFormatter. |
 | F-DT8.14 Resting HR display remainder | done | 2026-07-29 | 1ad7086 | Apple Health subtitle on Recovery; muted stale value; Settings HealthKit copy; live HR Train-only regression test. |
+| F-DT8.15 Coach workout_start.v2 detailed sets | done | 2026-07-30 | e5be74a | workout_start.v2 with sets/rest; imported-plan start path; strip embedded JSON from chat bubbles; brace-safe JSON block finder. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

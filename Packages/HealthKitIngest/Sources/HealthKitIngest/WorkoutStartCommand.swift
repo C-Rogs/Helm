@@ -3,33 +3,231 @@ import Core
 import Foundation
 import Persistence
 
+public struct WorkoutStartSetSpec: Codable, Sendable, Equatable {
+    public let setType: String?
+    public let reps: Int?
+    public let massKg: Double?
+    public let rpe: Double?
+
+    public init(
+        setType: String? = nil,
+        reps: Int? = nil,
+        massKg: Double? = nil,
+        rpe: Double? = nil
+    ) {
+        self.setType = setType
+        self.reps = reps
+        self.massKg = massKg
+        self.rpe = rpe
+    }
+}
+
+public struct WorkoutStartExerciseSpec: Codable, Sendable, Equatable {
+    public let name: String
+    public let restSeconds: Int?
+    public let sets: [WorkoutStartSetSpec]?
+
+    public init(name: String, restSeconds: Int? = nil, sets: [WorkoutStartSetSpec]? = nil) {
+        self.name = name
+        self.restSeconds = restSeconds
+        self.sets = sets
+    }
+}
+
 public struct WorkoutStartPayload: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let helmDay: String?
     public let useAdjustedPrescription: Bool?
-    public let exercises: [String]?
+    public let title: String?
+    public let exercises: [WorkoutStartExerciseSpec]?
 
     public init(
         schemaVersion: String,
         helmDay: String? = nil,
         useAdjustedPrescription: Bool? = nil,
-        exercises: [String]? = nil
+        title: String? = nil,
+        exercises: [WorkoutStartExerciseSpec]? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.helmDay = helmDay
         self.useAdjustedPrescription = useAdjustedPrescription
+        self.title = title
         self.exercises = exercises
+    }
+
+    public var exerciseLabels: [String] {
+        exercises?.map(\.name) ?? []
+    }
+
+    public var hasDetailedSets: Bool {
+        exercises?.contains { exercise in
+            guard let sets = exercise.sets else { return false }
+            return !sets.isEmpty
+        } ?? false
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case helmDay
+        case useAdjustedPrescription
+        case title
+        case exercises
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        useAdjustedPrescription = try container.decodeIfPresent(Bool.self, forKey: .useAdjustedPrescription)
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+
+        if let labels = try? container.decode([String].self, forKey: .exercises) {
+            exercises = labels.map { WorkoutStartExerciseSpec(name: $0) }
+        } else {
+            exercises = try container.decodeIfPresent([WorkoutStartExerciseSpec].self, forKey: .exercises)
+        }
     }
 }
 
 public enum WorkoutStartPayloadParser {
     public static func parse(from text: String) -> WorkoutStartPayload? {
-        guard let start = text.firstIndex(of: "{"), let end = text.lastIndex(of: "}") else {
-            return nil
+        for schema in [CoachOutputSchemaVersion.workoutStartV2, .workoutStartV1] {
+            guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: schema),
+                  let data = block.data(using: .utf8),
+                  let payload = try? JSONDecoder().decode(WorkoutStartPayload.self, from: data)
+            else {
+                continue
+            }
+            return payload
         }
-        let snippet = String(text[start ... end])
-        guard let data = snippet.data(using: .utf8) else { return nil }
-        return try? JSONDecoder().decode(WorkoutStartPayload.self, from: data)
+        return nil
+    }
+}
+
+public enum WorkoutStartSetTypeParser {
+    public static func parse(_ raw: String?) -> SetType {
+        guard let raw else { return .normal }
+        let normalized = raw
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+            .replacingOccurrences(of: "_", with: "")
+            .replacingOccurrences(of: "-", with: "")
+        switch normalized {
+        case "warmup", "warm":
+            return .warmup
+        case "dropset", "drop":
+            return .dropSet
+        case "failure", "fail":
+            return .failure
+        case "assisted":
+            return .assisted
+        case "bodyweight", "bw":
+            return .bodyweight
+        case "timed", "time":
+            return .timed
+        case "distance":
+            return .distance
+        case "normal", "working", "work":
+            return .normal
+        default:
+            return SetType(rawValue: raw) ?? .normal
+        }
+    }
+}
+
+public enum WorkoutStartPlanBuilder {
+    public enum BuildError: LocalizedError, Equatable {
+        case unresolvedExercise(String)
+
+        public var errorDescription: String? {
+            switch self {
+            case let .unresolvedExercise(name):
+                "Could not match exercise: \(name)"
+            }
+        }
+    }
+
+    public static func importedPlan(
+        from payload: WorkoutStartPayload,
+        persistence: PersistenceStore
+    ) throws -> ImportedWorkoutPlan {
+        guard let exercises = payload.exercises, !exercises.isEmpty else {
+            throw BuildError.unresolvedExercise("session")
+        }
+
+        var plans: [ImportedWorkoutExercisePlan] = []
+        for (index, exercise) in exercises.enumerated() {
+            let label = exercise.name.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !label.isEmpty else { continue }
+            guard let exerciseID = try resolveExerciseID(label: label, persistence: persistence) else {
+                throw BuildError.unresolvedExercise(label)
+            }
+            guard let summary = try persistence.exercises.fetchSummary(id: exerciseID) else {
+                throw BuildError.unresolvedExercise(label)
+            }
+
+            let sets = try resolvedSets(for: exercise, exerciseID: exerciseID, persistence: persistence)
+            plans.append(
+                ImportedWorkoutExercisePlan(
+                    exerciseID: exerciseID,
+                    displayOrder: index,
+                    exerciseMode: summary.exerciseMode,
+                    restDurationSeconds: exercise.restSeconds,
+                    sets: sets
+                )
+            )
+        }
+
+        guard !plans.isEmpty else {
+            throw BuildError.unresolvedExercise("session")
+        }
+
+        return ImportedWorkoutPlan(
+            title: payload.title ?? "Today's session",
+            exercises: plans
+        )
+    }
+
+    private static func resolvedSets(
+        for exercise: WorkoutStartExerciseSpec,
+        exerciseID: String,
+        persistence: PersistenceStore
+    ) throws -> [ImportedWorkoutSetPlan] {
+        if let sets = exercise.sets, !sets.isEmpty {
+            return sets.enumerated().map { index, set in
+                ImportedWorkoutSetPlan(
+                    setIndex: index,
+                    setType: WorkoutStartSetTypeParser.parse(set.setType),
+                    mass: set.massKg.map { Mass(kilograms: $0) },
+                    reps: set.reps,
+                    rpe: set.rpe
+                )
+            }
+        }
+
+        return [
+            ImportedWorkoutSetPlan(setIndex: 0, setType: .normal)
+        ]
+    }
+
+    private static func resolveExerciseID(label: String, persistence: PersistenceStore) throws -> String? {
+        if let resolved = try persistence.exercises.resolveImportedTitle(label)?.exerciseID {
+            return resolved
+        }
+
+        let normalized = label.lowercased()
+        if let resolved = try persistence.exercises.resolveExerciseID(normalizedAlias: normalized) {
+            return resolved
+        }
+
+        let catalog = try persistence.exercises.fetchCatalogRows()
+        if let match = catalog.first(where: { row in
+            row.displayName.caseInsensitiveCompare(label) == .orderedSame
+        }) {
+            return match.id
+        }
+
+        return nil
     }
 }
 

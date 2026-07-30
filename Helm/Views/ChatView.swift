@@ -135,10 +135,11 @@ struct ChatView: View {
     }
 
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
-        HStack {
+        let display = CoachChatTextFormatter.userFacingText(from: text)
+        return HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
-                Text(text.isEmpty && isStreaming ? "..." : text)
+                Text(display.isEmpty && isStreaming ? "..." : display)
                     .helmType(.body)
                     .foregroundStyle(HelmColor.fg)
                     .textSelection(.enabled)

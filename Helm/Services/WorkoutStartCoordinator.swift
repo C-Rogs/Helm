@@ -1,6 +1,7 @@
 import Core
 import Foundation
 import HealthKitIngest
+import Persistence
 
 @MainActor
 enum WorkoutStartCoordinator {
@@ -46,5 +47,24 @@ enum WorkoutStartCoordinator {
         }
 
         await controller.startPrescription(prescription)
+    }
+
+    static func startImportedPlan(
+        controller: TrainSessionController,
+        plan: ImportedWorkoutPlan,
+        openTrainTab: Bool = false
+    ) async throws {
+        guard !controller.hasActiveSession else {
+            throw StartError.alreadyActive
+        }
+        guard !plan.exercises.isEmpty else {
+            throw StartError.emptyPrescription
+        }
+
+        if openTrainTab {
+            AppTabRouter.shared.openTrain()
+        }
+
+        await controller.startWorkout(fromImportedPlan: plan, saveTemplate: false)
     }
 }
