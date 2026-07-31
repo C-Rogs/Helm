@@ -45,9 +45,6 @@ struct SettingsView: View {
                 Section("Feedback") {
                     Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
                     Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
-                }
-
-                Section("Train") {
                     Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
                     Toggle("Rest timer sound", isOn: $trainPreferences.restTimerSoundEnabled)
                     Text("Boxing-ring bell when rest ends. Honours Silent switch; plays over headphones.")
@@ -79,13 +76,16 @@ struct SettingsView: View {
                     }
                 }
 
-                Section {
+                Section("Training & Nutrition") {
                     NavigationLink("Training Plan") {
                         PhaseGoalSettingsView()
                     }
                     NavigationLink("Nutrition") {
                         NutritionSettingsView()
                     }
+                }
+
+                Section("Coach") {
                     NavigationLink("Coach") {
                         CoachSettingsView()
                     }
@@ -95,6 +95,9 @@ struct SettingsView: View {
                     NavigationLink("Sources & Methodology") {
                         SourcesMethodologyView()
                     }
+                }
+
+                Section("Connections") {
                     NavigationLink("HealthKit") {
                         HealthKitStatusView()
                     }
@@ -104,12 +107,18 @@ struct SettingsView: View {
                     NavigationLink("Watch Sync") {
                         WatchSyncStatusView()
                     }
+                }
+
+                Section("Data") {
                     NavigationLink("Data & Backup") {
                         DataSafetyView()
                     }
                     NavigationLink("Export health data") {
                         SchemaV2ExportView()
                     }
+                }
+
+                Section("Diagnostics") {
                     NavigationLink("Diagnostics") {
                         DiagnosticsView(environment: ExportEnvironmentFactory.current(
                             schemaVersion: PersistenceBootstrap.schemaVersion
