@@ -167,6 +167,8 @@ targets:
     dependencies:
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
+      - sdk: AppIntents.framework
+      - sdk: ActivityKit.framework
   HelmWatch:
     type: application
     platform: watchOS

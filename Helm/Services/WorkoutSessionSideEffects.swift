@@ -20,12 +20,18 @@ final class WorkoutSessionSideEffects {
         self.workoutWriter = workoutWriter
     }
 
-    func onSessionStarted(_ snapshot: ActiveSessionSnapshot) async {
+    func onSessionStarted(
+        _ snapshot: ActiveSessionSnapshot,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil
+    ) async {
         await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
         await liveActivity.start(
             session: snapshot.session,
-            currentExerciseName: currentExerciseName(in: snapshot)
+            currentExerciseName: currentExerciseName(in: snapshot),
+            targetSummary: targetSummary,
+            heartRateBPM: heartRateBPM
         )
     }
 
@@ -37,11 +43,18 @@ final class WorkoutSessionSideEffects {
         liveActivity.endAllForTermination()
     }
 
-    func onSessionUpdated(_ snapshot: ActiveSessionSnapshot, restRemainingSeconds: Int?) async {
+    func onSessionUpdated(
+        _ snapshot: ActiveSessionSnapshot,
+        restRemainingSeconds: Int?,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil
+    ) async {
         await liveActivity.update(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot),
-            restRemainingSeconds: restRemainingSeconds
+            targetSummary: targetSummary,
+            restRemainingSeconds: restRemainingSeconds,
+            heartRateBPM: heartRateBPM
         )
     }
 
@@ -70,11 +83,18 @@ final class WorkoutSessionSideEffects {
     ) async {
         await notifications.cancelRestNotification(sessionID: snapshot.session.id)
         let exerciseName = currentExerciseName(in: snapshot)
-        await liveActivity.start(session: snapshot.session, currentExerciseName: exerciseName)
+        await liveActivity.start(
+            session: snapshot.session,
+            currentExerciseName: exerciseName,
+            targetSummary: nil,
+            heartRateBPM: nil
+        )
         await liveActivity.update(
             session: snapshot.session,
             currentExerciseName: exerciseName,
-            restRemainingSeconds: restRemainingSeconds
+            targetSummary: nil,
+            restRemainingSeconds: restRemainingSeconds,
+            heartRateBPM: nil
         )
     }
 

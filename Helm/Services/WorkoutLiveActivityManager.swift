@@ -18,7 +18,12 @@ final class WorkoutLiveActivityManager {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
-    func start(session: WorkoutSessionDraft, currentExerciseName: String?) async {
+    func start(
+        session: WorkoutSessionDraft,
+        currentExerciseName: String?,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil
+    ) async {
         guard isSupported else { return }
         await endAll()
 
@@ -26,11 +31,12 @@ final class WorkoutLiveActivityManager {
             sessionTitle: session.title ?? "Workout",
             startedAt: session.startedAt
         )
-        let elapsed = Int(Date().timeIntervalSince(session.startedAt))
-        let state = WorkoutActivityAttributes.ContentState(
-            elapsedSeconds: max(elapsed, 0),
+        let state = makeContentState(
+            session: session,
             currentExerciseName: currentExerciseName,
-            restRemainingSeconds: nil
+            targetSummary: targetSummary,
+            restRemainingSeconds: nil,
+            heartRateBPM: heartRateBPM
         )
 
         if let activity = try? Activity.request(
@@ -45,14 +51,17 @@ final class WorkoutLiveActivityManager {
     func update(
         session: WorkoutSessionDraft,
         currentExerciseName: String?,
-        restRemainingSeconds: Int?
+        targetSummary: String? = nil,
+        restRemainingSeconds: Int?,
+        heartRateBPM: Int? = nil
     ) async {
         guard let activity = currentActivity() else { return }
-        let elapsed = Int(Date().timeIntervalSince(session.startedAt))
-        let state = WorkoutActivityAttributes.ContentState(
-            elapsedSeconds: max(elapsed, 0),
+        let state = makeContentState(
+            session: session,
             currentExerciseName: currentExerciseName,
-            restRemainingSeconds: restRemainingSeconds
+            targetSummary: targetSummary,
+            restRemainingSeconds: restRemainingSeconds,
+            heartRateBPM: heartRateBPM
         )
         await activity.update(.init(state: state, staleDate: staleDate()))
     }
@@ -82,6 +91,37 @@ final class WorkoutLiveActivityManager {
     func reconcileOrphanedActivities(hasActiveSession: Bool) async {
         guard !hasActiveSession else { return }
         await endAll()
+    }
+
+    private func makeContentState(
+        session: WorkoutSessionDraft,
+        currentExerciseName: String?,
+        targetSummary: String?,
+        restRemainingSeconds: Int?,
+        heartRateBPM: Int?,
+        now: Date = Date()
+    ) -> WorkoutActivityAttributes.ContentState {
+        let elapsed = max(0, Int(now.timeIntervalSince(session.startedAt)))
+        let current = session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        } ?? session.exercises.first
+        let setNumber = current.flatMap { exercise in
+            exercise.sets.firstIndex { $0.status != .completed }.map { $0 + 1 }
+        }
+        let setID = current.flatMap { exercise in
+            exercise.sets.first { $0.status != .completed }?.id
+        }
+        return WorkoutActivityAttributes.ContentState(
+            elapsedSeconds: elapsed,
+            currentExerciseName: currentExerciseName,
+            currentSetNumber: setNumber,
+            currentSetCount: current?.sets.count,
+            targetSummary: targetSummary,
+            restRemainingSeconds: restRemainingSeconds,
+            heartRateBPM: heartRateBPM,
+            sessionExerciseID: current?.id,
+            currentSetID: setID
+        )
     }
 
     private func staleDate(from now: Date = Date()) -> Date {

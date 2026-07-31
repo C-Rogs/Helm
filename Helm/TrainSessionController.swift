@@ -847,7 +847,19 @@ final class TrainSessionController {
         guard shouldSyncLiveActivity(restRemaining: rest, force: force) else { return }
         lastSyncedRestRemaining = rest
         lastLiveActivitySyncDate = Date()
-        await sideEffects.onSessionUpdated(snapshot, restRemainingSeconds: rest)
+        let currentExercise = snapshot.session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        } ?? snapshot.session.exercises.first
+        let target = currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+        let bpm = WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
+            ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+            : nil
+        await sideEffects.onSessionUpdated(
+            snapshot,
+            restRemainingSeconds: rest,
+            targetSummary: target,
+            heartRateBPM: bpm
+        )
     }
 
     func localRemainingRestSeconds(at date: Date = Date()) -> Int? {

@@ -22,6 +22,18 @@ struct AppRootView: View {
         .onAppear {
             AppLifecycleState.update(scenePhase: scenePhase)
         }
+        .onReceive(NotificationCenter.default.publisher(for: LiveActivityCompleteSetBridge.notificationName)) { note in
+            guard
+                let exerciseID = note.userInfo?[LiveActivityCompleteSetBridge.sessionExerciseIDKey] as? String,
+                let setID = note.userInfo?[LiveActivityCompleteSetBridge.setIDKey] as? String
+            else { return }
+            Task {
+                await TrainBootstrap.sessionController.completeSet(
+                    sessionExerciseID: exerciseID,
+                    setID: setID
+                )
+            }
+        }
         .onOpenURL { url in
             guard AppGroupExportStore.matchesImportURL(url) else { return }
             consumeSchemaV2ShareImportIfNeeded()
