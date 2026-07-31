@@ -178,17 +178,15 @@ struct InSessionCoachSheet: View {
                 .allowsHitTesting(false)
             }
 
-            HStack(spacing: HelmSpacing.sm) {
-                Button("Apply change") {
-                    Task { await controller.confirmCoachProposal() }
-                }
-                .buttonStyle(.helmPrimary)
-
-                Button("Keep plan") {
-                    Task { await controller.dismissCoachProposal() }
-                }
-                .buttonStyle(.helmSecondary)
-            }
+            CoachActionConfirmationCard(
+                title: proposal.previewBanner?.toLabel ?? "Apply change",
+                detail: proposal.previewBanner?.fromLabel ?? "Session adjustment",
+                reason: proposal.previewBanner?.reason ?? proposal.reply,
+                confirmLabel: "Apply change",
+                cancelLabel: "Keep plan",
+                onConfirm: { Task { await controller.confirmCoachProposal() } },
+                onCancel: { Task { await controller.dismissCoachProposal() } }
+            )
         }
     }
 

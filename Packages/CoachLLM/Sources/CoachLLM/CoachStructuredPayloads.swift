@@ -212,6 +212,52 @@ public struct MealDecomposition: Sendable, Equatable {
     }
 }
 
+public struct FoodLogPayload: Codable, Sendable, Equatable {
+    public enum Action: String, Codable, Sendable, Equatable {
+        case log
+        case edit
+        case delete
+    }
+
+    public let schemaVersion: String
+    public let reply: String
+    public let action: Action
+    public let mealID: String?
+    public let description: String?
+    public let bucket: String?
+    public let caloriesKcal: Double?
+    public let proteinG: Double?
+    public let carbsG: Double?
+    public let fatG: Double?
+    public let helmDay: String?
+
+    public init(
+        schemaVersion: String,
+        reply: String,
+        action: Action,
+        mealID: String? = nil,
+        description: String? = nil,
+        bucket: String? = nil,
+        caloriesKcal: Double? = nil,
+        proteinG: Double? = nil,
+        carbsG: Double? = nil,
+        fatG: Double? = nil,
+        helmDay: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.reply = reply
+        self.action = action
+        self.mealID = mealID
+        self.description = description
+        self.bucket = bucket
+        self.caloriesKcal = caloriesKcal
+        self.proteinG = proteinG
+        self.carbsG = carbsG
+        self.fatG = fatG
+        self.helmDay = helmDay
+    }
+}
+
 public struct MorningBriefPayload: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let narration: String

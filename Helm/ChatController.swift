@@ -1,6 +1,7 @@
 import CoachLLM
 import Core
 import Diagnostics
+import DesignSystem
 import Foundation
 import HealthKitIngest
 import Observation
@@ -17,6 +18,9 @@ final class ChatController {
     private(set) var isCoachAvailable = true
     private(set) var lastTurnError: String?
     private(set) var lastFailedUserMessage: String?
+    private(set) var pendingChatAction: CoachChatActionProposal?
+    private(set) var isApplyingChatAction = false
+    private(set) var applyProgressStep: String?
     private(set) var handoffGeneration = 0
     private(set) var pendingHandoffPrompt: String?
 
@@ -103,6 +107,87 @@ final class ChatController {
         guard let prompt = pendingHandoffPrompt else { return }
         pendingHandoffPrompt = nil
         draftText = prompt
+    }
+
+    func confirmChatAction() {
+        guard let proposal = pendingChatAction, !isApplyingChatAction else { return }
+        Task {
+            await applyChatAction(proposal)
+        }
+    }
+
+    func dismissChatAction() {
+        pendingChatAction = nil
+    }
+
+    private func applyChatAction(_ proposal: CoachChatActionProposal) async {
+        isApplyingChatAction = true
+        applyProgressStep = "Applying change…"
+        defer {
+            isApplyingChatAction = false
+            applyProgressStep = nil
+            pendingChatAction = nil
+        }
+
+        do {
+            switch proposal.kind {
+            case let .foodLog(payload):
+                applyProgressStep = "Writing to diary…"
+                let applier = FoodLogCommandApplier(
+                    manualMealService: NutritionBootstrap.manualMealService,
+                    persistence: persistence
+                )
+                try await applier.apply(payload)
+                NutritionBootstrap.refreshNutrition()
+                HapticEngine.shared.play(.phaseChange)
+                HapticEngine.shared.play(.mealConfirmed)
+            case let .workoutStart(payload):
+                applyProgressStep = "Preparing session…"
+                let today = HelmDay.day(for: .now, calendar: .current)
+                try await applyWorkoutStart(payload, helmDay: today)
+                HapticEngine.shared.play(.phaseChange)
+                HapticEngine.shared.play(.coachAdjust)
+            }
+        } catch {
+            lastTurnError = error.localizedDescription
+            CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: error)
+        }
+    }
+
+    private func applyWorkoutStart(_ payload: WorkoutStartPayload, helmDay: HelmDay) async throws {
+        _ = try await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
+            in: encodedWorkoutStartBlock(payload),
+            helmDay: helmDay,
+            persistence: persistence,
+            prescriptionService: PlanBootstrap.prescriptionService
+        ) { action in
+            switch action {
+            case let .prescription(useAdjusted):
+                try await WorkoutStartCoordinator.startTodaysSession(
+                    controller: TrainBootstrap.sessionController,
+                    prescriptionService: PlanBootstrap.prescriptionService,
+                    openTrainTab: true,
+                    useAdjustedPrescription: useAdjusted
+                )
+            case let .importedPlan(plan):
+                try await WorkoutStartCoordinator.startImportedPlan(
+                    controller: TrainBootstrap.sessionController,
+                    plan: plan,
+                    openTrainTab: true
+                )
+            }
+        }
+    }
+
+    private func encodedWorkoutStartBlock(_ payload: WorkoutStartPayload) -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        guard let data = try? encoder.encode(payload),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return ""
+        }
+        return json
     }
 
     private func sendMessage(_ text: String) async {
@@ -210,34 +295,7 @@ final class ChatController {
                 )
             }
 
-            let today = HelmDay.day(for: .now, calendar: .current)
-            do {
-                _ = try await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
-                    in: assembled,
-                    helmDay: today,
-                    persistence: persistence,
-                    prescriptionService: PlanBootstrap.prescriptionService
-                ) { action in
-                    switch action {
-                    case let .prescription(useAdjusted):
-                        try await WorkoutStartCoordinator.startTodaysSession(
-                            controller: TrainBootstrap.sessionController,
-                            prescriptionService: PlanBootstrap.prescriptionService,
-                            openTrainTab: true,
-                            useAdjustedPrescription: useAdjusted
-                        )
-                    case let .importedPlan(plan):
-                        try await WorkoutStartCoordinator.startImportedPlan(
-                            controller: TrainBootstrap.sessionController,
-                            plan: plan,
-                            openTrainTab: true
-                        )
-                    }
-                }
-            } catch {
-                CoachDiagnosticsStore.shared.recordFailure(surface: "workoutStart", error: error)
-                lastTurnError = error.localizedDescription
-            }
+            pendingChatAction = CoachChatActionParser.proposal(from: assembled)
 
             await logTurn(
                 status: "completed",

@@ -7,19 +7,25 @@ public struct CoachAIProgressCard: View {
     private let completedSteps: [String]
     private let currentStep: String
     private let footnote: String?
+    private let isImpactful: Bool
+
+    @Environment(\.helmReduceMotion) private var reduceMotion
+    @State private var pulsePhase = false
 
     public init(
         eyebrow: String,
         title: String,
         completedSteps: [String],
         currentStep: String,
-        footnote: String? = nil
+        footnote: String? = nil,
+        isImpactful: Bool = false
     ) {
         self.eyebrow = eyebrow
         self.title = title
         self.completedSteps = completedSteps
         self.currentStep = currentStep
         self.footnote = footnote
+        self.isImpactful = isImpactful
     }
 
     public var body: some View {
@@ -58,7 +64,21 @@ public struct CoachAIProgressCard: View {
         .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
         .overlay {
             RoundedRectangle(cornerRadius: HelmRadius.md)
-                .strokeBorder(HelmColor.hairline, lineWidth: 1)
+                .strokeBorder(
+                    isImpactful ? HelmColor.accent.opacity(pulsePhase ? 0.65 : 0.25) : HelmColor.hairline,
+                    lineWidth: isImpactful ? 1.5 : 1
+                )
+        }
+        .shadow(
+            color: isImpactful ? HelmColor.accent.opacity(pulsePhase ? 0.22 : 0.08) : .clear,
+            radius: isImpactful ? 12 : 0,
+            y: isImpactful ? 4 : 0
+        )
+        .onAppear {
+            guard isImpactful, !reduceMotion else { return }
+            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+                pulsePhase = true
+            }
         }
     }
 }
@@ -71,6 +91,20 @@ public struct CoachAIProgressCard: View {
         completedSteps: ["Reading photo", "Identifying ingredients from photo…"],
         currentStep: "Matching ingredients to CoFID…",
         footnote: "Helm identifies ingredients with vision, then matches each item to CoFID on your phone."
+    )
+    .helmScreenPadding()
+    .padding()
+    .helmTheme()
+    .helmScreenBackground()
+}
+
+#Preview("Coach AI progress impactful") {
+    CoachAIProgressCard(
+        eyebrow: "COACH",
+        title: "Applying change",
+        completedSteps: ["Confirmed"],
+        currentStep: "Writing to diary…",
+        isImpactful: true
     )
     .helmScreenPadding()
     .padding()

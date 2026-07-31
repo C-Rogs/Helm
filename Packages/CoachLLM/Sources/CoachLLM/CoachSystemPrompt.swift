@@ -13,6 +13,9 @@ public enum CoachSystemPrompt {
     Each set object uses setType (warmup, normal, drop_set, failure, bodyweight), reps, massKg, and optional rpe.
     Include every discussed exercise with the exact reps, weights, set types, and rest timers agreed in the conversation.
     workout_start.v1 fallback: helmDay, useAdjustedPrescription, and exercises as ordered display-name strings when only reordering the engine prescription.
+    When the athlete asks to log, edit, or delete a meal after discussing it, append food_log.v1 JSON. Do not emit food_log.v1 for nutrition questions alone.
+    food_log.v1 fields: action (log|edit|delete), reply, optional mealID (edit/delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal, proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
+    For nutrition questions (remaining macros, what was eaten today, target vs actual), answer from the Nutrition Diary context. Only persist food changes via food_log.v1 after the athlete confirms the entry in chat.
     """
 
     public static let morningBriefV1 = """

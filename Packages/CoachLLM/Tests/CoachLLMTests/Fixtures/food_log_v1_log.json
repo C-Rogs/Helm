@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "food_log.v1",
+  "reply": "Logged chicken rice for lunch.",
+  "action": "log",
+  "description": "Chicken rice bowl",
+  "bucket": "lunch",
+  "caloriesKcal": 450,
+  "proteinG": 35,
+  "carbsG": 50,
+  "fatG": 10,
+  "helmDay": "2026-07-31"
+}

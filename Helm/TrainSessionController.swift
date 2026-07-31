@@ -1352,6 +1352,7 @@ final class TrainSessionController {
                 pendingCoachProposal = nil
                 isShowingCoachPrompt = false
                 try await finishApplyingAdjustment(applied)
+                HapticEngine.shared.play(.phaseChange)
                 showCoachApplyWave = true
             } catch InSessionCoachError.adjustmentRejected {
                 WorkoutHapticCoordinator.play(.clampRejected)
@@ -1384,6 +1385,7 @@ final class TrainSessionController {
             let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
             coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
             coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
+            HapticEngine.shared.play(.phaseChange)
             showCoachApplyWave = true
         } catch {
             pendingCoachProposal = nil

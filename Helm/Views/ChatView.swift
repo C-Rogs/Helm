@@ -38,6 +38,19 @@ struct ChatView: View {
                                     .id("last-turn-error")
                             }
 
+                            if let proposal = controller.pendingChatAction {
+                                CoachActionConfirmationCard(
+                                    title: proposal.title,
+                                    detail: proposal.detail,
+                                    reason: proposal.reason,
+                                    confirmLabel: proposal.confirmLabel,
+                                    cancelLabel: proposal.cancelLabel,
+                                    onConfirm: { controller.confirmChatAction() },
+                                    onCancel: { controller.dismissChatAction() }
+                                )
+                                .id("chat-confirmation")
+                            }
+
                             if controller.isStreaming, let streamingText = controller.streamingText {
                                 assistantBubble(streamingText, isStreaming: true)
                                     .id("streaming")
@@ -58,6 +71,23 @@ struct ChatView: View {
                     .onChange(of: controller.streamingText) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
+                    .onChange(of: controller.pendingChatAction?.id) { _, _ in
+                        scrollToBottom(proxy: proxy)
+                    }
+                }
+
+                if controller.isApplyingChatAction {
+                    CoachAIProgressCard(
+                        eyebrow: "COACH",
+                        title: "Applying change",
+                        completedSteps: ["Confirmed"],
+                        currentStep: controller.applyProgressStep ?? "Working…",
+                        isImpactful: true
+                    )
+                    .helmScreenPadding()
+                    .padding(.vertical, HelmSpacing.sm)
+                    .background(HelmColor.surface.opacity(0.96))
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
 
                 composer
@@ -214,6 +244,8 @@ struct ChatView: View {
         let scroll = {
             if controller.isStreaming {
                 proxy.scrollTo("streaming", anchor: .bottom)
+            } else if controller.pendingChatAction != nil {
+                proxy.scrollTo("chat-confirmation", anchor: .bottom)
             } else if controller.lastTurnError != nil {
                 proxy.scrollTo("last-turn-error", anchor: .bottom)
             } else if let lastID = controller.messages.last?.id {

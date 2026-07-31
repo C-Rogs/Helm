@@ -88,13 +88,21 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
+        let nutritionDiary = CoachNutritionContextBuilder.diaryBlock(
+            from: store,
+            for: endDay,
+            prescriptionSummary: nil,
+            calendar: calendar,
+            cutoff: cutoff
+        )
 
         return CoachContextDays(
             readinessBaselines: baselines,
             evidence: evidence,
             recent: recent,
             recentWorkouts: recentWorkouts,
-            trainingPlanSnapshot: trainingPlanSnapshot
+            trainingPlanSnapshot: trainingPlanSnapshot,
+            nutritionDiary: nutritionDiary
         )
     }
 
