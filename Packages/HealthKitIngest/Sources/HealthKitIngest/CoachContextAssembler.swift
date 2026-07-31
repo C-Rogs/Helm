@@ -16,7 +16,7 @@ public enum CoachContextAssembler {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
         evidence: [EvidenceRecord] = bundledMethodologyEvidence()
-    ) throws -> CoachContextDays {
+    ) async throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
         let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { ($0.helmDay, $0) })
@@ -88,7 +88,7 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
-        let nutritionDiary = CoachNutritionContextBuilder.diaryBlock(
+        let nutritionDiary = await CoachNutritionContextBuilder.diaryBlock(
             from: store,
             for: endDay,
             prescriptionSummary: nil,

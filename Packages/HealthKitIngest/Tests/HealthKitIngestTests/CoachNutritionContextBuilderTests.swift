@@ -6,7 +6,7 @@ import Testing
 @Suite("CoachNutritionContextBuilder")
 struct CoachNutritionContextBuilderTests {
     @Test("diary block includes targets and meals")
-    func diaryIncludesTargetsAndMeals() throws {
+    func diaryIncludesTargetsAndMeals() async throws {
         let store = try PersistenceStore.inMemory()
         let helmDay = HelmDay(year: 2023, month: 11, day: 15)
         let calendar = Calendar(identifier: .gregorian)
@@ -28,7 +28,7 @@ struct CoachNutritionContextBuilderTests {
             )
         )
 
-        let block = CoachNutritionContextBuilder.diaryBlock(
+        let block = await CoachNutritionContextBuilder.diaryBlock(
             from: store,
             for: helmDay,
             prescriptionSummary: nil,

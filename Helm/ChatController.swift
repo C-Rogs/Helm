@@ -226,7 +226,7 @@ final class ChatController {
 
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
-            let contextDays = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let thread = CoachThreadState(
                 messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
             )

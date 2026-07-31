@@ -12,9 +12,9 @@ public enum CoachNutritionContextBuilder {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
         now: Date = Date()
-    ) -> String {
+    ) async -> String {
         let engine = NutritionEngine(persistence: store, calendar: calendar, cutoff: cutoff)
-        let snapshot = engine.snapshot(for: helmDay, prescriptionSummary: prescriptionSummary, now: now)
+        let snapshot = await engine.snapshot(for: helmDay, prescriptionSummary: prescriptionSummary, now: now)
         let meals = (try? store.nutrition.fetchMeals(for: helmDay)) ?? []
 
         var lines: [String] = [

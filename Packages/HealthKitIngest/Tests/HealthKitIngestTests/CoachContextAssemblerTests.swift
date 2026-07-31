@@ -12,7 +12,7 @@ struct CoachContextAssemblerTests {
     private let previous = HelmDay(year: 2026, month: 7, day: 21)
 
     @Test("includes body composition in recent days and stable baselines")
-    func includesBodyComposition() throws {
+    func includesBodyComposition() async throws {
         let store = try PersistenceStore.inMemory()
         let measuredAt = Calendar.current.date(from: DateComponents(
             timeZone: .current,
@@ -30,7 +30,7 @@ struct CoachContextAssemblerTests {
             )
         )
 
-        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+        let context = try await CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
 
         #expect(context.readinessBaselines.contains("2026-07-21 weight=82.4kg"))
         #expect(context.recent.count == 1)
@@ -38,7 +38,7 @@ struct CoachContextAssemblerTests {
     }
 
     @Test("assembles recent days from persisted health rows")
-    func assemblesRecentDays() throws {
+    func assemblesRecentDays() async throws {
         let store = try PersistenceStore.inMemory()
 
         try store.dailyMetrics.upsert(
@@ -61,7 +61,7 @@ struct CoachContextAssemblerTests {
             """
         )
 
-        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+        let context = try await CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
 
         #expect(context.readinessBaselines.contains("hrvChronicMs=52.1"))
         #expect(context.readinessBaselines.contains("seededNights=28"))
@@ -73,7 +73,7 @@ struct CoachContextAssemblerTests {
     }
 
     @Test("assembles recent workouts block with full set detail")
-    func assemblesRecentWorkoutsBlock() throws {
+    func assemblesRecentWorkoutsBlock() async throws {
         let store = try PersistenceStore.inMemory()
         let squatID = "exercise-squat"
         try store.exercises.upsert(
@@ -116,7 +116,7 @@ struct CoachContextAssemblerTests {
             )
         )
 
-        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+        let context = try await CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
 
         #expect(context.recentWorkouts.contains("Leg Day"))
         #expect(context.recentWorkouts.contains("Squat (Barbell)"))
@@ -124,7 +124,7 @@ struct CoachContextAssemblerTests {
     }
 
     @Test("includes training plan snapshot with verbatim emphasis")
-    func includesTrainingPlanSnapshot() throws {
+    func includesTrainingPlanSnapshot() async throws {
         let store = try PersistenceStore.inMemory()
         try store.trainingPlan.save(
             StoredTrainingPlanSettings(
@@ -133,7 +133,7 @@ struct CoachContextAssemblerTests {
             )
         )
 
-        let context = try CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+        let context = try await CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
 
         #expect(context.trainingPlanSnapshot.contains("emphasis=\"calves\""))
         #expect(context.trainingPlanSnapshot.contains("engine_note=split_rotation_only"))

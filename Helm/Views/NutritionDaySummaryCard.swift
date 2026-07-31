@@ -656,6 +656,7 @@ private extension TrainingPhase {
     )
 }
 
+@MainActor
 private func nutritionSummaryPreview(
     activeEnergyKcal: Int?,
     activeEnergyFreshness: ActiveEnergyFreshness

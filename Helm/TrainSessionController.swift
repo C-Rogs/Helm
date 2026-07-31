@@ -243,7 +243,7 @@ final class TrainSessionController {
         do {
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
             let intro = try await preStartCoach.generateIntro(
                 brief: brief,
@@ -1188,7 +1188,7 @@ final class TrainSessionController {
             let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await preStartCoach.proposeAdjustment(
@@ -1274,7 +1274,7 @@ final class TrainSessionController {
             guard !Task.isCancelled else { return }
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
-            let context = try CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await inSessionCoach.proposeAdjustment(
