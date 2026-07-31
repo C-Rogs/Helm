@@ -389,6 +389,14 @@ struct TrainView: View {
                     VStack(alignment: .leading, spacing: HelmSpacing.md) {
                         SessionHeartRateChip()
 
+                        if let notice = controller.watchCompanionNotice {
+                            Text(notice)
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .padding(.horizontal, HelmSpacing.xs)
+                                .accessibilityLabel(notice)
+                                .onTapGesture { controller.dismissWatchCompanionNotice() }
+                        }
+
                         if let banner = controller.adjustmentBanner {
                             AdjustmentBanner(
                                 fromLabel: banner.fromLabel,
@@ -596,7 +604,7 @@ private struct SessionHeartRateChip: View {
 
     var body: some View {
         #if os(iOS)
-        if watchCoordinator.isPaired {
+        if watchCoordinator.canDriveWatchCompanion {
             chipContent
         }
         #else

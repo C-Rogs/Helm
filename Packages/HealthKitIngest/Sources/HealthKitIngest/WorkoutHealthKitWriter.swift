@@ -46,10 +46,15 @@ public struct WorkoutHealthKitWriter: WorkoutHealthKitWriting {
     }
 
     public func saveWorkout(_ request: WorkoutWriteRequest) async throws -> SavedWorkoutSample {
-        try await store.saveWorkout(
+        let energy = StrengthWorkoutEnergyEstimator.activeEnergyKilocalories(
+            startedAt: request.startedAt,
+            endedAt: request.endedAt
+        )
+        return try await store.saveWorkout(
             activityType: .traditionalStrengthTraining,
             start: request.startedAt,
             end: request.endedAt,
+            totalEnergyBurnedKilocalories: energy,
             metadata: [
                 HKMetadataKeyWorkoutBrandName: "Helm",
                 "com.cameronro.helm.session_id": request.sessionID,

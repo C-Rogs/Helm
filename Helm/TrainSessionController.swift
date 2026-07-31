@@ -93,6 +93,7 @@ final class TrainSessionController {
     private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
     private(set) var proactiveCoachBanner: String?
     private(set) var coachPeekSnippet: String?
+    private(set) var watchCompanionNotice: String?
 
     private var didSurfaceRestOverrunProactive = false
 
@@ -181,6 +182,7 @@ final class TrainSessionController {
         await abandonUntouchedPrescriptionIfNeeded()
         if let snapshot = store.snapshot {
             await sideEffects.onSessionStarted(snapshot)
+            activateWatchCompanionAfterSessionStart()
         } else {
             await refreshPrescriptionState()
         }
@@ -356,6 +358,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
+                activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -386,6 +389,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
+                activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -405,6 +409,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
+                activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -438,6 +443,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
+                activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -1466,6 +1472,23 @@ final class TrainSessionController {
 
     func fetchMuscleGroups() throws -> [String] {
         try persistence.exercises.listMuscleGroups(forPickerDefaults: true)
+    }
+
+    func dismissWatchCompanionNotice() {
+        watchCompanionNotice = nil
+    }
+
+    private func activateWatchCompanionAfterSessionStart() {
+        pushWatchCompanionState()
+        let coordinator = WatchReadinessBootstrap.coordinator
+        coordinator.refreshPairingFlags()
+        if coordinator.canDriveWatchCompanion {
+            coordinator.launchWatchWorkoutCompanion()
+            HapticEngine.shared.play(.phaseChange)
+            watchCompanionNotice = nil
+        } else {
+            watchCompanionNotice = "No Apple Watch connected. Heart rate hidden. Phone will record training load energy."
+        }
     }
 
     private func pushWatchCompanionState() {

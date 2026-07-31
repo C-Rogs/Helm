@@ -83,13 +83,17 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
 
     func stop(_ query: HKQuery) {}
 
+    private(set) var lastSavedEnergyKilocalories: Double?
+
     func saveWorkout(
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        totalEnergyBurnedKilocalories: Double?,
         metadata: [String: any Sendable]
     ) async throws -> SavedWorkoutSample {
         lock.withLock {
+            lastSavedEnergyKilocalories = totalEnergyBurnedKilocalories
             SavedWorkoutSample(
                 id: UUID(),
                 start: start,

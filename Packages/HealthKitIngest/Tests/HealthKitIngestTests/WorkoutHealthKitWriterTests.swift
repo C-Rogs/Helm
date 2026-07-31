@@ -15,6 +15,8 @@ struct WorkoutHealthKitWriterTests {
             WorkoutWriteRequest(sessionID: "session-1", startedAt: start, endedAt: end, title: "Push")
         )
 
+        #expect(mock.lastSavedEnergyKilocalories != nil)
+        #expect(mock.lastSavedEnergyKilocalories! > 0)
         #expect(
             WorkoutHealthKitWriter.shouldReIngest(
                 savedWorkout: saved,

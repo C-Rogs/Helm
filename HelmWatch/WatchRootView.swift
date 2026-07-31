@@ -1,5 +1,6 @@
 import Core
 import SwiftUI
+import WatchKit
 
 struct WatchRootView: View {
     @State private var coordinator = WatchSessionCoordinator(role: .watch)
@@ -38,6 +39,7 @@ struct WatchRootView: View {
         .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
             if isActive {
                 guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
+                WKInterfaceDevice.current().play(.start)
                 Task { await workoutStore.startWorkout() }
                 return
             }

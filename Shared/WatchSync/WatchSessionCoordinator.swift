@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import HealthKit
 import WatchConnectivity
 #if os(watchOS)
 import WatchKit
@@ -120,6 +121,40 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: targetSummary
         )
         push(payload)
+    }
+
+    /// True when phone can drive a Watch workout companion (paired + app installed).
+    var canDriveWatchCompanion: Bool {
+        #if os(iOS)
+        return isPaired && isWatchAppInstalled
+        #else
+        return true
+        #endif
+    }
+
+    /// Wakes Watch workout app via HealthKit configuration, then companion context.
+    func launchWatchWorkoutCompanion() {
+        guard role == .phone else { return }
+        refreshSessionFlags()
+        #if os(iOS)
+        guard activationState == .activated, canDriveWatchCompanion else { return }
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .traditionalStrengthTraining
+        configuration.locationType = .indoor
+        HKHealthStore().startWatchApp(with: configuration) { [weak self] (success: Bool, error: Error?) in
+            Task { @MainActor in
+                if let error {
+                    self?.lastError = error.localizedDescription
+                } else if !success {
+                    self?.lastError = "Watch workout app failed to launch"
+                }
+            }
+        }
+        #endif
+    }
+
+    func refreshPairingFlags() {
+        refreshSessionFlags()
     }
 
     /// Immediate rest-end cue for Watch haptic. Prefer sendMessage when reachable.

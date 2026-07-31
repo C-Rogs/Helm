@@ -38,6 +38,7 @@ public protocol HealthKitStoreClient: Sendable {
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        totalEnergyBurnedKilocalories: Double?,
         metadata: [String: any Sendable]
     ) async throws -> SavedWorkoutSample
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples
@@ -153,17 +154,24 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
         activityType: HKWorkoutActivityType,
         start: Date,
         end: Date,
+        totalEnergyBurnedKilocalories: Double?,
         metadata: [String: any Sendable]
     ) async throws -> SavedWorkoutSample {
         let metadataDictionary = metadata.reduce(into: [String: Any]()) { result, entry in
             result[entry.key] = entry.value
+        }
+        let energy: HKQuantity?
+        if let totalEnergyBurnedKilocalories, totalEnergyBurnedKilocalories > 0 {
+            energy = HKQuantity(unit: .kilocalorie(), doubleValue: totalEnergyBurnedKilocalories)
+        } else {
+            energy = nil
         }
         let workout = HKWorkout(
             activityType: activityType,
             start: start,
             end: end,
             workoutEvents: nil,
-            totalEnergyBurned: nil,
+            totalEnergyBurned: energy,
             totalDistance: nil,
             device: .local(),
             metadata: metadataDictionary

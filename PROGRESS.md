@@ -141,7 +141,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | 3cf26d1 | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
 | F-DT9.4 Train bottom layout + remove-exercise fix | done | 2026-07-31 | 378071c | Shorter rest banner; tighter rest/coach spacing; higher bottom fog; presenting-ID Binding race fix; PendingExerciseRemovalTests. |
 | F-DT9.5 Rest sound + RTL progress | done | 2026-07-31 | e6f94f5 | Boxing-ring rest_bell.caf (ambient/Silent); RTL remaining track; Watch restEnded haptic message; preference + progress tests. |
-| F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |
+| F-DT9.6 Watch companion auto-start + HR + training load | done | 2026-07-31 | 5a703e9 | Watch startWatchApp + buzz; toast + hide HR when unpaired/uninstalled; phone HKWorkout energy for training load. |
 | F-DT9.7 Live Activity / Dynamic Island redesign | not started | | | Track B |
 | F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | done | 2026-07-31 | ffcc955 | Track C |
 | F-DT9.9 Coach confirm + AI impact + food diary | done | 2026-07-31 | 41a47f6 | Track C |
