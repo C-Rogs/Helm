@@ -136,18 +136,18 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.11 Prescription export share sheet remainder | done | 2026-07-29 | 6c0eba3 | Coach sheet Copy/Share export; parseable prescription set lines via WorkoutExportFormatter. |
 | F-DT8.14 Resting HR display remainder | done | 2026-07-29 | 1ad7086 | Apple Health subtitle on Recovery; muted stale value; Settings HealthKit copy; live HR Train-only regression test. |
 | F-DT8.15 Coach workout_start.v2 detailed sets | done | 2026-07-30 | e5be74a | workout_start.v2 with sets/rest; imported-plan start path; strip embedded JSON from chat bubbles; brace-safe JSON block finder. |
-| F-DT9.1 Hevy-style set input / numpad | done | 2026-07-31 | 398bddd | Grey prefilled PREV, black committed; caret/select-all editing; no Next on kg/reps; RPE slider + Done; dismiss chip/swipe/tap-outside. SetRowFieldValueStateTests. |
-| F-DT9.2 Rest-notification cold-start crash | not started | | | Track B |
-| F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | 1d6e5b5 | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
+| F-DT9.1 Hevy-style set input / numpad | done | 2026-07-31 | 2ba1ef9 | Grey prefilled PREV, black committed; caret/select-all editing; no Next on kg/reps; RPE slider + Done; dismiss chip/swipe/tap-outside. SetRowFieldValueStateTests. |
+| F-DT9.2 Rest-notification cold-start crash | done | 2026-07-31 | 6cd92ff | Recover policy + launch payload; no force-unwrap on missing session; Live Activity restart order; 9 Persistence tests.
+| F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | 3cf26d1 | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
 | F-DT9.4 Train bottom layout + remove-exercise fix | not started | | | Track A |
 | F-DT9.5 Rest sound + RTL progress | not started | | | Track B |
 | F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |
 | F-DT9.7 Live Activity / Dynamic Island redesign | not started | | | Track B |
-| F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | done | 2026-07-31 | 97abdbb | Track C |
-| F-DT9.9 Coach confirm + AI impact + food diary | done | 2026-07-31 | e7fde0f | Track C |
+| F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | done | 2026-07-31 | ffcc955 | Track C |
+| F-DT9.9 Coach confirm + AI impact + food diary | done | 2026-07-31 | 41a47f6 | Track C |
 | F-DT9.10 Proactive in-session coaching | not started | | | Track C |
-| F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 17330b0 | Track D |
-| F-DT9.12 Live-ish energy balance | done | 2026-07-31 | d0f3acf | Track D |
+| F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 21603f6 | Track D |
+| F-DT9.12 Live-ish energy balance | done | 2026-07-31 | 80a1005 | Track D |
 | F-DT9.13 Workout music Now Playing capture | not started | | | Track D |
 | F-DT9.14 Finish HR graph + in-chat charts | not started | | | Track D |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |

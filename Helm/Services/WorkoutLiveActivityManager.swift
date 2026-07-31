@@ -9,6 +9,11 @@ final class WorkoutLiveActivityManager {
 
     private var activityID: String?
 
+    var hasTrackedActivity: Bool {
+        guard let activityID else { return false }
+        return Activity<WorkoutActivityAttributes>.activities.contains { $0.id == activityID }
+    }
+
     var isSupported: Bool {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }

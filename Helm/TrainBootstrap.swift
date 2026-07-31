@@ -26,10 +26,14 @@ enum TrainBootstrap {
     static let importController = WorkoutImportController(persistence: persistence)
 
     @MainActor
+    static private(set) var hasCompletedLaunchRecovery = false
+
+    @MainActor
     static func start() {
         Task {
             historyController.refresh()
             await sessionController.recoverOnLaunch()
+            hasCompletedLaunchRecovery = true
             await RestNotificationRouter.processPendingLaunchNotificationIfNeeded()
         }
     }

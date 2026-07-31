@@ -64,6 +64,20 @@ final class WorkoutSessionSideEffects {
         await notifications.cancelRestNotification(sessionID: sessionID)
     }
 
+    func resumeFromRestNotification(
+        _ snapshot: ActiveSessionSnapshot,
+        restRemainingSeconds: Int?
+    ) async {
+        await notifications.cancelRestNotification(sessionID: snapshot.session.id)
+        let exerciseName = currentExerciseName(in: snapshot)
+        await liveActivity.start(session: snapshot.session, currentExerciseName: exerciseName)
+        await liveActivity.update(
+            session: snapshot.session,
+            currentExerciseName: exerciseName,
+            restRemainingSeconds: restRemainingSeconds
+        )
+    }
+
     func onSessionFinished(sessionID: String) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
         liveActivity.end()

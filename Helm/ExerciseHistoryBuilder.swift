@@ -50,7 +50,7 @@ enum ExerciseHistoryBuilder {
     }
 
     private static func previousPerformanceLabel(_ previous: PreviousPerformance) -> String {
-        let weight = previous.mass.map(formatWeight) ?? "-"
+        let weight = previous.mass.map { formatWeight($0.kilograms) } ?? "-"
         let reps = previous.reps.map(String.init) ?? "-"
         return "\(weight)×\(reps)"
     }

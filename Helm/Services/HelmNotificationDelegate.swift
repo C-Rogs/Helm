@@ -13,8 +13,7 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         notificationDelegate.configure()
-        if let response = launchOptions?[.remoteNotification] as? [AnyHashable: Any],
-           let sessionID = response[RestTimerNotificationPlanner.sessionIDKey] as? String {
+        if let sessionID = RestNotificationLaunchOptions.pendingSessionID(from: launchOptions) {
             RestNotificationRouter.storePendingSessionID(sessionID)
         }
         return true
@@ -57,17 +56,28 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
         didReceive response: UNNotificationResponse
     ) async {
         let content = response.notification.request.content
+        guard RestNotificationLaunchPayload.isRestTimerNotification(categoryIdentifier: content.categoryIdentifier) else {
+            return
+        }
+
         let categoryIdentifier = content.categoryIdentifier
-        let timerID = content.userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
-        let sessionID = content.userInfo[RestTimerNotificationPlanner.sessionIDKey] as? String
-        await MainActor.run {
+        let userInfo = content.userInfo
+        let timerID = userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
+        let sessionID = RestNotificationLaunchPayload.sessionID(fromUserInfo: userInfo)
+
+        let shouldHandleImmediately = await MainActor.run { () -> Bool in
+            if let sessionID {
+                RestNotificationRouter.storePendingSessionID(sessionID)
+            }
             WorkoutHapticCoordinator.handleRestNotification(
                 categoryIdentifier: categoryIdentifier,
                 timerID: timerID
             )
-            Task {
-                await RestNotificationRouter.handleRestNotificationTap(sessionID: sessionID)
-            }
+            return TrainBootstrap.hasCompletedLaunchRecovery
+        }
+
+        if shouldHandleImmediately {
+            await RestNotificationRouter.handleRestNotificationTap(sessionID: sessionID)
         }
     }
 }
