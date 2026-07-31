@@ -18,6 +18,11 @@ struct WorkoutFinishSummaryView: View {
 
             statsRow
 
+            SessionHeartRateChartView(
+                samples: summary.heartRateSamples,
+                markers: summary.setMarkers
+            )
+
             if !summary.muscleMovements.isEmpty {
                 landmarkSection
             }

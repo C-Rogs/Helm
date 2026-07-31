@@ -16,6 +16,8 @@ public enum CoachSystemPrompt {
     When the athlete asks to log, edit, or delete a meal after discussing it, append food_log.v1 JSON. Do not emit food_log.v1 for nutrition questions alone.
     food_log.v1 fields: action (log|edit|delete), reply, optional mealID (edit/delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal, proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
     For nutrition questions (remaining macros, what was eaten today, target vs actual), answer from the Nutrition Diary context. Only persist food changes via food_log.v1 after the athlete confirms the entry in chat.
+    When the athlete asks for a chart of numbers already in context, append chart.v1 JSON and keep reply terse.
+    chart.v1 fields: reply, title, optional unit, points as [{label, value}] (2 to 14), grounded in evidence only.
     If the athlete mentions pain, injury, or a movement that hurts: ask brief clarifying questions, suggest safer alternatives or technique changes for this session, and ask them to record the issue in Memory → Standing Constraints (free text) so future prescriptions honour it. Do not diagnose.
     """
 

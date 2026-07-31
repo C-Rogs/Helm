@@ -149,7 +149,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 21603f6 | Track D |
 | F-DT9.12 Live-ish energy balance | done | 2026-07-31 | 80a1005 | Track D |
 | F-DT9.13 Workout music Now Playing capture | done | 2026-07-31 | b19a6d7 | GRDB v14 workout_music_samples; MediaPlayer Now Playing sampler during session; stub insert test. |
-| F-DT9.14 Finish HR graph + in-chat charts | not started | | | Track D |
+| F-DT9.14 Finish HR graph + in-chat charts | done | 2026-07-31 | 3c21355 | Finish summary HR chart + set markers; chart.v1 chat bubble + snapshot. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

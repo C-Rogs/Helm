@@ -33,6 +33,10 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
     public let durationMinutes: Int
     public let muscleMovements: [MuscleLandmarkDelta]
     public let readinessTeaser: String
+    public let heartRateSamples: [SessionHeartRateSample]
+    public let setMarkers: [SessionSetMarker]
+
+    public var hasHeartRateSeries: Bool { !heartRateSamples.isEmpty }
 
     public init(
         setCount: Int,
@@ -40,7 +44,9 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         estimatedTRIMP: Double,
         durationMinutes: Int,
         muscleMovements: [MuscleLandmarkDelta],
-        readinessTeaser: String
+        readinessTeaser: String,
+        heartRateSamples: [SessionHeartRateSample] = [],
+        setMarkers: [SessionSetMarker] = []
     ) {
         self.setCount = setCount
         self.totalVolumeKilograms = totalVolumeKilograms
@@ -48,6 +54,24 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         self.durationMinutes = durationMinutes
         self.muscleMovements = muscleMovements
         self.readinessTeaser = readinessTeaser
+        self.heartRateSamples = heartRateSamples
+        self.setMarkers = setMarkers
+    }
+
+    public func withHeartRate(
+        samples: [SessionHeartRateSample],
+        setMarkers: [SessionSetMarker]
+    ) -> WorkoutFinishSummary {
+        WorkoutFinishSummary(
+            setCount: setCount,
+            totalVolumeKilograms: totalVolumeKilograms,
+            estimatedTRIMP: estimatedTRIMP,
+            durationMinutes: durationMinutes,
+            muscleMovements: muscleMovements,
+            readinessTeaser: readinessTeaser,
+            heartRateSamples: samples,
+            setMarkers: setMarkers
+        )
     }
 }
 

@@ -70,4 +70,41 @@ struct WorkoutFinishSummaryBuilderTests {
                 .contains("Light")
         )
     }
+
+    @Test("Empty heart rate series by default")
+    func emptyHeartRateByDefault() {
+        let summary = WorkoutFinishSummary(
+            setCount: 1,
+            totalVolumeKilograms: 100,
+            estimatedTRIMP: 10,
+            durationMinutes: 5,
+            muscleMovements: [],
+            readinessTeaser: "Light session; minimal readiness impact."
+        )
+        #expect(!summary.hasHeartRateSeries)
+        #expect(summary.heartRateSamples.isEmpty)
+        #expect(summary.setMarkers.isEmpty)
+    }
+
+    @Test("Attaches heart rate samples and set markers")
+    func attachesHeartRateSeries() {
+        let base = WorkoutFinishSummary(
+            setCount: 2,
+            totalVolumeKilograms: 500,
+            estimatedTRIMP: 40,
+            durationMinutes: 20,
+            muscleMovements: [],
+            readinessTeaser: "Moderate load; readiness should hold steady."
+        )
+        let summary = base.withHeartRate(
+            samples: [
+                SessionHeartRateSample(offsetSeconds: 0, bpm: 120),
+                SessionHeartRateSample(offsetSeconds: 60, bpm: 140)
+            ],
+            setMarkers: [SessionSetMarker(offsetSeconds: 60, setNumber: 1)]
+        )
+        #expect(summary.hasHeartRateSeries)
+        #expect(summary.heartRateSamples.map(\.bpm) == [120, 140])
+        #expect(summary.setMarkers.map(\.setNumber) == [1])
+    }
 }

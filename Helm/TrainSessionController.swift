@@ -114,6 +114,8 @@ final class TrainSessionController {
     private var sessionNoteSaveTask: Task<Void, Never>?
     private var coachMessageTask: Task<Void, Never>?
     private var restTimerMonitorTask: Task<Void, Never>?
+    private var heartRateSampleTask: Task<Void, Never>?
+    private var sessionHeartRateBuffer = SessionHeartRateBuffer()
     private var sessionNoteIsDirty = false
     private var lastSyncedRestRemaining: Int?
     private var lastLiveActivitySyncDate: Date?
@@ -462,13 +464,26 @@ final class TrainSessionController {
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             if let finishedID {
                 await sideEffects.onSessionFinished(sessionID: finishedID)
+                let samples = sessionHeartRateBuffer.samples
+                stopHeartRateSampling(reset: true)
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
-                    lastFinishSummary = try? WorkoutFinishSummaryAssembler.build(
+                    let markers = SessionSetMarkerBuilder.markers(
+                        from: session,
+                        startedAt: session.startedAt
+                    )
+                    if let summary = try? WorkoutFinishSummaryAssembler.build(
                         session: session,
                         store: persistence
-                    )
+                    ) {
+                        lastFinishSummary = summary.withHeartRate(
+                            samples: samples,
+                            setMarkers: markers
+                        )
+                    } else {
+                        lastFinishSummary = nil
+                    }
                     await ProactiveBootstrap.notificationScheduler.postPostWorkoutSummary(
                         session: session,
                         personalRecords: records
@@ -497,6 +512,7 @@ final class TrainSessionController {
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
+            stopHeartRateSampling(reset: true)
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             await refreshMetadata()
             await refreshPrescriptionState()
@@ -868,6 +884,7 @@ final class TrainSessionController {
 
     func syncSideEffects(restRemainingOverride: Int? = nil, force: Bool = false) async {
         guard let snapshot = store.snapshot else { return }
+        recordLiveHeartRateSampleIfAvailable()
         let rest = restRemainingOverride ?? localRemainingRestSeconds()
         guard shouldSyncLiveActivity(restRemaining: rest, force: force) else { return }
         lastSyncedRestRemaining = rest
@@ -1517,6 +1534,7 @@ final class TrainSessionController {
 
     private func activateWatchCompanionAfterSessionStart() {
         pushWatchCompanionState()
+        startHeartRateSampling()
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.refreshPairingFlags()
         if coordinator.canDriveWatchCompanion {
@@ -1526,6 +1544,37 @@ final class TrainSessionController {
         } else {
             watchCompanionNotice = "No Apple Watch connected. Heart rate hidden. Phone will record training load energy."
         }
+    }
+
+    private func startHeartRateSampling() {
+        sessionHeartRateBuffer.reset()
+        heartRateSampleTask?.cancel()
+        heartRateSampleTask = Task { [weak self] in
+            while !Task.isCancelled {
+                guard let self, self.store.snapshot != nil else { return }
+                self.recordLiveHeartRateSampleIfAvailable()
+                try? await Task.sleep(for: .seconds(5))
+            }
+        }
+    }
+
+    private func stopHeartRateSampling(reset: Bool) {
+        heartRateSampleTask?.cancel()
+        heartRateSampleTask = nil
+        if reset {
+            sessionHeartRateBuffer.reset()
+        }
+    }
+
+    private func recordLiveHeartRateSampleIfAvailable() {
+        guard let snapshot = store.snapshot else { return }
+        guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+              let bpm = WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+        else {
+            return
+        }
+        let offset = Int(Date().timeIntervalSince(snapshot.session.startedAt))
+        sessionHeartRateBuffer.record(bpm: bpm, offsetSeconds: offset)
     }
 
     private func pushWatchCompanionState() {

@@ -269,3 +269,74 @@ public struct MorningBriefPayload: Codable, Sendable, Equatable {
         self.citationIDs = citationIDs
     }
 }
+
+/// Coach-rendered chart for chat when the athlete asks for a visual.
+public struct ChartPayload: Codable, Sendable, Equatable {
+    public struct Point: Codable, Sendable, Equatable, Identifiable {
+        public var id: String { "\(label)-\(value)" }
+        public let label: String
+        public let value: Double
+
+        public init(label: String, value: Double) {
+            self.label = label
+            self.value = value
+        }
+    }
+
+    public let schemaVersion: String
+    public let reply: String
+    public let title: String
+    public let unit: String?
+    public let points: [Point]
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.chartV1.rawValue,
+        reply: String,
+        title: String,
+        unit: String? = nil,
+        points: [Point]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.reply = reply
+        self.title = title
+        self.unit = unit
+        self.points = points
+    }
+}
+
+public enum ChartPayloadParser: Sendable {
+    public static func parse(from text: String) -> ChartPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .chartV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(ChartPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.chartV1.rawValue,
+              !payload.points.isEmpty
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public enum CoachChatChartSnapshot: Sendable {
+    public static func text(for payload: ChartPayload) -> String {
+        var lines = [
+            "# Chart",
+            "## Title",
+            payload.title,
+            "## Unit",
+            payload.unit ?? "none",
+            "## Points"
+        ]
+        for point in payload.points {
+            lines.append("- \(point.label)=\(formatValue(point.value))")
+        }
+        return lines.joined(separator: "\n")
+    }
+
+    private static func formatValue(_ value: Double) -> String {
+        value.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", value)
+            : String(format: "%.1f", value)
+    }
+}

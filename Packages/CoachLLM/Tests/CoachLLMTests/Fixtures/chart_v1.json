@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "chart.v1",
+  "reply": "Weekly hard sets by day.",
+  "title": "Hard sets",
+  "unit": "sets",
+  "points": [
+    {"label": "Mon", "value": 12},
+    {"label": "Tue", "value": 8},
+    {"label": "Wed", "value": 14},
+    {"label": "Thu", "value": 0},
+    {"label": "Fri", "value": 10}
+  ]
+}

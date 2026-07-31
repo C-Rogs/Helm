@@ -8,5 +8,6 @@ public enum CoachOutputSchemaVersion: String, Sendable, Codable, Equatable, Case
     case workoutStartV1 = "workout_start.v1"
     case workoutStartV2 = "workout_start.v2"
     case foodLogV1 = "food_log.v1"
+    case chartV1 = "chart.v1"
     case briefV1 = "brief.v1"
 }

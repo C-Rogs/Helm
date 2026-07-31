@@ -166,17 +166,24 @@ struct ChatView: View {
 
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
         let display = CoachChatTextFormatter.userFacingText(from: text)
+        let chart = isStreaming ? nil : ChartPayloadParser.parse(from: text)
         return HStack {
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
-                Text(display.isEmpty && isStreaming ? "..." : display)
-                    .helmType(.body)
-                    .foregroundStyle(HelmColor.fg)
-                    .textSelection(.enabled)
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
+                    Text(display.isEmpty && isStreaming ? "..." : display)
+                        .helmType(.body)
+                        .foregroundStyle(HelmColor.fg)
+                        .textSelection(.enabled)
+                }
+                .padding(.horizontal, HelmSpacing.md)
+                .padding(.vertical, HelmSpacing.sm)
+                .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+
+                if let chart {
+                    CoachChatChartBubble(payload: chart)
+                }
             }
-            .padding(.horizontal, HelmSpacing.md)
-            .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
             Spacer(minLength: HelmSpacing.xl)
         }
     }
