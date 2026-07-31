@@ -47,7 +47,8 @@ struct MigrationTests {
                 "meal_template_item",
                 "pending_food_import",
                 "food_log_recent",
-                "nutrition_day_log_status"
+                "nutrition_day_log_status",
+                "workout_music_samples"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

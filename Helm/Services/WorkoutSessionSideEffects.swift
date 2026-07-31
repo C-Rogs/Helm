@@ -11,13 +11,16 @@ final class WorkoutSessionSideEffects {
 
     private let persistence: PersistenceStore
     private let workoutWriter: any WorkoutHealthKitWriting
+    private let musicCapture: WorkoutMusicCaptureService
 
     init(
         persistence: PersistenceStore,
-        workoutWriter: any WorkoutHealthKitWriting = WorkoutHealthKitWriter()
+        workoutWriter: any WorkoutHealthKitWriting = WorkoutHealthKitWriter(),
+        musicCapture: WorkoutMusicCaptureService? = nil
     ) {
         self.persistence = persistence
         self.workoutWriter = workoutWriter
+        self.musicCapture = musicCapture ?? WorkoutMusicCaptureService(persistence: persistence)
     }
 
     func onSessionStarted(
@@ -27,6 +30,8 @@ final class WorkoutSessionSideEffects {
     ) async {
         await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
+        musicCapture.reset()
+        musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         await liveActivity.start(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot),
@@ -49,6 +54,7 @@ final class WorkoutSessionSideEffects {
         targetSummary: String? = nil,
         heartRateBPM: Int? = nil
     ) async {
+        musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         await liveActivity.update(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot),
@@ -100,6 +106,8 @@ final class WorkoutSessionSideEffects {
 
     func onSessionFinished(sessionID: String) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
+        musicCapture.sampleIfChanged(sessionID: sessionID)
+        musicCapture.reset()
         liveActivity.end()
         lifecycle.end()
 

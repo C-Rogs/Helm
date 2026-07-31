@@ -52,6 +52,9 @@ struct AppMigrator {
         if version >= 13 {
             ExerciseCoachingCuesSchemaMigration.register(on: &migrator)
         }
+        if version >= 14 {
+            WorkoutMusicSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 
