@@ -147,7 +147,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.9 Coach confirm + AI impact + food diary | done | 2026-07-31 | e7fde0f | Track C |
 | F-DT9.10 Proactive in-session coaching | not started | | | Track C |
 | F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 17330b0 | Track D |
-| F-DT9.12 Live-ish energy balance | done | 2026-07-31 | PLACEHOLDER | Track D |
+| F-DT9.12 Live-ish energy balance | done | 2026-07-31 | d0f3acf | Track D |
 | F-DT9.13 Workout music Now Playing capture | not started | | | Track D |
 | F-DT9.14 Finish HR graph + in-chat charts | not started | | | Track D |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
