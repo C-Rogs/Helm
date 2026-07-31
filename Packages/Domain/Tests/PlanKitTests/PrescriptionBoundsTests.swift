@@ -22,4 +22,24 @@ struct PrescriptionBoundsTests {
         #expect(!PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: -1, intent: .userDirected))
         #expect(PrescriptionBounds.clampedLoadKg(-5) == 0)
     }
+
+    @Test("disabled load safety allows large coach-suggested increases")
+    func disabledLoadSafety() {
+        #expect(
+            PrescriptionBounds.isLoadWithinBounds(
+                currentKg: 80,
+                proposedKg: 100,
+                intent: .coachSuggested,
+                enforceCoachLoadCaps: false
+            )
+        )
+        #expect(
+            !PrescriptionBounds.isLoadWithinBounds(
+                currentKg: 80,
+                proposedKg: 100,
+                intent: .coachSuggested,
+                enforceCoachLoadCaps: true
+            )
+        )
+    }
 }

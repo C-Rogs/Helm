@@ -223,12 +223,12 @@ public struct ActiveSessionRepository: Sendable {
             try db.execute(
                 sql: """
                     INSERT INTO workout_session (
-                        id, title, started_at, ended_at, status, source,
+                        id, title, notes, started_at, ended_at, status, source,
                         total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, NULL, 'active', 'import', 0, 0, 0, ?, ?)
+                    ) VALUES (?, ?, ?, ?, NULL, 'active', 'import', 0, 0, 0, ?, ?)
                     """,
-                arguments: [sessionID, plan.title, nowString, nowString, nowString]
+                arguments: [sessionID, plan.title, plan.contextNotes, nowString, nowString, nowString]
             )
             try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
 
@@ -355,10 +355,25 @@ public struct ActiveSessionRepository: Sendable {
                             logged_exercise_id,
                             (SELECT exercise_id FROM workout_session_exercise WHERE id = ?)
                         ),
+                        bodyweight_kg_snapshot = CASE
+                            WHEN bodyweight_kg_snapshot IS NULL
+                                 AND (SELECT exercise_mode FROM workout_session_exercise WHERE id = ?) = ?
+                            THEN ?
+                            ELSE bodyweight_kg_snapshot
+                        END,
                         status = 'completed', completed_at = ?, updated_at = ?
                     WHERE id = ? AND workout_session_exercise_id = ? AND deleted_at IS NULL
                     """,
-                arguments: [sessionExerciseID, now, now, setID, sessionExerciseID]
+                arguments: [
+                    sessionExerciseID,
+                    sessionExerciseID,
+                    ExerciseMode.bodyweightReps.rawValue,
+                    try Self.latestBodyweightKg(db: db),
+                    now,
+                    now,
+                    setID,
+                    sessionExerciseID
+                ]
             )
 
             if !wasCompleted {
@@ -490,16 +505,31 @@ public struct ActiveSessionRepository: Sendable {
             )
 
             let setCount = max(defaultSetCount, 1)
+            let preset = try Self.previousPerformancePreset(
+                db: db,
+                exerciseID: exerciseID,
+                excludingSessionID: sessionID
+            )
             for index in 0 ..< setCount {
                 let setID = UUID().uuidString
                 try db.execute(
                     sql: """
                         INSERT INTO set_entry (
                             id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
-                            created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?)
+                            weight_kg, reps, rpe, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?, ?)
                         """,
-                    arguments: [setID, sessionExerciseID, exerciseID, index, now, now]
+                    arguments: [
+                        setID,
+                        sessionExerciseID,
+                        exerciseID,
+                        index,
+                        preset?.mass?.kilograms,
+                        preset?.reps,
+                        preset?.rpe,
+                        now,
+                        now
+                    ]
                 )
             }
 
@@ -787,54 +817,77 @@ public struct ActiveSessionRepository: Sendable {
             let sorted = prescription.exercises.sorted { $0.order < $1.order }
 
             for (index, prescribed) in sorted.enumerated() {
-                let sessionExercise: WorkoutSessionExerciseDraft
                 if let matched = existing.first(where: { $0.exerciseID == prescribed.exerciseID }) {
-                    sessionExercise = matched
-                } else if index < existingSorted.count {
-                    sessionExercise = existingSorted[index]
-                } else {
-                    continue
-                }
-                let sessionExerciseID = sessionExercise.id
+                    let sessionExerciseID = matched.id
 
-                if sessionExercise.exerciseID != prescribed.exerciseID {
                     try db.execute(
                         sql: """
                             UPDATE workout_session_exercise
-                            SET exercise_id = ?, updated_at = ?
+                            SET display_order = ?, updated_at = ?
                             WHERE id = ? AND workout_session_id = ?
                             """,
-                        arguments: [prescribed.exerciseID, now, sessionExerciseID, sessionID]
+                        arguments: [index, now, sessionExerciseID, sessionID]
                     )
+
+                    try Self.adjustSetCount(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        exerciseID: prescribed.exerciseID,
+                        targetSetCount: max(prescribed.targetSets, 1),
+                        existingSets: matched.sets,
+                        now: now
+                    )
+                } else if index < existingSorted.count {
+                    let sessionExercise = existingSorted[index]
+                    let sessionExerciseID = sessionExercise.id
+
+                    if sessionExercise.exerciseID != prescribed.exerciseID {
+                        try db.execute(
+                            sql: """
+                                UPDATE workout_session_exercise
+                                SET exercise_id = ?, updated_at = ?
+                                WHERE id = ? AND workout_session_id = ?
+                                """,
+                            arguments: [prescribed.exerciseID, now, sessionExerciseID, sessionID]
+                        )
+                        try db.execute(
+                            sql: """
+                                UPDATE set_entry
+                                SET logged_exercise_id = ?
+                                WHERE workout_session_exercise_id = ?
+                                  AND status != 'completed'
+                                  AND deleted_at IS NULL
+                                """,
+                            arguments: [prescribed.exerciseID, sessionExerciseID]
+                        )
+                    }
+
                     try db.execute(
                         sql: """
-                            UPDATE set_entry
-                            SET logged_exercise_id = ?
-                            WHERE workout_session_exercise_id = ?
-                              AND status != 'completed'
-                              AND deleted_at IS NULL
+                            UPDATE workout_session_exercise
+                            SET display_order = ?, updated_at = ?
+                            WHERE id = ? AND workout_session_id = ?
                             """,
-                        arguments: [prescribed.exerciseID, sessionExerciseID]
+                        arguments: [index, now, sessionExerciseID, sessionID]
+                    )
+
+                    try Self.adjustSetCount(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        exerciseID: prescribed.exerciseID,
+                        targetSetCount: max(prescribed.targetSets, 1),
+                        existingSets: sessionExercise.sets,
+                        now: now
+                    )
+                } else {
+                    try Self.insertPrescribedExercise(
+                        db: db,
+                        sessionID: sessionID,
+                        prescribed: prescribed,
+                        displayOrder: index,
+                        now: now
                     )
                 }
-
-                try db.execute(
-                    sql: """
-                        UPDATE workout_session_exercise
-                        SET display_order = ?, updated_at = ?
-                        WHERE id = ? AND workout_session_id = ?
-                        """,
-                    arguments: [index, now, sessionExerciseID, sessionID]
-                )
-
-                try Self.adjustSetCount(
-                    db: db,
-                    sessionExerciseID: sessionExerciseID,
-                    exerciseID: prescribed.exerciseID,
-                    targetSetCount: max(prescribed.targetSets, 1),
-                    existingSets: sessionExercise.sets,
-                    now: now
-                )
             }
 
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
@@ -1084,11 +1137,129 @@ extension ActiveSessionRepository {
         }
     }
 
+    static func latestBodyweightKg(db: Database) throws -> Double? {
+        try Double.fetchOne(
+            db,
+            sql: """
+                SELECT weight_kg
+                FROM body_composition
+                WHERE weight_kg IS NOT NULL
+                ORDER BY measured_at DESC
+                LIMIT 1
+                """
+        )
+    }
+
+    struct PerformancePreset: Sendable {
+        let mass: Mass?
+        let reps: Int?
+        let rpe: Double?
+    }
+
+    static func previousPerformancePreset(
+        db: Database,
+        exerciseID: String,
+        excludingSessionID: String
+    ) throws -> PerformancePreset? {
+        guard let row = try Row.fetchOne(
+            db,
+            sql: """
+                SELECT se.weight_kg, se.reps, se.rpe
+                FROM set_entry se
+                JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
+                JOIN workout_session ws ON ws.id = wse.workout_session_id
+                WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                  AND se.status = 'completed'
+                  AND se.deleted_at IS NULL
+                  AND wse.deleted_at IS NULL
+                  AND ws.deleted_at IS NULL
+                  AND ws.status = 'completed'
+                  AND ws.id != ?
+                ORDER BY se.completed_at DESC
+                LIMIT 1
+                """,
+            arguments: [exerciseID, excludingSessionID]
+        ) else {
+            return nil
+        }
+
+        return PerformancePreset(
+            mass: (row["weight_kg"] as Double?).map { Mass(kilograms: $0) },
+            reps: row["reps"],
+            rpe: row["rpe"]
+        )
+    }
+
+    static func insertPrescribedExercise(
+        db: Database,
+        sessionID: String,
+        prescribed: PrescribedExercise,
+        displayOrder: Int,
+        now: String
+    ) throws {
+        let sessionExerciseID = UUID().uuidString
+        let mode: String = try String.fetchOne(
+            db,
+            sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
+            arguments: [prescribed.exerciseID]
+        ) ?? ExerciseMode.weightReps.rawValue
+        let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
+
+        try db.execute(
+            sql: """
+                INSERT INTO workout_session_exercise (
+                    id, workout_session_id, exercise_id, display_order, exercise_mode,
+                    target_rest_seconds, is_collapsed, created_at, updated_at
+                ) VALUES (?, ?, ?, ?, ?, 90, 0, ?, ?)
+                """,
+            arguments: [
+                sessionExerciseID,
+                sessionID,
+                prescribed.exerciseID,
+                displayOrder,
+                exerciseMode.rawValue,
+                now,
+                now
+            ]
+        )
+
+        let setCount = max(prescribed.targetSets, 1)
+        let targetReps = prescribed.targetRepMin ?? prescribed.targetRepMax
+        let preset = try previousPerformancePreset(
+            db: db,
+            exerciseID: prescribed.exerciseID,
+            excludingSessionID: sessionID
+        )
+
+        for index in 0 ..< setCount {
+            let setID = UUID().uuidString
+            try db.execute(
+                sql: """
+                    INSERT INTO set_entry (
+                        id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                        weight_kg, reps, rpe, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    setID,
+                    sessionExerciseID,
+                    prescribed.exerciseID,
+                    index,
+                    prescribed.targetMass?.kilograms ?? preset?.mass?.kilograms,
+                    targetReps ?? preset?.reps,
+                    prescribed.targetRPE ?? preset?.rpe,
+                    now,
+                    now
+                ]
+            )
+        }
+    }
+
     static func recomputeSessionCaches(db: Database, sessionID: String, now: String) throws {
         let rows = try Row.fetchAll(
             db,
             sql: """
-                SELECT se.weight_kg, se.reps
+                SELECT se.weight_kg, se.reps, se.bodyweight_kg_snapshot, wse.exercise_mode
                 FROM set_entry se
                 JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                 WHERE wse.workout_session_id = ?
@@ -1104,12 +1275,18 @@ extension ActiveSessionRepository {
         var totalReps = 0
         for row in rows {
             totalSets += 1
-            if let reps: Int = row["reps"] {
-                totalReps += reps
-            }
-            if let weight: Double = row["weight_kg"], let reps: Int = row["reps"] {
-                totalVolume += weight * Double(reps)
-            }
+            let reps: Int = row["reps"] ?? 0
+            totalReps += reps
+            let weight: Double? = row["weight_kg"]
+            let bodyweight: Double? = row["bodyweight_kg_snapshot"]
+            let modeRaw: String = row["exercise_mode"] ?? ExerciseMode.weightReps.rawValue
+            let mode = ExerciseMode(rawValue: modeRaw) ?? .weightReps
+            totalVolume += BodyweightVolume.setVolumeKg(
+                loggedMassKg: weight,
+                reps: reps,
+                exerciseMode: mode,
+                bodyweightKg: bodyweight
+            )
         }
 
         try db.execute(

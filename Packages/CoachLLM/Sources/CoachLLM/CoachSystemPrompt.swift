@@ -50,10 +50,12 @@ public enum CoachSystemPrompt {
     adjustLoad: use massDeltaKg or targetMassKg for one archetypeId.
     Keep coach-suggested load increases within about 10% or 2.5 kg of the current target.
     When the athlete gives an explicit weight ("+10 kg", "set to 100 kg", "drop 15"), honour that load in operations.
+    addExercise: use toExerciseID with archetypeId or exercise phrase; optional targetSets (default 3). Appends to session.
     adjustRPE: use rpeDelta or targetRPE for one archetypeId.
     Ground swaps in equipment availability when the user mentions it.
     Never invent archetype IDs; copy exact archetypeId values from the allowed archetype list in context.
     For swap operations, fromExerciseID and toExerciseID must be archetypeId strings (snake_case), not raw catalog exercise IDs.
     For adjustSets, adjustLoad, and adjustRPE, exerciseID must be the archetypeId of an exercise in the active session list.
+    For addExercise, toExerciseID may be an archetypeId or catalog phrase; it resolves against recents and familiar exercises.
     """
 }

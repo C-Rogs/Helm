@@ -1,5 +1,6 @@
 import CoachLLM
 import DesignSystem
+import HealthKitIngest
 import SwiftUI
 
 struct CoachSettingsView: View {
@@ -18,6 +19,7 @@ struct CoachSettingsView: View {
     @State private var proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
     @State private var proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
     @State private var proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
+    @State private var enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
 
     private let keyStore = APIKeyStore()
     private let openRouterMetadata = OpenRouterKeyMetadataStore()
@@ -46,6 +48,16 @@ struct CoachSettingsView: View {
                     .onChange(of: allowsParallelCoaches) { _, newValue in
                         CoachActivityGate.shared.allowsParallelCoaches = newValue
                     }
+            }
+
+            Section("Load safety") {
+                Toggle("Limit coach-suggested load increases (±10%)", isOn: $enforceCoachLoadCaps)
+                    .onChange(of: enforceCoachLoadCaps) { _, newValue in
+                        CoachLoadSafetyPreferences.enforceCoachLoadCaps = newValue
+                    }
+                Text("When off, coach may suggest larger load jumps without the ±10% / 2.5 kg cap. Your explicit weight instructions always apply.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
             }
 
             Section("Proactive coach") {
@@ -175,6 +187,7 @@ struct CoachSettingsView: View {
             proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
             proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
             proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
+            enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
             if geminiKey.isEmpty {
                 geminiKey = keyStore.displayValue(for: .gemini)
             }

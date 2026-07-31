@@ -48,10 +48,12 @@ public struct ImportedWorkoutExercisePlan: Sendable, Hashable {
 public struct ImportedWorkoutPlan: Sendable, Hashable {
     public let title: String
     public let exercises: [ImportedWorkoutExercisePlan]
+    public let contextNotes: String?
 
-    public init(title: String, exercises: [ImportedWorkoutExercisePlan]) {
+    public init(title: String, exercises: [ImportedWorkoutExercisePlan], contextNotes: String? = nil) {
         self.title = title
         self.exercises = exercises
+        self.contextNotes = contextNotes
     }
 }
 
@@ -121,7 +123,26 @@ public struct WorkoutImportService: Sendable {
             )
         }
 
-        return ImportedWorkoutPlan(title: parsed.title, exercises: exercisePlans)
+        return ImportedWorkoutPlan(
+            title: parsed.title,
+            exercises: exercisePlans,
+            contextNotes: importContextNotes(from: parsed)
+        )
+    }
+
+    private func importContextNotes(from parsed: ParsedWorkout) -> String? {
+        var lines = parsed.skippedLines
+        for exercise in parsed.exercises {
+            for set in exercise.sets {
+                if let note = set.prescriptionNote?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !note.isEmpty {
+                    lines.append(note)
+                }
+            }
+        }
+        let unique = Array(Set(lines)).sorted()
+        guard !unique.isEmpty else { return nil }
+        return unique.joined(separator: "\n")
     }
 
     public func buildTemplate(

@@ -8,6 +8,7 @@ public enum ExerciseResolver {
         public let exerciseDisplayNames: [String: String]
         public let excludedExerciseIDs: Set<String>
         public let familiarExerciseIDs: Set<String>
+        public let recentExerciseIDs: Set<String>
         public let mustBeInSession: Bool
 
         public init(
@@ -15,12 +16,14 @@ public enum ExerciseResolver {
             exerciseDisplayNames: [String: String] = [:],
             excludedExerciseIDs: Set<String> = [],
             familiarExerciseIDs: Set<String> = [],
+            recentExerciseIDs: Set<String> = [],
             mustBeInSession: Bool = false
         ) {
             self.sessionExerciseIDs = sessionExerciseIDs
             self.exerciseDisplayNames = exerciseDisplayNames
             self.excludedExerciseIDs = excludedExerciseIDs
             self.familiarExerciseIDs = familiarExerciseIDs
+            self.recentExerciseIDs = recentExerciseIDs
             self.mustBeInSession = mustBeInSession
         }
     }
@@ -87,7 +90,34 @@ public enum ExerciseResolver {
             }
         }
 
+        if context.mustBeInSession == false,
+           let fuzzy = fuzzyCatalogMatch(rawPhrase, context: context, persistence: persistence) {
+            return Result(
+                exerciseID: fuzzy,
+                archetypeID: CoachArchetypeSupport.exerciseToArchetypeID[fuzzy]
+            )
+        }
+
         return Result(exerciseID: nil, unresolvedPhrase: rawPhrase)
+    }
+
+    private static func fuzzyCatalogMatch(
+        _ rawPhrase: String,
+        context: Context,
+        persistence: PersistenceStore
+    ) -> String? {
+        guard let summaries = try? persistence.exercises.listForPicker(search: rawPhrase, limit: 30),
+              !summaries.isEmpty
+        else { return nil }
+
+        let ranked = summaries
+            .map(\.id)
+            .filter { accepts(exerciseID: $0, context: context) }
+            .sorted { lhs, rhs in
+                score(exerciseID: lhs, context: context) > score(exerciseID: rhs, context: context)
+            }
+
+        return ranked.first
     }
 
     private static func pickExercise(for archetypeID: String, context: Context) -> String? {
@@ -107,6 +137,7 @@ public enum ExerciseResolver {
     private static func score(exerciseID: String, context: Context) -> Int {
         var value = 0
         if context.familiarExerciseIDs.contains(exerciseID) { value += 4 }
+        if context.recentExerciseIDs.contains(exerciseID) { value += 6 }
         if context.sessionExerciseIDs.contains(exerciseID) { value += 8 }
         if !context.excludedExerciseIDs.contains(exerciseID) { value += 2 }
         if exerciseID.hasPrefix("seed-") { value += 1 }

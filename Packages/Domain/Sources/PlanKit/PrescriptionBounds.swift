@@ -25,7 +25,8 @@ public enum PrescriptionBounds {
     public static func isLoadWithinBounds(
         currentKg: Double,
         proposedKg: Double,
-        intent: LoadAdjustmentIntent = .coachSuggested
+        intent: LoadAdjustmentIntent = .coachSuggested,
+        enforceCoachLoadCaps: Bool = true
     ) -> Bool {
         guard proposedKg >= 0 else { return false }
 
@@ -33,6 +34,9 @@ public enum PrescriptionBounds {
         case .userDirected:
             return true
         case .coachSuggested:
+            if !enforceCoachLoadCaps {
+                return true
+            }
             if proposedKg > currentKg {
                 let maxIncrease = maxLoadDelta(for: currentKg)
                 return proposedKg <= currentKg + maxIncrease

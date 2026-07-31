@@ -414,12 +414,83 @@ struct InSessionCoachServiceTests {
         #expect(applied.banner.toLabel == "100 kg")
     }
 
-    @Test("coach-suggested large load increase is rejected")
+    @Test("coach add exercise appends to session")
+    func addExerciseApplies() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        try store.exercises.upsert(
+            id: cableFlyID,
+            canonicalName: "cable fly",
+            displayName: "Cable Fly",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding cable fly finisher.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: cableFlyID,
+                    targetSets: 2
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let exercises = try #require(refreshed?.session.exercises.sorted { $0.displayOrder < $1.displayOrder })
+        #expect(exercises.count == 2)
+        #expect(exercises[1].exerciseID == cableFlyID)
+        #expect(exercises[1].sets.count == 2)
+    }
+
+    @Test("disabled load safety allows large coach-suggested increase")
+    func disabledLoadSafetyAllowsLargeIncrease() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let previous = CoachLoadSafetyPreferences.enforceCoachLoadCaps
+        CoachLoadSafetyPreferences.enforceCoachLoadCaps = false
+        defer { CoachLoadSafetyPreferences.enforceCoachLoadCaps = previous }
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Jumping bench to 100 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 100
+                )
+            ]
+        )
+
+        let applied = try service.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: []
+        )
+
+        #expect(applied.banner.toLabel == "100 kg")
+    }
+
+    @Test("coach-suggested large load increase is rejected when safety on")
     func coachSuggestedLargeLoadRejected() async throws {
         let store = try PersistenceStore.inMemory()
         try seedExercises(in: store)
         let snapshot = try await startBenchSession(in: store)
         let service = InSessionCoachService(persistence: store)
+
+        let previous = CoachLoadSafetyPreferences.enforceCoachLoadCaps
+        CoachLoadSafetyPreferences.enforceCoachLoadCaps = true
+        defer { CoachLoadSafetyPreferences.enforceCoachLoadCaps = previous }
 
         let payload = SessionAdjustmentPayload(
             schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,

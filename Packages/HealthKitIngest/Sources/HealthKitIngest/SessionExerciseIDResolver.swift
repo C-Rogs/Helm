@@ -15,7 +15,8 @@ enum SessionExerciseIDResolver {
         exerciseDisplayNames: [String: String],
         persistence: PersistenceStore,
         excludedExerciseIDs: Set<String> = [],
-        familiarExerciseIDs: Set<String> = []
+        familiarExerciseIDs: Set<String> = [],
+        recentExerciseIDs: Set<String> = []
     ) throws -> Result {
         var unresolved: [String] = []
         let normalizedOps = payload.operations.map { operation in
@@ -26,6 +27,7 @@ enum SessionExerciseIDResolver {
                 persistence: persistence,
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
                 unresolved: &unresolved
             )
         }
@@ -50,6 +52,7 @@ enum SessionExerciseIDResolver {
         persistence: PersistenceStore,
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
+        recentExerciseIDs: Set<String>,
         unresolved: inout [String]
     ) -> SessionAdjustmentOperation {
         switch operation.kind {
@@ -61,6 +64,7 @@ enum SessionExerciseIDResolver {
                 persistence: persistence,
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
                 mustBeInSession: true,
                 unresolved: &unresolved
             )
@@ -71,6 +75,7 @@ enum SessionExerciseIDResolver {
                 persistence: persistence,
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
                 mustBeInSession: false,
                 unresolved: &unresolved
             )
@@ -86,7 +91,8 @@ enum SessionExerciseIDResolver {
                 targetMassKg: operation.targetMassKg,
                 rpeDelta: operation.rpeDelta,
                 targetRPE: operation.targetRPE,
-                loadAdjustmentIntent: operation.loadAdjustmentIntent
+                loadAdjustmentIntent: operation.loadAdjustmentIntent,
+                targetSets: operation.targetSets
             )
         case .reorder:
             let ordered = operation.orderedExerciseIDs?.map { id in
@@ -97,6 +103,7 @@ enum SessionExerciseIDResolver {
                     persistence: persistence,
                     excludedExerciseIDs: excludedExerciseIDs,
                     familiarExerciseIDs: familiarExerciseIDs,
+                    recentExerciseIDs: recentExerciseIDs,
                     mustBeInSession: true,
                     unresolved: &unresolved
                 ) ?? id
@@ -113,6 +120,7 @@ enum SessionExerciseIDResolver {
                 persistence: persistence,
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
                 mustBeInSession: true,
                 unresolved: &unresolved
             )
@@ -126,6 +134,23 @@ enum SessionExerciseIDResolver {
                 targetRPE: operation.targetRPE,
                 loadAdjustmentIntent: operation.loadAdjustmentIntent
             )
+        case .addExercise:
+            let to = resolve(
+                operation.toExerciseID,
+                sessionExerciseIDs: sessionExerciseIDs,
+                exerciseDisplayNames: exerciseDisplayNames,
+                persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs,
+                familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
+                mustBeInSession: false,
+                unresolved: &unresolved
+            )
+            return SessionAdjustmentOperation(
+                kind: operation.kind,
+                toExerciseID: to,
+                targetSets: operation.targetSets
+            )
         }
     }
 
@@ -136,6 +161,7 @@ enum SessionExerciseIDResolver {
         persistence: PersistenceStore,
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
+        recentExerciseIDs: Set<String>,
         mustBeInSession: Bool,
         unresolved: inout [String]
     ) -> String? {
@@ -146,6 +172,7 @@ enum SessionExerciseIDResolver {
             exerciseDisplayNames: exerciseDisplayNames,
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
+            recentExerciseIDs: recentExerciseIDs,
             mustBeInSession: mustBeInSession
         )
         let resolved = ExerciseResolver.resolve(rawID, context: context, persistence: persistence)

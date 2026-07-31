@@ -143,7 +143,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.5 Rest sound + RTL progress | not started | | | Track B |
 | F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |
 | F-DT9.7 Live Activity / Dynamic Island redesign | not started | | | Track B |
-| F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | not started | | | Track C |
+| F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | done | 2026-07-31 | 97abdbb | Track C |
 | F-DT9.9 Coach confirm + AI impact + food diary | not started | | | Track C |
 | F-DT9.10 Proactive in-session coaching | not started | | | Track C |
 | F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 17330b0 | Track D |

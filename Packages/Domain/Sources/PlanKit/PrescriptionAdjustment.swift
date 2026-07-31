@@ -16,6 +16,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         case adjustSets
         case adjustLoad
         case adjustRPE
+        case addExercise
     }
 
     public let kind: Kind
@@ -30,6 +31,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
     public let rpeDelta: Double?
     public let targetRPE: Double?
     public let loadAdjustmentIntent: LoadAdjustmentIntent
+    public let targetSets: Int?
 
     public init(
         kind: Kind,
@@ -43,7 +45,8 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         targetMassKg: Double? = nil,
         rpeDelta: Double? = nil,
         targetRPE: Double? = nil,
-        loadAdjustmentIntent: LoadAdjustmentIntent = .coachSuggested
+        loadAdjustmentIntent: LoadAdjustmentIntent = .coachSuggested,
+        targetSets: Int? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -57,6 +60,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         self.rpeDelta = rpeDelta
         self.targetRPE = targetRPE
         self.loadAdjustmentIntent = loadAdjustmentIntent
+        self.targetSets = targetSets
     }
 }
 
@@ -67,6 +71,7 @@ public enum PrescriptionClampReason: Sendable, Hashable, Codable, Equatable {
     case swapNoAlternativeAvailable(fromExerciseID: String)
     case invalidReorder(missingExerciseIDs: [String])
     case exerciseNotFound(exerciseID: String)
+    case duplicateExercise(exerciseID: String)
     case loadMissing(exerciseID: String)
     case loadOutOfBounds(exerciseID: String)
     case rpeOutOfBounds(exerciseID: String)
@@ -89,7 +94,8 @@ enum PrescriptionAdjustmentEngine {
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         availableEquipment: Set<String>? = nil,
-        familiarExerciseIDs: Set<String> = []
+        familiarExerciseIDs: Set<String> = [],
+        enforceCoachLoadCaps: Bool = true
     ) -> PrescriptionAdjustmentResult {
         var exercises = session.exercises.sorted { $0.order < $1.order }
         let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
@@ -102,7 +108,8 @@ enum PrescriptionAdjustmentEngine {
                 catalog: catalog,
                 catalogByID: catalogByID,
                 availableEquipment: availableEquipment,
-                familiarExerciseIDs: familiarExerciseIDs
+                familiarExerciseIDs: familiarExerciseIDs,
+                enforceCoachLoadCaps: enforceCoachLoadCaps
             ) {
             case .success:
                 continue
@@ -125,7 +132,8 @@ enum PrescriptionAdjustmentEngine {
         catalog: [CatalogExercise],
         catalogByID: [String: CatalogExercise],
         availableEquipment: Set<String>?,
-        familiarExerciseIDs: Set<String>
+        familiarExerciseIDs: Set<String>,
+        enforceCoachLoadCaps: Bool
     ) -> OperationOutcome {
         switch operation.kind {
         case .swap:
@@ -143,9 +151,11 @@ enum PrescriptionAdjustmentEngine {
         case .adjustSets:
             return applySetAdjustment(operation, to: &exercises)
         case .adjustLoad:
-            return applyLoadAdjustment(operation, to: &exercises)
+            return applyLoadAdjustment(operation, to: &exercises, enforceCoachLoadCaps: enforceCoachLoadCaps)
         case .adjustRPE:
             return applyRPEAdjustment(operation, to: &exercises)
+        case .addExercise:
+            return applyAddExercise(operation, to: &exercises, catalogByID: catalogByID)
         }
     }
 
@@ -262,7 +272,8 @@ enum PrescriptionAdjustmentEngine {
 
     private static func applyLoadAdjustment(
         _ operation: PrescriptionAdjustmentOperation,
-        to exercises: inout [PrescribedExercise]
+        to exercises: inout [PrescribedExercise],
+        enforceCoachLoadCaps: Bool
     ) -> OperationOutcome {
         guard let exerciseID = operation.exerciseID else {
             return .failure(.exerciseNotFound(exerciseID: ""))
@@ -288,7 +299,8 @@ enum PrescriptionAdjustmentEngine {
         guard PrescriptionBounds.isLoadWithinBounds(
             currentKg: currentMass.kilograms,
             proposedKg: boundedKg,
-            intent: operation.loadAdjustmentIntent
+            intent: operation.loadAdjustmentIntent,
+            enforceCoachLoadCaps: enforceCoachLoadCaps
         ) else {
             return .failure(.loadOutOfBounds(exerciseID: exerciseID))
         }
@@ -327,6 +339,36 @@ enum PrescriptionAdjustmentEngine {
         }
 
         exercises[index] = replacing(exercises[index], targetRPE: clamped)
+        return .success
+    }
+
+    private static func applyAddExercise(
+        _ operation: PrescriptionAdjustmentOperation,
+        to exercises: inout [PrescribedExercise],
+        catalogByID: [String: CatalogExercise]
+    ) -> OperationOutcome {
+        guard let exerciseID = operation.toExerciseID else {
+            return .failure(.exerciseNotFound(exerciseID: ""))
+        }
+        guard catalogByID[exerciseID] != nil else {
+            return .failure(.exerciseNotFound(exerciseID: exerciseID))
+        }
+        if exercises.contains(where: { $0.exerciseID == exerciseID }) {
+            return .failure(.duplicateExercise(exerciseID: exerciseID))
+        }
+
+        let setCount = PrescriptionBounds.clampSets(operation.targetSets ?? 3)
+        exercises.append(
+            PrescribedExercise(
+                exerciseID: exerciseID,
+                order: exercises.count,
+                targetSets: setCount,
+                targetRepMin: nil,
+                targetRepMax: nil,
+                targetMass: nil,
+                targetRPE: nil
+            )
+        )
         return .success
     }
 

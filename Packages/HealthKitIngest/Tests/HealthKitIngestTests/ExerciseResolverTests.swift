@@ -92,4 +92,37 @@ struct ExerciseResolverTests {
 
         #expect(result.exerciseID == benchPressID)
     }
+
+    @Test("recents bias prefers recently used exercise for catalog phrase")
+    func recentsBias() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-face-pull-cable",
+            canonicalName: "face pull (cable)",
+            displayName: "Face Pull",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "shoulders"
+        )
+        try store.exercises.upsert(
+            id: "seed-face-pull-band",
+            canonicalName: "face pull (band)",
+            displayName: "Band Face Pull",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "shoulders"
+        )
+        try store.exercises.addAlias(
+            id: "alias-face-pull",
+            exerciseID: "seed-face-pull-cable",
+            alias: "Face Pull"
+        )
+
+        let context = ExerciseResolver.Context(
+            sessionExerciseIDs: [],
+            recentExerciseIDs: ["seed-face-pull-band"],
+            mustBeInSession: false
+        )
+        let result = ExerciseResolver.resolve("face pull", context: context, persistence: store)
+
+        #expect(result.exerciseID == "seed-face-pull-band")
+    }
 }

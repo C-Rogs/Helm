@@ -57,6 +57,8 @@ public enum CoachProposalFailure: Sendable, Equatable {
             return "Couldn't apply that change: exercise order didn't match this session."
         case .exerciseNotFound:
             return "Couldn't apply that change: exercise not found in this session."
+        case .duplicateExercise:
+            return "Couldn't apply that change: that exercise is already in this session."
         }
     }
 }
@@ -237,14 +239,15 @@ public struct InSessionCoachService: Sendable {
         )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
-        let (catalog, familiarExerciseIDs) = try loadCatalog()
+        let (catalog, familiarExerciseIDs, recentExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
             payload: stampedPayload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            recentExerciseIDs: recentExerciseIDs
         )
 
         guard normalized.unresolvedExerciseIDs.isEmpty else {
@@ -263,7 +266,8 @@ public struct InSessionCoachService: Sendable {
             to: currentPrescription,
             excluding: excludedExerciseIDs,
             catalog: catalog,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            enforceCoachLoadCaps: CoachLoadSafetyPreferences.enforceCoachLoadCaps
         )
 
         switch result {
@@ -331,14 +335,15 @@ public struct InSessionCoachService: Sendable {
         )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
-        let (catalog, familiarExerciseIDs) = try loadCatalog()
+        let (catalog, familiarExerciseIDs, recentExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
             payload: stampedPayload,
             sessionExerciseIDs: sessionExerciseIDs,
             exerciseDisplayNames: displayNames,
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            recentExerciseIDs: recentExerciseIDs
         )
 
         let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : stampedPayload
@@ -390,7 +395,8 @@ public struct InSessionCoachService: Sendable {
             to: currentPrescription,
             excluding: excludedExerciseIDs,
             catalog: catalog,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            enforceCoachLoadCaps: CoachLoadSafetyPreferences.enforceCoachLoadCaps
         )
 
         switch result {
@@ -454,18 +460,11 @@ public struct InSessionCoachService: Sendable {
         let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
 
         let sortedExercises = snapshot.session.exercises.sorted { $0.displayOrder < $1.displayOrder }
-        let exerciseLines = sortedExercises
-            .enumerated()
-            .map { index, exercise in
-                let completed = exercise.sets.filter { $0.status == .completed }.count
-                let label = ExerciseDisplayFormatter.friendlyName(
-                    for: exercise.exerciseID,
-                    displayNames: displayNames
-                )
-                let archetypeID = CoachArchetypeSupport.archetype(for: exercise.exerciseID)?.id ?? exercise.exerciseID
-                return "- slot \(index + 1) | \(archetypeID) | \(label) (\(exercise.sets.count) sets, \(completed) completed)"
-            }
-            .joined(separator: "\n")
+        let exerciseBlock = InSessionCoachContextBuilder.sessionExerciseBlock(
+            snapshot: snapshot,
+            displayNames: displayNames,
+            importContextNotes: InSessionCoachContextBuilder.importContextNotes(from: snapshot.session.notes)
+        )
 
         let sessionArchetypeIDs = Set(
             CoachArchetypeSupport.sessionArchetypeIDs(
@@ -484,14 +483,15 @@ public struct InSessionCoachService: Sendable {
             .joined(separator: "\n")
 
         if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
-           !notes.isEmpty {
+           !notes.isEmpty,
+           snapshot.session.source != .importSource {
             contextBlock += "\n\nAthlete session note:\n\(notes)"
         }
         if !archetypeLines.isEmpty {
             contextBlock += "\n\nAllowed archetype IDs (use exact archetypeId in operations):\n\(archetypeLines)"
         }
-        if !exerciseLines.isEmpty {
-            contextBlock += "\n\nActive session exercises:\n\(exerciseLines)"
+        if !exerciseBlock.isEmpty {
+            contextBlock += "\n\nActive session exercises:\n\(exerciseBlock)"
         }
         if !excludedExerciseIDs.isEmpty {
             let excludedArchetypes = excludedExerciseIDs.compactMap { CoachArchetypeSupport.archetype(for: $0)?.id }
@@ -508,7 +508,11 @@ public struct InSessionCoachService: Sendable {
         )
     }
 
-    private func loadCatalog() throws -> (catalog: [CatalogExercise], familiarExerciseIDs: Set<String>) {
+    private func loadCatalog() throws -> (
+        catalog: [CatalogExercise],
+        familiarExerciseIDs: Set<String>,
+        recentExerciseIDs: Set<String>
+    ) {
         let rows = try persistence.exercises.fetchCatalogRows()
         let day = HelmDay.day(for: Date(), cutoff: .default, calendar: .current)
         let history = try PrescriptionHistoryBuilder.history(
@@ -516,11 +520,12 @@ public struct InSessionCoachService: Sendable {
             endingAt: day
         )
         let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let recentExerciseIDs = Set((try? persistence.exercises.listRecentlyUsed())?.map(\.id) ?? [])
         let catalog = PrescriptionCatalogBuilder.build(
             from: rows,
             familiarExerciseIDs: familiarExerciseIDs
         )
-        return (catalog, familiarExerciseIDs)
+        return (catalog, familiarExerciseIDs, recentExerciseIDs)
     }
 
     private func logRecommendation(
@@ -598,6 +603,12 @@ public struct InSessionCoachService: Sendable {
                 throw InSessionCoachError.noApplicableChange
             }
             return (fromLabel, formatRPE(toRPE))
+        case .addExercise:
+            let toID = operation.toExerciseID ?? adjusted.exercises.last?.exerciseID ?? "Exercise"
+            return (
+                "Session",
+                ExerciseDisplayFormatter.friendlyName(for: toID, displayNames: names)
+            )
         }
     }
 

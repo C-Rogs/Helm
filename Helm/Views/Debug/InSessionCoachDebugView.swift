@@ -19,6 +19,28 @@ struct InSessionCoachDebugView: View {
                 }
             }
 
+            Section("Context preview") {
+                if let snapshot = sessionController.snapshot {
+                    let exerciseIDs = snapshot.session.exercises.map(\.exerciseID)
+                    let displayNames = (try? PersistenceBootstrap.persistenceStore.exercises
+                        .displayNames(for: exerciseIDs)) ?? [:]
+                    Text(
+                        InSessionCoachContextBuilder.sessionExerciseBlock(
+                            snapshot: snapshot,
+                            displayNames: displayNames,
+                            importContextNotes: InSessionCoachContextBuilder.importContextNotes(
+                                from: snapshot.session.notes
+                            )
+                        )
+                    )
+                    .font(.caption.monospaced())
+                    .textSelection(.enabled)
+                } else {
+                    Text("Start a workout to preview coach context.")
+                        .foregroundStyle(.secondary)
+                }
+            }
+
             Section("Correlation") {
                 if let requestID = sessionController.lastCoachRequestID {
                     LabeledContent("Last Gemini requestID", value: requestID.uuidString)
