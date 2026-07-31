@@ -90,6 +90,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT5 (after M11.1): nutrition, analytics, full regression | done | 2026-07-28 | Photo meals, HK dedup, trends, export regression, F-DT5.1–5.11 verified on device. |
 | DT6 (after M12.5 and M0.8): the polish gate | done | 2026-07-28 | Haptics, skins, states, DeviationBand, volume board verified; F-DT6.1–6.3 landed. |
 | DT7 (after M14.9): native food logging (MFP deleted 7 days) | done | 2026-07-30 | 7-day Helm-only food soak complete; native logging verified. F-DT7.4–7.9 landed during soak. |
+| DT9 (after F-DT9.14): post-DT7 improvement wave | not started | | | Hevy numpad, rest/LA/Watch, coach confirm, nutrition, charts. See PLAN.md DT9 gate. |
 
 ## Fix sections
 
@@ -135,6 +136,20 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.11 Prescription export share sheet remainder | done | 2026-07-29 | 6c0eba3 | Coach sheet Copy/Share export; parseable prescription set lines via WorkoutExportFormatter. |
 | F-DT8.14 Resting HR display remainder | done | 2026-07-29 | 1ad7086 | Apple Health subtitle on Recovery; muted stale value; Settings HealthKit copy; live HR Train-only regression test. |
 | F-DT8.15 Coach workout_start.v2 detailed sets | done | 2026-07-30 | e5be74a | workout_start.v2 with sets/rest; imported-plan start path; strip embedded JSON from chat bubbles; brace-safe JSON block finder. |
+| F-DT9.1 Hevy-style set input / numpad | not started | | | Track A |
+| F-DT9.2 Rest-notification cold-start crash | not started | | | Track B |
+| F-DT9.3 Exercise history tap + session header | not started | | | Track A |
+| F-DT9.4 Train bottom layout + remove-exercise fix | not started | | | Track A |
+| F-DT9.5 Rest sound + RTL progress | not started | | | Track B |
+| F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |
+| F-DT9.7 Live Activity / Dynamic Island redesign | not started | | | Track B |
+| F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | not started | | | Track C |
+| F-DT9.9 Coach confirm + AI impact + food diary | not started | | | Track C |
+| F-DT9.10 Proactive in-session coaching | not started | | | Track C |
+| F-DT9.11 Rolling 7-day muscle load + meal macros | not started | | | Track D |
+| F-DT9.12 Live-ish energy balance | not started | | | Track D |
+| F-DT9.13 Workout music Now Playing capture | not started | | | Track D |
+| F-DT9.14 Finish HR graph + in-chat charts | not started | | | Track D |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

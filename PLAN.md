@@ -1108,6 +1108,114 @@ Cameron uninstalls MFP and logs all food in Helm for 7 consecutive days.
 - **Scope:** EventKit read; no write-back.
 - **Acceptance:** Permission flow; busy day surfaces hint.
 
+### DT9 post-DT7 improvement wave (F-DT9.#)
+
+Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost policy: Grok orchestrates stubs only; implementers use standard Composer 2.5 (`composer-2.5`); **never** `composer-2.5-fast`. Shared-file hazard: serialize `TrainView.swift`, Live Activity attributes, GRDB migrations, `CoachSystemPrompt.swift`.
+
+**Locked decisions:** Watch-primary training load + phone energy backup when Watch absent; Hevy bodyweight volume rules (added kg in column, BW+added for full-BW catalog moves); local exercise resolver (no network coach API); Now Playing music capture only (analysis page deferred); no Garmin-specific code.
+
+#### F-DT9.1 Hevy-style set input / numpad
+
+- **Depends on:** none (Track A start)
+- **Goal:** Set logging matches Hevy: grey prefilled PREV, black user/completed; tap grey opens numpad with caret; tap black select-all; no Next/Done on kg/reps; RPE slider + Done completes set; keyboard-dismiss chip + swipe-down/tap-outside dismiss.
+- **Scope:** `HelmNumpad.swift`, `SetRow`, `TrainSessionController`, `SetRowView`.
+- **Acceptance:** Unit tests for draft/prefill/complete colour states; build green.
+
+#### F-DT9.2 Rest-notification cold-start crash
+
+- **Depends on:** none (Track B start)
+- **Goal:** Rest-done notification cold start continues workout without crash.
+- **Scope:** `HelmNotificationDelegate`, `RestNotificationRouter`, pending session recover, Live Activity restart order; diagnostics breadcrumbs.
+- **Acceptance:** Unit/integration around recover path; no force-unwrap on missing session; build green.
+
+#### F-DT9.3 Exercise history tap + session header
+
+- **Depends on:** F-DT9.1 if SetRow files conflict; else parallel
+- **Goal:** Tap exercise name opens history sheet (PREV + e1RM); header shows elapsed + completed/total sets.
+- **Scope:** `ExerciseSectionView`, history sheet, Train header.
+- **Acceptance:** Fixture/snapshot for history model; header counts match session.
+
+#### F-DT9.4 Train bottom layout + remove-exercise fix
+
+- **Depends on:** F-DT9.1 preferred
+- **Goal:** Tighter rest/coach spacing; fog higher; shorter rest banner; confirm remove actually deletes exercise.
+- **Scope:** `RestTimerBanner`, Train bottom gradient, `TrainViewPresentationLayer` confirmation Binding race fix.
+- **Acceptance:** Controller test: confirm remove removes exercise.
+
+#### F-DT9.5 Rest sound + RTL progress (+ Watch haptic hook)
+
+- **Depends on:** F-DT9.2 optional
+- **Goal:** Customisable boxing-ring rest sound (default on, respect silent, headphones OK); banner progress empties right-to-left; phone drives Watch rest-end haptic message.
+- **Scope:** `TrainPreferences`, sound assets, `RestTimerBanner`, WCSession rest-end message.
+- **Acceptance:** Preference persistence tests; banner progress math test.
+
+#### F-DT9.6 Watch companion auto-start + HR honesty + training load energy
+
+- **Depends on:** none (Track B)
+- **Goal:** Train start launches Watch + buzz; no Watch toast + hide HR chip; live HR when connected; phone `HKWorkout` includes energy for Apple training load.
+- **Scope:** `WatchSessionCoordinator`, `SessionHeartRateChip`, `WorkoutHealthKitWriter`, `HealthKitStoreClient`.
+- **Acceptance:** HR hidden when unpaired; writer tests assert non-nil energy.
+
+#### F-DT9.7 Live Activity / Dynamic Island redesign
+
+- **Depends on:** F-DT9.6 for HR field
+- **Goal:** Hevy-like LA content, solid contrast, edge padding; Done chip completes set (no ±15); elapsed, exercise, set X/Y, target, rest, HR when live.
+- **Scope:** `WorkoutActivityAttributes`, `WorkoutLiveActivityWidget`, `WorkoutLiveActivityManager`.
+- **Acceptance:** Widget previews resting/working/dark; Done deep-link completes set safely.
+
+#### F-DT9.8 In-session context, add-exercise, resolver, bounds toggle, BW logging
+
+- **Depends on:** none (Track C start)
+- **Goal:** Coach sees all logged set numbers; add catalog exercises via fuzzy resolver (recents bias); presets after add; Settings toggle disables ±10% load safety; Hevy BW volume rules.
+- **Scope:** `InSessionCoachService`, `add_exercise` op, exercise resolver, `PrescriptionBounds`, paste/import note parity.
+- **Acceptance:** Resolver fixture tests; context includes mass/reps/RPE; bounds toggle tested; BW volume fixtures.
+
+#### F-DT9.9 Coach action confirmation + AI impact UX + food diary
+
+- **Depends on:** F-DT9.8
+- **Goal:** Coach mutations (workout_start, food log, adjust) discuss then confirm then apply; impactful AI progress + long haptic; food CRUD + nutrition Q&A from chat.
+- **Scope:** Confirm card UI; `food_log.v1` schema; `ManualMealService`; `CoachAIProgressCard` redesign.
+- **Acceptance:** Confirm required before persist; fixture decode tests.
+
+#### F-DT9.10 Proactive in-session coaching + injury memory prompt
+
+- **Depends on:** F-DT9.8
+- **Goal:** ~25% set milestones refresh context + optional bubble; Settings toggle (default on); pain/injury via free-text memory + prompt guidance only.
+- **Scope:** Milestone observer; `MemoryProfile` prompt; Settings toggle.
+- **Acceptance:** Milestone fires at most 4 times per session; toggle disables bubbles.
+
+#### F-DT9.11 Rolling 7-day muscle load + meal-card macros
+
+- **Depends on:** none (Track D start)
+- **Goal:** Muscle-group set load = rolling last 7 days; meal cards show compact P/C/F.
+- **Scope:** `TrendsDataBuilder`, `MuscleVolumeBoardModel`, coach ledger window, `NutritionMealBucketSection`.
+- **Acceptance:** Rolling-window unit tests; meal card preview.
+
+#### F-DT9.12 Live-ish energy balance (constraints-aware)
+
+- **Depends on:** none
+- **Goal:** Clearer in vs out vs target given HK lag; avoid misleading tiny post-workout burned delta.
+- **Scope:** `NutritionDaySummaryCard`, `NutritionEngine` freshness states.
+- **Acceptance:** UI states for nil/stale/fresh active energy.
+
+#### F-DT9.13 Workout music Now Playing capture
+
+- **Depends on:** none
+- **Goal:** Sample now-playing (title, artist, BPM, genre when available) on-device during session; GRDB storage for later analysis (deferred UI).
+- **Scope:** MediaPlayer APIs; append-only migration.
+- **Acceptance:** Fixture with stubbed now-playing; migration test.
+
+#### F-DT9.14 Finish HR graph + in-chat charts
+
+- **Depends on:** F-DT9.6 for HR samples
+- **Goal:** Finish summary HR chart with set markers when HR available; coach chat renders charts on request.
+- **Scope:** `WorkoutFinishSummaryView`; chat chart bubble component.
+- **Acceptance:** Empty-state without HR; chart bubble snapshot.
+
+### DT9 device gate (after all F-DT9.#)
+
+Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.
+
 ---
 
 ## Reference and lessons from the lab (informing the clean build, not imported)
