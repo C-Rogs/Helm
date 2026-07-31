@@ -7,6 +7,7 @@ struct SetRowView: View {
     let setNumber: Int
     let previous: PreviousPerformance?
     let activeField: NumpadTarget?
+    let numpadSelectAll: Bool
     let validationMessage: String?
     let shakeToken: Int
     let badgeText: String?
@@ -40,12 +41,9 @@ struct SetRowView: View {
                 setTypeLabel: setEntry.setType.loggerAbbreviation,
                 setTypeAccent: setTypeAccent,
                 setIndexAccessibilityLabel: setIndexAccessibilityLabel,
-                weight: fieldDisplayText(setEntry, .weight),
-                weightPlaceholder: previousWeightPlaceholder,
-                reps: fieldDisplayText(setEntry, .reps),
-                repsPlaceholder: previousRepsPlaceholder,
-                rpe: fieldDisplayText(setEntry, .rpe),
-                rpePlaceholder: "-",
+                weightState: fieldState(.weight),
+                repsState: fieldState(.reps),
+                rpeState: fieldState(.rpe),
                 previousValue: previous.map(previousLabel),
                 isCompleted: isCompleted,
                 activeField: activeSetRowField,
@@ -83,6 +81,42 @@ struct SetRowView: View {
         }
     }
 
+    private func fieldState(_ field: NumpadFieldKind) -> SetRowFieldValueState {
+        let isActive = activeField?.setID == setEntry.id && activeField?.field == field
+        let displayText = fieldDisplayText(setEntry, field)
+        let prefilledText = prefilledText(for: field)
+        let hasStoredValue = hasStoredValue(for: field)
+
+        return SetRowFieldValueStateResolver.resolve(
+            hasStoredValue: hasStoredValue,
+            displayText: displayText,
+            prefilledText: prefilledText,
+            isCompleted: isCompleted,
+            isActive: isActive,
+            isSelectAll: isActive && numpadSelectAll
+        )
+    }
+
+    private func hasStoredValue(for field: NumpadFieldKind) -> Bool {
+        switch field {
+        case .weight: setEntry.mass != nil
+        case .reps: setEntry.reps != nil
+        case .rpe: setEntry.rpe != nil
+        }
+    }
+
+    private func prefilledText(for field: NumpadFieldKind) -> String? {
+        switch field {
+        case .weight:
+            guard let mass = previous?.mass else { return "-" }
+            return formatWeight(mass.kilograms)
+        case .reps:
+            return previous?.reps.map(String.init) ?? "-"
+        case .rpe:
+            return "-"
+        }
+    }
+
     private var activeSetRowField: SetRowField? {
         guard let activeField, activeField.setID == setEntry.id else { return nil }
         switch activeField.field {
@@ -116,15 +150,6 @@ struct SetRowView: View {
         }
     }
 
-    private var previousWeightPlaceholder: String {
-        guard let mass = previous?.mass else { return "-" }
-        return formatWeight(mass.kilograms)
-    }
-
-    private var previousRepsPlaceholder: String {
-        previous?.reps.map(String.init) ?? "-"
-    }
-
     private func previousLabel(_ previous: PreviousPerformance) -> String {
         let weight = previous.mass.map { formatWeight($0.kilograms) } ?? "-"
         let reps = previous.reps.map(String.init) ?? "-"
@@ -150,6 +175,7 @@ struct SetRowView: View {
         setNumber: 1,
         previous: nil,
         activeField: nil,
+        numpadSelectAll: false,
         validationMessage: nil,
         shakeToken: 0,
         badgeText: nil,

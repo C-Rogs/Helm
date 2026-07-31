@@ -64,6 +64,8 @@ final class TrainSessionController {
 
     var numpadTarget: NumpadTarget?
     var numpadWorkingText = ""
+    var numpadSelectAll = false
+    var numpadDraftRPE = 8.0
 
     var isShowingExercisePicker = false
     var isShowingFinishConfirmation = false
@@ -928,7 +930,11 @@ final class TrainSessionController {
     ) async {
         let nextTarget = NumpadTarget(setID: setID, sessionExerciseID: sessionExerciseID, field: field)
         if numpadTarget == nextTarget {
-            numpadWorkingText = ""
+            if hasStoredValue(for: field, set: currentSet) {
+                numpadSelectAll = true
+            } else {
+                numpadSelectAll = false
+            }
             numpadValidationError = nil
             return
         }
@@ -941,7 +947,27 @@ final class TrainSessionController {
         let set = findSet(setID: setID) ?? currentSet
         numpadTarget = nextTarget
         numpadValidationError = nil
-        numpadWorkingText = ""
+        seedNumpad(for: field, set: set, exerciseID: exerciseID)
+    }
+
+    func dismissNumpad() async {
+        guard numpadTarget != nil else { return }
+        if numpadTarget?.field == .rpe {
+            numpadTarget = nil
+            numpadValidationError = nil
+            numpadSelectAll = false
+            return
+        }
+        guard await applyNumpadInput() else { return }
+        numpadTarget = nil
+        numpadSelectAll = false
+    }
+
+    func completeSetFromRPEDone() async {
+        guard let target = numpadTarget else { return }
+        numpadWorkingText = formattedRPE(numpadDraftRPE)
+        guard await applyNumpadInput() else { return }
+        await completeSet(sessionExerciseID: target.sessionExerciseID, setID: target.setID)
     }
 
     @discardableResult
@@ -949,12 +975,14 @@ final class TrainSessionController {
         guard let target = numpadTarget,
               let set = findSet(setID: target.setID) else { return true }
 
-        if let error = SetLogValidation.validate(field: target.field, text: numpadWorkingText) {
+        let text = target.field == .rpe ? formattedRPE(numpadDraftRPE) : numpadWorkingText
+
+        if let error = SetLogValidation.validate(field: target.field, text: text) {
             rejectNumpadValidation(error)
             return false
         }
 
-        let normalized = SetLogValidation.normalizedNumpadText(numpadWorkingText)
+        let normalized = SetLogValidation.normalizedNumpadText(text)
         let update = numpadUpdate(for: target.field, text: normalized, existing: set)
         do {
             try await store.logSet(setID: target.setID, update: update)
@@ -1018,6 +1046,11 @@ final class TrainSessionController {
             return
         }
         numpadValidationError = nil
+        if numpadSelectAll {
+            numpadWorkingText = digit == "." ? "0." : digit
+            numpadSelectAll = false
+            return
+        }
         if numpadWorkingText == "0", digit != "." {
             numpadWorkingText = digit
         } else {
@@ -1026,6 +1059,11 @@ final class TrainSessionController {
     }
 
     func backspaceNumpad() {
+        if numpadSelectAll {
+            numpadWorkingText = ""
+            numpadSelectAll = false
+            return
+        }
         guard !numpadWorkingText.isEmpty else { return }
         numpadWorkingText.removeLast()
     }
@@ -1424,12 +1462,84 @@ final class TrainSessionController {
                 return set.reps.map(String.init) ?? ""
             case .rpe:
                 guard let rpe = set.rpe else { return "" }
-                return rpe.truncatingRemainder(dividingBy: 1) == 0
-                    ? String(format: "%.0f", rpe)
-                    : String(format: "%.1f", rpe)
+                return formattedRPE(rpe)
             }
         }
+
+        if field == .rpe {
+            return formattedRPE(numpadDraftRPE)
+        }
         return numpadWorkingText
+    }
+
+    private func seedNumpad(for field: NumpadFieldKind, set: SetEntryDraft, exerciseID: String) {
+        if field == .rpe {
+            numpadDraftRPE = set.rpe ?? 8.0
+            numpadWorkingText = formattedRPE(numpadDraftRPE)
+            numpadSelectAll = false
+            return
+        }
+
+        let stored = storedDisplayText(for: field, set: set)
+        if !stored.isEmpty {
+            numpadWorkingText = stored
+            numpadSelectAll = true
+            return
+        }
+
+        if let prefilled = prefilledDisplayText(for: field, set: set, exerciseID: exerciseID),
+           prefilled != "-" {
+            numpadWorkingText = prefilled
+            numpadSelectAll = false
+            return
+        }
+
+        numpadWorkingText = ""
+        numpadSelectAll = false
+    }
+
+    private func hasStoredValue(for field: NumpadFieldKind, set: SetEntryDraft) -> Bool {
+        switch field {
+        case .weight: set.mass != nil
+        case .reps: set.reps != nil
+        case .rpe: set.rpe != nil
+        }
+    }
+
+    private func storedDisplayText(for field: NumpadFieldKind, set: SetEntryDraft) -> String {
+        switch field {
+        case .weight:
+            guard let mass = set.mass else { return "" }
+            return formatWeight(mass.kilograms)
+        case .reps:
+            return set.reps.map(String.init) ?? ""
+        case .rpe:
+            guard let rpe = set.rpe else { return "" }
+            return formattedRPE(rpe)
+        }
+    }
+
+    private func prefilledDisplayText(
+        for field: NumpadFieldKind,
+        set: SetEntryDraft,
+        exerciseID: String
+    ) -> String? {
+        guard let previous = previousFor(set: set, exerciseID: exerciseID) else { return "-" }
+        switch field {
+        case .weight:
+            guard let mass = previous.mass else { return "-" }
+            return formatWeight(mass.kilograms)
+        case .reps:
+            return previous.reps.map(String.init) ?? "-"
+        case .rpe:
+            return "-"
+        }
+    }
+
+    private func formattedRPE(_ rpe: Double) -> String {
+        rpe.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", rpe)
+            : String(format: "%.1f", rpe)
     }
 
     private func rejectNumpadValidation(_ message: String) {

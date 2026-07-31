@@ -11,6 +11,7 @@ struct ExerciseSectionView: View {
     let isReorderMode: Bool
     let previousLookup: (SetEntryDraft) -> PreviousPerformance?
     let activeField: NumpadTarget?
+    let numpadSelectAll: Bool
     let validationMessage: String?
     let shakeToken: Int
     let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
@@ -114,6 +115,7 @@ struct ExerciseSectionView: View {
                             setNumber: index + 1,
                             previous: previousLookup(set),
                             activeField: activeField,
+                            numpadSelectAll: numpadSelectAll,
                             validationMessage: validationMessage,
                             shakeToken: shakeToken,
                             badgeText: badgeText(set.id),
@@ -171,6 +173,7 @@ struct ExerciseSectionView: View {
         isReorderMode: false,
         previousLookup: { _ in nil },
         activeField: nil,
+        numpadSelectAll: false,
         validationMessage: nil,
         shakeToken: 0,
         fieldDisplayText: { set, field in

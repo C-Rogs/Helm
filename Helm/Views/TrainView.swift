@@ -53,6 +53,15 @@ struct TrainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .overlay {
+                    if controller.numpadTarget != nil {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                Task { await controller.dismissNumpad() }
+                            }
+                    }
+                }
 
                 VStack(spacing: 0) {
                     if controller.hasActiveSession,
@@ -284,6 +293,7 @@ struct TrainView: View {
                 controller.previousFor(set: set, exerciseID: exercise.exerciseID)
             },
             activeField: controller.numpadTarget,
+            numpadSelectAll: controller.numpadSelectAll,
             validationMessage: controller.numpadValidationError,
             shakeToken: controller.numpadShakeToken,
             fieldDisplayText: { set, field in
@@ -496,26 +506,57 @@ struct TrainView: View {
     }
 
     private var numpadOverlay: some View {
-        VStack(spacing: 0) {
-            if !controller.numpadWorkingText.isEmpty {
-                Text(controller.numpadWorkingText)
-                    .helmType(.bigNumber)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, HelmSpacing.sm)
-                    .background(HelmColor.surface)
-            }
+        let isRPE = controller.numpadTarget?.field == .rpe
 
-            HelmNumpad(
-                allowsDecimal: controller.numpadTarget?.field != .reps,
-                onDigit: { controller.appendNumpadDigit($0) },
-                onBackspace: { controller.backspaceNumpad() },
-                onNext: {
-                    Task { await controller.advanceNumpad() }
+        return VStack(spacing: 0) {
+            Button {
+                Task { await controller.dismissNumpad() }
+            } label: {
+                HStack(spacing: HelmSpacing.xxs) {
+                    Image(systemName: "chevron.compact.down")
+                    Text("Dismiss")
+                        .helmType(.monoTag, color: HelmColor.fgSecondary)
                 }
-            )
-            .frame(height: HelmLayout.numpadHeight)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, HelmSpacing.xs)
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Dismiss keyboard")
+
+            if isRPE {
+                HelmRPESlider(value: $controller.numpadDraftRPE)
+
+                Button("Done") {
+                    Task { await controller.completeSetFromRPEDone() }
+                }
+                .buttonStyle(.helmPrimary)
+                .padding(.horizontal, HelmSpacing.sm)
+                .padding(.bottom, HelmSpacing.sm)
+            } else {
+                if !controller.numpadWorkingText.isEmpty || controller.numpadSelectAll {
+                    Text(controller.numpadWorkingText.isEmpty ? "0" : controller.numpadWorkingText)
+                        .helmType(.bigNumber)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, HelmSpacing.sm)
+                        .background(HelmColor.surface)
+                }
+
+                HelmNumpad(
+                    allowsDecimal: controller.numpadTarget?.field != .reps,
+                    onDigit: { controller.appendNumpadDigit($0) },
+                    onBackspace: { controller.backspaceNumpad() }
+                )
+                .frame(height: HelmNumpadMetrics.preferredHeight(showsAction: false))
+            }
         }
         .background(HelmColor.canvas)
+        .gesture(
+            DragGesture(minimumDistance: 24)
+                .onEnded { value in
+                    guard value.translation.height > 40 else { return }
+                    Task { await controller.dismissNumpad() }
+                }
+        )
         .transition(.move(edge: .bottom))
     }
 }

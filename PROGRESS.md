@@ -136,7 +136,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.11 Prescription export share sheet remainder | done | 2026-07-29 | 6c0eba3 | Coach sheet Copy/Share export; parseable prescription set lines via WorkoutExportFormatter. |
 | F-DT8.14 Resting HR display remainder | done | 2026-07-29 | 1ad7086 | Apple Health subtitle on Recovery; muted stale value; Settings HealthKit copy; live HR Train-only regression test. |
 | F-DT8.15 Coach workout_start.v2 detailed sets | done | 2026-07-30 | e5be74a | workout_start.v2 with sets/rest; imported-plan start path; strip embedded JSON from chat bubbles; brace-safe JSON block finder. |
-| F-DT9.1 Hevy-style set input / numpad | not started | | | Track A |
+| F-DT9.1 Hevy-style set input / numpad | done | 2026-07-31 | 398bddd | Grey prefilled PREV, black committed; caret/select-all editing; no Next on kg/reps; RPE slider + Done; dismiss chip/swipe/tap-outside. SetRowFieldValueStateTests. |
 | F-DT9.2 Rest-notification cold-start crash | not started | | | Track B |
 | F-DT9.3 Exercise history tap + session header | not started | | | Track A |
 | F-DT9.4 Train bottom layout + remove-exercise fix | not started | | | Track A |

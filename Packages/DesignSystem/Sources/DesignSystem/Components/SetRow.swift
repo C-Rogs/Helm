@@ -11,12 +11,9 @@ public struct SetRow: View {
     public let setTypeLabel: String?
     public let setTypeAccent: Color?
     public let setIndexAccessibilityLabel: String?
-    public let weight: String
-    public let weightPlaceholder: String
-    public let reps: String
-    public let repsPlaceholder: String
-    public let rpe: String
-    public let rpePlaceholder: String
+    public let weightState: SetRowFieldValueState
+    public let repsState: SetRowFieldValueState
+    public let rpeState: SetRowFieldValueState
     public let previousValue: String?
     public let isCompleted: Bool
     public let activeField: SetRowField?
@@ -35,12 +32,9 @@ public struct SetRow: View {
         setTypeLabel: String? = nil,
         setTypeAccent: Color? = nil,
         setIndexAccessibilityLabel: String? = nil,
-        weight: String,
-        weightPlaceholder: String = "-",
-        reps: String,
-        repsPlaceholder: String = "-",
-        rpe: String,
-        rpePlaceholder: String = "-",
+        weightState: SetRowFieldValueState,
+        repsState: SetRowFieldValueState,
+        rpeState: SetRowFieldValueState,
         previousValue: String? = nil,
         isCompleted: Bool,
         activeField: SetRowField? = nil,
@@ -56,12 +50,9 @@ public struct SetRow: View {
         self.setTypeLabel = setTypeLabel
         self.setTypeAccent = setTypeAccent
         self.setIndexAccessibilityLabel = setIndexAccessibilityLabel
-        self.weight = weight
-        self.weightPlaceholder = weightPlaceholder
-        self.reps = reps
-        self.repsPlaceholder = repsPlaceholder
-        self.rpe = rpe
-        self.rpePlaceholder = rpePlaceholder
+        self.weightState = weightState
+        self.repsState = repsState
+        self.rpeState = rpeState
         self.previousValue = previousValue
         self.isCompleted = isCompleted
         self.activeField = activeField
@@ -92,9 +83,9 @@ public struct SetRow: View {
 
             previousColumn
 
-            valueField(title: "kg", value: weight, placeholder: weightPlaceholder, field: .weight)
-            valueField(title: "reps", value: reps, placeholder: repsPlaceholder, field: .reps)
-            valueField(title: "RPE", value: rpe, placeholder: rpePlaceholder, field: .rpe)
+            valueField(title: "kg", state: weightState, field: .weight)
+            valueField(title: "reps", state: repsState, field: .reps)
+            valueField(title: "RPE", state: rpeState, field: .rpe)
                 .frame(width: 56)
 
             if let badgeText {
@@ -178,35 +169,64 @@ public struct SetRow: View {
 
     private func valueField(
         title: String,
-        value: String,
-        placeholder: String,
+        state: SetRowFieldValueState,
         field: SetRowField
     ) -> some View {
         let isActive = activeField == field
+        let displayText = displayText(for: state)
+        let textColor = SetRowFieldValueStateResolver.textColor(for: state)
+        let showsCaret = SetRowFieldValueStateResolver.showsCaret(for: state)
+        let showsSelection = SetRowFieldValueStateResolver.showsSelectionHighlight(for: state)
+
         return Button {
             onFieldTap(field)
         } label: {
             VStack(spacing: HelmSpacing.xxs) {
                 Text(title)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                Text(value.isEmpty ? placeholder : value)
-                    .helmType(.number, color: value.isEmpty ? HelmColor.fgMuted : HelmColor.fg)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.7)
-                    .overlay(alignment: .bottom) {
-                        if isActive {
-                            Rectangle()
-                                .fill(HelmColor.accent)
-                                .frame(height: 2)
-                                .offset(y: 4)
+                ZStack(alignment: .bottom) {
+                    Text(displayText)
+                        .helmType(.number, color: textColor)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.7)
+                        .padding(.horizontal, showsSelection ? HelmSpacing.xxs : 0)
+                        .background {
+                            if showsSelection {
+                                HelmColor.accent.opacity(0.22)
+                            }
                         }
+                    if showsCaret {
+                        Rectangle()
+                            .fill(HelmColor.accent)
+                            .frame(width: 2, height: 18)
+                            .offset(x: caretOffset(for: displayText))
                     }
+                }
+                .overlay(alignment: .bottom) {
+                    if isActive, !showsCaret, !showsSelection {
+                        Rectangle()
+                            .fill(HelmColor.accent)
+                            .frame(height: 2)
+                            .offset(y: 4)
+                    }
+                }
             }
             .frame(maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.xs)
         }
         .buttonStyle(.helmPressable)
-        .accessibilityLabel("\(title) \(value.isEmpty ? placeholder : value)")
+        .accessibilityLabel("\(title) \(displayText)")
+    }
+
+    private func displayText(for state: SetRowFieldValueState) -> String {
+        switch state {
+        case .prefilled(let display), .committed(let display), .editing(let display, _, _):
+            display
+        }
+    }
+
+    private func caretOffset(for text: String) -> CGFloat {
+        CGFloat(text.count) * 5
     }
 }
 
@@ -215,9 +235,9 @@ public struct SetRow: View {
         setNumber: 1,
         setTypeLabel: "W",
         setTypeAccent: HelmColor.fgSecondary,
-        weight: "40",
-        reps: "10",
-        rpe: "",
+        weightState: .committed(display: "40"),
+        repsState: .committed(display: "10"),
+        rpeState: .prefilled(display: "-"),
         previousValue: "40×10",
         isCompleted: false,
         onPreviousTap: {},
@@ -232,9 +252,9 @@ public struct SetRow: View {
 #Preview("Set row active") {
     SetRow(
         setNumber: 1,
-        weight: "80",
-        reps: "8",
-        rpe: "8",
+        weightState: .editing(display: "80", showsCaret: true, isSelectAll: false),
+        repsState: .prefilled(display: "8"),
+        rpeState: .prefilled(display: "-"),
         previousValue: "77.5×8",
         isCompleted: false,
         activeField: .weight,
@@ -249,9 +269,9 @@ public struct SetRow: View {
 #Preview("Set row completed") {
     SetRow(
         setNumber: 2,
-        weight: "80",
-        reps: "8",
-        rpe: "",
+        weightState: .committed(display: "80"),
+        repsState: .committed(display: "8"),
+        rpeState: .committed(display: "8"),
         isCompleted: true,
         onFieldTap: { _ in },
         onComplete: {}

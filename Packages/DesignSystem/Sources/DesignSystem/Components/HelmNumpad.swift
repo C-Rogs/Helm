@@ -7,61 +7,73 @@ public enum HelmNumpadMetrics {
     public static let rowSpacing: CGFloat = 8
 
     public static var preferredHeight: CGFloat {
+        preferredHeight(showsAction: true)
+    }
+
+    public static func preferredHeight(showsAction: Bool) -> CGFloat {
         let padding = HelmSpacing.sm * 2
-        let rowHeights = keyHeight * 4 + prominentKeyHeight
-        let spacing = rowSpacing * 4
+        let rowHeights = keyHeight * 4 + (showsAction ? prominentKeyHeight : 0)
+        let spacing = rowSpacing * (showsAction ? 4 : 3)
         return padding + rowHeights + spacing
     }
 }
 
 public struct HelmNumpad: UIViewRepresentable {
     public let allowsDecimal: Bool
+    public let actionTitle: String?
     public let onDigit: (String) -> Void
     public let onBackspace: () -> Void
-    public let onNext: () -> Void
+    public let onAction: (() -> Void)?
 
     public init(
         allowsDecimal: Bool,
+        actionTitle: String? = nil,
         onDigit: @escaping (String) -> Void,
         onBackspace: @escaping () -> Void,
-        onNext: @escaping () -> Void
+        onAction: (() -> Void)? = nil
     ) {
         self.allowsDecimal = allowsDecimal
+        self.actionTitle = actionTitle
         self.onDigit = onDigit
         self.onBackspace = onBackspace
-        self.onNext = onNext
+        self.onAction = onAction
     }
 
     public func makeUIView(context: Context) -> HelmNumpadView {
-        let view = HelmNumpadView(allowsDecimal: allowsDecimal)
+        let view = HelmNumpadView(allowsDecimal: allowsDecimal, actionTitle: actionTitle)
         view.onDigit = onDigit
         view.onBackspace = onBackspace
-        view.onNext = onNext
+        view.onAction = onAction
         return view
     }
 
     public func updateUIView(_ uiView: HelmNumpadView, context: Context) {
-        uiView.updateAllowsDecimal(allowsDecimal)
+        uiView.updateConfiguration(allowsDecimal: allowsDecimal, actionTitle: actionTitle)
         uiView.onDigit = onDigit
         uiView.onBackspace = onBackspace
-        uiView.onNext = onNext
+        uiView.onAction = onAction
     }
 }
 
 public final class HelmNumpadView: UIView {
     public var allowsDecimal = true
+    public var actionTitle: String?
     public var onDigit: ((String) -> Void)?
     public var onBackspace: (() -> Void)?
-    public var onNext: (() -> Void)?
+    public var onAction: (() -> Void)?
 
     private let stack = UIStackView()
 
     public override var intrinsicContentSize: CGSize {
-        CGSize(width: UIView.noIntrinsicMetric, height: HelmNumpadMetrics.preferredHeight)
+        CGSize(
+            width: UIView.noIntrinsicMetric,
+            height: HelmNumpadMetrics.preferredHeight(showsAction: actionTitle != nil)
+        )
     }
 
-    public init(allowsDecimal: Bool) {
+    public init(allowsDecimal: Bool, actionTitle: String? = nil) {
         self.allowsDecimal = allowsDecimal
+        self.actionTitle = actionTitle
         super.init(frame: .zero)
         backgroundColor = UIColor(HelmColor.canvas)
         stack.axis = .vertical
@@ -84,9 +96,12 @@ public final class HelmNumpadView: UIView {
 
     public override var canBecomeFirstResponder: Bool { false }
 
-    public func updateAllowsDecimal(_ allowsDecimal: Bool) {
-        guard self.allowsDecimal != allowsDecimal else { return }
+    public func updateConfiguration(allowsDecimal: Bool, actionTitle: String?) {
+        let needsRebuild = self.allowsDecimal != allowsDecimal || self.actionTitle != actionTitle
         self.allowsDecimal = allowsDecimal
+        self.actionTitle = actionTitle
+        invalidateIntrinsicContentSize()
+        guard needsRebuild else { return }
         rebuildKeys()
     }
 
@@ -112,7 +127,9 @@ public final class HelmNumpadView: UIView {
             }
             stack.addArrangedSubview(rowStack)
         }
-        stack.addArrangedSubview(makeKey(title: "NEXT", prominent: true))
+        if let actionTitle {
+            stack.addArrangedSubview(makeKey(title: actionTitle, prominent: true))
+        }
     }
 
     private func makeKey(title: String, prominent: Bool = false) -> UIButton {
@@ -140,11 +157,13 @@ public final class HelmNumpadView: UIView {
             case "⌫":
                 HapticEngine.shared.play(.selection)
                 self.onBackspace?()
-            case "NEXT":
-                self.onNext?()
             default:
-                HapticEngine.shared.play(.selection)
-                self.onDigit?(title)
+                if prominent {
+                    self.onAction?()
+                } else {
+                    HapticEngine.shared.play(.selection)
+                    self.onDigit?(title)
+                }
             }
         }, for: .touchUpInside)
         return button
@@ -155,9 +174,20 @@ public final class HelmNumpadView: UIView {
     HelmNumpad(
         allowsDecimal: true,
         onDigit: { _ in },
-        onBackspace: {},
-        onNext: {}
+        onBackspace: {}
     )
-    .frame(height: HelmNumpadMetrics.preferredHeight)
+    .frame(height: HelmNumpadMetrics.preferredHeight(showsAction: false))
+    .helmTheme()
+}
+
+#Preview("Numpad with Done") {
+    HelmNumpad(
+        allowsDecimal: false,
+        actionTitle: "Done",
+        onDigit: { _ in },
+        onBackspace: {},
+        onAction: {}
+    )
+    .frame(height: HelmNumpadMetrics.preferredHeight(showsAction: true))
     .helmTheme()
 }
