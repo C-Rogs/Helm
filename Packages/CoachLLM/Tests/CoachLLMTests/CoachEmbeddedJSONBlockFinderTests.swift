@@ -49,4 +49,13 @@ struct CoachChatTextFormatterTests {
         #expect(formatted == "Starting your session now.")
         #expect(!formatted.contains("schemaVersion"))
     }
+
+    @Test("JSON-only workout_start leaves empty user-facing text")
+    func jsonOnlyWorkoutStartIsEmpty() {
+        let text = """
+        {"schemaVersion":"workout_start.v2","helmDay":"2026-07-31","title":"Push","exercises":[{"name":"Bench Press","sets":[{"setType":"normal","reps":8,"massKg":80}]}]}
+        """
+        let formatted = CoachChatTextFormatter.userFacingText(from: text)
+        #expect(formatted.isEmpty)
+    }
 }

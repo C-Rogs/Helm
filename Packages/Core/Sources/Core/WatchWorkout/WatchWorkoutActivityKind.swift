@@ -46,4 +46,8 @@ public enum WatchWorkoutActivityKind: String, CaseIterable, Sendable, Identifiab
         case .other: 3000
         }
     }
+
+    public static func fromHealthKitActivityTypeRawValue(_ rawValue: UInt) -> WatchWorkoutActivityKind {
+        Self.allCases.first { $0.healthKitActivityTypeRawValue == rawValue } ?? .traditionalStrengthTraining
+    }
 }

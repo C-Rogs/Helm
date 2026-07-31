@@ -42,9 +42,6 @@ struct WatchCompanionView: View {
                         .foregroundStyle(.secondary)
                         .multilineTextAlignment(.center)
                 }
-                .task {
-                    await store.startWorkout()
-                }
             } else {
                 Text("HealthKit access required")
                     .font(.caption2)

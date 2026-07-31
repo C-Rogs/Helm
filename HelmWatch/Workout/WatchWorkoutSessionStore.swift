@@ -19,6 +19,8 @@ final class WatchWorkoutSessionStore {
     private let lifecycle = WatchWorkoutSessionLifecycleTracker()
     private let teardownTracker = LiveWorkoutBuilderTeardownTracker()
     private var elapsedTimer: Timer?
+    /// Invoked on MainActor whenever live HR updates during an active/paused session.
+    var onLiveHeartRateBPM: ((Double) -> Void)?
 
     init(manager: WatchWorkoutSessionManaging = WatchWorkoutSessionManager()) {
         self.manager = manager
@@ -143,6 +145,7 @@ extension WatchWorkoutSessionStore: WatchWorkoutSessionManagerDelegate {
                 restingHR: restingHR,
                 maxHR: maxHR
             )
+            onLiveHeartRateBPM?(bpm)
         }
     }
 }

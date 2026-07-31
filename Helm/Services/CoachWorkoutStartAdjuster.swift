@@ -10,6 +10,20 @@ enum CoachWorkoutStartAction: Sendable {
 }
 
 enum CoachWorkoutStartAdjuster {
+    enum StartError: LocalizedError, Equatable {
+        case unsupportedSchema(String)
+        case emptySession
+
+        var errorDescription: String? {
+            switch self {
+            case let .unsupportedSchema(version):
+                "Unsupported workout start format (\(version))."
+            case .emptySession:
+                "Coach proposal had no exercises to start."
+            }
+        }
+    }
+
     @MainActor
     static func tryStartFromEmbeddedJSON(
         in text: String,
@@ -19,23 +33,39 @@ enum CoachWorkoutStartAdjuster {
         onStart: @MainActor (CoachWorkoutStartAction) async throws -> Void
     ) async throws -> Bool {
         guard let payload = WorkoutStartPayloadParser.parse(from: text) else { return false }
+        try await start(
+            payload: payload,
+            helmDay: helmDay,
+            persistence: persistence,
+            prescriptionService: prescriptionService,
+            onStart: onStart
+        )
+        return true
+    }
+
+    @MainActor
+    static func start(
+        payload: WorkoutStartPayload,
+        helmDay: HelmDay,
+        persistence: PersistenceStore,
+        prescriptionService: PrescriptionService,
+        onStart: @MainActor (CoachWorkoutStartAction) async throws -> Void
+    ) async throws {
         let supportedSchemas: Set<String> = [
             CoachOutputSchemaVersion.workoutStartV1.rawValue,
             CoachOutputSchemaVersion.workoutStartV2.rawValue
         ]
         guard supportedSchemas.contains(payload.schemaVersion) else {
-            return false
+            throw StartError.unsupportedSchema(payload.schemaVersion)
         }
-        if let dayString = payload.helmDay,
-           let parsed = parseHelmDay(dayString),
-           parsed != helmDay {
-            return false
-        }
+        // helmDay on the payload is advisory. Confirm-to-start means start now;
+        // do not block on coach off-by-one / cutoff drift (was a silent no-op before).
 
         if payload.hasDetailedSets {
             let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)
+            guard !plan.exercises.isEmpty else { throw StartError.emptySession }
             try await onStart(.importedPlan(plan))
-            return true
+            return
         }
 
         let useAdjusted = payload.useAdjustedPrescription ?? false
@@ -50,24 +80,12 @@ enum CoachWorkoutStartAdjuster {
                 PrescriptionDayStore.save(adjusted, for: helmDay)
             } else if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue {
                 let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)
+                guard !plan.exercises.isEmpty else { throw StartError.emptySession }
                 try await onStart(.importedPlan(plan))
-                return true
+                return
             }
         }
 
         try await onStart(.prescription(useAdjusted: useAdjusted || payload.exercises != nil))
-        return true
-    }
-
-    private static func parseHelmDay(_ value: String) -> HelmDay? {
-        let parts = value.split(separator: "-", omittingEmptySubsequences: false)
-        guard parts.count == 3,
-              let year = Int(parts[0]),
-              let month = Int(parts[1]),
-              let day = Int(parts[2])
-        else {
-            return nil
-        }
-        return HelmDay(year: year, month: month, day: day)
     }
 }

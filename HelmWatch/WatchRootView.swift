@@ -35,22 +35,35 @@ struct WatchRootView: View {
         }
         .onAppear {
             coordinator.hydrateFromReceivedApplicationContext()
+            wireHeartRatePush()
+            WatchWorkoutLaunchBridge.shared.onPendingLaunch = {
+                selectedTab = 0
+                Task { await consumePhoneLaunchIfNeeded() }
+            }
+            Task {
+                await consumePhoneLaunchIfNeeded()
+                // Hydrate may set companion active without an onChange edge; start HR then.
+                guard coordinator.workoutCompanionActive else { return }
+                selectedTab = 0
+                await startCompanionWorkoutIfNeeded(playHaptic: true)
+            }
         }
         .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
             if isActive {
-                guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
-                WKInterfaceDevice.current().play(.start)
-                Task { await workoutStore.startWorkout() }
+                selectedTab = 0
+                Task { await startCompanionWorkoutIfNeeded(playHaptic: true) }
                 return
             }
             guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
             Task { await workoutStore.endWorkout(discard: true) }
         }
-        .onChange(of: workoutStore.heartRateBPM) { _, bpm in
-            guard let bpm else { return }
-            guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
-            let day = HelmDay.day(for: .now, calendar: .current)
-            coordinator.pushLiveHeartRate(Int(bpm.rounded()), helmDay: day)
+        .onChange(of: coordinator.activationState) { _, state in
+            guard state == .activated else { return }
+            flushLiveHeartRateIfNeeded()
+        }
+        .onChange(of: coordinator.isReachable) { _, reachable in
+            guard reachable else { return }
+            flushLiveHeartRateIfNeeded()
         }
     }
 
@@ -73,6 +86,10 @@ struct WatchRootView: View {
 
             Section("Sync") {
                 LabeledContent("Activation", value: activationLabel)
+                LabeledContent("Reachable", value: coordinator.isReachable ? "Yes" : "No")
+                if let bpm = coordinator.latestLiveHeartRateBPM {
+                    LabeledContent("Last HR sent", value: "\(bpm)")
+                }
                 LabeledContent("Round-trip", value: coordinator.roundTripComplete ? "Complete" : "Pending")
                 if let sent = coordinator.lastSent {
                     LabeledContent("Last reply", value: "#\(sent.sequence)")
@@ -92,6 +109,43 @@ struct WatchRootView: View {
         case .activated: "Activated"
         @unknown default: "Unknown"
         }
+    }
+
+    private func wireHeartRatePush() {
+        workoutStore.onLiveHeartRateBPM = { [coordinator] bpm in
+            guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
+            let day = HelmDay.day(for: .now, calendar: .current)
+            coordinator.pushLiveHeartRate(Int(bpm.rounded()), helmDay: day)
+        }
+    }
+
+    private func flushLiveHeartRateIfNeeded() {
+        guard let bpm = workoutStore.heartRateBPM else { return }
+        guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
+        let day = HelmDay.day(for: .now, calendar: .current)
+        coordinator.pushLiveHeartRate(Int(bpm.rounded()), helmDay: day, force: true)
+    }
+
+    private func consumePhoneLaunchIfNeeded() async {
+        guard let configuration = WatchWorkoutLaunchBridge.shared.consumePendingConfiguration() else {
+            return
+        }
+        let kind = WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(
+            configuration.activityType.rawValue
+        )
+        workoutStore.selectActivity(kind)
+        selectedTab = 0
+        await startCompanionWorkoutIfNeeded(playHaptic: true)
+    }
+
+    private func startCompanionWorkoutIfNeeded(playHaptic: Bool) async {
+        guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
+        if playHaptic {
+            WKInterfaceDevice.current().play(.start)
+        }
+        await workoutStore.prepareHealthKit()
+        await workoutStore.startWorkout()
+        flushLiveHeartRateIfNeeded()
     }
 }
 

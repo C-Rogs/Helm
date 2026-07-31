@@ -1533,15 +1533,20 @@ final class TrainSessionController {
     }
 
     private func activateWatchCompanionAfterSessionStart() {
-        pushWatchCompanionState()
         startHeartRateSampling()
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.refreshPairingFlags()
         if coordinator.canDriveWatchCompanion {
-            coordinator.launchWatchWorkoutCompanion()
+            // Push companion first so Watch has context when startWatchApp opens it,
+            // then push again after launch finishes (covers cold start / late hydrate).
+            pushWatchCompanionState()
+            coordinator.launchWatchWorkoutCompanion { [weak self] in
+                self?.pushWatchCompanionState()
+            }
             HapticEngine.shared.play(.phaseChange)
             watchCompanionNotice = nil
         } else {
+            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false)
             watchCompanionNotice = "No Apple Watch connected. Heart rate hidden. Phone will record training load energy."
         }
     }

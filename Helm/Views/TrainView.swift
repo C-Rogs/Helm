@@ -53,15 +53,6 @@ struct TrainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .overlay {
-                    if controller.numpadTarget != nil {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Task { await controller.dismissNumpad() }
-                            }
-                    }
-                }
 
                 VStack(spacing: HelmSpacing.xs) {
                     if controller.hasActiveSession,
@@ -461,6 +452,17 @@ struct TrainView: View {
                     }
                     .padding(HelmSpacing.screenGutter)
                     .padding(.bottom, HelmSpacing.md)
+                    .frame(maxWidth: .infinity)
+                    .background {
+                        // Tap-outside dismiss behind controls so field Buttons can switch focus.
+                        if controller.numpadTarget != nil {
+                            Color.clear
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    Task { await controller.dismissNumpad() }
+                                }
+                        }
+                    }
                 }
                 .animation(
                     HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),

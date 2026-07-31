@@ -133,11 +133,14 @@ final class WatchSessionCoordinator: NSObject {
     }
 
     /// Wakes Watch workout app via HealthKit configuration, then companion context.
-    func launchWatchWorkoutCompanion() {
+    func launchWatchWorkoutCompanion(onFinished: (@MainActor () -> Void)? = nil) {
         guard role == .phone else { return }
         refreshSessionFlags()
         #if os(iOS)
-        guard activationState == .activated, canDriveWatchCompanion else { return }
+        guard activationState == .activated, canDriveWatchCompanion else {
+            onFinished?()
+            return
+        }
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
@@ -148,8 +151,11 @@ final class WatchSessionCoordinator: NSObject {
                 } else if !success {
                     self?.lastError = "Watch workout app failed to launch"
                 }
+                onFinished?()
             }
         }
+        #else
+        onFinished?()
         #endif
     }
 
@@ -200,12 +206,13 @@ final class WatchSessionCoordinator: NSObject {
         latestLiveHeartRateBPM = nil
     }
 
-    func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay) {
+    func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay, force: Bool = false) {
         guard role == .watch else { return }
         guard activationState == .activated else { return }
 
         let now = Date().timeIntervalSince1970
-        if let lastLiveHeartRatePushAt,
+        if !force,
+           let lastLiveHeartRatePushAt,
            now - lastLiveHeartRatePushAt < WatchSyncPayload.liveHeartRatePushThrottleInterval {
             return
         }

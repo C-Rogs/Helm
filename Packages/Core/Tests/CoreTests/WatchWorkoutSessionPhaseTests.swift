@@ -29,6 +29,18 @@ struct WatchWorkoutSessionPhaseTests {
         #expect(phase == .idle)
     }
 
+    @Test("maps HealthKit strength activity raw value to Watch kind")
+    func mapsStrengthActivityRawValue() {
+        #expect(
+            WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(50)
+                == .traditionalStrengthTraining
+        )
+        #expect(
+            WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(9999)
+                == .traditionalStrengthTraining
+        )
+    }
+
     @Test("teardown steps preserve builder order; discard skips finish")
     func teardownStepOrder() {
         #expect(WatchWorkoutSessionReducer.teardownSteps(discard: false) == [

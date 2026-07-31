@@ -62,8 +62,12 @@ enum CoachChatActionParser {
 
         if let payload = WorkoutStartPayloadParser.parse(from: text) {
             let preview = WorkoutStartCommandPreview.preview(for: payload)
+            let stripped = CoachChatTextFormatter.userFacingText(from: text)
+            let reply = stripped.isEmpty
+                ? "Ready when you are. Confirm to start \(preview.title)."
+                : stripped
             return CoachChatActionProposal(
-                reply: CoachChatTextFormatter.userFacingText(from: text),
+                reply: reply,
                 kind: .workoutStart(payload),
                 title: preview.title,
                 detail: preview.detail,
@@ -74,6 +78,19 @@ enum CoachChatActionParser {
         }
 
         return nil
+    }
+}
+
+enum CoachChatDisplayText {
+    static func assistantText(from assembled: String, pendingAction: CoachChatActionProposal?) -> String {
+        let stripped = CoachChatTextFormatter.userFacingText(from: assembled)
+        if !stripped.isEmpty {
+            return stripped
+        }
+        if let pendingAction, !pendingAction.reply.isEmpty {
+            return pendingAction.reply
+        }
+        return stripped
     }
 }
 

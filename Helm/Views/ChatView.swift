@@ -144,7 +144,13 @@ struct ChatView: View {
             case .user:
                 userBubble(message.text)
             case .assistant:
-                assistantBubble(message.text, isStreaming: false)
+                let display = CoachChatTextFormatter.userFacingText(from: message.text)
+                let chart = ChartPayloadParser.parse(from: message.text)
+                if display.isEmpty, chart == nil {
+                    EmptyView()
+                } else {
+                    assistantBubble(message.text, isStreaming: false)
+                }
             case .system:
                 EmptyView()
             }
@@ -169,16 +175,18 @@ struct ChatView: View {
         let chart = isStreaming ? nil : ChartPayloadParser.parse(from: text)
         return HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                    HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
-                    Text(display.isEmpty && isStreaming ? "..." : display)
-                        .helmType(.body)
-                        .foregroundStyle(HelmColor.fg)
-                        .textSelection(.enabled)
+                if !display.isEmpty || isStreaming {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
+                        Text(display.isEmpty && isStreaming ? "..." : display)
+                            .helmType(.body)
+                            .foregroundStyle(HelmColor.fg)
+                            .textSelection(.enabled)
+                    }
+                    .padding(.horizontal, HelmSpacing.md)
+                    .padding(.vertical, HelmSpacing.sm)
+                    .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 }
-                .padding(.horizontal, HelmSpacing.md)
-                .padding(.vertical, HelmSpacing.sm)
-                .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
 
                 if let chart {
                     CoachChatChartBubble(payload: chart)
@@ -194,10 +202,10 @@ struct ChatView: View {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                     Text(coachName.uppercased())
                         .helmType(.monoTag, color: HelmColor.depleted)
-                    Text("Could not respond. \(message)")
+                    Text(chatActionErrorCopy(message))
                         .helmType(.body, color: HelmColor.depleted)
                 }
-                if controller.lastFailedUserMessage != nil {
+                if controller.lastFailedUserMessage != nil, controller.pendingChatAction == nil {
                     Button("Try again") {
                         controller.retryLastTurn()
                     }
@@ -208,6 +216,18 @@ struct ChatView: View {
             .padding(.vertical, HelmSpacing.sm)
             .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
             Spacer(minLength: HelmSpacing.xl)
+        }
+    }
+
+    private func chatActionErrorCopy(_ message: String) -> String {
+        guard let pending = controller.pendingChatAction else {
+            return "Could not respond. \(message)"
+        }
+        switch pending.kind {
+        case .workoutStart:
+            return "Could not start. \(message)"
+        case .foodLog:
+            return "Could not apply. \(message)"
         }
     }
 

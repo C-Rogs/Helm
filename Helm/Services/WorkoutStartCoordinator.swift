@@ -8,6 +8,7 @@ enum WorkoutStartCoordinator {
     enum StartError: LocalizedError {
         case alreadyActive
         case emptyPrescription
+        case startFailed(String)
 
         var errorDescription: String? {
             switch self {
@@ -15,6 +16,8 @@ enum WorkoutStartCoordinator {
                 "A workout is already in progress."
             case .emptyPrescription:
                 "No prescription available for today."
+            case let .startFailed(message):
+                message
             }
         }
     }
@@ -47,6 +50,7 @@ enum WorkoutStartCoordinator {
         }
 
         await controller.startPrescription(prescription)
+        try ensureSessionStarted(controller)
     }
 
     static func startImportedPlan(
@@ -66,5 +70,14 @@ enum WorkoutStartCoordinator {
         }
 
         await controller.startWorkout(fromImportedPlan: plan, saveTemplate: false)
+        try ensureSessionStarted(controller)
+    }
+
+    private static func ensureSessionStarted(_ controller: TrainSessionController) throws {
+        guard controller.hasActiveSession else {
+            throw StartError.startFailed(
+                controller.errorMessage ?? "Could not start workout."
+            )
+        }
     }
 }

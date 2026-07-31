@@ -126,7 +126,6 @@ final class ChatController {
         defer {
             isApplyingChatAction = false
             applyProgressStep = nil
-            pendingChatAction = nil
         }
 
         do {
@@ -148,6 +147,8 @@ final class ChatController {
                 HapticEngine.shared.play(.phaseChange)
                 HapticEngine.shared.play(.coachAdjust)
             }
+            pendingChatAction = nil
+            lastTurnError = nil
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: error)
@@ -155,8 +156,8 @@ final class ChatController {
     }
 
     private func applyWorkoutStart(_ payload: WorkoutStartPayload, helmDay: HelmDay) async throws {
-        _ = try await CoachWorkoutStartAdjuster.tryStartFromEmbeddedJSON(
-            in: encodedWorkoutStartBlock(payload),
+        try await CoachWorkoutStartAdjuster.start(
+            payload: payload,
             helmDay: helmDay,
             persistence: persistence,
             prescriptionService: PlanBootstrap.prescriptionService
@@ -177,17 +178,6 @@ final class ChatController {
                 )
             }
         }
-    }
-
-    private func encodedWorkoutStartBlock(_ payload: WorkoutStartPayload) -> String {
-        let encoder = JSONEncoder()
-        encoder.outputFormatting = [.sortedKeys]
-        guard let data = try? encoder.encode(payload),
-              let json = String(data: data, encoding: .utf8)
-        else {
-            return ""
-        }
-        return json
     }
 
     private func sendMessage(_ text: String) async {
@@ -275,7 +265,11 @@ final class ChatController {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
-            let userFacingText = CoachChatTextFormatter.userFacingText(from: assembled)
+            let pendingAction = CoachChatActionParser.proposal(from: assembled)
+            let userFacingText = CoachChatDisplayText.assistantText(
+                from: assembled,
+                pendingAction: pendingAction
+            )
 
             let assistantMessage = try persistence.chat.append(
                 ChatMessageInsert(
@@ -295,7 +289,7 @@ final class ChatController {
                 )
             }
 
-            pendingChatAction = CoachChatActionParser.proposal(from: assembled)
+            pendingChatAction = pendingAction
 
             await logTurn(
                 status: "completed",
