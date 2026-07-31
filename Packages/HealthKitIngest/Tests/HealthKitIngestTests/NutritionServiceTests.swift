@@ -105,4 +105,114 @@ struct NutritionServiceTests {
         #expect(second.trend.estimatedTDEEKcal != nil)
         #expect(second.trend.weeklyIntakeAverageKcal == first.trend.weeklyIntakeAverageKcal)
     }
+
+    @Test("post-workout tiny active burn stays stale")
+    func postWorkoutTinyBurnStale() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+
+        let calendar = Calendar(identifier: .gregorian)
+        let dob = calendar.date(byAdding: .year, value: -30, to: Date())!
+        try BodyProfileStore(metadata: store.appMetadata).save(
+            BodyProfile(
+                bodyMassKg: 80,
+                heightCm: 175,
+                biologicalSex: .male,
+                dateOfBirth: dob
+            )
+        )
+
+        let now = Date(timeIntervalSince1970: 1_700_000_000)
+        let day = HelmDay.day(for: now, calendar: calendar)
+        try store.dailyMetrics.upsert(
+            DailyMetrics(
+                helmDay: day,
+                activeEnergy: Energy(kilocalories: 35)
+            )
+        )
+
+        let workoutEnded = now.addingTimeInterval(-20 * 60)
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "session-1",
+                title: "Push",
+                startedAt: workoutEnded.addingTimeInterval(-3_600),
+                endedAt: workoutEnded,
+                status: .completed,
+                source: .manual,
+                exercises: []
+            )
+        )
+
+        let engine = NutritionEngine(persistence: store, calendar: calendar)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil, now: now)
+
+        #expect(snapshot.activeEnergyFreshness == .stale(partialKilocalories: 35))
+        #expect(snapshot.energyBalance.adjustedTargetKcal == nil)
+    }
+
+    @Test("fresh active burn adjusts energy balance target")
+    func freshBurnAdjustsTarget() {
+        let balance = EnergyBalanceSummary.build(
+            intakeKcal: 1_800,
+            baseTargetKcal: 2_400,
+            activeEnergy: .fresh(kilocalories: 420)
+        )
+        #expect(balance.adjustedTargetKcal == 2_820)
+
+        let staleBalance = EnergyBalanceSummary.build(
+            intakeKcal: 1_800,
+            baseTargetKcal: 2_400,
+            activeEnergy: .stale(partialKilocalories: 42)
+        )
+        #expect(staleBalance.adjustedTargetKcal == nil)
+    }
+
+    @Test("today training day without active energy is stale pending")
+    func trainingDayPending() {
+        let freshness = ActiveEnergyFreshnessResolver.resolve(
+            ActiveEnergyFreshnessResolver.Context(
+                helmDay: HelmDay(year: 2026, month: 7, day: 31),
+                activeEnergyKcal: nil,
+                dayType: .training,
+                isToday: true,
+                latestWorkoutEndedAt: nil,
+                now: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        )
+
+        #expect(freshness == .stale(partialKilocalories: nil))
+    }
+
+    @Test("past day with active energy is always fresh")
+    func pastDayFresh() {
+        let freshness = ActiveEnergyFreshnessResolver.resolve(
+            ActiveEnergyFreshnessResolver.Context(
+                helmDay: HelmDay(year: 2026, month: 7, day: 20),
+                activeEnergyKcal: 512,
+                dayType: .rest,
+                isToday: false,
+                latestWorkoutEndedAt: nil,
+                now: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        )
+
+        #expect(freshness == .fresh(kilocalories: 512))
+    }
+
+    @Test("today rest day without active energy is unavailable")
+    func restDayUnavailable() {
+        let freshness = ActiveEnergyFreshnessResolver.resolve(
+            ActiveEnergyFreshnessResolver.Context(
+                helmDay: HelmDay(year: 2026, month: 7, day: 31),
+                activeEnergyKcal: nil,
+                dayType: .rest,
+                isToday: true,
+                latestWorkoutEndedAt: nil,
+                now: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        )
+
+        #expect(freshness == .unavailable)
+    }
 }

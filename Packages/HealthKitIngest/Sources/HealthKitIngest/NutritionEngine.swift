@@ -5,6 +5,130 @@ import NutritionKit
 import Persistence
 import PlanKit
 
+/// How much to trust today's HealthKit active-energy aggregate for energy-balance UI.
+public enum ActiveEnergyFreshness: Sendable, Equatable {
+    case unavailable
+    case stale(partialKilocalories: Int?)
+    case fresh(kilocalories: Int)
+
+    public var displayKilocalories: Int? {
+        switch self {
+        case .unavailable: nil
+        case let .stale(partial): partial
+        case let .fresh(kilocalories): kilocalories
+        }
+    }
+
+    public var isTrustworthyForTargetAdjustment: Bool {
+        if case .fresh = self { return true }
+        return false
+    }
+}
+
+public enum ActiveEnergyDisplayCopy {
+    public static let freshDetail = "From Apple Health"
+    public static let stalePending = "Apple Health is still syncing today's activity"
+    public static let stalePartial = "Still catching up - refresh after your workout"
+    public static let unavailableDetail = "No active energy logged in Health yet"
+}
+
+public enum ActiveEnergyFreshnessResolver {
+    public static let postWorkoutCatchUpWindow: TimeInterval = 3 * 60 * 60
+    public static let lowBurnMisleadingThresholdKcal = 100
+
+    public struct Context: Sendable, Equatable {
+        public let helmDay: HelmDay
+        public let activeEnergyKcal: Int?
+        public let dayType: NutritionDayType
+        public let isToday: Bool
+        public let latestWorkoutEndedAt: Date?
+        public let now: Date
+
+        public init(
+            helmDay: HelmDay,
+            activeEnergyKcal: Int?,
+            dayType: NutritionDayType,
+            isToday: Bool,
+            latestWorkoutEndedAt: Date?,
+            now: Date
+        ) {
+            self.helmDay = helmDay
+            self.activeEnergyKcal = activeEnergyKcal
+            self.dayType = dayType
+            self.isToday = isToday
+            self.latestWorkoutEndedAt = latestWorkoutEndedAt
+            self.now = now
+        }
+    }
+
+    public static func resolve(_ context: Context) -> ActiveEnergyFreshness {
+        let kilocalories = context.activeEnergyKcal
+
+        guard context.isToday else {
+            guard let kilocalories, kilocalories > 0 else { return .unavailable }
+            return .fresh(kilocalories: kilocalories)
+        }
+
+        let recentWorkout = context.latestWorkoutEndedAt.map {
+            context.now.timeIntervalSince($0) < postWorkoutCatchUpWindow
+        } ?? false
+        let expectsCatchUp = context.dayType == .training || recentWorkout
+
+        if let kilocalories, kilocalories > 0 {
+            if recentWorkout, kilocalories < lowBurnMisleadingThresholdKcal {
+                return .stale(partialKilocalories: kilocalories)
+            }
+            return .fresh(kilocalories: kilocalories)
+        }
+
+        if expectsCatchUp {
+            return .stale(partialKilocalories: nil)
+        }
+        return .unavailable
+    }
+}
+
+public struct EnergyBalanceSummary: Sendable, Equatable {
+    public let intakeKcal: Int?
+    public let baseTargetKcal: Int
+    public let adjustedTargetKcal: Int?
+    public let activeEnergy: ActiveEnergyFreshness
+
+    public init(
+        intakeKcal: Int?,
+        baseTargetKcal: Int,
+        adjustedTargetKcal: Int?,
+        activeEnergy: ActiveEnergyFreshness
+    ) {
+        self.intakeKcal = intakeKcal
+        self.baseTargetKcal = baseTargetKcal
+        self.adjustedTargetKcal = adjustedTargetKcal
+        self.activeEnergy = activeEnergy
+    }
+
+    public static func build(
+        intakeKcal: Int?,
+        baseTargetKcal: Int,
+        activeEnergy: ActiveEnergyFreshness
+    ) -> EnergyBalanceSummary {
+        let adjustedTargetKcal: Int?
+        if activeEnergy.isTrustworthyForTargetAdjustment,
+           case let .fresh(burned) = activeEnergy,
+           baseTargetKcal > 0 {
+            adjustedTargetKcal = baseTargetKcal + burned
+        } else {
+            adjustedTargetKcal = nil
+        }
+
+        return EnergyBalanceSummary(
+            intakeKcal: intakeKcal,
+            baseTargetKcal: baseTargetKcal,
+            adjustedTargetKcal: adjustedTargetKcal,
+            activeEnergy: activeEnergy
+        )
+    }
+}
+
 public struct NutritionDaySnapshot: Sendable, Equatable {
     public let helmDay: HelmDay
     public let targets: MacroTargets
@@ -12,11 +136,10 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let trend: NutritionTrendState
     public let dayType: NutritionDayType
     public let phase: TrainingPhase
-    /// Profile-based maintenance estimate (Mifflin-St Jeor seed) for transparency.
     public let profileMaintenanceKcal: Int?
-    /// Active energy burned today from HealthKit (informational).
     public let activeEnergyKcal: Int?
-    /// User marked logging complete for this day.
+    public let activeEnergyFreshness: ActiveEnergyFreshness
+    public let energyBalance: EnergyBalanceSummary
     public let loggingComplete: Bool
 
     public init(
@@ -28,6 +151,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         phase: TrainingPhase,
         profileMaintenanceKcal: Int? = nil,
         activeEnergyKcal: Int? = nil,
+        activeEnergyFreshness: ActiveEnergyFreshness = .unavailable,
+        energyBalance: EnergyBalanceSummary? = nil,
         loggingComplete: Bool = false
     ) {
         self.helmDay = helmDay
@@ -38,6 +163,12 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         self.phase = phase
         self.profileMaintenanceKcal = profileMaintenanceKcal
         self.activeEnergyKcal = activeEnergyKcal
+        self.activeEnergyFreshness = activeEnergyFreshness
+        self.energyBalance = energyBalance ?? EnergyBalanceSummary.build(
+            intakeKcal: actual?.totalEnergy.map { Int($0.kilocalories.rounded()) },
+            baseTargetKcal: targets.caloriesKcal,
+            activeEnergy: activeEnergyFreshness
+        )
         self.loggingComplete = loggingComplete
     }
 }
@@ -62,7 +193,8 @@ public actor NutritionEngine {
 
     public func snapshot(
         for day: HelmDay,
-        prescriptionSummary: PrescribedSessionSummary?
+        prescriptionSummary: PrescribedSessionSummary?,
+        now: Date = Date()
     ) -> NutritionDaySnapshot {
         let settings = (try? persistence.trainingPlan.load()) ?? .default
         let storedDay = try? persistence.nutrition.fetchDay(helmDay: day)
@@ -108,6 +240,24 @@ public actor NutritionEngine {
             trend: trend
         )
         let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: day)) ?? false
+        let activeEnergyKcal = dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }
+        let today = HelmDay.day(for: now, cutoff: cutoff, calendar: calendar)
+        let activeEnergyFreshness = ActiveEnergyFreshnessResolver.resolve(
+            ActiveEnergyFreshnessResolver.Context(
+                helmDay: day,
+                activeEnergyKcal: activeEnergyKcal,
+                dayType: dayType,
+                isToday: day == today,
+                latestWorkoutEndedAt: latestWorkoutEndedAt(on: day),
+                now: now
+            )
+        )
+        let intakeKcal = actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
+        let energyBalance = EnergyBalanceSummary.build(
+            intakeKcal: intakeKcal,
+            baseTargetKcal: targets.caloriesKcal,
+            activeEnergy: activeEnergyFreshness
+        )
 
         return NutritionDaySnapshot(
             helmDay: day,
@@ -117,7 +267,9 @@ public actor NutritionEngine {
             dayType: dayType,
             phase: settings.phaseGoal.phase,
             profileMaintenanceKcal: profileMaintenanceKcal,
-            activeEnergyKcal: dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) },
+            activeEnergyKcal: activeEnergyKcal,
+            activeEnergyFreshness: activeEnergyFreshness,
+            energyBalance: energyBalance,
             loggingComplete: loggingComplete
         )
     }
@@ -133,6 +285,24 @@ public actor NutritionEngine {
             calendar: calendar
         )
         try trendStore.save(trend)
+    }
+
+    private func latestWorkoutEndedAt(on day: HelmDay) -> Date? {
+        guard let sessions = try? persistence.workoutSessions.fetchCompletedSessionsForPrescription(
+            since: day,
+            calendar: calendar,
+            cutoff: cutoff
+        ) else {
+            return nil
+        }
+
+        return sessions.compactMap { session -> Date? in
+            guard session.status == .completed else { return nil }
+            let endedAt = session.endedAt ?? session.startedAt
+            let sessionDay = HelmDay.day(for: endedAt, cutoff: cutoff, calendar: calendar)
+            guard sessionDay == day else { return nil }
+            return endedAt
+        }.max()
     }
 
     private func resolvedBodyProfile(for day: HelmDay) -> BodyProfile? {
