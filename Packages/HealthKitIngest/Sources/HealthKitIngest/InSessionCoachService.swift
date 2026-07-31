@@ -26,6 +26,7 @@ public enum CoachProposalFailure: Sendable, Equatable {
     case exerciseNotFound(String)
     case noDiff
     case unresolvedExerciseIDs(ids: [String], sessionLabels: [String])
+    case unresolvedCatalogExerciseIDs(ids: [String], catalogLabels: [String])
 
     public var userMessage: String {
         switch self {
@@ -40,6 +41,13 @@ public enum CoachProposalFailure: Sendable, Equatable {
             let unmatched = ids.map { "\"\($0)\"" }.joined(separator: ", ")
             let available = sessionLabels.joined(separator: ", ")
             return "Couldn't apply that change: \(unmatched) doesn't match any exercise in this session. Available exercises: \(available)."
+        case .unresolvedCatalogExerciseIDs(let ids, let catalogLabels):
+            let unmatched = ids.map { "\"\($0)\"" }.joined(separator: ", ")
+            if catalogLabels.isEmpty {
+                return "Couldn't find \(unmatched) in the exercise catalogue. Try a more specific name (equipment + movement)."
+            }
+            let options = catalogLabels.joined(separator: ", ")
+            return "Couldn't lock \(unmatched) to one catalogue exercise. Closest matches: \(options). Tell me which one to add."
         }
     }
 
@@ -56,7 +64,7 @@ public enum CoachProposalFailure: Sendable, Equatable {
         case .invalidReorder:
             return "Couldn't apply that change: exercise order didn't match this session."
         case .exerciseNotFound:
-            return "Couldn't apply that change: exercise not found in this session."
+            return "Couldn't apply that change: exercise not found in the catalogue."
         case .duplicateExercise:
             return "Couldn't apply that change: that exercise is already in this session."
         }
@@ -247,7 +255,8 @@ public struct InSessionCoachService: Sendable {
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
-            recentExerciseIDs: recentExerciseIDs
+            recentExerciseIDs: recentExerciseIDs,
+            phraseHint: userMessage
         )
 
         guard normalized.unresolvedExerciseIDs.isEmpty else {
@@ -343,7 +352,8 @@ public struct InSessionCoachService: Sendable {
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
-            recentExerciseIDs: recentExerciseIDs
+            recentExerciseIDs: recentExerciseIDs,
+            phraseHint: userMessage
         )
 
         let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : stampedPayload
@@ -366,6 +376,23 @@ public struct InSessionCoachService: Sendable {
         }
 
         if !normalized.unresolvedExerciseIDs.isEmpty {
+            let isCatalogLookup = payload.operations.contains {
+                $0.kind == .addExercise
+            }
+            if isCatalogLookup {
+                return CoachSessionProposal(
+                    reply: payload.reply,
+                    payload: normalized.payload,
+                    recommendationID: recommendation.id,
+                    previewBanner: nil,
+                    status: .failed(.unresolvedCatalogExerciseIDs(
+                        ids: normalized.unresolvedExerciseIDs,
+                        catalogLabels: normalized.catalogCandidates
+                    )),
+                    requestID: requestID
+                )
+            }
+
             let sessionLabels = snapshot.session.exercises
                 .sorted { $0.displayOrder < $1.displayOrder }
                 .map { exercise in

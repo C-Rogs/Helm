@@ -94,7 +94,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     ) async throws -> SavedWorkoutSample {
         lock.withLock {
             lastSavedEnergyKilocalories = totalEnergyBurnedKilocalories
-            SavedWorkoutSample(
+            return SavedWorkoutSample(
                 id: UUID(),
                 start: start,
                 end: end,

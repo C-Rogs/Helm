@@ -2,6 +2,7 @@ import CoachLLM
 import Core
 import Foundation
 import Persistence
+import PlanKit
 import ReadinessKit
 import Testing
 @testable import HealthKitIngest

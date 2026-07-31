@@ -7,6 +7,7 @@ enum SessionExerciseIDResolver {
     struct Result: Sendable, Equatable {
         let payload: SessionAdjustmentPayload
         let unresolvedExerciseIDs: [String]
+        let catalogCandidates: [String]
     }
 
     static func normalize(
@@ -16,9 +17,11 @@ enum SessionExerciseIDResolver {
         persistence: PersistenceStore,
         excludedExerciseIDs: Set<String> = [],
         familiarExerciseIDs: Set<String> = [],
-        recentExerciseIDs: Set<String> = []
+        recentExerciseIDs: Set<String> = [],
+        phraseHint: String? = nil
     ) throws -> Result {
         var unresolved: [String] = []
+        var catalogCandidates: [String] = []
         let normalizedOps = payload.operations.map { operation in
             mapOperation(
                 operation,
@@ -28,7 +31,9 @@ enum SessionExerciseIDResolver {
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
-                unresolved: &unresolved
+                phraseHint: phraseHint,
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
         }
 
@@ -41,7 +46,8 @@ enum SessionExerciseIDResolver {
 
         return Result(
             payload: normalized,
-            unresolvedExerciseIDs: Array(Set(unresolved)).sorted()
+            unresolvedExerciseIDs: Array(Set(unresolved)).sorted(),
+            catalogCandidates: Array(Set(catalogCandidates)).sorted()
         )
     }
 
@@ -53,7 +59,9 @@ enum SessionExerciseIDResolver {
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
         recentExerciseIDs: Set<String>,
-        unresolved: inout [String]
+        phraseHint: String?,
+        unresolved: inout [String],
+        catalogCandidates: inout [String]
     ) -> SessionAdjustmentOperation {
         switch operation.kind {
         case .swap:
@@ -65,8 +73,10 @@ enum SessionExerciseIDResolver {
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
+                phraseHint: nil,
                 mustBeInSession: true,
-                unresolved: &unresolved
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
             let to = resolve(
                 operation.toExerciseID,
@@ -76,8 +86,10 @@ enum SessionExerciseIDResolver {
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
+                phraseHint: phraseHint,
                 mustBeInSession: false,
-                unresolved: &unresolved
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
             return SessionAdjustmentOperation(
                 kind: operation.kind,
@@ -104,8 +116,10 @@ enum SessionExerciseIDResolver {
                     excludedExerciseIDs: excludedExerciseIDs,
                     familiarExerciseIDs: familiarExerciseIDs,
                     recentExerciseIDs: recentExerciseIDs,
+                    phraseHint: nil,
                     mustBeInSession: true,
-                    unresolved: &unresolved
+                    unresolved: &unresolved,
+                    catalogCandidates: &catalogCandidates
                 ) ?? id
             }
             return SessionAdjustmentOperation(
@@ -121,8 +135,10 @@ enum SessionExerciseIDResolver {
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
+                phraseHint: nil,
                 mustBeInSession: true,
-                unresolved: &unresolved
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
             return SessionAdjustmentOperation(
                 kind: operation.kind,
@@ -143,8 +159,10 @@ enum SessionExerciseIDResolver {
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
+                phraseHint: phraseHint,
                 mustBeInSession: false,
-                unresolved: &unresolved
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
             return SessionAdjustmentOperation(
                 kind: operation.kind,
@@ -162,8 +180,10 @@ enum SessionExerciseIDResolver {
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
         recentExerciseIDs: Set<String>,
+        phraseHint: String?,
         mustBeInSession: Bool,
-        unresolved: inout [String]
+        unresolved: inout [String],
+        catalogCandidates: inout [String]
     ) -> String? {
         guard let rawID, !rawID.isEmpty else { return rawID }
 
@@ -173,7 +193,8 @@ enum SessionExerciseIDResolver {
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
             recentExerciseIDs: recentExerciseIDs,
-            mustBeInSession: mustBeInSession
+            mustBeInSession: mustBeInSession,
+            phraseHint: phraseHint
         )
         let resolved = ExerciseResolver.resolve(rawID, context: context, persistence: persistence)
         if let exerciseID = resolved.exerciseID {
@@ -181,6 +202,7 @@ enum SessionExerciseIDResolver {
         }
 
         unresolved.append(rawID)
+        catalogCandidates.append(contentsOf: resolved.catalogCandidates)
         return rawID
     }
 }

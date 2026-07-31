@@ -86,6 +86,36 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    /// Maps FreeExerciseDB / archetype member IDs onto seeded catalog rows (`seed-…` or `source_dataset_id`).
+    public func resolveSeededCatalogID(_ rawID: String) throws -> String? {
+        let trimmed = rawID.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return nil }
+
+        if try fetchSummary(id: trimmed) != nil {
+            return trimmed
+        }
+
+        if !trimmed.hasPrefix("seed-") {
+            let seeded = "seed-\(trimmed)"
+            if try fetchSummary(id: seeded) != nil {
+                return seeded
+            }
+        }
+
+        return try pool.read { db in
+            try String.fetchOne(
+                db,
+                sql: """
+                    SELECT id
+                    FROM exercise
+                    WHERE deleted_at IS NULL AND source_dataset_id = ?
+                    LIMIT 1
+                    """,
+                arguments: [trimmed.hasPrefix("seed-") ? String(trimmed.dropFirst(5)) : trimmed]
+            )
+        }
+    }
+
     public func fetchInstructionText(id: String) throws -> String? {
         try pool.read { db in
             try String.fetchOne(

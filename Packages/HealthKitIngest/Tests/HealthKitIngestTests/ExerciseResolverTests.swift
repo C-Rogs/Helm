@@ -125,4 +125,78 @@ struct ExerciseResolverTests {
 
         #expect(result.exerciseID == "seed-face-pull-band")
     }
+
+    @Test("FreeExerciseDB archetype member remaps to seed- catalog ID")
+    func archetypeMemberSeedRemap() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-Hammer_Curls",
+            canonicalName: "hammer curls",
+            displayName: "Hammer Curls",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+        try store.exercises.upsert(
+            id: "seed-Cable_Hammer_Curls_-_Rope_Attachment",
+            canonicalName: "cable hammer curls - rope attachment",
+            displayName: "Cable Hammer Curls - Rope Attachment",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            generatedAt: "2026-07-31T00:00:00Z",
+            archetypes: [
+                CoachArchetype(
+                    id: "hammer_curl",
+                    displayName: "Hammer Curl",
+                    priority: "accessory",
+                    coachAliases: ["hammer curl", "rope hammer curl", "cable hammer curl"]
+                )
+            ],
+            mapping: [
+                "Hammer_Curls": "hammer_curl",
+                "Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl",
+                "seed-Hammer_Curls": "hammer_curl",
+                "seed-Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl"
+            ],
+            variants: [
+                "hammer_curl": CoachArchetypeVariants(
+                    members: [
+                        "Alternate_Hammer_Curl",
+                        "Cable_Hammer_Curls_-_Rope_Attachment",
+                        "Hammer_Curls"
+                    ],
+                    preferredDefaultExerciseId: "Hammer_Curls"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let defaultResult = ExerciseResolver.resolve(
+            "hammer_curl",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+        #expect(defaultResult.exerciseID == "seed-Hammer_Curls")
+
+        let ropeResult = ExerciseResolver.resolve(
+            "hammer_curl",
+            context: ExerciseResolver.Context(
+                sessionExerciseIDs: [],
+                mustBeInSession: false,
+                phraseHint: "add rope hammer curl"
+            ),
+            persistence: store
+        )
+        #expect(ropeResult.exerciseID == "seed-Cable_Hammer_Curls_-_Rope_Attachment")
+
+        let phraseResult = ExerciseResolver.resolve(
+            "rope hammer curl",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+        #expect(phraseResult.exerciseID == "seed-Cable_Hammer_Curls_-_Rope_Attachment")
+    }
 }

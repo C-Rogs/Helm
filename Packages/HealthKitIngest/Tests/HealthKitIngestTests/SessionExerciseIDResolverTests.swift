@@ -110,6 +110,71 @@ struct SessionExerciseIDResolverTests {
         #expect(result.unresolvedExerciseIDs.contains("totally-unknown-lift"))
     }
 
+    @Test("addExercise resolves FreeExerciseDB archetype via seed remap and phrase hint")
+    func addExerciseArchetypeSeedRemap() throws {
+        let store = try PersistenceStore.inMemory()
+        let ropeID = "seed-Cable_Hammer_Curls_-_Rope_Attachment"
+        try store.exercises.upsert(
+            id: "seed-Hammer_Curls",
+            canonicalName: "hammer curls",
+            displayName: "Hammer Curls",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+        try store.exercises.upsert(
+            id: ropeID,
+            canonicalName: "cable hammer curls - rope attachment",
+            displayName: "Cable Hammer Curls - Rope Attachment",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            archetypes: [
+                CoachArchetype(
+                    id: "hammer_curl",
+                    displayName: "Hammer Curl",
+                    coachAliases: ["hammer curl", "rope hammer curl"]
+                )
+            ],
+            mapping: [
+                "Hammer_Curls": "hammer_curl",
+                "Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl"
+            ],
+            variants: [
+                "hammer_curl": CoachArchetypeVariants(
+                    members: ["Cable_Hammer_Curls_-_Rope_Attachment", "Hammer_Curls"],
+                    preferredDefaultExerciseId: "Hammer_Curls"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Adding hammer curl.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: "hammer_curl",
+                    targetSets: 3
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [benchPressID],
+            exerciseDisplayNames: [benchPressID: "Bench Press"],
+            persistence: store,
+            phraseHint: "add rope hammer curl"
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.payload.operations.first?.toExerciseID == ropeID)
+    }
+
     @Test("archetype ID resolves swap target to catalog exercise")
     func archetypeSwapTarget() throws {
         let store = try PersistenceStore.inMemory()

@@ -449,6 +449,79 @@ struct InSessionCoachServiceTests {
         #expect(exercises[1].sets.count == 2)
     }
 
+    @Test("coach add exercise proposal resolves archetype phrase against catalogue")
+    func addExerciseProposalResolvesCataloguePhrase() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let ropeID = "seed-Cable_Hammer_Curls_-_Rope_Attachment"
+        try store.exercises.upsert(
+            id: "seed-Hammer_Curls",
+            canonicalName: "hammer curls",
+            displayName: "Hammer Curls",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+        try store.exercises.upsert(
+            id: ropeID,
+            canonicalName: "cable hammer curls - rope attachment",
+            displayName: "Cable Hammer Curls - Rope Attachment",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            archetypes: [
+                CoachArchetype(
+                    id: "hammer_curl",
+                    displayName: "Hammer Curl",
+                    coachAliases: ["hammer curl", "rope hammer curl"]
+                )
+            ],
+            mapping: [
+                "Hammer_Curls": "hammer_curl",
+                "Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl",
+                ropeID: "hammer_curl",
+                "seed-Hammer_Curls": "hammer_curl"
+            ],
+            variants: [
+                "hammer_curl": CoachArchetypeVariants(
+                    members: ["Cable_Hammer_Curls_-_Rope_Attachment", "Hammer_Curls"],
+                    preferredDefaultExerciseId: "Hammer_Curls"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding rope hammer curl.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: "hammer_curl",
+                    targetSets: 3
+                )
+            ]
+        )
+
+        let proposal = try service.buildProposal(
+            payload: payload,
+            userMessage: "add rope hammer curl",
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            modelVersion: payload.schemaVersion
+        )
+
+        #expect(proposal.requiresConfirmation)
+        #expect(proposal.payload.operations.first?.toExerciseID == ropeID)
+        #expect(proposal.previewBanner?.toLabel.contains("Cable") == true
+            || proposal.previewBanner?.toLabel.lowercased().contains("rope") == true
+            || proposal.previewBanner?.toLabel.lowercased().contains("hammer") == true)
+    }
+
     @Test("disabled load safety allows large coach-suggested increase")
     func disabledLoadSafetyAllowsLargeIncrease() async throws {
         let store = try PersistenceStore.inMemory()
