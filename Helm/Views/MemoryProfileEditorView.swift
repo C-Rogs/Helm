@@ -43,6 +43,9 @@ struct MemoryProfileEditorView: View {
 
             Section("Standing Constraints") {
                 editorField("Constraints", text: $profile.standingConstraints)
+                Text("Pain, injury, or movements to avoid. Free text is enough; coach will ask and plan around this.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
             }
 
             Section("What Has Worked") {

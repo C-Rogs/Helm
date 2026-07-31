@@ -7,6 +7,7 @@ enum ProactiveCoachPreferences {
         static let banner = "helm.proactive.banner"
         static let autoChat = "helm.proactive.autoChat"
         static let push = "helm.proactive.push"
+        static let milestones = "helm.proactive.milestones"
     }
 
     static var peekEnabled: Bool {
@@ -27,5 +28,11 @@ enum ProactiveCoachPreferences {
     static var pushEnabled: Bool {
         get { UserDefaults.standard.object(forKey: Key.push) as? Bool ?? true }
         set { UserDefaults.standard.set(newValue, forKey: Key.push) }
+    }
+
+    /// ~25% set milestones during an active workout (default on).
+    static var milestonesEnabled: Bool {
+        get { UserDefaults.standard.object(forKey: Key.milestones) as? Bool ?? true }
+        set { UserDefaults.standard.set(newValue, forKey: Key.milestones) }
     }
 }

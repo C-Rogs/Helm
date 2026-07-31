@@ -145,7 +145,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.7 Live Activity / Dynamic Island redesign | done | 2026-07-31 | 6a4c621 | Hevy-like LA: set X/Y, target, rest, HR; solid black contrast; Done intent completes set (no ±15). |
 | F-DT9.8 Coach context, add-exercise, resolver, bounds, BW | done | 2026-07-31 | ffcc955 | Track C |
 | F-DT9.9 Coach confirm + AI impact + food diary | done | 2026-07-31 | 41a47f6 | Track C |
-| F-DT9.10 Proactive in-session coaching | not started | | | Track C |
+| F-DT9.10 Proactive in-session coaching | done | 2026-07-31 | 7a3015e | 25% set milestones (max 4); Settings toggle; injury memory prompt + Standing Constraints hint. |
 | F-DT9.11 Rolling 7-day muscle load + meal macros | done | 2026-07-31 | 21603f6 | Track D |
 | F-DT9.12 Live-ish energy balance | done | 2026-07-31 | 80a1005 | Track D |
 | F-DT9.13 Workout music Now Playing capture | not started | | | Track D |

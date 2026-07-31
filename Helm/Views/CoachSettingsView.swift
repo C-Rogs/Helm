@@ -19,6 +19,7 @@ struct CoachSettingsView: View {
     @State private var proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
     @State private var proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
     @State private var proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
+    @State private var proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
     @State private var enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
 
     private let keyStore = APIKeyStore()
@@ -61,6 +62,10 @@ struct CoachSettingsView: View {
             }
 
             Section("Proactive coach") {
+                Toggle("Set milestones (~25%)", isOn: $proactiveMilestonesEnabled)
+                    .onChange(of: proactiveMilestonesEnabled) { _, newValue in
+                        ProactiveCoachPreferences.milestonesEnabled = newValue
+                    }
                 Toggle("Peek on Ask coach bar", isOn: $proactivePeekEnabled)
                     .onChange(of: proactivePeekEnabled) { _, newValue in
                         ProactiveCoachPreferences.peekEnabled = newValue
@@ -187,6 +192,7 @@ struct CoachSettingsView: View {
             proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
             proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
             proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
+            proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
             enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
             if geminiKey.isEmpty {
                 geminiKey = keyStore.displayValue(for: .gemini)

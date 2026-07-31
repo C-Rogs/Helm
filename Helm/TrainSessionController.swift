@@ -96,6 +96,7 @@ final class TrainSessionController {
     private(set) var watchCompanionNotice: String?
 
     private var didSurfaceRestOverrunProactive = false
+    private var firedMilestoneQuartiles: Set<Int> = []
 
     private var coachThread = CoachThreadState.empty
 
@@ -578,6 +579,9 @@ final class TrainSessionController {
     func completeSet(sessionExerciseID: String, setID: String) async {
         do {
             guard let existingSet = findSet(setID: setID) else { return }
+            let completedBefore = store.snapshot.map {
+                TrainSessionProgress.from(snapshot: $0).completedSetCount
+            } ?? 0
 
             if existingSet.status == .completed {
                 try await store.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
@@ -638,9 +642,30 @@ final class TrainSessionController {
             }
 
             await syncSideEffects(force: true)
+            evaluateSessionMilestoneAfterSetComplete(previousCompleted: completedBefore)
         } catch {
             errorMessage = error.localizedDescription
         }
+    }
+
+    private func evaluateSessionMilestoneAfterSetComplete(previousCompleted: Int) {
+        guard ProactiveCoachPreferences.milestonesEnabled else { return }
+        guard let snapshot = store.snapshot else { return }
+        let progress = TrainSessionProgress.from(snapshot: snapshot)
+        guard let quartile = SessionMilestonePolicy.crossedMilestone(
+            previousCompleted: previousCompleted,
+            completed: progress.completedSetCount,
+            total: progress.totalSetCount,
+            alreadyFiredQuartiles: firedMilestoneQuartiles
+        ) else {
+            return
+        }
+        firedMilestoneQuartiles.insert(quartile)
+        ProactiveCoachRouter.surface(
+            SessionMilestonePolicy.message(forQuartile: quartile),
+            sessionID: snapshot.session.id,
+            on: self
+        )
     }
 
     func badgeText(forSetID setID: String) -> String? {
@@ -1818,6 +1843,7 @@ final class TrainSessionController {
         proactiveCoachBanner = nil
         coachPeekSnippet = nil
         didSurfaceRestOverrunProactive = false
+        firedMilestoneQuartiles = []
         coachPromptText = ""
         coachMessages = []
         pendingCoachProposal = nil
