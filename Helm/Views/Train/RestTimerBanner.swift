@@ -38,20 +38,24 @@ struct RestTimerBanner: View {
                 Text("REST")
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
                     .lineLimit(1)
-                ZStack(alignment: .leading) {
+                ZStack(alignment: .trailing) {
                     GeometryReader { geometry in
-                        RoundedRectangle(cornerRadius: HelmRadius.sm)
-                            .fill(HelmColor.accent.opacity(0.18))
-                            .frame(width: geometry.size.width * progress)
-                            .animation(
-                                reduceMotion ? nil : .linear(duration: 1),
-                                value: progress
-                            )
+                        HStack(spacing: 0) {
+                            Spacer(minLength: 0)
+                            RoundedRectangle(cornerRadius: HelmRadius.sm)
+                                .fill(HelmColor.accent.opacity(0.18))
+                                .frame(width: geometry.size.width * progress)
+                                .animation(
+                                    reduceMotion ? nil : .linear(duration: 1),
+                                    value: progress
+                                )
+                        }
                     }
                     HelmNumericText(formattedTime(remainingSeconds))
                         .helmType(.number, color: HelmColor.accent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(height: 28)
             }

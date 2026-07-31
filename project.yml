@@ -46,6 +46,9 @@ targets:
       - path: Helm/Resources/MethodologySeed
         type: folder
         buildPhase: resources
+      - path: Helm/Resources/Sounds
+        type: folder
+        buildPhase: resources
       - path: HelmIntents
       - path: Shared/WatchSync
         name: WatchSync

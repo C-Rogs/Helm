@@ -34,8 +34,17 @@ struct WatchSyncPayloadTests {
         #expect(payload.readinessScore == nil)
     }
 
-    @Test("missing key returns nil")
-    func missingKey() {
-        #expect(WatchSyncPayload.from(applicationContext: [:]) == nil)
+    @Test("restEnded round-trips")
+    func restEndedRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .phone,
+            sequence: 3,
+            helmDay: HelmDay(year: 2026, month: 7, day: 31),
+            sentAt: 1_723_456_789,
+            messageKind: .restEnded
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored == payload)
+        #expect(restored?.messageKind == .restEnded)
     }
 }

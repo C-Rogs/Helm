@@ -1,6 +1,9 @@
 import Core
 import Foundation
 import WatchConnectivity
+#if os(watchOS)
+import WatchKit
+#endif
 
 @MainActor
 @Observable
@@ -117,6 +120,45 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: targetSummary
         )
         push(payload)
+    }
+
+    /// Immediate rest-end cue for Watch haptic. Prefer sendMessage when reachable.
+    func notifyRestEnded(helmDay: HelmDay? = nil) {
+        guard role == .phone else { return }
+        guard activationState == .activated else { return }
+
+        let payload = makePayload(
+            origin: .phone,
+            messageKind: .restEnded,
+            helmDay: helmDay
+        )
+        pushRestEnded(payload)
+    }
+
+    private func pushRestEnded(_ payload: WatchSyncPayload) {
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode rest-ended payload"
+            return
+        }
+
+        lastSent = payload
+        lastError = nil
+
+        if session.isReachable {
+            session.sendMessage(message, replyHandler: nil) { [weak self] error in
+                Task { @MainActor in
+                    self?.lastError = error.localizedDescription
+                }
+            }
+        } else {
+            do {
+                try session.updateApplicationContext(message)
+            } catch {
+                lastError = error.localizedDescription
+            }
+        }
     }
 
     func clearLiveHeartRate() {
@@ -239,6 +281,8 @@ final class WatchSessionCoordinator: NSObject {
                 latestLiveHeartRateBPM = payload.liveHeartRateBPM
             case .workoutCompanion:
                 break
+            case .restEnded:
+                break
             }
         case .watch:
             switch payload.messageKind {
@@ -258,8 +302,16 @@ final class WatchSessionCoordinator: NSObject {
                 companionSetNumber = payload.companionSetNumber
                 companionSetCount = payload.companionSetCount
                 companionTargetSummary = payload.companionTargetSummary
+            case .restEnded:
+                playRestEndedHaptic()
             }
         }
+    }
+
+    private func playRestEndedHaptic() {
+        #if os(watchOS)
+        WKInterfaceDevice.current().play(.notification)
+        #endif
     }
 
     private func applyDisplayFields(from payload: WatchSyncPayload) {

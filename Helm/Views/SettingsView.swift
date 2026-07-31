@@ -50,6 +50,8 @@ struct SettingsView: View {
                 Section("Train") {
                     Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
                     Toggle("Rest timer sound", isOn: $trainPreferences.restTimerSoundEnabled)
+                    Text("Boxing-ring bell when rest ends. Honours Silent switch; plays over headphones.")
+                        .helmType(.body, color: HelmColor.fgMuted)
                 }
 
                 Section("Setup") {

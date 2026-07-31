@@ -12,6 +12,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case readiness
         case liveHeartRate
         case workoutCompanion
+        case restEnded
     }
 
     public static let contextKey = "helm.sync"
