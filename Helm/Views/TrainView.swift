@@ -63,7 +63,7 @@ struct TrainView: View {
                     }
                 }
 
-                VStack(spacing: 0) {
+                VStack(spacing: HelmSpacing.xs) {
                     if controller.hasActiveSession,
                        let timer = controller.snapshot?.restTimer,
                        let endsAt = timer.endsAt,
@@ -92,6 +92,22 @@ struct TrainView: View {
 
                     if controller.numpadTarget != nil {
                         numpadOverlay
+                    }
+                }
+                .background(alignment: .top) {
+                    if controller.hasActiveSession, controller.numpadTarget == nil {
+                        LinearGradient(
+                            colors: [
+                                HelmColor.canvas.opacity(0),
+                                HelmColor.canvas.opacity(0.92),
+                                HelmColor.canvas
+                            ],
+                            startPoint: .top,
+                            endPoint: .bottom
+                        )
+                        .frame(height: HelmLayout.trainBottomFogHeight)
+                        .offset(y: -HelmLayout.trainBottomFogHeight + HelmSpacing.md)
+                        .allowsHitTesting(false)
                     }
                 }
             }
@@ -481,7 +497,7 @@ struct TrainView: View {
             ? HelmLayout.trainScrollBottomInset
             : HelmLayout.trainScrollBottomInsetWithNumpad
         if controller.isRestTimerRunning {
-            inset += 88
+            inset += HelmLayout.trainRestBannerScrollInset
         }
         return inset
     }

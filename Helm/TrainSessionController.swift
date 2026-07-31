@@ -70,7 +70,10 @@ final class TrainSessionController {
     var isShowingExercisePicker = false
     var isShowingFinishConfirmation = false
     var isShowingDiscardConfirmation = false
-    var pendingDeleteExerciseID: String?
+    var pendingDeleteExerciseID: String? {
+        pendingExerciseRemoval.pendingID
+    }
+    private var pendingExerciseRemoval = PendingExerciseRemoval()
     var numpadValidationError: String?
     var numpadShakeToken = 0
     var isShowingFinishSummary = false
@@ -509,16 +512,17 @@ final class TrainSessionController {
     }
 
     func requestRemoveExercise(sessionExerciseID: String) {
-        pendingDeleteExerciseID = sessionExerciseID
+        pendingExerciseRemoval.request(sessionExerciseID)
     }
 
     func cancelRemoveExercise() {
-        pendingDeleteExerciseID = nil
+        pendingExerciseRemoval.cancel()
     }
 
-    func confirmRemoveExercise() async {
-        guard let sessionExerciseID = pendingDeleteExerciseID else { return }
-        pendingDeleteExerciseID = nil
+    func confirmRemoveExercise(presentingID: String? = nil) async {
+        guard let sessionExerciseID = pendingExerciseRemoval.confirm(presentingID: presentingID) else {
+            return
+        }
         await removeExercise(sessionExerciseID: sessionExerciseID)
     }
 

@@ -139,7 +139,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.1 Hevy-style set input / numpad | done | 2026-07-31 | 2ba1ef9 | Grey prefilled PREV, black committed; caret/select-all editing; no Next on kg/reps; RPE slider + Done; dismiss chip/swipe/tap-outside. SetRowFieldValueStateTests. |
 | F-DT9.2 Rest-notification cold-start crash | done | 2026-07-31 | 6cd92ff | Recover policy + launch payload; no force-unwrap on missing session; Live Activity restart order; 9 Persistence tests.
 | F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | 3cf26d1 | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
-| F-DT9.4 Train bottom layout + remove-exercise fix | not started | | | Track A |
+| F-DT9.4 Train bottom layout + remove-exercise fix | done | 2026-07-31 | 378071c | Shorter rest banner; tighter rest/coach spacing; higher bottom fog; presenting-ID Binding race fix; PendingExerciseRemovalTests. |
 | F-DT9.5 Rest sound + RTL progress | not started | | | Track B |
 | F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |
 | F-DT9.7 Live Activity / Dynamic Island redesign | not started | | | Track B |

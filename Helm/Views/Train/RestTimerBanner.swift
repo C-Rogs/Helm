@@ -34,7 +34,7 @@ struct RestTimerBanner: View {
                 }
             }
 
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text("REST")
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
                     .lineLimit(1)
@@ -49,11 +49,11 @@ struct RestTimerBanner: View {
                             )
                     }
                     HelmNumericText(formattedTime(remainingSeconds))
-                        .helmType(.bigNumber, color: HelmColor.accent)
+                        .helmType(.number, color: HelmColor.accent)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .frame(height: 36)
+                .frame(height: 28)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .layoutPriority(1)
@@ -69,7 +69,8 @@ struct RestTimerBanner: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(HelmSpacing.md)
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.vertical, HelmSpacing.xs)
         .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
         .overlay {
             RoundedRectangle(cornerRadius: HelmRadius.md)
@@ -86,7 +87,7 @@ struct RestTimerBanner: View {
         Button(action: action) {
             Image(systemName: systemImage)
                 .font(.body.weight(.semibold))
-                .frame(width: 36, height: 36)
+                .frame(width: 32, height: 32)
         }
         .buttonStyle(.helmSecondary)
         .accessibilityLabel(label)

@@ -68,20 +68,19 @@ extension View {
         get: { controller.pendingDeleteExerciseID != nil },
         set: { if !$0 { controller.cancelRemoveExercise() } }
       ),
-      titleVisibility: .visible
-    ) {
+      titleVisibility: .visible,
+      presenting: controller.pendingDeleteExerciseID
+    ) { sessionExerciseID in
       Button("Remove exercise", role: .destructive) {
-        Task { await controller.confirmRemoveExercise() }
+        Task { await controller.confirmRemoveExercise(presentingID: sessionExerciseID) }
       }
       Button("Cancel", role: .cancel) {
         controller.cancelRemoveExercise()
       }
-    } message: {
-      if let id = controller.pendingDeleteExerciseID {
-        Text(
-          "Remove \(controller.displayName(forExerciseSessionID: id))? Logged sets for this exercise will be deleted."
-        )
-      }
+    } message: { sessionExerciseID in
+      Text(
+        "Remove \(controller.displayName(forExerciseSessionID: sessionExerciseID))? Logged sets for this exercise will be deleted."
+      )
     }
     .sheet(isPresented: Binding(
       get: { restEditorExerciseID.wrappedValue != nil },
