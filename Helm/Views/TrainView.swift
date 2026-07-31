@@ -96,7 +96,18 @@ struct TrainView: View {
                 }
             }
             .helmScreenBackground()
-            .navigationTitle("Train")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationTitle(controller.hasActiveSession ? "" : "Train")
+            .toolbar {
+                if controller.hasActiveSession, let snapshot = controller.snapshot {
+                    ToolbarItem(placement: .principal) {
+                        TrainSessionHeaderView(
+                            startedAt: snapshot.session.startedAt,
+                            progress: TrainSessionProgress.from(snapshot: snapshot)
+                        )
+                    }
+                }
+            }
         }
     }
 
@@ -345,6 +356,9 @@ struct TrainView: View {
             },
             onEditRest: {
                 restEditorExerciseID = exercise.id
+            },
+            onOpenHistory: {
+                controller.openExerciseHistory(sessionExerciseID: exercise.id)
             },
             onDropExercise: { sourceID in
                 controller.moveExerciseInDraft(from: sourceID, to: exercise.id)

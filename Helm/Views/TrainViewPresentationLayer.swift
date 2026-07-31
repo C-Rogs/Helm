@@ -133,6 +133,15 @@ extension View {
     )) {
       TrainPersonalRecordsSheet(controller: controller)
     }
+    .sheet(isPresented: Binding(
+      get: { controller.historyExerciseSessionID != nil },
+      set: { if !$0 { controller.dismissExerciseHistory() } }
+    )) {
+      if let sessionExerciseID = controller.historyExerciseSessionID,
+         let model = controller.exerciseHistoryModel(for: sessionExerciseID) {
+        ExerciseHistorySheet(model: model)
+      }
+    }
   }
 }
 

@@ -138,7 +138,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT8.15 Coach workout_start.v2 detailed sets | done | 2026-07-30 | e5be74a | workout_start.v2 with sets/rest; imported-plan start path; strip embedded JSON from chat bubbles; brace-safe JSON block finder. |
 | F-DT9.1 Hevy-style set input / numpad | done | 2026-07-31 | 398bddd | Grey prefilled PREV, black committed; caret/select-all editing; no Next on kg/reps; RPE slider + Done; dismiss chip/swipe/tap-outside. SetRowFieldValueStateTests. |
 | F-DT9.2 Rest-notification cold-start crash | not started | | | Track B |
-| F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | PLACEHOLDER | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
+| F-DT9.3 Exercise history tap + session header | done | 2026-07-31 | 1d6e5b5 | Tap exercise name opens PREV + e1RM history sheet; Train header shows elapsed + completed/total sets. ExerciseHistorySnapshotTests + TrainSessionProgressTests.
 | F-DT9.4 Train bottom layout + remove-exercise fix | not started | | | Track A |
 | F-DT9.5 Rest sound + RTL progress | not started | | | Track B |
 | F-DT9.6 Watch companion auto-start + HR + training load | not started | | | Track B |

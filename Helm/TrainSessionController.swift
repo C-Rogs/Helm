@@ -79,6 +79,7 @@ final class TrainSessionController {
 
     var coachPromptText = ""
     var isShowingCoachPrompt = false
+    var historyExerciseSessionID: String?
     private(set) var coachMessages: [InSessionCoachMessage] = []
     private(set) var pendingCoachProposal: CoachSessionProposal?
     private(set) var isCoachThinking = false
@@ -897,6 +898,36 @@ final class TrainSessionController {
 
     func displayName(for exerciseID: String) -> String {
         exerciseSummaries[exerciseID]?.displayName ?? exerciseID
+    }
+
+    var sessionProgress: TrainSessionProgress? {
+        guard let snapshot else { return nil }
+        return TrainSessionProgress.from(snapshot: snapshot)
+    }
+
+    func openExerciseHistory(sessionExerciseID: String) {
+        historyExerciseSessionID = sessionExerciseID
+    }
+
+    func dismissExerciseHistory() {
+        historyExerciseSessionID = nil
+    }
+
+    func exerciseHistoryModel(for sessionExerciseID: String) -> ExerciseHistoryModel? {
+        guard let snapshot,
+              let exercise = snapshot.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return nil
+        }
+
+        return try? ExerciseHistoryBuilder.build(
+            exercise: exercise,
+            displayName: displayName(for: exercise.exerciseID),
+            previousLookup: { [self] set in
+                previousFor(set: set, exerciseID: exercise.exerciseID)
+            },
+            store: persistence,
+            excludingSessionID: snapshot.session.id
+        )
     }
 
     func coachingCue(for exerciseID: String) -> String? {

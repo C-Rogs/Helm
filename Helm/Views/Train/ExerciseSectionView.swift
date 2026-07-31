@@ -27,6 +27,7 @@ struct ExerciseSectionView: View {
     let onRemove: () -> Void
     let onEnterReorderMode: () -> Void
     let onEditRest: () -> Void
+    let onOpenHistory: () -> Void
     let onDropExercise: (String) -> Void
 
     private var completedSetCount: Int {
@@ -73,13 +74,21 @@ struct ExerciseSectionView: View {
                     }
 
                     VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                        if let targetSummary {
-                            PrescriptionRow(label: displayName, target: targetSummary)
-                        } else {
-                            Text(displayName)
-                                .font(HelmTypography.headline)
-                                .foregroundStyle(HelmColor.textPrimary)
+                        Button(action: onOpenHistory) {
+                            Group {
+                                if let targetSummary {
+                                    PrescriptionRow(label: displayName, target: targetSummary)
+                                } else {
+                                    Text(displayName)
+                                        .font(HelmTypography.headline)
+                                        .foregroundStyle(HelmColor.textPrimary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
                         }
+                        .buttonStyle(.plain)
+                        .disabled(isReorderMode)
+                        .accessibilityLabel("View history for \(displayName)")
 
                         Button {
                             onEditRest()
@@ -195,6 +204,7 @@ struct ExerciseSectionView: View {
         onRemove: {},
         onEnterReorderMode: {},
         onEditRest: {},
+        onOpenHistory: {},
         onDropExercise: { _ in }
     )
     .padding()
