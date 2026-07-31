@@ -75,6 +75,21 @@ public enum PlanKit {
         )
     }
 
+    /// Count fractional hard sets per muscle across the rolling window ending at `endDay`.
+    public static func rollingHardSetTotals(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        endingAt endDay: HelmDay,
+        windowDays: Int = 7
+    ) -> WeeklyHardSetLedger {
+        HardSetAccounting.rollingHardSetTotals(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            endingAt: endDay,
+            windowDays: windowDays
+        )
+    }
+
     // MARK: - Plan drift
 
     public static func resolveDrift(
@@ -111,7 +126,8 @@ public enum PlanKit {
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         availableEquipment: Set<String>? = nil,
-        familiarExerciseIDs: Set<String> = []
+        familiarExerciseIDs: Set<String> = [],
+        enforceCoachLoadCaps: Bool = true
     ) -> PrescriptionAdjustmentResult {
         PrescriptionAdjustmentEngine.apply(
             adjustment: adjustment,
@@ -119,7 +135,8 @@ public enum PlanKit {
             excluding: excludedExerciseIDs,
             catalog: catalog,
             availableEquipment: availableEquipment,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            enforceCoachLoadCaps: enforceCoachLoadCaps
         )
     }
 

@@ -19,15 +19,15 @@ public struct MuscleVolumeBoardView: View {
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
             if showsHeader {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                    Text("Weekly volume")
+                    Text(MuscleVolumeBoardModel.loadWindowTitle)
                         .helmType(.title)
-                    Text("Hard sets vs MEV/MRV landmarks, ranked by sets")
+                    Text(MuscleVolumeBoardModel.loadWindowSubtitle)
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
             }
 
             if rankedRows.isEmpty {
-                Text("Log training this week to see per-muscle volume.")
+                Text("Log training in the last 7 days to see per-muscle volume.")
                     .helmType(.body, color: HelmColor.fgMuted)
                     .frame(maxWidth: .infinity, minHeight: HelmLayout.emptyChartMinHeight, alignment: .leading)
             } else {
@@ -70,7 +70,7 @@ public struct MuscleVolumeSummaryCard: View {
                 }
 
                 if model.summaryRows.isEmpty {
-                    Text("Log training to track weekly volume against landmarks.")
+                    Text("Log training to track 7-day volume against landmarks.")
                         .helmType(.body, color: HelmColor.fgMuted)
                 } else {
                     VStack(spacing: HelmSpacing.sm) {

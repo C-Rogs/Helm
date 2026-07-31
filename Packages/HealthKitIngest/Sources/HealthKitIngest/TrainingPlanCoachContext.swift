@@ -40,7 +40,7 @@ public enum TrainingPlanCoachContext {
             lines.append("emphasis=\"\(emphasis)\"")
         }
 
-        lines.append("weekly_hard_sets:")
+        lines.append("rolling_7d_hard_sets:")
         for muscle in MuscleGroup.allCases {
             let weeklySets = input.weeklyLedger.totals[muscle, default: 0]
             let landmarks = input.mesocycleState?.muscles[muscle]?.landmarks

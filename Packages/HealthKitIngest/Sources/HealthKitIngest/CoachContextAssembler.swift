@@ -133,10 +133,10 @@ public enum CoachContextAssembler {
             through: endDay
         )
         let mesocycleState = decodeMesocycleState(from: try store.plan.loadMesocycleStateJSON())
-        let ledger = PlanKit.weeklyHardSetTotals(
+        let ledger = PlanKit.rollingHardSetTotals(
             sessions: history.sessions,
             muscleMaps: muscleMaps,
-            weekStart: history.weekStart
+            endingAt: endDay
         )
 
         return TrainingPlanCoachContext.build(

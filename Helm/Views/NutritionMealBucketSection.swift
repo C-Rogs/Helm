@@ -1,5 +1,6 @@
 import Core
 import DesignSystem
+import NutritionKit
 import SwiftUI
 
 struct NutritionMealBucketSection: View {
@@ -18,9 +19,17 @@ struct NutritionMealBucketSection: View {
                     Text(bucket.displayName)
                         .helmType(.label)
                     Spacer()
-                    if bucketTotalKcal > 0 {
-                        Text("\(bucketTotalKcal) kcal")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                    if bucketTotalKcal > 0 || bucketMacroCompactText != nil {
+                        VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
+                            if bucketTotalKcal > 0 {
+                                Text("\(bucketTotalKcal) kcal")
+                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                            }
+                            if let bucketMacroCompactText {
+                                Text(bucketMacroCompactText)
+                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                            }
+                        }
                     }
                     if onCopyToToday != nil || onSaveTemplate != nil {
                         Menu {
@@ -112,6 +121,22 @@ struct NutritionMealBucketSection: View {
         meals.reduce(0) { partial, meal in
             partial + meal.lineItems.reduce(0) { $0 + $1.energyKcal }
         }
+    }
+
+    private var bucketMacroCompactText: String? {
+        var protein = 0
+        var carbs = 0
+        var fat = 0
+        for meal in meals {
+            protein += Int((meal.meal.proteinGrams ?? 0).rounded())
+            carbs += Int((meal.meal.carbohydrateGrams ?? 0).rounded())
+            fat += Int((meal.meal.fatGrams ?? 0).rounded())
+        }
+        return MacroCompactFormatter.compact(
+            proteinGrams: protein,
+            carbohydrateGrams: carbs,
+            fatGrams: fat
+        )
     }
 
     private func shouldShowMealHeader(for display: LoggedMealDisplay) -> Bool {

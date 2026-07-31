@@ -30,6 +30,12 @@ public struct MuscleVolumeBoardRow: Sendable, Hashable, Equatable, Identifiable 
 }
 
 public struct MuscleVolumeBoardModel: Sendable, Hashable, Equatable {
+    /// Rolling load window for muscle-group set totals (not calendar Mon–Sun).
+    public static let loadWindowDays = 7
+
+    public static let loadWindowTitle = "7-day volume"
+    public static let loadWindowSubtitle = "Hard sets in the last 7 days vs MEV/MRV landmarks, ranked by sets"
+
     public let rows: [MuscleVolumeBoardRow]
 
     public init(rows: [MuscleVolumeBoardRow]) {

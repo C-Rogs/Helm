@@ -139,11 +139,11 @@ enum TrendsDataBuilder {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) throws -> [MuscleVolumeRowData] {
-        let weekStart = weekStart(containing: day, calendar: calendar)
+        let windowStart = day.adding(days: -(MuscleVolumeBoardModel.loadWindowDays - 1), calendar: calendar)
         let recencyStart = day.adding(days: -recencyLookbackDays, calendar: calendar)
-        let weekSessions = try loadSessionsForSummary(
+        let windowSessions = try loadSessionsForSummary(
             store: store,
-            since: weekStart,
+            since: windowStart,
             calendar: calendar,
             cutoff: cutoff
         )
@@ -154,10 +154,11 @@ enum TrendsDataBuilder {
             cutoff: cutoff
         )
         let muscleMaps = try muscleMaps(from: store)
-        let ledger = PlanKit.weeklyHardSetTotals(
-            sessions: weekSessions,
+        let ledger = PlanKit.rollingHardSetTotals(
+            sessions: windowSessions,
             muscleMaps: muscleMaps,
-            weekStart: weekStart
+            endingAt: day,
+            windowDays: MuscleVolumeBoardModel.loadWindowDays
         )
         let lastTrained = MuscleVolumeRecencyBuilder.lastTrainedDays(
             sessions: recencySessions,

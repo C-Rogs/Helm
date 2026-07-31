@@ -41,6 +41,15 @@ enum HardSetAccounting {
         !set.isWarmup && set.reps != nil
     }
 
+    static func rollingDays(endingAt endDay: HelmDay, count: Int = 7) -> Set<HelmDay> {
+        guard count > 0 else { return [] }
+        var days: Set<HelmDay> = []
+        for offset in 0 ..< count {
+            days.insert(endDay.adding(days: -offset))
+        }
+        return days
+    }
+
     static func weekDays(startingAt weekStart: HelmDay, count: Int = 7) -> Set<HelmDay> {
         var days: Set<HelmDay> = []
         var year = weekStart.year
@@ -85,5 +94,27 @@ enum HardSetAccounting {
         }
 
         return WeeklyHardSetLedger(weekStart: weekStart, totals: totals)
+    }
+
+    static func rollingHardSetTotals(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        endingAt endDay: HelmDay,
+        windowDays: Int = 7
+    ) -> WeeklyHardSetLedger {
+        let windowStart = endDay.adding(days: -(windowDays - 1))
+        let windowDaysSet = rollingDays(endingAt: endDay, count: windowDays)
+        var totals: [MuscleGroup: Double] = [:]
+
+        for session in sessions where windowDaysSet.contains(session.helmDay) {
+            for set in session.sets where isHardSet(set) {
+                guard let map = muscleMaps[set.exerciseID] else { continue }
+                for contribution in map.contributions {
+                    totals[contribution.muscle, default: 0] += contribution.fraction
+                }
+            }
+        }
+
+        return WeeklyHardSetLedger(weekStart: windowStart, totals: totals)
     }
 }

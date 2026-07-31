@@ -137,6 +137,6 @@ struct CoachContextAssemblerTests {
 
         #expect(context.trainingPlanSnapshot.contains("emphasis=\"calves\""))
         #expect(context.trainingPlanSnapshot.contains("engine_note=split_rotation_only"))
-        #expect(context.trainingPlanSnapshot.contains("weekly_hard_sets:"))
+        #expect(context.trainingPlanSnapshot.contains("rolling_7d_hard_sets:"))
     }
 }

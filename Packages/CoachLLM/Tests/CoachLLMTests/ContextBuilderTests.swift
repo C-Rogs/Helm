@@ -69,7 +69,7 @@ struct ContextBuilderTests {
             engine_note=split_rotation_only
             emphasis="calves"
             today_split=Push
-            weekly_hard_sets:
+            rolling_7d_hard_sets:
               calves: 2 hard sets | MEV 6 MRV 14
             """
         )
