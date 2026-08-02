@@ -116,6 +116,17 @@ struct WorkoutHapticPolicyTests {
         #expect(evaluation.patterns == [.restDone])
     }
 
+    @Test("Foreground return treats remaining zero as rest done")
+    func restDoneOnForegroundReturnZero() {
+        let evaluation = RestTimerHapticPolicy.evaluateForegroundReturn(
+            timerID: "timer-1",
+            wasRunningOnBackground: true,
+            currentRemaining: 0,
+            state: .init()
+        )
+        #expect(evaluation.patterns == [.restDone])
+    }
+
     @Test("Notification delivery maps to rest done")
     func restDoneFromNotification() {
         let evaluation = RestTimerHapticPolicy.evaluateNotificationDelivery(

@@ -25,8 +25,12 @@ public struct HelmRPESlider: View {
                 value: Binding(
                     get: { value },
                     set: { newValue in
-                        value = snapped(newValue)
-                        HapticEngine.shared.play(.selection)
+                        let snappedValue = snapped(newValue)
+                        let previous = value
+                        value = snappedValue
+                        if snappedValue != previous {
+                            HapticEngine.shared.play(.selection)
+                        }
                     }
                 ),
                 in: range,

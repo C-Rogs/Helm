@@ -32,7 +32,12 @@ struct TrainView: View {
             )
             .task {
                 WatchReadinessBootstrap.coordinator.hydrateFromReceivedApplicationContext()
-                await controller.recoverPersistedSession()
+                // Launch recovery owns first restore; avoid double-recover races with rest-notification path.
+                if TrainBootstrap.hasCompletedLaunchRecovery, controller.snapshot == nil {
+                    await controller.recoverPersistedSession()
+                } else if !TrainBootstrap.hasCompletedLaunchRecovery {
+                    await controller.recoverPersistedSession()
+                }
                 history.refresh()
                 muscleVolumeStore.refresh()
                 await weekAheadStore.refresh()
@@ -110,7 +115,10 @@ struct TrainView: View {
                     ToolbarItem(placement: .principal) {
                         TrainSessionHeaderView(
                             startedAt: snapshot.session.startedAt,
-                            progress: TrainSessionProgress.from(snapshot: snapshot)
+                            progress: TrainSessionProgress.from(snapshot: snapshot),
+                            heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
+                                ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+                                : nil
                         )
                     }
                 }
@@ -378,8 +386,6 @@ struct TrainView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                        SessionHeartRateChip()
-
                         if let notice = controller.watchCompanionNotice {
                             Text(notice)
                                 .helmType(.body, color: HelmColor.fgSecondary)
@@ -403,23 +409,6 @@ struct TrainView: View {
                                 )
                             )
                         }
-
-                        if let proactiveBanner = controller.proactiveCoachBanner {
-                            ProactiveCoachBanner(
-                                message: proactiveBanner,
-                                onDismiss: { controller.dismissProactiveCoachBanner() },
-                                onCoach: { controller.isShowingCoachPrompt = true }
-                            )
-                        }
-
-                        SessionCoachNoteField(
-                            text: $controller.sessionNoteText,
-                            onTextChange: { controller.updateSessionNote($0) },
-                            onSaveToMemory: {
-                                Task { await controller.saveSessionNoteToMemory() }
-                            },
-                            savedConfirmation: controller.sessionNoteSavedConfirmation
-                        )
 
                         if snapshot.session.exercises.isEmpty {
                             Text("Add your first exercise to begin logging sets.")
@@ -453,15 +442,14 @@ struct TrainView: View {
                     .padding(HelmSpacing.screenGutter)
                     .padding(.bottom, HelmSpacing.md)
                     .frame(maxWidth: .infinity)
-                    .background {
-                        // Tap-outside dismiss behind controls so field Buttons can switch focus.
-                        if controller.numpadTarget != nil {
-                            Color.clear
-                                .contentShape(Rectangle())
-                                .onTapGesture {
-                                    Task { await controller.dismissNumpad() }
-                                }
-                        }
+                }
+                .overlay {
+                    if controller.numpadTarget != nil {
+                        Color.clear
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                Task { await controller.dismissNumpad() }
+                            }
                     }
                 }
                 .animation(
@@ -552,15 +540,14 @@ struct TrainView: View {
             Button {
                 Task { await controller.dismissNumpad() }
             } label: {
-                HStack(spacing: HelmSpacing.xxs) {
-                    Image(systemName: "chevron.compact.down")
-                    Text("Dismiss")
-                        .helmType(.monoTag, color: HelmColor.fgSecondary)
-                }
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, HelmSpacing.xs)
+                Image(systemName: "chevron.compact.down")
+                    .font(.title2.weight(.semibold))
+                    .foregroundStyle(HelmColor.fgSecondary)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, HelmSpacing.sm)
+                    .contentShape(Rectangle())
             }
-            .buttonStyle(.helmPressable)
+            .buttonStyle(.plain)
             .accessibilityLabel("Dismiss keyboard")
 
             if isRPE {
@@ -590,46 +577,15 @@ struct TrainView: View {
             }
         }
         .background(HelmColor.canvas)
-        .gesture(
-            DragGesture(minimumDistance: 24)
+        .highPriorityGesture(
+            DragGesture(minimumDistance: 12)
                 .onEnded { value in
-                    guard value.translation.height > 40 else { return }
+                    guard value.translation.height > 24,
+                          value.predictedEndTranslation.height > 40 else { return }
                     Task { await controller.dismissNumpad() }
                 }
         )
         .transition(.move(edge: .bottom))
-    }
-}
-
-private struct SessionHeartRateChip: View {
-    @Bindable private var watchCoordinator = WatchReadinessBootstrap.coordinator
-
-    var body: some View {
-        #if os(iOS)
-        if watchCoordinator.canDriveWatchCompanion {
-            chipContent
-        }
-        #else
-        chipContent
-        #endif
-    }
-
-    private var chipContent: some View {
-        HStack(spacing: HelmSpacing.sm) {
-            Image(systemName: "heart.fill")
-                .foregroundStyle(HelmColor.destructive)
-            if let bpm = watchCoordinator.latestLiveHeartRateBPM {
-                Text("\(bpm) BPM")
-                    .helmType(.monoTag, color: HelmColor.fg)
-            } else {
-                Text("Waiting for heart rate…")
-                    .helmType(.monoTag, color: HelmColor.fgSecondary)
-            }
-            Spacer()
-        }
-        .padding(.horizontal, HelmSpacing.sm)
-        .padding(.vertical, HelmSpacing.xs)
-        .background(HelmColor.surfaceElevated, in: Capsule())
     }
 }
 

@@ -1,3 +1,4 @@
+import Core
 import DesignSystem
 import SwiftUI
 
@@ -25,7 +26,10 @@ struct RestTimerBanner: View {
 
     @ViewBuilder
     private func bannerContent(remainingSeconds: Int) -> some View {
-        let progress = progressFraction(remainingSeconds: remainingSeconds)
+        let progress = RestTimerBannerProgress.remainingFraction(
+            remainingSeconds: remainingSeconds,
+            totalSeconds: totalSeconds
+        )
 
         HStack(spacing: HelmSpacing.xs) {
             if let onAdjust {
@@ -38,23 +42,28 @@ struct RestTimerBanner: View {
                 Text("REST")
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
                     .lineLimit(1)
-                ZStack(alignment: .trailing) {
+
+                ZStack(alignment: .leading) {
+                    RoundedRectangle(cornerRadius: HelmRadius.sm)
+                        .fill(HelmColor.gaugeTrack.opacity(0.45))
+
                     GeometryReader { geometry in
-                        HStack(spacing: 0) {
-                            Spacer(minLength: 0)
-                            RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                .fill(HelmColor.accent.opacity(0.18))
-                                .frame(width: geometry.size.width * progress)
-                                .animation(
-                                    reduceMotion ? nil : .linear(duration: 1),
-                                    value: progress
-                                )
-                        }
+                        RoundedRectangle(cornerRadius: HelmRadius.sm)
+                            .fill(HelmColor.accent.opacity(0.55))
+                            .frame(width: max(4, geometry.size.width * progress))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
+                            .animation(
+                                reduceMotion ? nil : .linear(duration: 1),
+                                value: progress
+                            )
                     }
+                    .clipShape(RoundedRectangle(cornerRadius: HelmRadius.sm))
+
                     HelmNumericText(formattedTime(remainingSeconds))
-                        .helmType(.number, color: HelmColor.accent)
+                        .helmType(.number, color: HelmColor.fg)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
+                        .padding(.horizontal, HelmSpacing.xs)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .frame(height: 28)
@@ -75,16 +84,7 @@ struct RestTimerBanner: View {
         }
         .padding(.horizontal, HelmSpacing.sm)
         .padding(.vertical, HelmSpacing.xs)
-        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-        .overlay {
-            RoundedRectangle(cornerRadius: HelmRadius.md)
-                .strokeBorder(HelmColor.accent.opacity(0.35), lineWidth: 1)
-        }
-    }
-
-    private func progressFraction(remainingSeconds: Int) -> CGFloat {
-        let total = max(1, totalSeconds)
-        return CGFloat(min(1, max(0, remainingSeconds))) / CGFloat(total)
+        .helmPanelChrome(.elevated)
     }
 
     private func adjustButton(systemImage: String, label: String, action: @escaping () -> Void) -> some View {

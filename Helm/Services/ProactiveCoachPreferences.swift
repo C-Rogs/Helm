@@ -16,12 +16,12 @@ enum ProactiveCoachPreferences {
     }
 
     static var bannerEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Key.banner) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: Key.banner) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: Key.banner) }
     }
 
     static var autoChatEnabled: Bool {
-        get { UserDefaults.standard.object(forKey: Key.autoChat) as? Bool ?? true }
+        get { UserDefaults.standard.object(forKey: Key.autoChat) as? Bool ?? false }
         set { UserDefaults.standard.set(newValue, forKey: Key.autoChat) }
     }
 

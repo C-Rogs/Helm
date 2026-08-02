@@ -112,7 +112,7 @@ public enum RestTimerHapticPolicy {
     ) -> Evaluation {
         guard let timerID,
               wasRunningOnBackground,
-              currentRemaining == nil,
+              (currentRemaining == nil || currentRemaining == 0),
               !state.restDonePlayedForTimerIDs.contains(timerID) else {
             return Evaluation(patterns: [])
         }
