@@ -46,6 +46,14 @@ public enum FoodLogCommandPreview {
         case .edit:
             return (title: "Update meal", detail: payload.description ?? "Edit logged meal")
         case .delete:
+            if payload.mealID == nil, payload.helmDay != nil {
+                let day = payload.helmDay ?? "day"
+                let bucket = payload.bucket.map { displayBucket($0) }
+                if let bucket {
+                    return (title: "Delete \(bucket.lowercased())", detail: day)
+                }
+                return (title: "Delete day's meals", detail: day)
+            }
             return (title: "Delete meal", detail: payload.description ?? "Remove from diary")
         }
     }
@@ -78,7 +86,7 @@ public struct FoodLogCommandApplier: Sendable {
         case .edit:
             try await applyEdit(payload, now: now)
         case .delete:
-            try await applyDelete(payload)
+            try await applyDelete(payload, now: now)
         }
     }
 
@@ -122,12 +130,31 @@ public struct FoodLogCommandApplier: Sendable {
         try await applyLog(payload, now: now)
     }
 
-    private func applyDelete(_ payload: FoodLogPayload) async throws {
-        guard let mealIDString = payload.mealID,
-              let mealID = UUID(uuidString: mealIDString) else {
+    private func applyDelete(_ payload: FoodLogPayload, now: Date = Date()) async throws {
+        if let mealIDString = payload.mealID,
+           let mealID = UUID(uuidString: mealIDString) {
+            try await manualMealService.deleteMeal(mealID: mealID)
+            return
+        }
+
+        // Bulk delete: helmDay required (optional bucket filter).
+        guard let dayRaw = payload.helmDay,
+              let helmDay = HelmDayParser.parse(dayRaw) else {
             throw ManualMealError.mealNotFound
         }
-        try await manualMealService.deleteMeal(mealID: mealID)
+
+        var meals = try persistence.nutrition.fetchMeals(for: helmDay)
+        if let bucketRaw = payload.bucket,
+           let bucket = MealBucket(rawValue: bucketRaw.lowercased()) {
+            meals = meals.filter { $0.bucket == bucket }
+        }
+        guard !meals.isEmpty else {
+            throw ManualMealError.nothingToDelete
+        }
+
+        for meal in meals {
+            try await manualMealService.deleteMeal(mealID: meal.id)
+        }
     }
 
     private func resolvedBucket(_ raw: String?) -> MealBucket {

@@ -195,4 +195,52 @@ struct FoodLogCommandTests {
         #expect(try store.nutrition.fetchMeals(for: yesterday).count == 1)
         #expect(try store.nutrition.fetchMeals(for: today).isEmpty)
     }
+
+    @Test("bulk delete by helmDay removes all meals")
+    func bulkDeleteByHelmDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+        let helmDay = HelmDay(year: 2026, month: 8, day: 1)
+        let at = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 1, hour: 12))
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: 300,
+            label: "Breakfast",
+            bucket: .breakfast,
+            loggedAt: at,
+            helmDay: helmDay
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: 500,
+            label: "Lunch",
+            bucket: .lunch,
+            loggedAt: at.addingTimeInterval(3600),
+            helmDay: helmDay
+        )
+        #expect(try store.nutrition.fetchMeals(for: helmDay).count == 2)
+
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Deleted yesterday.",
+            action: .delete,
+            helmDay: "2026-08-01"
+        )
+        try await applier.apply(payload)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
+    }
+
+    @Test("mealNotFound has readable description")
+    func mealNotFoundReadable() {
+        #expect(ManualMealError.mealNotFound.errorDescription?.contains("not found") == true)
+        #expect(ManualMealError.nothingToDelete.errorDescription?.contains("No meals") == true)
+    }
 }

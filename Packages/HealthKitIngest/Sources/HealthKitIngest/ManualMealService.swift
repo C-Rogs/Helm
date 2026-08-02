@@ -6,11 +6,27 @@ import Persistence
 
 private let manualMealLog = Logger(subsystem: "com.cameronro.helm", category: "NutritionKit")
 
-public enum ManualMealError: Error, Sendable, Equatable {
+public enum ManualMealError: Error, Sendable, Equatable, LocalizedError {
     case invalidPortion
     case invalidQuickAdd
     case invalidAlcoholQuantity
     case mealNotFound
+    case nothingToDelete
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidPortion:
+            "Invalid portion."
+        case .invalidQuickAdd:
+            "Calories must be greater than zero."
+        case .invalidAlcoholQuantity:
+            "Alcohol quantity must be greater than zero."
+        case .mealNotFound:
+            "That meal was not found (it may already be deleted)."
+        case .nothingToDelete:
+            "No meals found to delete for that day."
+        }
+    }
 }
 
 public struct ManualMealService: Sendable {

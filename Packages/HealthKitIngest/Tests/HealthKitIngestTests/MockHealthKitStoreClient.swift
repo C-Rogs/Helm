@@ -105,7 +105,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     }
 
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
-        lock.withLock {
+        try lock.withLock {
             if mealSaveShouldFail {
                 throw NSError(domain: "MockHealthKitStoreClient", code: 1)
             }

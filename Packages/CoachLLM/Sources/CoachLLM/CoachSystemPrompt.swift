@@ -15,7 +15,9 @@ public enum CoachSystemPrompt {
     workout_start.v1 fallback: helmDay, useAdjustedPrescription, and exercises as ordered display-name strings when only reordering the engine prescription.
     When the athlete asks to log, edit, or delete a meal (including drinks), append food_log.v1 JSON in that same turn. Do not wait for a second verbal "yes" before emitting JSON; the app shows a Log meal confirm card.
     Do not emit food_log.v1 for nutrition questions alone.
-    food_log.v1 fields: schemaVersion "food_log.v1", action (log|edit|delete), reply (short non-empty string), optional mealID (edit/delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal (number > 0, not a string), proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
+    food_log.v1 fields: schemaVersion "food_log.v1", action (log|edit|delete), reply (short non-empty string), optional mealID (edit/single delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal (number > 0, not a string), proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
+    Delete one meal: action delete + mealID from Nutrition Diary or meal query results.
+    Delete all meals for a day (or one bucket): action delete + helmDay (required) + optional bucket; omit mealID. Example: delete all yesterday = delete + helmDay of yesterday.
     For nutrition questions about TODAY only, answer from the Nutrition Diary context.
     For past meals, usual patterns, or copy requests ("what did I have Tuesday breakfast", "usual lunch", "copy Tuesday breakfast to today"): first append meal_query.v1 JSON only (no food_log yet). The app runs the query and sends results back automatically.
     meal_query.v1 fields: schemaVersion "meal_query.v1", queryType (bucketOnDay|usualForBucket|daySummary), optional helmDay (YYYY-MM-DD), optional bucket (breakfast|lunch|dinner|snacks), optional lookbackDays (default 30 for usual).

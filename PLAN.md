@@ -1245,6 +1245,48 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 - **Goal:** Rest bell plays through headphones with Silent on; Settings Font Helm/System.
 - **Acceptance:** Build green.
 
+#### F-DT9.21 Coach bulk food_log delete + LocalizedError
+
+- **Depends on:** F-DT9.16
+- **Goal:** Coach can delete all meals for a day (or bucket) without opaque "error 3"; mealNotFound/nothingToDelete show readable copy.
+- **Scope:** `ManualMealError` LocalizedError; `FoodLogCommandApplier` bulk delete by helmDay (+ optional bucket); coach prompt delete rules; tests.
+- **Acceptance:** FoodLogCommand tests for bulk delete + error copy; build green.
+
+#### F-DT9.22 Numpad field-switch + slide dismiss
+
+- **Depends on:** F-DT9.18
+- **Goal:** Switching weight/reps fields works without dismissing first; numpad open/dismiss animates.
+- **Scope:** Remove full-screen dismiss overlay; `withAnimation` on numpad target; bottom transition.
+- **Acceptance:** Build green.
+
+#### F-DT9.23 Empty nav + content session subheader
+
+- **Depends on:** F-DT9.18
+- **Goal:** Active session nav title empty; elapsed + sets (+ HR) as left content subheader, not toolbar principal.
+- **Scope:** `TrainSessionHeaderView` in session list; clear navigationTitle when active.
+- **Acceptance:** Build green.
+
+#### F-DT9.24 Hevy rest chrome + sound picker
+
+- **Depends on:** F-DT9.20
+- **Goal:** Hevy-style rest bar (elapsed fill, big countdown, −15/+15/Skip); taller bottom fog; restDone when remaining hits 0; Settings sound ID + volume with preview.
+- **Scope:** `RestTimerBanner`, Train bottom chrome/fog, `RestTimerSoundID`/`RestTimerVolumeLevel`, Settings Train sounds, `RestTimerSoundPlayer`.
+- **Acceptance:** Build green.
+
+#### F-DT9.25 Live Activity restEndsAt + Signal blue
+
+- **Depends on:** F-DT9.7
+- **Goal:** Dynamic Island/rest shows live countdown via `restEndsAt` + `Text(timerInterval:)`; Signal-blue keyline/tint.
+- **Scope:** `ContentState.restEndsAt`, manager/side-effects wiring, widget compact/expanded rest + `keylineTint`.
+- **Acceptance:** Build green.
+
+#### F-DT9.26 System font coverage
+
+- **Depends on:** F-DT9.20
+- **Goal:** Settings System font covers HelmTypography aliases and UIKit numpad keys, not only SwiftUI `.helmType`.
+- **Scope:** `HelmTypography` computed fonts; `HelmNumpad` UIFont respects `HelmFontPreferences`.
+- **Acceptance:** Build green.
+
 ### DT9 device gate (after all F-DT9.#)
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.
