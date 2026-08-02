@@ -847,7 +847,7 @@ final class TrainSessionController {
                 trackedRestTimerID = snapshot.restTimer?.id
                 await sideEffects.onEnterBackground(
                     snapshot: snapshot,
-                    restTimerSoundEnabled: trainPreferences.restTimerSoundEnabled
+                    restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
                 )
             }
         case .active:
@@ -935,7 +935,7 @@ final class TrainSessionController {
             while !Task.isCancelled {
                 guard let self else { return }
                 let remaining = localRemainingRestSeconds() ?? 0
-                handleRestRemainingSecondsChange(remaining > 0 ? remaining : nil)
+                handleRestRemainingSecondsChange(remaining)
                 if remaining <= 0 {
                     await reconcileExpiredRestTimer()
                     return
@@ -1040,7 +1040,9 @@ final class TrainSessionController {
 
         let exerciseID = exerciseID(for: sessionExerciseID)
         let set = findSet(setID: setID) ?? currentSet
-        numpadTarget = nextTarget
+        withAnimation(HelmMotion.settleAnimation) {
+            numpadTarget = nextTarget
+        }
         numpadValidationError = nil
         seedNumpad(for: field, set: set, exerciseID: exerciseID)
     }
@@ -1048,13 +1050,17 @@ final class TrainSessionController {
     func dismissNumpad() async {
         guard numpadTarget != nil else { return }
         if numpadTarget?.field == .rpe {
-            numpadTarget = nil
+            withAnimation(HelmMotion.settleAnimation) {
+                numpadTarget = nil
+            }
             numpadValidationError = nil
             numpadSelectAll = false
             return
         }
         guard await applyNumpadInput() else { return }
-        numpadTarget = nil
+        withAnimation(HelmMotion.settleAnimation) {
+            numpadTarget = nil
+        }
         numpadSelectAll = false
     }
 

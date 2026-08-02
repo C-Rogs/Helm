@@ -59,71 +59,78 @@ struct TrainView: View {
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
-                VStack(spacing: HelmSpacing.xs) {
-                    if controller.hasActiveSession,
-                       let timer = controller.snapshot?.restTimer,
-                       let endsAt = timer.endsAt,
-                       controller.isRestTimerRunning {
-                        RestTimerBanner(
-                            endsAt: endsAt,
-                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                            onSkip: {
-                                Task { await controller.skipRest() }
-                            },
-                            onAdjust: { delta in
-                                Task { await controller.adjustRestTimer(deltaSeconds: delta) }
-                            },
-                            onRemainingSecondsChange: { remaining in
-                                handleRestTimerTick(remaining)
-                            }
-                        )
-                        .padding(.horizontal, HelmSpacing.screenGutter)
-                    }
-
-                    if controller.hasActiveSession,
-                       controller.numpadTarget == nil,
-                       !controller.isReorderMode {
-                        inSessionCoachBar
-                    }
-
-                    if controller.numpadTarget != nil {
-                        numpadOverlay
-                    }
-                }
-                .background(alignment: .top) {
-                    if controller.hasActiveSession, controller.numpadTarget == nil {
-                        LinearGradient(
-                            colors: [
-                                HelmColor.canvas.opacity(0),
-                                HelmColor.canvas.opacity(0.92),
-                                HelmColor.canvas
-                            ],
-                            startPoint: .top,
-                            endPoint: .bottom
-                        )
-                        .frame(height: HelmLayout.trainBottomFogHeight)
-                        .offset(y: -HelmLayout.trainBottomFogHeight + HelmSpacing.md)
-                        .allowsHitTesting(false)
-                    }
+                if controller.hasActiveSession {
+                    bottomSessionChrome
                 }
             }
             .helmScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(controller.hasActiveSession ? "" : "Train")
-            .toolbar {
-                if controller.hasActiveSession, let snapshot = controller.snapshot {
-                    ToolbarItem(placement: .principal) {
-                        TrainSessionHeaderView(
-                            startedAt: snapshot.session.startedAt,
-                            progress: TrainSessionProgress.from(snapshot: snapshot),
-                            heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
-                                ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
-                                : nil
-                        )
-                    }
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.numpadTarget
+            )
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.isRestTimerRunning
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var bottomSessionChrome: some View {
+        let showRest = controller.isRestTimerRunning
+            && controller.snapshot?.restTimer?.endsAt != nil
+        let showCoach = controller.numpadTarget == nil && !controller.isReorderMode
+        let showNumpad = controller.numpadTarget != nil
+
+        VStack(spacing: 0) {
+            if showRest || showCoach || showNumpad {
+                LinearGradient(
+                    colors: [
+                        HelmColor.canvas.opacity(0),
+                        HelmColor.canvas.opacity(0.85),
+                        HelmColor.canvas
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .frame(height: HelmLayout.trainBottomFogHeight)
+                .allowsHitTesting(false)
+            }
+
+            VStack(spacing: HelmSpacing.xs) {
+                if showRest,
+                   let timer = controller.snapshot?.restTimer,
+                   let endsAt = timer.endsAt {
+                    RestTimerBanner(
+                        endsAt: endsAt,
+                        totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                        onSkip: {
+                            Task { await controller.skipRest() }
+                        },
+                        onAdjust: { delta in
+                            Task { await controller.adjustRestTimer(deltaSeconds: delta) }
+                        },
+                        onRemainingSecondsChange: { remaining in
+                            handleRestTimerTick(remaining)
+                        }
+                    )
+                }
+
+                if showCoach {
+                    inSessionCoachBar
+                }
+
+                if showNumpad {
+                    numpadOverlay
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
+            .frame(maxWidth: .infinity)
+            .background(HelmColor.canvas)
         }
+        .ignoresSafeArea(edges: .bottom)
     }
 
     private var idleState: some View {
@@ -386,6 +393,14 @@ struct TrainView: View {
             VStack(spacing: 0) {
                 ScrollView {
                     VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        TrainSessionHeaderView(
+                            startedAt: snapshot.session.startedAt,
+                            progress: TrainSessionProgress.from(snapshot: snapshot),
+                            heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
+                                ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+                                : nil
+                        )
+
                         if let notice = controller.watchCompanionNotice {
                             Text(notice)
                                 .helmType(.body, color: HelmColor.fgSecondary)
@@ -443,18 +458,13 @@ struct TrainView: View {
                     .padding(.bottom, HelmSpacing.md)
                     .frame(maxWidth: .infinity)
                 }
-                .overlay {
-                    if controller.numpadTarget != nil {
-                        Color.clear
-                            .contentShape(Rectangle())
-                            .onTapGesture {
-                                Task { await controller.dismissNumpad() }
-                            }
-                    }
-                }
                 .animation(
                     HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                     value: controller.adjustmentBanner
+                )
+                .animation(
+                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                    value: controller.numpadTarget
                 )
             }
 
@@ -463,10 +473,11 @@ struct TrainView: View {
     }
 
     private func handleRestTimerTick(_ remaining: Int) {
-        let current = remaining > 0 ? remaining : nil
+        // Pass 0 at expiry so restDone policy fires (nil was skipping the bell).
+        let current: Int? = remaining
         if !didTrackInitialRestRemaining {
             didTrackInitialRestRemaining = true
-            controller.handleRestRemainingSecondsChange(current)
+            controller.handleRestRemainingSecondsChange(remaining > 0 ? remaining : 0)
             return
         }
         controller.handleRestRemainingSecondsChange(current)

@@ -158,7 +158,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.18 Train input, header, timer, coach chrome | done | 2026-08-02 | 8520609 | Numpad first-tap/swipe; HR header; rest bar; RPE steps; drop top coach; fog; recover race. |
 | F-DT9.20 Rest bell + system font | done | 2026-08-02 | 6e60325 | playback+mixWithOthers bell; Settings Font Helm/System. |
 | F-DT9.21 Coach bulk food_log delete + LocalizedError | done | 2026-08-02 | 22d7d17 | Bulk delete by helmDay/bucket; readable mealNotFound/nothingToDelete. |
-| F-DT9.22 Numpad field-switch + slide dismiss | done | 2026-08-02 | TBD | Drop dismiss overlay; animate numpad open/dismiss. |
+| F-DT9.22 Numpad field-switch + slide dismiss | done | 2026-08-02 | c97dd42 | Drop dismiss overlay; animate numpad open/dismiss. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
