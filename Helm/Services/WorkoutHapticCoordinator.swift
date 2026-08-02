@@ -53,7 +53,7 @@ enum WorkoutHapticCoordinator {
             play(pattern)
             if pattern == .restDone {
                 RestTimerSoundPlayer.shared.playRestBellIfEnabled(
-                    TrainPreferences.shared.restTimerSoundEnabled
+                    TrainPreferences.shared.restTimerVolume.isEnabled
                 )
                 WatchReadinessBootstrap.coordinator.notifyRestEnded()
             }

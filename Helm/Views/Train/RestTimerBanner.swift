@@ -30,82 +30,68 @@ struct RestTimerBanner: View {
             remainingSeconds: remainingSeconds,
             totalSeconds: totalSeconds
         )
+        let elapsedFraction = 1 - progress
 
-        HStack(spacing: HelmSpacing.xs) {
-            if let onAdjust {
-                adjustButton(systemImage: "minus", label: "Minus 15 seconds") {
-                    onAdjust(-15)
-                }
-            }
-
-            VStack(alignment: .leading, spacing: 2) {
-                Text("REST")
-                    .helmType(.monoTag, color: HelmColor.fgSecondary)
-                    .lineLimit(1)
-
+        VStack(spacing: HelmSpacing.sm) {
+            GeometryReader { geometry in
                 ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: HelmRadius.sm)
-                        .fill(HelmColor.gaugeTrack.opacity(0.45))
+                    Capsule()
+                        .fill(HelmColor.gaugeTrack.opacity(0.5))
+                    Capsule()
+                        .fill(HelmColor.accent)
+                        .frame(width: max(6, geometry.size.width * elapsedFraction))
+                        .animation(
+                            reduceMotion ? nil : .linear(duration: 1),
+                            value: elapsedFraction
+                        )
+                }
+            }
+            .frame(height: 6)
 
-                    GeometryReader { geometry in
-                        RoundedRectangle(cornerRadius: HelmRadius.sm)
-                            .fill(HelmColor.accent.opacity(0.55))
-                            .frame(width: max(4, geometry.size.width * progress))
-                            .frame(maxWidth: .infinity, alignment: .trailing)
-                            .animation(
-                                reduceMotion ? nil : .linear(duration: 1),
-                                value: progress
-                            )
+            Text(formattedTime(remainingSeconds))
+                .helmType(.bigNumber, color: HelmColor.fg)
+                .monospacedDigit()
+                .frame(maxWidth: .infinity)
+
+            HStack(spacing: HelmSpacing.sm) {
+                if let onAdjust {
+                    Button {
+                        onAdjust(-15)
+                    } label: {
+                        Text("−15")
+                            .frame(maxWidth: .infinity)
                     }
-                    .clipShape(RoundedRectangle(cornerRadius: HelmRadius.sm))
+                    .buttonStyle(.helmSecondary)
 
-                    HelmNumericText(formattedTime(remainingSeconds))
-                        .helmType(.number, color: HelmColor.fg)
-                        .lineLimit(1)
-                        .minimumScaleFactor(0.8)
-                        .padding(.horizontal, HelmSpacing.xs)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    Button {
+                        onAdjust(15)
+                    } label: {
+                        Text("+15")
+                            .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.helmSecondary)
                 }
-                .frame(height: 28)
+
+                Button("Skip", action: onSkip)
+                    .buttonStyle(.helmPrimary)
+                    .frame(maxWidth: .infinity)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .layoutPriority(1)
-
-            if let onAdjust {
-                adjustButton(systemImage: "plus", label: "Plus 15 seconds") {
-                    onAdjust(15)
-                }
-            }
-
-            Button("Skip", action: onSkip)
-                .buttonStyle(.helmSecondary)
-                .lineLimit(1)
-                .fixedSize(horizontal: true, vertical: false)
         }
-        .padding(.horizontal, HelmSpacing.sm)
-        .padding(.vertical, HelmSpacing.xs)
-        .helmPanelChrome(.elevated)
-    }
-
-    private func adjustButton(systemImage: String, label: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: systemImage)
-                .font(.body.weight(.semibold))
-                .frame(width: 32, height: 32)
-        }
-        .buttonStyle(.helmSecondary)
-        .accessibilityLabel(label)
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.top, HelmSpacing.sm)
+        .padding(.bottom, HelmSpacing.sm)
+        .frame(maxWidth: .infinity)
+        .background(HelmColor.canvas)
     }
 
     private func formattedTime(_ remainingSeconds: Int) -> String {
         let minutes = remainingSeconds / 60
         let seconds = remainingSeconds % 60
-        return String(format: "%d:%02d", minutes, seconds)
+        return String(format: "%02d:%02d", minutes, seconds)
     }
 }
 
 #Preview("Rest timer banner") {
-    RestTimerBanner(endsAt: Date().addingTimeInterval(74), totalSeconds: 90, onSkip: {}, onAdjust: { _ in })
-        .padding()
+    RestTimerBanner(endsAt: Date().addingTimeInterval(140), totalSeconds: 150, onSkip: {}, onAdjust: { _ in })
         .helmTheme()
 }

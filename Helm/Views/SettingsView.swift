@@ -1,3 +1,4 @@
+import Core
 import DesignSystem
 import Diagnostics
 import SwiftUI
@@ -58,9 +59,42 @@ struct SettingsView: View {
                         .helmListRowChrome()
                     Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
                         .helmListRowChrome()
-                    Toggle("Rest timer sound", isOn: $trainPreferences.restTimerSoundEnabled)
-                        .helmListRowChrome()
-                    Text("Boxing-ring bell when rest ends. Plays through headphones; ignores Silent switch when enabled.")
+                }
+
+                Section("Train sounds") {
+                    Picker("Rest timer sound", selection: $trainPreferences.restTimerSoundID) {
+                        ForEach(RestTimerSoundID.allCases) { sound in
+                            Text(sound.label).tag(sound)
+                        }
+                    }
+                    .helmListRowChrome()
+                    .onChange(of: trainPreferences.restTimerSoundID) { _, newValue in
+                        HapticEngine.shared.play(.selection)
+                        RestTimerSoundPlayer.shared.play(
+                            soundID: newValue,
+                            volume: trainPreferences.restTimerVolume == .off
+                                ? .normal
+                                : trainPreferences.restTimerVolume
+                        )
+                    }
+
+                    Picker("Rest timer volume", selection: $trainPreferences.restTimerVolume) {
+                        ForEach(RestTimerVolumeLevel.allCases) { level in
+                            Text(level.label).tag(level)
+                        }
+                    }
+                    .helmListRowChrome()
+                    .onChange(of: trainPreferences.restTimerVolume) { _, newValue in
+                        HapticEngine.shared.play(.selection)
+                        if newValue.isEnabled {
+                            RestTimerSoundPlayer.shared.play(
+                                soundID: trainPreferences.restTimerSoundID,
+                                volume: newValue
+                            )
+                        }
+                    }
+
+                    Text("Plays on speaker and headphones when rest ends. Ignores Silent switch. Tap a sound to preview.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
                 }
