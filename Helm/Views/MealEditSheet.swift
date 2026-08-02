@@ -62,6 +62,9 @@ struct MealEditSheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                    Text(mealSourceLabel)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+
                     MealBucketPicker(selection: $bucket)
 
                     if hasStoredLineItems {
@@ -113,6 +116,18 @@ struct MealEditSheet: View {
             } message: {
                 Text("This removes the entry from Helm and Apple Health.")
             }
+        }
+    }
+
+    private var mealSourceLabel: String {
+        switch display.meal.source {
+        case .healthKit: "Imported from Apple Health"
+        case .manual: "Logged manually"
+        case .photo: "Photo meal"
+        case .barcode: "Barcode scan"
+        case .quickAdd: "Quick add"
+        case .alcohol: "Alcohol entry"
+        case .template: "Meal template"
         }
     }
 

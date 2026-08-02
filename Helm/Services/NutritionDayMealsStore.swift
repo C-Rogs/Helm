@@ -72,29 +72,18 @@ final class NutritionDayMealsStore {
         return [
             MealLineItemSummary(
                 name: meal.name,
-                detail: sourceLabel(for: meal.source),
+                detail: listRowDetail(for: meal),
                 energyKcal: energyKcal
             )
         ]
     }
 
-    private func sourceLabel(for source: MealRecord.Source) -> String {
-        switch source {
-        case .healthKit:
-            "Imported"
-        case .manual:
-            "Manual"
-        case .photo:
-            "Photo"
-        case .barcode:
-            "Barcode"
-        case .quickAdd:
-            "Quick add"
-        case .alcohol:
-            "Alcohol"
-        case .template:
-            "Template"
-        }
+    private func listRowDetail(for meal: MealRecord) -> String {
+        MacroCompactFormatter.compact(
+            proteinGrams: Int((meal.proteinGrams ?? 0).rounded()),
+            carbohydrateGrams: Int((meal.carbohydrateGrams ?? 0).rounded()),
+            fatGrams: Int((meal.fatGrams ?? 0).rounded())
+        ) ?? ""
     }
 }
 

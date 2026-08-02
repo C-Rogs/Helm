@@ -7,7 +7,7 @@ struct NutritionMealBucketSection: View {
     let bucket: MealBucket
     let meals: [LoggedMealDisplay]
     var isPhotoAvailable = false
-    var onCopyToToday: (() -> Void)?
+    var onCopyEntry: (() -> Void)?
     var onSaveTemplate: (() -> Void)?
     var onMealTap: ((LoggedMealDisplay) -> Void)?
     var onAddFood: ((BucketFoodLogAction) -> Void)?
@@ -31,10 +31,10 @@ struct NutritionMealBucketSection: View {
                             }
                         }
                     }
-                    if onCopyToToday != nil || onSaveTemplate != nil {
+                    if onCopyEntry != nil || onSaveTemplate != nil {
                         Menu {
-                            if let onCopyToToday {
-                                Button("Copy yesterday to today", action: onCopyToToday)
+                            if let onCopyEntry {
+                                Button("Copy entry", action: onCopyEntry)
                             }
                             if let onSaveTemplate {
                                 Button("Save as template", action: onSaveTemplate)

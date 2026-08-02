@@ -118,6 +118,17 @@ public extension HelmDay {
         return HelmDay(year: year, month: month, day: day)
     }
 
+    /// Calendar date for display and week strips (no cutoff shift).
+    ///
+    /// Use for diary week chips and date pickers. Logging still uses `day(for:)` with cutoff.
+    static func calendarDay(for date: Date, calendar: Calendar) -> HelmDay {
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        guard let helmDay = HelmDay(components: components) else {
+            preconditionFailure("calendar produced incomplete day components")
+        }
+        return helmDay
+    }
+
     /// Returns the logical day `days` calendar days before or after this day.
     func adding(days: Int, calendar: Calendar = Calendar(identifier: .gregorian)) -> HelmDay {
         let components = dateComponents()

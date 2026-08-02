@@ -1212,6 +1212,13 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 - **Scope:** `WorkoutFinishSummaryView`; chat chart bubble component.
 - **Acceptance:** Empty-state without HR; chart bubble snapshot.
 
+#### F-DT9.15 Nutrition toolbar, diary strip, copy entry, templates entry
+
+- **Depends on:** none (residual DT9 nutrition wave start)
+- **Goal:** Nutrition toolbar renders (templates + refresh); week strip shows correct calendar days; meal list hides source labels; copy entry uses date/bucket picker; templates discoverable.
+- **Scope:** `NutritionView`, `NutritionDiaryHeader`, `NutritionMealBucketSection`, `NutritionDayMealsStore`, `CopyMealEntrySheet`, `MealRepeatService.copyBucket` target bucket, `HelmDay.calendarDay`.
+- **Acceptance:** Build green; `HelmDay.calendarDay` test; toolbar inside `NavigationStack`; copy entry sheet; templates button + MEALS row link.
+
 ### DT9 device gate (after all F-DT9.#)
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.

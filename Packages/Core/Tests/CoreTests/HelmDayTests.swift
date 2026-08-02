@@ -189,6 +189,19 @@ struct HelmDayTests {
         #expect(day.contains(lateNight, cutoff: cutoff, calendar: london))
         #expect(!day.contains(afterCutoff, cutoff: cutoff, calendar: london))
     }
+
+    @Test("calendarDay ignores cutoff for diary week chips")
+    func calendarDayIgnoresCutoff() {
+        let london = calendar(timeZone: TimeZone(identifier: "Europe/London")!)
+        let saturday330 = date(
+            DateComponents(year: 2026, month: 8, day: 1, hour: 3, minute: 30),
+            calendar: london
+        )
+        #expect(HelmDay.calendarDay(for: saturday330, calendar: london).formatted == "2026-08-01")
+        #expect(
+            HelmDay.day(for: saturday330, cutoff: cutoff, calendar: london).formatted == "2026-07-31"
+        )
+    }
 }
 
 @Suite("Units")

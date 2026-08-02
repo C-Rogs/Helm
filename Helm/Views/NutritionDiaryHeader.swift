@@ -20,7 +20,7 @@ struct NutritionDiaryHeader: View {
         }
         return (0 ..< 7).compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: weekStart) else { return nil }
-            return HelmDay.day(for: date, calendar: calendar)
+            return HelmDay.calendarDay(for: date, calendar: calendar)
         }
     }
 
@@ -52,11 +52,9 @@ struct NutritionDiaryHeader: View {
                 .accessibilityLabel("Next day")
             }
 
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: HelmSpacing.xs) {
-                    ForEach(weekDays) { day in
-                        dayChip(day)
-                    }
+            HStack(spacing: HelmSpacing.xs) {
+                ForEach(weekDays) { day in
+                    dayChip(day)
                 }
             }
 

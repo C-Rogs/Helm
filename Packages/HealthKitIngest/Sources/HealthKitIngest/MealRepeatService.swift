@@ -100,12 +100,19 @@ public struct MealRepeatService: Sendable {
         from sourceDay: HelmDay,
         bucket: MealBucket,
         to targetDay: HelmDay,
+        targetBucket: MealBucket? = nil,
         loggedAt: Date? = nil
     ) async throws -> Int {
         let meals = try nutrition.fetchMeals(for: sourceDay)
             .filter { $0.bucket == bucket }
         guard !meals.isEmpty else { throw MealRepeatError.emptyBucket }
-        return try await copy(meals: meals, to: targetDay, loggedAt: loggedAt)
+        let destinationBucket = targetBucket ?? bucket
+        return try await copy(
+            meals: meals,
+            to: targetDay,
+            targetBucket: destinationBucket,
+            loggedAt: loggedAt
+        )
     }
 
     @discardableResult
@@ -116,12 +123,18 @@ public struct MealRepeatService: Sendable {
     ) async throws -> Int {
         let meals = try nutrition.fetchMeals(for: sourceDay)
         guard !meals.isEmpty else { throw MealRepeatError.emptySource }
-        return try await copy(meals: meals, to: targetDay, loggedAt: loggedAt)
+        return try await copy(
+            meals: meals,
+            to: targetDay,
+            targetBucket: nil,
+            loggedAt: loggedAt
+        )
     }
 
     private func copy(
         meals: [MealRecord],
         to targetDay: HelmDay,
+        targetBucket: MealBucket?,
         loggedAt: Date?
     ) async throws -> Int {
         let calendar = Calendar(identifier: .gregorian)
@@ -131,11 +144,12 @@ public struct MealRepeatService: Sendable {
         for (index, meal) in meals.enumerated() {
             let mealID = UUID()
             let timestamp = baseStart.addingTimeInterval(Double(index * 60) + 3_600)
+            let bucket = targetBucket ?? meal.bucket
             let records = try foodLog.fetchLineItems(for: meal.id)
             if records.isEmpty {
                 _ = try await manualMealService.logCompositeMeal(
                     name: meal.name,
-                    bucket: meal.bucket,
+                    bucket: bucket,
                     lineItems: [],
                     loggedAt: timestamp,
                     mealID: mealID.uuidString,
@@ -163,7 +177,7 @@ public struct MealRepeatService: Sendable {
                 }
                 _ = try await manualMealService.logCompositeMeal(
                     name: meal.name,
-                    bucket: meal.bucket,
+                    bucket: bucket,
                     lineItems: copiedRecords,
                     loggedAt: timestamp,
                     mealID: mealID.uuidString,

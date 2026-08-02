@@ -42,51 +42,6 @@ struct NutritionView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
-        navigationStack
-            .navigationTitle("Nutrition")
-            .navigationBarTitleDisplayMode(.large)
-            .toolbar { refreshToolbar }
-            .task { await refreshTargets() }
-            .onChange(of: scenePhase) { _, newPhase in
-                guard newPhase == .active else { return }
-                Task {
-                    await manualFoodLogController.refreshConnectivity()
-                }
-            }
-            .onChange(of: prescriptionService.state) { _, newState in
-                Task {
-                    await refreshSelectedDay(prescriptionSummary: newState.summary)
-                }
-            }
-            .onChange(of: nutritionService.state) { _, newState in
-                reloadMeals(from: newState)
-            }
-            .onChange(of: manualFoodLogController.phase) { _, newPhase in
-                if case .idle = newPhase {
-                    reloadMeals(from: nutritionService.state)
-                }
-            }
-            .onChange(of: photoMealController.pickerItem) { _, newValue in
-                if newValue != nil {
-                    showsPhotoOptions = false
-                }
-                Task { await photoMealController.handlePickerItemChange() }
-            }
-            .modifier(NutritionLoggingSheets(
-                photoMealController: photoMealController,
-                manualFoodLogController: manualFoodLogController,
-                mealActionsController: mealActionsController,
-                mealEditController: mealEditController,
-                showsPhotoOptions: $showsPhotoOptions,
-                showsTemplates: $showsTemplates,
-                currentHelmDay: selectedHelmDay,
-                onMealsChanged: {
-                    reloadMeals(from: nutritionService.state)
-                }
-            ))
-    }
-
-    private var navigationStack: some View {
         NavigationStack {
             ScrollView {
                 HelmScreenStack {
@@ -135,16 +90,78 @@ struct NutritionView: View {
                 .helmScreenPadding()
             }
             .helmScreenBackground()
+            .navigationTitle("Nutrition")
+            .navigationBarTitleDisplayMode(.large)
+            .toolbar { nutritionToolbar }
         }
+        .task { await refreshTargets() }
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase == .active else { return }
+            Task {
+                await manualFoodLogController.refreshConnectivity()
+            }
+        }
+        .onChange(of: prescriptionService.state) { _, newState in
+            Task {
+                await refreshSelectedDay(prescriptionSummary: newState.summary)
+            }
+        }
+        .onChange(of: nutritionService.state) { _, newState in
+            reloadMeals(from: newState)
+        }
+        .onChange(of: manualFoodLogController.phase) { _, newPhase in
+            if case .idle = newPhase {
+                reloadMeals(from: nutritionService.state)
+            }
+        }
+        .onChange(of: photoMealController.pickerItem) { _, newValue in
+            if newValue != nil {
+                showsPhotoOptions = false
+            }
+            Task { await photoMealController.handlePickerItemChange() }
+        }
+        .modifier(NutritionLoggingSheets(
+            photoMealController: photoMealController,
+            manualFoodLogController: manualFoodLogController,
+            mealActionsController: mealActionsController,
+            mealEditController: mealEditController,
+            showsPhotoOptions: $showsPhotoOptions,
+            showsTemplates: $showsTemplates,
+            currentHelmDay: selectedHelmDay,
+            todayHelmDay: todayHelmDay,
+            onMealsChanged: {
+                reloadMeals(from: nutritionService.state)
+            }
+        ))
     }
 
     @ToolbarContentBuilder
-    private var refreshToolbar: some ToolbarContent {
+    private var nutritionToolbar: some ToolbarContent {
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                openTemplates()
+            } label: {
+                Image(systemName: "square.stack")
+            }
+            .accessibilityLabel("Meal templates")
+        }
+        ToolbarItem(placement: .topBarTrailing) {
+            Button {
+                Task { await refreshTargets() }
+            } label: {
+                if isRefreshing {
+                    ProgressView()
+                } else {
+                    Label("Refresh", systemImage: "arrow.clockwise")
+                }
+            }
+            .disabled(isRefreshing)
+            .accessibilityLabel("Refresh")
+        }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
                 Button("Meal templates") {
-                    mealActionsController.reloadTemplates()
-                    showsTemplates = true
+                    openTemplates()
                 }
                 Button("Copy yesterday's meals") {
                     Task {
@@ -158,18 +175,11 @@ struct NutritionView: View {
             }
             .accessibilityLabel("Nutrition actions")
         }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
-                Task { await refreshTargets() }
-            } label: {
-                if isRefreshing {
-                    ProgressView()
-                } else {
-                    Label("Refresh", systemImage: "arrow.clockwise")
-                }
-            }
-            .disabled(isRefreshing)
-        }
+    }
+
+    private func openTemplates() {
+        mealActionsController.reloadTemplates()
+        showsTemplates = true
     }
 
     @MainActor
@@ -253,19 +263,24 @@ struct NutritionView: View {
     @ViewBuilder
     private func mealBucketsSection(snapshot: NutritionDaySnapshot) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            HelmSectionEyebrow("MEALS", showsArcMark: true)
+            HStack {
+                HelmSectionEyebrow("MEALS", showsArcMark: true)
+                Spacer()
+                Button("Templates") {
+                    openTemplates()
+                }
+                .buttonStyle(.helmSecondary)
+                .accessibilityLabel("Meal templates")
+            }
 
             ForEach(MealBucket.allCases, id: \.self) { bucket in
                 NutritionMealBucketSection(
                     bucket: bucket,
                     meals: mealsStore.mealsByBucket[bucket] ?? [],
                     isPhotoAvailable: photoMealController.isAvailable,
-                    onCopyToToday: {
-                        Task {
-                            guard let day = selectedHelmDay else { return }
-                            await mealActionsController.copyBucketToToday(bucket: bucket, today: day)
-                            await refreshSelectedDay()
-                        }
+                    onCopyEntry: {
+                        guard let day = selectedHelmDay else { return }
+                        mealActionsController.beginCopyEntry(sourceDay: day, sourceBucket: bucket)
                     },
                     onSaveTemplate: {
                         mealActionsController.beginSaveTemplate(for: bucket)
@@ -338,6 +353,7 @@ private struct NutritionLoggingSheets: ViewModifier {
     @Binding var showsPhotoOptions: Bool
     @Binding var showsTemplates: Bool
     let currentHelmDay: HelmDay?
+    let todayHelmDay: HelmDay?
     let onMealsChanged: () -> Void
 
     func body(content: Content) -> some View {
@@ -434,6 +450,29 @@ private struct NutritionLoggingSheets: ViewModifier {
                     )
                 }
             }
+            .sheet(isPresented: copyEntryBinding) {
+                if let context = mealActionsController.copyEntryContext,
+                   let today = todayHelmDay ?? currentHelmDay {
+                    CopyMealEntrySheet(
+                        sourceDay: context.sourceDay,
+                        sourceBucket: context.sourceBucket,
+                        today: today,
+                        isSaving: mealActionsController.isSaving,
+                        onConfirm: { targetDay, targetBucket in
+                            Task {
+                                await mealActionsController.confirmCopyEntry(
+                                    targetDay: targetDay,
+                                    targetBucket: targetBucket
+                                )
+                                onMealsChanged()
+                            }
+                        },
+                        onCancel: {
+                            mealActionsController.cancelCopyEntry()
+                        }
+                    )
+                }
+            }
             .sheet(isPresented: $showsTemplates) {
                 MealTemplatesSheet(
                     templates: mealActionsController.templates,
@@ -518,6 +557,17 @@ private struct NutritionLoggingSheets: ViewModifier {
                     }
                 }
             )
+    }
+
+    private var copyEntryBinding: Binding<Bool> {
+        Binding(
+            get: { mealActionsController.copyEntryContext != nil },
+            set: { isPresented in
+                if !isPresented {
+                    mealActionsController.cancelCopyEntry()
+                }
+            }
+        )
     }
 
     private var saveTemplateBinding: Binding<Bool> {

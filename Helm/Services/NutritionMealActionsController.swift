@@ -18,10 +18,16 @@ final class NutritionMealActionsController {
         }
     }
 
+    struct CopyEntryContext: Equatable {
+        let sourceDay: HelmDay
+        let sourceBucket: MealBucket
+    }
+
     private(set) var templates: [MealTemplate] = []
     private(set) var isSaving = false
     var pendingAction: PendingAction?
     var saveTemplateBucket: MealBucket?
+    var copyEntryContext: CopyEntryContext?
     var errorMessage: String?
 
     private let mealRepeatService: MealRepeatService
@@ -111,6 +117,35 @@ final class NutritionMealActionsController {
             errorMessage = "Nothing logged in \(bucket.displayName.lowercased()) yesterday."
         } catch {
             errorMessage = "Could not copy meal. Try again."
+        }
+    }
+
+    func beginCopyEntry(sourceDay: HelmDay, sourceBucket: MealBucket) {
+        copyEntryContext = CopyEntryContext(sourceDay: sourceDay, sourceBucket: sourceBucket)
+    }
+
+    func cancelCopyEntry() {
+        copyEntryContext = nil
+    }
+
+    func confirmCopyEntry(targetDay: HelmDay, targetBucket: MealBucket) async {
+        guard let context = copyEntryContext else { return }
+        isSaving = true
+        defer { isSaving = false }
+        do {
+            _ = try await mealRepeatService.copyBucket(
+                from: context.sourceDay,
+                bucket: context.sourceBucket,
+                to: targetDay,
+                targetBucket: targetBucket
+            )
+            copyEntryContext = nil
+            HapticEngine.shared.play(.mealConfirmed)
+            onChanged()
+        } catch MealRepeatError.emptyBucket {
+            errorMessage = "Nothing logged in \(context.sourceBucket.displayName.lowercased()) to copy."
+        } catch {
+            errorMessage = "Could not copy entry. Try again."
         }
     }
 
