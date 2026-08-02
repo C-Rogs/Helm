@@ -22,7 +22,7 @@ struct ExercisePickerView: View {
             Group {
                 if let loadError {
                     Text(loadError)
-                        .font(HelmTypography.body)
+                        .helmFont(.body)
                         .foregroundStyle(HelmColor.destructive)
                         .padding()
                 } else if exercises.isEmpty, recentExercises.isEmpty {
@@ -95,11 +95,11 @@ struct ExercisePickerView: View {
             } label: {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                     Text(exercise.displayName)
-                        .font(HelmTypography.body)
+                        .helmFont(.body)
                         .foregroundStyle(HelmColor.textPrimary)
                     if let muscle = exercise.primaryMuscleGroup {
                         Text(muscle.capitalized)
-                            .font(HelmTypography.caption)
+                            .helmFont(.body)
                             .foregroundStyle(HelmColor.textSecondary)
                     }
                 }
@@ -110,7 +110,7 @@ struct ExercisePickerView: View {
     private func filterChip(label: String, isSelected: Bool, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             Text(label)
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .padding(.horizontal, HelmSpacing.sm)
                 .padding(.vertical, HelmSpacing.xxs)
                 .background(isSelected ? HelmColor.accent.opacity(0.2) : HelmColor.surface)

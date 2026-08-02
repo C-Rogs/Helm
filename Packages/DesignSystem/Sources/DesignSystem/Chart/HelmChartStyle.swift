@@ -2,7 +2,14 @@ import Charts
 import SwiftUI
 
 public enum HelmChartStyle {
-    public static let axisLabelFont = HelmFont.mono(size: 11, weight: .semibold)
+    public static func axisLabelFont(prefersSystemFonts: Bool = HelmFontPreferences.prefersSystemFonts) -> Font {
+        HelmFont.mono(size: 11, weight: .semibold, prefersSystemFonts: prefersSystemFonts)
+    }
+
+    public static var axisLabelFont: Font {
+        axisLabelFont()
+    }
+
     public static let axisLabelColor = HelmColor.fgMuted
     public static let gridColor = HelmColor.chartGrid
     public static let lineColor = HelmColor.chartLine
@@ -21,13 +28,22 @@ public enum HelmChartStyle {
 public extension View {
     /// Applies Helm chart axis and grid styling to a Swift Charts view.
     func helmChartStyle() -> some View {
-        self
+        modifier(HelmChartStyleModifier())
+    }
+}
+
+private struct HelmChartStyleModifier: ViewModifier {
+    @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
+
+    func body(content: Content) -> some View {
+        let axisFont = HelmChartStyle.axisLabelFont(prefersSystemFonts: prefersSystemFonts)
+        content
             .chartXAxis {
                 AxisMarks { _ in
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
                         .foregroundStyle(HelmChartStyle.gridColor)
                     AxisValueLabel()
-                        .font(HelmChartStyle.axisLabelFont)
+                        .font(axisFont)
                         .foregroundStyle(HelmChartStyle.axisLabelColor)
                 }
             }
@@ -36,7 +52,7 @@ public extension View {
                     AxisGridLine(stroke: StrokeStyle(lineWidth: 0.5))
                         .foregroundStyle(HelmChartStyle.gridColor)
                     AxisValueLabel()
-                        .font(HelmChartStyle.axisLabelFont)
+                        .font(axisFont)
                         .foregroundStyle(HelmChartStyle.axisLabelColor)
                 }
             }

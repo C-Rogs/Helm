@@ -48,7 +48,13 @@ public struct HelmNumpad: UIViewRepresentable {
     }
 
     public func updateUIView(_ uiView: HelmNumpadView, context: Context) {
-        uiView.updateConfiguration(allowsDecimal: allowsDecimal, actionTitle: actionTitle)
+        let prefersSystemFonts = context.environment.helmPrefersSystemFonts
+        HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
+        uiView.updateConfiguration(
+            allowsDecimal: allowsDecimal,
+            actionTitle: actionTitle,
+            prefersSystemFonts: prefersSystemFonts
+        )
         uiView.onDigit = onDigit
         uiView.onBackspace = onBackspace
         uiView.onAction = onAction
@@ -63,6 +69,7 @@ public final class HelmNumpadView: UIView {
     public var onAction: (() -> Void)?
 
     private let stack = UIStackView()
+    private var appliedPrefersSystemFonts = HelmFontPreferences.prefersSystemFonts
 
     public override var intrinsicContentSize: CGSize {
         CGSize(
@@ -96,10 +103,18 @@ public final class HelmNumpadView: UIView {
 
     public override var canBecomeFirstResponder: Bool { false }
 
-    public func updateConfiguration(allowsDecimal: Bool, actionTitle: String?) {
-        let needsRebuild = self.allowsDecimal != allowsDecimal || self.actionTitle != actionTitle
+    public func updateConfiguration(
+        allowsDecimal: Bool,
+        actionTitle: String?,
+        prefersSystemFonts: Bool = HelmFontPreferences.prefersSystemFonts
+    ) {
+        let needsRebuild = self.allowsDecimal != allowsDecimal
+            || self.actionTitle != actionTitle
+            || appliedPrefersSystemFonts != prefersSystemFonts
         self.allowsDecimal = allowsDecimal
         self.actionTitle = actionTitle
+        appliedPrefersSystemFonts = prefersSystemFonts
+        HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
         invalidateIntrinsicContentSize()
         guard needsRebuild else { return }
         rebuildKeys()
@@ -136,15 +151,15 @@ public final class HelmNumpadView: UIView {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         if prominent {
-            if HelmFontPreferences.prefersSystemFonts {
+            if appliedPrefersSystemFonts {
                 button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
             } else {
                 button.titleLabel?.font = UIFont(name: "SpaceGrotesk-Bold", size: 17)
                     ?? .systemFont(ofSize: 17, weight: .semibold)
             }
         } else {
-            if HelmFontPreferences.prefersSystemFonts {
-                button.titleLabel?.font = .monospacedSystemFont(ofSize: 24, weight: .semibold)
+            if appliedPrefersSystemFonts {
+                button.titleLabel?.font = .systemFont(ofSize: 24, weight: .semibold)
             } else {
                 button.titleLabel?.font = UIFont(name: "JetBrainsMono-SemiBold", size: 24)
                     ?? .monospacedSystemFont(ofSize: 24, weight: .semibold)

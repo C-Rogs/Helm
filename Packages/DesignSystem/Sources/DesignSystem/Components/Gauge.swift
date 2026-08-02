@@ -32,13 +32,11 @@ public struct Gauge: View {
 
                 VStack(spacing: HelmSpacing.xxs) {
                     Text("\(Int(value.rounded()))")
-                        .font(HelmTypography.displayLarge)
-                        .foregroundStyle(HelmColor.textPrimary)
+                        .helmType(.heroNumber, color: HelmColor.textPrimary)
                         .monospacedDigit()
                     if let label {
                         Text(label)
-                            .font(HelmTypography.caption)
-                            .foregroundStyle(HelmColor.textSecondary)
+                            .helmType(.body, color: HelmColor.textSecondary)
                     }
                 }
             }
@@ -47,8 +45,7 @@ public struct Gauge: View {
 
             if let subtitle {
                 Text(subtitle)
-                    .font(HelmTypography.callout)
-                    .foregroundStyle(HelmColor.textTertiary)
+                    .helmType(.body, color: HelmColor.textTertiary)
                     .multilineTextAlignment(.center)
             }
         }
@@ -58,6 +55,6 @@ public struct Gauge: View {
 #Preview("Gauge") {
     Gauge(value: 72, label: "ARC", subtitle: "Full baseline")
         .padding()
-        .frame(maxWidth: 240)
+        .frame(width: 220)
         .helmTheme()
 }

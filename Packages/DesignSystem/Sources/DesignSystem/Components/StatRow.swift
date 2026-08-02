@@ -14,20 +14,17 @@ public struct StatRow: View {
     public var body: some View {
         HStack(alignment: .firstTextBaseline) {
             Text(label)
-                .font(HelmTypography.body)
-                .foregroundStyle(HelmColor.textSecondary)
+                .helmType(.body, color: HelmColor.textSecondary)
 
             Spacer(minLength: HelmSpacing.sm)
 
             VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
                 Text(value)
-                    .font(HelmTypography.statSmall)
-                    .foregroundStyle(HelmColor.textPrimary)
+                    .helmType(.bigNumber, color: HelmColor.textPrimary)
                     .helmNumericRoll(value: value)
                 if let detail {
                     Text(detail)
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.textTertiary)
+                        .helmType(.body, color: HelmColor.textTertiary)
                 }
             }
         }

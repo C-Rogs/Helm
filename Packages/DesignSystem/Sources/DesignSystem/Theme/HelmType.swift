@@ -10,21 +10,25 @@ public enum HelmType {
     case monoTag
 
     public var font: Font {
+        resolvedFont(prefersSystemFonts: HelmFontPreferences.prefersSystemFonts)
+    }
+
+    public func resolvedFont(prefersSystemFonts: Bool) -> Font {
         switch self {
         case .heroNumber:
-            HelmFont.mono(size: 64, weight: .bold)
+            HelmFont.mono(size: 64, weight: .bold, prefersSystemFonts: prefersSystemFonts)
         case .bigNumber:
-            HelmFont.mono(size: 26, weight: .bold)
+            HelmFont.mono(size: 26, weight: .bold, prefersSystemFonts: prefersSystemFonts)
         case .number:
-            HelmFont.mono(size: 16, weight: .semibold)
+            HelmFont.mono(size: 16, weight: .semibold, prefersSystemFonts: prefersSystemFonts)
         case .title:
-            HelmFont.grotesk(size: 22, weight: .semibold)
+            HelmFont.grotesk(size: 22, weight: .semibold, prefersSystemFonts: prefersSystemFonts)
         case .label:
-            HelmFont.grotesk(size: 17, weight: .semibold)
+            HelmFont.grotesk(size: 17, weight: .semibold, prefersSystemFonts: prefersSystemFonts)
         case .body:
-            HelmFont.grotesk(size: 13.5, weight: .regular)
+            HelmFont.grotesk(size: 13.5, weight: .regular, prefersSystemFonts: prefersSystemFonts)
         case .monoTag:
-            HelmFont.mono(size: 10.5, weight: .semibold)
+            HelmFont.mono(size: 10.5, weight: .semibold, prefersSystemFonts: prefersSystemFonts)
         }
     }
 
@@ -90,16 +94,25 @@ public enum HelmFont {
         }
     }
 
-    public static func grotesk(size: CGFloat, weight: GroteskWeight = .regular) -> Font {
-        if HelmFontPreferences.prefersSystemFonts {
+    public static func grotesk(
+        size: CGFloat,
+        weight: GroteskWeight = .regular,
+        prefersSystemFonts: Bool = HelmFontPreferences.prefersSystemFonts
+    ) -> Font {
+        if prefersSystemFonts {
             return .system(size: size, weight: weight.systemWeight)
         }
         return .custom(weight.postScriptName, size: size)
     }
 
-    public static func mono(size: CGFloat, weight: MonoWeight = .semibold) -> Font {
-        if HelmFontPreferences.prefersSystemFonts {
-            return .system(size: size, weight: weight.systemWeight, design: .monospaced).monospacedDigit()
+    public static func mono(
+        size: CGFloat,
+        weight: MonoWeight = .semibold,
+        prefersSystemFonts: Bool = HelmFontPreferences.prefersSystemFonts
+    ) -> Font {
+        if prefersSystemFonts {
+            // System default design + tabular digits (not JetBrains / SF Mono).
+            return .system(size: size, weight: weight.systemWeight).monospacedDigit()
         }
         return .custom(weight.postScriptName, size: size).monospacedDigit()
     }
@@ -122,6 +135,12 @@ public extension View {
     func helmType(_ style: HelmType, color: Color = HelmColor.fg) -> some View {
         modifier(HelmTypeModifier(style: style, color: color))
     }
+
+    /// Font only (no color / tracking / uppercase). Prefer over `.font(HelmTypography.*)` so
+    /// System font preference from the environment is observed and invalidates the view.
+    func helmFont(_ style: HelmType) -> some View {
+        modifier(HelmFontOnlyModifier(style: style))
+    }
 }
 
 private struct HelmTypeModifier: ViewModifier {
@@ -130,11 +149,27 @@ private struct HelmTypeModifier: ViewModifier {
     @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
 
     func body(content: Content) -> some View {
-        let _ = HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
-        content
-            .font(style.font)
+        HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
+        return content
+            .font(style.resolvedFont(prefersSystemFonts: prefersSystemFonts))
             .foregroundStyle(color)
-            .tracking(style.tracking ?? 0)
+            .tracking(trackingValue)
             .textCase(style.isUppercase ? .uppercase : nil)
+    }
+
+    private var trackingValue: CGFloat {
+        if prefersSystemFonts { return 0 }
+        return style.tracking ?? 0
+    }
+}
+
+private struct HelmFontOnlyModifier: ViewModifier {
+    let style: HelmType
+    @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
+
+    func body(content: Content) -> some View {
+        HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
+        return content
+            .font(style.resolvedFont(prefersSystemFonts: prefersSystemFonts))
     }
 }

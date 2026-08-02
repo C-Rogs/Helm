@@ -58,7 +58,7 @@ struct SessionHeartRateChartView: View {
                 AxisValueLabel {
                     if let seconds = value.as(Int.self) {
                         Text(formatOffset(seconds))
-                            .font(HelmChartStyle.axisLabelFont)
+                            .helmFont(.monoTag)
                             .foregroundStyle(HelmChartStyle.axisLabelColor)
                     }
                 }

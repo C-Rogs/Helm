@@ -13,7 +13,7 @@ struct WorkoutImportView: View {
         NavigationStack {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 Text("Paste a workout plan from Gemini or another coach. Helm pre-fills exercises, sets, and targets so you can log the session in the gym.")
-                    .font(HelmTypography.callout)
+                    .helmFont(.body)
                     .foregroundStyle(HelmColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
@@ -22,10 +22,10 @@ struct WorkoutImportView: View {
                 } label: {
                     HStack(spacing: HelmSpacing.xs) {
                         Text("Supported formats")
-                            .font(HelmTypography.caption.weight(.semibold))
+                            .helmFont(.label)
                         Spacer(minLength: 0)
                         Image(systemName: isShowingFormatGuide ? "chevron.up" : "chevron.down")
-                            .font(HelmTypography.caption.weight(.semibold))
+                            .helmFont(.label)
                     }
                     .foregroundStyle(HelmColor.textSecondary)
                 }
@@ -36,7 +36,7 @@ struct WorkoutImportView: View {
                 }
 
                 TextEditor(text: $controller.pasteText)
-                    .font(HelmTypography.body.monospaced())
+                    .helmFont(.number)
                     .frame(minHeight: 220)
                     .padding(HelmSpacing.sm)
                     .background(HelmColor.surface)
@@ -44,7 +44,7 @@ struct WorkoutImportView: View {
 
                 if let errorMessage = controller.errorMessage {
                     Text(errorMessage)
-                        .font(HelmTypography.caption)
+                        .helmFont(.body)
                         .foregroundStyle(HelmColor.destructive)
                 }
 
@@ -92,26 +92,26 @@ struct WorkoutImportView: View {
     private var formatGuide: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             Text("Planner checklist")
-                .font(HelmTypography.caption.weight(.semibold))
+                .helmFont(.label)
                 .foregroundStyle(HelmColor.textPrimary)
             Text("[ ] exercise lines with • Sets, • Target Weight, • Intensity, and • Rest bullets. Weight and rep ranges import as midpoints.")
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .foregroundStyle(HelmColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Hevy session log")
-                .font(HelmTypography.caption.weight(.semibold))
+                .helmFont(.label)
                 .foregroundStyle(HelmColor.textPrimary)
             Text("Exercise title, then set lines like Set 1: 20 kg x 8 @ 8 RPE, or one compressed line: Bench Press: 3 x 8 @ 80 kg.")
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .foregroundStyle(HelmColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text("Gemini export tip")
-                .font(HelmTypography.caption.weight(.semibold))
+                .helmFont(.label)
                 .foregroundStyle(HelmColor.textPrimary)
             Text("Ask for a workout plan with concrete set counts and target weights. Checklist or flat log both work. Example: Dumbbell Shoulder Press: 3 x 8 @ 20 kg.")
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .foregroundStyle(HelmColor.textSecondary)
                 .fixedSize(horizontal: false, vertical: true)
         }

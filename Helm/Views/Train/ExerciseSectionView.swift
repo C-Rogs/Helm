@@ -80,7 +80,7 @@ struct ExerciseSectionView: View {
                                     PrescriptionRow(label: displayName, target: targetSummary)
                                 } else {
                                     Text(displayName)
-                                        .font(HelmTypography.headline)
+                                        .helmFont(.label)
                                         .foregroundStyle(HelmColor.textPrimary)
                                         .frame(maxWidth: .infinity, alignment: .leading)
                                 }

@@ -116,10 +116,10 @@ struct WorkoutSessionDetailView: View {
         return Card {
             VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                 Text(draft.title ?? "Workout")
-                    .font(HelmTypography.body)
+                    .helmFont(.body)
                     .foregroundStyle(HelmColor.textPrimary)
                 Text(draft.startedAt, style: .date)
-                    .font(HelmTypography.caption)
+                    .helmFont(.body)
                     .foregroundStyle(HelmColor.textSecondary)
                 HStack(spacing: HelmSpacing.md) {
                     Label {
@@ -139,7 +139,7 @@ struct WorkoutSessionDetailView: View {
                         Image(systemName: "scalemass")
                     }
                 }
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .foregroundStyle(HelmColor.textSecondary)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -180,7 +180,7 @@ private struct EditableSetRow: View {
     var body: some View {
         HStack {
             Text("Set \(set.setIndex + 1)")
-                .font(HelmTypography.caption)
+                .helmFont(.body)
                 .foregroundStyle(HelmColor.textSecondary)
                 .frame(width: 48, alignment: .leading)
 

@@ -37,20 +37,12 @@ final class RestTimerSoundPlayer {
     }
 
     private func playBundledBell(volume: Float) {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true, options: [])
-        } catch {
-            logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")
-        }
+        activatePlaybackSession()
 
-        guard let url = Bundle.main.url(
-            forResource: Self.resourceName,
-            withExtension: Self.resourceExtension
-        ) else {
-            logger.error("Rest bell sound missing from bundle")
-            AudioServicesPlaySystemSound(1_007)
+        guard let url = Self.bundledBellURL() else {
+            logger.error("Rest bell sound missing from bundle (checked root and Sounds/)")
+            // Distinct from chime (1007): lock-sound / "correct" tone.
+            playSystemSound(1_052)
             return
         }
 
@@ -62,11 +54,27 @@ final class RestTimerSoundPlayer {
             player.play()
         } catch {
             logger.error("Rest bell play failed: \(error.localizedDescription, privacy: .public)")
-            AudioServicesPlaySystemSound(1_007)
+            playSystemSound(1_052)
         }
     }
 
-    private func playSystemSound(_ soundID: SystemSoundID) {
+    /// Bundle root (notifications + Copy Resources) or `Sounds/` folder reference.
+    static func bundledBellURL() -> URL? {
+        let bundle = Bundle.main
+        if let url = bundle.url(forResource: resourceName, withExtension: resourceExtension) {
+            return url
+        }
+        if let url = bundle.url(
+            forResource: resourceName,
+            withExtension: resourceExtension,
+            subdirectory: "Sounds"
+        ) {
+            return url
+        }
+        return nil
+    }
+
+    private func activatePlaybackSession() {
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
@@ -74,6 +82,10 @@ final class RestTimerSoundPlayer {
         } catch {
             logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")
         }
+    }
+
+    private func playSystemSound(_ soundID: SystemSoundID) {
+        activatePlaybackSession()
         AudioServicesPlaySystemSound(soundID)
     }
 }

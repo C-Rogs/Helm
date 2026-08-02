@@ -16,23 +16,23 @@ struct WorkoutImportPreviewView: View {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
                     VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                         Text("Workout title")
-                            .font(HelmTypography.caption)
+                            .helmFont(.body)
                             .foregroundStyle(HelmColor.textSecondary)
                         TextField("Workout title", text: $controller.workoutTitle)
-                            .font(HelmTypography.body)
+                            .helmFont(.body)
                             .padding(HelmSpacing.sm)
                             .background(HelmColor.surface)
                             .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
                     }
 
                     Toggle("Save as template", isOn: $controller.saveAsTemplate)
-                        .font(HelmTypography.body)
+                        .helmFont(.body)
                         .foregroundStyle(HelmColor.textPrimary)
                         .tint(HelmColor.accent)
 
                     if let skippedCount = controller.parsedWorkout?.skippedLines.count, skippedCount > 0 {
                         Text("\(skippedCount) line(s) could not be parsed and were skipped.")
-                            .font(HelmTypography.caption)
+                            .helmFont(.body)
                             .foregroundStyle(HelmColor.warning)
                     }
 
@@ -51,7 +51,7 @@ struct WorkoutImportPreviewView: View {
 
                     if let errorMessage = controller.errorMessage {
                         Text(errorMessage)
-                            .font(HelmTypography.caption)
+                            .helmFont(.body)
                             .foregroundStyle(HelmColor.destructive)
                     }
 
@@ -158,7 +158,7 @@ struct WorkoutImportPreviewView: View {
 
     private func statusBadge(label: String, color: Color) -> some View {
         Text(label)
-            .font(HelmTypography.caption)
+            .helmFont(.body)
             .foregroundStyle(color)
             .padding(.horizontal, HelmSpacing.xs)
             .padding(.vertical, HelmSpacing.xxs)

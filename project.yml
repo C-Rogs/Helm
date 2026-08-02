@@ -49,6 +49,8 @@ targets:
       - path: Helm/Resources/Sounds
         type: folder
         buildPhase: resources
+      - path: Helm/Resources/rest_bell.caf
+        buildPhase: resources
       - path: HelmIntents
       - path: Shared/WatchSync
         name: WatchSync

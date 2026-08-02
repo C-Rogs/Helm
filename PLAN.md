@@ -1287,6 +1287,13 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 - **Scope:** `HelmTypography` computed fonts; `HelmNumpad` UIFont respects `HelmFontPreferences`.
 - **Acceptance:** Build green.
 
+#### F-DT9.27 LA outline, boxing bell, system font follow-through
+
+- **Depends on:** F-DT9.24, F-DT9.25, F-DT9.26
+- **Goal:** Lock-screen Live Activity has no blue stroke (Island tint stays); boxing bell plays Signal RestBell caf (not chime fallback); System font applies to Train/history/dashboard via environment-driven `helmFont`/`helmType`.
+- **Scope:** Widget lock-screen overlay removal; `rest_bell.caf` path + Signal asset; `HelmType.resolvedFont`, buttons/charts/numpad; Train `HelmTypography` → `helmFont`.
+- **Acceptance:** Build green; bell URL resolves in unit-checkable helper or log-free play path.
+
 ### DT9 device gate (after all F-DT9.#)
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.

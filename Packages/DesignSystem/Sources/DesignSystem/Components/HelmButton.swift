@@ -5,7 +5,7 @@ public struct HelmPrimaryButtonStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(HelmTypography.headline)
+            .helmFont(.label)
             .foregroundStyle(HelmColor.buttonPrimaryForeground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.sm)
@@ -22,7 +22,7 @@ public struct HelmSecondaryButtonStyle: ButtonStyle {
 
     public func makeBody(configuration: Configuration) -> some View {
         configuration.label
-            .font(HelmTypography.headline)
+            .helmFont(.label)
             .foregroundStyle(HelmColor.buttonSecondaryForeground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.sm)

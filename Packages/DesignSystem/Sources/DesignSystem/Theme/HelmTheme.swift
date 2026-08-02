@@ -207,7 +207,10 @@ private struct HelmThemeContainer<Content: View>: View {
             .preferredColorScheme(preferredScheme)
             .tint(palette.accent)
             .background(palette.canvas)
-            .onAppear { coordinator.update(colorScheme: colorScheme) }
+            .onAppear {
+                HelmFontPreferences.prefersSystemFonts = coordinator.prefersSystemFonts
+                coordinator.update(colorScheme: colorScheme)
+            }
             .onChange(of: colorScheme) { _, newValue in
                 coordinator.update(colorScheme: newValue)
             }
@@ -216,6 +219,9 @@ private struct HelmThemeContainer<Content: View>: View {
             }
             .onChange(of: coordinator.skin) { _, _ in
                 coordinator.update(colorScheme: colorScheme)
+            }
+            .onChange(of: coordinator.prefersSystemFonts) { _, newValue in
+                HelmFontPreferences.prefersSystemFonts = newValue
             }
     }
 }

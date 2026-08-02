@@ -111,11 +111,6 @@ struct WorkoutLiveActivityWidget: Widget {
         }
         .padding(.horizontal, LiveActivityMetrics.horizontalPadding)
         .padding(.vertical, LiveActivityMetrics.verticalPadding)
-        .overlay {
-            RoundedRectangle(cornerRadius: 16)
-                .strokeBorder(LiveActivityMetrics.signalBlue.opacity(0.85), lineWidth: 1.5)
-                .padding(1)
-        }
         .activityBackgroundTint(Color.black)
         .activitySystemActionForegroundColor(.white)
     }
