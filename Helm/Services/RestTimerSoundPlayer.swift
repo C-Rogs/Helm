@@ -2,7 +2,7 @@ import AVFoundation
 import Foundation
 import OSLog
 
-/// Plays the boxing-ring rest-end bell. Uses ambient session so Silent switch is respected; headphones work.
+/// Plays the boxing-ring rest-end bell through headphones even when Silent switch is on.
 @MainActor
 final class RestTimerSoundPlayer {
     static let shared = RestTimerSoundPlayer()
@@ -17,7 +17,7 @@ final class RestTimerSoundPlayer {
         guard enabled else { return }
         do {
             let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.ambient, mode: .default, options: [])
+            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
             try session.setActive(true, options: [])
         } catch {
             logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")

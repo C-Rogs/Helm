@@ -43,6 +43,11 @@ public enum HelmType {
     }
 }
 
+public enum HelmFontPreferences {
+    /// Set by `HelmThemeCoordinator`; read by `HelmFont` resolvers.
+    nonisolated(unsafe) public static var prefersSystemFonts = false
+}
+
 public enum HelmFont {
     public enum GroteskWeight {
         case regular
@@ -54,6 +59,14 @@ public enum HelmFont {
             case .regular: "SpaceGrotesk-Regular"
             case .medium: "SpaceGrotesk-Medium"
             case .semibold: "SpaceGrotesk-Bold"
+            }
+        }
+
+        var systemWeight: Font.Weight {
+            switch self {
+            case .regular: .regular
+            case .medium: .medium
+            case .semibold: .semibold
             }
         }
     }
@@ -68,14 +81,27 @@ public enum HelmFont {
             case .bold: "JetBrainsMono-Bold"
             }
         }
+
+        var systemWeight: Font.Weight {
+            switch self {
+            case .semibold: .semibold
+            case .bold: .bold
+            }
+        }
     }
 
     public static func grotesk(size: CGFloat, weight: GroteskWeight = .regular) -> Font {
-        .custom(weight.postScriptName, size: size)
+        if HelmFontPreferences.prefersSystemFonts {
+            return .system(size: size, weight: weight.systemWeight)
+        }
+        return .custom(weight.postScriptName, size: size)
     }
 
     public static func mono(size: CGFloat, weight: MonoWeight = .semibold) -> Font {
-        .custom(weight.postScriptName, size: size).monospacedDigit()
+        if HelmFontPreferences.prefersSystemFonts {
+            return .system(size: size, weight: weight.systemWeight, design: .monospaced).monospacedDigit()
+        }
+        return .custom(weight.postScriptName, size: size).monospacedDigit()
     }
 }
 
@@ -101,8 +127,10 @@ public extension View {
 private struct HelmTypeModifier: ViewModifier {
     let style: HelmType
     let color: Color
+    @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
 
     func body(content: Content) -> some View {
+        let _ = HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
         content
             .font(style.font)
             .foregroundStyle(color)

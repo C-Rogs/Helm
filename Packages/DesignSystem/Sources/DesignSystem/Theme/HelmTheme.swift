@@ -56,6 +56,14 @@ public final class HelmThemeCoordinator {
         didSet { persist() }
     }
 
+    /// When true, use OS system fonts instead of Space Grotesk / JetBrains Mono.
+    public var prefersSystemFonts: Bool {
+        didSet {
+            HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
+            persist()
+        }
+    }
+
     public private(set) var activePalette: HelmPalette = .dark
 
     private let defaults: UserDefaults
@@ -68,7 +76,7 @@ public final class HelmThemeCoordinator {
         if let storedSkin, storedSkin.isSelectable {
             skin = storedSkin
         } else {
-            skin = .instrument
+            skin = .signal
         }
         if defaults.object(forKey: Keys.hapticsEnabled) == nil {
             hapticsEnabled = true
@@ -80,6 +88,12 @@ public final class HelmThemeCoordinator {
         } else {
             thresholdInsightHapticsEnabled = defaults.bool(forKey: Keys.thresholdInsightHapticsEnabled)
         }
+        if defaults.object(forKey: Keys.prefersSystemFonts) == nil {
+            prefersSystemFonts = false
+        } else {
+            prefersSystemFonts = defaults.bool(forKey: Keys.prefersSystemFonts)
+        }
+        HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
     }
 
     public func update(colorScheme: ColorScheme) {
@@ -93,6 +107,7 @@ public final class HelmThemeCoordinator {
         defaults.set(skin.rawValue, forKey: Keys.skin)
         defaults.set(hapticsEnabled, forKey: Keys.hapticsEnabled)
         defaults.set(thresholdInsightHapticsEnabled, forKey: Keys.thresholdInsightHapticsEnabled)
+        defaults.set(prefersSystemFonts, forKey: Keys.prefersSystemFonts)
     }
 
     private enum Keys {
@@ -100,6 +115,7 @@ public final class HelmThemeCoordinator {
         static let skin = "helm.skin"
         static let hapticsEnabled = "helm.hapticsEnabled"
         static let thresholdInsightHapticsEnabled = "helm.thresholdInsightHapticsEnabled"
+        static let prefersSystemFonts = "helm.prefersSystemFonts"
     }
 }
 
@@ -115,6 +131,10 @@ private struct HelmPaletteKey: EnvironmentKey {
     static let defaultValue = HelmPalette.dark
 }
 
+private struct HelmPrefersSystemFontsKey: EnvironmentKey {
+    static let defaultValue = false
+}
+
 public extension EnvironmentValues {
     var helmTheme: HelmTheme {
         get { self[HelmThemeKey.self] }
@@ -124,6 +144,11 @@ public extension EnvironmentValues {
     var helmPalette: HelmPalette {
         get { self[HelmPaletteKey.self] }
         set { self[HelmPaletteKey.self] = newValue }
+    }
+
+    var helmPrefersSystemFonts: Bool {
+        get { self[HelmPrefersSystemFontsKey.self] }
+        set { self[HelmPrefersSystemFontsKey.self] = newValue }
     }
 }
 
@@ -135,8 +160,26 @@ public extension View {
 
     /// Standard screen chrome behind navigation content.
     func helmScreenBackground() -> some View {
-        background(HelmColor.canvas)
+        modifier(HelmScreenBackgroundModifier())
+    }
+}
+
+private struct HelmScreenBackgroundModifier: ViewModifier {
+    @Environment(\.helmSkin) private var skin
+    @Environment(\.helmPalette) private var palette
+
+    func body(content: Content) -> some View {
+        content
             .scrollContentBackground(.hidden)
+            .background {
+                ZStack {
+                    palette.canvas
+                    if skin == .signal {
+                        SignalGridBackground()
+                    }
+                }
+                .ignoresSafeArea()
+            }
     }
 }
 
@@ -159,6 +202,7 @@ private struct HelmThemeContainer<Content: View>: View {
             .environment(\.helmTheme, HelmTheme())
             .environment(\.helmPalette, palette)
             .environment(\.helmSkin, coordinator.skin)
+            .environment(\.helmPrefersSystemFonts, coordinator.prefersSystemFonts)
             .environment(\.helmReduceMotion, reduceMotion)
             .preferredColorScheme(preferredScheme)
             .tint(palette.accent)

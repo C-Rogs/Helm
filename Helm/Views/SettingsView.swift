@@ -25,8 +25,17 @@ struct SettingsView: View {
                             Text(skin.label).tag(skin)
                         }
                     }
-                    .pickerStyle(.segmented)
+                    .pickerStyle(.menu)
                     .onChange(of: coordinator.skin) { _, _ in
+                        HapticEngine.shared.play(.selection)
+                    }
+
+                    Picker("Font", selection: $coordinator.prefersSystemFonts) {
+                        Text("Helm").tag(false)
+                        Text("System").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .onChange(of: coordinator.prefersSystemFonts) { _, _ in
                         HapticEngine.shared.play(.selection)
                     }
 
@@ -34,7 +43,7 @@ struct SettingsView: View {
                         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                             Text("Layout preview")
                                 .helmType(.label)
-                            Text("Cards switch between instrument panels and ruled data blocks.")
+                            Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
                                 .helmType(.body, color: HelmColor.fgMuted)
                         }
                     }
@@ -44,11 +53,16 @@ struct SettingsView: View {
 
                 Section("Feedback") {
                     Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
+                        .helmListRowChrome()
                     Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
+                        .helmListRowChrome()
                     Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
+                        .helmListRowChrome()
                     Toggle("Rest timer sound", isOn: $trainPreferences.restTimerSoundEnabled)
-                    Text("Boxing-ring bell when rest ends. Honours Silent switch; plays over headphones.")
+                        .helmListRowChrome()
+                    Text("Boxing-ring bell when rest ends. Plays through headphones; ignores Silent switch when enabled.")
                         .helmType(.body, color: HelmColor.fgMuted)
+                        .helmListRowChrome()
                 }
 
                 Section("Setup") {
@@ -138,11 +152,18 @@ struct SettingsView: View {
                 }
             }
             .listStyle(.plain)
-            .listRowBackground(HelmColor.surface)
+            .scrollContentBackground(.hidden)
+            .listRowBackground(HelmListRowBackground())
             .navigationTitle("Settings")
             .helmScreenBackground()
         }
     }
+}
+
+#Preview("Settings signal") {
+    SettingsView()
+        .helmTheme()
+        .environment(\.helmSkin, .signal)
 }
 
 #Preview("Settings instrument") {
