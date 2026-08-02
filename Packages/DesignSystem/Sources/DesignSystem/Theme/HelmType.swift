@@ -107,15 +107,15 @@ public enum HelmFont {
 
 /// Backward-compatible typography aliases used by M0.4 screens.
 public enum HelmTypography {
-    public static let displayLarge = HelmType.heroNumber.font
-    public static let title = HelmType.title.font
-    public static let headline = HelmType.label.font
-    public static let body = HelmType.body.font
-    public static let callout = HelmFont.grotesk(size: 16, weight: .regular)
-    public static let caption = HelmFont.grotesk(size: 13, weight: .regular)
-    public static let stat = HelmType.bigNumber.font
-    public static let statSmall = HelmFont.mono(size: 20, weight: .semibold)
-    public static let monoTag = HelmType.monoTag.font
+    public static var displayLarge: Font { HelmType.heroNumber.font }
+    public static var title: Font { HelmType.title.font }
+    public static var headline: Font { HelmType.label.font }
+    public static var body: Font { HelmType.body.font }
+    public static var callout: Font { HelmFont.grotesk(size: 16, weight: .regular) }
+    public static var caption: Font { HelmFont.grotesk(size: 13, weight: .regular) }
+    public static var stat: Font { HelmType.bigNumber.font }
+    public static var statSmall: Font { HelmFont.mono(size: 20, weight: .semibold) }
+    public static var monoTag: Font { HelmType.monoTag.font }
 }
 
 public extension View {

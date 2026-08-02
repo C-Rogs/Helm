@@ -136,11 +136,19 @@ public final class HelmNumpadView: UIView {
         let button = UIButton(type: .system)
         button.setTitle(title, for: .normal)
         if prominent {
-            button.titleLabel?.font = UIFont(name: "SpaceGrotesk-Bold", size: 17)
-                ?? .systemFont(ofSize: 17, weight: .semibold)
+            if HelmFontPreferences.prefersSystemFonts {
+                button.titleLabel?.font = .systemFont(ofSize: 17, weight: .semibold)
+            } else {
+                button.titleLabel?.font = UIFont(name: "SpaceGrotesk-Bold", size: 17)
+                    ?? .systemFont(ofSize: 17, weight: .semibold)
+            }
         } else {
-            button.titleLabel?.font = UIFont(name: "JetBrainsMono-SemiBold", size: 24)
-                ?? .monospacedSystemFont(ofSize: 24, weight: .semibold)
+            if HelmFontPreferences.prefersSystemFonts {
+                button.titleLabel?.font = .monospacedSystemFont(ofSize: 24, weight: .semibold)
+            } else {
+                button.titleLabel?.font = UIFont(name: "JetBrainsMono-SemiBold", size: 24)
+                    ?? .monospacedSystemFont(ofSize: 24, weight: .semibold)
+            }
         }
         button.setTitleColor(
             prominent ? UIColor(HelmColor.buttonPrimaryForeground) : UIColor(HelmColor.fg),

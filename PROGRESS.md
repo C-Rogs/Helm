@@ -161,7 +161,8 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.22 Numpad field-switch + slide dismiss | done | 2026-08-02 | 4da18ee | Drop dismiss overlay; animate numpad open/dismiss. |
 | F-DT9.23 Empty nav + content session subheader | done | 2026-08-02 | c679e51 | Empty active title; elapsed/sets/HR as list subheader. |
 | F-DT9.24 Hevy rest chrome + sound picker | done | 2026-08-02 | 11ca952 | Hevy rest bar; fog; sound ID + volume picker with preview. |
-| F-DT9.25 Live Activity restEndsAt + Signal blue | done | 2026-08-02 | 0f85ca9 | Live DI countdown via restEndsAt; Signal-blue keyline tint. |
+| F-DT9.25 Live Activity restEndsAt + Signal blue | done | 2026-08-02 | 85c850e | Live DI countdown via restEndsAt; Signal-blue keyline tint. |
+| F-DT9.26 System font coverage | done | 2026-08-02 | 17863ef | HelmTypography computed + HelmNumpad UIFont respect system fonts. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |
