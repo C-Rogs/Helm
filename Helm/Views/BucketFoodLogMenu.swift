@@ -8,6 +8,7 @@ enum BucketFoodLogAction {
     case photo
     case quickAdd
     case alcohol
+    case savedMeals
 }
 
 struct BucketFoodLogMenu: View {
@@ -30,6 +31,9 @@ struct BucketFoodLogMenu: View {
             }
             Button("Quick add") {
                 onAction(.quickAdd)
+            }
+            Button("Saved meals") {
+                onAction(.savedMeals)
             }
             Button("Alcohol") {
                 onAction(.alcohol)

@@ -143,7 +143,7 @@ struct NutritionView: View {
             } label: {
                 Image(systemName: "square.stack")
             }
-            .accessibilityLabel("Meal templates")
+            .accessibilityLabel("Saved meals")
         }
         ToolbarItem(placement: .topBarTrailing) {
             Button {
@@ -160,7 +160,7 @@ struct NutritionView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
-                Button("Meal templates") {
+                Button("Saved meals") {
                     openTemplates()
                 }
                 Button("Copy yesterday's meals") {
@@ -263,15 +263,7 @@ struct NutritionView: View {
     @ViewBuilder
     private func mealBucketsSection(snapshot: NutritionDaySnapshot) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            HStack {
-                HelmSectionEyebrow("MEALS", showsArcMark: true)
-                Spacer()
-                Button("Templates") {
-                    openTemplates()
-                }
-                .buttonStyle(.helmSecondary)
-                .accessibilityLabel("Meal templates")
-            }
+            HelmSectionEyebrow("MEALS", showsArcMark: true)
 
             ForEach(MealBucket.allCases, id: \.self) { bucket in
                 NutritionMealBucketSection(
@@ -313,6 +305,8 @@ struct NutritionView: View {
             photoMealController.preferredBucket = bucket
             photoMealController.prepareForNewPhotoSelection()
             showsPhotoOptions = true
+        case .savedMeals:
+            openTemplates()
         }
     }
 

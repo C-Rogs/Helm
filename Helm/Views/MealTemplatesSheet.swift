@@ -13,9 +13,9 @@ struct MealTemplatesSheet: View {
             Group {
                 if templates.isEmpty {
                     ContentUnavailableView(
-                        "No templates",
+                        "No saved meals",
                         systemImage: "tray",
-                        description: Text("Save a meal bucket as a template to log it in one tap.")
+                        description: Text("Save a meal bucket as a template, then log it from + on any meal.")
                     )
                 } else {
                     List {
@@ -25,7 +25,8 @@ struct MealTemplatesSheet: View {
                             } label: {
                                 templateRow(template)
                             }
-                            .buttonStyle(.helmPressable)
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
                             .listRowBackground(HelmColor.surface)
                             .swipeActions(edge: .trailing, allowsFullSwipe: true) {
                                 Button(role: .destructive) {
@@ -34,6 +35,7 @@ struct MealTemplatesSheet: View {
                                     Label("Delete", systemImage: "trash")
                                 }
                             }
+                            .accessibilityLabel("Log \(template.name)")
                         }
                     }
                     .listStyle(.plain)
@@ -41,7 +43,7 @@ struct MealTemplatesSheet: View {
                 }
             }
             .helmScreenBackground()
-            .navigationTitle("Meal templates")
+            .navigationTitle("Saved meals")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
@@ -52,18 +54,23 @@ struct MealTemplatesSheet: View {
     }
 
     private func templateRow(_ template: MealTemplate) -> some View {
-        HStack(alignment: .top, spacing: HelmSpacing.sm) {
+        HStack(alignment: .center, spacing: HelmSpacing.sm) {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text(template.name)
                     .helmType(.label)
-                Text("\(template.bucket.displayName) · \(template.lineItems.count) items")
+                    .foregroundStyle(HelmColor.fg)
+                Text("\(template.bucket.displayName) · \(template.lineItems.count) items · \(templateTotalKcal(template)) kcal")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
-            Spacer()
-            Text("\(templateTotalKcal(template)) kcal")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+            Spacer(minLength: HelmSpacing.sm)
+            Text("Log")
+                .helmType(.label, color: HelmColor.accent)
+                .padding(.horizontal, HelmSpacing.sm)
+                .padding(.vertical, HelmSpacing.xs)
+                .background(HelmColor.gaugeTrack.opacity(0.35), in: Capsule())
         }
-        .padding(.vertical, HelmSpacing.xxs)
+        .padding(.vertical, HelmSpacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func templateTotalKcal(_ template: MealTemplate) -> Int {
@@ -103,7 +110,7 @@ struct LogMealTemplateConfirmSheet: View {
             }
             .padding(HelmSpacing.md)
             .helmScreenBackground()
-            .navigationTitle("Log template")
+            .navigationTitle("Log saved meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -111,7 +118,7 @@ struct LogMealTemplateConfirmSheet: View {
                 }
             }
             .safeAreaInset(edge: .bottom) {
-                Button("Log template") {
+                Button("Log meal") {
                     onConfirm()
                 }
                 .buttonStyle(.helmPrimary)

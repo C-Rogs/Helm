@@ -37,7 +37,7 @@ struct NutritionMealBucketSection: View {
                                 Button("Copy entry", action: onCopyEntry)
                             }
                             if let onSaveTemplate {
-                                Button("Save as template", action: onSaveTemplate)
+                                Button("Save meal", action: onSaveTemplate)
                             }
                         } label: {
                             Image(systemName: "ellipsis")
