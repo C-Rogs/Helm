@@ -13,6 +13,16 @@ public enum FoodLogPayloadParser {
         }
         return payload
     }
+
+    /// True when a food_log.v1 block is present but cannot be decoded into a payload.
+    public static func hasMalformedBlock(in text: String) -> Bool {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .foodLogV1),
+              let data = block.data(using: .utf8)
+        else {
+            return false
+        }
+        return (try? JSONDecoder().decode(FoodLogPayload.self, from: data)) == nil
+    }
 }
 
 public enum FoodLogCommandPreview {
@@ -87,9 +97,20 @@ public struct FoodLogCommandApplier: Sendable {
             fatG: payload.fatG ?? 0,
             label: payload.description,
             bucket: bucket,
-            loggedAt: now,
+            loggedAt: loggedAt(for: helmDay, now: now),
             helmDay: helmDay
         )
+    }
+
+    private func loggedAt(for helmDay: HelmDay, now: Date) -> Date {
+        let today = HelmDay.day(for: now, calendar: calendar)
+        if helmDay == today {
+            return now
+        }
+        if let start = helmDay.startInstant(calendar: calendar) {
+            return start.addingTimeInterval(3_600)
+        }
+        return now
     }
 
     private func applyEdit(_ payload: FoodLogPayload, now: Date) async throws {
@@ -116,6 +137,18 @@ public struct FoodLogCommandApplier: Sendable {
 
     private func resolvedHelmDay(_ raw: String?, now: Date) -> HelmDay {
         if let raw,
+           let parsed = HelmDayParser.parse(raw) {
+            return parsed
+        }
+        return HelmDay.day(for: now, calendar: calendar)
+    }
+
+    public static func resolvedHelmDay(
+        from payload: FoodLogPayload,
+        now: Date,
+        calendar: Calendar = .current
+    ) -> HelmDay {
+        if let raw = payload.helmDay,
            let parsed = HelmDayParser.parse(raw) {
             return parsed
         }

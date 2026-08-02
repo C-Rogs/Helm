@@ -258,17 +258,41 @@ public struct ManualMealService: Sendable {
             mealSource: HelmHealthKitMetadata.mealSourceValue(for: meal.source)
         )
 
-        do {
-            let saved = try await writer.saveMeal(request)
-            try localStore?.recordSavedMeal(
+        var saved: SavedMealSamples?
+        if let localStore {
+            do {
+                saved = try await writer.saveMeal(request)
+            } catch {
+                manualMealLog.error(
+                    "Manual meal HealthKit write failed: \(String(describing: type(of: error)), privacy: .public)"
+                )
+                Task {
+                    await DiagnosticsLog.shared.capture(
+                        error: error,
+                        category: .nutritionKit,
+                        message: "Manual meal HealthKit write failed; saving locally only"
+                    )
+                }
+            }
+
+            let resolvedSaved = saved ?? SavedMealSamples.localOnly(mealID: meal.mealID)
+            try localStore.recordSavedMeal(
                 request: request,
-                saved: saved,
+                saved: resolvedSaved,
                 bucket: meal.bucket,
                 source: meal.source,
                 lineItems: meal.lineItems
             )
-            manualMealLog.debug("Manual meal saved mealID=\(saved.mealID, privacy: .public) source=\(meal.source.rawValue, privacy: .public)")
-            return saved
+            manualMealLog.debug(
+                "Manual meal saved mealID=\(resolvedSaved.mealID, privacy: .public) source=\(meal.source.rawValue, privacy: .public) hk=\(saved != nil, privacy: .public)"
+            )
+            return resolvedSaved
+        }
+
+        do {
+            let hkSaved = try await writer.saveMeal(request)
+            manualMealLog.debug("Manual meal saved mealID=\(hkSaved.mealID, privacy: .public) source=\(meal.source.rawValue, privacy: .public)")
+            return hkSaved
         } catch {
             manualMealLog.error("Manual meal write failed: \(String(describing: type(of: error)), privacy: .public)")
             Task {

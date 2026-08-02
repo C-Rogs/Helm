@@ -1219,6 +1219,13 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 - **Scope:** `NutritionView`, `NutritionDiaryHeader`, `NutritionMealBucketSection`, `NutritionDayMealsStore`, `CopyMealEntrySheet`, `MealRepeatService.copyBucket` target bucket, `HelmDay.calendarDay`.
 - **Acceptance:** Build green; `HelmDay.calendarDay` test; toolbar inside `NavigationStack`; copy entry sheet; templates button + MEALS row link.
 
+#### F-DT9.16 Coach food_log persist fix
+
+- **Depends on:** F-DT9.15
+- **Goal:** Coach food_log confirm persists to GRDB even when HealthKit write fails; past-day helmDay lands on correct diary day.
+- **Scope:** `ManualMealService.persist` local-first fallback, `FoodLogCommandApplier` loggedAt, `ChatController` refresh logged helmDay.
+- **Acceptance:** FoodLogCommand tests for HK failure + yesterday breakfast; build green.
+
 ### DT9 device gate (after all F-DT9.#)
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.

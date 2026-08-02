@@ -121,6 +121,17 @@ public struct SavedMealSamples: Sendable, Equatable {
         self.carbohydrate = carbohydrate
         self.fat = fat
     }
+
+    /// GRDB-only save when HealthKit write fails or is unavailable.
+    public static func localOnly(mealID: String) -> SavedMealSamples {
+        SavedMealSamples(
+            mealID: mealID,
+            energy: SavedMealSample(id: UUID(), sourceBundleID: nil),
+            protein: SavedMealSample(id: UUID(), sourceBundleID: nil),
+            carbohydrate: SavedMealSample(id: UUID(), sourceBundleID: nil),
+            fat: SavedMealSample(id: UUID(), sourceBundleID: nil)
+        )
+    }
 }
 
 public protocol MealHealthKitWriting: Sendable {

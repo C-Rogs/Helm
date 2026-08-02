@@ -12,6 +12,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     private(set) var authorizationRequested = false
     private(set) var savedMealIDs: [String] = []
     private(set) var deletedMealIDs: [String] = []
+    var mealSaveShouldFail = false
 
     func setAvailable(_ available: Bool) {
         lock.withLock { self.available = available }
@@ -105,6 +106,9 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
 
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
         lock.withLock {
+            if mealSaveShouldFail {
+                throw NSError(domain: "MockHealthKitStoreClient", code: 1)
+            }
             savedMealIDs.append(request.mealID)
             let bundleID = HealthKitIngest.defaultOwnBundleID
             return SavedMealSamples(

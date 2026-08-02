@@ -111,6 +111,7 @@ final class ChatController {
 
     func confirmChatAction() {
         guard let proposal = pendingChatAction, !isApplyingChatAction else { return }
+        lastTurnError = nil
         Task {
             await applyChatAction(proposal)
         }
@@ -118,6 +119,7 @@ final class ChatController {
 
     func dismissChatAction() {
         pendingChatAction = nil
+        lastTurnError = nil
     }
 
     private func applyChatAction(_ proposal: CoachChatActionProposal) async {
@@ -137,7 +139,13 @@ final class ChatController {
                     persistence: persistence
                 )
                 try await applier.apply(payload)
-                NutritionBootstrap.refreshNutrition()
+                let loggedHelmDay = FoodLogCommandApplier.resolvedHelmDay(
+                    from: payload,
+                    now: Date(),
+                    calendar: .current
+                )
+                NutritionBootstrap.lastViewedHelmDay = loggedHelmDay
+                NutritionBootstrap.refreshNutrition(for: loggedHelmDay)
                 HapticEngine.shared.play(.phaseChange)
                 HapticEngine.shared.play(.mealConfirmed)
             case let .workoutStart(payload):
@@ -290,6 +298,9 @@ final class ChatController {
             }
 
             pendingChatAction = pendingAction
+            if pendingAction == nil, FoodLogPayloadParser.hasMalformedBlock(in: assembled) {
+                lastTurnError = "Couldn't read that meal log. Ask again with calories."
+            }
 
             await logTurn(
                 status: "completed",

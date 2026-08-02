@@ -22,6 +22,16 @@ struct FoodLogCommandTests {
         #expect(payload?.caloriesKcal == 320)
     }
 
+    @Test("flags malformed food_log block when decode fails")
+    func flagsMalformedBlock() {
+        let text = """
+        Ready.
+        {"schemaVersion":"food_log.v1","reply":"ok","action":"log","caloriesKcal":{"bad":true}}
+        """
+        #expect(FoodLogPayloadParser.parse(from: text) == nil)
+        #expect(FoodLogPayloadParser.hasMalformedBlock(in: text))
+    }
+
     @Test("log action writes meal via ManualMealService")
     func logActionWritesMeal() async throws {
         let store = try PersistenceStore.inMemory()
@@ -109,5 +119,80 @@ struct FoodLogCommandTests {
         let preview = FoodLogCommandPreview.preview(for: payload)
         #expect(preview.title == "Log breakfast")
         #expect(preview.detail.contains("Oats"))
+    }
+
+    @Test("log action persists locally when HealthKit write fails")
+    func logActionPersistsWhenHealthKitFails() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        mockHK.mealSaveShouldFail = true
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Logged breakfast.",
+            action: .log,
+            description: "Example breakfast",
+            bucket: "breakfast",
+            caloriesKcal: 420,
+            proteinG: 25,
+            carbsG: 45,
+            fatG: 12,
+            helmDay: "2026-08-01"
+        )
+
+        try await applier.apply(payload, now: loggedAt)
+
+        let helmDay = HelmDay(year: 2026, month: 8, day: 1)
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].bucket == .breakfast)
+        #expect(meals[0].energy?.kilocalories == 420)
+        #expect(mockHK.savedMealIDs.isEmpty)
+    }
+
+    @Test("yesterday breakfast example macros lands on helmDay not today")
+    func yesterdayBreakfastUsesHelmDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+        let now = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 2, hour: 10))
+        )
+
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Logged example breakfast.",
+            action: .log,
+            description: "Example breakfast macros",
+            bucket: "breakfast",
+            caloriesKcal: 380,
+            proteinG: 22,
+            carbsG: 40,
+            fatG: 10,
+            helmDay: "2026-08-01"
+        )
+
+        try await applier.apply(payload, now: now)
+
+        let yesterday = HelmDay(year: 2026, month: 8, day: 1)
+        let today = HelmDay(year: 2026, month: 8, day: 2)
+        #expect(try store.nutrition.fetchMeals(for: yesterday).count == 1)
+        #expect(try store.nutrition.fetchMeals(for: today).isEmpty)
     }
 }
