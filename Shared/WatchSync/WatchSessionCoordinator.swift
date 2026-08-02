@@ -325,6 +325,8 @@ final class WatchSessionCoordinator: NSObject {
                 break
             case .restEnded:
                 break
+            case .completeSet:
+                break
             }
         case .watch:
             switch payload.messageKind {
@@ -346,6 +348,8 @@ final class WatchSessionCoordinator: NSObject {
                 companionTargetSummary = payload.companionTargetSummary
             case .restEnded:
                 playRestEndedHaptic()
+            case .completeSet:
+                break
             }
         }
     }

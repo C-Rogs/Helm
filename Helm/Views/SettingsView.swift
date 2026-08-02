@@ -69,13 +69,7 @@ struct SettingsView: View {
                     }
                     .helmListRowChrome()
                     .onChange(of: trainPreferences.restTimerSoundID) { _, newValue in
-                        HapticEngine.shared.play(.selection)
-                        RestTimerSoundPlayer.shared.play(
-                            soundID: newValue,
-                            volume: trainPreferences.restTimerVolume == .off
-                                ? .normal
-                                : trainPreferences.restTimerVolume
-                        )
+                        previewRestTimerSound(soundID: newValue)
                     }
 
                     Picker("Rest timer volume", selection: $trainPreferences.restTimerVolume) {
@@ -87,14 +81,18 @@ struct SettingsView: View {
                     .onChange(of: trainPreferences.restTimerVolume) { _, newValue in
                         HapticEngine.shared.play(.selection)
                         if newValue.isEnabled {
-                            RestTimerSoundPlayer.shared.play(
-                                soundID: trainPreferences.restTimerSoundID,
-                                volume: newValue
-                            )
+                            previewRestTimerSound(volume: newValue)
                         }
                     }
 
-                    Text("Plays on speaker and headphones when rest ends. Ignores Silent switch. Tap a sound to preview.")
+                    Button {
+                        previewRestTimerSound()
+                    } label: {
+                        Label("Preview sound", systemImage: "speaker.wave.2")
+                    }
+                    .helmListRowChrome()
+
+                    Text("Plays on speaker and headphones when rest ends. Ignores Silent switch. Use Preview to hear the current sound.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
                 }
@@ -191,6 +189,19 @@ struct SettingsView: View {
             .navigationTitle("Settings")
             .helmScreenBackground()
         }
+    }
+
+    private func previewRestTimerSound(
+        soundID: RestTimerSoundID? = nil,
+        volume: RestTimerVolumeLevel? = nil
+    ) {
+        HapticEngine.shared.play(.selection)
+        let resolvedVolume = volume ?? trainPreferences.restTimerVolume
+        let previewVolume: RestTimerVolumeLevel = resolvedVolume.isEnabled ? resolvedVolume : .normal
+        RestTimerSoundPlayer.shared.play(
+            soundID: soundID ?? trainPreferences.restTimerSoundID,
+            volume: previewVolume
+        )
     }
 }
 

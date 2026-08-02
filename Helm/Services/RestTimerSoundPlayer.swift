@@ -12,8 +12,13 @@ final class RestTimerSoundPlayer {
     static let resourceName = "rest_bell"
     static let resourceExtension = "caf"
 
-    private var player: AVAudioPlayer?
+    private var bellPlayer: AVAudioPlayer?
+    private var sessionConfigured = false
     private let logger = Logger(subsystem: "com.cameronro.helm", category: "Logger")
+
+    init() {
+        loadBellPlayer()
+    }
 
     func playRestBellIfEnabled(_ enabled: Bool) {
         guard enabled else { return }
@@ -37,24 +42,75 @@ final class RestTimerSoundPlayer {
     }
 
     private func playBundledBell(volume: Float) {
-        activatePlaybackSession()
+        configureSessionIfNeeded()
 
-        guard let url = Self.bundledBellURL() else {
-            logger.error("Rest bell sound missing from bundle (checked root and Sounds/)")
-            // Distinct from chime (1007): lock-sound / "correct" tone.
+        guard let player = bellPlayer else {
+            logger.error("Rest bell missing from bundle (checked root and Sounds/)")
             playSystemSound(1_052)
             return
         }
 
+        player.volume = volume
+        player.currentTime = 0
+        guard player.play() else {
+            logger.error("Rest bell play() returned false")
+            playSystemSound(1_052)
+            return
+        }
+        scheduleSessionDeactivation(after: player.duration)
+    }
+
+    private func loadBellPlayer() {
+        guard let url = Self.bundledBellURL() else {
+            logger.error("Rest bell URL missing from bundle (checked root and Sounds/)")
+            return
+        }
         do {
             let player = try AVAudioPlayer(contentsOf: url)
-            player.volume = volume
             player.prepareToPlay()
-            self.player = player
-            player.play()
+            bellPlayer = player
         } catch {
-            logger.error("Rest bell play failed: \(error.localizedDescription, privacy: .public)")
-            playSystemSound(1_052)
+            logger.error("Rest bell load failed: \(error.localizedDescription, privacy: .public)")
+        }
+    }
+
+    private func scheduleSessionDeactivation(after duration: TimeInterval) {
+        let delay = max(duration, 0.5) + 0.25
+        Task {
+            try? await Task.sleep(for: .seconds(delay))
+            deactivateSessionIfIdle()
+        }
+    }
+
+    private func deactivateSessionIfIdle() {
+        guard sessionConfigured else { return }
+        guard bellPlayer?.isPlaying != true else { return }
+        do {
+            try AVAudioSession.sharedInstance().setActive(
+                false,
+                options: .notifyOthersOnDeactivation
+            )
+            sessionConfigured = false
+        } catch {
+            logger.error(
+                "Rest timer audio session deactivate failed: \(error.localizedDescription, privacy: .public)"
+            )
+        }
+    }
+
+    private func configureSessionIfNeeded() {
+        guard !sessionConfigured else { return }
+        do {
+            let session = AVAudioSession.sharedInstance()
+            try session.setCategory(
+                .playback,
+                mode: .default,
+                options: [.mixWithOthers, .defaultToSpeaker]
+            )
+            try session.setActive(true)
+            sessionConfigured = true
+        } catch {
+            logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -74,18 +130,8 @@ final class RestTimerSoundPlayer {
         return nil
     }
 
-    private func activatePlaybackSession() {
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.playback, mode: .default, options: [.mixWithOthers])
-            try session.setActive(true, options: [])
-        } catch {
-            logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")
-        }
-    }
-
     private func playSystemSound(_ soundID: SystemSoundID) {
-        activatePlaybackSession()
+        configureSessionIfNeeded()
         AudioServicesPlaySystemSound(soundID)
     }
 }
