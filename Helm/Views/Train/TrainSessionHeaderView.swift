@@ -10,23 +10,24 @@ struct TrainSessionHeaderView: View {
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let elapsed = max(0, Int(context.date.timeIntervalSince(startedAt)))
-            VStack(spacing: HelmSpacing.xxs) {
-                HStack(spacing: HelmSpacing.xs) {
-                    if let heartRateBPM {
+            HStack(spacing: HelmSpacing.sm) {
+                if let heartRateBPM {
+                    HStack(spacing: HelmSpacing.xxs) {
                         Image(systemName: "heart.fill")
                             .font(.caption2)
                             .foregroundStyle(HelmColor.destructive)
                         Text("\(heartRateBPM)")
-                            .helmType(.label, color: HelmColor.textPrimary)
+                            .helmType(.monoTag, color: HelmColor.fg)
                             .monospacedDigit()
-                        Text("·")
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
                     }
-
-                    Text(TrainSessionProgressFormatter.elapsedLabel(seconds: elapsed))
-                        .helmType(.label, color: HelmColor.textPrimary)
-                        .monospacedDigit()
                 }
+
+                Text(TrainSessionProgressFormatter.elapsedLabel(seconds: elapsed))
+                    .helmType(.label, color: HelmColor.textPrimary)
+                    .monospacedDigit()
+
+                Text("·")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
 
                 Text(TrainSessionProgressFormatter.setCountLabel(
                     completed: progress.completedSetCount,
@@ -34,6 +35,8 @@ struct TrainSessionHeaderView: View {
                 ))
                 .helmType(.monoTag, color: HelmColor.fgSecondary)
                 .monospacedDigit()
+
+                Spacer(minLength: 0)
             }
             .accessibilityElement(children: .combine)
             .accessibilityLabel(accessibilityLabel(elapsed: elapsed))
@@ -59,5 +62,6 @@ struct TrainSessionHeaderView: View {
         progress: TrainSessionProgress(elapsedSeconds: 754, completedSetCount: 2, totalSetCount: 5),
         heartRateBPM: 142
     )
+    .padding()
     .helmTheme()
 }
