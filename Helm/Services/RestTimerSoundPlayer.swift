@@ -4,13 +4,12 @@ import Core
 import Foundation
 import OSLog
 
-/// Plays the rest-end alert (bundled caf or system sounds) at the chosen volume.
+/// Plays the rest-end alert (bundled boxing bell or system sounds) at the chosen volume.
 @MainActor
 final class RestTimerSoundPlayer {
     static let shared = RestTimerSoundPlayer()
 
-    static let resourceName = "rest_bell"
-    static let resourceExtension = "caf"
+    static let bellResourceName = "boxing-bell"
 
     private var bellPlayer: AVAudioPlayer?
     private var sessionConfigured = false
@@ -45,7 +44,7 @@ final class RestTimerSoundPlayer {
         configureSessionIfNeeded()
 
         guard let player = bellPlayer else {
-            logger.error("Rest bell missing from bundle (checked root and Sounds/)")
+            logger.error("Boxing bell missing from bundle (checked mp3/caf in Sounds/)")
             playSystemSound(1_052)
             return
         }
@@ -53,7 +52,7 @@ final class RestTimerSoundPlayer {
         player.volume = volume
         player.currentTime = 0
         guard player.play() else {
-            logger.error("Rest bell play() returned false")
+            logger.error("Boxing bell play() returned false")
             playSystemSound(1_052)
             return
         }
@@ -62,7 +61,7 @@ final class RestTimerSoundPlayer {
 
     private func loadBellPlayer() {
         guard let url = Self.bundledBellURL() else {
-            logger.error("Rest bell URL missing from bundle (checked root and Sounds/)")
+            logger.error("Boxing bell URL missing from bundle")
             return
         }
         do {
@@ -70,7 +69,7 @@ final class RestTimerSoundPlayer {
             player.prepareToPlay()
             bellPlayer = player
         } catch {
-            logger.error("Rest bell load failed: \(error.localizedDescription, privacy: .public)")
+            logger.error("Boxing bell load failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
@@ -114,18 +113,24 @@ final class RestTimerSoundPlayer {
         }
     }
 
-    /// Bundle root (notifications + Copy Resources) or `Sounds/` folder reference.
+    /// Prefer bundled mp3 (in-app); fall back to caf at bundle root or in Sounds/.
     static func bundledBellURL() -> URL? {
         let bundle = Bundle.main
-        if let url = bundle.url(forResource: resourceName, withExtension: resourceExtension) {
-            return url
-        }
-        if let url = bundle.url(
-            forResource: resourceName,
-            withExtension: resourceExtension,
-            subdirectory: "Sounds"
-        ) {
-            return url
+        let candidates: [(String, String, String?)] = [
+            (bellResourceName, "mp3", nil),
+            (bellResourceName, "mp3", "Sounds"),
+            (bellResourceName, "caf", nil),
+            (bellResourceName, "caf", "Sounds")
+        ]
+        for (name, ext, subdirectory) in candidates {
+            if let subdirectory,
+               let url = bundle.url(forResource: name, withExtension: ext, subdirectory: subdirectory) {
+                return url
+            }
+            if subdirectory == nil,
+               let url = bundle.url(forResource: name, withExtension: ext) {
+                return url
+            }
         }
         return nil
     }

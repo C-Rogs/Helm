@@ -49,7 +49,7 @@ targets:
       - path: Helm/Resources/Sounds
         type: folder
         buildPhase: resources
-      - path: Helm/Resources/rest_bell.caf
+      - path: Helm/Resources/boxing-bell.caf
         buildPhase: resources
       - path: HelmIntents
       - path: Shared/WatchSync
@@ -186,6 +186,7 @@ targets:
         INFOPLIST_KEY_WKCompanionAppBundleIdentifier: com.cameronro.helm
         INFOPLIST_KEY_NSHealthShareUsageDescription: Helm reads heart rate during workouts to show live zones on your Watch.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Helm saves workouts you start on your Watch to Apple Health.
+        INFOPLIST_KEY_WKBackgroundModes: [workout-processing]
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SKIP_INSTALL: YES
     entitlements:

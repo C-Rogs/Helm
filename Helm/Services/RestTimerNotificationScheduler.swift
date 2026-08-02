@@ -51,7 +51,7 @@ final class RestTimerNotificationScheduler {
         content.title = "Rest complete"
         content.body = "Time for your next set."
         content.sound = soundEnabled
-            ? UNNotificationSound(named: UNNotificationSoundName("rest_bell.caf"))
+            ? UNNotificationSound(named: UNNotificationSoundName("boxing-bell.caf"))
             : nil
         content.categoryIdentifier = RestTimerNotificationPlanner.notificationCategoryID
         content.userInfo = [
