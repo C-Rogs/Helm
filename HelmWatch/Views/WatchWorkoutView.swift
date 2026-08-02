@@ -4,11 +4,12 @@ import SwiftUI
 struct WatchWorkoutView: View {
     @Bindable var store: WatchWorkoutSessionStore
     var coordinator: WatchSessionCoordinator
+    var onRetryStart: (() -> Void)?
 
     var body: some View {
         Group {
             if coordinator.workoutCompanionActive {
-                WatchCompanionView(store: store, coordinator: coordinator)
+                WatchCompanionView(store: store, coordinator: coordinator, onRetryStart: onRetryStart)
             } else {
                 switch store.phase {
                 case .idle, .ended:

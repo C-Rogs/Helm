@@ -24,6 +24,7 @@ final class WatchSessionCoordinator: NSObject {
     var lastReceived: WatchSyncPayload?
     var roundTripComplete = false
     var lastError: String?
+    var lastLaunchError: String?
     var latestReadinessScore: Int?
     var latestReadinessBand: String?
     var latestBriefSummary: String?
@@ -33,11 +34,15 @@ final class WatchSessionCoordinator: NSObject {
     var companionSetNumber: Int?
     var companionSetCount: Int?
     var companionTargetSummary: String?
+    var companionSessionExerciseID: String?
+    var companionSetID: String?
+    var companionSaveWatchWorkout = false
 
     private let role: Role
     private var nextSequence = 1
     private var lastReadinessPushAt: TimeInterval?
     private var lastLiveHeartRatePushAt: TimeInterval?
+    private var isLaunchingWatchApp = false
 
     init(role: Role) {
         self.role = role
@@ -101,6 +106,9 @@ final class WatchSessionCoordinator: NSObject {
         setNumber: Int? = nil,
         setCount: Int? = nil,
         targetSummary: String? = nil,
+        sessionExerciseID: String? = nil,
+        setID: String? = nil,
+        saveWatchWorkout: Bool? = nil,
         helmDay: HelmDay? = nil
     ) {
         guard role == .phone else { return }
@@ -118,7 +126,10 @@ final class WatchSessionCoordinator: NSObject {
             companionExerciseName: exerciseName,
             companionSetNumber: setNumber,
             companionSetCount: setCount,
-            companionTargetSummary: targetSummary
+            companionTargetSummary: targetSummary,
+            companionSessionExerciseID: sessionExerciseID,
+            companionSetID: setID,
+            companionSaveWatchWorkout: active ? nil : (saveWatchWorkout ?? false)
         )
         push(payload)
     }
@@ -132,35 +143,119 @@ final class WatchSessionCoordinator: NSObject {
         #endif
     }
 
-    /// Wakes Watch workout app via HealthKit configuration, then companion context.
-    func launchWatchWorkoutCompanion(onFinished: (@MainActor () -> Void)? = nil) {
-        guard role == .phone else { return }
+    var isCompanionLive: Bool {
+        workoutCompanionActive && isReachable && latestLiveHeartRateBPM != nil
+    }
+
+    /// Wakes Watch workout app via HealthKit. Always attempts twice (cold-wake pattern).
+    @discardableResult
+    func launchWatchWorkoutCompanion() async -> Bool {
+        guard role == .phone else { return false }
         refreshSessionFlags()
         #if os(iOS)
         guard activationState == .activated, canDriveWatchCompanion else {
-            onFinished?()
-            return
+            lastLaunchError = canDriveWatchCompanion
+                ? "Watch session not activated"
+                : "Watch not paired or app not installed"
+            return false
         }
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .traditionalStrengthTraining
-        configuration.locationType = .indoor
-        HKHealthStore().startWatchApp(with: configuration) { [weak self] (success: Bool, error: Error?) in
-            Task { @MainActor in
-                if let error {
-                    self?.lastError = error.localizedDescription
-                } else if !success {
-                    self?.lastError = "Watch workout app failed to launch"
-                }
-                onFinished?()
+        guard !isLaunchingWatchApp else { return false }
+        isLaunchingWatchApp = true
+        defer { isLaunchingWatchApp = false }
+
+        var anySuccess = false
+        var lastFailure: String?
+        for attempt in 1...WatchWorkoutLaunchPolicy.maxAttempts {
+            guard WatchWorkoutLaunchPolicy.shouldAttempt(attemptNumber: attempt) else { break }
+            let (ok, message) = await startWatchAppOnce()
+            if ok {
+                anySuccess = true
+                lastLaunchError = nil
+            } else {
+                lastFailure = message
+                lastLaunchError = message
+                lastError = message
+            }
+            if !WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: attempt) {
+                break
             }
         }
+        if !anySuccess, let lastFailure {
+            lastError = lastFailure
+        }
+        return anySuccess
         #else
-        onFinished?()
+        return true
         #endif
     }
 
+    func launchWatchWorkoutCompanion(onFinished: (@MainActor () -> Void)?) {
+        Task { @MainActor in
+            _ = await launchWatchWorkoutCompanion()
+            onFinished?()
+        }
+    }
+
+    #if os(iOS)
+    private func startWatchAppOnce() async -> (Bool, String?) {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = .traditionalStrengthTraining
+        configuration.locationType = .indoor
+        return await withCheckedContinuation { continuation in
+            HKHealthStore().startWatchApp(with: configuration) { (success: Bool, error: Error?) in
+                if let error {
+                    continuation.resume(returning: (false, error.localizedDescription))
+                } else if !success {
+                    continuation.resume(returning: (false, "Watch workout app failed to launch"))
+                } else {
+                    continuation.resume(returning: (true, nil))
+                }
+            }
+        }
+    }
+    #endif
+
     func refreshPairingFlags() {
         refreshSessionFlags()
+    }
+
+    func requestCompleteSet(sessionExerciseID: String, setID: String, helmDay: HelmDay? = nil) {
+        guard role == .watch else { return }
+        guard activationState == .activated else {
+            lastError = "Session not activated"
+            return
+        }
+        guard isReachable else {
+            lastError = "Phone not reachable"
+            return
+        }
+
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .completeSet,
+            helmDay: helmDay,
+            companionSessionExerciseID: sessionExerciseID,
+            companionSetID: setID
+        )
+        pushCompleteSet(payload)
+    }
+
+    private func pushCompleteSet(_ payload: WatchSyncPayload) {
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode complete-set payload"
+            return
+        }
+
+        lastSent = payload
+        lastError = nil
+
+        session.sendMessage(message, replyHandler: nil) { [weak self] error in
+            Task { @MainActor in
+                self?.lastError = error.localizedDescription
+            }
+        }
     }
 
     /// Immediate rest-end cue for Watch haptic. Prefer sendMessage when reachable.
@@ -266,7 +361,10 @@ final class WatchSessionCoordinator: NSObject {
         companionExerciseName: String? = nil,
         companionSetNumber: Int? = nil,
         companionSetCount: Int? = nil,
-        companionTargetSummary: String? = nil
+        companionTargetSummary: String? = nil,
+        companionSessionExerciseID: String? = nil,
+        companionSetID: String? = nil,
+        companionSaveWatchWorkout: Bool? = nil
     ) -> WatchSyncPayload {
         let sequence = nextSequence
         nextSequence += 1
@@ -284,7 +382,10 @@ final class WatchSessionCoordinator: NSObject {
             companionExerciseName: companionExerciseName,
             companionSetNumber: companionSetNumber,
             companionSetCount: companionSetCount,
-            companionTargetSummary: companionTargetSummary
+            companionTargetSummary: companionTargetSummary,
+            companionSessionExerciseID: companionSessionExerciseID,
+            companionSetID: companionSetID,
+            companionSaveWatchWorkout: companionSaveWatchWorkout
         )
     }
 
@@ -326,7 +427,7 @@ final class WatchSessionCoordinator: NSObject {
             case .restEnded:
                 break
             case .completeSet:
-                break
+                postCompleteSetNotification(from: payload)
             }
         case .watch:
             switch payload.messageKind {
@@ -346,12 +447,36 @@ final class WatchSessionCoordinator: NSObject {
                 companionSetNumber = payload.companionSetNumber
                 companionSetCount = payload.companionSetCount
                 companionTargetSummary = payload.companionTargetSummary
+                companionSessionExerciseID = payload.companionSessionExerciseID
+                companionSetID = payload.companionSetID
+                if let save = payload.companionSaveWatchWorkout {
+                    companionSaveWatchWorkout = save
+                }
             case .restEnded:
                 playRestEndedHaptic()
             case .completeSet:
                 break
             }
         }
+    }
+
+    private func postCompleteSetNotification(from payload: WatchSyncPayload) {
+        guard
+            let exerciseID = payload.companionSessionExerciseID, !exerciseID.isEmpty,
+            let setID = payload.companionSetID, !setID.isEmpty
+        else {
+            return
+        }
+        #if os(iOS)
+        NotificationCenter.default.post(
+            name: LiveActivityCompleteSetBridge.notificationName,
+            object: nil,
+            userInfo: [
+                LiveActivityCompleteSetBridge.sessionExerciseIDKey: exerciseID,
+                LiveActivityCompleteSetBridge.setIDKey: setID
+            ]
+        )
+        #endif
     }
 
     private func playRestEndedHaptic() {
@@ -379,6 +504,11 @@ final class WatchSessionCoordinator: NSObject {
             companionSetNumber = payload.companionSetNumber
             companionSetCount = payload.companionSetCount
             companionTargetSummary = payload.companionTargetSummary
+            companionSessionExerciseID = payload.companionSessionExerciseID
+            companionSetID = payload.companionSetID
+            if let save = payload.companionSaveWatchWorkout {
+                companionSaveWatchWorkout = save
+            }
             if workoutCompanionActive == false {
                 latestLiveHeartRateBPM = nil
             }

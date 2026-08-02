@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct WatchSyncStatusView: View {
-    @State private var coordinator = WatchSessionCoordinator(role: .phone)
+    private var coordinator: WatchSessionCoordinator { WatchReadinessBootstrap.coordinator }
 
     var body: some View {
         List {
@@ -10,6 +10,17 @@ struct WatchSyncStatusView: View {
                 LabeledContent("Paired", value: coordinator.isPaired ? "Yes" : "No")
                 LabeledContent("Watch app installed", value: coordinator.isWatchAppInstalled ? "Yes" : "No")
                 LabeledContent("Reachable", value: coordinator.isReachable ? "Yes" : "No")
+                LabeledContent("Link", value: linkLabel)
+            }
+
+            Section("Companion") {
+                LabeledContent("Active", value: coordinator.workoutCompanionActive ? "Yes" : "No")
+                if let bpm = coordinator.latestLiveHeartRateBPM {
+                    LabeledContent("Live HR", value: "\(bpm)")
+                }
+                if let name = coordinator.companionExerciseName {
+                    LabeledContent("Exercise", value: name)
+                }
             }
 
             Section("Round-trip") {
@@ -20,6 +31,10 @@ struct WatchSyncStatusView: View {
                 if let received = coordinator.lastReceived {
                     LabeledContent("Last received", value: "#\(received.sequence) from \(received.origin.rawValue)")
                 }
+                if let launchError = coordinator.lastLaunchError {
+                    Text("Launch: \(launchError)")
+                        .foregroundStyle(.red)
+                }
                 if let error = coordinator.lastError {
                     Text(error)
                         .foregroundStyle(.red)
@@ -27,6 +42,10 @@ struct WatchSyncStatusView: View {
             }
         }
         .navigationTitle("Watch Sync")
+        .onAppear {
+            coordinator.refreshPairingFlags()
+            coordinator.hydrateFromReceivedApplicationContext()
+        }
     }
 
     private var activationLabel: String {
@@ -36,6 +55,16 @@ struct WatchSyncStatusView: View {
         case .activated: "Activated"
         @unknown default: "Unknown"
         }
+    }
+
+    private var linkLabel: String {
+        if coordinator.isCompanionLive {
+            return "Live"
+        }
+        if coordinator.isReachable {
+            return "Reachable"
+        }
+        return "Reconnect"
     }
 }
 

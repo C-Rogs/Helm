@@ -47,4 +47,37 @@ struct WatchSyncPayloadTests {
         #expect(restored == payload)
         #expect(restored?.messageKind == .restEnded)
     }
+
+    @Test("completeSet and companion IDs round-trip")
+    func completeSetRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .watch,
+            sequence: 9,
+            helmDay: HelmDay(year: 2026, month: 8, day: 2),
+            sentAt: 1_723_456_789,
+            messageKind: .completeSet,
+            companionSessionExerciseID: "ex-1",
+            companionSetID: "set-2"
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored == payload)
+        #expect(restored?.companionSessionExerciseID == "ex-1")
+        #expect(restored?.companionSetID == "set-2")
+    }
+
+    @Test("workoutCompanion save flag round-trips")
+    func companionSaveFlagRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .phone,
+            sequence: 4,
+            helmDay: HelmDay(year: 2026, month: 8, day: 2),
+            sentAt: 1_723_456_789,
+            messageKind: .workoutCompanion,
+            workoutCompanionActive: false,
+            companionSaveWatchWorkout: true
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored == payload)
+        #expect(restored?.companionSaveWatchWorkout == true)
+    }
 }

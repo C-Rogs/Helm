@@ -91,6 +91,7 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT6 (after M12.5 and M0.8): the polish gate | done | 2026-07-28 | Haptics, skins, states, DeviationBand, volume board verified; F-DT6.1–6.3 landed. |
 | DT7 (after M14.9): native food logging (MFP deleted 7 days) | done | 2026-07-30 | 7-day Helm-only food soak complete; native logging verified. F-DT7.4–7.9 landed during soak. |
 | DT9 (after F-DT9.14): post-DT7 improvement wave | not started | | | Hevy numpad, rest/LA/Watch, coach confirm, nutrition, charts. See PLAN.md DT9 gate. |
+| DT10 (after F-DT10.#): Watch companion reliability | not started | | | Cold wake, wrist Done, best-available training load. See PLAN.md DT10 gate. |
 
 ## Fix sections
 
@@ -164,6 +165,9 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | F-DT9.25 Live Activity restEndsAt + Signal blue | done | 2026-08-02 | 85c850e | Live DI countdown via restEndsAt; Signal-blue keyline tint. |
 | F-DT9.26 System font coverage | done | 2026-08-02 | 17863ef | HelmTypography computed + HelmNumpad UIFont respect system fonts. |
 | F-DT9.27 LA outline, boxing bell, system font follow-through | done | 2026-08-02 | 0157402 | Drop LA blue stroke; Signal RestBell path; env-driven helmFont on Train/dashboard. |
+| F-DT10.1 Watch cold-wake reliability | done | 2026-08-02 | e1ff195 | workout-processing; double startWatchApp; Train notice/Retry; live confirm; shared Watch Sync. |
+| F-DT10.2 Best-available training load | done | 2026-08-02 | e1ff195 | Save Watch HKWorkout on finish; skip phone energy when Watch HR delivered. |
+| F-DT10.3 Wrist Done + Live chrome | done | 2026-08-02 | e1ff195 | completeSet + companion IDs; Done when reachable; Live/Reconnect. |
 | M13.1 Planned workout UI | done | 2026-07-28 | 4d7f992 | Week-ahead schedule card on Train; planned_workout rows from prescription; fixture snapshots |
 | M13.2 Drift policy UI | done | 2026-07-28 | 8111f3a | Shifted/skipped drift indicators on Train week-ahead list; drift fixtures + snapshot tests |
 | M13.3 EventKit hints | done | 2026-07-28 | 2fcfa54 | Read-only EventKit busy-day hints on week-ahead schedule; Settings permission flow; BusyDayHintPolicy in Core |

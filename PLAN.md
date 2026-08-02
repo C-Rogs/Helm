@@ -1298,6 +1298,35 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.
 
+### DT10 Watch companion reliability wave (F-DT10.#)
+
+Hardening after DT9 Watch gaps: cold-wake reliability, best-available training load (saved Watch HR when session ran; phone energy only as fallback), Hevy-like wrist Done + Live/Reconnect chrome. No WCSession end-of-session dump.
+
+#### F-DT10.1 Watch cold-wake reliability
+
+- **Depends on:** F-DT9.6
+- **Goal:** Phone Train start wakes Watch even when Watch was asleep / app not recently opened; failures are visible with Retry.
+- **Scope:** Watch `workout-processing` background mode; double `startWatchApp` (Apple cold-wake pattern); Train notice + Retry; live confirm timeout; mid-session reachability re-launch once; Watch Sync uses shared phone coordinator + launch error.
+- **Acceptance:** Build green; `WatchWorkoutLaunchPolicy` unit tests; payload/launch policy tests pass. Device wake feel is DT10 gate.
+
+#### F-DT10.2 Best-available training load
+
+- **Depends on:** F-DT10.1
+- **Goal:** Prefer real Watch HR workout for load when companion ran; phone energy estimate only when Watch never delivered HR.
+- **Scope:** Companion deactivate with `companionSaveWatchWorkout`; Watch saves (not discards) on finish; discard still discards; `onSessionFinished(writePhoneEnergyEstimate:)` skips phone HK write when Watch HR arrived this session.
+- **Acceptance:** Build green; companion save-flag payload round-trip test.
+
+#### F-DT10.3 Wrist Done + Live chrome
+
+- **Depends on:** F-DT10.1
+- **Goal:** Watch shows Live/Reconnect, current exercise/set, Done completes set on phone when reachable (same path as Live Activity Done).
+- **Scope:** `completeSet` message + companion set IDs in payload; `WatchCompanionView` Done; unreachable disables Done; phone posts existing complete-set notification.
+- **Acceptance:** Build green; `completeSet` payload round-trip tests.
+
+### DT10 device gate (after all F-DT10.#)
+
+Cameron runs once on device: start Train with Watch asleep → Watch wakes + bling + Live; Done completes set; disconnect mid-workout → Reconnect chrome, finish still saves Watch HR workout / phone energy only if no Watch HR; Fitness/TRIMP smoke.
+
 ---
 
 ## Reference and lessons from the lab (informing the clean build, not imported)

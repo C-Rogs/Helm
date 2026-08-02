@@ -13,6 +13,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case liveHeartRate
         case workoutCompanion
         case restEnded
+        case completeSet
     }
 
     public static let contextKey = "helm.sync"
@@ -36,6 +37,12 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let companionSetNumber: Int?
     public let companionSetCount: Int?
     public let companionTargetSummary: String?
+    /// Current (or completing) session exercise row id for Watch Done / companion mirror.
+    public let companionSessionExerciseID: String?
+    /// Current (or completing) set id for Watch Done / companion mirror.
+    public let companionSetID: String?
+    /// When deactivating companion: true = save Watch HKWorkout; false/nil = discard.
+    public let companionSaveWatchWorkout: Bool?
 
     public init(
         origin: Origin,
@@ -51,7 +58,10 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionExerciseName: String? = nil,
         companionSetNumber: Int? = nil,
         companionSetCount: Int? = nil,
-        companionTargetSummary: String? = nil
+        companionTargetSummary: String? = nil,
+        companionSessionExerciseID: String? = nil,
+        companionSetID: String? = nil,
+        companionSaveWatchWorkout: Bool? = nil
     ) {
         self.origin = origin
         self.sequence = sequence
@@ -67,6 +77,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         self.companionSetNumber = companionSetNumber
         self.companionSetCount = companionSetCount
         self.companionTargetSummary = companionTargetSummary
+        self.companionSessionExerciseID = companionSessionExerciseID
+        self.companionSetID = companionSetID
+        self.companionSaveWatchWorkout = companionSaveWatchWorkout
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -84,6 +97,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case companionSetNumber
         case companionSetCount
         case companionTargetSummary
+        case companionSessionExerciseID
+        case companionSetID
+        case companionSaveWatchWorkout
     }
 
     public init(from decoder: Decoder) throws {
@@ -102,6 +118,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionSetNumber = try container.decodeIfPresent(Int.self, forKey: .companionSetNumber)
         companionSetCount = try container.decodeIfPresent(Int.self, forKey: .companionSetCount)
         companionTargetSummary = try container.decodeIfPresent(String.self, forKey: .companionTargetSummary)
+        companionSessionExerciseID = try container.decodeIfPresent(String.self, forKey: .companionSessionExerciseID)
+        companionSetID = try container.decodeIfPresent(String.self, forKey: .companionSetID)
+        companionSaveWatchWorkout = try container.decodeIfPresent(Bool.self, forKey: .companionSaveWatchWorkout)
     }
 }
 

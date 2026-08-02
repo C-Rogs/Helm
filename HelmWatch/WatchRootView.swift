@@ -9,7 +9,9 @@ struct WatchRootView: View {
 
     var body: some View {
         TabView(selection: $selectedTab) {
-            WatchWorkoutView(store: workoutStore, coordinator: coordinator)
+            WatchWorkoutView(store: workoutStore, coordinator: coordinator) {
+                Task { await startCompanionWorkoutIfNeeded(playHaptic: true) }
+            }
                 .tabItem {
                     Label("Workout", systemImage: "heart.fill")
                 }
@@ -55,7 +57,8 @@ struct WatchRootView: View {
                 return
             }
             guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
-            Task { await workoutStore.endWorkout(discard: true) }
+            let discard = !coordinator.companionSaveWatchWorkout
+            Task { await workoutStore.endWorkout(discard: discard) }
         }
         .onChange(of: coordinator.activationState) { _, state in
             guard state == .activated else { return }
@@ -87,6 +90,7 @@ struct WatchRootView: View {
             Section("Sync") {
                 LabeledContent("Activation", value: activationLabel)
                 LabeledContent("Reachable", value: coordinator.isReachable ? "Yes" : "No")
+                LabeledContent("Link", value: coordinator.isReachable ? "Live" : "Reconnect")
                 if let bpm = coordinator.latestLiveHeartRateBPM {
                     LabeledContent("Last HR sent", value: "\(bpm)")
                 }

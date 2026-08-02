@@ -94,9 +94,13 @@ final class TrainSessionController {
     private(set) var proactiveCoachBanner: String?
     private(set) var coachPeekSnippet: String?
     private(set) var watchCompanionNotice: String?
+    /// True when Watch delivered live HR this session; prefer Watch HKWorkout, skip phone energy estimate.
+    private(set) var watchCompanionDeliveredHeartRate = false
 
     private var didSurfaceRestOverrunProactive = false
     private var firedMilestoneQuartiles: Set<Int> = []
+    private var watchLiveConfirmTask: Task<Void, Never>?
+    private var didRelaunchWatchForReachability = false
 
     private var coachThread = CoachThreadState.empty
 
@@ -455,17 +459,25 @@ final class TrainSessionController {
 
     func finishWorkout() async {
         do {
+            let skipPhoneEnergy = watchCompanionDeliveredHeartRate
             let finishedID = try await store.finish()
+            deactivateWatchCompanion(saveWatchWorkout: true)
             isShowingFinishConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
+            cancelWatchLiveConfirm()
             await refreshMetadata()
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             if let finishedID {
-                await sideEffects.onSessionFinished(sessionID: finishedID)
+                await sideEffects.onSessionFinished(
+                    sessionID: finishedID,
+                    writePhoneEnergyEstimate: !skipPhoneEnergy
+                )
                 let samples = sessionHeartRateBuffer.samples
                 stopHeartRateSampling(reset: true)
+                watchCompanionDeliveredHeartRate = false
+                didRelaunchWatchForReachability = false
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
@@ -508,11 +520,15 @@ final class TrainSessionController {
         do {
             let sessionID = store.snapshot?.session.id
             try await store.discard()
+            deactivateWatchCompanion(saveWatchWorkout: false)
             isShowingDiscardConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
+            cancelWatchLiveConfirm()
             stopHeartRateSampling(reset: true)
+            watchCompanionDeliveredHeartRate = false
+            didRelaunchWatchForReachability = false
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             await refreshMetadata()
             await refreshPrescriptionState()
@@ -521,6 +537,26 @@ final class TrainSessionController {
             }
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    func retryWatchCompanionLaunch() {
+        guard store.snapshot != nil else { return }
+        watchCompanionNotice = nil
+        didRelaunchWatchForReachability = false
+        activateWatchCompanionAfterSessionStart()
+    }
+
+    func handleWatchReachabilityChange(isReachable: Bool) {
+        guard isReachable, store.snapshot != nil else { return }
+        guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion else { return }
+        guard !watchCompanionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
+        didRelaunchWatchForReachability = true
+        Task { @MainActor in
+            pushWatchCompanionState()
+            _ = await WatchReadinessBootstrap.coordinator.launchWatchWorkoutCompanion()
+            pushWatchCompanionState()
+            scheduleWatchLiveConfirm()
         }
     }
 
@@ -1543,18 +1579,61 @@ final class TrainSessionController {
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.refreshPairingFlags()
         if coordinator.canDriveWatchCompanion {
-            // Push companion first so Watch has context when startWatchApp opens it,
-            // then push again after launch finishes (covers cold start / late hydrate).
             pushWatchCompanionState()
-            coordinator.launchWatchWorkoutCompanion { [weak self] in
-                self?.pushWatchCompanionState()
+            Task { @MainActor in
+                let launched = await coordinator.launchWatchWorkoutCompanion()
+                pushWatchCompanionState()
+                HapticEngine.shared.play(.phaseChange)
+                if !launched {
+                    watchCompanionNotice =
+                        coordinator.lastLaunchError
+                        ?? "Watch didn't wake. Open Helm on Watch once, then tap to retry."
+                    return
+                }
+                watchCompanionNotice = nil
+                scheduleWatchLiveConfirm()
             }
-            HapticEngine.shared.play(.phaseChange)
-            watchCompanionNotice = nil
         } else {
-            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false)
+            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false, saveWatchWorkout: false)
             watchCompanionNotice = "No Apple Watch connected. Heart rate hidden. Phone will record training load energy."
         }
+    }
+
+    private func scheduleWatchLiveConfirm() {
+        cancelWatchLiveConfirm()
+        watchLiveConfirmTask = Task { @MainActor in
+            let timeout = WatchWorkoutLaunchPolicy.confirmLiveTimeoutSeconds
+            let deadline = Date().addingTimeInterval(timeout)
+            while Date() < deadline, !Task.isCancelled {
+                let coordinator = WatchReadinessBootstrap.coordinator
+                if WatchWorkoutLaunchPolicy.isConfirmedLive(
+                    hasHeartRate: coordinator.latestLiveHeartRateBPM != nil,
+                    isReachable: coordinator.isReachable
+                ) {
+                    if coordinator.latestLiveHeartRateBPM != nil {
+                        watchCompanionDeliveredHeartRate = true
+                    }
+                    watchCompanionNotice = nil
+                    return
+                }
+                try? await Task.sleep(for: .seconds(1))
+            }
+            guard !Task.isCancelled, store.snapshot != nil else { return }
+            let coordinator = WatchReadinessBootstrap.coordinator
+            if WatchWorkoutLaunchPolicy.isConfirmedLive(
+                hasHeartRate: coordinator.latestLiveHeartRateBPM != nil,
+                isReachable: coordinator.isReachable
+            ) {
+                watchCompanionNotice = nil
+                return
+            }
+            watchCompanionNotice = "Watch didn't wake. Open Helm on Watch once, then tap to retry."
+        }
+    }
+
+    private func cancelWatchLiveConfirm() {
+        watchLiveConfirmTask?.cancel()
+        watchLiveConfirmTask = nil
     }
 
     private func startHeartRateSampling() {
@@ -1584,18 +1663,19 @@ final class TrainSessionController {
         else {
             return
         }
+        watchCompanionDeliveredHeartRate = true
         let offset = Int(Date().timeIntervalSince(snapshot.session.startedAt))
         sessionHeartRateBuffer.record(bpm: bpm, offsetSeconds: offset)
     }
 
     private func pushWatchCompanionState() {
         guard let snapshot = store.snapshot else {
-            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false)
             return
         }
         let currentExercise = snapshot.session.exercises.first { exercise in
             exercise.sets.contains { $0.status != .completed }
         } ?? snapshot.session.exercises.first
+        let currentSet = currentExercise?.sets.first { $0.status != .completed }
         let displayName = currentExercise.flatMap { exerciseSummaries[$0.exerciseID]?.displayName }
         let setNumber = currentExercise.flatMap { exercise in
             exercise.sets.firstIndex { $0.status != .completed }.map { $0 + 1 }
@@ -1605,7 +1685,16 @@ final class TrainSessionController {
             exerciseName: displayName,
             setNumber: setNumber,
             setCount: currentExercise?.sets.count,
-            targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+            targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] },
+            sessionExerciseID: currentExercise?.id,
+            setID: currentSet?.id
+        )
+    }
+
+    private func deactivateWatchCompanion(saveWatchWorkout: Bool) {
+        WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
+            active: false,
+            saveWatchWorkout: saveWatchWorkout
         )
     }
 

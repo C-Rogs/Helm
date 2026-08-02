@@ -45,6 +45,9 @@ struct TrainView: View {
             .onChange(of: scenePhase) { _, newPhase in
                 Task { await controller.handleScenePhase(newPhase) }
             }
+            .onChange(of: WatchReadinessBootstrap.coordinator.isReachable) { _, reachable in
+                controller.handleWatchReachabilityChange(isReachable: reachable)
+            }
     }
 
     private var navigationRoot: some View {
@@ -402,11 +405,20 @@ struct TrainView: View {
                         )
 
                         if let notice = controller.watchCompanionNotice {
-                            Text(notice)
-                                .helmType(.body, color: HelmColor.fgSecondary)
-                                .padding(.horizontal, HelmSpacing.xs)
-                                .accessibilityLabel(notice)
-                                .onTapGesture { controller.dismissWatchCompanionNotice() }
+                            Button {
+                                if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
+                                    controller.retryWatchCompanionLaunch()
+                                } else {
+                                    controller.dismissWatchCompanionNotice()
+                                }
+                            } label: {
+                                Text(notice)
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                                    .padding(.horizontal, HelmSpacing.xs)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(notice)
                         }
 
                         if let banner = controller.adjustmentBanner {

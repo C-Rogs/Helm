@@ -1,14 +1,22 @@
+import Core
 import SwiftUI
+import WatchKit
 
 struct WatchCompanionView: View {
     @Bindable var store: WatchWorkoutSessionStore
     let coordinator: WatchSessionCoordinator
+    var onRetryStart: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 10) {
-            Text("Phone workout")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+        VStack(spacing: 8) {
+            HStack(spacing: 4) {
+                Circle()
+                    .fill(linkColor)
+                    .frame(width: 6, height: 6)
+                Text(linkLabel)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+            }
 
             if let name = coordinator.companionExerciseName {
                 Text(name)
@@ -29,25 +37,87 @@ struct WatchCompanionView: View {
                     .multilineTextAlignment(.center)
             }
 
-            if store.phase == .active || store.phase == .paused {
-                WatchActiveWorkoutView(store: store)
-            } else if store.isHealthKitAuthorized {
-                VStack(spacing: 6) {
-                    ProgressView("Starting HR…")
-                    Text("Waiting for heart rate…")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                    Text("Wear your Watch and keep the Helm workout open on phone.")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
-                        .multilineTextAlignment(.center)
-                }
-            } else {
-                Text("HealthKit access required")
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-            }
+            doneButton
+
+            companionSessionBody
         }
         .padding(.horizontal, 4)
+    }
+
+    private var linkLabel: String {
+        coordinator.isReachable ? "Live" : "Reconnect"
+    }
+
+    private var linkColor: Color {
+        coordinator.isReachable ? .green : .orange
+    }
+
+    @ViewBuilder
+    private var doneButton: some View {
+        let canComplete = coordinator.isReachable
+            && coordinator.companionSessionExerciseID != nil
+            && coordinator.companionSetID != nil
+            && (store.phase == .active || store.phase == .paused)
+
+        Button("Done") {
+            guard
+                let exerciseID = coordinator.companionSessionExerciseID,
+                let setID = coordinator.companionSetID
+            else { return }
+            coordinator.requestCompleteSet(sessionExerciseID: exerciseID, setID: setID)
+            WKInterfaceDevice.current().play(.click)
+        }
+        .font(.headline)
+        .disabled(!canComplete)
+        .opacity(canComplete ? 1 : 0.4)
+
+        if !coordinator.isReachable {
+            Text("Reconnect phone to complete set")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        }
+    }
+
+    @ViewBuilder
+    private var companionSessionBody: some View {
+        switch store.phase {
+        case .active, .paused:
+            WatchActiveWorkoutView(store: store)
+        case .preparing:
+            ProgressView("Starting HR…")
+        case .ending:
+            ProgressView("Ending…")
+        case .idle, .ended:
+            idleOrFailedBody
+        }
+    }
+
+    @ViewBuilder
+    private var idleOrFailedBody: some View {
+        if !store.isHealthKitAuthorized {
+            Text("HealthKit access required")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+        } else if let error = store.lastError {
+            VStack(spacing: 4) {
+                Text(error)
+                    .font(.caption2)
+                    .foregroundStyle(.red)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(3)
+                Button("Retry") {
+                    onRetryStart?()
+                }
+                .font(.caption)
+            }
+        } else if store.phase == .ended {
+            Text("Ended. Keep phone workout open.")
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+                .multilineTextAlignment(.center)
+        } else {
+            ProgressView("Starting HR…")
+        }
     }
 }

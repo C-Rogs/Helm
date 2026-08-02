@@ -110,12 +110,14 @@ final class WorkoutSessionSideEffects {
         )
     }
 
-    func onSessionFinished(sessionID: String) async {
+    func onSessionFinished(sessionID: String, writePhoneEnergyEstimate: Bool = true) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
         musicCapture.sampleIfChanged(sessionID: sessionID)
         musicCapture.reset()
         liveActivity.end()
         lifecycle.end()
+
+        guard writePhoneEnergyEstimate else { return }
 
         guard let session = try? persistence.workoutSessions.fetch(id: sessionID),
               let endedAt = session.endedAt else {
