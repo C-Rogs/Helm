@@ -1226,6 +1226,25 @@ Parallel tracks after DT7. One device gate **DT9** when all sections land. Cost 
 - **Scope:** `ManualMealService.persist` local-first fallback, `FoodLogCommandApplier` loggedAt, `ChatController` refresh logged helmDay.
 - **Acceptance:** FoodLogCommand tests for HK failure + yesterday breakfast; build green.
 
+#### F-DT9.17 Coach meal query + copy tools
+
+- **Depends on:** F-DT9.16
+- **Goal:** Coach looks up past meals on demand via meal_query.v1; copies with meal_copy.v1 confirm; no 14-day context injection.
+- **Scope:** `MealHistoryQueryService`, meal_query/meal_copy payloads, ChatController tool loop, confirm card.
+- **Acceptance:** Parse + query tests; build green.
+
+#### F-DT9.18 Train input, header, timer, coach chrome
+
+- **Depends on:** none
+- **Goal:** First-tap numpad, swipe dismiss, live HR header, rest progress bar, RPE haptic steps, remove top coach chrome, fog shrink, recover race.
+- **Acceptance:** Build green; restDone on remaining zero unit test.
+
+#### F-DT9.20 Rest bell + system font
+
+- **Depends on:** none
+- **Goal:** Rest bell plays through headphones with Silent on; Settings Font Helm/System.
+- **Acceptance:** Build green.
+
 ### DT9 device gate (after all F-DT9.#)
 
 Cameron runs once on device: Hevy numpad feel, rest sound/headphones, Watch start buzz + HR hide/toast, LA contrast/Done, cold-start rest notif, coach add-exercise + confirm food/start, rolling 7d volume, meal macros, finish HR graph, delete-exercise, Fitness training load smoke.

@@ -217,6 +217,19 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         case log
         case edit
         case delete
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "log", "add", "create":
+                self = .log
+            case "edit", "update":
+                self = .edit
+            case "delete", "remove":
+                self = .delete
+            default:
+                return nil
+            }
+        }
     }
 
     public let schemaVersion: String
@@ -255,6 +268,80 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         self.carbsG = carbsG
         self.fatG = fatG
         self.helmDay = helmDay
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        reply = try container.decodeIfPresent(String.self, forKey: .reply) ?? ""
+
+        if let decoded = try? container.decode(Action.self, forKey: .action) {
+            action = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .action),
+                  let flexible = Action(rawFlexible: raw) {
+            action = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .action,
+                in: container,
+                debugDescription: "food_log.v1 action must be log, edit, or delete"
+            )
+        }
+
+        mealID = try container.decodeIfPresent(String.self, forKey: .mealID)
+        description = try container.decodeIfPresent(String.self, forKey: .description)
+        bucket = try container.decodeIfPresent(String.self, forKey: .bucket)
+        caloriesKcal = try Self.decodeFlexibleDouble(from: container, forKey: .caloriesKcal)
+        proteinG = try Self.decodeFlexibleDouble(from: container, forKey: .proteinG)
+        carbsG = try Self.decodeFlexibleDouble(from: container, forKey: .carbsG)
+        fatG = try Self.decodeFlexibleDouble(from: container, forKey: .fatG)
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case reply
+        case action
+        case mealID
+        case description
+        case bucket
+        case caloriesKcal
+        case proteinG
+        case carbsG
+        case fatG
+        case helmDay
+    }
+
+    private static func decodeFlexibleDouble(
+        from container: KeyedDecodingContainer<CodingKeys>,
+        forKey key: CodingKeys
+    ) throws -> Double? {
+        if !container.contains(key) {
+            return nil
+        }
+        if try container.decodeNil(forKey: key) {
+            return nil
+        }
+        if let value = try? container.decode(Double.self, forKey: key) {
+            return value
+        }
+        if let value = try? container.decode(Int.self, forKey: key) {
+            return Double(value)
+        }
+        if let raw = try? container.decode(String.self, forKey: key) {
+            let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !trimmed.isEmpty else { return nil }
+            if let value = Double(trimmed) {
+                return value
+            }
+        }
+        throw DecodingError.typeMismatch(
+            Double.self,
+            DecodingError.Context(
+                codingPath: container.codingPath + [key],
+                debugDescription: "Expected number or numeric string for \(key.stringValue)"
+            )
+        )
     }
 }
 
@@ -311,6 +398,129 @@ public enum ChartPayloadParser: Sendable {
               let payload = try? JSONDecoder().decode(ChartPayload.self, from: data),
               payload.schemaVersion == CoachOutputSchemaVersion.chartV1.rawValue,
               !payload.points.isEmpty
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct MealQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case bucketOnDay
+        case usualForBucket
+        case daySummary
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "bucketonday", "bucket_on_day", "on_day", "day_bucket":
+                self = .bucketOnDay
+            case "usualforbucket", "usual_for_bucket", "usual", "typical":
+                self = .usualForBucket
+            case "daysummary", "day_summary", "summary":
+                self = .daySummary
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let helmDay: String?
+    public let bucket: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.mealQueryV1.rawValue,
+        queryType: QueryType,
+        helmDay: String? = nil,
+        bucket: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.helmDay = helmDay
+        self.bucket = bucket
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
+            queryType = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
+                  let flexible = QueryType(rawFlexible: raw) {
+            queryType = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .queryType,
+                in: container,
+                debugDescription: "meal_query.v1 queryType must be bucketOnDay, usualForBucket, or daySummary"
+            )
+        }
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        bucket = try container.decodeIfPresent(String.self, forKey: .bucket)
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
+            lookbackDays = intValue
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
+                  let intValue = Int(raw) {
+            lookbackDays = intValue
+        } else {
+            lookbackDays = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, queryType, helmDay, bucket, lookbackDays
+    }
+}
+
+public struct MealCopyPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let reply: String
+    public let sourceHelmDay: String
+    public let sourceBucket: String
+    public let targetHelmDay: String
+    public let targetBucket: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.mealCopyV1.rawValue,
+        reply: String,
+        sourceHelmDay: String,
+        sourceBucket: String,
+        targetHelmDay: String,
+        targetBucket: String
+    ) {
+        self.schemaVersion = schemaVersion
+        self.reply = reply
+        self.sourceHelmDay = sourceHelmDay
+        self.sourceBucket = sourceBucket
+        self.targetHelmDay = targetHelmDay
+        self.targetBucket = targetBucket
+    }
+}
+
+public enum MealQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> MealQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .mealQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(MealQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.mealQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public enum MealCopyPayloadParser: Sendable {
+    public static func parse(from text: String) -> MealCopyPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .mealCopyV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(MealCopyPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.mealCopyV1.rawValue
         else {
             return nil
         }

@@ -148,6 +148,21 @@ final class ChatController {
                 NutritionBootstrap.refreshNutrition(for: loggedHelmDay)
                 HapticEngine.shared.play(.phaseChange)
                 HapticEngine.shared.play(.mealConfirmed)
+            case let .mealCopy(payload):
+                applyProgressStep = "Copying meal…"
+                guard let resolved = MealCopyCommandApplier.resolvedDays(payload) else {
+                    throw ManualMealError.invalidQuickAdd
+                }
+                _ = try await NutritionBootstrap.mealRepeatService.copyBucket(
+                    from: resolved.source,
+                    bucket: resolved.sourceBucket,
+                    to: resolved.target,
+                    targetBucket: resolved.targetBucket
+                )
+                NutritionBootstrap.lastViewedHelmDay = resolved.target
+                NutritionBootstrap.refreshNutrition(for: resolved.target)
+                HapticEngine.shared.play(.phaseChange)
+                HapticEngine.shared.play(.mealConfirmed)
             case let .workoutStart(payload):
                 applyProgressStep = "Preparing session…"
                 let today = HelmDay.day(for: .now, calendar: .current)
@@ -273,6 +288,16 @@ final class ChatController {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
+            if let mealQuery = MealQueryPayloadParser.parse(from: assembled) {
+                assembled = try await runMealQueryFollowUp(
+                    query: mealQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            }
+
             let pendingAction = CoachChatActionParser.proposal(from: assembled)
             let userFacingText = CoachChatDisplayText.assistantText(
                 from: assembled,
@@ -321,6 +346,60 @@ final class ChatController {
                 error: error
             )
         }
+    }
+
+    private func runMealQueryFollowUp(
+        query: MealQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> String {
+        let service = MealHistoryQueryService(store: persistence)
+        let results = try service.run(query)
+        let toolMessage = """
+        # Meal query results
+        \(results)
+
+        Answer the athlete using these results. If they asked to copy a meal, emit meal_copy.v1. Do not invent foods not listed.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up meals…"
+
+        let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        )
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        let stream = try await provider.respond(
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread
+        )
+
+        var assembled = ""
+        for try await chunk in stream {
+            try Task.checkCancellation()
+            assembled += chunk
+            streamingText = assembled
+        }
+
+        isStreaming = false
+        streamingText = nil
+        guard !assembled.isEmpty else {
+            throw CoachStructuredOutputError.emptyResponse
+        }
+        return assembled
     }
 
     private func logTurn(

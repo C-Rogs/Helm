@@ -24,7 +24,10 @@ struct ChatView: View {
                 ScrollViewReader { proxy in
                     ScrollView {
                         LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
-                            if controller.messages.isEmpty, !controller.isStreaming, controller.lastTurnError == nil {
+                            if controller.messages.isEmpty,
+                               !controller.isStreaming,
+                               controller.lastTurnError == nil,
+                               controller.pendingChatAction == nil {
                                 emptyState
                             }
 
@@ -33,7 +36,7 @@ struct ChatView: View {
                                     .id(message.id)
                             }
 
-                            if let lastTurnError = controller.lastTurnError {
+                            if let lastTurnError = controller.lastTurnError, controller.pendingChatAction == nil {
                                 errorBubble(lastTurnError)
                                     .id("last-turn-error")
                             }
@@ -43,17 +46,22 @@ struct ChatView: View {
                                     title: proposal.title,
                                     detail: proposal.detail,
                                     reason: proposal.reason,
+                                    errorMessage: controller.lastTurnError.map { chatActionErrorCopy($0) },
                                     confirmLabel: proposal.confirmLabel,
                                     cancelLabel: proposal.cancelLabel,
+                                    isRetryDisabled: controller.isApplyingChatAction,
                                     onConfirm: { controller.confirmChatAction() },
-                                    onCancel: { controller.dismissChatAction() }
+                                    onCancel: { controller.dismissChatAction() },
+                                    onRetry: { controller.confirmChatAction() }
                                 )
                                 .id("chat-confirmation")
                             }
 
                             if controller.isStreaming, let streamingText = controller.streamingText {
-                                assistantBubble(streamingText, isStreaming: true)
-                                    .id("streaming")
+                                if shouldShowStreamingBubble(streamingText) {
+                                    assistantBubble(streamingText, isStreaming: true)
+                                        .id("streaming")
+                                }
                             }
                         }
                         .padding(HelmSpacing.md)
@@ -86,8 +94,8 @@ struct ChatView: View {
                     )
                     .helmScreenPadding()
                     .padding(.vertical, HelmSpacing.sm)
-                    .background(HelmColor.surface.opacity(0.96))
-                    .transition(.move(edge: .bottom).combined(with: .opacity))
+                    .helmPanelChrome(.surface)
+                    .transition(.opacity)
                 }
 
                 composer
@@ -142,7 +150,7 @@ struct ChatView: View {
         Group {
             switch message.role {
             case .user:
-                userBubble(message.text)
+                CoachMessageBubble(role: .user, text: message.text, coachName: coachName)
             case .assistant:
                 let display = CoachChatTextFormatter.userFacingText(from: message.text)
                 let chart = ChartPayloadParser.parse(from: message.text)
@@ -157,42 +165,25 @@ struct ChatView: View {
         }
     }
 
-    private func userBubble(_ text: String) -> some View {
-        HStack {
-            Spacer(minLength: HelmSpacing.xl)
-            Text(text)
-                .helmType(.body)
-                .foregroundStyle(HelmColor.fg)
-                .textSelection(.enabled)
-                .padding(.horizontal, HelmSpacing.md)
-                .padding(.vertical, HelmSpacing.sm)
-                .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-        }
-    }
-
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
         let display = CoachChatTextFormatter.userFacingText(from: text)
         let chart = isStreaming ? nil : ChartPayloadParser.parse(from: text)
         return HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 if !display.isEmpty || isStreaming {
-                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                        HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
-                        Text(display.isEmpty && isStreaming ? "..." : display)
-                            .helmType(.body)
-                            .foregroundStyle(HelmColor.fg)
-                            .textSelection(.enabled)
-                    }
-                    .padding(.horizontal, HelmSpacing.md)
-                    .padding(.vertical, HelmSpacing.sm)
-                    .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+                    CoachMessageBubble(
+                        role: .assistant,
+                        text: display,
+                        isStreaming: isStreaming,
+                        coachName: coachName
+                    )
                 }
 
                 if let chart {
                     CoachChatChartBubble(payload: chart)
                 }
             }
-            Spacer(minLength: HelmSpacing.xl)
+            Spacer(minLength: 0)
         }
     }
 
@@ -205,7 +196,7 @@ struct ChatView: View {
                     Text(chatActionErrorCopy(message))
                         .helmType(.body, color: HelmColor.depleted)
                 }
-                if controller.lastFailedUserMessage != nil, controller.pendingChatAction == nil {
+                if controller.lastFailedUserMessage != nil {
                     Button("Try again") {
                         controller.retryLastTurn()
                     }
@@ -214,7 +205,7 @@ struct ChatView: View {
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            .helmPanelChrome(.surface)
             Spacer(minLength: HelmSpacing.xl)
         }
     }
@@ -226,9 +217,18 @@ struct ChatView: View {
         switch pending.kind {
         case .workoutStart:
             return "Could not start. \(message)"
-        case .foodLog:
+        case .foodLog, .mealCopy:
             return "Could not apply. \(message)"
         }
+    }
+
+    /// Hide the "..." flash while a structured-only payload streams in.
+    private func shouldShowStreamingBubble(_ text: String) -> Bool {
+        let display = CoachChatTextFormatter.userFacingText(from: text)
+        if !display.isEmpty { return true }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return true }
+        return !(trimmed.hasPrefix("{") || trimmed.hasPrefix("```"))
     }
 
     private var composer: some View {
@@ -238,7 +238,7 @@ struct ChatView: View {
                 .lineLimit(1 ... 4)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
-                .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+                .helmPanelChrome(.elevated)
                 .focused($isInputFocused)
                 .disabled(!controller.isCoachAvailable || controller.isStreaming || activityGate.isBlocked(for: .chat))
 
@@ -257,7 +257,7 @@ struct ChatView: View {
             .accessibilityLabel("Send")
         }
         .padding(HelmSpacing.md)
-        .background(HelmColor.surface)
+        .helmPanelChrome(.surface)
     }
 
     private var canSend: Bool {
@@ -269,7 +269,9 @@ struct ChatView: View {
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         let scroll = {
-            if controller.isStreaming {
+            if controller.isStreaming,
+               let streamingText = controller.streamingText,
+               shouldShowStreamingBubble(streamingText) {
                 proxy.scrollTo("streaming", anchor: .bottom)
             } else if controller.pendingChatAction != nil {
                 proxy.scrollTo("chat-confirmation", anchor: .bottom)
@@ -291,6 +293,12 @@ struct ChatView: View {
     ChatView()
         .helmTheme()
         .environment(\.helmSkin, .instrument)
+}
+
+#Preview("Chat signal") {
+    ChatView()
+        .helmTheme()
+        .environment(\.helmSkin, .signal)
 }
 
 #Preview("Chat empty") {

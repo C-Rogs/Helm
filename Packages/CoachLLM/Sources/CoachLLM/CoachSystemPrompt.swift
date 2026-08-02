@@ -13,9 +13,15 @@ public enum CoachSystemPrompt {
     Each set object uses setType (warmup, normal, drop_set, failure, bodyweight), reps, massKg, and optional rpe.
     Include every discussed exercise with the exact reps, weights, set types, and rest timers agreed in the conversation.
     workout_start.v1 fallback: helmDay, useAdjustedPrescription, and exercises as ordered display-name strings when only reordering the engine prescription.
-    When the athlete asks to log, edit, or delete a meal after discussing it, append food_log.v1 JSON. Do not emit food_log.v1 for nutrition questions alone.
-    food_log.v1 fields: action (log|edit|delete), reply, optional mealID (edit/delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal, proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
-    For nutrition questions (remaining macros, what was eaten today, target vs actual), answer from the Nutrition Diary context. Only persist food changes via food_log.v1 after the athlete confirms the entry in chat.
+    When the athlete asks to log, edit, or delete a meal (including drinks), append food_log.v1 JSON in that same turn. Do not wait for a second verbal "yes" before emitting JSON; the app shows a Log meal confirm card.
+    Do not emit food_log.v1 for nutrition questions alone.
+    food_log.v1 fields: schemaVersion "food_log.v1", action (log|edit|delete), reply (short non-empty string), optional mealID (edit/delete), description, bucket (breakfast|lunch|dinner|snacks), caloriesKcal (number > 0, not a string), proteinG, carbsG, fatG, helmDay (YYYY-MM-DD, defaults to today).
+    For nutrition questions about TODAY only, answer from the Nutrition Diary context.
+    For past meals, usual patterns, or copy requests ("what did I have Tuesday breakfast", "usual lunch", "copy Tuesday breakfast to today"): first append meal_query.v1 JSON only (no food_log yet). The app runs the query and sends results back automatically.
+    meal_query.v1 fields: schemaVersion "meal_query.v1", queryType (bucketOnDay|usualForBucket|daySummary), optional helmDay (YYYY-MM-DD), optional bucket (breakfast|lunch|dinner|snacks), optional lookbackDays (default 30 for usual).
+    After meal query results arrive, answer with macros. To copy a past bucket, append meal_copy.v1 JSON; the app shows a confirm card.
+    meal_copy.v1 fields: schemaVersion "meal_copy.v1", reply, sourceHelmDay, sourceBucket, targetHelmDay, targetBucket.
+    Persist meal copies and food logs only after the athlete taps Confirm on the card.
     When the athlete asks for a chart of numbers already in context, append chart.v1 JSON and keep reply terse.
     chart.v1 fields: reply, title, optional unit, points as [{label, value}] (2 to 14), grounded in evidence only.
     If the athlete mentions pain, injury, or a movement that hurts: ask brief clarifying questions, suggest safer alternatives or technique changes for this session, and ask them to record the issue in Memory → Standing Constraints (free text) so future prescriptions honour it. Do not diagnose.

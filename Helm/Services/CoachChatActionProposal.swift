@@ -6,6 +6,7 @@ import HealthKitIngest
 enum CoachChatActionKind: Sendable, Equatable {
     case workoutStart(WorkoutStartPayload)
     case foodLog(FoodLogPayload)
+    case mealCopy(MealCopyPayload)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -60,6 +61,19 @@ enum CoachChatActionParser {
             )
         }
 
+        if let payload = MealCopyPayloadParser.parse(from: text) {
+            let preview = MealCopyCommandApplier.preview(for: payload)
+            return CoachChatActionProposal(
+                reply: payload.reply,
+                kind: .mealCopy(payload),
+                title: preview.title,
+                detail: preview.detail,
+                reason: payload.reply,
+                confirmLabel: "Copy meal",
+                cancelLabel: "Cancel"
+            )
+        }
+
         if let payload = WorkoutStartPayloadParser.parse(from: text) {
             let preview = WorkoutStartCommandPreview.preview(for: payload)
             let stripped = CoachChatTextFormatter.userFacingText(from: text)
@@ -89,6 +103,16 @@ enum CoachChatDisplayText {
         }
         if let pendingAction, !pendingAction.reply.isEmpty {
             return pendingAction.reply
+        }
+        // Structured-only turn with empty reply: keep a short line so the transcript
+        // does not drop the assistant row before the confirmation card.
+        if let pendingAction {
+            switch pendingAction.kind {
+            case .workoutStart:
+                return "Ready when you are. Confirm to start \(pendingAction.title)."
+            case .foodLog, .mealCopy:
+                return pendingAction.title
+            }
         }
         return stripped
     }
