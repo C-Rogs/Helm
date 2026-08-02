@@ -36,6 +36,7 @@ final class WorkoutLiveActivityManager {
             currentExerciseName: currentExerciseName,
             targetSummary: targetSummary,
             restRemainingSeconds: nil,
+            restEndsAt: nil,
             heartRateBPM: heartRateBPM
         )
 
@@ -53,6 +54,7 @@ final class WorkoutLiveActivityManager {
         currentExerciseName: String?,
         targetSummary: String? = nil,
         restRemainingSeconds: Int?,
+        restEndsAt: Date? = nil,
         heartRateBPM: Int? = nil
     ) async {
         guard let activity = currentActivity() else { return }
@@ -61,6 +63,7 @@ final class WorkoutLiveActivityManager {
             currentExerciseName: currentExerciseName,
             targetSummary: targetSummary,
             restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: restEndsAt,
             heartRateBPM: heartRateBPM
         )
         await activity.update(.init(state: state, staleDate: staleDate()))
@@ -98,6 +101,7 @@ final class WorkoutLiveActivityManager {
         currentExerciseName: String?,
         targetSummary: String?,
         restRemainingSeconds: Int?,
+        restEndsAt: Date?,
         heartRateBPM: Int?,
         now: Date = Date()
     ) -> WorkoutActivityAttributes.ContentState {
@@ -118,6 +122,7 @@ final class WorkoutLiveActivityManager {
             currentSetCount: current?.sets.count,
             targetSummary: targetSummary,
             restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: restEndsAt,
             heartRateBPM: heartRateBPM,
             sessionExerciseID: current?.id,
             currentSetID: setID

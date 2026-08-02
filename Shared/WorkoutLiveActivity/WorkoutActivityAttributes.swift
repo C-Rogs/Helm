@@ -9,12 +9,17 @@ struct WorkoutActivityAttributes: ActivityAttributes {
         var currentSetCount: Int?
         var targetSummary: String?
         var restRemainingSeconds: Int?
+        /// When set, widgets use Text(timerInterval:) for live countdown without 1Hz updates.
+        var restEndsAt: Date?
         var heartRateBPM: Int?
         var sessionExerciseID: String?
         var currentSetID: String?
 
         var isResting: Bool {
-            (restRemainingSeconds ?? 0) > 0
+            if let restEndsAt {
+                return restEndsAt > Date()
+            }
+            return (restRemainingSeconds ?? 0) > 0
         }
     }
 

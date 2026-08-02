@@ -8,6 +8,8 @@ private enum LiveActivityMetrics {
     static let verticalPadding: CGFloat = 12
     static let horizontalPadding: CGFloat = 16
     static let doneMinWidth: CGFloat = 72
+    /// Signal-blue surround (matches brand accent used in Signal skin).
+    static let signalBlue = Color(red: 0.16, green: 0.55, blue: 1.0)
 }
 
 struct WorkoutLiveActivityWidget: Widget {
@@ -33,15 +35,7 @@ struct WorkoutLiveActivityWidget: Widget {
                     VStack(alignment: .trailing, spacing: 2) {
                         Text(elapsedLabel(context.state.elapsedSeconds))
                             .font(.caption.monospacedDigit().weight(.semibold))
-                        if let rest = context.state.restRemainingSeconds, rest > 0 {
-                            Text("Rest \(restLabel(rest))")
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(.orange)
-                        } else if let bpm = context.state.heartRateBPM {
-                            Text("\(bpm) BPM")
-                                .font(.caption2.monospacedDigit())
-                                .foregroundStyle(.red)
-                        }
+                        restOrHeartTrailing(context.state)
                     }
                 }
                 DynamicIslandExpandedRegion(.bottom) {
@@ -60,18 +54,14 @@ struct WorkoutLiveActivityWidget: Widget {
                 }
             } compactLeading: {
                 Image(systemName: "dumbbell.fill")
+                    .foregroundStyle(LiveActivityMetrics.signalBlue)
             } compactTrailing: {
-                if let rest = context.state.restRemainingSeconds, rest > 0 {
-                    Text(restLabel(rest))
-                        .font(.caption2.monospacedDigit())
-                        .foregroundStyle(.orange)
-                } else {
-                    Text(elapsedLabel(context.state.elapsedSeconds))
-                        .font(.caption2.monospacedDigit())
-                }
+                compactRestOrElapsed(context.state)
             } minimal: {
                 Image(systemName: "dumbbell.fill")
+                    .foregroundStyle(LiveActivityMetrics.signalBlue)
             }
+            .keylineTint(LiveActivityMetrics.signalBlue)
         }
     }
 
@@ -106,11 +96,10 @@ struct WorkoutLiveActivityWidget: Widget {
                             .foregroundStyle(.white.opacity(0.7))
                             .lineLimit(1)
                     }
-                    if let rest = context.state.restRemainingSeconds, rest > 0 {
-                        Text("Rest \(restLabel(rest))")
-                            .font(.caption.monospacedDigit().weight(.semibold))
-                            .foregroundStyle(.orange)
-                    } else if let bpm = context.state.heartRateBPM {
+                    restCountdownLabel(context.state)
+                        .font(.caption.monospacedDigit().weight(.semibold))
+                        .foregroundStyle(LiveActivityMetrics.signalBlue)
+                    if !context.state.isResting, let bpm = context.state.heartRateBPM {
                         Label("\(bpm) BPM", systemImage: "heart.fill")
                             .font(.caption.monospacedDigit())
                             .foregroundStyle(.pink)
@@ -122,8 +111,47 @@ struct WorkoutLiveActivityWidget: Widget {
         }
         .padding(.horizontal, LiveActivityMetrics.horizontalPadding)
         .padding(.vertical, LiveActivityMetrics.verticalPadding)
+        .overlay {
+            RoundedRectangle(cornerRadius: 16)
+                .strokeBorder(LiveActivityMetrics.signalBlue.opacity(0.85), lineWidth: 1.5)
+                .padding(1)
+        }
         .activityBackgroundTint(Color.black)
         .activitySystemActionForegroundColor(.white)
+    }
+
+    @ViewBuilder
+    private func restOrHeartTrailing(_ state: WorkoutActivityAttributes.ContentState) -> some View {
+        if state.isResting {
+            restCountdownLabel(state)
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(LiveActivityMetrics.signalBlue)
+        } else if let bpm = state.heartRateBPM {
+            Text("\(bpm) BPM")
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(.red)
+        }
+    }
+
+    @ViewBuilder
+    private func compactRestOrElapsed(_ state: WorkoutActivityAttributes.ContentState) -> some View {
+        if state.isResting {
+            restCountdownLabel(state)
+                .font(.caption2.monospacedDigit())
+                .foregroundStyle(LiveActivityMetrics.signalBlue)
+        } else {
+            Text(elapsedLabel(state.elapsedSeconds))
+                .font(.caption2.monospacedDigit())
+        }
+    }
+
+    @ViewBuilder
+    private func restCountdownLabel(_ state: WorkoutActivityAttributes.ContentState) -> some View {
+        if let endsAt = state.restEndsAt, endsAt > Date() {
+            Text(timerInterval: Date.now ... endsAt, countsDown: true)
+        } else if let rest = state.restRemainingSeconds, rest > 0 {
+            Text("Rest \(restLabel(rest))")
+        }
     }
 
     @ViewBuilder
@@ -184,6 +212,7 @@ struct WorkoutLiveActivityWidget: Widget {
         currentSetCount: 5,
         targetSummary: "90 kg × 5",
         restRemainingSeconds: nil,
+        restEndsAt: nil,
         heartRateBPM: 128,
         sessionExerciseID: "ex-1",
         currentSetID: "set-3"
@@ -203,6 +232,7 @@ struct WorkoutLiveActivityWidget: Widget {
         currentSetCount: 5,
         targetSummary: "90 kg × 3",
         restRemainingSeconds: 95,
+        restEndsAt: Date().addingTimeInterval(95),
         heartRateBPM: 118,
         sessionExerciseID: "ex-1",
         currentSetID: "set-4"

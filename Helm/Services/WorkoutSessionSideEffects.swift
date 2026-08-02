@@ -55,11 +55,16 @@ final class WorkoutSessionSideEffects {
         heartRateBPM: Int? = nil
     ) async {
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
+        let endsAt: Date? = {
+            guard let remaining = restRemainingSeconds, remaining > 0 else { return nil }
+            return snapshot.restTimer?.endsAt
+        }()
         await liveActivity.update(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot),
             targetSummary: targetSummary,
             restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: endsAt,
             heartRateBPM: heartRateBPM
         )
     }
@@ -100,6 +105,7 @@ final class WorkoutSessionSideEffects {
             currentExerciseName: exerciseName,
             targetSummary: nil,
             restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: snapshot.restTimer?.endsAt,
             heartRateBPM: nil
         )
     }
