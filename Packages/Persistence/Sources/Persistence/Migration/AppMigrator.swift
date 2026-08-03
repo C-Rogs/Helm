@@ -55,6 +55,9 @@ struct AppMigrator {
         if version >= 14 {
             WorkoutMusicSchemaMigration.register(on: &migrator)
         }
+        if version >= 15 {
+            SchemaHardeningMigration.register(on: &migrator)
+        }
         return migrator
     }
 

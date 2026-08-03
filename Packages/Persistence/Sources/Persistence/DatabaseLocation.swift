@@ -2,8 +2,11 @@ import Foundation
 
 public enum iCloudBackupPolicy: Sendable {
     case included
+    case excluded
 
-    public static let `default`: Self = .included
+    /// HealthKit re-ingests health samples; keep local SQLite out of iCloud device backup.
+    /// Use Settings export for an intentional offline copy.
+    public static let `default`: Self = .excluded
 }
 
 public enum DatabaseLocation {
@@ -36,6 +39,8 @@ public enum DatabaseLocation {
         switch policy {
         case .included:
             values.isExcludedFromBackup = false
+        case .excluded:
+            values.isExcludedFromBackup = true
         }
         var url = directoryURL
         try url.setResourceValues(values)

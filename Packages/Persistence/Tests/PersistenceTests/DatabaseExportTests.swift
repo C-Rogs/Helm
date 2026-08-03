@@ -47,11 +47,23 @@ struct DatabaseExportTests {
         #expect(hrv == 55)
     }
 
-    @Test("default database location is included in iCloud backup")
-    func iCloudBackupIncluded() throws {
+    @Test("default database location is excluded from iCloud backup")
+    func iCloudBackupExcluded() throws {
         let url = try DatabaseLocation.defaultDatabaseURL()
         let directoryURL = url.deletingLastPathComponent()
         let values = try directoryURL.resourceValues(forKeys: [.isExcludedFromBackupKey])
+        #expect(values.isExcludedFromBackup == true)
+    }
+
+    @Test("included backup policy still opt-in")
+    func iCloudBackupIncludedOptIn() throws {
+        let temp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("helm-backup-policy-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: temp, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: temp) }
+
+        try DatabaseLocation.applyBackupPolicy(.included, to: temp)
+        let values = try temp.resourceValues(forKeys: [.isExcludedFromBackupKey])
         #expect(values.isExcludedFromBackup == false)
     }
 }

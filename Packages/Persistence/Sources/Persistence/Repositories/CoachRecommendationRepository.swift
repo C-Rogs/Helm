@@ -89,7 +89,7 @@ public struct CoachRecommendationRepository: Sendable {
                 sql: """
                     SELECT * FROM coach_recommendation
                     WHERE workout_session_id = ?
-                    ORDER BY datetime(generated_at) ASC
+                    ORDER BY generated_at ASC
                     """,
                 arguments: [sessionID]
             )

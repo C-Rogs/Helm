@@ -125,7 +125,7 @@ enum WorkoutSessionUpdateWriter {
                     UPDATE set_entry
                     SET set_index = ?, set_type = ?, status = ?, weight_kg = ?, reps = ?,
                         distance_km = ?, duration_seconds = ?, rpe = ?, rir = ?,
-                        completed_at = ?, updated_at = ?
+                        logged_exercise_id = ?, completed_at = ?, updated_at = ?
                     WHERE id = ?
                     """,
                 arguments: [
@@ -138,6 +138,7 @@ enum WorkoutSessionUpdateWriter {
                     set.durationSeconds,
                     set.rpe,
                     set.rir,
+                    exercise.exerciseID,
                     set.completedAt.map(ISO8601Coding.string(from:)),
                     now,
                     set.id

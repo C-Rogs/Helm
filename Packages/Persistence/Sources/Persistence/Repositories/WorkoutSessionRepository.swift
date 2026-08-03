@@ -122,7 +122,7 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                     JOIN workout_session ws ON ws.id = wse.workout_session_id
-                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                    WHERE se.logged_exercise_id = ?
                       AND se.status = 'completed'
                       AND se.deleted_at IS NULL
                       AND wse.deleted_at IS NULL
@@ -185,7 +185,7 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                     JOIN workout_session ws ON ws.id = wse.workout_session_id
-                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                    WHERE se.logged_exercise_id = ?
                       AND se.status = 'completed'
                       AND se.deleted_at IS NULL
                       AND wse.deleted_at IS NULL
@@ -227,7 +227,7 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                     JOIN workout_session ws ON ws.id = wse.workout_session_id
-                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                    WHERE se.logged_exercise_id = ?
                       AND se.status = 'completed'
                       AND se.deleted_at IS NULL
                       AND wse.deleted_at IS NULL
@@ -262,7 +262,7 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM set_entry se
                     JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                     JOIN workout_session ws ON ws.id = wse.workout_session_id
-                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                    WHERE se.logged_exercise_id = ?
                       AND se.status = 'completed'
                       AND se.deleted_at IS NULL
                       AND wse.deleted_at IS NULL
@@ -292,7 +292,7 @@ public struct WorkoutSessionRepository: Sendable {
                            ) AS exercise_count
                     FROM workout_session ws
                     WHERE ws.status = 'completed' AND ws.deleted_at IS NULL
-                    ORDER BY datetime(ws.started_at) DESC
+                    ORDER BY ws.started_at DESC
                     LIMIT ? OFFSET ?
                     """,
                 arguments: [limit, offset]
@@ -337,8 +337,8 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM workout_session
                     WHERE status = 'completed'
                       AND deleted_at IS NULL
-                      AND datetime(started_at) >= datetime(?)
-                    ORDER BY datetime(started_at) ASC
+                      AND started_at >= ?
+                    ORDER BY started_at ASC
                     """,
                 arguments: [startString]
             )
@@ -422,7 +422,7 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM workout_session ws
                     JOIN workout_session_exercise wse ON wse.workout_session_id = ws.id
                     JOIN set_entry se ON se.workout_session_exercise_id = wse.id
-                    WHERE COALESCE(se.logged_exercise_id, wse.exercise_id) = ?
+                    WHERE se.logged_exercise_id = ?
                       AND ws.status = 'completed'
                       AND ws.deleted_at IS NULL
                       AND wse.deleted_at IS NULL
@@ -433,7 +433,7 @@ public struct WorkoutSessionRepository: Sendable {
                       AND se.reps IS NOT NULL
                       AND se.reps > 0
                     GROUP BY ws.id
-                    ORDER BY datetime(ws.started_at) DESC
+                    ORDER BY ws.started_at DESC
                     LIMIT ? OFFSET ?
                     """,
                 arguments: [exerciseID, limit, offset]
@@ -473,8 +473,8 @@ public struct WorkoutSessionRepository: Sendable {
                     FROM workout_session
                     WHERE status = 'completed'
                       AND deleted_at IS NULL
-                      AND datetime(started_at) >= datetime(?)
-                    ORDER BY datetime(started_at) ASC
+                      AND started_at >= ?
+                    ORDER BY started_at ASC
                     LIMIT ? OFFSET ?
                     """,
                 arguments: [startString, limit, offset]
