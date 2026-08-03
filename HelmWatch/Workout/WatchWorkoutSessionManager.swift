@@ -121,7 +121,7 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
 
         let endDate = Date()
         let metadata: [String: Any] = [
-            HKMetadataKeyWorkoutBrandName: "Helm",
+            HKMetadataKeyWorkoutBrandName: "Signal",
             "com.cameronro.helm.session_id": sessionID ?? "",
             HKMetadataKeyExternalUUID: sessionID ?? ""
         ]

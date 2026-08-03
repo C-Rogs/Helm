@@ -14,7 +14,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
 
     var title: String {
         switch self {
-        case .welcome: "Welcome to Helm"
+        case .welcome: "Welcome to Signal"
         case .healthKit: "Health data"
         case .bodyProfile: "Body profile"
         case .notifications: "Notifications"
@@ -30,9 +30,9 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         case .welcome:
             "Your readiness instrument. One arc, one score, one plan for today."
         case .healthKit:
-            "Helm reads Apple Health to compute readiness, training load, and nutrition."
+            "Signal reads Apple Health to compute readiness, training load, and nutrition."
         case .bodyProfile:
-            "Confirm weight, height, sex, and date of birth so Helm can estimate maintenance calories."
+            "Confirm weight, height, sex, and date of birth so Signal can estimate maintenance calories."
         case .notifications:
             "Rest timers and future briefs use local notifications."
         case .coachKey:

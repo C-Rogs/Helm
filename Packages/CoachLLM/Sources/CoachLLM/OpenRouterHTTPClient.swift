@@ -32,8 +32,8 @@ public final class LiveOpenRouterHTTPClient: OpenRouterHTTPClient, @unchecked Se
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
         urlRequest.setValue("Bearer \(request.apiKey)", forHTTPHeaderField: "Authorization")
-        urlRequest.setValue("Helm", forHTTPHeaderField: "HTTP-Referer")
-        urlRequest.setValue("Helm iOS", forHTTPHeaderField: "X-Title")
+        urlRequest.setValue("Signal", forHTTPHeaderField: "HTTP-Referer")
+        urlRequest.setValue("Signal iOS", forHTTPHeaderField: "X-Title")
         urlRequest.httpBody = request.body
 
         let (data, response) = try await session.data(for: urlRequest)

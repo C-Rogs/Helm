@@ -25,7 +25,7 @@ struct WatchBriefView: View {
                 if let summary = coordinator.latestBriefSummary {
                     Text(summary)
                 } else {
-                    Text("Open Helm on iPhone for your full brief.")
+                    Text("Open Signal on iPhone for your full brief.")
                         .foregroundStyle(.secondary)
                 }
             }

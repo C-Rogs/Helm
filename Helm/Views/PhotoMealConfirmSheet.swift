@@ -121,7 +121,7 @@ struct PhotoMealConfirmSheet: View {
             Text("Estimate confidence: \(currentEstimate.confidence.rawValue.capitalized)")
                 .helmType(.body, color: HelmColor.fgMuted)
             if currentEstimate.confidence == .low {
-                Text("Helm decomposes the photo then matches ingredients to CoFID. Low usually means uncertain portions or a weak food match, not the same as Gemini’s percentage score.")
+                Text("Signal decomposes the photo then matches ingredients to CoFID. Low usually means uncertain portions or a weak food match, not the same as Gemini’s percentage score.")
                     .helmType(.body, color: HelmColor.fgSecondary)
             }
         }

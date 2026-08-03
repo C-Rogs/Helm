@@ -75,7 +75,7 @@ struct BodyProfileEditorView: View {
                     Text("kcal / day")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
-                Text("Starting point for calorie targets. Helm refines this from your food logs and weight trend, not from diet calories alone during a cut.")
+                Text("Starting point for calorie targets. Signal refines this from your food logs and weight trend, not from diet calories alone during a cut.")
                     .helmType(.body, color: HelmColor.fgMuted)
             } else {
                 Text("Enter weight, height, sex, and date of birth to calculate maintenance calories.")
@@ -149,7 +149,7 @@ struct BodyProfileSettingsView: View {
             formSections
         } else {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                Text("Helm uses these metrics to set your starting maintenance calories and macro targets. Values from Apple Health are prefilled when available.")
+                Text("Signal uses these metrics to set your starting maintenance calories and macro targets. Values from Apple Health are prefilled when available.")
                     .font(HelmTypography.body)
                     .foregroundStyle(HelmColor.fgSecondary)
 
@@ -167,7 +167,7 @@ struct BodyProfileSettingsView: View {
     @ViewBuilder
     private var formSections: some View {
         Section {
-            Text("Helm uses these metrics for calorie targets and coach context. Weight updates from Apple Health when available.")
+            Text("Signal uses these metrics for calorie targets and coach context. Weight updates from Apple Health when available.")
                 .font(HelmType.body.font)
                 .foregroundStyle(HelmColor.fgSecondary)
         }

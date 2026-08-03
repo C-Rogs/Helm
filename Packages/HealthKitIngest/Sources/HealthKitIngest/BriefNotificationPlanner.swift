@@ -16,7 +16,7 @@ public enum BriefNotificationPlanner {
     public static func body(for brief: StoredDailyBrief) -> String {
         let text = brief.displayText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else {
-            return "Your readiness brief is ready in Helm."
+            return "Your readiness brief is ready in Signal."
         }
         if text.count <= 180 {
             return text

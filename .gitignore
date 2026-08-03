@@ -15,5 +15,8 @@ DerivedData/
 build/
 Packages/*/.build/
 
+# Local simulator screenshot tours
+Screenshots/
+
 # SwiftLint cache
 .swiftlint-cache

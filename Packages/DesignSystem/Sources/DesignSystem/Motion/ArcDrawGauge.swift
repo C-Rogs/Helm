@@ -63,7 +63,7 @@ public struct ArcDrawGauge<Center: View>: View {
 #Preview("Arc draw gauge") {
     ArcDrawGauge(targetValue: 72, state: .ready, reduceMotion: false) {
         VStack(spacing: HelmSpacing.xxs) {
-            Text("Helm")
+            Text("Signal")
                 .helmType(.heroNumber)
             Text("READY")
                 .helmType(.monoTag, color: HelmColor.fgMuted)

@@ -10,9 +10,9 @@ struct PhotoMealEstimatingView: View {
 
     private var footnote: String {
         if usesLidarAssist {
-            return "Helm used LiDAR depth from your camera to refine portion size, then identifies ingredients with vision and matches each item to CoFID on your phone."
+            return "Signal used LiDAR depth from your camera to refine portion size, then identifies ingredients with vision and matches each item to CoFID on your phone."
         }
-        return "Helm identifies ingredients with vision, then matches each item to CoFID on your phone."
+        return "Signal identifies ingredients with vision, then matches each item to CoFID on your phone."
     }
 
     var body: some View {

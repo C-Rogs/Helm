@@ -40,7 +40,7 @@ public enum WorkoutExportFormatter {
         displayNames: [String: String]
     ) -> String {
         """
-        Helm workout export - paste into Gemini for verification.
+        Signal workout export - paste into Gemini for verification.
 
         \(formatForCoachContext(draft: draft, displayNames: displayNames))
         """
@@ -51,7 +51,7 @@ public enum WorkoutExportFormatter {
         displayNames: [String: String]
     ) -> String {
         """
-        Helm prescription export - paste into Gemini for verification.
+        Signal prescription export - paste into Gemini for verification.
 
         \(formatPrescriptionBody(prescription: prescription, displayNames: displayNames))
         """

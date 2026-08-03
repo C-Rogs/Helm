@@ -49,7 +49,7 @@ struct SchemaV2ExportView: View {
             }
 
             Section {
-                Text("Helm export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
+                Text("Signal export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
                     .font(HelmType.body.font)
                     .foregroundStyle(HelmColor.fgMuted)
             }
@@ -118,7 +118,7 @@ struct SchemaV2ExportView: View {
     private func shareJSON() {
         guard let lastJSON else { return }
         let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("Helm_SchemaV2_\(Int(Date().timeIntervalSince1970)).json")
+            .appendingPathComponent("Signal_SchemaV2_\(Int(Date().timeIntervalSince1970)).json")
         do {
             try lastJSON.write(to: url, atomically: true, encoding: .utf8)
             shareItem = ExportShareItem(url: url)

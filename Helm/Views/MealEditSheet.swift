@@ -114,7 +114,7 @@ struct MealEditSheet: View {
                 Button("Delete", role: .destructive, action: onDelete)
                 Button("Cancel", role: .cancel) {}
             } message: {
-                Text("This removes the entry from Helm and Apple Health.")
+                Text("This removes the entry from Signal and Apple Health.")
             }
         }
     }

@@ -10,7 +10,7 @@ public enum DietarySourceMode: String, Sendable, CaseIterable {
         case .mergeExternal:
             "Merge external"
         case .helmOnly:
-            "Helm only"
+            "Signal only"
         }
     }
 }

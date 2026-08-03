@@ -72,7 +72,7 @@ struct WorkoutExportFormatterTests {
             prescription: prescription,
             displayNames: ["seed-squat": "Squat (Barbell)"]
         )
-        #expect(text.contains("Helm prescription export"))
+        #expect(text.contains("Signal prescription export"))
         #expect(text.contains("Leg Day"))
         #expect(text.contains("Set 1: 100 kg x 5"))
     }

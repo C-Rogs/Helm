@@ -12,7 +12,7 @@ struct WorkoutImportView: View {
     var body: some View {
         NavigationStack {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                Text("Paste a workout plan from Gemini or another coach. Helm pre-fills exercises, sets, and targets so you can log the session in the gym.")
+                Text("Paste a workout plan from Gemini or another coach. Signal pre-fills exercises, sets, and targets so you can log the session in the gym.")
                     .helmFont(.body)
                     .foregroundStyle(HelmColor.textSecondary)
                     .fixedSize(horizontal: false, vertical: true)

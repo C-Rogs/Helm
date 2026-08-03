@@ -155,7 +155,7 @@ final class NutritionMealActionsController {
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
         } catch MealRepeatError.emptySource {
-            errorMessage = "No Helm meals logged on that day."
+            errorMessage = "No Signal meals logged on that day."
         } catch {
             errorMessage = "Could not copy meals. Try again."
         }

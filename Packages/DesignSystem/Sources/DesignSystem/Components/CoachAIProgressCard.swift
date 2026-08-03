@@ -90,7 +90,7 @@ public struct CoachAIProgressCard: View {
         title: "Analysing meal",
         completedSteps: ["Reading photo", "Identifying ingredients from photo…"],
         currentStep: "Matching ingredients to CoFID…",
-        footnote: "Helm identifies ingredients with vision, then matches each item to CoFID on your phone."
+        footnote: "Signal identifies ingredients with vision, then matches each item to CoFID on your phone."
     )
     .helmScreenPadding()
     .padding()

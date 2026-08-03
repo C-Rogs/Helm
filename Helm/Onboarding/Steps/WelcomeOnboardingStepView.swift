@@ -24,7 +24,7 @@ struct WelcomeOnboardingStepView: View {
             VStack(spacing: HelmSpacing.lg) {
                 ArcDrawGauge(targetValue: 72, state: .ready, reduceMotion: reduceMotion) {
                     VStack(spacing: HelmSpacing.xxs) {
-                        Text("Helm")
+                        Text("Signal")
                             .helmType(.heroNumber)
                         Text("ARC")
                             .helmType(.monoTag, color: HelmColor.fgMuted)

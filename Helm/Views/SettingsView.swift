@@ -32,7 +32,7 @@ struct SettingsView: View {
                     }
 
                     Picker("Font", selection: $coordinator.prefersSystemFonts) {
-                        Text("Helm").tag(false)
+                        Text("Signal").tag(false)
                         Text("System").tag(true)
                     }
                     .pickerStyle(.segmented)

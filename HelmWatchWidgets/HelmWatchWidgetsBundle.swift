@@ -75,7 +75,7 @@ struct HelmComplication: Widget {
         StaticConfiguration(kind: kind, provider: HelmComplicationProvider()) { entry in
             HelmComplicationView(entry: entry)
         }
-        .configurationDisplayName("Helm")
+        .configurationDisplayName("Signal")
         .description("Today's ARC readiness. Tap for your morning brief.")
         .supportedFamilies([
             .accessoryCircular,

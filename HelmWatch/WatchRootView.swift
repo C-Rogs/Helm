@@ -72,7 +72,7 @@ struct WatchRootView: View {
 
     private var syncStatusTab: some View {
         List {
-            Section("Helm") {
+            Section("Signal") {
                 Text("Watch companion")
                     .font(.headline)
                 if let received = coordinator.lastReceived {

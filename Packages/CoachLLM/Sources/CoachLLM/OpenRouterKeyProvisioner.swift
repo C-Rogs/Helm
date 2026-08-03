@@ -52,13 +52,13 @@ extension CoachKeyServiceError: LocalizedError {
     public var errorDescription: String? {
         switch self {
         case .notConfigured:
-            "Helm cloud key service is not configured yet."
+            "Signal cloud key service is not configured yet."
         case .invalidResponse:
-            "Unexpected response from Helm key service."
+            "Unexpected response from Signal key service."
         case .unauthorized:
-            "Helm key service rejected this app build."
+            "Signal key service rejected this app build."
         case .deviceCapReached:
-            "Helm tester device limit reached. Contact Cameron to raise the cap."
+            "Signal tester device limit reached. Contact Cameron to raise the cap."
         case .serverError(let message):
             message
         }

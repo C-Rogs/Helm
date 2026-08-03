@@ -23,7 +23,7 @@ struct SleepDiagnosticsView: View {
                     summary: snapshot.healthKitSummary
                 )
                 summarySection(
-                    title: "Helm persisted",
+                    title: "Signal persisted",
                     summary: snapshot.persistedSummary
                 )
 

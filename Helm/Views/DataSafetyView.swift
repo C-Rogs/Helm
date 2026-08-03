@@ -46,7 +46,7 @@ struct DataSafetyView: View {
 
             Section("iCloud Backup") {
                 LabeledContent("Policy", value: "Included")
-                Text("Helm data in Application Support is included in your device iCloud backup.")
+                Text("Signal data in Application Support is included in your device iCloud backup.")
                     .font(.footnote)
                     .foregroundStyle(.secondary)
             }

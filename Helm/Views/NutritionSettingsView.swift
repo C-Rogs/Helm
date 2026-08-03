@@ -58,9 +58,9 @@ struct NutritionSettingsView: View {
     private var dietarySourceHelp: String {
         switch dietarySourceMode {
         case .mergeExternal:
-            "During the MyFitnessPal transition, Helm merges external HealthKit calories and deduplicates overlapping entries."
+            "During the MyFitnessPal transition, Signal merges external HealthKit calories and deduplicates overlapping entries."
         case .helmOnly:
-            "Only meals logged in Helm count toward intake. External dietary sources are ignored."
+            "Only meals logged in Signal count toward intake. External dietary sources are ignored."
         }
     }
 }

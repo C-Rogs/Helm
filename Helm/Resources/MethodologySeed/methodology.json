@@ -35,7 +35,7 @@
     {
       "id": "volume-landmarks",
       "title": "Weekly volume landmarks",
-      "body": "Helm tracks weekly hard sets per muscle against MEV and MRV landmarks.\n\nEach mesocycle ramps volume toward the upper bound, then schedules a deload before resetting the block. Landmarks refine from logged tolerance over time.\n\nThis is coaching guidance, not medical advice.",
+      "body": "Signal tracks weekly hard sets per muscle against MEV and MRV landmarks.\n\nEach mesocycle ramps volume toward the upper bound, then schedules a deload before resetting the block. Landmarks refine from logged tolerance over time.\n\nThis is coaching guidance, not medical advice.",
       "citationIDs": ["ev-volume-landmarks"]
     },
     {

@@ -187,7 +187,7 @@ public struct HelmLoadingState: View {
 #Preview("Screen states accessibility") {
     HelmEmptyState(
         title: "Awaiting data",
-        message: "Connect HealthKit and let Helm build your baseline.",
+        message: "Connect HealthKit and let Signal build your baseline.",
         icon: .health
     )
     .padding()

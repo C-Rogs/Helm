@@ -72,7 +72,7 @@ struct MethodologyTopicDetailView: View {
             topic: MethodologyTopic(
                 id: "preview",
                 title: "Weekly volume landmarks",
-                body: "Helm tracks weekly hard sets per muscle.\n\nThis is coaching guidance, not medical advice.",
+                body: "Signal tracks weekly hard sets per muscle.\n\nThis is coaching guidance, not medical advice.",
                 citationIDs: ["ev-volume-landmarks"]
             ),
             evidence: [

@@ -8,6 +8,9 @@ struct HelmApp: App {
     @UIApplicationDelegateAdaptor(HelmAppDelegate.self) private var appDelegate
 
     init() {
+        if ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
+            UserDefaults.standard.set(true, forKey: OnboardingStore.completedDefaultsKey)
+        }
         HelmFontRegistration.registerFontsIfNeeded()
         Task { @MainActor in
             await DiagnosticsBootstrap.run()

@@ -1637,7 +1637,7 @@ final class TrainSessionController {
                 if !launched {
                     watchCompanionNotice =
                         coordinator.lastLaunchError
-                        ?? "Watch didn't wake. Open Helm on Watch once, then tap to retry."
+                        ?? "Watch didn't wake. Open Signal on Watch once, then tap to retry."
                     return
                 }
                 watchCompanionNotice = nil
@@ -1677,7 +1677,7 @@ final class TrainSessionController {
                 watchCompanionNotice = nil
                 return
             }
-            watchCompanionNotice = "Watch didn't wake. Open Helm on Watch once, then tap to retry."
+            watchCompanionNotice = "Watch didn't wake. Open Signal on Watch once, then tap to retry."
         }
     }
 

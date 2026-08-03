@@ -37,7 +37,7 @@ public protocol OpenFoodFactsClient: Sendable {
 }
 
 enum OpenFoodFactsEndpoint {
-    static let userAgent = "Helm/1.0 (iOS; Contact: https://openfoodfacts.org)"
+    static let userAgent = "Signal/1.0 (iOS; Contact: https://openfoodfacts.org)"
     static let productHost = "uk.openfoodfacts.org"
     static let searchHost = "search.openfoodfacts.org"
     static let searchFields = "code,product_name,brands,nutriments,serving_size,serving_quantity,product_quantity"

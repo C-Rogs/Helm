@@ -37,7 +37,7 @@ struct ShortcutsOnboardingStepView: View {
                 payoffSection
 
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                    Text("Helm is available in Shortcuts. Set up a morning automation so your brief generates when you dismiss your alarm or unlock your phone.")
+                    Text("Signal is available in Shortcuts. Set up a morning automation so your brief generates when you dismiss your alarm or unlock your phone.")
                         .font(HelmTypography.body)
                         .foregroundStyle(HelmColor.fgSecondary)
 

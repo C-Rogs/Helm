@@ -116,7 +116,7 @@ struct HealthKitOnboardingStepView: View {
                 }
             }
 
-            Text("Helm checks for samples, not permission grants. Denied reads look empty here.")
+            Text("Signal checks for samples, not permission grants. Denied reads look empty here.")
                 .font(HelmTypography.caption)
                 .foregroundStyle(HelmColor.fgMuted)
         }

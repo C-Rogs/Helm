@@ -13,11 +13,11 @@ struct GenerateBriefIntent: AppIntent {
 
         switch outcome {
         case .lockedPhone:
-            return .result(dialog: "Phone locked. Open Helm for your brief.")
+            return .result(dialog: "Phone locked. Open Signal for your brief.")
         case .succeeded:
             return .result(dialog: "Morning brief ready.")
         case .timedOut:
-            return .result(dialog: "Brief timed out. Open Helm to finish.")
+            return .result(dialog: "Brief timed out. Open Signal to finish.")
         case let .failed(message):
             return .result(dialog: "Brief failed: \(message)")
         }

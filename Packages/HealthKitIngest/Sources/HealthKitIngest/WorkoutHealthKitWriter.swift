@@ -56,7 +56,7 @@ public struct WorkoutHealthKitWriter: WorkoutHealthKitWriting {
             end: request.endedAt,
             totalEnergyBurnedKilocalories: energy,
             metadata: [
-                HKMetadataKeyWorkoutBrandName: "Helm",
+                HKMetadataKeyWorkoutBrandName: "Signal",
                 "com.cameronro.helm.session_id": request.sessionID,
                 HKMetadataKeyExternalUUID: request.sessionID
             ]
