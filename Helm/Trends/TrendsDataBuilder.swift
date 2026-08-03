@@ -30,19 +30,22 @@ enum TrendsDataBuilder {
         }
 
         let chronological = samples.reversed()
+        let rawMasses = chronological.map(\.1)
+        let filteredMasses = TrendWeightSmoother.filteredSeries(rawMasses)
         var smoothed: Double?
         let alpha = TrendWeightSmoother.alpha
         var bodyWeight: [TrendWeightPoint] = []
         var trendWeight: [TrendWeightPoint] = []
 
-        for (day, massKg) in chronological {
+        for (index, (day, massKg)) in chronological.enumerated() {
             let rawState = trendWeightState(trendKg: massKg, targetKg: targetWeightKg)
             bodyWeight.append(TrendWeightPoint(helmDay: day, trendWeightKg: massKg, state: rawState))
 
+            let filteredKg = filteredMasses[index]
             if let previous = smoothed {
-                smoothed = alpha * massKg + (1 - alpha) * previous
+                smoothed = alpha * filteredKg + (1 - alpha) * previous
             } else {
-                smoothed = massKg
+                smoothed = filteredKg
             }
             guard let trend = smoothed else { continue }
             let trendState = trendWeightState(trendKg: trend, targetKg: targetWeightKg)

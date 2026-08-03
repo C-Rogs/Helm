@@ -1,6 +1,8 @@
 # Plan: Helm (unified adaptive health coach, clean-slate iOS build)
 
-> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. This is the single source of truth for separate Cursor build agents. **Cameron only says which section to build** (e.g. `build M3.2` or `build F-DT1.1`). The agent reads this file and `.cursor/rules/helm-build-agent.mdc`; no extra instructions are required. Every section is self-contained: goal, scope, interfaces to expose, dependencies, and acceptance criteria the agent can verify itself (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT7). Agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
+> **App-first (current default).** Remaining `M#.#` / `F-*` rows below are historical backlog, not the default work queue. Do **not** start the next unfinished section unless Cameron explicitly says `build M#.#` or `build F-*`. Day-to-day improvements: inspect the live app and code, fix from evidence, commit normally. `PROGRESS.md` section table stays as history; do **not** invent new section rows for ad-hoc app work.
+
+> Clean-slate build. "Helm" is the confirmed name, a new app and not an extension of the lab's coach/Coacher projects. When Cameron invokes a named section (`build M3.2` / `build F-DT1.1`), this file and `.cursor/rules/helm-build-agent.mdc` are the section contract: self-contained goal, scope, interfaces, dependencies, and agent-verifiable acceptance (build + tests + lint). Cameron does not review or test between sections; he only runs Device Test Gates (DT1 to DT7). Section agents must `git commit` every finished section without asking permission. On-device verification is batched into those gates, not per-section.
 
 ## Invocation (for Cameron)
 

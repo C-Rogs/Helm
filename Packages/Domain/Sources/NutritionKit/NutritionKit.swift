@@ -22,7 +22,7 @@ public enum NutritionKit {
         let sorted = weekDays.sorted { $0.helmDay < $1.helmDay }
         let weights = sorted.compactMap(\.bodyMassKg).filter { $0 > 1 }
         if !weights.isEmpty {
-            state.smoothedTrendWeightKg = TrendWeightSmoother.ewma(weights)
+            state.smoothedTrendWeightKg = TrendWeightSmoother.robustEwma(weights)
         }
 
         let intakes = sorted.compactMap(\.loggedIntakeKcal)

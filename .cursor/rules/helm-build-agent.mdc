@@ -1,20 +1,32 @@
 ---
-description: Helm build-agent contract. One section per session, auto-commit, DT-only testing.
+description: Helm build-agent contract. App-first by default; section builds only on explicit build M#.# / F-*.
 alwaysApply: true
 ---
 
 # Helm build agent
 
+## Default: app-first
+
+Unless Cameron explicitly says `build M#.#` or `build F-*`:
+
+- Improve from the **live app and code**, not the next unfinished PLAN milestone.
+- Do not walk remaining `M#.#` / `F-*` rows, invent PROGRESS section rows, or treat PLAN as the work queue.
+- Read actual interfaces in the repo. Fix from evidence. Commit when the work is done (normal commit message; no section tag required).
+
+`PLAN.md` / `PROGRESS.md` section tables are historical backlog + history. Use them only when Cameron names a section.
+
+## Section builds only (`build M#.#` / `build F-*`)
+
 Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.1`. No other preamble needed. Everything below is mandatory without asking Cameron.
 
-## Read first
+### Read first
 
 1. `PLAN.md`: Build agent contract, Commit discipline, and the named section (Goal, Scope, Depends on, Acceptance).
 2. `PROGRESS.md`: confirm dependencies have commit SHAs; append your row when done.
 3. `Docs/DIAGNOSTICS.md`: if the section touches logging or signposts.
 4. `Docs/DESIGN-SYSTEM.md` + `Docs/HAPTICS.md`: if the section touches UI, DesignSystem, haptics, or screen layout (normative from M0.7).
 
-## Do
+### Do
 
 - Build **exactly** that section. Nothing else.
 - Pass agent-verifiable acceptance (build, tests, lint).
@@ -23,7 +35,7 @@ Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.
 - Update `PROGRESS.md` with status `done`, date, and short SHA **in that same commit** (`git commit --amend --no-edit` after `git rev-parse --short HEAD`). Never add a follow-up commit just to record the SHA.
 - End with commit SHA and clean `git status`.
 
-## Do not
+### Do not
 
 - Ask Cameron to commit, review, preview, or test. He only tests at **DT gates** (DT1–DT5), not between sections.
 - Ask "would you like me to commit?" or wait for approval.
