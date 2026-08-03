@@ -5,6 +5,7 @@ import HealthKit
 @MainActor
 protocol WatchWorkoutSessionManaging: AnyObject {
     var delegate: (any WatchWorkoutSessionManagerDelegate)? { get set }
+    var isMirroringToCompanion: Bool { get }
     func requestAuthorization() async throws -> Bool
     func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws
     func pause()
@@ -20,6 +21,11 @@ protocol WatchWorkoutSessionManagerDelegate: AnyObject {
         restingHR: Double,
         maxHR: Double
     )
+    func workoutSessionManagerDidLoseMirroring(_ manager: any WatchWorkoutSessionManaging)
+}
+
+extension WatchWorkoutSessionManagerDelegate {
+    func workoutSessionManagerDidLoseMirroring(_ manager: any WatchWorkoutSessionManaging) {}
 }
 
 enum WatchWorkoutSessionError: LocalizedError {
@@ -41,6 +47,7 @@ enum WatchWorkoutSessionError: LocalizedError {
 @MainActor
 final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
     weak var delegate: (any WatchWorkoutSessionManagerDelegate)?
+    private(set) var isMirroringToCompanion = false
 
     private let healthStore: HKHealthStore
     private var session: HKWorkoutSession?
@@ -94,6 +101,7 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         self.session = workoutSession
         self.builder = workoutBuilder
         self.sessionID = sessionID
+        self.isMirroringToCompanion = false
 
         let startDate = Date()
         workoutSession.startActivity(with: startDate)
@@ -108,6 +116,14 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
                     continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
                 }
             }
+        }
+
+        do {
+            try await workoutSession.startMirroringToCompanionDevice()
+            isMirroringToCompanion = true
+        } catch {
+            // WCSession live HR remains the fallback path.
+            isMirroringToCompanion = false
         }
     }
 
@@ -125,6 +141,11 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             "com.cameronro.helm.session_id": sessionID ?? "",
             HKMetadataKeyExternalUUID: sessionID ?? ""
         ]
+
+        if isMirroringToCompanion {
+            try? await session.stopMirroringToCompanionDevice()
+            isMirroringToCompanion = false
+        }
 
         for step in WatchWorkoutSessionReducer.teardownSteps(discard: discard) {
             switch step {
@@ -226,6 +247,16 @@ extension WatchWorkoutSessionManager: HKWorkoutSessionDelegate {
     ) {}
 
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+
+    nonisolated func workoutSession(
+        _ workoutSession: HKWorkoutSession,
+        didDisconnectFromRemoteDeviceWithError error: (any Error)?
+    ) {
+        Task { @MainActor in
+            self.isMirroringToCompanion = false
+            self.delegate?.workoutSessionManagerDidLoseMirroring(self)
+        }
+    }
 }
 
 extension WatchWorkoutSessionManager: HKLiveWorkoutBuilderDelegate {

@@ -6,6 +6,7 @@ import WatchKit
 final class HelmWatchAppDelegate: NSObject, WKApplicationDelegate {
     func handle(_ workoutConfiguration: HKWorkoutConfiguration) {
         Task { @MainActor in
+            WatchCompanionBootstrap.start()
             WatchWorkoutLaunchBridge.shared.receive(configuration: workoutConfiguration)
         }
     }

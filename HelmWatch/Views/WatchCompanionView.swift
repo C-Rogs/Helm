@@ -118,8 +118,8 @@ struct WatchCompanionView: View {
 
     @ViewBuilder
     private var doneButton: some View {
-        let canComplete = coordinator.isReachable
-            && coordinator.companionSessionExerciseID != nil
+        // Reachability optional: transferUserInfo queues when phone briefly unreachable.
+        let canComplete = coordinator.companionSessionExerciseID != nil
             && coordinator.companionSetID != nil
             && (store.phase == .active || store.phase == .paused)
 

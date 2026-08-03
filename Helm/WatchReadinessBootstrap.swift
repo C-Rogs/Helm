@@ -9,6 +9,7 @@ enum WatchReadinessBootstrap {
 
     @MainActor
     static func start() {
+        MirroredWorkoutSessionBridge.shared.start()
         Task(priority: .utility) {
             observeReadiness()
         }

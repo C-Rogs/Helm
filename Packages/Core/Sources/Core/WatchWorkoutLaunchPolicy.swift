@@ -2,7 +2,7 @@ import Foundation
 
 /// Pure policy for phone-driven Watch companion wake + live confirmation.
 public enum WatchWorkoutLaunchPolicy: Sendable {
-    /// Apple cold-wake often needs a second `startWatchApp` kick.
+    /// Max `startWatchApp` attempts when earlier attempts fail.
     public static let maxAttempts = 2
 
     /// Seconds to wait for HR or reachability after launch attempts.
@@ -13,8 +13,10 @@ public enum WatchWorkoutLaunchPolicy: Sendable {
     }
 
     /// Whether another `startWatchApp` should run after `completedAttempt` (1-based).
-    public static func shouldRetryAfter(completedAttempt: Int) -> Bool {
-        completedAttempt >= 1 && completedAttempt < maxAttempts
+    /// Retry only on failure. A successful wake must not fire a second kick.
+    public static func shouldRetryAfter(completedAttempt: Int, attemptSucceeded: Bool) -> Bool {
+        guard !attemptSucceeded else { return false }
+        return completedAttempt >= 1 && completedAttempt < maxAttempts
     }
 
     /// Live confirmed when Watch delivered HR; reachable alone is soft success (app may still be starting).

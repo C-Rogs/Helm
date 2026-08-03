@@ -14,12 +14,15 @@ final class WatchWorkoutSessionStore {
     private(set) var heartRateZone: HeartRateZone?
     private(set) var lastError: String?
     private(set) var isHealthKitAuthorized = false
+    /// True when Watch successfully started HealthKit mirroring to the phone.
+    private(set) var isMirroringToCompanion = false
 
     private let manager: WatchWorkoutSessionManaging
     private let lifecycle = WatchWorkoutSessionLifecycleTracker()
     private let teardownTracker = LiveWorkoutBuilderTeardownTracker()
     private var elapsedTimer: Timer?
     /// Invoked on MainActor whenever live HR updates during an active/paused session.
+    /// Skipped by callers when `isMirroringToCompanion` so phone uses HealthKit mirror path.
     var onLiveHeartRateBPM: ((Double) -> Void)?
 
     init(manager: WatchWorkoutSessionManaging = WatchWorkoutSessionManager()) {
@@ -43,6 +46,7 @@ final class WatchWorkoutSessionStore {
     func startWorkout() async {
         guard phase == .idle || phase == .ended else { return }
         lastError = nil
+        isMirroringToCompanion = false
         apply(.startRequested)
 
         let id = UUID().uuidString
@@ -51,6 +55,7 @@ final class WatchWorkoutSessionStore {
 
         do {
             try await manager.start(activity: selectedActivity, sessionID: id)
+            isMirroringToCompanion = manager.isMirroringToCompanion
             startedAt = Date()
             apply(.sessionReady)
             startElapsedTimer()
@@ -59,6 +64,7 @@ final class WatchWorkoutSessionStore {
             lifecycle.end()
             teardownTracker.end()
             sessionID = nil
+            isMirroringToCompanion = false
             apply(.teardownFailed)
         }
     }
@@ -96,6 +102,7 @@ final class WatchWorkoutSessionStore {
             lifecycle.end()
             heartRateBPM = nil
             heartRateZone = nil
+            isMirroringToCompanion = false
             apply(.teardownSucceeded)
             sessionID = nil
             startedAt = nil
@@ -105,6 +112,7 @@ final class WatchWorkoutSessionStore {
             teardownTracker.end()
             lifecycle.end()
             sessionID = nil
+            isMirroringToCompanion = false
             apply(.teardownFailed)
         }
     }
@@ -146,6 +154,16 @@ extension WatchWorkoutSessionStore: WatchWorkoutSessionManagerDelegate {
                 maxHR: maxHR
             )
             onLiveHeartRateBPM?(bpm)
+        }
+    }
+
+    nonisolated func workoutSessionManagerDidLoseMirroring(_ manager: any WatchWorkoutSessionManaging) {
+        Task { @MainActor in
+            isMirroringToCompanion = false
+            // Resume WCSession HR fallback with current reading if available.
+            if let heartRateBPM {
+                onLiveHeartRateBPM?(heartRateBPM)
+            }
         }
     }
 }

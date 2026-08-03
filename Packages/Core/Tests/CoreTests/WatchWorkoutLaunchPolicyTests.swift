@@ -12,10 +12,11 @@ struct WatchWorkoutLaunchPolicyTests {
         #expect(!WatchWorkoutLaunchPolicy.shouldAttempt(attemptNumber: 0))
     }
 
-    @Test("retries after first attempt only")
+    @Test("retries after first attempt only when it failed")
     func retryAfter() {
-        #expect(WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: 1))
-        #expect(!WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: 2))
+        #expect(WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: 1, attemptSucceeded: false))
+        #expect(!WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: 1, attemptSucceeded: true))
+        #expect(!WatchWorkoutLaunchPolicy.shouldRetryAfter(completedAttempt: 2, attemptSucceeded: false))
         #expect(WatchWorkoutLaunchPolicy.maxAttempts == 2)
     }
 
