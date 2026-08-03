@@ -5,6 +5,7 @@ import UserNotifications
 protocol NotificationScheduling: Sendable {
     func add(_ request: UNNotificationRequest) async throws
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) async
+    func removeDeliveredNotifications(withIdentifiers identifiers: [String]) async
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
 }
 
@@ -15,6 +16,10 @@ struct LiveNotificationCenter: NotificationScheduling {
 
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) async {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    func removeDeliveredNotifications(withIdentifiers identifiers: [String]) async {
+        UNUserNotificationCenter.current().removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool {
@@ -70,5 +75,6 @@ final class RestTimerNotificationScheduler {
     func cancelRestNotification(sessionID: String) async {
         let identifier = RestTimerNotificationPlanner.notificationIdentifier(sessionID: sessionID)
         await center.removePendingNotificationRequests(withIdentifiers: [identifier])
+        await center.removeDeliveredNotifications(withIdentifiers: [identifier])
     }
 }

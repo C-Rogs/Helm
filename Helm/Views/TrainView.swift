@@ -111,10 +111,10 @@ struct TrainView: View {
                         endsAt: endsAt,
                         totalSeconds: controller.restTimerTotalSeconds(for: timer),
                         onSkip: {
-                            Task { await controller.skipRest() }
+                            Task { @MainActor in await controller.skipRest() }
                         },
                         onAdjust: { delta in
-                            Task { await controller.adjustRestTimer(deltaSeconds: delta) }
+                            Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
                         },
                         onRemainingSecondsChange: { remaining in
                             handleRestTimerTick(remaining)
@@ -233,7 +233,7 @@ struct TrainView: View {
             .buttonStyle(.helmSecondary)
 
             Button("Export") {
-                Task {
+                Task { @MainActor in
                     if let text = await controller.exportPrescriptionText() {
                         UIPasteboard.general.string = text
                         didCopyPrescriptionExport = true
@@ -368,10 +368,10 @@ struct TrainView: View {
                 }
             },
             onCycleSetType: { setID in
-                Task { await controller.cycleSetType(setID: setID) }
+                Task { @MainActor in await controller.cycleSetType(setID: setID) }
             },
             onCompleteSet: { sessionExerciseID, setID in
-                Task {
+                Task { @MainActor in
                     await controller.completeSet(
                         sessionExerciseID: sessionExerciseID,
                         setID: setID
@@ -379,10 +379,10 @@ struct TrainView: View {
                 }
             },
             onAddSet: {
-                Task { await controller.addSet(sessionExerciseID: exercise.id) }
+                Task { @MainActor in await controller.addSet(sessionExerciseID: exercise.id) }
             },
             onRemoveSet: {
-                Task { await controller.removeSet(sessionExerciseID: exercise.id) }
+                Task { @MainActor in await controller.removeSet(sessionExerciseID: exercise.id) }
             },
             onRemove: {
                 controller.requestRemoveExercise(sessionExerciseID: exercise.id)
@@ -521,9 +521,8 @@ struct TrainView: View {
             return
         }
         controller.handleRestRemainingSecondsChange(current)
-        if remaining == 0 {
-            Task { await controller.reconcileExpiredRestTimer() }
-        }
+        // Rest-monitor owns expiry reconcile. Do not spawn a bare Task here; that raced
+        // the monitor and mutated SwiftUI off the main thread after await.
     }
 
     private var reorderActionBar: some View {
@@ -571,7 +570,7 @@ struct TrainView: View {
                         isRunning: controller.isRestTimerRunning,
                         endsAt: restTimer?.endsAt
                     ) {
-                        controller.isShowingPawelTimer = true
+                        controller.openPawelTimer(expanded: controller.isRestTimerRunning)
                     }
                     .frame(minWidth: 88, maxWidth: 96)
                 }

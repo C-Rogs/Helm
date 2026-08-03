@@ -3,11 +3,11 @@ import DesignSystem
 import SwiftUI
 
 struct PawelTimerModal: View {
-    let controller: TrainSessionController
+    @Bindable var controller: TrainSessionController
 
-    @Environment(\.dismiss) private var dismiss
     @State private var selectedPresetSeconds = 90
     @State private var isMutating = false
+    @State private var sheetDetent: PresentationDetent = .medium
 
     private let presets = [60, 90, 120, 180]
 
@@ -28,24 +28,26 @@ struct PawelTimerModal: View {
 
     var body: some View {
         NavigationStack {
-            VStack(spacing: HelmSpacing.lg) {
-                timerRingSection
-                primaryActionButton
-                presetGrid
-                Spacer(minLength: 0)
+            ScrollView {
+                VStack(spacing: HelmSpacing.lg) {
+                    timerRingSection
+                    if isRunning {
+                        restAdjustButtons
+                    }
+                    primaryActionButton
+                    presetGrid
+                }
+                .padding(HelmSpacing.md)
             }
-            .padding(HelmSpacing.md)
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .helmScreenBackground()
             .navigationTitle("Timer")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") { dismiss() }
-                }
-            }
             .disabled(isMutating)
-            .onAppear { syncSelectedPresetFromRunningTimer() }
+            .onAppear {
+                syncSelectedPresetFromRunningTimer()
+                sheetDetent = controller.pawelTimerOpenExpanded ? .large : .medium
+            }
             .onChange(of: restTimer?.id) { _, _ in
                 syncSelectedPresetFromRunningTimer()
             }
@@ -53,16 +55,18 @@ struct PawelTimerModal: View {
                 syncSelectedPresetFromRunningTimer()
             }
         }
-        .presentationDetents([.medium, .large])
+        .presentationDetents([.medium, .large], selection: $sheetDetent)
         .presentationDragIndicator(.visible)
     }
 
     @ViewBuilder
     private var timerRingSection: some View {
-        if isRunning, let timer = restTimer, let endsAt = timer.endsAt {
+        if isRunning, let timer = restTimer {
             let totalSeconds = controller.restTimerTotalSeconds(for: timer)
             TimelineView(.periodic(from: .now, by: 1)) { context in
-                let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.down)))
+                let remaining = controller.localRemainingRestSeconds(at: context.date)
+                    ?? timer.remainingSeconds(at: context.date)
+                    ?? selectedPresetSeconds
                 let fraction = RestTimerBannerProgress.remainingFraction(
                     remainingSeconds: remaining,
                     totalSeconds: totalSeconds
@@ -71,7 +75,7 @@ struct PawelTimerModal: View {
                     remainingSeconds: remaining,
                     remainingFraction: fraction
                 )
-                .frame(maxWidth: 240)
+                .frame(maxWidth: 280)
                 .padding(HelmSpacing.md)
                 .helmPanelChrome(.accentQuiet, cornerRadius: HelmRadius.lg)
             }
@@ -83,6 +87,28 @@ struct PawelTimerModal: View {
             .frame(maxWidth: 240)
             .padding(HelmSpacing.md)
             .helmPanelChrome(.accentQuiet, cornerRadius: HelmRadius.lg)
+        }
+    }
+
+    private var restAdjustButtons: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            Button {
+                runMutation { await controller.adjustRestTimer(deltaSeconds: -15) }
+            } label: {
+                Text("−15")
+            }
+            .buttonStyle(RestDockChipStyle())
+            .disabled(isMutating)
+            .accessibilityLabel("Subtract 15 seconds")
+
+            Button {
+                runMutation { await controller.adjustRestTimer(deltaSeconds: 15) }
+            } label: {
+                Text("+15")
+            }
+            .buttonStyle(RestDockChipStyle())
+            .disabled(isMutating)
+            .accessibilityLabel("Add 15 seconds")
         }
     }
 
@@ -159,9 +185,16 @@ struct PawelTimerModal: View {
     private func runMutation(_ work: @escaping @MainActor () async -> Void) {
         guard !isMutating else { return }
         isMutating = true
-        Task {
+        Task { @MainActor in
             await work()
-            isMutating = false
+            // Persistence awaits can resume a `@MainActor` task off the real main thread.
+            // Hop via DispatchQueue.main before touching SwiftUI `@State`.
+            await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+                DispatchQueue.main.async {
+                    isMutating = false
+                    continuation.resume()
+                }
+            }
         }
     }
 

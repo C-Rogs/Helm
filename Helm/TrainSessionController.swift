@@ -86,6 +86,7 @@ final class TrainSessionController {
     var coachPromptText = ""
     var isShowingCoachPrompt = false
     var isShowingPawelTimer = false
+    var pawelTimerOpenExpanded = false
     var historyExerciseSessionID: String?
     private(set) var coachMessages: [InSessionCoachMessage] = []
     private(set) var pendingCoachProposal: CoachSessionProposal?
@@ -122,6 +123,9 @@ final class TrainSessionController {
     private var sessionNoteSaveTask: Task<Void, Never>?
     private var coachMessageTask: Task<Void, Never>?
     private var restTimerMonitorTask: Task<Void, Never>?
+    private var isReconcilingRest = false
+    private var isSyncingSideEffects = false
+    private var pendingSideEffects: (rest: Int?, force: Bool)?
     private var heartRateSampleTask: Task<Void, Never>?
     private var sessionHeartRateBuffer = SessionHeartRateBuffer()
     private var sessionNoteIsDirty = false
@@ -167,6 +171,11 @@ final class TrainSessionController {
         snapshot?.restTimer?.phase == .running
     }
 
+    func openPawelTimer(expanded: Bool) {
+        pawelTimerOpenExpanded = expanded
+        isShowingPawelTimer = true
+    }
+
     func restTimerTotalSeconds(for timer: RestTimer) -> Int {
         if let started = timer.startedAt, let ends = timer.endsAt {
             return max(1, Int(ends.timeIntervalSince(started).rounded()))
@@ -192,7 +201,12 @@ final class TrainSessionController {
         await recoverPersistedSession()
         await abandonUntouchedPrescriptionIfNeeded()
         if let snapshot = store.snapshot {
-            await sideEffects.onSessionStarted(snapshot)
+            await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+            let rest = localRemainingRestSeconds()
+            await sideEffects.resumePersistedSession(
+                snapshot,
+                restRemainingSeconds: rest
+            )
             activateWatchCompanionAfterSessionStart()
         } else {
             await refreshPrescriptionState()
@@ -946,16 +960,41 @@ final class TrainSessionController {
             didSurfaceRestOverrunProactive = false
         }
         let timerID = snapshot?.restTimer?.id
-        WorkoutHapticCoordinator.handleForegroundTransition(
-            timerID: timerID,
-            previousRemaining: previousRestRemaining,
-            currentRemaining: currentRemaining
-        )
+        let previous = previousRestRemaining
+        // Mutate Observable state before haptic/audio side effects.
         previousRestRemaining = currentRemaining
         trackedRestTimerID = timerID
+        WorkoutHapticCoordinator.handleForegroundTransition(
+            timerID: timerID,
+            previousRemaining: previous,
+            currentRemaining: currentRemaining
+        )
     }
 
     func syncSideEffects(restRemainingOverride: Int? = nil, force: Bool = false) async {
+        if isSyncingSideEffects {
+            if let pending = pendingSideEffects {
+                pendingSideEffects = (
+                    rest: restRemainingOverride ?? pending.rest,
+                    force: pending.force || force
+                )
+            } else {
+                pendingSideEffects = (rest: restRemainingOverride, force: force)
+            }
+            return
+        }
+        isSyncingSideEffects = true
+        defer {
+            isSyncingSideEffects = false
+            if let pending = pendingSideEffects {
+                pendingSideEffects = nil
+                Task { @MainActor in
+                    await syncSideEffects(restRemainingOverride: pending.rest, force: pending.force)
+                }
+            }
+        }
+
+        await Self.reclaimMainThread()
         guard let snapshot = store.snapshot else { return }
         recordLiveHeartRateSampleIfAvailable()
         let rest = restRemainingOverride ?? localRemainingRestSeconds()
@@ -975,6 +1014,7 @@ final class TrainSessionController {
             targetSummary: target,
             heartRateBPM: bpm
         )
+        await Self.reclaimMainThread()
     }
 
     func localRemainingRestSeconds(at date: Date = Date()) -> Int? {
@@ -983,15 +1023,23 @@ final class TrainSessionController {
     }
 
     func reconcileExpiredRestTimer(at date: Date = Date()) async {
+        guard !isReconcilingRest else { return }
         guard let timer = snapshot?.restTimer,
               timer.phase == .running,
               timer.hasExpired(at: date) else {
             syncRestTimerMonitor()
             return
         }
+
+        isReconcilingRest = true
+        defer { isReconcilingRest = false }
+
         await store.recover()
         await refreshMetadata(scope: .light)
+        await Self.reclaimMainThread()
+        // Let SwiftUI apply snapshot/banner removal before scheduling Live Activity work.
         await syncSideEffects(restRemainingOverride: 0, force: true)
+        await Self.reclaimMainThread()
         syncRestTimerMonitor()
     }
 
@@ -1004,9 +1052,10 @@ final class TrainSessionController {
             return
         }
 
-        restTimerMonitorTask = Task { [weak self] in
+        restTimerMonitorTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
+                await Self.reclaimMainThread()
                 let now = Date()
                 let remaining = localRemainingRestSeconds(at: now) ?? 0
                 handleRestRemainingSecondsChange(remaining)
@@ -1044,6 +1093,15 @@ final class TrainSessionController {
             return false
         }
         return true
+    }
+
+    /// ActivityKit / CoreHaptics can leave a `@MainActor` task off the real main thread.
+    nonisolated private static func reclaimMainThread() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
     }
 
     func displayName(for exerciseID: String) -> String {

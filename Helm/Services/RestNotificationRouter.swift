@@ -1,11 +1,16 @@
+import DesignSystem
 import Diagnostics
 import Foundation
 import Persistence
+import UserNotifications
 
 private let restNotificationPendingSessionIDKey = "helm.pendingRestNotificationSessionID"
 
 @MainActor
 enum RestNotificationRouter {
+    /// Stored when the notification tap has no session id in userInfo.
+    nonisolated static let pendingTapWithoutSessionID = "__helm_pending_rest_tap__"
+
     private static var isHandlingNotification = false
 
     nonisolated static func storePendingSessionID(_ sessionID: String) {
@@ -33,19 +38,36 @@ enum RestNotificationRouter {
         isHandlingNotification = true
         defer { isHandlingNotification = false }
 
+        let resolvedSessionID: String? = {
+            guard let sessionID else { return nil }
+            return sessionID == pendingTapWithoutSessionID ? nil : sessionID
+        }()
+
+        await reclaimMainThread()
+
         await DiagnosticsLog.shared.record(
             category: .logger,
             level: .info,
             message: "Rest notification tap recovery began",
-            context: ["expectedSessionID": sessionID ?? "none"]
+            context: ["expectedSessionID": resolvedSessionID ?? "none"]
         )
 
         AppTabRouter.shared.openTrain()
-        await TrainBootstrap.sessionController.recoverPersistedSession()
+
+        if TrainBootstrap.sessionController.snapshot == nil {
+            await TrainBootstrap.sessionController.recoverPersistedSession()
+        }
+
+        await reclaimMainThread()
+
+        WorkoutHapticCoordinator.handleRestNotification(
+            categoryIdentifier: RestTimerNotificationPlanner.notificationCategoryID,
+            timerID: nil
+        )
 
         let activeID = TrainBootstrap.sessionController.snapshot?.session.id
         let outcome = RestNotificationRecoveryPolicy.evaluate(
-            expectedSessionID: sessionID,
+            expectedSessionID: resolvedSessionID,
             activeSessionID: activeID
         )
 
@@ -83,19 +105,11 @@ enum RestNotificationRouter {
 
         await TrainBootstrap.sessionController.reconcileExpiredRestTimer()
 
-        let shouldRestartLiveActivity = RestNotificationRecoveryPolicy.shouldRestartLiveActivity(
-            hasActiveSession: true,
-            hasTrackedLiveActivity: TrainBootstrap.sideEffects.liveActivity.hasTrackedActivity
+        await TrainBootstrap.sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+        await TrainBootstrap.sideEffects.resumePersistedSession(
+            snapshot,
+            restRemainingSeconds: 0
         )
-
-        if shouldRestartLiveActivity {
-            await TrainBootstrap.sideEffects.resumeFromRestNotification(
-                snapshot,
-                restRemainingSeconds: 0
-            )
-        } else {
-            await TrainBootstrap.sideEffects.onEnterForeground(sessionID: snapshot.session.id)
-        }
 
         await TrainBootstrap.sessionController.syncSideEffects(restRemainingOverride: 0, force: true)
 
@@ -105,7 +119,7 @@ enum RestNotificationRouter {
             message: "Rest notification tap recovery finished",
             context: [
                 "sessionID": snapshot.session.id,
-                "restartedLiveActivity": shouldRestartLiveActivity ? "true" : "false"
+                "restartedLiveActivity": "reconciled"
             ]
         )
     }
@@ -119,5 +133,51 @@ enum RestNotificationRouter {
             context: ["sessionID": sessionID]
         )
         await handleRestNotificationTap(sessionID: sessionID)
+    }
+
+    /// Runs after scene is active so UIKit/SwiftUI CATransactions are on the main thread.
+    static func processPendingIfForeground() async {
+        guard AppLifecycleState.isForeground else { return }
+        guard TrainBootstrap.hasCompletedLaunchRecovery else { return }
+        guard !isHandlingNotification else { return }
+        guard UserDefaults.standard.string(forKey: restNotificationPendingSessionIDKey) != nil else {
+            return
+        }
+
+        // Let UIKit finish activation CATransaction before any tab / Observable mutation.
+        await Task.yield()
+        try? await Task.sleep(for: .milliseconds(250))
+        await reclaimMainThread()
+
+        guard AppLifecycleState.isForeground else { return }
+        guard let sessionID = consumePendingSessionID() else { return }
+        await handleRestNotificationTap(sessionID: sessionID)
+    }
+
+    static func handleForegroundPresentation(
+        categoryIdentifier: String,
+        timerID: String?,
+        sessionID: String?
+    ) async -> UNNotificationPresentationOptions {
+        let isForeground = AppLifecycleState.isForeground
+        // Skip haptics while presenting; CoreHaptics during activation is a crash vector.
+        if RestTimerNotificationPlanner.shouldSuppressForegroundPresentation(
+            categoryIdentifier: categoryIdentifier,
+            isAppForeground: isForeground
+        ) {
+            if let sessionID {
+                await TrainBootstrap.sideEffects.notifications.cancelRestNotification(sessionID: sessionID)
+            }
+            return []
+        }
+        return [.banner, .sound]
+    }
+
+    nonisolated private static func reclaimMainThread() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
     }
 }

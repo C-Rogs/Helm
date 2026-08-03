@@ -33,8 +33,13 @@ public final class ReadinessService {
 
     public func refresh() async {
         do {
-            state = try await engine.dashboardState(for: today())
+            let next = try await engine.dashboardState(for: today())
+            // Actor hop from ReadinessEngine can resume off the real main thread;
+            // assign Observable state only after a real main-queue hop.
+            await reclaimMainThread()
+            state = next
         } catch {
+            await reclaimMainThread()
             state = .awaitingData
         }
     }
@@ -51,6 +56,18 @@ public final class ReadinessService {
         } catch {
             // Baseline seed failure is logged inside the engine.
         }
+    }
+
+    nonisolated private static func reclaimMainThread() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
+    }
+
+    private func reclaimMainThread() async {
+        await Self.reclaimMainThread()
     }
 
     private func today(calendar: Calendar = .current, cutoff: DayCutoff = .default) -> HelmDay {

@@ -31,8 +31,12 @@ public final class HapticEngine: HapticPlaying {
 
     public func play(_ pattern: HelmHaptic) {
         guard preferences.hapticsEnabled else { return }
-        Task {
-            await play(pattern, lowPowerMode: processInfo.isLowPowerModeEnabled)
+        // Always schedule from the real main queue so we never inherit a confused executor.
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                await self.play(pattern, lowPowerMode: self.processInfo.isLowPowerModeEnabled)
+            }
         }
     }
 
@@ -44,6 +48,7 @@ public final class HapticEngine: HapticPlaying {
                 try await hardware.playBuiltPattern(pattern, lowPowerMode: lowPowerMode)
                 return
             } catch {
+                hardware.invalidate()
                 await logFailure(pattern: pattern, error: error, phase: "built-pattern")
             }
 
@@ -53,6 +58,7 @@ public final class HapticEngine: HapticPlaying {
                     try await hardware.playAHAP(at: url, lowPowerMode: lowPowerMode)
                     return
                 } catch {
+                    hardware.invalidate()
                     await logFailure(pattern: pattern, error: error, phase: "ahap")
                 }
             }
@@ -88,6 +94,7 @@ protocol HapticHardware {
     var supportsHaptics: Bool { get }
     func playBuiltPattern(_ pattern: HelmHaptic, lowPowerMode: Bool) async throws
     func playAHAP(at url: URL, lowPowerMode: Bool) async throws
+    func invalidate()
 }
 
 @MainActor
@@ -96,6 +103,10 @@ final class SystemHapticHardware: HapticHardware {
 
     var supportsHaptics: Bool {
         CHHapticEngine.capabilitiesForHardware().supportsHaptics
+    }
+
+    func invalidate() {
+        engine = nil
     }
 
     func playBuiltPattern(_ pattern: HelmHaptic, lowPowerMode: Bool) async throws {
@@ -113,6 +124,7 @@ final class SystemHapticHardware: HapticHardware {
 
     private func play(pattern: CHHapticPattern) async throws {
         let engine = try await preparedEngine()
+        await reclaimMainThread()
         let player = try engine.makePlayer(with: pattern)
         try player.start(atTime: 0)
     }
@@ -137,17 +149,34 @@ final class SystemHapticHardware: HapticHardware {
                 await self?.handleReset()
             }
         }
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            created.start { error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else {
-                    continuation.resume()
+        do {
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                created.start { error in
+                    // CoreHaptics completion is off-main; resume on the real main queue.
+                    DispatchQueue.main.async {
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else {
+                            continuation.resume()
+                        }
+                    }
                 }
             }
+        } catch {
+            engine = nil
+            throw error
         }
         engine = created
         return created
+    }
+
+    /// CoreHaptics can resume `@MainActor` work off the main thread; `MainActor.run` may no-op.
+    nonisolated private func reclaimMainThread() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
     }
 
     private func handleStopped(reason: CHHapticEngine.StoppedReason) async {
@@ -202,5 +231,7 @@ public final class MockHapticHardware: HapticHardware {
         if let ahapError { throw ahapError }
         playedAHAPs.append(url)
     }
+
+    public func invalidate() {}
 }
 

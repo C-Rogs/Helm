@@ -56,7 +56,7 @@ struct WorkoutImportPreviewView: View {
                     }
 
                     Button(isStarting ? "Starting…" : "Start workout") {
-                        Task {
+                        Task { @MainActor in
                             isStarting = true
                             defer { isStarting = false }
                             await onStartWorkout()

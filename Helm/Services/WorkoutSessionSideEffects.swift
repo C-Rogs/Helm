@@ -32,11 +32,37 @@ final class WorkoutSessionSideEffects {
         lifecycle.begin(sessionID: snapshot.session.id)
         musicCapture.reset()
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
+        musicCapture.startPolling(sessionID: snapshot.session.id)
         await liveActivity.start(
             session: snapshot.session,
             currentExerciseName: currentExerciseName(in: snapshot),
             targetSummary: targetSummary,
             heartRateBPM: heartRateBPM
+        )
+    }
+
+    /// Restores side effects after kill/background without tearing down an existing Live Activity.
+    func resumePersistedSession(
+        _ snapshot: ActiveSessionSnapshot,
+        restRemainingSeconds: Int?,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil
+    ) async {
+        lifecycle.begin(sessionID: snapshot.session.id)
+        musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
+        musicCapture.startPolling(sessionID: snapshot.session.id)
+        let exerciseName = currentExerciseName(in: snapshot)
+        let endsAt: Date? = {
+            guard let remaining = restRemainingSeconds, remaining > 0 else { return nil }
+            return snapshot.restTimer?.endsAt
+        }()
+        await liveActivity.start(
+            session: snapshot.session,
+            currentExerciseName: exerciseName,
+            targetSummary: targetSummary,
+            heartRateBPM: heartRateBPM,
+            restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: endsAt
         )
     }
 
@@ -73,6 +99,7 @@ final class WorkoutSessionSideEffects {
         guard let timer = snapshot.restTimer,
               timer.phase == .running,
               let endsAt = timer.endsAt else {
+            await notifications.cancelRestNotification(sessionID: snapshot.session.id)
             return
         }
         await notifications.scheduleRestEndIfNeeded(
@@ -93,20 +120,9 @@ final class WorkoutSessionSideEffects {
         restRemainingSeconds: Int?
     ) async {
         await notifications.cancelRestNotification(sessionID: snapshot.session.id)
-        let exerciseName = currentExerciseName(in: snapshot)
-        await liveActivity.start(
-            session: snapshot.session,
-            currentExerciseName: exerciseName,
-            targetSummary: nil,
-            heartRateBPM: nil
-        )
-        await liveActivity.update(
-            session: snapshot.session,
-            currentExerciseName: exerciseName,
-            targetSummary: nil,
-            restRemainingSeconds: restRemainingSeconds,
-            restEndsAt: snapshot.restTimer?.endsAt,
-            heartRateBPM: nil
+        await resumePersistedSession(
+            snapshot,
+            restRemainingSeconds: restRemainingSeconds
         )
     }
 
@@ -136,6 +152,7 @@ final class WorkoutSessionSideEffects {
 
     func onSessionDiscarded(sessionID: String) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
+        musicCapture.reset()
         liveActivity.end()
         lifecycle.end()
     }

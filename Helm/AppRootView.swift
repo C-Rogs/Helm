@@ -18,6 +18,11 @@ struct AppRootView: View {
         .helmTheme()
         .onChange(of: scenePhase) { _, newPhase in
             AppLifecycleState.update(scenePhase: newPhase)
+            if newPhase == .active {
+                Task { @MainActor in
+                    await RestNotificationRouter.processPendingIfForeground()
+                }
+            }
         }
         .onAppear {
             AppLifecycleState.update(scenePhase: scenePhase)
@@ -27,7 +32,7 @@ struct AppRootView: View {
                 let exerciseID = note.userInfo?[LiveActivityCompleteSetBridge.sessionExerciseIDKey] as? String,
                 let setID = note.userInfo?[LiveActivityCompleteSetBridge.setIDKey] as? String
             else { return }
-            Task {
+            Task { @MainActor in
                 await TrainBootstrap.sessionController.completeSet(
                     sessionExerciseID: exerciseID,
                     setID: setID

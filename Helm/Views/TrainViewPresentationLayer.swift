@@ -92,7 +92,7 @@ extension View {
           exerciseName: controller.displayName(for: exercise.exerciseID),
           currentSeconds: exercise.targetRestSeconds ?? 90
         ) { seconds in
-          Task {
+          Task { @MainActor in
             await controller.updateExerciseRest(sessionExerciseID: sessionExerciseID, seconds: seconds)
             restEditorExerciseID.wrappedValue = nil
           }
@@ -118,7 +118,12 @@ extension View {
     }
     .sheet(isPresented: Binding(
       get: { controller.isShowingPawelTimer },
-      set: { controller.isShowingPawelTimer = $0 }
+      set: { isShowing in
+        controller.isShowingPawelTimer = isShowing
+        if !isShowing {
+          controller.pawelTimerOpenExpanded = false
+        }
+      }
     )) {
       PawelTimerModal(controller: controller)
     }

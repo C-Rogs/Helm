@@ -29,6 +29,14 @@ enum TrainBootstrap {
     static private(set) var hasCompletedLaunchRecovery = false
 
     @MainActor
+    static func awaitLaunchRecoveryIfNeeded() async {
+        while !hasCompletedLaunchRecovery {
+            await Task.yield()
+            try? await Task.sleep(for: .milliseconds(25))
+        }
+    }
+
+    @MainActor
     static func start() {
         Task {
             historyController.refresh()

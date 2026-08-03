@@ -1,5 +1,3 @@
-import DesignSystem
-import Diagnostics
 import Foundation
 import Persistence
 import UIKit
@@ -20,10 +18,15 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
-        TrainBootstrap.sideEffects.endLiveActivitiesForTermination()
+        Task { @MainActor in
+            TrainBootstrap.sideEffects.endLiveActivitiesForTermination()
+        }
     }
 }
 
+/// `UNUserNotificationCenter` invokes these on a background queue.
+/// Never mutate SwiftUI / tabs / Observable here. Stash intent only; UI runs when
+/// `scenePhase == .active` via `RestNotificationRouter.processPendingIfForeground()`.
 final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func configure() {
         UNUserNotificationCenter.current().delegate = self
@@ -31,53 +34,42 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        willPresent notification: UNNotification
-    ) async -> UNNotificationPresentationOptions {
-        let categoryIdentifier = notification.request.content.categoryIdentifier
-        let timerID = notification.request.content.userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
-        let isForeground = await MainActor.run { AppLifecycleState.isForeground }
-        await MainActor.run {
-            WorkoutHapticCoordinator.handleRestNotification(
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        let content = notification.request.content
+        let categoryIdentifier = content.categoryIdentifier
+        let timerID = content.userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
+        let sessionID = content.userInfo[RestTimerNotificationPlanner.sessionIDKey] as? String
+        nonisolated(unsafe) let finish = completionHandler
+
+        Task { @MainActor in
+            let options = await RestNotificationRouter.handleForegroundPresentation(
                 categoryIdentifier: categoryIdentifier,
-                timerID: timerID
+                timerID: timerID,
+                sessionID: sessionID
             )
+            finish(options)
         }
-        if RestTimerNotificationPlanner.shouldSuppressForegroundPresentation(
-            categoryIdentifier: categoryIdentifier,
-            isAppForeground: isForeground
-        ) {
-            return []
-        }
-        return [.banner, .sound]
     }
 
     func userNotificationCenter(
         _ center: UNUserNotificationCenter,
-        didReceive response: UNNotificationResponse
-    ) async {
+        didReceive response: UNNotificationResponse,
+        withCompletionHandler completionHandler: @escaping () -> Void
+    ) {
         let content = response.notification.request.content
-        guard RestNotificationLaunchPayload.isRestTimerNotification(categoryIdentifier: content.categoryIdentifier) else {
-            return
-        }
-
         let categoryIdentifier = content.categoryIdentifier
-        let userInfo = content.userInfo
-        let timerID = userInfo[RestTimerNotificationPlanner.timerIDKey] as? String
-        let sessionID = RestNotificationLaunchPayload.sessionID(fromUserInfo: userInfo)
 
-        let shouldHandleImmediately = await MainActor.run { () -> Bool in
-            if let sessionID {
+        // `storePendingSessionID` is nonisolated (UserDefaults only). Safe on this queue.
+        if RestNotificationLaunchPayload.isRestTimerNotification(categoryIdentifier: categoryIdentifier) {
+            if let sessionID = RestNotificationLaunchPayload.sessionID(fromUserInfo: content.userInfo) {
                 RestNotificationRouter.storePendingSessionID(sessionID)
+            } else {
+                RestNotificationRouter.storePendingSessionID(RestNotificationRouter.pendingTapWithoutSessionID)
             }
-            WorkoutHapticCoordinator.handleRestNotification(
-                categoryIdentifier: categoryIdentifier,
-                timerID: timerID
-            )
-            return TrainBootstrap.hasCompletedLaunchRecovery
         }
 
-        if shouldHandleImmediately {
-            await RestNotificationRouter.handleRestNotificationTap(sessionID: sessionID)
-        }
+        completionHandler()
     }
 }

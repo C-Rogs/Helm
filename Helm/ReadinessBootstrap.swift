@@ -12,11 +12,11 @@ enum ReadinessBootstrap {
 
     @MainActor
     static func start() {
-        Task(priority: .userInitiated) {
+        Task(priority: .userInitiated) { @MainActor in
             await readinessService.refresh()
         }
 
-        Task(priority: .utility) {
+        Task(priority: .utility) { @MainActor in
             observeIngest()
         }
     }
@@ -25,7 +25,7 @@ enum ReadinessBootstrap {
     private static func observeIngest() {
         let ingest = HealthKitBootstrap.healthKitIngest
         for family in [HealthKitMetricFamily.vitals, .sleep, .workouts] {
-            Task {
+            Task { @MainActor in
                 for await snapshot in ingest.updates(for: family) {
                     guard snapshot.status.lastSyncSampleCount > 0
                         || snapshot.status.lastSyncDeletedCount > 0

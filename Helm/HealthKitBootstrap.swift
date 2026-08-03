@@ -56,13 +56,9 @@ enum HealthKitBootstrap {
 
         await ingest.startObserving()
         let outcome = await ingest.syncNow()
-        await MainActor.run {
-            Task {
-                await ReadinessBootstrap.readinessService.recomputeAfterIngest(
-                    affectedFamilies: outcome.affectedFamilies
-                )
-            }
-        }
+        await ReadinessBootstrap.readinessService.recomputeAfterIngest(
+            affectedFamilies: outcome.affectedFamilies
+        )
         if !shouldDeferBackfill() {
             scheduleDefaultBackfill()
         }

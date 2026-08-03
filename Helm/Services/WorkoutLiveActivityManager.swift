@@ -8,6 +8,11 @@ final class WorkoutLiveActivityManager {
     static let staleInterval: TimeInterval = 5 * 60
 
     private var activityID: String?
+    private var lastScheduledUpdateAt: Date?
+    private var lastPushedFingerprint: String?
+    private var isUpdateInFlight = false
+    private var pendingUpdate: (id: String, content: ActivityContent<WorkoutActivityAttributes.ContentState>)?
+    private let minUpdateInterval: TimeInterval = 0.5
 
     var hasTrackedActivity: Bool {
         guard let activityID else { return false }
@@ -22,31 +27,53 @@ final class WorkoutLiveActivityManager {
         session: WorkoutSessionDraft,
         currentExerciseName: String?,
         targetSummary: String? = nil,
-        heartRateBPM: Int? = nil
+        heartRateBPM: Int? = nil,
+        restRemainingSeconds: Int? = nil,
+        restEndsAt: Date? = nil
     ) async {
+        await Self.reclaimMainThread()
         guard isSupported else { return }
-        await endAll()
+
+        let state = makeContentState(
+            session: session,
+            currentExerciseName: currentExerciseName,
+            targetSummary: targetSummary,
+            restRemainingSeconds: restRemainingSeconds,
+            restEndsAt: restEndsAt,
+            heartRateBPM: heartRateBPM
+        )
+
+        if let activity = currentActivity() {
+            scheduleUpdate(activityID: activity.id, state: state)
+            return
+        }
+
+        if adoptSingleExistingActivity(matchingStartedAt: session.startedAt) {
+            await update(
+                session: session,
+                currentExerciseName: currentExerciseName,
+                targetSummary: targetSummary,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: restEndsAt,
+                heartRateBPM: heartRateBPM
+            )
+            return
+        }
+
+        if !Activity<WorkoutActivityAttributes>.activities.isEmpty {
+            await endAll()
+            await Self.reclaimMainThread()
+        }
 
         let attributes = WorkoutActivityAttributes(
             sessionTitle: session.title ?? "Workout",
             startedAt: session.startedAt
         )
-        let state = makeContentState(
-            session: session,
-            currentExerciseName: currentExerciseName,
-            targetSummary: targetSummary,
-            restRemainingSeconds: nil,
-            restEndsAt: nil,
-            heartRateBPM: heartRateBPM
-        )
-
-        if let activity = try? Activity.request(
-            attributes: attributes,
-            content: .init(state: state, staleDate: staleDate()),
-            pushType: nil
-        ) {
-            activityID = activity.id
-        }
+        let content = ActivityContent(state: state, staleDate: staleDate())
+        let newID = await Self.requestActivity(attributes: attributes, content: content)
+        await Self.reclaimMainThread()
+        activityID = newID
+        lastPushedFingerprint = Self.fingerprint(state)
     }
 
     func update(
@@ -57,7 +84,23 @@ final class WorkoutLiveActivityManager {
         restEndsAt: Date? = nil,
         heartRateBPM: Int? = nil
     ) async {
-        guard let activity = currentActivity() else { return }
+        // Do not await before throttle: concurrent update() calls were both passing
+        // the interval check after reclaimMainThread suspended MainActor.
+        guard isSupported else { return }
+        if currentActivity() == nil {
+            _ = adoptSingleExistingActivity(matchingStartedAt: session.startedAt)
+        }
+        guard let activity = currentActivity() else {
+            await start(
+                session: session,
+                currentExerciseName: currentExerciseName,
+                targetSummary: targetSummary,
+                heartRateBPM: heartRateBPM,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: restEndsAt
+            )
+            return
+        }
         let state = makeContentState(
             session: session,
             currentExerciseName: currentExerciseName,
@@ -66,34 +109,143 @@ final class WorkoutLiveActivityManager {
             restEndsAt: restEndsAt,
             heartRateBPM: heartRateBPM
         )
-        await activity.update(.init(state: state, staleDate: staleDate()))
+        scheduleUpdate(activityID: activity.id, state: state)
     }
 
     func end() {
-        Task { await endAll() }
+        DispatchQueue.main.async {
+            Task { @MainActor in await self.endAll() }
+        }
     }
 
     func endAll() async {
+        await Self.reclaimMainThread()
         activityID = nil
-        for activity in Activity<WorkoutActivityAttributes>.activities {
-            await activity.end(nil, dismissalPolicy: .immediate)
+        lastPushedFingerprint = nil
+        let ids = Activity<WorkoutActivityAttributes>.activities.map(\.id)
+        for id in ids {
+            await Self.endActivity(id: id)
+            await Self.reclaimMainThread()
         }
     }
 
-    /// Best-effort teardown when iOS terminates the process (not guaranteed on force quit).
     func endAllForTermination() {
-        let semaphore = DispatchSemaphore(value: 0)
-        Task { @MainActor in
-            await endAll()
-            semaphore.signal()
+        DispatchQueue.main.async {
+            Task { @MainActor in
+                await self.endAll()
+            }
         }
-        _ = semaphore.wait(timeout: .now() + 2)
     }
 
-    /// Clears Live Activities left behind after force quit when no session is recoverable.
     func reconcileOrphanedActivities(hasActiveSession: Bool) async {
         guard !hasActiveSession else { return }
         await endAll()
+    }
+
+    /// Fire-and-forget on the real main queue. Coalesces overlapping callers into one in-flight update.
+    private func scheduleUpdate(
+        activityID: String,
+        state: WorkoutActivityAttributes.ContentState
+    ) {
+        let fingerprint = Self.fingerprint(state)
+        if fingerprint == lastPushedFingerprint {
+            return
+        }
+
+        let now = Date()
+        if let last = lastScheduledUpdateAt,
+           now.timeIntervalSince(last) < minUpdateInterval,
+           state.restRemainingSeconds != 0 {
+            return
+        }
+        lastScheduledUpdateAt = now
+
+        let content = ActivityContent(state: state, staleDate: staleDate())
+        pendingUpdate = (activityID, content)
+        guard !isUpdateInFlight else { return }
+        isUpdateInFlight = true
+        drainPendingUpdates()
+    }
+
+    private func drainPendingUpdates() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self else { return }
+            Task { @MainActor in
+                while let pending = self.pendingUpdate {
+                    self.pendingUpdate = nil
+                    let id = pending.id
+                    let content = pending.content
+                    guard let activity = Activity<WorkoutActivityAttributes>.activities.first(where: { $0.id == id }) else {
+                        continue
+                    }
+                    await activity.update(content)
+                    self.lastPushedFingerprint = Self.fingerprint(content.state)
+                }
+                self.isUpdateInFlight = false
+                if self.pendingUpdate != nil {
+                    self.isUpdateInFlight = true
+                    self.drainPendingUpdates()
+                }
+            }
+        }
+    }
+
+    private static func fingerprint(_ state: WorkoutActivityAttributes.ContentState) -> String {
+        let exercise = state.currentExerciseName ?? ""
+        let setNumber = state.currentSetNumber.map(String.init) ?? ""
+        let setCount = state.currentSetCount.map(String.init) ?? ""
+        let target = state.targetSummary ?? ""
+        let endsAt = state.restEndsAt.map { String($0.timeIntervalSince1970) } ?? ""
+        let rest = state.restRemainingSeconds.map(String.init) ?? ""
+        let bpm = state.heartRateBPM.map(String.init) ?? ""
+        let exerciseID = state.sessionExerciseID ?? ""
+        let setID = state.currentSetID ?? ""
+        return "\(exercise)|\(setNumber)|\(setCount)|\(target)|\(endsAt)|\(rest)|\(bpm)|\(exerciseID)|\(setID)"
+    }
+
+    nonisolated private static func requestActivity(
+        attributes: WorkoutActivityAttributes,
+        content: ActivityContent<WorkoutActivityAttributes.ContentState>
+    ) async -> String? {
+        await withCheckedContinuation { (continuation: CheckedContinuation<String?, Never>) in
+            DispatchQueue.main.async {
+                Task { @MainActor in
+                    let id = try? Activity.request(
+                        attributes: attributes,
+                        content: content,
+                        pushType: nil
+                    ).id
+                    DispatchQueue.main.async {
+                        continuation.resume(returning: id)
+                    }
+                }
+            }
+        }
+    }
+
+    nonisolated private static func endActivity(id: String) async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                Task { @MainActor in
+                    if let activity = Activity<WorkoutActivityAttributes>.activities.first(where: { $0.id == id }) {
+                        await activity.end(nil, dismissalPolicy: .immediate)
+                    }
+                    DispatchQueue.main.async {
+                        continuation.resume()
+                    }
+                }
+            }
+        }
+    }
+
+    /// ActivityKit / CoreHaptics can leave a `@MainActor` task off the real main thread.
+    /// `DispatchQueue.main` forces a real thread hop (`MainActor.run` can no-op).
+    nonisolated private static func reclaimMainThread() async {
+        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
+            DispatchQueue.main.async {
+                continuation.resume()
+            }
+        }
     }
 
     private func makeContentState(
@@ -136,5 +288,17 @@ final class WorkoutLiveActivityManager {
     private func currentActivity() -> Activity<WorkoutActivityAttributes>? {
         guard let activityID else { return nil }
         return Activity<WorkoutActivityAttributes>.activities.first { $0.id == activityID }
+    }
+
+    @discardableResult
+    private func adoptSingleExistingActivity(matchingStartedAt: Date) -> Bool {
+        let activities = Activity<WorkoutActivityAttributes>.activities.filter {
+            $0.attributes.startedAt == matchingStartedAt
+        }
+        guard activities.count == 1, let activity = activities.first else {
+            return false
+        }
+        activityID = activity.id
+        return true
     }
 }

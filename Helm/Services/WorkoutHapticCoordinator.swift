@@ -49,6 +49,10 @@ enum WorkoutHapticCoordinator {
 
     static func applyRestEvaluation(_ evaluation: RestTimerHapticPolicy.Evaluation) {
         restState.apply(evaluation)
+        // CoreHaptics / AVAudioSession fail (and can corrupt main-actor isolation) when
+        // the app is not active. Keep dedupe state, skip playback.
+        guard AppLifecycleState.isForeground else { return }
+
         for pattern in evaluation.patterns {
             play(pattern)
             if pattern == .restDone {

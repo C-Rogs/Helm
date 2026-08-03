@@ -163,7 +163,7 @@ struct AddFoodFlowView: View {
 
     private func resolveBarcode(_ barcode: String) {
         barcodePhase = .resolving
-        Task {
+        Task { @MainActor in
             do {
                 let product = try await controller.resolveBarcode(barcode)
                 selectedProduct = product

@@ -19,8 +19,13 @@ final class RestTimerSoundPlayer {
         loadBellPlayer()
     }
 
+    func prewarmSession() {
+        configureSessionIfNeeded()
+    }
+
     func playRestBellIfEnabled(_ enabled: Bool) {
         guard enabled else { return }
+        guard AppLifecycleState.isForeground else { return }
         play(
             soundID: TrainPreferences.shared.restTimerSoundID,
             volume: TrainPreferences.shared.restTimerVolume
@@ -29,6 +34,7 @@ final class RestTimerSoundPlayer {
 
     func play(soundID: RestTimerSoundID, volume: RestTimerVolumeLevel) {
         guard volume.isEnabled else { return }
+        guard AppLifecycleState.isForeground else { return }
 
         switch soundID {
         case .boxingBell:
@@ -56,7 +62,6 @@ final class RestTimerSoundPlayer {
             playSystemSound(1_052)
             return
         }
-        scheduleSessionDeactivation(after: player.duration)
     }
 
     private func loadBellPlayer() {
@@ -73,30 +78,6 @@ final class RestTimerSoundPlayer {
         }
     }
 
-    private func scheduleSessionDeactivation(after duration: TimeInterval) {
-        let delay = max(duration, 0.5) + 0.25
-        Task {
-            try? await Task.sleep(for: .seconds(delay))
-            deactivateSessionIfIdle()
-        }
-    }
-
-    private func deactivateSessionIfIdle() {
-        guard sessionConfigured else { return }
-        guard bellPlayer?.isPlaying != true else { return }
-        do {
-            try AVAudioSession.sharedInstance().setActive(
-                false,
-                options: .notifyOthersOnDeactivation
-            )
-            sessionConfigured = false
-        } catch {
-            logger.error(
-                "Rest timer audio session deactivate failed: \(error.localizedDescription, privacy: .public)"
-            )
-        }
-    }
-
     private func configureSessionIfNeeded() {
         guard !sessionConfigured else { return }
         do {
@@ -104,7 +85,7 @@ final class RestTimerSoundPlayer {
             try session.setCategory(
                 .playback,
                 mode: .default,
-                options: [.mixWithOthers, .defaultToSpeaker]
+                options: [.mixWithOthers]
             )
             try session.setActive(true)
             sessionConfigured = true
