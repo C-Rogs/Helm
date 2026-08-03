@@ -97,6 +97,158 @@ struct SchedulePlannerTests {
         let payload = PlannedWorkoutSessionDecoder.decode(from: records[0].sessionJSON)
         #expect(payload?.splitLabel.isEmpty == false)
     }
+
+    @Test("seven day projection rotates push pull legs from empty history")
+    func plannedWorkoutRecordsRotateFromEmptyHistory() {
+        let start = HelmDay(year: 2026, month: 7, day: 28)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: HelmDay(year: 2026, month: 7, day: 27)
+        )
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:]
+        )
+
+        let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
+        #expect(labels == ["Push", "Pull", "Legs", "Pull", "Legs", "Push", "Push"])
+        #expect(Set(labels.prefix(3)) == Set(["Push", "Pull", "Legs"]))
+    }
+
+    @Test("seven day projection advances after push logged this week")
+    func plannedWorkoutRecordsAdvanceAfterPush() {
+        let weekStart = HelmDay(year: 2026, month: 7, day: 27)
+        let pushDay = weekStart
+        let start = weekStart.adding(days: 1)
+        let history = PrescriptionHistory(
+            loggedSets: [
+                LoggedSet(
+                    exerciseID: "bench_press",
+                    sequence: 1,
+                    mass: Mass(kilograms: 80),
+                    reps: 8,
+                    completedAt: Date()
+                )
+            ],
+            sessions: [
+                WorkoutSession(
+                    id: UUID(),
+                    helmDay: pushDay,
+                    startedAt: Date(),
+                    finishedAt: Date(),
+                    sets: [
+                        LoggedSet(
+                            exerciseID: "bench_press",
+                            sequence: 1,
+                            mass: Mass(kilograms: 80),
+                            reps: 8,
+                            completedAt: Date()
+                        )
+                    ]
+                )
+            ],
+            weekStart: weekStart
+        )
+        let muscleMaps: [String: ExerciseMuscleMap] = [
+            "bench_press": ExerciseMuscleMap(exerciseID: "bench_press", contributions: [
+                ExerciseMuscleContribution(muscle: .chest, fraction: 0.7),
+                ExerciseMuscleContribution(muscle: .triceps, fraction: 0.3)
+            ])
+        ]
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: muscleMaps
+        )
+
+        let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
+        #expect(labels.prefix(3) == ["Pull", "Legs", "Push"])
+        #expect(labels != Array(repeating: labels.first!, count: labels.count))
+        #expect(Set(labels).count > 1)
+    }
+
+    @Test("projection restarts rotation at calendar week boundary")
+    func plannedWorkoutRecordsRestartAtWeekBoundary() {
+        let weekStart = HelmDay(year: 2026, month: 7, day: 27)
+        let pushDay = weekStart
+        let start = HelmDay(year: 2026, month: 7, day: 31)
+        let history = PrescriptionHistory(
+            loggedSets: [
+                LoggedSet(
+                    exerciseID: "bench_press",
+                    sequence: 1,
+                    mass: Mass(kilograms: 80),
+                    reps: 8,
+                    completedAt: Date()
+                )
+            ],
+            sessions: [
+                WorkoutSession(
+                    id: UUID(),
+                    helmDay: pushDay,
+                    startedAt: Date(),
+                    finishedAt: Date(),
+                    sets: [
+                        LoggedSet(
+                            exerciseID: "bench_press",
+                            sequence: 1,
+                            mass: Mass(kilograms: 80),
+                            reps: 8,
+                            completedAt: Date()
+                        )
+                    ]
+                )
+            ],
+            weekStart: weekStart
+        )
+        let muscleMaps: [String: ExerciseMuscleMap] = [
+            "bench_press": ExerciseMuscleMap(exerciseID: "bench_press", contributions: [
+                ExerciseMuscleContribution(muscle: .chest, fraction: 0.7),
+                ExerciseMuscleContribution(muscle: .triceps, fraction: 0.3)
+            ])
+        ]
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: muscleMaps
+        )
+
+        let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
+        #expect(labels[0] == "Pull")
+        #expect(labels[3] == "Push")
+    }
+
+    @Test("projection notes only cite logged sessions")
+    func plannedWorkoutProjectionNotesCiteLoggedSessionsOnly() {
+        let start = HelmDay(year: 2026, month: 7, day: 28)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: HelmDay(year: 2026, month: 7, day: 27)
+        )
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 3,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:]
+        )
+
+        let secondDayNotes = PlannedWorkoutSessionDecoder.decode(from: records[1].sessionJSON)?.scheduleNotes ?? []
+        #expect(secondDayNotes.contains(where: { $0.contains("already logged") }) == false)
+    }
 }
 
 @Suite("Prescription day store")

@@ -24,15 +24,23 @@ public enum SchedulePlanner {
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap],
         calendar: Calendar = .current,
-        sessionsPerWeek: Int = defaultSessionsPerWeek
+        sessionsPerWeek: Int = defaultSessionsPerWeek,
+        additionalCompletedSplits: [SessionSplitKind] = []
     ) -> SchedulePlanResult {
         let rotation = SessionSplitPlanner.rotationSplits(emphasis: emphasis)
 
-        let completedSplits = completedSplitKinds(
+        let loggedSplits = completedSplitKinds(
             in: history,
             through: day,
             muscleMaps: muscleMaps,
             calendar: calendar
+        )
+        let completedSplits = completedSplitKinds(
+            in: history,
+            through: day,
+            muscleMaps: muscleMaps,
+            calendar: calendar,
+            additionalCompletedSplits: additionalCompletedSplits
         )
         let pending = rotation.filter { !completedSplits.contains($0) }
         var notes: [String] = []
@@ -40,8 +48,8 @@ public enum SchedulePlanner {
         let splitKind: SessionSplitKind
         if let next = pending.first {
             splitKind = next
-            if completedSplits.isEmpty == false, pending.count < rotation.count {
-                let doneLabels = completedSplits.map(\.label).joined(separator: ", ")
+            if loggedSplits.isEmpty == false, pending.count < rotation.count {
+                let doneLabels = loggedSplits.map(\.label).joined(separator: ", ")
                 notes.append("\(doneLabels) already logged this week - \(next.label) is next.")
             }
         } else {
@@ -70,17 +78,26 @@ public enum SchedulePlanner {
         calendar: Calendar = .current
     ) -> [PlannedWorkoutRecord] {
         var records: [PlannedWorkoutRecord] = []
-        var simulatedHistory = history
+        var plannedSplitsThisWeek: [SessionSplitKind] = []
+        var projectionWeekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
 
         for offset in 0 ..< dayCount {
             let day = startDay.adding(days: offset, calendar: calendar)
+            let dayWeekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+            if dayWeekStart != projectionWeekStart {
+                plannedSplitsThisWeek = []
+                projectionWeekStart = dayWeekStart
+            }
+
             let result = plan(
                 for: day,
                 emphasis: emphasis,
-                history: simulatedHistory,
+                history: history,
                 muscleMaps: muscleMaps,
-                calendar: calendar
+                calendar: calendar,
+                additionalCompletedSplits: plannedSplitsThisWeek
             )
+            plannedSplitsThisWeek.append(result.splitKind)
             let payload = PlannedWorkoutSessionPayload(
                 splitLabel: result.splitKind.label,
                 splitKind: result.splitKind.rawValue,
@@ -97,7 +114,7 @@ public enum SchedulePlanner {
                 PlannedWorkoutRecord(
                     id: "planned-\(day.formatted)",
                     helmDay: day,
-                    status: day < startDay ? "pending" : "pending",
+                    status: "pending",
                     trainingLoad: Double(result.targetMuscles.count),
                     sessionJSON: json
                 )
@@ -110,9 +127,11 @@ public enum SchedulePlanner {
         in history: PrescriptionHistory,
         through endDay: HelmDay,
         muscleMaps: [String: ExerciseMuscleMap],
-        calendar: Calendar
+        calendar: Calendar,
+        additionalCompletedSplits: [SessionSplitKind] = []
     ) -> [SessionSplitKind] {
-        let weekDays = (0 ..< 7).map { history.weekStart.adding(days: $0, calendar: calendar) }
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: endDay, calendar: calendar)
+        let weekDays = (0 ..< 7).map { weekStart.adding(days: $0, calendar: calendar) }
         let weekDaySet = Set(weekDays)
         var completed: [SessionSplitKind] = []
 
@@ -122,6 +141,11 @@ public enum SchedulePlanner {
                 completed.append(kind)
             }
         }
+
+        for split in additionalCompletedSplits where !completed.contains(split) {
+            completed.append(split)
+        }
+
         return completed
     }
 
