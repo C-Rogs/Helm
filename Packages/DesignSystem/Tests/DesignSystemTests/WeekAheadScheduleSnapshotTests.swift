@@ -17,6 +17,12 @@ struct WeekAheadScheduleSnapshotTests {
         let text = WeekAheadScheduleSnapshot.text(for: WeekAheadScheduleModel(rows: []))
         #expect(text == "# Week ahead\n- none")
     }
+
+    @Test("collapsed summary highlights next session")
+    func collapsedSummary() {
+        #expect(WeekAheadScheduleModel.weekAheadFixture.collapsedSummary == "5 sessions · Pull next")
+        #expect(WeekAheadScheduleModel(rows: []).collapsedSummary == "No sessions planned")
+    }
 }
 
 private let weekAheadSnapshotText = """

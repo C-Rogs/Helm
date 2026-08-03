@@ -63,6 +63,17 @@ public struct WeekAheadScheduleModel: Sendable, Hashable, Equatable {
     }
 
     public var isEmpty: Bool { rows.isEmpty }
+
+    public var collapsedSummary: String {
+        guard !rows.isEmpty else { return "No sessions planned" }
+
+        let sessionCount = rows.count
+        if let next = rows.first(where: { $0.status == .today || $0.status == .upcoming }) {
+            return "\(sessionCount) sessions · \(next.splitLabel) next"
+        }
+
+        return "\(sessionCount) sessions this week"
+    }
 }
 
 public enum WeekAheadScheduleSnapshot {

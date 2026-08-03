@@ -93,12 +93,17 @@ struct SchedulePlannerTests {
             muscleMaps: [:]
         )
 
-        #expect(records.count == 7)
+        #expect(records.count == 3)
         let payload = PlannedWorkoutSessionDecoder.decode(from: records[0].sessionJSON)
         #expect(payload?.splitLabel.isEmpty == false)
     }
 
-    @Test("seven day projection rotates push pull legs from empty history")
+    @Test("training day offsets space three sessions across the week")
+    func trainingDayOffsetsSpacing() {
+        #expect(SchedulePlanner.trainingDayOffsets(sessionsPerWeek: 3) == [0, 2, 4])
+    }
+
+    @Test("seven day projection plans three spaced sessions from empty history")
     func plannedWorkoutRecordsRotateFromEmptyHistory() {
         let start = HelmDay(year: 2026, month: 7, day: 28)
         let history = PrescriptionHistory(
@@ -116,8 +121,9 @@ struct SchedulePlannerTests {
         )
 
         let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
-        #expect(labels == ["Push", "Pull", "Legs", "Pull", "Legs", "Push", "Push"])
-        #expect(Set(labels.prefix(3)) == Set(["Push", "Pull", "Legs"]))
+        #expect(records.count == 3)
+        #expect(labels == ["Push", "Pull", "Legs"])
+        #expect(Set(labels) == Set(["Push", "Pull", "Legs"]))
     }
 
     @Test("seven day projection advances after push logged this week")
@@ -170,8 +176,8 @@ struct SchedulePlannerTests {
         )
 
         let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
-        #expect(labels.prefix(3) == ["Pull", "Legs", "Push"])
-        #expect(labels != Array(repeating: labels.first!, count: labels.count))
+        #expect(records.count == 3)
+        #expect(labels == ["Pull", "Legs", "Push"])
         #expect(Set(labels).count > 1)
     }
 
@@ -225,8 +231,9 @@ struct SchedulePlannerTests {
         )
 
         let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
+        #expect(records.count == 3)
         #expect(labels[0] == "Pull")
-        #expect(labels[3] == "Push")
+        #expect(labels[1] == "Push")
     }
 
     @Test("projection notes only cite logged sessions")
@@ -240,12 +247,16 @@ struct SchedulePlannerTests {
 
         let records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: start,
-            dayCount: 3,
+            dayCount: 7,
             emphasis: nil,
             history: history,
             muscleMaps: [:]
         )
 
+        guard records.count >= 2 else {
+            Issue.record("Expected at least two projected training days")
+            return
+        }
         let secondDayNotes = PlannedWorkoutSessionDecoder.decode(from: records[1].sessionJSON)?.scheduleNotes ?? []
         #expect(secondDayNotes.contains(where: { $0.contains("already logged") }) == false)
     }

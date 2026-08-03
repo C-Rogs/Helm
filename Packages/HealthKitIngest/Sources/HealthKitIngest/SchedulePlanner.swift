@@ -75,14 +75,21 @@ public enum SchedulePlanner {
         emphasis: String?,
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap],
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        sessionsPerWeek: Int = defaultSessionsPerWeek
     ) -> [PlannedWorkoutRecord] {
         var records: [PlannedWorkoutRecord] = []
         var plannedSplitsThisWeek: [SessionSplitKind] = []
         var projectionWeekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
+        let trainingDays = projectedTrainingDays(
+            startingAt: startDay,
+            dayCount: dayCount,
+            sessionsPerWeek: sessionsPerWeek,
+            history: history,
+            calendar: calendar
+        )
 
-        for offset in 0 ..< dayCount {
-            let day = startDay.adding(days: offset, calendar: calendar)
+        for day in trainingDays {
             let dayWeekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
             if dayWeekStart != projectionWeekStart {
                 plannedSplitsThisWeek = []
@@ -95,6 +102,7 @@ public enum SchedulePlanner {
                 history: history,
                 muscleMaps: muscleMaps,
                 calendar: calendar,
+                sessionsPerWeek: sessionsPerWeek,
                 additionalCompletedSplits: plannedSplitsThisWeek
             )
             plannedSplitsThisWeek.append(result.splitKind)
@@ -121,6 +129,61 @@ public enum SchedulePlanner {
             )
         }
         return records
+    }
+
+    static func trainingDayOffsets(sessionsPerWeek: Int, daysInWeek: Int = 7) -> [Int] {
+        guard sessionsPerWeek > 0 else { return [] }
+        guard sessionsPerWeek < daysInWeek else { return Array(0 ..< daysInWeek) }
+        return (0 ..< sessionsPerWeek).map { index in
+            (index * daysInWeek) / sessionsPerWeek
+        }
+    }
+
+    static func projectedTrainingDays(
+        startingAt startDay: HelmDay,
+        dayCount: Int,
+        sessionsPerWeek: Int,
+        history: PrescriptionHistory,
+        calendar: Calendar
+    ) -> [HelmDay] {
+        let endDay = startDay.adding(days: dayCount - 1, calendar: calendar)
+        var days: [HelmDay] = []
+        var weekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
+
+        while weekStart <= endDay {
+            let logged = loggedSessionsInWeek(
+                history: history,
+                weekStart: weekStart,
+                through: endDay,
+                calendar: calendar
+            )
+            var plannedInWeek = 0
+
+            for offset in trainingDayOffsets(sessionsPerWeek: sessionsPerWeek) {
+                guard sessionsPerWeek - logged - plannedInWeek > 0 else { break }
+
+                let day = weekStart.adding(days: offset, calendar: calendar)
+                guard day >= startDay, day <= endDay else { continue }
+
+                days.append(day)
+                plannedInWeek += 1
+            }
+
+            weekStart = weekStart.adding(days: 7, calendar: calendar)
+        }
+
+        return days
+    }
+
+    private static func loggedSessionsInWeek(
+        history: PrescriptionHistory,
+        weekStart: HelmDay,
+        through endDay: HelmDay,
+        calendar: Calendar
+    ) -> Int {
+        let weekDays = (0 ..< 7).map { weekStart.adding(days: $0, calendar: calendar) }
+        let weekDaySet = Set(weekDays)
+        return history.sessions.filter { weekDaySet.contains($0.helmDay) && $0.helmDay <= endDay }.count
     }
 
     private static func completedSplitKinds(

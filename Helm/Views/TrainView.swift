@@ -181,7 +181,10 @@ struct TrainView: View {
                 rationale: summary.rationale,
                 onCoach: { controller.discussTodaysSession() },
                 onRegenerate: {
-                    Task { await controller.regenerateTodaysPrescription() }
+                    Task {
+                        await controller.regenerateTodaysPrescription()
+                        await weekAheadStore.refresh()
+                    }
                 }
             ) {
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {

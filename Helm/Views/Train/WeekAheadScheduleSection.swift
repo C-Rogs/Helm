@@ -3,6 +3,8 @@ import SwiftUI
 
 struct WeekAheadScheduleSection: View {
     @Bindable var store: WeekAheadScheduleStore
+    @Environment(\.helmReduceMotion) private var reduceMotion
+    @State private var isExpanded = false
 
     var body: some View {
         if store.isLoading, store.model == nil {
@@ -10,13 +12,45 @@ struct WeekAheadScheduleSection: View {
         } else if let model = store.model, !model.isEmpty {
             Card {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    header(for: model)
+
                     if store.calendarAuthorizationStatus != .authorized {
                         calendarPermissionBanner
                     }
-                    WeekAheadScheduleView(model: model, showsHeader: true)
+
+                    if isExpanded {
+                        WeekAheadScheduleView(model: model, showsHeader: false)
+                    } else {
+                        WeekAheadScheduleStrip(model: model)
+                    }
                 }
             }
         }
+    }
+
+    private func header(for model: WeekAheadScheduleModel) -> some View {
+        Button {
+            withAnimation(HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion)) {
+                isExpanded.toggle()
+            }
+        } label: {
+            HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    Text("Week ahead")
+                        .helmType(.title)
+                    Text(model.collapsedSummary)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                }
+
+                Spacer(minLength: HelmSpacing.sm)
+
+                HelmIconView(isExpanded ? .chevronUp : .chevronDown, context: .inline)
+                    .foregroundStyle(HelmColor.fgMuted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(isExpanded ? "Collapse week ahead schedule" : "Expand week ahead schedule")
     }
 
     @ViewBuilder

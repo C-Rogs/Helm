@@ -202,7 +202,10 @@ struct DashboardView: View {
                             TrainBootstrap.sessionController.discussTodaysSession()
                         },
                         onRegenerate: {
-                            Task { await TrainBootstrap.sessionController.regenerateTodaysPrescription() }
+                            Task {
+                                await TrainBootstrap.sessionController.regenerateTodaysPrescription()
+                                await WeekAheadScheduleBootstrap.store.refresh()
+                            }
                         }
                     ) {
                         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
