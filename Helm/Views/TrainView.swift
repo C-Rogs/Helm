@@ -333,6 +333,7 @@ struct TrainView: View {
             activeField: controller.numpadTarget,
             numpadSelectAll: controller.numpadSelectAll,
             validationMessage: controller.numpadValidationError,
+            advisoryMessage: { setID in controller.rirAdvisory(forSetID: setID) },
             shakeToken: controller.numpadShakeToken,
             fieldDisplayText: { set, field in
                 controller.displayText(for: field, set: set, exerciseID: exercise.exerciseID)

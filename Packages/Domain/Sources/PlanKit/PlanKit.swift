@@ -73,6 +73,28 @@ public enum PlanKit {
         ProgressionEngine.estimatedOneRepMax(mass: mass, reps: reps)
     }
 
+    /// Convert logged RPE to claimed RIR (10 - RPE), clamped to 0...10.
+    public static func rirFromRPE(_ rpe: Double) -> Double {
+        RIRConsistency.rirFromRPE(rpe)
+    }
+
+    /// Soft flag when reps + claimed RIR exceed historical e1RM capacity at this load.
+    public static func rirConsistencyFlag(
+        mass: Mass,
+        reps: Int,
+        claimedRIR: Double,
+        historicalBestE1RM: Mass?,
+        spareRepMargin: Double = 2.0
+    ) -> RIRConsistencyFlag? {
+        RIRConsistency.evaluate(
+            mass: mass,
+            reps: reps,
+            claimedRIR: claimedRIR,
+            historicalBestE1RM: historicalBestE1RM,
+            spareRepMargin: spareRepMargin
+        )
+    }
+
     // MARK: - Hard-set accounting
 
     /// Count fractional hard sets per muscle across sessions in the week starting at `weekStart`.

@@ -9,6 +9,7 @@ struct SetRowView: View {
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
     let validationMessage: String?
+    let advisoryMessage: String?
     let shakeToken: Int
     let badgeText: String?
     let encouragementGlyph: EncouragementGlyph?
@@ -25,8 +26,10 @@ struct SetRowView: View {
     private var isCompleted: Bool { setEntry.status == .completed }
 
     private var rowValidationMessage: String? {
-        guard let activeField, activeField.setID == setEntry.id else { return nil }
-        return validationMessage
+        if let activeField, activeField.setID == setEntry.id {
+            return validationMessage ?? advisoryMessage
+        }
+        return advisoryMessage
     }
 
     private var rowShakeToken: Int {
@@ -177,6 +180,7 @@ struct SetRowView: View {
         activeField: nil,
         numpadSelectAll: false,
         validationMessage: nil,
+        advisoryMessage: nil,
         shakeToken: 0,
         badgeText: nil,
         encouragementGlyph: nil,

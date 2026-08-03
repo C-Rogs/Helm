@@ -13,6 +13,7 @@ struct ExerciseSectionView: View {
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
     let validationMessage: String?
+    let advisoryMessage: (String) -> String?
     let shakeToken: Int
     let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
     let badgeText: (String) -> String?
@@ -126,6 +127,7 @@ struct ExerciseSectionView: View {
                             activeField: activeField,
                             numpadSelectAll: numpadSelectAll,
                             validationMessage: validationMessage,
+                            advisoryMessage: advisoryMessage(set.id),
                             shakeToken: shakeToken,
                             badgeText: badgeText(set.id),
                             encouragementGlyph: encouragementGlyph(set.id),
@@ -184,6 +186,7 @@ struct ExerciseSectionView: View {
         activeField: nil,
         numpadSelectAll: false,
         validationMessage: nil,
+        advisoryMessage: { _ in nil },
         shakeToken: 0,
         fieldDisplayText: { set, field in
             switch field {

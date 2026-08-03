@@ -6,6 +6,7 @@ import Foundation
 import HealthKitIngest
 import Observation
 import Persistence
+import PlanKit
 import ReadinessKit
 import SwiftUI
 
@@ -59,6 +60,8 @@ final class TrainSessionController {
     private(set) var lastSetPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var sessionPRRecordsBySetID: [String: [DetectedPersonalRecord]] = [:]
     private(set) var encouragementGlyphBySetID: [String: EncouragementGlyph] = [:]
+    private(set) var rirAdvisoryBySetID: [String: String] = [:]
+    private(set) var historicalBestE1RM: [String: Mass] = [:]
     private(set) var prCelebrationSetID: String?
     private(set) var lastFinishSummary: WorkoutFinishSummary?
 
@@ -642,6 +645,7 @@ final class TrainSessionController {
                 numpadTarget = nil
                 sessionPRRecordsBySetID.removeValue(forKey: setID)
                 encouragementGlyphBySetID.removeValue(forKey: setID)
+                rirAdvisoryBySetID.removeValue(forKey: setID)
                 if prCelebrationSetID == setID {
                     prCelebrationSetID = nil
                 }
@@ -665,7 +669,20 @@ final class TrainSessionController {
                 if reps == nil { reps = previous.reps }
                 try await store.logSet(
                     setID: setID,
-                    update: SetLogUpdate(mass: mass, reps: reps, rpe: refreshedSet.rpe)
+                    update: SetLogUpdate(
+                        mass: mass,
+                        reps: reps,
+                        rpe: refreshedSet.rpe,
+                        rir: refreshedSet.rpe.map { PlanKit.rirFromRPE($0) } ?? refreshedSet.rir
+                    )
+                )
+                updateRIRAdvisory(
+                    setID: setID,
+                    exerciseID: exerciseID(for: sessionExerciseID),
+                    mass: mass,
+                    reps: reps,
+                    rpe: refreshedSet.rpe,
+                    setType: refreshedSet.setType
                 )
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
@@ -732,6 +749,10 @@ final class TrainSessionController {
 
     func encouragementGlyph(forSetID setID: String) -> EncouragementGlyph? {
         encouragementGlyphBySetID[setID]
+    }
+
+    func rirAdvisory(forSetID setID: String) -> String? {
+        rirAdvisoryBySetID[setID]
     }
 
     func skipRest() async {
@@ -1175,6 +1196,14 @@ final class TrainSessionController {
             try await store.logSet(setID: target.setID, update: update)
             await refreshMetadata(scope: .light)
             numpadValidationError = nil
+            updateRIRAdvisory(
+                setID: target.setID,
+                exerciseID: exerciseID(for: target.sessionExerciseID),
+                mass: update.mass,
+                reps: update.reps,
+                rpe: update.rpe,
+                setType: set.setType
+            )
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -1264,10 +1293,19 @@ final class TrainSessionController {
                 update: SetLogUpdate(
                     mass: previous.mass ?? set.mass,
                     reps: previous.reps ?? set.reps,
-                    rpe: set.rpe
+                    rpe: set.rpe,
+                    rir: set.rpe.map { PlanKit.rirFromRPE($0) } ?? set.rir
                 )
             )
             await refreshMetadata()
+            updateRIRAdvisory(
+                setID: setID,
+                exerciseID: exerciseID(for: sessionExerciseID),
+                mass: previous.mass ?? set.mass,
+                reps: previous.reps ?? set.reps,
+                rpe: set.rpe,
+                setType: set.setType
+            )
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -1856,7 +1894,7 @@ final class TrainSessionController {
             } else {
                 mass = existing.mass
             }
-            return SetLogUpdate(mass: mass, reps: existing.reps, rpe: existing.rpe)
+            return setLogUpdate(mass: mass, reps: existing.reps, rpe: existing.rpe)
         case .reps:
             let reps: Int?
             if trimmed.isEmpty {
@@ -1866,7 +1904,7 @@ final class TrainSessionController {
             } else {
                 reps = existing.reps
             }
-            return SetLogUpdate(mass: existing.mass, reps: reps, rpe: existing.rpe)
+            return setLogUpdate(mass: existing.mass, reps: reps, rpe: existing.rpe)
         case .rpe:
             let rpe: Double?
             if trimmed.isEmpty {
@@ -1876,7 +1914,43 @@ final class TrainSessionController {
             } else {
                 rpe = existing.rpe
             }
-            return SetLogUpdate(mass: existing.mass, reps: existing.reps, rpe: rpe)
+            return setLogUpdate(mass: existing.mass, reps: existing.reps, rpe: rpe)
+        }
+    }
+
+    private func setLogUpdate(mass: Mass?, reps: Int?, rpe: Double?) -> SetLogUpdate {
+        SetLogUpdate(
+            mass: mass,
+            reps: reps,
+            rpe: rpe,
+            rir: rpe.map { PlanKit.rirFromRPE($0) }
+        )
+    }
+
+    private func updateRIRAdvisory(
+        setID: String,
+        exerciseID: String,
+        mass: Mass?,
+        reps: Int?,
+        rpe: Double?,
+        setType: SetType
+    ) {
+        guard setType != .warmup,
+              let mass,
+              let reps,
+              let rpe else {
+            rirAdvisoryBySetID.removeValue(forKey: setID)
+            return
+        }
+        if let flag = PlanKit.rirConsistencyFlag(
+            mass: mass,
+            reps: reps,
+            claimedRIR: PlanKit.rirFromRPE(rpe),
+            historicalBestE1RM: historicalBestE1RM[exerciseID]
+        ) {
+            rirAdvisoryBySetID[setID] = flag.message
+        } else {
+            rirAdvisoryBySetID.removeValue(forKey: setID)
         }
     }
 
@@ -1923,6 +1997,8 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else {
             exerciseSummaries = [:]
             previousPerformance = [:]
+            historicalBestE1RM = [:]
+            rirAdvisoryBySetID = [:]
             if exerciseTargets.isEmpty {
                 exerciseTargets = [:]
             }
@@ -1942,11 +2018,20 @@ final class TrainSessionController {
         if scope == .full {
             var summaries: [String: ExerciseSummary] = [:]
             var previous: [String: PreviousPerformance] = [:]
+            var bestE1RM: [String: Mass] = [:]
 
             for exercise in snapshot.session.exercises {
                 if summaries[exercise.exerciseID] == nil,
                    let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
                     summaries[exercise.exerciseID] = summary
+                }
+
+                if bestE1RM[exercise.exerciseID] == nil,
+                   let e1rm = try? persistence.workoutSessions.estimatedOneRM(
+                    exerciseID: exercise.exerciseID,
+                    excludingSessionID: snapshot.session.id
+                   ) {
+                    bestE1RM[exercise.exerciseID] = e1rm
                 }
 
                 for set in exercise.sets {
@@ -1965,11 +2050,20 @@ final class TrainSessionController {
 
             exerciseSummaries = summaries
             previousPerformance = previous
+            historicalBestE1RM = bestE1RM
             syncSessionNoteFromSnapshot()
         } else {
             for exercise in snapshot.session.exercises where exerciseSummaries[exercise.exerciseID] == nil {
                 if let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
                     exerciseSummaries[exercise.exerciseID] = summary
+                }
+            }
+            for exercise in snapshot.session.exercises where historicalBestE1RM[exercise.exerciseID] == nil {
+                if let e1rm = try? persistence.workoutSessions.estimatedOneRM(
+                    exerciseID: exercise.exerciseID,
+                    excludingSessionID: snapshot.session.id
+                ) {
+                    historicalBestE1RM[exercise.exerciseID] = e1rm
                 }
             }
         }
@@ -2066,6 +2160,8 @@ final class TrainSessionController {
         lastSetPersonalRecords = []
         sessionPRRecordsBySetID = [:]
         encouragementGlyphBySetID = [:]
+        rirAdvisoryBySetID = [:]
+        historicalBestE1RM = [:]
         prCelebrationSetID = nil
         sessionPersonalRecordKeys = []
         lastEncouragementGlyph = nil
