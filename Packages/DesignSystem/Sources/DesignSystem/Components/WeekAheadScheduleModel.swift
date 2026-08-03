@@ -64,12 +64,18 @@ public struct WeekAheadScheduleModel: Sendable, Hashable, Equatable {
 
     public var isEmpty: Bool { rows.isEmpty }
 
+    public var chronologicalRows: [WeekAheadScheduleRow] {
+        rows.sorted { $0.id < $1.id }
+    }
+
     public var collapsedSummary: String {
         guard !rows.isEmpty else { return "No sessions planned" }
 
-        let sessionCount = rows.count
-        if let next = rows.first(where: { $0.status == .today || $0.status == .upcoming }) {
-            return "\(sessionCount) sessions · \(next.splitLabel) next"
+        let ordered = chronologicalRows
+        let sessionCount = ordered.count
+        if let next = ordered.first(where: { $0.status == .today || $0.status == .upcoming }) {
+            let busySuffix = next.busyDayHint.map { " · \($0)" } ?? ""
+            return "\(sessionCount) sessions · \(next.splitLabel) next\(busySuffix)"
         }
 
         return "\(sessionCount) sessions this week"

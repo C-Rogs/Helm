@@ -234,6 +234,27 @@ struct SchedulePlannerTests {
         #expect(records.count == 3)
         #expect(labels[0] == "Pull")
         #expect(labels[1] == "Push")
+        #expect(labels[2] == "Pull")
+    }
+
+    @Test("seven day horizon caps total projected sessions")
+    func plannedWorkoutHorizonSessionCap() {
+        let start = HelmDay(year: 2026, month: 7, day: 31)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: HelmDay(year: 2026, month: 7, day: 27)
+        )
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:]
+        )
+
+        #expect(records.count == SchedulePlanner.defaultSessionsPerWeek)
     }
 
     @Test("projection notes only cite logged sessions")

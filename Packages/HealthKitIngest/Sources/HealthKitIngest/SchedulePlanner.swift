@@ -150,7 +150,7 @@ public enum SchedulePlanner {
         var days: [HelmDay] = []
         var weekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
 
-        while weekStart <= endDay {
+        while weekStart <= endDay, days.count < sessionsPerWeek {
             let logged = loggedSessionsInWeek(
                 history: history,
                 weekStart: weekStart,
@@ -160,6 +160,7 @@ public enum SchedulePlanner {
             var plannedInWeek = 0
 
             for offset in trainingDayOffsets(sessionsPerWeek: sessionsPerWeek) {
+                guard days.count < sessionsPerWeek else { break }
                 guard sessionsPerWeek - logged - plannedInWeek > 0 else { break }
 
                 let day = weekStart.adding(days: offset, calendar: calendar)

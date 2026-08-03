@@ -26,7 +26,7 @@ public struct WeekAheadScheduleView: View {
                     .frame(maxWidth: .infinity, minHeight: HelmLayout.emptyChartMinHeight, alignment: .leading)
             } else {
                 VStack(spacing: 0) {
-                    ForEach(Array(model.rows.enumerated()), id: \.element.id) { index, row in
+                    ForEach(Array(model.chronologicalRows.enumerated()), id: \.element.id) { index, row in
                         if index > 0 {
                             HelmHairlineRule()
                         }

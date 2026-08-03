@@ -515,6 +515,8 @@ final class TrainSessionController {
                     WorkoutHapticCoordinator.playSessionFinished()
                 }
             }
+            await refreshPrescriptionState()
+            await WeekAheadScheduleBootstrap.store.refresh()
         } catch {
             errorMessage = error.localizedDescription
         }

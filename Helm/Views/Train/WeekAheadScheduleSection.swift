@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WeekAheadScheduleSection: View {
     @Bindable var store: WeekAheadScheduleStore
+    var onRegenerate: (() -> Void)?
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var isExpanded = false
 
@@ -25,7 +26,21 @@ struct WeekAheadScheduleSection: View {
                     }
                 }
             }
+            .onAppear {
+                syncExpansion(for: model)
+            }
+            .onChange(of: store.model) { _, model in
+                guard let model else { return }
+                syncExpansion(for: model)
+            }
+        } else if !store.isLoading {
+            emptyState
         }
+    }
+
+    private func syncExpansion(for model: WeekAheadScheduleModel) {
+        guard model.chronologicalRows.contains(where: { $0.isToday && $0.busyDayHint != nil }) else { return }
+        isExpanded = true
     }
 
     private func header(for model: WeekAheadScheduleModel) -> some View {
@@ -40,6 +55,7 @@ struct WeekAheadScheduleSection: View {
                         .helmType(.title)
                     Text(model.collapsedSummary)
                         .helmType(.body, color: HelmColor.fgSecondary)
+                        .lineLimit(2)
                 }
 
                 Spacer(minLength: HelmSpacing.sm)
@@ -51,6 +67,21 @@ struct WeekAheadScheduleSection: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isExpanded ? "Collapse week ahead schedule" : "Expand week ahead schedule")
+    }
+
+    private var emptyState: some View {
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                Text("Week ahead")
+                    .helmType(.title)
+                Text("Regenerate today's prescription to build your training schedule.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                if let onRegenerate {
+                    Button("Regenerate plan", action: onRegenerate)
+                        .buttonStyle(.helmSecondary)
+                }
+            }
+        }
     }
 
     @ViewBuilder

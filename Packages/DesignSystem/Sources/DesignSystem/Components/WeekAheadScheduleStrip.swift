@@ -8,14 +8,28 @@ public struct WeekAheadScheduleStrip: View {
     }
 
     public var body: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: HelmSpacing.xs) {
-                ForEach(model.rows) { row in
-                    pill(for: row)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: HelmSpacing.xs) {
+                    ForEach(model.chronologicalRows) { row in
+                        pill(for: row)
+                            .id(row.id)
+                    }
                 }
+                .padding(.vertical, HelmSpacing.xxs)
             }
-            .padding(.vertical, HelmSpacing.xxs)
+            .onAppear {
+                scrollToToday(using: proxy)
+            }
+            .onChange(of: model.chronologicalRows.map(\.id)) { _, _ in
+                scrollToToday(using: proxy)
+            }
         }
+    }
+
+    private func scrollToToday(using proxy: ScrollViewProxy) {
+        guard let todayID = model.chronologicalRows.first(where: \.isToday)?.id else { return }
+        proxy.scrollTo(todayID, anchor: .center)
     }
 
     private func pill(for row: WeekAheadScheduleRow) -> some View {
@@ -24,7 +38,11 @@ public struct WeekAheadScheduleStrip: View {
                 .helmType(.monoTag, color: row.isToday ? HelmColor.accent : HelmColor.fgMuted)
             Text(row.splitLabel)
                 .helmType(.label)
-            if let statusLabel = row.statusLabel {
+            if let busyDayHint = row.busyDayHint {
+                Text(busyDayHint)
+                    .helmType(.monoTag, color: HelmColor.compromised)
+                    .lineLimit(1)
+            } else if let statusLabel = row.statusLabel {
                 Text(statusLabel)
                     .helmType(.monoTag, color: statusColor(for: row.status))
             }
@@ -35,10 +53,20 @@ public struct WeekAheadScheduleStrip: View {
         .clipShape(RoundedRectangle(cornerRadius: HelmRadius.sm, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: HelmRadius.sm, style: .continuous)
-                .stroke(row.isToday ? HelmColor.accent.opacity(0.35) : HelmColor.hairline, lineWidth: 1)
+                .stroke(borderColor(for: row), lineWidth: 1)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(for: row))
+    }
+
+    private func borderColor(for row: WeekAheadScheduleRow) -> Color {
+        if row.busyDayHint != nil {
+            return HelmColor.compromised.opacity(0.45)
+        }
+        if row.isToday {
+            return HelmColor.accent.opacity(0.35)
+        }
+        return HelmColor.hairline
     }
 
     private func statusColor(for status: WeekAheadSessionStatus) -> Color {
@@ -58,6 +86,9 @@ public struct WeekAheadScheduleStrip: View {
         var parts = [row.dayLabel, row.splitLabel]
         if let statusLabel = row.statusLabel {
             parts.append(statusLabel)
+        }
+        if let busyDayHint = row.busyDayHint {
+            parts.append(busyDayHint)
         }
         return parts.joined(separator: ", ")
     }

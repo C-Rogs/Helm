@@ -296,7 +296,12 @@ struct TrainView: View {
     }
 
     private var weekAheadSection: some View {
-        WeekAheadScheduleSection(store: weekAheadStore)
+        WeekAheadScheduleSection(store: weekAheadStore) {
+            Task {
+                await controller.regenerateTodaysPrescription()
+                await weekAheadStore.refresh()
+            }
+        }
     }
 
     @ViewBuilder

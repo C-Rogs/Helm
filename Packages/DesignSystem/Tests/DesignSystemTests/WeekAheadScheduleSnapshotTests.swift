@@ -23,6 +23,18 @@ struct WeekAheadScheduleSnapshotTests {
         #expect(WeekAheadScheduleModel.weekAheadFixture.collapsedSummary == "5 sessions · Pull next")
         #expect(WeekAheadScheduleModel(rows: []).collapsedSummary == "No sessions planned")
     }
+
+    @Test("chronological rows sort by planned day")
+    func chronologicalRows() {
+        let ordered = WeekAheadScheduleModel.weekAheadFixture.chronologicalRows.map(\.id)
+        #expect(ordered == [
+            "planned-2026-07-26",
+            "planned-2026-07-27",
+            "planned-2026-07-28",
+            "planned-2026-07-29",
+            "planned-2026-07-30"
+        ])
+    }
 }
 
 private let weekAheadSnapshotText = """
