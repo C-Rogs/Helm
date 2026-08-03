@@ -49,43 +49,56 @@ struct PhotoMealConfirmSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                    if let previewImage {
-                        Image(uiImage: previewImage)
-                            .resizable()
-                            .scaledToFill()
-                            .frame(maxWidth: .infinity)
-                            .frame(height: 180)
-                            .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                        if let previewImage {
+                            Image(uiImage: previewImage)
+                                .resizable()
+                                .scaledToFill()
+                                .frame(maxWidth: .infinity)
+                                .frame(height: 180)
+                                .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
+                        }
+
+                        confidenceLabel
+
+                        if !currentEstimate.groundingWarnings.isEmpty {
+                            groundingWarningsSection
+                        }
+
+                        if let direct = currentEstimate.visionDirectEstimate {
+                            visionComparisonSection(direct)
+                        }
+
+                        MealBucketPicker(selection: $bucket)
+
+                        MealLineItemEditor(
+                            description: $description,
+                            lineItems: $lineItems,
+                            onFocusedScrollIDChange: { scrollID in
+                                guard let scrollID else { return }
+                                withAnimation(
+                                    .spring(response: 0.4, dampingFraction: 0.7)
+                                ) {
+                                    proxy.scrollTo(scrollID, anchor: .center)
+                                }
+                            }
+                        )
+
+                        if !controller.userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text("Context: \(controller.userNotes)")
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                        }
+
+                        Button("Re-estimate with context") {
+                            Task { await controller.reestimateFromConfirm() }
+                        }
+                        .buttonStyle(.helmSecondary)
+                        .disabled(controller.isBusy)
                     }
-
-                    confidenceLabel
-
-                    if !currentEstimate.groundingWarnings.isEmpty {
-                        groundingWarningsSection
-                    }
-
-                    if let direct = currentEstimate.visionDirectEstimate {
-                        visionComparisonSection(direct)
-                    }
-
-                    MealBucketPicker(selection: $bucket)
-
-                    MealLineItemEditor(description: $description, lineItems: $lineItems)
-
-                    if !controller.userNotes.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                        Text("Context: \(controller.userNotes)")
-                            .helmType(.body, color: HelmColor.fgSecondary)
-                    }
-
-                    Button("Re-estimate with context") {
-                        Task { await controller.reestimateFromConfirm() }
-                    }
-                    .buttonStyle(.helmSecondary)
-                    .disabled(controller.isBusy)
+                    .padding(HelmSpacing.md)
                 }
-                .padding(HelmSpacing.md)
             }
             .helmScreenBackground()
             .navigationTitle("Confirm meal")

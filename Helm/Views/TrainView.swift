@@ -397,90 +397,107 @@ struct TrainView: View {
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
         ZStack {
             VStack(spacing: 0) {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                        TrainSessionHeaderView(
-                            startedAt: snapshot.session.startedAt,
-                            progress: TrainSessionProgress.from(snapshot: snapshot),
-                            heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
-                                ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
-                                : nil
-                        )
+                ScrollViewReader { proxy in
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                            TrainSessionHeaderView(
+                                startedAt: snapshot.session.startedAt,
+                                progress: TrainSessionProgress.from(snapshot: snapshot),
+                                heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
+                                    ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+                                    : nil
+                            )
 
-                        if let notice = controller.watchCompanionNotice {
-                            Button {
-                                if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
-                                    controller.retryWatchCompanionLaunch()
-                                } else {
-                                    controller.dismissWatchCompanionNotice()
+                            if let notice = controller.watchCompanionNotice {
+                                Button {
+                                    if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
+                                        controller.retryWatchCompanionLaunch()
+                                    } else {
+                                        controller.dismissWatchCompanionNotice()
+                                    }
+                                } label: {
+                                    Text(notice)
+                                        .helmType(.body, color: HelmColor.fgSecondary)
+                                        .padding(.horizontal, HelmSpacing.xs)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                 }
-                            } label: {
-                                Text(notice)
+                                .buttonStyle(.plain)
+                                .accessibilityLabel(notice)
+                            }
+
+                            if let banner = controller.adjustmentBanner {
+                                AdjustmentBanner(
+                                    fromLabel: banner.fromLabel,
+                                    toLabel: banner.toLabel,
+                                    reason: banner.reason
+                                ) {
+                                    Task { await controller.undoLastAdjustment() }
+                                }
+                                .transition(
+                                    .asymmetric(
+                                        insertion: .move(edge: .top).combined(with: .opacity),
+                                        removal: .opacity
+                                    )
+                                )
+                            }
+
+                            if snapshot.session.exercises.isEmpty {
+                                Text("Add your first exercise to begin logging sets.")
                                     .helmType(.body, color: HelmColor.fgSecondary)
                                     .padding(.horizontal, HelmSpacing.xs)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
                             }
-                            .buttonStyle(.plain)
-                            .accessibilityLabel(notice)
-                        }
 
-                        if let banner = controller.adjustmentBanner {
-                            AdjustmentBanner(
-                                fromLabel: banner.fromLabel,
-                                toLabel: banner.toLabel,
-                                reason: banner.reason
-                            ) {
-                                Task { await controller.undoLastAdjustment() }
+                            ForEach(controller.exercisesForDisplay()) { exercise in
+                                exerciseSection(for: exercise)
                             }
-                            .transition(
-                                .asymmetric(
-                                    insertion: .move(edge: .top).combined(with: .opacity),
-                                    removal: .opacity
-                                )
-                            )
-                        }
 
-                        if snapshot.session.exercises.isEmpty {
-                            Text("Add your first exercise to begin logging sets.")
-                                .helmType(.body, color: HelmColor.fgSecondary)
-                                .padding(.horizontal, HelmSpacing.xs)
-                        }
-
-                        ForEach(controller.exercisesForDisplay()) { exercise in
-                            exerciseSection(for: exercise)
-                        }
-
-                        if !controller.isReorderMode {
-                            Button {
-                                controller.isShowingExercisePicker = true
-                            } label: {
-                                Label("Add exercise", helmIcon: .plus, context: .inline)
+                            if !controller.isReorderMode {
+                                Button {
+                                    controller.isShowingExercisePicker = true
+                                } label: {
+                                    Label("Add exercise", helmIcon: .plus, context: .inline)
+                                }
+                                .buttonStyle(.helmSecondary)
                             }
-                            .buttonStyle(.helmSecondary)
-                        }
 
-                        if controller.numpadTarget == nil, !controller.isReorderMode {
-                            sessionActionBar
-                        }
+                            if controller.numpadTarget == nil, !controller.isReorderMode {
+                                sessionActionBar
+                            }
 
-                        if controller.isReorderMode {
-                            reorderActionBar
-                        }
+                            if controller.isReorderMode {
+                                reorderActionBar
+                            }
 
-                        Spacer(minLength: bottomContentInset)
+                            Spacer(minLength: bottomContentInset)
+                        }
+                        .padding(HelmSpacing.screenGutter)
+                        .padding(.bottom, HelmSpacing.md)
+                        .frame(maxWidth: .infinity)
                     }
-                    .padding(HelmSpacing.screenGutter)
-                    .padding(.bottom, HelmSpacing.md)
-                    .frame(maxWidth: .infinity)
+                    .animation(
+                        HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                        value: controller.adjustmentBanner
+                    )
+                    .animation(
+                        HelmMotion.animation(
+                            .spring(response: 0.4, dampingFraction: 0.7),
+                            reduceMotion: reduceMotion
+                        ),
+                        value: controller.numpadTarget?.setID
+                    )
+                    .onChange(of: controller.numpadTarget?.setID) { _, setID in
+                        guard let setID else { return }
+                        HapticEngine.shared.play(.selection)
+                        withAnimation(
+                            HelmMotion.animation(
+                                .spring(response: 0.4, dampingFraction: 0.7),
+                                reduceMotion: reduceMotion
+                            )
+                        ) {
+                            proxy.scrollTo(setID, anchor: .center)
+                        }
+                    }
                 }
-                .animation(
-                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                    value: controller.adjustmentBanner
-                )
-                .animation(
-                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                    value: controller.numpadTarget
-                )
             }
 
             HelmCoachApplyWave(isActive: $controller.showCoachApplyWave)

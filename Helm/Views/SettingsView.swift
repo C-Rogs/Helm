@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @Bindable private var coordinator = HelmThemeCoordinator.shared
     @Bindable private var trainPreferences = TrainPreferences.shared
+    @Bindable private var focusModePreferences = FocusModePreferences.shared
 
     var body: some View {
         NavigationStack {
@@ -50,6 +51,16 @@ struct SettingsView: View {
                     }
                     .listRowInsets(EdgeInsets())
                     .listRowBackground(Color.clear)
+
+                    Toggle("Focus mode", isOn: $focusModePreferences.isFocusModeEnabled)
+                        .helmListRowChrome()
+                        .onChange(of: focusModePreferences.isFocusModeEnabled) { _, _ in
+                            HapticEngine.shared.play(.selection)
+                        }
+
+                    Text("Dims inactive set and meal rows while you log, so the active entry stays front and center.")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                        .helmListRowChrome()
                 }
 
                 Section("Feedback") {

@@ -21,9 +21,18 @@ struct SetRowView: View {
     let onCycleSetType: () -> Void
     let onComplete: () -> Void
 
+    @Bindable private var focusModePreferences = FocusModePreferences.shared
     @Environment(\.helmReduceMotion) private var reduceMotion
 
     private var isCompleted: Bool { setEntry.status == .completed }
+
+    private var isRowFocused: Bool {
+        activeField?.setID == setEntry.id
+    }
+
+    private var isSpotlightActive: Bool {
+        focusModePreferences.isFocusModeEnabled && activeField != nil
+    }
 
     private var rowValidationMessage: String? {
         if let activeField, activeField.setID == setEntry.id {
@@ -71,6 +80,10 @@ struct SetRowView: View {
                     .allowsHitTesting(false)
             }
         }
+        .spotlightEffect(
+            isFocused: isRowFocused,
+            isFocusModeEnabled: isSpotlightActive
+        )
         .overlay {
             if showsPRCelebration {
                 RoundedRectangle(cornerRadius: HelmRadius.sm)
@@ -82,6 +95,7 @@ struct SetRowView: View {
                     )
             }
         }
+        .id(setEntry.id)
     }
 
     private func fieldState(_ field: NumpadFieldKind) -> SetRowFieldValueState {

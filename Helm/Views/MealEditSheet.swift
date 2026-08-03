@@ -60,34 +60,44 @@ struct MealEditSheet: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                    Text(mealSourceLabel)
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
+            ScrollViewReader { proxy in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                        Text(mealSourceLabel)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
 
-                    MealBucketPicker(selection: $bucket)
+                        MealBucketPicker(selection: $bucket)
 
-                    if hasStoredLineItems {
-                        MealLineItemEditor(
-                            description: $name,
-                            lineItems: $lineItems
-                        )
-                    } else if isQuickAddStyle {
-                        quickAddFields
-                    } else {
-                        simpleMealFields
+                        if hasStoredLineItems {
+                            MealLineItemEditor(
+                                description: $name,
+                                lineItems: $lineItems,
+                                onFocusedScrollIDChange: { scrollID in
+                                    guard let scrollID else { return }
+                                    withAnimation(
+                                        .spring(response: 0.4, dampingFraction: 0.7)
+                                    ) {
+                                        proxy.scrollTo(scrollID, anchor: .center)
+                                    }
+                                }
+                            )
+                        } else if isQuickAddStyle {
+                            quickAddFields
+                        } else {
+                            simpleMealFields
+                        }
+
+                        Button(role: .destructive) {
+                            showsDeleteConfirm = true
+                        } label: {
+                            Text("Delete entry")
+                                .frame(maxWidth: .infinity)
+                        }
+                        .buttonStyle(.helmSecondary)
+                        .disabled(isSaving)
                     }
-
-                    Button(role: .destructive) {
-                        showsDeleteConfirm = true
-                    } label: {
-                        Text("Delete entry")
-                            .frame(maxWidth: .infinity)
-                    }
-                    .buttonStyle(.helmSecondary)
-                    .disabled(isSaving)
+                    .padding(HelmSpacing.md)
                 }
-                .padding(HelmSpacing.md)
             }
             .navigationTitle("Edit entry")
             .navigationBarTitleDisplayMode(.inline)

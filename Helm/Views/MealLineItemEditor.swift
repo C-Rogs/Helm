@@ -32,13 +32,20 @@ struct MealLineItemEditor: View {
     @Binding var description: String
     @Binding var lineItems: [EditableLineItem]
     var showsTotals: Bool = true
+    var onFocusedScrollIDChange: ((String?) -> Void)? = nil
 
+    @Bindable private var focusModePreferences = FocusModePreferences.shared
     @State private var expandedItemIDs: Set<String> = []
     @State private var nameQueryItemID: String?
     @State private var countableStates: [String: CountableEditorState] = [:]
     @FocusState private var focusedField: Field?
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private let lookup = NutritionLookup()
+
+    private var isSpotlightActive: Bool {
+        focusModePreferences.isFocusModeEnabled && focusedField != nil
+    }
 
     private var currentEstimate: MealEstimate {
         let items = lineItems.map(\.item)
@@ -70,6 +77,22 @@ struct MealLineItemEditor: View {
                 }
             }
         }
+        .animation(
+            HelmMotion.animation(
+                .spring(response: 0.4, dampingFraction: 0.7),
+                reduceMotion: reduceMotion
+            ),
+            value: focusedField
+        )
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    focusedField = nil
+                    HapticEngine.shared.play(.selection)
+                }
+            }
+        }
         .onAppear {
             if expandedItemIDs.isEmpty {
                 expandedItemIDs = Set(lineItems.map(\.id))
@@ -81,6 +104,13 @@ struct MealLineItemEditor: View {
                 expandedItemIDs.insert(entry.id)
             }
             seedCountableStatesIfNeeded()
+        }
+        .onChange(of: focusedField) { _, newValue in
+            let scrollID = scrollID(for: newValue)
+            onFocusedScrollIDChange?(scrollID)
+            if newValue != nil {
+                HapticEngine.shared.play(.selection)
+            }
         }
     }
 
@@ -165,7 +195,38 @@ struct MealLineItemEditor: View {
         }
         .padding(HelmSpacing.sm)
         .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+        .spotlightEffect(
+            isFocused: isIngredientFocused(entry.id),
+            isFocusModeEnabled: isSpotlightActive
+        )
+        .id(Self.ingredientScrollID(entry.id))
     }
+
+    private func isIngredientFocused(_ entryID: String) -> Bool {
+        switch focusedField {
+        case .name(let id), .grams(let id):
+            return id == entryID
+        default:
+            return false
+        }
+    }
+
+    private func scrollID(for field: Field?) -> String? {
+        switch field {
+        case .description:
+            return Self.descriptionScrollID
+        case .name(let id), .grams(let id):
+            return Self.ingredientScrollID(id)
+        case nil:
+            return nil
+        }
+    }
+
+    private static func ingredientScrollID(_ entryID: String) -> String {
+        "meal-ingredient-\(entryID)"
+    }
+
+    private static let descriptionScrollID = "meal-description"
 
     @ViewBuilder
     private func countableEditor(for entry: EditableLineItem, config: CountablePortionConfig) -> some View {
@@ -271,6 +332,11 @@ struct MealLineItemEditor: View {
 
             macroField("Description", text: $description, field: .description)
                 .textInputAutocapitalization(.sentences)
+                .spotlightEffect(
+                    isFocused: focusedField == .description,
+                    isFocusModeEnabled: isSpotlightActive
+                )
+                .id(Self.descriptionScrollID)
 
             readOnlyRow("Calories", value: currentEstimate.caloriesKcal, unit: "kcal")
             readOnlyRow("Protein", value: currentEstimate.proteinG, unit: "g")
