@@ -40,7 +40,7 @@ struct SessionCoachNoteField: View {
                 .lineLimit(2 ... 5)
                 .textFieldStyle(.plain)
                 .padding(HelmSpacing.sm)
-                .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                .helmPanelChrome(.elevated, cornerRadius: HelmRadius.sm)
                 .onChange(of: text) { _, newValue in
                     onTextChange(newValue)
                 }
@@ -60,10 +60,6 @@ struct SessionCoachNoteField: View {
             }
         }
         .padding(HelmSpacing.md)
-        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-        .overlay {
-            RoundedRectangle(cornerRadius: HelmRadius.md)
-                .strokeBorder(HelmColor.hairline, lineWidth: 1)
-        }
+        .helmPanelChrome(.surface)
     }
 }

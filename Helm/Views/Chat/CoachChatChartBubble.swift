@@ -29,7 +29,7 @@ struct CoachChatChartBubble: View {
         }
         .padding(.horizontal, HelmSpacing.md)
         .padding(.vertical, HelmSpacing.sm)
-        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+        .helmPanelChrome(.surface)
     }
 
     private var accessibilityLabel: String {

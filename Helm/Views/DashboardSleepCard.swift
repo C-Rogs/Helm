@@ -4,11 +4,19 @@ import SwiftUI
 
 struct DashboardSleepCard: View {
     let summary: SleepNightSummary
+    var showsChevron = false
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                HelmSectionEyebrow("SLEEP")
+                HStack {
+                    HelmSectionEyebrow("SLEEP")
+                    Spacer()
+                    if showsChevron {
+                        HelmIconView(.chevronRight, context: .inline)
+                            .foregroundStyle(HelmColor.fgMuted)
+                    }
+                }
 
                 if let asleepHours = summary.asleepHours {
                     Text(SleepDurationFormatting.hoursAndMinutes(from: asleepHours))

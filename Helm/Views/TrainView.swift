@@ -10,6 +10,7 @@ struct TrainView: View {
     @Bindable private var importController = TrainBootstrap.importController
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     @Bindable private var weekAheadStore = WeekAheadScheduleBootstrap.store
+    @Bindable private var trainPreferences = TrainPreferences.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -117,7 +118,8 @@ struct TrainView: View {
                         },
                         onRemainingSecondsChange: { remaining in
                             handleRestTimerTick(remaining)
-                        }
+                        },
+                        upNextName: controller.upNextExerciseName
                     )
                 }
 
@@ -524,15 +526,37 @@ struct TrainView: View {
     }
 
     private var inSessionCoachBar: some View {
-        AskCoachBar(
+        let restTimer = controller.snapshot?.restTimer
+        let coachBar = AskCoachBar(
             prompt: controller.isCoachThinking ? "Coach thinking" : "Ask coach",
             peekSnippet: ProactiveCoachPreferences.peekEnabled ? controller.coachPeekSnippet : nil,
             isLoading: controller.isCoachThinking
         ) {
             controller.isShowingCoachPrompt = true
         }
-        .padding(.horizontal, HelmSpacing.screenGutter)
-        .padding(.bottom, HelmSpacing.xs)
+
+        return Group {
+            if trainPreferences.pawelModeEnabled {
+                HStack(spacing: HelmSpacing.xs) {
+                    coachBar
+                        .layoutPriority(1)
+
+                    PawelTimerPill(
+                        isRunning: controller.isRestTimerRunning,
+                        endsAt: restTimer?.endsAt
+                    ) {
+                        controller.isShowingPawelTimer = true
+                    }
+                    .frame(minWidth: 88, maxWidth: 96)
+                }
+                .padding(.horizontal, HelmSpacing.screenGutter)
+                .padding(.bottom, HelmSpacing.xs)
+            } else {
+                coachBar
+                    .padding(.horizontal, HelmSpacing.screenGutter)
+                    .padding(.bottom, HelmSpacing.xs)
+            }
+        }
     }
 
     private var sessionActionBar: some View {
@@ -572,6 +596,14 @@ struct TrainView: View {
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Dismiss keyboard")
+            .simultaneousGesture(
+                DragGesture(minimumDistance: 12)
+                    .onEnded { value in
+                        guard value.translation.height > 24,
+                              value.predictedEndTranslation.height > 40 else { return }
+                        Task { await controller.dismissNumpad() }
+                    }
+            )
 
             if isRPE {
                 HelmRPESlider(value: $controller.numpadDraftRPE)
@@ -600,14 +632,6 @@ struct TrainView: View {
             }
         }
         .background(HelmColor.canvas)
-        .highPriorityGesture(
-            DragGesture(minimumDistance: 12)
-                .onEnded { value in
-                    guard value.translation.height > 24,
-                          value.predictedEndTranslation.height > 40 else { return }
-                    Task { await controller.dismissNumpad() }
-                }
-        )
         .transition(.move(edge: .bottom))
     }
 }

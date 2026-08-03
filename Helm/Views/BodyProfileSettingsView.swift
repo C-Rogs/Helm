@@ -76,17 +76,15 @@ struct BodyProfileEditorView: View {
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
                 Text("Starting point for calorie targets. Helm refines this from your food logs and weight trend, not from diet calories alone during a cut.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgMuted)
+                    .helmType(.body, color: HelmColor.fgMuted)
             } else {
                 Text("Enter weight, height, sex, and date of birth to calculate maintenance calories.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgMuted)
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
         }
         .padding(HelmSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+        .helmPanelChrome(.surface)
     }
 }
 

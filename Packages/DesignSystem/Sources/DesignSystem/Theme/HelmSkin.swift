@@ -1,6 +1,7 @@
 import SwiftUI
 
 public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
+    case signal
     case instrument
     case dataSheet
     case stateField
@@ -10,6 +11,7 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
 
     public var label: String {
         switch self {
+        case .signal: "Signal"
         case .instrument: "Instrument"
         case .dataSheet: "Data sheet"
         case .stateField: "State field"
@@ -18,7 +20,7 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
     }
 
     /// Layout skins exposed in Settings. Additional cases stay reserved behind the seam.
-    public static let selectableSkins: [HelmSkin] = [.instrument, .dataSheet]
+    public static let selectableSkins: [HelmSkin] = [.signal, .instrument, .dataSheet]
 
     public var isSelectable: Bool {
         Self.selectableSkins.contains(self)
@@ -27,6 +29,7 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
     /// Vertical gap between major screen sections (Dashboard, Train, Trends).
     public var sectionSpacing: CGFloat {
         switch self {
+        case .signal: HelmSpacing.md
         case .instrument: HelmSpacing.lg
         case .dataSheet: HelmSpacing.sm
         case .stateField, .blueprint: HelmSpacing.lg
@@ -42,13 +45,26 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
     public var sectionHorizontalInset: CGFloat {
         switch self {
         case .dataSheet: 0
-        case .instrument, .stateField, .blueprint: 0
+        case .signal, .instrument, .stateField, .blueprint: 0
         }
+    }
+
+    /// Soft press scale for Signal; slightly firmer for card skins.
+    public var pressScale: CGFloat {
+        switch self {
+        case .signal: 0.992
+        case .instrument, .dataSheet, .stateField, .blueprint: 0.985
+        }
+    }
+
+    /// Whether major screen stacks should stagger children on appear.
+    public var usesStaggeredAppear: Bool {
+        self == .signal
     }
 }
 
 private struct HelmSkinKey: EnvironmentKey {
-    static let defaultValue: HelmSkin = .instrument
+    static let defaultValue: HelmSkin = .signal
 }
 
 public extension EnvironmentValues {
@@ -71,6 +87,8 @@ public struct SkinnedContainer<Content: View>: View {
 
     public var body: some View {
         switch skin {
+        case .signal:
+            signalBody
         case .instrument:
             instrumentBody
         case .dataSheet:
@@ -80,6 +98,11 @@ public struct SkinnedContainer<Content: View>: View {
         case .blueprint:
             blueprintBody
         }
+    }
+
+    private var signalBody: some View {
+        content
+            .signalHUDPanel(emphasized: isPressed)
     }
 
     private var instrumentBody: some View {
@@ -137,6 +160,9 @@ public struct SkinnedGauge<Center: View>: View {
 
     public var body: some View {
         switch skin {
+        case .signal:
+            gauge
+                .padding(.vertical, HelmSpacing.sm)
         case .instrument, .stateField:
             gauge
         case .dataSheet:
@@ -150,6 +176,7 @@ public struct SkinnedGauge<Center: View>: View {
 
 public struct HelmScreenStack<Content: View>: View {
     @Environment(\.helmSkin) private var skin
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private let content: Content
 
@@ -161,6 +188,31 @@ public struct HelmScreenStack<Content: View>: View {
         VStack(alignment: .leading, spacing: skin.sectionSpacing) {
             content
         }
+        .modifier(SignalStaggerModifier(enabled: skin.usesStaggeredAppear, reduceMotion: reduceMotion))
+    }
+}
+
+private struct SignalStaggerModifier: ViewModifier {
+    let enabled: Bool
+    let reduceMotion: Bool
+    @State private var appeared = false
+
+    func body(content: Content) -> some View {
+        // Opacity-only screen fade; per-child helmStaggeredAppear owns motion offset.
+        content
+            .opacity(shouldFade ? (appeared ? 1 : 0.01) : 1)
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: appeared
+            )
+            .onAppear {
+                guard shouldFade else { return }
+                appeared = true
+            }
+    }
+
+    private var shouldFade: Bool {
+        enabled && !reduceMotion
     }
 }
 

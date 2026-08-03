@@ -10,7 +10,7 @@ struct MuscleVolumeBarChartCard: View {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 chartHeader(
                     title: "Weekly volume",
-                    subtitle: "Hard sets vs MEV/MRV landmarks"
+                    subtitle: "Logged + scheduled hard sets vs MEV/MRV"
                 )
 
                 if gauges.isEmpty {
@@ -21,6 +21,7 @@ struct MuscleVolumeBarChartCard: View {
                             LandmarkVolumeBar(
                                 label: TrendsChartSupport.muscleLabel(gauge.muscle),
                                 weeklySets: gauge.weeklySets,
+                                scheduledSets: gauge.scheduledSets,
                                 mev: gauge.landmarks.mev,
                                 mrv: gauge.landmarks.mrv,
                                 state: gauge.state,
@@ -30,7 +31,7 @@ struct MuscleVolumeBarChartCard: View {
                         }
                     }
 
-                    Text("Shaded band is MEV to MRV")
+                    Text("Solid = logged · Tint = scheduled · Band = MEV to MRV")
                         .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
             }

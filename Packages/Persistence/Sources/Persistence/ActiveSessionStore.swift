@@ -6,6 +6,8 @@ import Observation
 @Observable
 public final class ActiveSessionStore {
     public private(set) var snapshot: ActiveSessionSnapshot?
+    /// Last error from `recover()`, if any. Cleared on successful recover.
+    public private(set) var lastRecoverError: Error?
 
     private let engine: ActiveSessionEngine
 
@@ -18,7 +20,13 @@ public final class ActiveSessionStore {
     }
 
     public func recover() async {
-        snapshot = try? await engine.recover()
+        do {
+            snapshot = try await engine.recover()
+            lastRecoverError = nil
+        } catch {
+            // Do not treat I/O or corruption as "no active session".
+            lastRecoverError = error
+        }
     }
 
     public func start(title: String? = nil) async throws {
@@ -69,6 +77,10 @@ public final class ActiveSessionStore {
         snapshot = try await engine.skipRest()
     }
 
+    public func startManualRestTimer(durationSeconds: Int) async throws {
+        snapshot = try await engine.startManualRestTimer(durationSeconds: durationSeconds)
+    }
+
     public func finish() async throws -> String? {
         let sessionID = try await engine.finish()
         snapshot = nil
@@ -85,9 +97,7 @@ public final class ActiveSessionStore {
     }
 
     public func remainingRestSeconds(at instant: Date? = nil) async throws -> Int? {
-        guard let timer = try await restTimer(at: instant) else { return nil }
-        let now = instant ?? Date()
-        return timer.remainingSeconds(at: now)
+        try await engine.remainingRestSeconds(at: instant)
     }
 
     public func syncFromPrescription(_ prescription: SessionPrescription) async throws {

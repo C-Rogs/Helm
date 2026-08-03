@@ -106,20 +106,16 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var sleepCard: some View {
-        if let sleepSummary, sleepSummary.asleepHours != nil {
-            if let score = readinessService.state.score {
-                NavigationLink {
-                    RecoveryDetailContainer(
-                        score: score,
-                        matchedCardNamespace: readinessNamespace
-                    )
-                } label: {
-                    DashboardSleepCard(summary: sleepSummary)
-                }
-                .buttonStyle(.helmPressableCard)
-            } else {
-                DashboardSleepCard(summary: sleepSummary)
+        if let sleepSummary {
+            NavigationLink {
+                SleepAnalysisContainer()
+            } label: {
+                DashboardSleepCard(
+                    summary: sleepSummary,
+                    showsChevron: true
+                )
             }
+            .buttonStyle(.helmPressableCard)
         }
     }
 

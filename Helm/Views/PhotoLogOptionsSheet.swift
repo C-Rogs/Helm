@@ -27,19 +27,7 @@ struct PhotoLogOptionsSheet: View {
                     matching: .images,
                     photoLibrary: .shared()
                 ) {
-                    Label("Choose photo", helmIcon: .photo, context: .inline)
-                        .font(HelmTypography.headline)
-                        .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, HelmSpacing.sm)
-                        .background(
-                            HelmColor.buttonSecondaryBackground,
-                            in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                        }
+                    PhotoLogOptionRow(title: "Choose photo", icon: .photo)
                 }
                 .buttonStyle(.helmPressable)
 
@@ -47,19 +35,7 @@ struct PhotoLogOptionsSheet: View {
                     onCamera()
                     onCancel()
                 } label: {
-                    Label("Camera", helmIcon: .camera, context: .inline)
-                        .font(HelmTypography.headline)
-                        .foregroundStyle(HelmColor.buttonSecondaryForeground)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, HelmSpacing.sm)
-                        .background(
-                            HelmColor.buttonSecondaryBackground,
-                            in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-                        )
-                        .overlay {
-                            RoundedRectangle(cornerRadius: HelmRadius.sm)
-                                .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
-                        }
+                    PhotoLogOptionRow(title: "Camera", icon: .camera)
                 }
                 .buttonStyle(.helmPressable)
 
@@ -76,6 +52,19 @@ struct PhotoLogOptionsSheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+    }
+}
+
+private struct PhotoLogOptionRow: View {
+    let title: String
+    let icon: HelmIcon
+
+    var body: some View {
+        Label(title, helmIcon: icon, context: .inline)
+            .helmType(.label, color: HelmColor.buttonSecondaryForeground)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, HelmSpacing.sm)
+            .helmPanelChrome(.elevated, cornerRadius: HelmRadius.sm)
     }
 }
 

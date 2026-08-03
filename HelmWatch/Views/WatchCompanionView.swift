@@ -8,40 +8,65 @@ struct WatchCompanionView: View {
     var onRetryStart: (() -> Void)?
 
     var body: some View {
-        VStack(spacing: 8) {
-            HStack(spacing: 4) {
-                Circle()
-                    .fill(linkColor)
-                    .frame(width: 6, height: 6)
-                Text(linkLabel)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 6) {
+                linkRow
+
+                if let name = coordinator.companionExerciseName {
+                    Text(name)
+                        .font(.headline)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                        .minimumScaleFactor(0.8)
+                }
+
+                if let setNumber = coordinator.companionSetNumber,
+                   let setCount = coordinator.companionSetCount {
+                    Text("Set \(setNumber) of \(setCount)")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
+
+                if let target = coordinator.companionTargetSummary, !target.isEmpty {
+                    Text(target)
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+
+                companionMetrics
+
+                doneButton
+
+                if !coordinator.isReachable {
+                    Text("Reconnect phone to complete set")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                }
             }
-
-            if let name = coordinator.companionExerciseName {
-                Text(name)
-                    .font(.headline)
-                    .multilineTextAlignment(.center)
-            }
-
-            if let setNumber = coordinator.companionSetNumber,
-               let setCount = coordinator.companionSetCount {
-                Text("Set \(setNumber) of \(setCount)")
-                    .font(.caption)
-            }
-
-            if let target = coordinator.companionTargetSummary, !target.isEmpty {
-                Text(target)
-                    .font(.caption2)
-                    .foregroundStyle(.secondary)
-                    .multilineTextAlignment(.center)
-            }
-
-            doneButton
-
-            companionSessionBody
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 4)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 4)
+    }
+
+    private var linkRow: some View {
+        HStack(spacing: 4) {
+            Circle()
+                .fill(linkColor)
+                .frame(width: 6, height: 6)
+            Text(linkLabel)
+                .font(.caption2)
+                .foregroundStyle(.secondary)
+            Spacer(minLength: 0)
+            if store.phase == .active || store.phase == .paused {
+                Text(elapsedLabel)
+                    .font(.caption2.monospacedDigit())
+                    .foregroundStyle(.secondary)
+            }
+        }
     }
 
     private var linkLabel: String {
@@ -53,44 +78,68 @@ struct WatchCompanionView: View {
     }
 
     @ViewBuilder
+    private var companionMetrics: some View {
+        switch store.phase {
+        case .active, .paused:
+            HStack(alignment: .firstTextBaseline, spacing: 4) {
+                if let bpm = store.heartRateBPM {
+                    Text("\(Int(bpm.rounded()))")
+                        .font(.title.bold().monospacedDigit())
+                        .foregroundStyle(zoneColor)
+                    Text("BPM")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                    if let zone = store.heartRateZone {
+                        Text(zone.displayName)
+                            .font(.caption2)
+                            .foregroundStyle(zoneColor)
+                    }
+                } else {
+                    Text("--")
+                        .font(.title.bold().monospacedDigit())
+                        .foregroundStyle(.secondary)
+                    Text("BPM")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 2)
+        case .preparing:
+            ProgressView("Starting HR…")
+                .controlSize(.mini)
+        case .ending:
+            ProgressView("Ending…")
+                .controlSize(.mini)
+        case .idle, .ended:
+            idleOrFailedBody
+        }
+    }
+
+    @ViewBuilder
     private var doneButton: some View {
         let canComplete = coordinator.isReachable
             && coordinator.companionSessionExerciseID != nil
             && coordinator.companionSetID != nil
             && (store.phase == .active || store.phase == .paused)
 
-        Button("Done") {
+        Button {
             guard
                 let exerciseID = coordinator.companionSessionExerciseID,
                 let setID = coordinator.companionSetID
             else { return }
             coordinator.requestCompleteSet(sessionExerciseID: exerciseID, setID: setID)
             WKInterfaceDevice.current().play(.click)
+        } label: {
+            Text("Done")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
         }
-        .font(.headline)
+        .buttonStyle(.borderedProminent)
+        .tint(.green)
         .disabled(!canComplete)
-        .opacity(canComplete ? 1 : 0.4)
-
-        if !coordinator.isReachable {
-            Text("Reconnect phone to complete set")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
-                .multilineTextAlignment(.center)
-        }
-    }
-
-    @ViewBuilder
-    private var companionSessionBody: some View {
-        switch store.phase {
-        case .active, .paused:
-            WatchActiveWorkoutView(store: store)
-        case .preparing:
-            ProgressView("Starting HR…")
-        case .ending:
-            ProgressView("Ending…")
-        case .idle, .ended:
-            idleOrFailedBody
-        }
+        .opacity(canComplete ? 1 : 0.45)
+        .padding(.top, 2)
     }
 
     @ViewBuilder
@@ -118,6 +167,24 @@ struct WatchCompanionView: View {
                 .multilineTextAlignment(.center)
         } else {
             ProgressView("Starting HR…")
+                .controlSize(.mini)
+        }
+    }
+
+    private var elapsedLabel: String {
+        let minutes = store.elapsedSeconds / 60
+        let seconds = store.elapsedSeconds % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+
+    private var zoneColor: Color {
+        switch store.heartRateZone {
+        case .zone1: .mint
+        case .zone2: .blue
+        case .zone3: .yellow
+        case .zone4: .orange
+        case .zone5: .red
+        case nil: .primary
         }
     }
 }

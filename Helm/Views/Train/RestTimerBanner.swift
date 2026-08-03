@@ -8,6 +8,8 @@ struct RestTimerBanner: View {
     let onSkip: () -> Void
     var onAdjust: ((Int) -> Void)?
     var onRemainingSecondsChange: ((Int) -> Void)?
+    /// Next exercise after the one in progress; shown as a compact dock peek.
+    var upNextName: String?
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -32,66 +34,121 @@ struct RestTimerBanner: View {
         )
         let elapsedFraction = 1 - progress
 
-        VStack(spacing: HelmSpacing.sm) {
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             GeometryReader { geometry in
                 ZStack(alignment: .leading) {
                     Capsule()
                         .fill(HelmColor.gaugeTrack.opacity(0.5))
                     Capsule()
                         .fill(HelmColor.accent)
-                        .frame(width: max(6, geometry.size.width * elapsedFraction))
+                        .frame(width: elapsedFraction > 0 ? max(6, geometry.size.width * elapsedFraction) : 0)
                         .animation(
                             reduceMotion ? nil : .linear(duration: 1),
                             value: elapsedFraction
                         )
                 }
             }
-            .frame(height: 6)
+            .frame(height: HelmSpacing.xxs)
+            .accessibilityHidden(true)
 
-            Text(formattedTime(remainingSeconds))
-                .helmType(.bigNumber, color: HelmColor.fg)
-                .monospacedDigit()
-                .frame(maxWidth: .infinity)
+            if let upNextName, !upNextName.isEmpty {
+                Text("UP NEXT · \(upNextName)")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .lineLimit(1)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel("Up next, \(upNextName)")
+            }
 
             HStack(spacing: HelmSpacing.sm) {
+                Text(RestTimerFormatting.mmss(remainingSeconds))
+                    .helmType(.bigNumber, color: HelmColor.fg)
+                    .monospacedDigit()
+                    .accessibilityLabel("Rest remaining \(RestTimerFormatting.mmss(remainingSeconds))")
+
+                Spacer(minLength: HelmSpacing.xs)
+
                 if let onAdjust {
                     Button {
                         onAdjust(-15)
                     } label: {
                         Text("−15")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.helmSecondary)
+                    .buttonStyle(RestDockChipStyle())
+                    .accessibilityLabel("Subtract 15 seconds")
 
                     Button {
                         onAdjust(15)
                     } label: {
                         Text("+15")
-                            .frame(maxWidth: .infinity)
                     }
-                    .buttonStyle(.helmSecondary)
+                    .buttonStyle(RestDockChipStyle())
+                    .accessibilityLabel("Add 15 seconds")
                 }
 
                 Button("Skip", action: onSkip)
-                    .buttonStyle(.helmPrimary)
-                    .frame(maxWidth: .infinity)
+                    .buttonStyle(RestDockSkipStyle())
+                    .accessibilityLabel("Skip rest")
             }
         }
         .padding(.horizontal, HelmSpacing.md)
-        .padding(.top, HelmSpacing.sm)
-        .padding(.bottom, HelmSpacing.sm)
+        .padding(.top, HelmSpacing.xs)
+        .padding(.bottom, HelmSpacing.xs)
         .frame(maxWidth: .infinity)
         .background(HelmColor.canvas)
     }
+}
 
-    private func formattedTime(_ remainingSeconds: Int) -> String {
-        let minutes = remainingSeconds / 60
-        let seconds = remainingSeconds % 60
-        return String(format: "%02d:%02d", minutes, seconds)
+/// Compact ±15 chip: thumb-height, no equal-width stretch against Skip.
+private struct RestDockChipStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .helmFont(.label)
+            .foregroundStyle(HelmColor.buttonSecondaryForeground)
+            .padding(.horizontal, HelmSpacing.sm)
+            .frame(minWidth: 52, minHeight: 44)
+            .background(
+                HelmColor.buttonSecondaryBackground.opacity(configuration.isPressed ? 0.85 : 1),
+                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+            )
+            .overlay {
+                RoundedRectangle(cornerRadius: HelmRadius.sm)
+                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+            }
+    }
+}
+
+/// Primary Skip without `maxWidth: .infinity` so the timer row stays compact.
+private struct RestDockSkipStyle: ButtonStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        configuration.label
+            .helmFont(.label)
+            .foregroundStyle(HelmColor.buttonPrimaryForeground)
+            .padding(.horizontal, HelmSpacing.md)
+            .frame(minWidth: 72, minHeight: 44)
+            .background(
+                HelmColor.buttonPrimaryBackground.opacity(configuration.isPressed ? 0.85 : 1),
+                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+            )
     }
 }
 
 #Preview("Rest timer banner") {
-    RestTimerBanner(endsAt: Date().addingTimeInterval(140), totalSeconds: 150, onSkip: {}, onAdjust: { _ in })
-        .helmTheme()
+    RestTimerBanner(
+        endsAt: Date().addingTimeInterval(140),
+        totalSeconds: 150,
+        onSkip: {},
+        onAdjust: { _ in },
+        upNextName: "Single Arm Lateral Raise (Cable)"
+    )
+    .helmTheme()
+}
+
+#Preview("Rest timer banner no up next") {
+    RestTimerBanner(
+        endsAt: Date().addingTimeInterval(45),
+        totalSeconds: 90,
+        onSkip: {},
+        onAdjust: { _ in }
+    )
+    .helmTheme()
 }

@@ -24,10 +24,6 @@ struct ProactiveCoachBanner: View {
                 .buttonStyle(.helmSecondary)
         }
         .padding(HelmSpacing.md)
-        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-        .overlay {
-            RoundedRectangle(cornerRadius: HelmRadius.md)
-                .strokeBorder(HelmColor.accent.opacity(0.25), lineWidth: 1)
-        }
+        .helmPanelChrome(.accentQuiet)
     }
 }

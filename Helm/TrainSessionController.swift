@@ -82,6 +82,7 @@ final class TrainSessionController {
 
     var coachPromptText = ""
     var isShowingCoachPrompt = false
+    var isShowingPawelTimer = false
     var historyExerciseSessionID: String?
     private(set) var coachMessages: [InSessionCoachMessage] = []
     private(set) var pendingCoachProposal: CoachSessionProposal?
@@ -738,6 +739,19 @@ final class TrainSessionController {
             try await store.skipRest()
             await refreshMetadata()
             await syncSideEffects(force: true)
+            syncRestTimerMonitor()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startManualRest(durationSeconds: Int) async {
+        do {
+            try await store.startManualRestTimer(durationSeconds: durationSeconds)
+            HapticEngine.shared.play(.selection)
+            await refreshMetadata()
+            await syncSideEffects(force: true)
+            syncRestTimerMonitor()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -970,13 +984,26 @@ final class TrainSessionController {
         restTimerMonitorTask = Task { [weak self] in
             while !Task.isCancelled {
                 guard let self else { return }
-                let remaining = localRemainingRestSeconds() ?? 0
+                let now = Date()
+                let remaining = localRemainingRestSeconds(at: now) ?? 0
                 handleRestRemainingSecondsChange(remaining)
-                if remaining <= 0 {
-                    await reconcileExpiredRestTimer()
+
+                guard let timer = snapshot?.restTimer,
+                      timer.phase == .running,
+                      let endsAt = timer.endsAt else {
                     return
                 }
-                try? await Task.sleep(for: .seconds(1))
+
+                // Display remaining can floor to 0 while endsAt is still in the future.
+                // Only reconcile on true expiry; otherwise sleep until endsAt (or 1s for ticks).
+                if timer.hasExpired(at: now) {
+                    await reconcileExpiredRestTimer(at: now)
+                    return
+                }
+
+                let untilExpiry = endsAt.timeIntervalSince(now)
+                let sleepSeconds = min(1.0, max(0.05, untilExpiry))
+                try? await Task.sleep(for: .seconds(sleepSeconds))
             }
         }
     }
@@ -998,6 +1025,29 @@ final class TrainSessionController {
 
     func displayName(for exerciseID: String) -> String {
         exerciseSummaries[exerciseID]?.displayName ?? exerciseID
+    }
+
+    /// Next incomplete exercise after the one tied to the running rest timer (or current work).
+    var upNextExerciseName: String? {
+        guard let snapshot else { return nil }
+        let exercises = snapshot.session.exercises
+        guard !exercises.isEmpty else { return nil }
+
+        let anchorID = snapshot.restTimer?.sessionExerciseID
+            ?? exercises.first(where: { exercise in
+                exercise.sets.contains { $0.status != .completed }
+            })?.id
+
+        guard let anchorID,
+              let anchorIndex = exercises.firstIndex(where: { $0.id == anchorID }) else {
+            return nil
+        }
+
+        let next = exercises[(anchorIndex + 1)...].first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        }
+        guard let next else { return nil }
+        return displayName(for: next.exerciseID)
     }
 
     var sessionProgress: TrainSessionProgress? {
@@ -2000,6 +2050,7 @@ final class TrainSessionController {
         lastFailedCoachMessage = nil
         coachThread = .empty
         isShowingCoachPrompt = false
+        isShowingPawelTimer = false
         isCoachThinking = false
         showCoachApplyWave = false
         lastCoachRequestID = nil

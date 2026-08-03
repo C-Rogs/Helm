@@ -104,7 +104,7 @@ public enum SessionSplitPlanner {
         return matchSplitKind(for: Array(muscles))
     }
 
-    static func remainingSessionsThisWeek(completedThisWeek: Int, plannedPerWeek: Int = 3) -> Int {
+    public static func remainingSessionsThisWeek(completedThisWeek: Int, plannedPerWeek: Int = 3) -> Int {
         max(1, plannedPerWeek - completedThisWeek)
     }
 

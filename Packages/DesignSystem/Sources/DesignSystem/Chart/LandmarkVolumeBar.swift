@@ -3,6 +3,7 @@ import SwiftUI
 public struct LandmarkVolumeBar: View {
     private let label: String
     private let weeklySets: Double
+    private let scheduledSets: Double
     private let mev: Int
     private let mrv: Int
     private let state: HelmState
@@ -12,6 +13,7 @@ public struct LandmarkVolumeBar: View {
     public init(
         label: String,
         weeklySets: Double,
+        scheduledSets: Double = 0,
         mev: Int,
         mrv: Int,
         state: HelmState,
@@ -20,6 +22,7 @@ public struct LandmarkVolumeBar: View {
     ) {
         self.label = label
         self.weeklySets = weeklySets
+        self.scheduledSets = scheduledSets
         self.mev = mev
         self.mrv = mrv
         self.state = state
@@ -27,8 +30,15 @@ public struct LandmarkVolumeBar: View {
         self.showsRecency = showsRecency
     }
 
+    private var safeWeekly: Double { max(0, weeklySets) }
+    private var safeScheduled: Double { max(0, scheduledSets) }
+    private var safeMEV: Double { max(0, Double(mev)) }
+    private var safeMRV: Double { max(1, Double(mrv)) }
+
+    private var projectedSets: Double { safeWeekly + safeScheduled }
+
     private var scaleMax: Double {
-        max(Double(mrv) * 1.15, weeklySets, Double(mrv))
+        max(safeMRV * 1.15, projectedSets, safeMRV, 1)
     }
 
     public var body: some View {
@@ -45,10 +55,11 @@ public struct LandmarkVolumeBar: View {
             .frame(width: HelmSpacing.xl * 2.2, alignment: .leading)
 
             GeometryReader { geometry in
-                let width = geometry.size.width
-                let mevX = width * CGFloat(Double(mev) / scaleMax)
-                let mrvX = width * CGFloat(Double(mrv) / scaleMax)
-                let fillWidth = width * CGFloat(weeklySets / scaleMax)
+                let width = max(0, geometry.size.width)
+                let mevX = width * CGFloat(safeMEV / scaleMax)
+                let mrvX = width * CGFloat(safeMRV / scaleMax)
+                let loggedWidth = width * CGFloat(safeWeekly / scaleMax)
+                let projectedWidth = width * CGFloat(projectedSets / scaleMax)
 
                 ZStack(alignment: .leading) {
                     Capsule()
@@ -59,32 +70,51 @@ public struct LandmarkVolumeBar: View {
                         .frame(width: max(mrvX - mevX, 0))
                         .offset(x: mevX)
 
+                    if safeScheduled > 0.05 {
+                        Capsule()
+                            .fill(HelmColor.color(for: state).opacity(0.35))
+                            .frame(width: min(max(0, projectedWidth), width))
+                    }
+
                     Capsule()
                         .fill(HelmColor.color(for: state))
-                        .frame(width: min(fillWidth, width))
+                        .frame(width: min(max(0, loggedWidth), width))
                 }
             }
             .frame(height: 6)
 
             VStack(alignment: .trailing, spacing: 0) {
-                HelmNumericText(weeklySets, format: "%.0f")
-                    .helmType(.number, color: HelmColor.color(for: state))
+                if safeScheduled > 0.05 {
+                    Text("\(Int(safeWeekly.rounded()))+\(Int(safeScheduled.rounded()))")
+                        .helmType(.number, color: HelmColor.color(for: state))
+                        .monospacedDigit()
+                } else {
+                    HelmNumericText(safeWeekly, format: "%.0f")
+                        .helmType(.number, color: HelmColor.color(for: state))
+                }
                 Text(state.label)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
-            .frame(width: HelmSpacing.xl + HelmSpacing.sm, alignment: .trailing)
+            .frame(width: HelmSpacing.xl + HelmSpacing.md, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
-        .accessibilityLabel("\(label), \(Int(weeklySets.rounded())) sets, \(state.label)")
+        .accessibilityLabel(accessibilityCopy)
+    }
+
+    private var accessibilityCopy: String {
+        if safeScheduled > 0.05 {
+            return "\(label), \(Int(safeWeekly.rounded())) logged, \(Int(safeScheduled.rounded())) scheduled, \(state.label)"
+        }
+        return "\(label), \(Int(safeWeekly.rounded())) sets, \(state.label)"
     }
 }
 
 #if DEBUG
 #Preview("Landmark volume bars") {
     VStack(spacing: HelmSpacing.md) {
-        LandmarkVolumeBar(label: "Quads", weeklySets: 4, mev: 8, mrv: 18, state: .depleted)
+        LandmarkVolumeBar(label: "Quads", weeklySets: 4, scheduledSets: 6, mev: 8, mrv: 18, state: .ready)
         LandmarkVolumeBar(label: "Chest", weeklySets: 12, mev: 10, mrv: 20, state: .ready)
-        LandmarkVolumeBar(label: "Back", weeklySets: 18, mev: 10, mrv: 18, state: .primed)
+        LandmarkVolumeBar(label: "Back", weeklySets: 18, scheduledSets: 4, mev: 10, mrv: 18, state: .compromised)
         LandmarkVolumeBar(label: "Hams", weeklySets: 22, mev: 8, mrv: 16, state: .compromised)
     }
     .padding()

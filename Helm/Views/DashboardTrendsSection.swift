@@ -40,29 +40,13 @@ struct DashboardTrendsSection: View {
             points: controller.snapshot.trendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg,
             mode: .dashboard,
-            showsSparkline: true
-        )
-
-        ReadinessHistoryChartCard(
-            points: controller.snapshot.readinessHistory
-        )
-
-        MuscleVolumeBarChartCard(
-            gauges: controller.snapshot.muscleVolume
-        )
-
-        MuscleVolumeArcGridCard(
-            gauges: controller.snapshot.muscleVolume
+            showsSparkline: false
         )
 
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
-        )
-
-        EnergyBalanceChartCard(
-            gauges: controller.snapshot.energyBalance
         )
 
         if controller.snapshot.canLoadMoreHistory, !controller.snapshot.hasDisplayedHistory {

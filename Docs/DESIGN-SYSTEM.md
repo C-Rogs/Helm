@@ -136,15 +136,25 @@ Reduce Motion: every animation collapses to a cross-fade at `quick`; the reveal 
 
 ## 8. App icon
 
-Fitness-analysis, not nautical: the Arc reading a value against a scale. **Marque is treatment C (selected): the arc meeting a data trace** — the gauge and the readout line in one mark, warm-black radial field, `hairline` track, `accent` value arc, an `fg` trace polyline across it. Alternate is the accent-field tint (B): `accent` ground, near-black arc, for contexts that need to shout. The same arc-plus-trace scales into the tab icon, Watch complication, and Live Activity glyph. Provide both a dark-field and a light-field rendering of the icon set. Do not hand-author a wheel, helm, or compass.
+Fitness-analysis, not nautical: the Arc reading a value against a scale. **Marque is treatment C (selected): the arc meeting a data trace** - the gauge and the readout line in one mark, warm-black radial field, `hairline` track, `accent` value arc, an `fg` trace polyline across it. Alternate is the accent-field tint (B): `accent` ground, near-black arc, for contexts that need to shout. The same arc-plus-trace scales into the tab icon, Watch complication, and Live Activity glyph. Provide both a dark-field and a light-field rendering of the icon set. Do not hand-author a wheel, helm, or compass.
 
 ## 9. Skins and theming
 
 Appearance is driven by two independent environment values so the app can carry more than one look without duplicating logic. Everything in sections 1 through 8 except the container treatment is shared across skins.
 
 - **`HelmTheme`** (palette): `dark` / `light` / `auto`. Defaults to `auto` (follows system appearance), with an explicit override in Settings. Selects the token set in section 1. Cheap: it is a value swap, and every component already reads tokens, never literals.
-- **`HelmSkin`** (layout family): which container treatment the shared components render through. Candidates: `dataSheet` (borderless, hairline-ruled), `stateField` (full-bleed state-color hero, flat rows), `blueprint` (drafting grid, graduated dials), `instrument` (the card baseline). **v1 ships `instrument`** (chosen for readability); the rest are reserved behind the seam.
+- **`HelmSkin`** (layout family): which container treatment the shared components render through.
 
-Rule: components do not hard-code their container. They render content through a `SkinnedContainer` (and, where relevant, a `SkinnedGauge`) that reads `HelmSkin` and picks the treatment. A section becomes a Card, a ruled block, a field, or a graticule block by skin, with identical content and tokens underneath. This keeps a future in-app skin switcher (report M0.8) a drop-in rather than a rewrite: adding a skin means implementing its treatments, touching no engine, token, or content code.
+Selectable skins:
 
-Both values are `@Observable` app state, persisted, and exposed through the SwiftUI environment so any view can read them without prop-drilling. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme.
+| Skin | Feel |
+|---|---|
+| **`signal`** (default) | Tron HUD. Void canvas with faint accent grid, neon corner brackets, accent glow on panels. Sharp geometry. Quiet press. Soft screen-enter settle. Brand accent only (no second hue). |
+| **`instrument`** | Card baseline. Filled rounded panels, hairline stroke, optional accent stripe on heroes. Backup layout. |
+| **`dataSheet`** | Borderless, top hairline-ruled, denser section spacing. Backup layout. |
+
+Reserved behind the seam (stubs only): `stateField` (full-bleed state-color hero), `blueprint` (drafting grid, graduated dials).
+
+Rule: components do not hard-code their container. They render content through a `SkinnedContainer` (and, where relevant, a `SkinnedGauge`) that reads `HelmSkin` and picks the treatment. List rows use `helmListRowChrome()`. Chat bubbles use `CoachMessageBubble`. A section becomes a card, a ruled block, or a void block by skin, with identical content and tokens underneath.
+
+Both values are `@Observable` app state, persisted, and exposed through the SwiftUI environment so any view can read them without prop-drilling. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme. Signal may tune press scale and appear opacity only; it does not invent a second easing vocabulary or accent.

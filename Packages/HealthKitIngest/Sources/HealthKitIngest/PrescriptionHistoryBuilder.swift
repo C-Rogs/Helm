@@ -62,7 +62,7 @@ public enum PrescriptionHistoryBuilder {
         )
     }
 
-    static func completedSessionsThisWeek(
+    public static func completedSessionsThisWeek(
         in history: PrescriptionHistory,
         through endDay: HelmDay
     ) -> Int {

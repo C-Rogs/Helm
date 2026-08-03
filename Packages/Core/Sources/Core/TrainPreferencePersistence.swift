@@ -6,6 +6,7 @@ public enum TrainPreferencePersistence {
     public static let restTimerSoundEnabledKey = "helm.train.restTimerSoundEnabled"
     public static let restTimerSoundIDKey = "helm.train.restTimerSoundID"
     public static let restTimerVolumeKey = "helm.train.restTimerVolume"
+    public static let pawelModeEnabledKey = "helm.train.pawelModeEnabled"
 
     public static func loadBool(
         key: String,

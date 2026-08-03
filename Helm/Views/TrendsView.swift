@@ -48,26 +48,10 @@ struct TrendsView: View {
             targetWeightKg: controller.snapshot.targetWeightKg
         )
 
-        ReadinessHistoryChartCard(
-            points: controller.snapshot.readinessHistory
-        )
-
-        MuscleVolumeBarChartCard(
-            gauges: controller.snapshot.muscleVolume
-        )
-
-        MuscleVolumeArcGridCard(
-            gauges: controller.snapshot.muscleVolume
-        )
-
         E1RMProgressionChartCard(
             points: controller.snapshot.e1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
-        )
-
-        EnergyBalanceChartCard(
-            gauges: controller.snapshot.energyBalance
         )
 
         if controller.snapshot.canLoadMoreHistory, !controller.snapshot.hasDisplayedHistory {
@@ -122,8 +106,11 @@ struct TrendsView: View {
     ScrollView {
         LazyVStack(spacing: HelmSpacing.lg) {
             TrendWeightChartCard(points: [], targetWeightKg: nil)
-            ReadinessHistoryChartCard(points: [])
-            MuscleVolumeBarChartCard(gauges: [])
+            E1RMProgressionChartCard(
+                points: [],
+                exerciseName: "Squat (Barbell)",
+                onPickExercise: {}
+            )
         }
         .helmScreenPadding()
     }
@@ -143,14 +130,11 @@ struct TrendsView: View {
                 points: TrendChartFixtures.trendWeight,
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
-            ReadinessHistoryChartCard(points: TrendChartFixtures.readinessHistory)
-            MuscleVolumeBarChartCard(gauges: TrendChartFixtures.muscleVolumeStates)
             E1RMProgressionChartCard(
                 points: TrendChartFixtures.e1RMHistory,
                 exerciseName: "Squat (Barbell)",
                 onPickExercise: {}
             )
-            EnergyBalanceChartCard(gauges: TrendChartFixtures.energyBalance)
         }
         .padding(HelmSpacing.md)
     }
@@ -165,14 +149,11 @@ struct TrendsView: View {
                 points: TrendChartFixtures.trendWeight,
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
-            ReadinessHistoryChartCard(points: TrendChartFixtures.readinessHistory)
-            MuscleVolumeBarChartCard(gauges: TrendChartFixtures.muscleVolumeStates)
             E1RMProgressionChartCard(
                 points: TrendChartFixtures.e1RMHistory,
                 exerciseName: "Squat (Barbell)",
                 onPickExercise: {}
             )
-            EnergyBalanceChartCard(gauges: TrendChartFixtures.energyBalance)
         }
         .padding(HelmSpacing.md)
     }

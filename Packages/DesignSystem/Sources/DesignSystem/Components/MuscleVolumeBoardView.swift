@@ -9,7 +9,7 @@ public struct MuscleVolumeBoardView: View {
         self.model = model
         self.showsHeader = showsHeader
         if let limit {
-            rankedRows = Array(model.rows.prefix(limit))
+            rankedRows = Array(model.rows.prefix(max(0, limit)))
         } else {
             rankedRows = model.rows
         }
@@ -36,6 +36,7 @@ public struct MuscleVolumeBoardView: View {
                         LandmarkVolumeBar(
                             label: row.label,
                             weeklySets: row.weeklySets,
+                            scheduledSets: row.scheduledSets,
                             mev: row.mev,
                             mrv: row.mrv,
                             state: row.state,
@@ -45,7 +46,7 @@ public struct MuscleVolumeBoardView: View {
                     }
                 }
 
-                Text("Shaded band is MEV to MRV")
+                Text("Solid = logged · Tint = scheduled · Band = MEV to MRV")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
         }
@@ -78,6 +79,7 @@ public struct MuscleVolumeSummaryCard: View {
                             LandmarkVolumeBar(
                                 label: row.label,
                                 weeklySets: row.weeklySets,
+                                scheduledSets: row.scheduledSets,
                                 mev: row.mev,
                                 mrv: row.mrv,
                                 state: row.state,

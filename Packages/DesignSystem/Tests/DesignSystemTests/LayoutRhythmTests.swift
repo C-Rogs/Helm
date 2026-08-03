@@ -23,6 +23,13 @@ struct LayoutRhythmTests {
         #expect(HelmChartStyle.standardHeight == HelmLayout.chartHeight)
     }
 
+    @Test("train bottom fog stays short so rest dock does not eat the list")
+    func trainBottomChromeTokens() {
+        #expect(HelmLayout.trainBottomFogHeight == HelmSpacing.xl + HelmSpacing.xs)
+        #expect(HelmLayout.trainBottomFogHeight <= HelmSpacing.xl * 2)
+        #expect(HelmLayout.trainRestBannerScrollInset == HelmSpacing.xl * 3)
+    }
+
     @Test("audited views avoid raw spacing literals")
     func auditedViewsAvoidRawSpacingLiterals() throws {
         let repoRoot = layoutRhythmRepoRoot()

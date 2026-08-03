@@ -9,6 +9,7 @@ final class TrainPreferences {
 
     static let workoutFeedbackEnabledKey = TrainPreferencePersistence.workoutFeedbackEnabledKey
     static let restTimerSoundEnabledKey = TrainPreferencePersistence.restTimerSoundEnabledKey
+    static let pawelModeEnabledKey = TrainPreferencePersistence.pawelModeEnabledKey
 
     var workoutFeedbackEnabled: Bool {
         didSet { persist() }
@@ -38,6 +39,13 @@ final class TrainPreferences {
         didSet {
             guard !isHydrating else { return }
             restTimerSoundEnabled = restTimerVolume.isEnabled
+            persist()
+        }
+    }
+
+    var pawelModeEnabled: Bool {
+        didSet {
+            guard !isHydrating else { return }
             persist()
         }
     }
@@ -77,6 +85,11 @@ final class TrainPreferences {
         }
         restTimerVolume = resolvedVolume
         restTimerSoundEnabled = resolvedVolume.isEnabled
+        pawelModeEnabled = TrainPreferencePersistence.loadBool(
+            key: Self.pawelModeEnabledKey,
+            defaults: defaults,
+            defaultValue: false
+        )
         isHydrating = false
     }
 
@@ -99,6 +112,11 @@ final class TrainPreferences {
         TrainPreferencePersistence.saveString(
             restTimerVolume.rawValue,
             key: TrainPreferencePersistence.restTimerVolumeKey,
+            defaults: defaults
+        )
+        TrainPreferencePersistence.saveBool(
+            pawelModeEnabled,
+            key: Self.pawelModeEnabledKey,
             defaults: defaults
         )
     }

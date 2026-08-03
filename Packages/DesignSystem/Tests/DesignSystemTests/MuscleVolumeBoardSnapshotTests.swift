@@ -16,7 +16,8 @@ struct MuscleVolumeBoardSnapshotTests {
     func loadWindowLabels() {
         #expect(MuscleVolumeBoardModel.loadWindowDays == 7)
         #expect(MuscleVolumeBoardModel.loadWindowTitle == "7-day volume")
-        #expect(MuscleVolumeBoardModel.loadWindowSubtitle.contains("last 7 days"))
+        #expect(MuscleVolumeBoardModel.loadWindowSubtitle.contains("Logged + scheduled"))
+        #expect(MuscleVolumeBoardModel.loadWindowSubtitle.contains("projected"))
     }
 
     @Test("recency labels cover trained and never-trained muscles")

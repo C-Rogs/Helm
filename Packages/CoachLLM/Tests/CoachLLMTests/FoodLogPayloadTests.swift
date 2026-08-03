@@ -40,6 +40,20 @@ struct FoodLogPayloadTests {
         #expect(display == "Logged lunch.")
     }
 
+    @Test("decodes resilient food_log variants from model noise")
+    func decodesResilientVariants() throws {
+        let json = """
+        {"schemaVersion":"food_log.v1","action":"add","description":"Gin and tonic","bucket":"snacks","caloriesKcal":"180","proteinG":"0","carbsG":12,"fatG":0}
+        """
+        let payload = try JSONDecoder().decode(FoodLogPayload.self, from: Data(json.utf8))
+        #expect(payload.action == .log)
+        #expect(payload.reply.isEmpty)
+        #expect(payload.description == "Gin and tonic")
+        #expect(payload.caloriesKcal == 180)
+        #expect(payload.proteinG == 0)
+        #expect(payload.carbsG == 12)
+    }
+
     private func fixtureText(named name: String) throws -> String {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json") else {
             Issue.record("Missing fixture \(name).json")

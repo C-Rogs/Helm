@@ -38,6 +38,41 @@ struct TrainPreferencePersistenceTests {
             ) == false
         )
     }
+
+    @Test("pawel mode defaults off when unset")
+    func pawelModeDefaultOff() {
+        let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(
+            TrainPreferencePersistence.loadBool(
+                key: TrainPreferencePersistence.pawelModeEnabledKey,
+                defaults: defaults,
+                defaultValue: false
+            ) == false
+        )
+    }
+
+    @Test("pawel mode persists on")
+    func pawelModePersistsOn() {
+        let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        TrainPreferencePersistence.saveBool(
+            true,
+            key: TrainPreferencePersistence.pawelModeEnabledKey,
+            defaults: defaults
+        )
+        #expect(
+            TrainPreferencePersistence.loadBool(
+                key: TrainPreferencePersistence.pawelModeEnabledKey,
+                defaults: defaults,
+                defaultValue: false
+            ) == true
+        )
+    }
 }
 
 @Suite("Rest timer banner progress")

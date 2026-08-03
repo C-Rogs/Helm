@@ -183,6 +183,29 @@ struct ActiveSessionEngineTests {
         #expect(afterSkip.restTimer == nil)
     }
 
+    @Test("manual rest timer starts and replaces running auto rest")
+    func manualRestTimerStartsAndReplacesAuto() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (persistence, engine, clock) = try makeHarness(at: start)
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID, defaultRestSeconds: 60)
+        let exercise = try #require(withExercise.session.exercises.first)
+        let set = try #require(exercise.sets.first)
+
+        _ = try await engine.completeSet(sessionExerciseID: exercise.id, setID: set.id)
+        let afterManual = try await engine.startManualRestTimer(durationSeconds: 120)
+
+        #expect(afterManual.restTimer?.phase == .running)
+        #expect(afterManual.restTimer?.defaultDurationSeconds == 120)
+        let remaining = try #require(afterManual.restTimer?.remainingSeconds(at: clock.now()))
+        #expect(remaining == 120)
+
+        let afterSkip = try await engine.skipRest()
+        #expect(afterSkip.restTimer == nil)
+    }
+
     @Test("uncomplete set reverts status and cancels linked rest timer")
     func uncompleteSetRevertsStatusAndClearsRestTimer() async throws {
         let start = Date(timeIntervalSince1970: 1_700_000_000)
@@ -391,6 +414,65 @@ struct ActiveSessionEngineTests {
         let adjustedTimer = try #require(afterSubtract.restTimer)
         #expect(adjustedTimer.remainingSeconds(at: clock.instant) == 0)
     }
+
+    @Test("foreign session exercise id cannot delete sets via removeExercise")
+    func foreignExerciseCannotDeleteSets() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (persistence, engineA, _) = try makeHarness(at: start)
+        try seedBenchPress(in: persistence)
+        try seedSquat(in: persistence)
+
+        let sessionA = try await engineA.start(title: "A")
+        let withA = try await engineA.addExercise(exerciseID: benchPressID)
+        let exerciseA = try #require(withA.session.exercises.first)
+        let setAID = try #require(exerciseA.sets.first?.id)
+        _ = try await engineA.finish()
+
+        let engineB = ActiveSessionEngine(
+            repository: persistence.activeSessions,
+            clock: FixedClock(instant: start.addingTimeInterval(60))
+        )
+        let sessionB = try await engineB.start(title: "B")
+        _ = try await engineB.addExercise(exerciseID: squatID)
+
+        #expect(throws: PersistenceError.recordNotFound("session exercise \(exerciseA.id)")) {
+            try persistence.activeSessions.removeExercise(
+                sessionID: sessionB.session.id,
+                sessionExerciseID: exerciseA.id,
+                timestamp: start.addingTimeInterval(60)
+            )
+        }
+
+        // Finished session A's sets must remain undeleted.
+        let draft = try #require(try persistence.workoutSessions.fetch(id: sessionA.session.id))
+        let stillThere = try #require(draft.exercises.first { $0.id == exerciseA.id })
+        #expect(stillThere.sets.contains { $0.id == setAID })
+        #expect(!stillThere.sets.isEmpty)
+    }
+
+    @Test("mismatched set and exercise ids do not start a rest timer")
+    func mismatchedCompleteSetDoesNotStartTimer() async throws {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let (persistence, engine, _) = try makeHarness(at: start)
+        try seedBenchPress(in: persistence)
+        try seedSquat(in: persistence)
+
+        _ = try await engine.start()
+        let withBench = try await engine.addExercise(exerciseID: benchPressID)
+        let withBoth = try await engine.addExercise(exerciseID: squatID)
+        let bench = try #require(withBench.session.exercises.first)
+        let squat = try #require(withBoth.session.exercises.last)
+        let squatSet = try #require(squat.sets.first)
+
+        await #expect(throws: PersistenceError.self) {
+            try await engine.completeSet(sessionExerciseID: bench.id, setID: squatSet.id)
+        }
+
+        let snapshot = try #require(try await engine.recover())
+        #expect(snapshot.restTimer == nil)
+        let squatAfter = try #require(snapshot.session.exercises.first { $0.id == squat.id })
+        #expect(squatAfter.sets.first?.status != .completed)
+    }
 }
 
 @Suite("Rest timer projection")
@@ -409,6 +491,22 @@ struct RestTimerProjectionTests {
         #expect(timer.remainingSeconds(at: Date(timeIntervalSince1970: 40)) == 60)
         #expect(timer.remainingSeconds(at: Date(timeIntervalSince1970: 100)) == 0)
         #expect(timer.remainingSeconds(at: Date(timeIntervalSince1970: 150)) == 0)
+    }
+
+    @Test("display zero does not mean expired while endsAt is still ahead")
+    func remainingZeroBeforeExpiry() {
+        let endsAt = Date(timeIntervalSince1970: 100.4)
+        let timer = RestTimer(
+            id: "timer-1",
+            phase: .running,
+            startedAt: Date(timeIntervalSince1970: 0),
+            endsAt: endsAt,
+            defaultDurationSeconds: 100
+        )
+        let justBefore = Date(timeIntervalSince1970: 100.1)
+        #expect(timer.remainingSeconds(at: justBefore) == 0)
+        #expect(!timer.hasExpired(at: justBefore))
+        #expect(timer.hasExpired(at: Date(timeIntervalSince1970: 100.4)))
     }
 
     @Test("idle and completed timers expose no remaining seconds")

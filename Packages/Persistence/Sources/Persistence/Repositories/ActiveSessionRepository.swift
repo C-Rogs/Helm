@@ -343,10 +343,23 @@ public struct ActiveSessionRepository: Sendable {
         try pool.write { db in
             let before = try Row.fetchOne(
                 db,
-                sql: "SELECT status FROM set_entry WHERE id = ?",
-                arguments: [setID]
+                sql: """
+                    SELECT se.status AS status
+                    FROM set_entry se
+                    INNER JOIN workout_session_exercise wse
+                        ON wse.id = se.workout_session_exercise_id
+                    WHERE se.id = ?
+                      AND se.workout_session_exercise_id = ?
+                      AND wse.workout_session_id = ?
+                      AND se.deleted_at IS NULL
+                      AND wse.deleted_at IS NULL
+                    """,
+                arguments: [setID, sessionExerciseID, sessionID]
             )
-            let wasCompleted = (before?["status"] as String?) == SetStatus.completed.rawValue
+            guard let before else {
+                throw PersistenceError.recordNotFound("set \(setID) in session \(sessionID)")
+            }
+            let wasCompleted = (before["status"] as String?) == SetStatus.completed.rawValue
 
             try db.execute(
                 sql: """
@@ -376,14 +389,23 @@ public struct ActiveSessionRepository: Sendable {
                 ]
             )
 
+            guard db.changesCount == 1 || wasCompleted else {
+                throw PersistenceError.recordNotFound("set \(setID) update")
+            }
+
             if !wasCompleted {
                 try Self.skipRunningRestTimers(db: db, sessionID: sessionID, now: now)
 
-                let restSeconds: Int = try Int.fetchOne(
+                let restSecondsRaw: Int = try Int.fetchOne(
                     db,
-                    sql: "SELECT COALESCE(target_rest_seconds, 90) FROM workout_session_exercise WHERE id = ?",
-                    arguments: [sessionExerciseID]
+                    sql: """
+                        SELECT COALESCE(target_rest_seconds, 90)
+                        FROM workout_session_exercise
+                        WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                        """,
+                    arguments: [sessionExerciseID, sessionID]
                 ) ?? 90
+                let restSeconds = max(1, restSecondsRaw)
 
                 let started = completedAt
                 let ends = started.addingTimeInterval(TimeInterval(restSeconds))
@@ -433,10 +455,17 @@ public struct ActiveSessionRepository: Sendable {
             let before = try Row.fetchOne(
                 db,
                 sql: """
-                    SELECT status FROM set_entry
-                    WHERE id = ? AND workout_session_exercise_id = ? AND deleted_at IS NULL
+                    SELECT se.status AS status
+                    FROM set_entry se
+                    INNER JOIN workout_session_exercise wse
+                        ON wse.id = se.workout_session_exercise_id
+                    WHERE se.id = ?
+                      AND se.workout_session_exercise_id = ?
+                      AND wse.workout_session_id = ?
+                      AND se.deleted_at IS NULL
+                      AND wse.deleted_at IS NULL
                     """,
-                arguments: [setID, sessionExerciseID]
+                arguments: [setID, sessionExerciseID, sessionID]
             )
             guard (before?["status"] as String?) == SetStatus.completed.rawValue else { return }
 
@@ -541,6 +570,18 @@ public struct ActiveSessionRepository: Sendable {
     public func removeExercise(sessionID: String, sessionExerciseID: String, timestamp: Date) throws {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in
+            let owned = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT id FROM workout_session_exercise
+                    WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
+                    """,
+                arguments: [sessionExerciseID, sessionID]
+            )
+            guard owned != nil else {
+                throw PersistenceError.recordNotFound("session exercise \(sessionExerciseID)")
+            }
+
             try Self.skipRunningRestTimers(
                 db: db,
                 sessionID: sessionID,
@@ -693,6 +734,7 @@ public struct ActiveSessionRepository: Sendable {
         timestamp: Date
     ) throws {
         let now = ISO8601Coding.string(from: timestamp)
+        let clampedSeconds = max(1, seconds)
         try pool.write { db in
             try db.execute(
                 sql: """
@@ -700,8 +742,11 @@ public struct ActiveSessionRepository: Sendable {
                     SET target_rest_seconds = ?, updated_at = ?
                     WHERE id = ? AND workout_session_id = ? AND deleted_at IS NULL
                     """,
-                arguments: [seconds, now, sessionExerciseID, sessionID]
+                arguments: [clampedSeconds, now, sessionExerciseID, sessionID]
             )
+            guard db.changesCount == 1 else {
+                throw PersistenceError.recordNotFound("session exercise \(sessionExerciseID)")
+            }
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
         }
     }
@@ -710,6 +755,50 @@ public struct ActiveSessionRepository: Sendable {
         let now = ISO8601Coding.string(from: timestamp)
         try pool.write { db in
             try Self.skipRunningRestTimers(db: db, sessionID: sessionID, now: now)
+            try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
+        }
+    }
+
+    public func startManualRestTimer(
+        sessionID: String,
+        sessionExerciseID: String?,
+        durationSeconds: Int,
+        startedAt: Date
+    ) throws {
+        let clampedDuration = max(1, durationSeconds)
+        let now = ISO8601Coding.string(from: startedAt)
+        let ends = startedAt.addingTimeInterval(TimeInterval(clampedDuration))
+        let endsAt = ISO8601Coding.string(from: ends)
+
+        try pool.write { db in
+            try Self.skipRunningRestTimers(db: db, sessionID: sessionID, now: now)
+
+            let timerID = UUID().uuidString
+            try db.execute(
+                sql: """
+                    INSERT INTO rest_timer_state (
+                        id, workout_session_id, workout_session_exercise_id, source_set_entry_id,
+                        state, started_at, paused_at, ends_at, remaining_at_pause_seconds,
+                        default_duration_seconds, user_adjusted_seconds, auto_started,
+                        last_action_at, created_at, updated_at
+                    ) VALUES (?, ?, ?, NULL, 'running', ?, NULL, ?, NULL, ?, 0, 0, ?, ?, ?)
+                    """,
+                arguments: [
+                    timerID, sessionID, sessionExerciseID,
+                    now, endsAt, clampedDuration,
+                    now, now, now
+                ]
+            )
+
+            try db.execute(
+                sql: """
+                    INSERT INTO rest_timer_event (
+                        id, rest_timer_state_id, event_type, timestamp, delta_seconds, source, note
+                    ) VALUES (?, ?, 'started', ?, NULL, 'manual', NULL)
+                    """,
+                arguments: [UUID().uuidString, timerID, now]
+            )
+
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
         }
     }
@@ -1141,9 +1230,9 @@ extension ActiveSessionRepository {
         try Double.fetchOne(
             db,
             sql: """
-                SELECT weight_kg
+                SELECT mass_kg
                 FROM body_composition
-                WHERE weight_kg IS NOT NULL
+                WHERE mass_kg IS NOT NULL
                 ORDER BY measured_at DESC
                 LIMIT 1
                 """

@@ -5,30 +5,34 @@ struct WatchActiveWorkoutView: View {
     @Bindable var store: WatchWorkoutSessionStore
 
     var body: some View {
-        VStack(spacing: 8) {
-            Text(store.selectedActivity.displayName)
-                .font(.caption)
-                .foregroundStyle(.secondary)
+        ScrollView {
+            VStack(spacing: 8) {
+                Text(store.selectedActivity.displayName)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
 
-            Text(elapsedLabel)
-                .font(.title2.monospacedDigit())
+                Text(elapsedLabel)
+                    .font(.title2.monospacedDigit())
 
-            heartRateSection
+                heartRateSection
 
-            HStack {
-                Button(store.phase == .paused ? "Resume" : "Pause") {
-                    Task { await store.togglePause() }
+                HStack {
+                    Button(store.phase == .paused ? "Resume" : "Pause") {
+                        Task { await store.togglePause() }
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button("End") {
+                        Task { await store.endWorkout(discard: false) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .tint(.green)
                 }
-                .buttonStyle(.bordered)
-
-                Button("End") {
-                    Task { await store.endWorkout(discard: false) }
-                }
-                .buttonStyle(.borderedProminent)
-                .tint(.green)
             }
+            .frame(maxWidth: .infinity)
+            .padding(.horizontal, 4)
+            .padding(.bottom, 8)
         }
-        .padding(.horizontal, 4)
     }
 
     @ViewBuilder

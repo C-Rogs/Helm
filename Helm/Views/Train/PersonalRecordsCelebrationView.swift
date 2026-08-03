@@ -14,20 +14,17 @@ struct PersonalRecordsCelebrationView: View {
         ZStack(alignment: .topTrailing) {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 Label("New personal records", systemImage: "trophy.fill")
-                    .font(HelmTypography.headline)
-                    .foregroundStyle(HelmColor.accent)
+                    .helmType(.label, color: HelmColor.accent)
 
                 ForEach(Array(records.enumerated()), id: \.element.id) { index, record in
                     Text(WorkoutPersonalRecordFormatter.label(for: record, exerciseName: exerciseName(record.exerciseID)))
-                        .font(HelmTypography.callout)
-                        .foregroundStyle(HelmColor.textPrimary)
+                        .helmType(.body, color: HelmColor.fg)
                         .helmStaggeredAppear(index: index + 1)
                 }
             }
             .padding(HelmSpacing.md)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(HelmColor.surface)
-            .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
+            .helmPanelChrome(.surface)
 
             ArcBurstView(state: .primed, isActive: burstActive)
                 .frame(width: 180, height: 180)

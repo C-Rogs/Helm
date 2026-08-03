@@ -7,6 +7,7 @@ Helm sleep duration is meant to match **Apple Health → Browse → Sleep → Ti
 | Surface | Metric | Window |
 |---|---|---|
 | Dashboard sleep card | Time asleep (`Xh Ym`) | 18:00 previous calendar day → 18:00 wake calendar day |
+| Sleep analysis page | Time asleep + stages + recent nights | Same wake-day window; last 14 nights with data |
 | ARC sleep contributor | Same time asleep | Same window |
 | Coach context `sleep=` | Same time asleep | Same window |
 | Recovery detail sleep band | Same time asleep | Same window |

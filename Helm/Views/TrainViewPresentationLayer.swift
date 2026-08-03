@@ -117,6 +117,12 @@ extension View {
       InSessionCoachSheet(controller: controller)
     }
     .sheet(isPresented: Binding(
+      get: { controller.isShowingPawelTimer },
+      set: { controller.isShowingPawelTimer = $0 }
+    )) {
+      PawelTimerModal(controller: controller)
+    }
+    .sheet(isPresented: Binding(
       get: { controller.isShowingFinishSummary },
       set: { controller.isShowingFinishSummary = $0 }
     )) {

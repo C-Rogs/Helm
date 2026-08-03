@@ -6,6 +6,9 @@ public struct CoachMessageBubble: View {
         case assistant
     }
 
+    @Environment(\.helmSkin) private var skin
+    @Environment(\.helmPalette) private var palette
+
     private let role: Role
     private let text: String
     private let isStreaming: Bool
@@ -37,11 +40,11 @@ public struct CoachMessageBubble: View {
             Spacer(minLength: HelmSpacing.xl)
             Text(text)
                 .helmType(.body)
-                .foregroundStyle(HelmColor.fg)
+                .foregroundStyle(palette.fg)
                 .textSelection(.enabled)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
-                .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+                .modifier(BubbleChromeModifier(kind: .user, skin: skin, palette: palette))
         }
     }
 
@@ -51,12 +54,12 @@ public struct CoachMessageBubble: View {
                 HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
                 Text(displayText)
                     .helmType(.body)
-                    .foregroundStyle(HelmColor.fg)
+                    .foregroundStyle(palette.fg)
                     .textSelection(.enabled)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            .modifier(BubbleChromeModifier(kind: .assistant, skin: skin, palette: palette))
             Spacer(minLength: HelmSpacing.xl)
         }
     }
@@ -69,6 +72,49 @@ public struct CoachMessageBubble: View {
     }
 }
 
+private enum BubbleChromeKind {
+    case user
+    case assistant
+}
+
+private struct BubbleChromeModifier: ViewModifier {
+    let kind: BubbleChromeKind
+    let skin: HelmSkin
+    let palette: HelmPalette
+
+    func body(content: Content) -> some View {
+        switch skin {
+        case .signal:
+            content
+                .background {
+                    Rectangle()
+                        .fill(SignalChrome.panelFill(palette: palette))
+                }
+                .overlay {
+                    SignalHUDFrame(emphasized: kind == .assistant)
+                }
+                .shadow(
+                    color: SignalChrome.glow(palette: palette, intensity: kind == .user ? 0.12 : 0.22),
+                    radius: 5,
+                    y: 0
+                )
+        case .dataSheet:
+            content
+                .overlay(alignment: .top) {
+                    Rectangle()
+                        .fill(palette.hairline)
+                        .frame(height: 1)
+                }
+        case .instrument, .stateField, .blueprint:
+            content
+                .background(
+                    kind == .user ? palette.surfaceElevated : palette.surface,
+                    in: RoundedRectangle(cornerRadius: HelmRadius.md)
+                )
+        }
+    }
+}
+
 #if DEBUG
 #Preview("Coach message bubbles") {
     VStack(spacing: HelmSpacing.md) {
@@ -78,5 +124,6 @@ public struct CoachMessageBubble: View {
     }
     .padding()
     .helmTheme()
+    .environment(\.helmSkin, .signal)
 }
 #endif

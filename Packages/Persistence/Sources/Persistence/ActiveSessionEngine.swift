@@ -131,6 +131,23 @@ public actor ActiveSessionEngine {
         return try requireSnapshot(at: now)
     }
 
+    public func startManualRestTimer(durationSeconds: Int) throws -> ActiveSessionSnapshot {
+        let now = clock.now()
+        guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
+            throw PersistenceError.noActiveSession
+        }
+        let sessionExerciseID = snapshot.session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        }?.id
+        try repository.startManualRestTimer(
+            sessionID: snapshot.session.id,
+            sessionExerciseID: sessionExerciseID,
+            durationSeconds: durationSeconds,
+            startedAt: now
+        )
+        return try requireSnapshot(at: now)
+    }
+
     public func finish() throws -> String? {
         let now = clock.now()
         guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
@@ -156,6 +173,12 @@ public actor ActiveSessionEngine {
             try repository.completeExpiredRestTimers(sessionID: snapshot.session.id, at: now)
         }
         return try repository.fetchActiveSnapshot(at: now)?.restTimer
+    }
+
+    public func remainingRestSeconds(at instant: Date? = nil) throws -> Int? {
+        let now = instant ?? clock.now()
+        guard let timer = try restTimerProjection(at: now) else { return nil }
+        return timer.remainingSeconds(at: now)
     }
 
     public func syncFromPrescription(_ prescription: SessionPrescription) throws -> ActiveSessionSnapshot {

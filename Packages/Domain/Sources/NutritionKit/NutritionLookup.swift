@@ -145,16 +145,28 @@ public struct NutritionLookup: Sendable {
         "white fish": "cod flesh only grilled",
         "sliced cucumbers": "cucumber raw",
         "sliced cucumber": "cucumber raw",
+        // Drink nicknames → searchable form. CoFID has no G&T row; emptying weak
+        // single-token noise lets FoodResolver fall through to Open Food Facts.
+        "g t": "gin tonic",
+        "g and t": "gin tonic",
+        "gt": "gin tonic",
     ]
 
     /// Prefix/substring matches for inline food correction while editing photo meal line items.
     public func suggestionNames(matching query: String, limit: Int = 5) -> [String] {
-        let normalized = Self.normalize(query)
+        let normalized = Self.aliasedQuery(for: Self.normalize(query))
         guard normalized.count >= 2 else { return [] }
 
-        let queryTokens = Set(normalized.split(separator: " ").map(String.init))
+        let rawTokens = normalized.split(separator: " ").map(String.init)
+        // Drop stopwords ("and", "with") and 1-char noise ("g", "t" from G&T) so weak
+        // token overlap cannot flood CoFID and block Open Food Facts.
+        let significantTokens = Set(Self.significantSearchTokens(from: rawTokens))
+        guard !significantTokens.isEmpty else { return [] }
+
         let processedModifiers = ["juice", "canned", "dried", "baked", "cooked", "stewed", "puree", "pureed", "frozen", "pickled", "sauce", "soup", "drink", "beverage", "concentrate"]
-        let isSimpleQuery = queryTokens.count == 1
+        let isMultiToken = significantTokens.count >= 2
+        let isSimpleQuery = significantTokens.count == 1
+        let simpleQuery = isSimpleQuery ? significantTokens.first! : normalized
 
         var scored: [(name: String, score: Int)] = []
         for record in records {
@@ -165,61 +177,65 @@ public struct NutritionLookup: Sendable {
             }
 
             let primaryWord = description.split(separator: " ").first.map(String.init) ?? description
-            if primaryWord == normalized || Self.tokensEquivalent(primaryWord, normalized) {
+            if primaryWord == normalized || Self.tokensEquivalent(primaryWord, normalized)
+                || (isSimpleQuery && (primaryWord == simpleQuery || Self.tokensEquivalent(primaryWord, simpleQuery))) {
                 scored.append((record.description, 180))
                 continue
             }
 
-            if Self.wordBoundaryMatch(description: description, query: normalized)
-                || queryTokens.contains(where: { token in
-                    description.split(separator: " ").contains(where: { Self.tokensEquivalent(token, String($0)) })
+            // Multi-token queries must match every significant token; never promote on
+            // a shared stopword or single shared word (e.g. "and" / "tonic" alone).
+            if isMultiToken {
+                let candidates = [record.description] + record.synonyms
+                if candidates.contains(where: { candidate in
+                    let candidateTokens = Set(Self.normalize(candidate).split(separator: " ").map(String.init))
+                    return Self.tokenOverlapScore(queryTokens: significantTokens, candidateTokens: candidateTokens)
+                        == significantTokens.count
                 }) {
+                    let descriptionTokens = Set(description.split(separator: " ").map(String.init))
+                    let overlap = Self.tokenOverlapScore(queryTokens: significantTokens, candidateTokens: descriptionTokens)
+                    scored.append((record.description, 55 + overlap * 15))
+                }
+                continue
+            }
+
+            if Self.wordBoundaryMatch(description: description, query: simpleQuery)
+                || description.split(separator: " ").contains(where: { Self.tokensEquivalent(simpleQuery, String($0)) }) {
                 var score = 150
-                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                if processedModifiers.contains(where: { description.contains($0) }) {
                     score -= 80
                 }
                 scored.append((record.description, score))
                 continue
             }
 
-            if description.hasPrefix(normalized) {
+            // Short tokens ("gin") must not substring-match "ginger" / "aubergine".
+            guard simpleQuery.count >= 4 else { continue }
+
+            if description.hasPrefix(simpleQuery) || description.hasPrefix(normalized) {
                 var score = 100
-                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                if processedModifiers.contains(where: { description.contains($0) }) {
                     score -= 50
                 }
                 scored.append((record.description, score))
                 continue
             }
 
-            if description.contains(normalized) {
+            if description.contains(simpleQuery) || description.contains(normalized) {
                 var score = 40
-                if isSimpleQuery && processedModifiers.contains(where: { description.contains($0) }) {
+                if processedModifiers.contains(where: { description.contains($0) }) {
                     score -= 30
                 }
                 scored.append((record.description, score))
                 continue
             }
 
-            if queryTokens.count >= 2 {
-                let candidates = [record.description] + record.synonyms
-                if candidates.contains(where: { candidate in
-                    let normalizedCandidate = Self.normalize(candidate)
-                    return queryTokens.allSatisfy { token in
-                        normalizedCandidate.split(separator: " ").contains(where: { Self.tokensEquivalent(token, String($0)) })
-                            || normalizedCandidate.contains(token)
-                    }
-                }) {
-                    let normalizedDescription = Self.normalize(record.description)
-                    let descriptionTokens = Set(normalizedDescription.split(separator: " ").map(String.init))
-                    let overlap = Self.tokenOverlapScore(queryTokens: queryTokens, candidateTokens: descriptionTokens)
-                    scored.append((record.description, 55 + overlap * 15))
-                    continue
+            for synonym in record.synonyms {
+                let normalizedSynonym = Self.normalize(synonym)
+                if normalizedSynonym.contains(simpleQuery) || normalizedSynonym.contains(normalized) {
+                    scored.append((record.description, 40))
+                    break
                 }
-            }
-
-            for synonym in record.synonyms where Self.normalize(synonym).contains(normalized) {
-                scored.append((record.description, 40))
-                break
             }
         }
 
@@ -243,11 +259,21 @@ public struct NutritionLookup: Sendable {
             .map { $0 }
     }
 
+    private static func significantSearchTokens(from tokens: [String]) -> [String] {
+        tokens.filter { token in
+            token.count >= 2 && !modifierTokens.contains(token)
+        }
+    }
+
     private static func wordBoundaryMatch(description: String, query: String) -> Bool {
         let parts = description.split(separator: " ").map(String.init)
         for part in parts {
             let token = part.trimmingCharacters(in: CharacterSet.alphanumerics.inverted)
-            if tokensEquivalent(token, query) || token.hasPrefix(query) {
+            // Require exact/plural equivalence for short queries so "gin" does not match "ginger".
+            if tokensEquivalent(token, query) {
+                return true
+            }
+            if query.count >= 4 && token.hasPrefix(query) {
                 return true
             }
         }
@@ -272,7 +298,7 @@ public struct NutritionLookup: Sendable {
         return overlap
     }
 
-    static func tokensEquivalent(_ lhs: String, _ rhs: String) -> Bool {
+    public static func tokensEquivalent(_ lhs: String, _ rhs: String) -> Bool {
         if lhs == rhs { return true }
         if lhs == rhs + "s" || rhs == lhs + "s" { return true }
         if lhs.hasSuffix("es") && lhs.dropLast(2) == rhs { return true }

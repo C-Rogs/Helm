@@ -136,6 +136,33 @@ struct NutritionLookupTests {
         #expect(suggestions.isEmpty)
     }
 
+    @Test("gin and tonic variants miss weak CoFID so branded search can run")
+    func ginAndTonicVariantsMissCoFID() {
+        let queries = [
+            "gin and tonic",
+            "diet gin and tonic",
+            "gin and tonic with diet tonic",
+            "skinny gin and tonic",
+            "rhubarb gin and tonic",
+            "g and t",
+            "G&T",
+            "gin",
+        ]
+        for query in queries {
+            let suggestions = lookup.suggestionNames(matching: query, limit: 20)
+            #expect(
+                suggestions.isEmpty,
+                "Expected no weak CoFID flood for \(query), got \(suggestions.prefix(5))"
+            )
+        }
+    }
+
+    @Test("gin alone does not match ginger")
+    func ginDoesNotMatchGinger() {
+        let suggestions = lookup.suggestionNames(matching: "gin", limit: 10)
+        #expect(!suggestions.contains { $0.lowercased().contains("ginger") })
+    }
+
     @Test("cooked fish does not match bacon via modifier tokens")
     func cookedFishAvoidsBaconMatch() {
         let match = lookup.resolve(item: "cooked fish meat no skin")
@@ -193,5 +220,13 @@ struct NutritionLookupTests {
     func cofidAttribution() {
         #expect(CoFIDAttribution.licenceNotice.contains("Open Government Licence"))
         #expect(CoFIDAttribution.sourceURL.contains("cofid"))
+    }
+
+    @Test("tokensEquivalent is plural-aware without substring matches")
+    func tokensEquivalentBoundaries() {
+        #expect(NutritionLookup.tokensEquivalent("gin", "gin"))
+        #expect(NutritionLookup.tokensEquivalent("egg", "eggs"))
+        #expect(!NutritionLookup.tokensEquivalent("gin", "ginger"))
+        #expect(!NutritionLookup.tokensEquivalent("tonic", "gin"))
     }
 }

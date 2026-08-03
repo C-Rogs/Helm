@@ -95,6 +95,16 @@ struct SettingsView: View {
                     Text("Plays on speaker and headphones when rest ends. Ignores Silent switch. Use Preview to hear the current sound.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
+
+                    Toggle("Pawel mode", isOn: $trainPreferences.pawelModeEnabled)
+                        .helmListRowChrome()
+                        .onChange(of: trainPreferences.pawelModeEnabled) { _, _ in
+                            HapticEngine.shared.play(.selection)
+                        }
+
+                    Text("Manual rest timer pill on the coach bar during workouts.")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                        .helmListRowChrome()
                 }
 
                 Section("Setup") {

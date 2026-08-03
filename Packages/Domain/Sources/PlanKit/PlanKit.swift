@@ -27,6 +27,19 @@ public enum PlanKit {
         MesocycleEngine.weeklyHardSetTarget(for: muscleState)
     }
 
+    /// Hard sets still on the calendar for each muscle (logged + upcoming session simulation).
+    public static func scheduledSets(
+        weeklyTargets: [MuscleGroup: Int],
+        loggedSets: [MuscleGroup: Double],
+        upcomingTargetMuscles: [[MuscleGroup]]
+    ) -> [MuscleGroup: Double] {
+        ScheduledVolumeForecast.scheduledSets(
+            weeklyTargets: weeklyTargets,
+            loggedSets: loggedSets,
+            upcomingTargetMuscles: upcomingTargetMuscles
+        )
+    }
+
     /// Build an initial mesocycle for the given muscles.
     public static func makeInitialState(
         muscles: [MuscleGroup],

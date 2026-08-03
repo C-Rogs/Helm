@@ -23,12 +23,14 @@ struct ReadinessHistoryPoint: Identifiable, Sendable, Hashable {
 struct MuscleVolumeGauge: Identifiable, Sendable, Hashable {
     let muscle: MuscleGroup
     let weeklySets: Double
+    let scheduledSets: Double
     let landmarks: VolumeLandmarks
     let state: HelmState
     /// Calendar days since the muscle last received hard-set credit; `nil` when never trained.
     let daysSinceTrained: Int?
 
     var id: MuscleGroup { muscle }
+    var projectedSets: Double { weeklySets + scheduledSets }
 }
 
 struct E1RMProgressionPoint: Identifiable, Sendable, Hashable {

@@ -117,7 +117,10 @@ public actor FoodResolver {
             throw FoodResolverError.queryTooShort
         }
 
-        var results = try localResults(query: trimmed, limit: limit)
+        // Prefer strong local hits (recents / cache). Cap CoFID contribution so a wall of
+        // weak generic matches cannot fill `limit` and skip branded Open Food Facts.
+        let local = try localResults(query: trimmed, limit: limit, cofidCap: max(5, limit / 2))
+        var results = local
         guard results.count < limit else {
             return results
         }
@@ -156,13 +159,13 @@ public actor FoodResolver {
         try await searchRemote(query: query, limit: limit)
     }
 
-    private func localResults(query: String, limit: Int) throws -> [FoodSearchResult] {
+    private func localResults(query: String, limit: Int, cofidCap: Int? = nil) throws -> [FoodSearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return [] }
 
         var results: [FoodSearchResult] = []
         var seen = Set<String>()
-        let cofidLimit = max(limit, 15)
+        let maxCofid = cofidCap ?? max(limit, 15)
 
         for recent in try foodLog.fetchRecents(limit: 50) where matches(query: trimmed, displayName: recent.ref.displayName) {
             guard seen.insert(recent.ref.cacheKey).inserted else { continue }
@@ -176,11 +179,15 @@ public actor FoodResolver {
             if results.count >= limit { return results }
         }
 
-        for name in cofidLookup.suggestionNames(matching: trimmed, limit: cofidLimit) {
-            guard let cofidMatch = cofidLookup.resolve(item: name) else { continue }
+        var cofidAdded = 0
+        for name in cofidLookup.suggestionNames(matching: trimmed, limit: maxCofid) {
+            guard cofidAdded < maxCofid else { break }
+            guard let cofidMatch = cofidLookup.resolve(item: name),
+                  cofidMatch.matchConfidence != .fallback else { continue }
             let ref = FoodProductRef(origin: .cofid, externalID: cofidMatch.record.fdcId, displayName: cofidMatch.record.description)
             guard seen.insert(ref.cacheKey).inserted else { continue }
             results.append(FoodSearchResult(product: resolved(from: cofidMatch, ref: ref)))
+            cofidAdded += 1
             if results.count >= limit { return results }
         }
 
@@ -227,7 +234,8 @@ public actor FoodResolver {
             return resolved(from: recent)
         }
 
-        if let cofid = cofidLookup.resolve(item: trimmed) {
+        if let cofid = cofidLookup.resolve(item: trimmed),
+           cofid.matchConfidence != .fallback {
             let ref = FoodProductRef(origin: .cofid, externalID: cofid.record.fdcId, displayName: cofid.record.description)
             return resolved(from: cofid, ref: ref)
         }
@@ -390,12 +398,18 @@ public actor FoodResolver {
         let normalizedName = NutritionLookup.normalize(displayName)
         guard !normalizedQuery.isEmpty else { return false }
 
-        if normalizedName.contains(normalizedQuery) || normalizedQuery.contains(normalizedName) {
-            return true
-        }
+        if normalizedName == normalizedQuery { return true }
 
-        let queryTokens = normalizedQuery.split(separator: " ").map(String.init)
-        guard queryTokens.count >= 2 else { return false }
-        return queryTokens.allSatisfy { normalizedName.contains($0) }
+        let nameTokens = normalizedName.split(separator: " ").map(String.init)
+        let queryTokens = normalizedQuery
+            .split(separator: " ")
+            .map(String.init)
+            .filter { $0.count >= 2 }
+        guard !queryTokens.isEmpty else { return false }
+
+        // Whole-token match only: "gin" must not match "ginger".
+        return queryTokens.allSatisfy { queryToken in
+            nameTokens.contains { NutritionLookup.tokensEquivalent(queryToken, $0) }
+        }
     }
 }

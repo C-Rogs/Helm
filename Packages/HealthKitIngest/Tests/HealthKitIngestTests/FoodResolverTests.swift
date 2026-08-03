@@ -245,6 +245,56 @@ struct FoodResolverTests {
         #expect(resolved.confidence == .custom)
         #expect(try store.foodLog.fetchCacheEntry(ref: customRef)?.per100gProteinG == 80)
     }
+
+    @Test("gin and tonic remote search reaches OFF when CoFID is empty")
+    func ginAndTonicReachesOFF() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        let resolver = makeResolver(store: store, offClient: offClient, online: true)
+
+        let local = try await resolver.searchLocal(query: "gin and tonic", limit: 20)
+        #expect(local.isEmpty)
+
+        _ = try await resolver.searchRemote(query: "gin and tonic", limit: 20)
+        #expect(offClient.requestCount == 1)
+    }
+
+    @Test("resolve(query) skips CoFID fallback and reaches OFF")
+    func resolveQuerySkipsFallbackReachesOFF() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        let resolver = makeResolver(store: store, offClient: offClient, online: true)
+
+        let resolved = try await resolver.resolve(query: "gin and tonic")
+        #expect(resolved?.source == .openFoodFacts || resolved == nil)
+        #expect(offClient.requestCount >= 1)
+        #expect(resolved?.confidence != .fallback)
+    }
+
+    @Test("cached ginger tonic does not match gin tonic query")
+    func ginDoesNotMatchGinger() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        let gingerRef = FoodProductRef(
+            origin: .openFoodFacts,
+            externalID: "ginger-tonic-1",
+            displayName: "Ginger tonic"
+        )
+        try store.foodLog.upsertCacheEntry(
+            FoodProductCacheEntry(
+                ref: gingerRef,
+                per100gKcal: 40,
+                per100gProteinG: 0,
+                per100gCarbsG: 10,
+                per100gFatG: 0,
+                updatedAt: loggedAt
+            )
+        )
+
+        let resolver = makeResolver(store: store, offClient: offClient, online: true)
+        let results = try await resolver.searchLocal(query: "gin tonic", limit: 10)
+        #expect(!results.contains { $0.product.ref == gingerRef })
+    }
 }
 
 @Suite("Open Food Facts client")
