@@ -188,8 +188,8 @@ struct ContextBuilderTests {
         #expect(!prompt.contextBlock.contains("# Recent Days"))
     }
 
-    @Test("follow-up includes recent workouts only")
-    func followUpIncludesRecentWorkoutsOnly() {
+    @Test("follow-up keeps today recovery and baselines without full recent days")
+    func followUpKeepsTodayAndBaselines() {
         let workouts = """
         Push Day
 
@@ -216,6 +216,11 @@ struct ContextBuilderTests {
         #expect(prompt.contextBlock.contains("# Recent Workouts"))
         #expect(prompt.contextBlock.contains("Bench Press"))
         #expect(prompt.contextBlock.contains("# Phase"))
+        #expect(prompt.contextBlock.contains("# Readiness Baselines"))
+        #expect(prompt.contextBlock.contains("hrvChronicMs=52.1"))
+        #expect(prompt.contextBlock.contains("# Today"))
+        #expect(prompt.contextBlock.contains("## 2026-07-20"))
+        #expect(prompt.contextBlock.contains("readiness=61"))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 2)
         #expect(!prompt.contextBlock.contains("# Memory Profile"))
@@ -234,6 +239,8 @@ struct ContextBuilderTests {
 
         #expect(prompt.contextBlock.contains("# Phase"))
         #expect(prompt.contextBlock.contains("phase=gain"))
+        #expect(prompt.contextBlock.contains("# Today"))
+        #expect(prompt.contextBlock.contains("readiness=64"))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 3)
         #expect(!prompt.contextBlock.contains("# Recent Days"))

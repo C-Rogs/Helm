@@ -109,7 +109,7 @@ enum CoachChatDisplayText {
         if let pendingAction {
             switch pendingAction.kind {
             case .workoutStart:
-                return "Ready when you are. Confirm to start \(pendingAction.title)."
+                return "Confirm to start \(pendingAction.title)."
             case .foodLog, .mealCopy:
                 return pendingAction.title
             }

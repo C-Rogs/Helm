@@ -65,6 +65,27 @@ final class ChatController {
         }
     }
 
+    func clearConversation() {
+        guard !isStreaming, !isApplyingChatAction else { return }
+        streamTask?.cancel()
+        streamTask = nil
+        do {
+            try persistence.chat.clear()
+            messages = []
+            pendingChatAction = nil
+            pendingFoodMealConfirm = nil
+            lastTurnError = nil
+            lastFailedUserMessage = nil
+            streamingText = nil
+            clearChatProgress()
+            Task {
+                await ProviderRegistry.shared.resetAllThreads()
+            }
+        } catch {
+            lastTurnError = "Could not clear chat."
+        }
+    }
+
     func refreshAvailability() async {
         let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
         let availability = await provider.availability()
@@ -83,6 +104,11 @@ final class ChatController {
     func send() {
         let trimmed = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty, !isStreaming else { return }
+        if CoachChatIntent.looksLikeClearChat(trimmed) {
+            draftText = ""
+            clearConversation()
+            return
+        }
         if CoachActivityGate.shared.isBlocked(for: .chat) {
             lastTurnError = CoachActivityGate.shared.blockingMessage(for: .chat)
             return
@@ -415,6 +441,24 @@ final class ChatController {
                 )
             }
 
+            if let recoveryQuery = RecoveryQueryPayloadParser.parse(from: assembled) {
+                assembled = try await runRecoveryQueryFollowUp(
+                    query: recoveryQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            } else if let inferred = CoachChatIntent.inferredRecoveryQuery(from: text) {
+                assembled = try await runRecoveryQueryFollowUp(
+                    query: inferred,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            }
+
             if let workoutQuery = WorkoutQueryPayloadParser.parse(from: assembled) {
                 assembled = try await runWorkoutQueryFollowUp(
                     query: workoutQuery,
@@ -434,6 +478,7 @@ final class ChatController {
             }
 
             if CoachChatIntent.looksLikeWorkoutStart(text),
+               !CoachChatIntent.looksLikeWorkoutReview(text),
                needsStructuredWorkoutStart(assembled: assembled, userText: text),
                let gemini = provider as? GeminiProvider
             {
@@ -484,15 +529,25 @@ final class ChatController {
                 pendingAction: pendingAction
             )
 
-            let assistantMessage = try persistence.chat.append(
-                ChatMessageInsert(
-                    role: .assistant,
-                    text: userFacingText,
-                    promptVersion: CoachPromptVersion.chatV1.rawValue,
-                    schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+            guard !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                || pendingAction != nil
+                || pendingFoodMealConfirm != nil
+            else {
+                throw CoachStructuredOutputError.emptyResponse
+            }
+
+            // Never persist a blank assistant row; confirmation card can stand alone when reply is empty.
+            if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                let assistantMessage = try persistence.chat.append(
+                    ChatMessageInsert(
+                        role: .assistant,
+                        text: userFacingText,
+                        promptVersion: CoachPromptVersion.chatV1.rawValue,
+                        schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+                    )
                 )
-            )
-            messages.append(assistantMessage)
+                messages.append(assistantMessage)
+            }
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clear()
 
@@ -660,6 +715,48 @@ final class ChatController {
 
         isStreaming = true
         streamingText = "Looking up workouts…"
+
+        let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantText(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true
+        )
+    }
+
+    private func runRecoveryQueryFollowUp(
+        query: RecoveryQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> String {
+        let service = RecoveryHistoryQueryService(store: persistence)
+        let results = try await service.run(query)
+        let toolMessage = """
+        # Recovery query results
+        \(results)
+
+        Answer using these numbers. Prefer HRV and hrvVsChronic when explaining recovery. Do not invent metrics that are not listed. Do not dump a raw metric list.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up recovery…"
 
         let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(

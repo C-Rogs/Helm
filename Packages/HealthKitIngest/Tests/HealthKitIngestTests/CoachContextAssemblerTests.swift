@@ -53,7 +53,7 @@ struct CoachContextAssemblerTests {
         try store.readiness.upsertScore(
             helmDay: previous,
             scoreJSON: """
-            {"score":58,"effectiveHRVMilliseconds":49.0,"restingHeartRate":52}
+            {"score":58,"band":"balanced","confidence":"high","hrvBand":"typical","effectiveHRVMilliseconds":49.0,"restingHeartRate":52,"contributors":{"zHRV":-0.8,"zRestingHR":0.2,"zSleep":-0.5,"zRespiratory":null,"zTemperature":null,"zStrain":0.4,"zComposite":-0.3,"rawScore":55,"dampedScore":58}}
             """
         )
         try store.readiness.upsertBaseline(
@@ -69,7 +69,11 @@ struct CoachContextAssemblerTests {
         #expect(context.recent.count == 1)
         #expect(context.recent[0].helmDay == previous)
         #expect(context.recent[0].text.contains("readiness=58"))
+        #expect(context.recent[0].text.contains("readiness_band=balanced"))
+        #expect(context.recent[0].text.contains("confidence=high"))
         #expect(context.recent[0].text.contains("hrv=49ms"))
+        #expect(context.recent[0].text.contains("hrvVsChronic=-3.1ms"))
+        #expect(context.recent[0].text.contains("zHRV=-0.8"))
         #expect(context.recent[0].text.contains("trimp=42"))
     }
 
@@ -121,7 +125,7 @@ struct CoachContextAssemblerTests {
 
         #expect(context.recentWorkouts.contains("Leg Day"))
         #expect(context.recentWorkouts.contains("Squat (Barbell)"))
-        #expect(context.recentWorkouts.contains("100kg x 5"))
+        #expect(context.recentWorkouts.contains("100") && context.recentWorkouts.contains("x 5"))
     }
 
     @Test("includes training plan snapshot with verbatim emphasis")

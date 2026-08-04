@@ -14,7 +14,16 @@ public enum CoachChatIntent: Sendable {
             "workout earlier",
             "can't you see it",
             "cant you see it",
-            "in the train history"
+            "can you see the",
+            "can you see my",
+            "in the train history",
+            "run i logged",
+            "run i did",
+            "logged yesterday",
+            "workout yesterday",
+            "run yesterday",
+            "see the run",
+            "see my run"
         ]
         return needles.contains { lower.contains($0) }
     }
@@ -78,6 +87,9 @@ public enum CoachChatIntent: Sendable {
         let lower = text.lowercased()
         let clearNeedles = [
             "hello",
+            "hi",
+            "hey",
+            "clear",
             "how was",
             "how did",
             "review",
@@ -90,9 +102,21 @@ public enum CoachChatIntent: Sendable {
             "protein",
             "sleep",
             "recovery",
-            "why did you start"
+            "why did you start",
+            "can you see"
         ]
         return clearNeedles.contains { lower.contains($0) }
+    }
+
+    public static func looksLikeClearChat(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        return [
+            "clear chat",
+            "clear conversation",
+            "reset chat",
+            "new chat",
+            "wipe chat"
+        ].contains(trimmed)
     }
 
     public static func inferredMealQuery(from text: String) -> MealQueryPayload? {
@@ -122,12 +146,59 @@ public enum CoachChatIntent: Sendable {
         return MealQueryPayload(queryType: .daySummary)
     }
 
-    public static func inferredWorkoutQuery(from text: String) -> WorkoutQueryPayload? {
+    public static func inferredWorkoutQuery(from text: String, now: Date = Date(), calendar: Calendar = .current) -> WorkoutQueryPayload? {
         guard looksLikeWorkoutReview(text) else { return nil }
         let lower = text.lowercased()
+        if lower.contains("yesterday") {
+            guard let yesterday = calendar.date(byAdding: .day, value: -1, to: now) else {
+                return WorkoutQueryPayload(queryType: .latestCompleted)
+            }
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = calendar.timeZone
+            formatter.dateFormat = "yyyy-MM-dd"
+            return WorkoutQueryPayload(
+                queryType: .onDay,
+                helmDay: formatter.string(from: yesterday)
+            )
+        }
         if lower.contains("run") || lower.contains("cardio") {
             return WorkoutQueryPayload(queryType: .includingCardio)
         }
         return WorkoutQueryPayload(queryType: .latestCompleted)
+    }
+
+    public static func looksLikeRecoveryLookup(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "hrv trend",
+            "hrv this week",
+            "hrv last week",
+            "how did i sleep",
+            "how was my sleep",
+            "sleep last night",
+            "sleep stages",
+            "deep sleep",
+            "rem sleep",
+            "readiness this week",
+            "recovery this week",
+            "recovery trend",
+            "sleep trend",
+            "weight trend",
+            "rhr trend"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    public static func inferredRecoveryQuery(from text: String) -> RecoveryQueryPayload? {
+        guard looksLikeRecoveryLookup(text) else { return nil }
+        let lower = text.lowercased()
+        if lower.contains("stage") || lower.contains("deep sleep") || lower.contains("rem sleep")
+            || lower.contains("sleep last night") || lower.contains("how did i sleep")
+            || lower.contains("how was my sleep") {
+            return RecoveryQueryPayload(queryType: .sleepDetail)
+        }
+        return RecoveryQueryPayload(queryType: .range, lookbackDays: 14)
     }
 }

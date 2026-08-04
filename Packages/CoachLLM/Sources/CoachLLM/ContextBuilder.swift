@@ -90,6 +90,17 @@ public enum ContextBuilder {
         if !slim.isEmpty {
             sections.append("# Phase\n\(slim)")
         }
+        // Ambient recovery stays available every turn; deeper history uses recovery_query.v1.
+        let baselines = normalized(days.readinessBaselines)
+        if !baselines.isEmpty {
+            sections.append("# Readiness Baselines\n\(baselines)")
+        }
+        if let today = days.recent.max(by: { $0.helmDay < $1.helmDay }) {
+            let todayText = normalized(today.text)
+            if !todayText.isEmpty {
+                sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
+            }
+        }
         let workouts = normalized(days.recentWorkouts)
         if !workouts.isEmpty {
             sections.append("# Recent Workouts\n\(workouts)")

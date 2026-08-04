@@ -53,8 +53,9 @@ public enum CoachContextAssembler {
             }
         }
 
+        let baselineState = decodeBaselineState(from: try store.readiness.fetchBaselineJSON())
         let baselines = [
-            baselinesText(from: try store.readiness.fetchBaselineJSON()),
+            baselinesText(from: baselineState),
             try bodyCompositionSummary(
                 from: store,
                 endingAt: endDay,
@@ -63,6 +64,8 @@ public enum CoachContextAssembler {
         ]
         .filter { !$0.isEmpty }
         .joined(separator: "\n")
+
+        let chronicHRV = baselineState?.hrvChronic?.mean
 
         let recent = try days.sorted().map { helmDay in
             let loggingComplete = (try? store.nutritionLogStatus.isLoggingComplete(helmDay: helmDay)) ?? false
@@ -76,7 +79,8 @@ public enum CoachContextAssembler {
                     workouts: workoutsByDay[helmDay] ?? [],
                     sleepHours: try store.sleep.totalSleepHours(for: helmDay, calendar: calendar),
                     bodyComposition: bodyCompositionByDay[helmDay],
-                    loggingComplete: loggingComplete
+                    loggingComplete: loggingComplete,
+                    chronicHRVMilliseconds: chronicHRV
                 )
             )
         }
@@ -104,6 +108,37 @@ public enum CoachContextAssembler {
             trainingPlanSnapshot: trainingPlanSnapshot,
             nutritionDiary: nutritionDiary
         )
+    }
+
+    /// Compact sleep-stage detail for recovery_query sleepDetail / day lookups.
+    public static func sleepDetailText(
+        from store: PersistenceStore,
+        helmDay: HelmDay,
+        calendar: Calendar = .current
+    ) throws -> String {
+        guard let summary = try store.sleep.nightSummary(forWakeDay: helmDay, calendar: calendar) else {
+            return "day=\(helmDay.formatted)\nsleep=none"
+        }
+        var parts: [String] = ["day=\(helmDay.formatted)"]
+        if let asleep = summary.asleepHours {
+            parts.append("sleep=\(SleepDurationFormatting.hoursAndMinutes(from: asleep))")
+        }
+        if let inBed = summary.inBedHours {
+            parts.append("inBed=\(SleepDurationFormatting.hoursAndMinutes(from: inBed))")
+        }
+        if let deep = summary.deepMinutes {
+            parts.append("deepMin=\(format(deep))")
+        }
+        if let rem = summary.remMinutes {
+            parts.append("remMin=\(format(rem))")
+        }
+        if let awake = summary.awakeMinutes {
+            parts.append("awakeMin=\(format(awake))")
+        }
+        if let efficiency = summary.efficiency {
+            parts.append("efficiency=\(format(efficiency * 100))%")
+        }
+        return parts.joined(separator: " ")
     }
 
     private static func trainingPlanSnapshotBlock(
@@ -216,23 +251,43 @@ public enum CoachContextAssembler {
         workouts: [WorkoutSessionSummary],
         sleepHours: Double?,
         bodyComposition: BodyComposition?,
-        loggingComplete: Bool
+        loggingComplete: Bool,
+        chronicHRVMilliseconds: Double?
     ) -> String {
         var parts: [String] = []
 
         if let readiness {
             parts.append("readiness=\(readiness.score)")
+            if let band = readiness.band {
+                parts.append("readiness_band=\(band.rawValue)")
+            }
+            if let confidence = readiness.confidence {
+                parts.append("confidence=\(confidence.rawValue)")
+            }
+            if let hrvBand = readiness.hrvBand {
+                parts.append("hrv_band=\(hrvBand.rawValue)")
+            }
             if let hrv = readiness.effectiveHRVMilliseconds {
                 parts.append("hrv=\(format(hrv))ms")
+                if let chronic = chronicHRVMilliseconds {
+                    parts.append("hrvVsChronic=\(formatSigned(hrv - chronic))ms")
+                }
             } else if let hrv = metrics?.hrvSDNN?.milliseconds {
                 parts.append("hrv=\(hrv)ms")
+                if let chronic = chronicHRVMilliseconds {
+                    parts.append("hrvVsChronic=\(formatSigned(Double(hrv) - chronic))ms")
+                }
             }
             if let rhr = readiness.restingHeartRate ?? metrics?.restingHeartRate {
                 parts.append("rhr=\(rhr)")
             }
+            appendContributorHints(from: readiness.contributors, into: &parts)
         } else if let metrics {
             if let hrv = metrics.hrvSDNN?.milliseconds {
                 parts.append("hrv=\(hrv)ms")
+                if let chronic = chronicHRVMilliseconds {
+                    parts.append("hrvVsChronic=\(formatSigned(Double(hrv) - chronic))ms")
+                }
             }
             if let rhr = metrics.restingHeartRate {
                 parts.append("rhr=\(rhr)")
@@ -245,6 +300,13 @@ public enum CoachContextAssembler {
 
         if let trimp = metrics?.priorDayTRIMP {
             parts.append("trimp=\(format(trimp))")
+        }
+
+        if let resp = metrics?.respiratoryRate {
+            parts.append("resp=\(format(resp))")
+        }
+        if let temp = metrics?.wristTemperatureDeltaCelsius {
+            parts.append("tempDeltaC=\(format(temp))")
         }
 
         if let nutrition {
@@ -280,14 +342,21 @@ public enum CoachContextAssembler {
         return parts.joined(separator: " ")
     }
 
-    private static func baselinesText(from json: String?) -> String {
-        guard
-            let json,
-            let data = json.data(using: .utf8),
-            let state = try? JSONDecoder().decode(ReadinessBaselineState.self, from: data)
-        else {
-            return ""
-        }
+    private static func appendContributorHints(
+        from contributors: ReadinessContributorBreakdown?,
+        into parts: inout [String]
+    ) {
+        guard let contributors else { return }
+        if let z = contributors.zHRV { parts.append("zHRV=\(formatSigned(z))") }
+        if let z = contributors.zRestingHR { parts.append("zRHR=\(formatSigned(z))") }
+        if let z = contributors.zSleep { parts.append("zSleep=\(formatSigned(z))") }
+        if let z = contributors.zRespiratory { parts.append("zResp=\(formatSigned(z))") }
+        if let z = contributors.zTemperature { parts.append("zTemp=\(formatSigned(z))") }
+        if let z = contributors.zStrain { parts.append("zStrain=\(formatSigned(z))") }
+    }
+
+    private static func baselinesText(from state: ReadinessBaselineState?) -> String {
+        guard let state else { return "" }
 
         var lines: [String] = []
         if let hrv = state.hrvChronic {
@@ -302,6 +371,11 @@ public enum CoachContextAssembler {
         return lines.joined(separator: "\n")
     }
 
+    private static func decodeBaselineState(from json: String?) -> ReadinessBaselineState? {
+        guard let json, let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(ReadinessBaselineState.self, from: data)
+    }
+
     private static func decodeScoreSnippet(from json: String) -> ReadinessScoreSnippet? {
         guard let data = json.data(using: .utf8) else { return nil }
         return try? JSONDecoder().decode(ReadinessScoreSnippet.self, from: data)
@@ -313,10 +387,21 @@ public enum CoachContextAssembler {
         }
         return String(format: "%.1f", value)
     }
+
+    private static func formatSigned(_ value: Double) -> String {
+        let body = format(abs(value))
+        if value > 0 { return "+\(body)" }
+        if value < 0 { return "-\(body)" }
+        return body
+    }
 }
 
 private struct ReadinessScoreSnippet: Decodable {
     let score: Int
+    let band: ReadinessBand?
+    let confidence: ReadinessConfidence?
+    let hrvBand: HRVZBand?
+    let contributors: ReadinessContributorBreakdown?
     let effectiveHRVMilliseconds: Double?
     let restingHeartRate: Int?
 }

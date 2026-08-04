@@ -112,6 +112,27 @@ public enum InSessionCoachContextBuilder {
         return lines.joined(separator: "\n")
     }
 
+    public static func sessionMetaBlock(
+        snapshot: ActiveSessionSnapshot,
+        now: Date = Date()
+    ) -> String {
+        var lines: [String] = ["# Session meta"]
+        let title = snapshot.session.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+        lines.append("title=\(title?.isEmpty == false ? title! : "untitled")")
+        lines.append("status=\(snapshot.session.status.rawValue)")
+        lines.append("source=\(snapshot.session.source.rawValue)")
+        lines.append("recovery_state=\(snapshot.recoveryState.rawValue)")
+        if let timer = snapshot.restTimer {
+            lines.append("rest_timer_phase=\(timer.phase.rawValue)")
+            if let remaining = timer.remainingSeconds(at: now) {
+                lines.append("rest_remaining_s=\(remaining)")
+            }
+        } else {
+            lines.append("rest_timer_phase=none")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     public static func importContextNotes(from notes: String?) -> [String] {
         guard let notes else { return [] }
         return notes

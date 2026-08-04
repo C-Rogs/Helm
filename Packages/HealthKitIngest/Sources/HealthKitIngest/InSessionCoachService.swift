@@ -517,6 +517,9 @@ public struct InSessionCoachService: Sendable {
             contextBlock = contextBlock.isEmpty ? vitals : contextBlock + "\n\n" + vitals
         }
 
+        let meta = InSessionCoachContextBuilder.sessionMetaBlock(snapshot: snapshot)
+        contextBlock = contextBlock.isEmpty ? meta : contextBlock + "\n\n" + meta
+
         if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !notes.isEmpty,
            snapshot.session.source != .importSource {

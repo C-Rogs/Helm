@@ -116,6 +116,16 @@ struct ChatView: View {
             }
             .helmScreenBackground()
             .navigationTitle("Chat")
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !controller.messages.isEmpty {
+                        Button("Clear") {
+                            controller.clearConversation()
+                        }
+                        .disabled(controller.isStreaming || controller.isApplyingChatAction)
+                    }
+                }
+            }
             .onAppear {
                 Task { await controller.onAppear() }
                 controller.consumeHandoffPromptIfNeeded()
@@ -206,7 +216,7 @@ struct ChatView: View {
         let chart = isStreaming ? nil : ChartPayloadParser.parse(from: text)
         return HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                if !display.isEmpty || isStreaming {
+                if !display.isEmpty {
                     CoachMessageBubble(
                         role: .assistant,
                         text: display,
@@ -258,13 +268,15 @@ struct ChatView: View {
         }
     }
 
-    /// Hide the "..." flash while a structured-only payload streams in.
+    /// Hide structured-only / JSON payloads while streaming so the athlete never sees raw schema.
     private func shouldShowStreamingBubble(_ text: String) -> Bool {
         let display = CoachChatTextFormatter.userFacingText(from: text)
         if !display.isEmpty { return true }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        if trimmed.isEmpty { return true }
-        return !(trimmed.hasPrefix("{") || trimmed.hasPrefix("```"))
+        if trimmed.isEmpty { return false }
+        if trimmed.hasPrefix("{") || trimmed.hasPrefix("```") { return false }
+        if trimmed.contains("\"schemaVersion\"") { return false }
+        return true
     }
 
     private var composer: some View {

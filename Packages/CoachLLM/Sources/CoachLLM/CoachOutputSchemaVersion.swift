@@ -11,6 +11,7 @@ public enum CoachOutputSchemaVersion: String, Sendable, Codable, Equatable, Case
     case mealQueryV1 = "meal_query.v1"
     case mealCopyV1 = "meal_copy.v1"
     case workoutQueryV1 = "workout_query.v1"
+    case recoveryQueryV1 = "recovery_query.v1"
     case chartV1 = "chart.v1"
     case briefV1 = "brief.v1"
 }

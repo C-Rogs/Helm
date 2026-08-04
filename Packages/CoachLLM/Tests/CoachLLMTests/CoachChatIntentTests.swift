@@ -19,6 +19,14 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.inferredWorkoutQuery(from: "How was my workout including run")?.queryType == .includingCardio)
         #expect(CoachChatIntent.inferredMealQuery(from: "What did I have for breakfast on tuesday")?.queryType == .bucketOnDay)
         #expect(CoachChatIntent.inferredMealQuery(from: "previous meals from other days")?.queryType == .usualForBucket)
+        #expect(CoachChatIntent.inferredRecoveryQuery(from: "HRV this week")?.queryType == .range)
+        #expect(CoachChatIntent.inferredRecoveryQuery(from: "How did I sleep last night")?.queryType == .sleepDetail)
+        #expect(CoachChatIntent.inferredRecoveryQuery(from: "How is my HRV today") == nil)
+        let yesterday = CoachChatIntent.inferredWorkoutQuery(from: "Can you see the run I logged yesterday")
+        #expect(yesterday?.queryType == .onDay)
+        #expect(yesterday?.helmDay != nil)
+        #expect(CoachChatIntent.looksLikeClearChat("clear chat"))
+        #expect(!CoachChatIntent.looksLikeClearChat("clear my plate"))
     }
 }
 

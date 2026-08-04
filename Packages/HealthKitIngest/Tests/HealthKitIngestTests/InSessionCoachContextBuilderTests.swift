@@ -106,6 +106,30 @@ struct InSessionCoachContextBuilderTests {
         #expect(block.contains("current_hr_bpm=unavailable"))
     }
 
+    @Test("session meta includes title rest timer and recovery")
+    func sessionMetaBlock() {
+        let snapshot = ActiveSessionSnapshot(
+            session: WorkoutSessionDraft(
+                title: "Pull",
+                startedAt: Date(),
+                status: .active,
+                source: .manual,
+                exercises: []
+            ),
+            recoveryState: .active,
+            restTimer: RestTimer(
+                id: "timer-1",
+                phase: .running,
+                endsAt: Date().addingTimeInterval(90),
+                defaultDurationSeconds: 90
+            )
+        )
+        let block = InSessionCoachContextBuilder.sessionMetaBlock(snapshot: snapshot)
+        #expect(block.contains("title=Pull"))
+        #expect(block.contains("rest_timer_phase=running"))
+        #expect(block.contains("recovery_state=active"))
+    }
+
     @Test("import context notes appear in exercise block")
     func importNotesParity() {
         let snapshot = ActiveSessionSnapshot(

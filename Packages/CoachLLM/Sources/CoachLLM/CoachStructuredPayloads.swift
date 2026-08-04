@@ -628,6 +628,90 @@ public enum WorkoutQueryPayloadParser: Sendable {
     }
 }
 
+public struct RecoveryQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case today
+        case day
+        case range
+        case sleepDetail
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "today", "now", "current":
+                self = .today
+            case "day", "onday", "on_day":
+                self = .day
+            case "range", "history", "trend", "trends":
+                self = .range
+            case "sleepdetail", "sleep_detail", "sleep", "stages":
+                self = .sleepDetail
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let helmDay: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.recoveryQueryV1.rawValue,
+        queryType: QueryType,
+        helmDay: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.helmDay = helmDay
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
+            queryType = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
+                  let flexible = QueryType(rawFlexible: raw) {
+            queryType = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .queryType,
+                in: container,
+                debugDescription: "recovery_query.v1 queryType must be today, day, range, or sleepDetail"
+            )
+        }
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
+            lookbackDays = intValue
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
+                  let intValue = Int(raw) {
+            lookbackDays = intValue
+        } else {
+            lookbackDays = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, queryType, helmDay, lookbackDays
+    }
+}
+
+public enum RecoveryQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> RecoveryQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .recoveryQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(RecoveryQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.recoveryQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
 public enum CoachChatChartSnapshot: Sendable {
     public static func text(for payload: ChartPayload) -> String {
         var lines = [
