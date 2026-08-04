@@ -297,7 +297,9 @@ public actor PlanPrescriptionEngine {
         )
         let mesocycleState = try loadOrCreateMesocycleState(
             targetMuscles: targetMuscles,
-            experience: experience
+            experience: experience,
+            history: history,
+            muscleMaps: muscleMaps
         )
         var trackedMesocycle = PlanKit.recordReadinessForReactiveDeload(
             state: mesocycleState,
@@ -402,7 +404,9 @@ public actor PlanPrescriptionEngine {
         )
         let mesocycleState = try loadOrCreateMesocycleState(
             targetMuscles: schedule.targetMuscles,
-            experience: TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
+            experience: TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate,
+            history: history,
+            muscleMaps: muscleMaps
         )
         return SessionDesignBriefBuilder.build(
             splitKind: schedule.splitKind,
@@ -450,7 +454,9 @@ public actor PlanPrescriptionEngine {
 
     private func loadOrCreateMesocycleState(
         targetMuscles: [MuscleGroup],
-        experience: TrainingExperience
+        experience: TrainingExperience,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap]
     ) throws -> MesocycleState {
         if let json = try persistence.plan.loadMesocycleStateJSON(),
            let data = json.data(using: .utf8),
@@ -460,9 +466,44 @@ public actor PlanPrescriptionEngine {
         }
 
         let muscles = Set(targetMuscles).sorted { $0.rawValue < $1.rawValue }
-        let state = PlanKit.makeInitialState(muscles: muscles, experience: experience)
+        let historical = historicalWeeklyHardSetAverages(
+            history: history,
+            muscleMaps: muscleMaps,
+            endingAt: history.weekStart
+        )
+        let state = PlanKit.makeInitialState(
+            muscles: muscles,
+            experience: experience,
+            historicalWeeklyHardSets: historical
+        )
         try persistMesocycleState(state)
         return state
+    }
+
+    /// Mean weekly hard-set totals over the prior 8 calendar weeks (weeks with any volume only).
+    private func historicalWeeklyHardSetAverages(
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        endingAt endWeekStart: HelmDay,
+        lookbackWeeks: Int = 8
+    ) -> [MuscleGroup: Double] {
+        var samples: [MuscleGroup: [Double]] = [:]
+        for weekOffset in 0 ..< lookbackWeeks {
+            let weekStart = endWeekStart.adding(days: -7 * weekOffset)
+            let ledger = PlanKit.weeklyHardSetTotals(
+                sessions: history.sessions,
+                muscleMaps: muscleMaps,
+                weekStart: weekStart
+            )
+            for (muscle, total) in ledger.totals where total > 0 {
+                samples[muscle, default: []].append(total)
+            }
+        }
+        return Dictionary(uniqueKeysWithValues: samples.compactMap { muscle, values in
+            guard !values.isEmpty else { return nil }
+            let mean = values.reduce(0, +) / Double(values.count)
+            return (muscle, mean)
+        })
     }
 
     private func persistMesocycleState(_ state: MesocycleState) throws {

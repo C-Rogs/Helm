@@ -2,8 +2,9 @@ import Foundation
 
 /// Estimates hard sets still on the calendar for each muscle ("scheduled" volume).
 ///
-/// Simulates upcoming sessions in order, mirroring prescription's remaining/sessions split
-/// so projected = logged + scheduled shows whether the 7-day window will land under MEV or over MRV.
+/// Simulates upcoming sessions in order using a per-muscle remaining/sessions split.
+/// This is a Trends projection heuristic, not a full MPSC replay. Slot floors and
+/// synergist caps live in SessionSetAllocator / HardSetAccounting for live prescription.
 public enum ScheduledVolumeForecast {
     /// Per-muscle scheduled hard-set totals for an ordered list of upcoming session muscle lists.
     ///

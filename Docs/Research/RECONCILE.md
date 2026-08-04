@@ -50,6 +50,9 @@ Replace 1-exercise-per-muscle prescriptions with a **Movement Pattern Session Co
 - Deload weekly target ≥ MEV.
 - Reactive full-week deload requires user confirm.
 
+- Weekly ledger `totals` remain raw direct+synergist; synergist cap applies when computing prescription remaining.
+- `ScheduledVolumeForecast` stays a Trends heuristic (per-muscle ceil split), not a full MPSC replay.
+
 ## Sources
 
 - `Docs/Research/0.rtf` … `3.rtf` (raw)
