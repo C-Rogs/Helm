@@ -37,5 +37,15 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("database retention") || prompt.contains("memory index unavailable"))
         #expect(prompt.contains("workout_query.v1"))
         #expect(prompt.contains("meal_query.v1"))
+        #expect(prompt.contains("recovery_query.v1"))
+    }
+
+    @Test("in-session coach shares main chat voice")
+    func inSessionSharesMainVoice() {
+        let prompt = CoachSystemPrompt.sessionAdjustmentV2
+        #expect(prompt.contains("same coach as in the main chat"))
+        #expect(prompt.contains("chat-length"))
+        #expect(!prompt.contains("terse, numbers-first answer"))
+        #expect(prompt.contains("current heart rate") || prompt.contains("logged sets"))
     }
 }

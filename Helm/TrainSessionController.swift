@@ -1553,7 +1553,12 @@ final class TrainSessionController {
                 provider: provider,
                 profile: profile,
                 context: context,
-                thread: coachThread
+                thread: coachThread,
+                liveVitals: InSessionLiveVitals.from(
+                    buffer: sessionHeartRateBuffer,
+                    currentBPM: WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM,
+                    sessionStartedAt: snapshot.session.startedAt
+                )
             )
 
             coachThread.messages.append(CoachMessage(role: .user, text: trimmed))

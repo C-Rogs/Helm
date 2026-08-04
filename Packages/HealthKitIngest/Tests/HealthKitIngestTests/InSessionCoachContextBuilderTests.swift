@@ -43,10 +43,67 @@ struct InSessionCoachContextBuilderTests {
             displayNames: ["bench_press": "Bench Press"]
         )
 
+        #expect(block.contains("session_progress:"))
         #expect(block.contains("80 kg"))
         #expect(block.contains("x 8"))
         #expect(block.contains("RPE 8"))
         #expect(block.contains("completed"))
+    }
+
+    @Test("set lines include RIR when logged")
+    func loggedRIR() {
+        let snapshot = ActiveSessionSnapshot(
+            session: WorkoutSessionDraft(
+                startedAt: Date(),
+                status: .active,
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        exerciseID: "bench_press",
+                        displayOrder: 0,
+                        exerciseMode: .weightReps,
+                        sets: [
+                            SetEntryDraft(
+                                setIndex: 0,
+                                status: .completed,
+                                mass: Mass(kilograms: 80),
+                                reps: 8,
+                                rpe: 8,
+                                rir: 2
+                            )
+                        ]
+                    )
+                ]
+            ),
+            recoveryState: .active
+        )
+
+        let block = InSessionCoachContextBuilder.sessionExerciseBlock(
+            snapshot: snapshot,
+            displayNames: ["bench_press": "Bench Press"]
+        )
+        #expect(block.contains("RIR 2"))
+    }
+
+    @Test("live vitals block includes HR when present")
+    func liveVitalsBlock() {
+        var buffer = SessionHeartRateBuffer()
+        buffer.record(bpm: 120, offsetSeconds: 10)
+        buffer.record(bpm: 130, offsetSeconds: 20)
+        let vitals = InSessionLiveVitals.from(
+            buffer: buffer,
+            currentBPM: 135,
+            sessionStartedAt: Date().addingTimeInterval(-120)
+        )
+        let block = InSessionCoachContextBuilder.liveVitalsBlock(vitals)
+        #expect(block.contains("current_hr_bpm=135"))
+        #expect(block.contains("session_avg_hr_bpm=125"))
+        #expect(block.contains("samples=2"))
+    }
+
+    @Test("live vitals mark HR unavailable when missing")
+    func liveVitalsUnavailable() {
+        let block = InSessionCoachContextBuilder.liveVitalsBlock(InSessionLiveVitals())
+        #expect(block.contains("current_hr_bpm=unavailable"))
     }
 
     @Test("import context notes appear in exercise block")

@@ -2,6 +2,53 @@ import Core
 import Foundation
 import Persistence
 
+/// Live vitals captured during an active Train session for in-session coach context.
+public struct InSessionLiveVitals: Sendable, Equatable {
+    public let currentHeartRateBPM: Int?
+    public let averageHeartRateBPM: Int?
+    public let sampleCount: Int
+    public let sessionElapsedSeconds: Int?
+
+    public init(
+        currentHeartRateBPM: Int? = nil,
+        averageHeartRateBPM: Int? = nil,
+        sampleCount: Int = 0,
+        sessionElapsedSeconds: Int? = nil
+    ) {
+        self.currentHeartRateBPM = currentHeartRateBPM
+        self.averageHeartRateBPM = averageHeartRateBPM
+        self.sampleCount = sampleCount
+        self.sessionElapsedSeconds = sessionElapsedSeconds
+    }
+
+    public static func from(
+        buffer: SessionHeartRateBuffer,
+        currentBPM: Int?,
+        sessionStartedAt: Date?,
+        now: Date = Date()
+    ) -> InSessionLiveVitals {
+        let samples = buffer.samples
+        let average: Int?
+        if samples.isEmpty {
+            average = nil
+        } else {
+            average = Int((Double(samples.map(\.bpm).reduce(0, +)) / Double(samples.count)).rounded())
+        }
+        let elapsed: Int?
+        if let sessionStartedAt {
+            elapsed = max(0, Int(now.timeIntervalSince(sessionStartedAt)))
+        } else {
+            elapsed = nil
+        }
+        return InSessionLiveVitals(
+            currentHeartRateBPM: currentBPM ?? samples.last?.bpm,
+            averageHeartRateBPM: average,
+            sampleCount: samples.count,
+            sessionElapsedSeconds: elapsed
+        )
+    }
+}
+
 /// Formats active-session state for in-session coach prompts.
 public enum InSessionCoachContextBuilder {
     public static func sessionExerciseBlock(
@@ -11,6 +58,16 @@ public enum InSessionCoachContextBuilder {
     ) -> String {
         let sortedExercises = snapshot.session.exercises.sorted { $0.displayOrder < $1.displayOrder }
         var lines: [String] = []
+
+        let completedSetCount = sortedExercises.reduce(0) { partial, exercise in
+            partial + exercise.sets.filter { $0.status == .completed }.count
+        }
+        let plannedSetCount = sortedExercises.reduce(0) { partial, exercise in
+            partial + exercise.sets.count
+        }
+        lines.append(
+            "session_progress: \(completedSetCount)/\(plannedSetCount) sets completed, \(sortedExercises.count) exercises"
+        )
 
         for (index, exercise) in sortedExercises.enumerated() {
             let label = ExerciseDisplayFormatter.friendlyName(
@@ -37,6 +94,24 @@ public enum InSessionCoachContextBuilder {
         return lines.joined(separator: "\n")
     }
 
+    public static func liveVitalsBlock(_ vitals: InSessionLiveVitals) -> String {
+        var lines: [String] = ["# Live session"]
+        if let elapsed = vitals.sessionElapsedSeconds {
+            let minutes = elapsed / 60
+            let seconds = elapsed % 60
+            lines.append("elapsed=\(minutes)m \(seconds)s")
+        }
+        if let current = vitals.currentHeartRateBPM {
+            lines.append("current_hr_bpm=\(current)")
+        } else {
+            lines.append("current_hr_bpm=unavailable")
+        }
+        if let average = vitals.averageHeartRateBPM, vitals.sampleCount > 0 {
+            lines.append("session_avg_hr_bpm=\(average) samples=\(vitals.sampleCount)")
+        }
+        return lines.joined(separator: "\n")
+    }
+
     public static func importContextNotes(from notes: String?) -> [String] {
         guard let notes else { return [] }
         return notes
@@ -49,14 +124,26 @@ public enum InSessionCoachContextBuilder {
         let status = set.status == .completed ? "completed" : set.status.rawValue
         var parts: [String] = ["set \(set.setIndex + 1) (\(status)):"]
 
+        if set.setType != .normal {
+            parts.append(set.setType.rawValue)
+        }
         if let mass = set.mass {
             parts.append(formatMass(mass.kilograms))
         }
         if let reps = set.reps {
             parts.append("x \(reps)")
         }
+        if let duration = set.durationSeconds, duration > 0 {
+            parts.append("\(duration)s")
+        }
+        if let distance = set.distanceKilometers, distance > 0 {
+            parts.append(String(format: "%.2f km", distance))
+        }
         if let rpe = set.rpe {
             parts.append("@ RPE \(formatNumber(rpe))")
+        }
+        if let rir = set.rir {
+            parts.append("RIR \(formatNumber(rir))")
         }
 
         if parts.count == 1 {

@@ -43,7 +43,7 @@ public struct PreStartCoachService: Sendable {
         }
 
         let prompt = """
-        Introduce today's prescribed session in 2-3 terse sentences.
+        Introduce today's prescribed session in chat-length prose (same coach voice as main chat).
         Title: \(brief.title)
         Summary: \(brief.summary)
         Rationale: \(brief.rationale.joined(separator: "; "))

@@ -133,7 +133,8 @@ public struct InSessionCoachService: Sendable {
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
         context: CoachContextDays,
-        thread: CoachThreadState = .empty
+        thread: CoachThreadState = .empty,
+        liveVitals: InSessionLiveVitals? = nil
     ) async throws -> CoachSessionProposal {
         let signpost = HelmSignpost(name: .inSessionCoachPropose, category: .coachLLM)
         let signpostID = signpost.makeSignpostID()
@@ -159,7 +160,8 @@ public struct InSessionCoachService: Sendable {
             snapshot: snapshot,
             profile: profile,
             context: context,
-            excludedExerciseIDs: excludedExerciseIDs
+            excludedExerciseIDs: excludedExerciseIDs,
+            liveVitals: liveVitals
         )
 
         let artefact = try await gemini.generateSessionAdjustment(
@@ -474,7 +476,8 @@ public struct InSessionCoachService: Sendable {
         snapshot: ActiveSessionSnapshot,
         profile: MemoryProfile,
         context: CoachContextDays,
-        excludedExerciseIDs: Set<String>
+        excludedExerciseIDs: Set<String>,
+        liveVitals: InSessionLiveVitals? = nil
     ) -> CoachPrompt {
         var contextBlock = ContextBuilder.build(
             profile: profile,
@@ -508,6 +511,11 @@ public struct InSessionCoachService: Sendable {
             }
             .map { "- \($0.id) | \($0.displayName)" }
             .joined(separator: "\n")
+
+        if let liveVitals {
+            let vitals = InSessionCoachContextBuilder.liveVitalsBlock(liveVitals)
+            contextBlock = contextBlock.isEmpty ? vitals : contextBlock + "\n\n" + vitals
+        }
 
         if let notes = snapshot.session.notes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !notes.isEmpty,
