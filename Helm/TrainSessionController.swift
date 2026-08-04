@@ -122,6 +122,8 @@ final class TrainSessionController {
     private var lastEncouragementGlyph: EncouragementGlyph?
     private var sessionNoteSaveTask: Task<Void, Never>?
     private var coachMessageTask: Task<Void, Never>?
+    private var proactiveCoachPeekClearTask: Task<Void, Never>?
+    private var proactiveCoachBannerClearTask: Task<Void, Never>?
     private var restTimerMonitorTask: Task<Void, Never>?
     private var isReconcilingRest = false
     private var isSyncingSideEffects = false
@@ -318,15 +320,29 @@ final class TrainSessionController {
         }
     }
 
+    /// Keeps Ask Coach bar single-line most of the time; peek text is brief.
+    private static let proactiveCoachPeekDisplayDuration: Duration = .seconds(6)
+    private static let proactiveCoachBannerDisplayDuration: Duration = .seconds(8)
+
     func setCoachPeekSnippet(_ snippet: String) {
         coachPeekSnippet = snippet
+        scheduleProactiveCoachPeekClear()
+    }
+
+    func clearCoachPeekSnippet() {
+        proactiveCoachPeekClearTask?.cancel()
+        proactiveCoachPeekClearTask = nil
+        coachPeekSnippet = nil
     }
 
     func setProactiveCoachBanner(_ message: String) {
         proactiveCoachBanner = message
+        scheduleProactiveCoachBannerClear()
     }
 
     func dismissProactiveCoachBanner() {
+        proactiveCoachBannerClearTask?.cancel()
+        proactiveCoachBannerClearTask = nil
         proactiveCoachBanner = nil
     }
 
@@ -2213,6 +2229,10 @@ final class TrainSessionController {
         excludedExerciseIDs = []
         undoStack = []
         adjustmentBanner = nil
+        proactiveCoachPeekClearTask?.cancel()
+        proactiveCoachPeekClearTask = nil
+        proactiveCoachBannerClearTask?.cancel()
+        proactiveCoachBannerClearTask = nil
         proactiveCoachBanner = nil
         coachPeekSnippet = nil
         didSurfaceRestOverrunProactive = false
@@ -2305,6 +2325,26 @@ final class TrainSessionController {
             try? await Task.sleep(for: .seconds(1.1))
             guard prCelebrationSetID == setID else { return }
             prCelebrationSetID = nil
+        }
+    }
+
+    private func scheduleProactiveCoachPeekClear() {
+        proactiveCoachPeekClearTask?.cancel()
+        proactiveCoachPeekClearTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.proactiveCoachPeekDisplayDuration)
+            guard !Task.isCancelled else { return }
+            coachPeekSnippet = nil
+            proactiveCoachPeekClearTask = nil
+        }
+    }
+
+    private func scheduleProactiveCoachBannerClear() {
+        proactiveCoachBannerClearTask?.cancel()
+        proactiveCoachBannerClearTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.proactiveCoachBannerDisplayDuration)
+            guard !Task.isCancelled else { return }
+            proactiveCoachBanner = nil
+            proactiveCoachBannerClearTask = nil
         }
     }
 
