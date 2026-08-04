@@ -123,6 +123,20 @@ public final class PrescriptionService {
         try await engine.loadTrainingPlan()
     }
 
+    public func pendingReactiveDeload() async throws -> Bool {
+        try await engine.pendingReactiveDeload()
+    }
+
+    public func confirmReactiveDeload() async throws {
+        try await engine.confirmReactiveDeload()
+        PrescriptionDayStore.clear(for: today())
+        await refresh(readiness: nil)
+    }
+
+    public func dismissReactiveDeload() async throws {
+        try await engine.dismissReactiveDeload()
+    }
+
     public func todaysPrescription(readiness: ReadinessScore?) async throws -> PrescribedSession {
         try await engine.computeSession(for: today(), readiness: readiness)
     }
@@ -157,6 +171,23 @@ public actor PlanPrescriptionEngine {
 
     public func loadTrainingPlan() throws -> StoredTrainingPlanSettings {
         try persistence.trainingPlan.load()
+    }
+
+    public func pendingReactiveDeload() throws -> Bool {
+        let state = try loadMesocycleStateSnapshot()
+        return state.pendingReactiveDeload
+    }
+
+    public func confirmReactiveDeload() throws {
+        var state = try loadMesocycleStateSnapshot()
+        state = PlanKit.confirmReactiveDeload(state)
+        try persistMesocycleState(state)
+    }
+
+    public func dismissReactiveDeload() throws {
+        var state = try loadMesocycleStateSnapshot()
+        state = PlanKit.dismissPendingReactiveDeload(state)
+        try persistMesocycleState(state)
     }
 
     public func saveTrainingPlan(_ settings: StoredTrainingPlanSettings) throws {
@@ -268,6 +299,10 @@ public actor PlanPrescriptionEngine {
             targetMuscles: targetMuscles,
             experience: experience
         )
+        var trackedMesocycle = PlanKit.recordReadinessForReactiveDeload(
+            state: mesocycleState,
+            band: readiness?.band
+        )
         let methodology = try methodologyPreferences()
         let durationBudget = SessionDurationBudget.from(minutes: settings.sessionDurationMinutes)
         let programTemplate = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
@@ -275,7 +310,7 @@ public actor PlanPrescriptionEngine {
         let profile = PrescriptionProfile(
             helmDay: day,
             phaseGoal: settings.phaseGoal,
-            mesocycleState: mesocycleState,
+            mesocycleState: trackedMesocycle,
             experience: experience,
             targetMuscles: targetMuscles,
             exerciseCatalog: catalog,
@@ -303,7 +338,7 @@ public actor PlanPrescriptionEngine {
             splitKind: schedule.splitKind,
             targetMuscles: targetMuscles,
             phaseGoal: settings.phaseGoal,
-            mesocycleState: mesocycleState,
+            mesocycleState: trackedMesocycle,
             totalSets: session.exercises.reduce(0) { $0 + $1.targetSets },
             exerciseCount: session.exercises.count,
             readiness: readiness,
@@ -321,7 +356,7 @@ public actor PlanPrescriptionEngine {
             exercises: session.exercises
         )
 
-        try persistMesocycleState(mesocycleState)
+        try persistMesocycleState(trackedMesocycle)
         try persistPlannedWorkouts(
             startingAt: day,
             emphasis: settings.phaseGoal.emphasis,
@@ -373,7 +408,7 @@ public actor PlanPrescriptionEngine {
             splitKind: schedule.splitKind,
             targetMuscles: schedule.targetMuscles,
             phaseGoal: settings.phaseGoal,
-            mesocycleState: mesocycleState,
+            mesocycleState: trackedMesocycle,
             totalSets: totalSets,
             exerciseCount: exerciseCount,
             readiness: readiness,
@@ -401,6 +436,16 @@ public actor PlanPrescriptionEngine {
             calendar: calendar
         )
         try persistence.plan.replacePlannedWorkouts(records)
+    }
+
+    private func loadMesocycleStateSnapshot() throws -> MesocycleState {
+        if let json = try persistence.plan.loadMesocycleStateJSON(),
+           let data = json.data(using: .utf8),
+           let decoded = try? jsonDecoder.decode(MesocycleState.self, from: data),
+           !decoded.muscles.isEmpty {
+            return decoded
+        }
+        return MesocycleState()
     }
 
     private func loadOrCreateMesocycleState(

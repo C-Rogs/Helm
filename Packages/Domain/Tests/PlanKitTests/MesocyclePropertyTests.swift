@@ -42,6 +42,13 @@ struct MesocyclePropertyTests {
         }
     }
 
+    @Test("deload target never drops below MEV even when half peak is lower")
+    func deloadNeverBelowMEV() {
+        let landmarks = VolumeLandmarks(mev: 10, mrv: 12)
+        let target = PlanKit.deloadWeeklyTarget(landmarks: landmarks, blockLength: 4)
+        #expect(target == landmarks.mev)
+    }
+
     @Test("deload week is strictly lighter than the peak accumulating week")
     func deloadInvariants() {
         for blockLength in 4 ... 6 {

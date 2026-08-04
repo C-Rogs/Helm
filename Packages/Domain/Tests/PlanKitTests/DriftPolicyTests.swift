@@ -30,6 +30,26 @@ struct DriftPolicyTests {
         #expect(adjustment.updatedCalendar.sessions.first?.status == .completed)
     }
 
+    @Test("one day late shifts session")
+    func oneDayLateShift() {
+        let plannedDay = day(2026, 7, 20)
+        let actualDay = day(2026, 7, 21)
+        let planned = PlannedCalendar(sessions: [
+            PlannedSession(id: "a", plannedDay: plannedDay, trainingLoad: 90)
+        ])
+        let actual = ActualCalendar(completedLog: ActualSessionLog(
+            id: "log-1",
+            plannedSessionID: "a",
+            actualDay: actualDay,
+            trainingLoad: 90
+        ))
+
+        let adjustment = PlanKit.resolveDrift(planned: planned, actual: actual, calendar: calendar)
+
+        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .shift })
+        #expect(adjustment.updatedCalendar.sessions.first?.plannedDay == actualDay)
+    }
+
     @Test("two days late shifts session")
     func twoDaysLateShift() {
         let plannedDay = day(2026, 7, 20)
@@ -52,8 +72,30 @@ struct DriftPolicyTests {
         #expect(session?.plannedDay == actualDay)
     }
 
-    @Test("five days late restructures and redistributes load")
-    func fiveDaysLateRestructure() {
+    @Test("two days late trims pending accessory load")
+    func twoDaysLateTrimsPendingLoad() {
+        let plannedDay = day(2026, 7, 20)
+        let actualDay = day(2026, 7, 22)
+        let planned = PlannedCalendar(sessions: [
+            PlannedSession(id: "a", plannedDay: plannedDay, trainingLoad: 100),
+            PlannedSession(id: "future", plannedDay: day(2026, 7, 24), trainingLoad: 100)
+        ])
+        let actual = ActualCalendar(completedLog: ActualSessionLog(
+            id: "log-1",
+            plannedSessionID: "a",
+            actualDay: actualDay,
+            trainingLoad: 100
+        ))
+
+        let adjustment = PlanKit.resolveDrift(planned: planned, actual: actual, calendar: calendar)
+        let future = adjustment.updatedCalendar.sessions.first { $0.id == "future" }
+
+        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .shift })
+        #expect(future?.trainingLoad == 80)
+    }
+
+    @Test("five days late completes without backfill redistribution")
+    func fiveDaysLateNoBackfill() {
         let plannedDay = day(2026, 7, 10)
         let actualDay = day(2026, 7, 15)
         let planned = PlannedCalendar(sessions: [
@@ -71,7 +113,27 @@ struct DriftPolicyTests {
 
         #expect(adjustment.resolutions.contains { $0.sessionID == "late" && $0.action == .restructure })
         let future = adjustment.updatedCalendar.sessions.first { $0.id == "future" }
-        #expect(future?.trainingLoad == 150)
+        #expect(future?.trainingLoad == 50)
+    }
+
+    @Test("four days late across ISO weeks skips session")
+    func fourDaysLateCrossWeekSkips() {
+        let plannedDay = day(2026, 7, 24)
+        let actualDay = day(2026, 7, 28)
+        let planned = PlannedCalendar(sessions: [
+            PlannedSession(id: "a", plannedDay: plannedDay, trainingLoad: 80)
+        ])
+        let actual = ActualCalendar(completedLog: ActualSessionLog(
+            id: "log-1",
+            plannedSessionID: "a",
+            actualDay: actualDay,
+            trainingLoad: 80
+        ))
+
+        let adjustment = PlanKit.resolveDrift(planned: planned, actual: actual, calendar: calendar)
+
+        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .skip })
+        #expect(adjustment.updatedCalendar.sessions.first?.status == .skipped)
     }
 
     @Test("out-of-order completion skips earlier pending sessions")

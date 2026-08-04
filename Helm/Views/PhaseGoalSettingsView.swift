@@ -19,6 +19,8 @@ struct PhaseGoalSettingsView: View {
     @State private var isSaving = false
     @State private var isShowingCalculator = false
     @State private var loadedSettings = StoredTrainingPlanSettings.default
+    @State private var pendingReactiveDeload = false
+    @State private var reactiveDeloadMessage: String?
 
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
@@ -148,6 +150,25 @@ struct PhaseGoalSettingsView: View {
                 .foregroundStyle(HelmColor.fgMuted)
         }
 
+        if pendingReactiveDeload {
+            Section("Recovery") {
+                Text("Helm detected sustained low readiness. Confirm to start a reactive deload week at about half of peak volume with MEV floors held.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                Button("Start reactive deload week") {
+                    Task { await confirmReactiveDeload() }
+                }
+                Button("Not now", role: .cancel) {
+                    Task { await dismissReactiveDeload() }
+                }
+                if let reactiveDeloadMessage {
+                    Text(reactiveDeloadMessage)
+                        .font(HelmTypography.caption)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+            }
+        }
+
         if let saveMessage {
             Section {
                 Text(saveMessage)
@@ -241,6 +262,7 @@ struct PhaseGoalSettingsView: View {
         do {
             settings = try await prescriptionService.currentTrainingPlan()
             loadedSettings = settings
+            pendingReactiveDeload = try await prescriptionService.pendingReactiveDeload()
             if let rate = settings.phaseGoal.weeklyRateKg {
                 weeklyRateText = String(rate)
             } else {
@@ -249,6 +271,30 @@ struct PhaseGoalSettingsView: View {
             emphasisText = settings.phaseGoal.emphasis ?? ""
         } catch {
             saveMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func confirmReactiveDeload() async {
+        do {
+            try await prescriptionService.confirmReactiveDeload()
+            pendingReactiveDeload = false
+            reactiveDeloadMessage = "Reactive deload week confirmed. Today's session was re-planned."
+            HapticEngine.shared.play(.phaseChange)
+            PlanBootstrap.refreshPrescription()
+        } catch {
+            reactiveDeloadMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func dismissReactiveDeload() async {
+        do {
+            try await prescriptionService.dismissReactiveDeload()
+            pendingReactiveDeload = false
+            reactiveDeloadMessage = "Reactive deload dismissed for now."
+        } catch {
+            reactiveDeloadMessage = error.localizedDescription
         }
     }
 

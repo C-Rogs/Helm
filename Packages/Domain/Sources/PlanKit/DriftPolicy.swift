@@ -7,10 +7,11 @@ import Foundation
 //
 // | Days late | Action |
 // |-----------|--------|
-// | 0         | keep — mark completed on the planned day |
-// | 1–2       | shift — move the session to `actualDay` |
+// | 0         | keep: mark completed on the planned day |
+// | 1         | shift: move the session to `actualDay` |
+// | 2         | shift: move session; trim pending accessory load by 20% |
 // | 3–4       | shift when `plannedDay` and `actualDay` share the same ISO week; otherwise skip |
-// | 5+        | restructure — complete on `actualDay` and redistribute this session's load across remaining pending sessions |
+// | 5+        | late completion on `actualDay`; skip earlier pending sessions; no volume backfill |
 //
 // Out-of-order logging: completing a session while earlier sessions are still pending skips every earlier pending session.
 //
@@ -80,6 +81,8 @@ enum AcuteChronicWorkload {
 }
 
 enum DriftPolicyEngine {
+    static let accessoryTrimFraction = 0.20
+
   static func resolveDrift(
         planned: PlannedCalendar,
         actual: ActualCalendar,
@@ -148,6 +151,9 @@ enum DriftPolicyEngine {
             )
 
         case .shift:
+            if lateness == 2 {
+                trimAccessoryLoadOnPending(in: &updated, excluding: index)
+            }
             updated.sessions[index].plannedDay = log.actualDay
             updated.sessions[index].status = .shifted
             resolutions.append(
@@ -170,7 +176,6 @@ enum DriftPolicyEngine {
             )
 
         case .restructure:
-            redistributeLoad(fromSessionAt: index, in: &updated)
             updated.sessions[index].plannedDay = log.actualDay
             updated.sessions[index].status = .completed
             resolutions.append(
@@ -199,7 +204,7 @@ enum DriftPolicyEngine {
         switch lateness {
         case 0:
             return .keep
-        case 1...2:
+        case 1, 2:
             return .shift
         case 3...4:
             if HelmDayMath.sameISOWeek(plannedDay, actualDay, calendar: calendar) {
@@ -211,15 +216,15 @@ enum DriftPolicyEngine {
         }
     }
 
-    private static func redistributeLoad(fromSessionAt index: Int, in planned: inout PlannedCalendar) {
-        let load = planned.sessions[index].trainingLoad
-        let pendingIndices = planned.sessions.indices.filter { i in
-            i != index && planned.sessions[i].status == .pending
-        }
-        guard !pendingIndices.isEmpty else { return }
-        let share = load / Double(pendingIndices.count)
-        for i in pendingIndices {
-            planned.sessions[i].trainingLoad += share
+    private static func trimAccessoryLoadOnPending(
+        in planned: inout PlannedCalendar,
+        excluding completedIndex: Int,
+        fraction: Double = accessoryTrimFraction
+    ) {
+        let scale = max(0, 1 - fraction)
+        for index in planned.sessions.indices where index != completedIndex {
+            guard planned.sessions[index].status == .pending else { continue }
+            planned.sessions[index].trainingLoad *= scale
         }
     }
 }

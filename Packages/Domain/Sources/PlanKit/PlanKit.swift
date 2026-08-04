@@ -9,9 +9,14 @@ public enum PlanKit {
     /// Seed MEV/MRV landmarks from training experience before tolerance data refines them.
     public static func seedLandmarks(
         muscle: MuscleGroup,
-        experience: TrainingExperience
+        experience: TrainingExperience,
+        historicalWeeklyHardSets: Double? = nil
     ) -> VolumeLandmarks {
-        MesocycleEngine.seedLandmarks(muscle: muscle, experience: experience)
+        MesocycleEngine.seedLandmarks(
+            muscle: muscle,
+            experience: experience,
+            historicalWeeklyHardSets: historicalWeeklyHardSets
+        )
     }
 
     /// Refine landmarks from logged tolerance signals at the end of a block.
@@ -25,6 +30,31 @@ public enum PlanKit {
     /// Weekly hard-set target for a muscle given its current mesocycle position.
     public static func weeklyHardSetTarget(for muscleState: MuscleMesocycleState) -> Int {
         MesocycleEngine.weeklyHardSetTarget(for: muscleState)
+    }
+
+    /// Scheduled deload target: max(MEV, round(0.5 * peak week)).
+    public static func deloadWeeklyTarget(landmarks: VolumeLandmarks, blockLength: Int) -> Int {
+        MesocycleEngine.deloadWeeklyTarget(landmarks: landmarks, blockLength: blockLength)
+    }
+
+    public static func recordReadinessForReactiveDeload(
+        state: MesocycleState,
+        band: ReadinessBand?,
+        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:]
+    ) -> MesocycleState {
+        ReactiveDeloadPolicy.recordReadinessDay(
+            state: state,
+            band: band,
+            toleranceByMuscle: toleranceByMuscle
+        )
+    }
+
+    public static func confirmReactiveDeload(_ state: MesocycleState) -> MesocycleState {
+        ReactiveDeloadPolicy.confirmReactiveDeload(state)
+    }
+
+    public static func dismissPendingReactiveDeload(_ state: MesocycleState) -> MesocycleState {
+        ReactiveDeloadPolicy.dismissPending(state)
     }
 
     /// Hard sets still on the calendar for each muscle (logged + upcoming session simulation).
@@ -44,28 +74,41 @@ public enum PlanKit {
     public static func makeInitialState(
         muscles: [MuscleGroup],
         experience: TrainingExperience,
-        blockLengthWeeks: Int = 5
+        blockLengthWeeks: Int = 5,
+        historicalWeeklyHardSets: [MuscleGroup: Double] = [:]
     ) -> MesocycleState {
         MesocycleEngine.makeInitialState(
             muscles: muscles,
             experience: experience,
-            blockLengthWeeks: blockLengthWeeks
+            blockLengthWeeks: blockLengthWeeks,
+            historicalWeeklyHardSets: historicalWeeklyHardSets
         )
     }
 
     /// Advance every muscle one week; deload weeks reset the block and refine landmarks.
     public static func advanceWeek(
         _ state: MesocycleState,
-        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:]
+        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:],
+        experience: TrainingExperience = .intermediate,
+        historicalWeeklyHardSets: [MuscleGroup: Double] = [:]
     ) -> MesocycleState {
-        MesocycleEngine.advanceWeek(state, toleranceByMuscle: toleranceByMuscle)
+        MesocycleEngine.advanceWeek(
+            state,
+            toleranceByMuscle: toleranceByMuscle,
+            experience: experience,
+            historicalWeeklyHardSets: historicalWeeklyHardSets
+        )
     }
 
     // MARK: - Progression
 
     /// Per-lift progression from logged set history (Epley e1RM, working weight, rep targets).
-    public static func progression(for exerciseID: String, history: [LoggedSet]) -> LiftProgression {
-        ProgressionEngine.progression(for: exerciseID, history: history)
+    public static func progression(
+        for exerciseID: String,
+        history: [LoggedSet],
+        muscleMap: ExerciseMuscleMap? = nil
+    ) -> LiftProgression {
+        ProgressionEngine.progression(for: exerciseID, history: history, muscleMap: muscleMap)
     }
 
     /// Epley estimated 1RM for a single set.

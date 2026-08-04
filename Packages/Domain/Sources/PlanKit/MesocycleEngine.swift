@@ -20,7 +20,8 @@ enum MesocycleEngine {
 
     static func seedLandmarks(
         muscle: MuscleGroup,
-        experience: TrainingExperience
+        experience: TrainingExperience,
+        historicalWeeklyHardSets: Double? = nil
     ) -> VolumeLandmarks {
         let base = baseLandmarks[muscle] ?? (6, 16)
         let scale: Double = switch experience {
@@ -28,8 +29,18 @@ enum MesocycleEngine {
         case .intermediate: 1.0
         case .advanced: 1.1
         }
-        let mev = max(2, Int((Double(base.mev) * scale).rounded()))
-        let mrv = max(mev, Int((Double(base.mrv) * scale).rounded()))
+        var mev = max(2, Int((Double(base.mev) * scale).rounded()))
+        var mrv = max(mev, Int((Double(base.mrv) * scale).rounded()))
+
+        if let historical = historicalWeeklyHardSets, historical > 0 {
+            let clamped = min(Double(base.mrv) * 1.15, max(Double(base.mev) * 0.75, historical))
+            let seededMEV = max(2, Int((clamped * 0.75).rounded()))
+            let seededMRV = max(seededMEV + 2, Int((clamped * 1.15).rounded()))
+            mev = max(mev, seededMEV)
+            mrv = max(mrv, seededMRV)
+            mrv = min(mrv, Int((Double(base.mrv) * scale * 1.2).rounded()))
+        }
+
         return VolumeLandmarks(mev: mev, mrv: mrv)
     }
 
@@ -64,13 +75,7 @@ enum MesocycleEngine {
         let landmarks = muscleState.landmarks
         switch muscleState.phase {
         case .deload:
-            let peak = accumulatingTarget(
-                week: muscleState.blockLengthWeeks - 1,
-                landmarks: landmarks,
-                blockLength: muscleState.blockLengthWeeks
-            )
-            let reduced = Int((Double(peak) * deloadVolumeFraction).rounded())
-            return max(landmarks.mev, reduced)
+            return deloadWeeklyTarget(landmarks: landmarks, blockLength: muscleState.blockLengthWeeks)
         case .accumulating:
             return accumulatingTarget(
                 week: muscleState.currentWeek,
@@ -78,6 +83,17 @@ enum MesocycleEngine {
                 blockLength: muscleState.blockLengthWeeks
             )
         }
+    }
+
+    /// Scheduled deload: max(MEV, round(0.5 * peak week)).
+    static func deloadWeeklyTarget(landmarks: VolumeLandmarks, blockLength: Int) -> Int {
+        let peak = accumulatingTarget(
+            week: blockLength - 1,
+            landmarks: landmarks,
+            blockLength: blockLength
+        )
+        let reduced = Int((Double(peak) * deloadVolumeFraction).rounded())
+        return max(landmarks.mev, reduced)
     }
 
     static func accumulatingTarget(
@@ -99,11 +115,16 @@ enum MesocycleEngine {
     static func makeInitialState(
         muscles: [MuscleGroup],
         experience: TrainingExperience,
-        blockLengthWeeks: Int = 5
+        blockLengthWeeks: Int = 5,
+        historicalWeeklyHardSets: [MuscleGroup: Double] = [:]
     ) -> MesocycleState {
         var state = MesocycleState()
         for muscle in muscles {
-            let landmarks = seedLandmarks(muscle: muscle, experience: experience)
+            let landmarks = seedLandmarks(
+                muscle: muscle,
+                experience: experience,
+                historicalWeeklyHardSets: historicalWeeklyHardSets[muscle]
+            )
             state.muscles[muscle] = MuscleMesocycleState(
                 landmarks: landmarks,
                 blockLengthWeeks: blockLengthWeeks
@@ -114,15 +135,28 @@ enum MesocycleEngine {
 
     static func advanceWeek(
         _ state: MesocycleState,
-        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:]
+        toleranceByMuscle: [MuscleGroup: ToleranceSignals] = [:],
+        experience: TrainingExperience = .intermediate,
+        historicalWeeklyHardSets: [MuscleGroup: Double] = [:]
     ) -> MesocycleState {
         var next = state
         for (muscle, muscleState) in state.muscles {
             if muscleState.phase == .deload {
                 let signals = toleranceByMuscle[muscle] ?? ToleranceSignals()
-                let refined = refineLandmarks(muscleState.landmarks, signals: signals)
+                var landmarks = refineLandmarks(muscleState.landmarks, signals: signals)
+                if let historical = historicalWeeklyHardSets[muscle] {
+                    let reseeded = seedLandmarks(
+                        muscle: muscle,
+                        experience: experience,
+                        historicalWeeklyHardSets: historical
+                    )
+                    landmarks = VolumeLandmarks(
+                        mev: max(landmarks.mev, reseeded.mev),
+                        mrv: max(landmarks.mrv, reseeded.mrv)
+                    )
+                }
                 next.muscles[muscle] = MuscleMesocycleState(
-                    landmarks: refined,
+                    landmarks: landmarks,
                     blockLengthWeeks: muscleState.blockLengthWeeks,
                     currentWeek: 1
                 )

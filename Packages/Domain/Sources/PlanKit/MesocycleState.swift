@@ -34,8 +34,38 @@ public struct MuscleMesocycleState: Sendable, Hashable, Codable {
 /// Programme-wide mesocycle state keyed by muscle.
 public struct MesocycleState: Sendable, Hashable, Codable {
     public var muscles: [MuscleGroup: MuscleMesocycleState]
+    /// Reactive deload proposed by the engine; requires user confirm before deload week applies.
+    public var pendingReactiveDeload: Bool
+    /// Consecutive training days logged in the depleted readiness band.
+    public var consecutiveDepletedDays: Int
 
-    public init(muscles: [MuscleGroup: MuscleMesocycleState] = [:]) {
+    public init(
+        muscles: [MuscleGroup: MuscleMesocycleState] = [:],
+        pendingReactiveDeload: Bool = false,
+        consecutiveDepletedDays: Int = 0
+    ) {
         self.muscles = muscles
+        self.pendingReactiveDeload = pendingReactiveDeload
+        self.consecutiveDepletedDays = consecutiveDepletedDays
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case muscles
+        case pendingReactiveDeload
+        case consecutiveDepletedDays
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        muscles = try container.decode([MuscleGroup: MuscleMesocycleState].self, forKey: .muscles)
+        pendingReactiveDeload = try container.decodeIfPresent(Bool.self, forKey: .pendingReactiveDeload) ?? false
+        consecutiveDepletedDays = try container.decodeIfPresent(Int.self, forKey: .consecutiveDepletedDays) ?? 0
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(muscles, forKey: .muscles)
+        try container.encode(pendingReactiveDeload, forKey: .pendingReactiveDeload)
+        try container.encode(consecutiveDepletedDays, forKey: .consecutiveDepletedDays)
     }
 }

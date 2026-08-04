@@ -10,10 +10,12 @@ enum PrescriptionEngine {
     ) -> PrescribedSession {
         let gating = ReadinessGating.effect(for: readiness)
         let phaseMultiplier = phaseVolumeMultiplier(for: profile.phaseGoal.phase)
+        let readinessVolumeScale = gating.usesOrderedVolumeTrim ? 1.0 : gating.volumeMultiplier
+        let volumeMultiplier = readinessVolumeScale * phaseMultiplier
         let muscleMaps = Dictionary(uniqueKeysWithValues: profile.exerciseCatalog.map {
             ($0.exerciseID, $0.muscleMap)
         })
-        let weeklyLedger = HardSetAccounting.weeklyHardSetTotals(
+        let weeklyBreakdown = HardSetAccounting.weeklyVolumeBreakdown(
             sessions: history.sessions,
             muscleMaps: muscleMaps,
             weekStart: history.weekStart
@@ -24,6 +26,11 @@ enum PrescriptionEngine {
         let isDeload = profile.targetMuscles.contains { muscle in
             profile.mesocycleState.muscles[muscle]?.phase == .deload
         }
+        let thinSession = SessionComposer.allowsThinSession(
+            budget: profile.durationBudget,
+            readinessBand: readiness?.band,
+            isDeload: isDeload
+        )
         let slots = SessionComposer.slots(
             dayKind: dayKind,
             budget: profile.durationBudget,
@@ -35,29 +42,21 @@ enum PrescriptionEngine {
         var remainingByMuscle: [MuscleGroup: Double] = [:]
         for muscle in SessionComposer.primaryMuscles(in: slots) {
             guard let muscleState = profile.mesocycleState.muscles[muscle] else {
-                // Seed-less muscle (e.g. rear-delt shoulders on pull): use a light isolation default.
                 remainingByMuscle[muscle] = Double(profile.durationBudget.maxSetsPerSlot)
                 continue
             }
             let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
-            let doneThisWeek = weeklyLedger.totals[muscle, default: 0]
-            remainingByMuscle[muscle] = max(0, Double(weeklyTarget) - doneThisWeek)
+            let breakdown = weeklyBreakdown[muscle] ?? MuscleVolumeBreakdown(direct: 0, synergist: 0)
+            remainingByMuscle[muscle] = HardSetAccounting.remainingWeeklyHardSets(
+                weeklyTarget: weeklyTarget,
+                breakdown: breakdown
+            )
         }
 
-        var slotsPerMuscle: [MuscleGroup: Int] = [:]
-        for slot in slots {
-            slotsPerMuscle[slot.primaryMuscle, default: 0] += 1
-        }
-
-        var exercises: [PrescribedExercise] = []
-        var order = 0
+        var candidates: [SlotAllocationCandidate] = []
         var selectedExerciseIDs: Set<String> = []
-        var sessionSets = 0
-        let maxSessionSets = profile.durationBudget.maxTotalSets
 
         for slot in slots {
-            if sessionSets >= maxSessionSets { break }
-
             guard let selection = ExerciseSelectionEngine.select(
                 for: slot,
                 catalog: profile.exerciseCatalog,
@@ -66,65 +65,63 @@ enum PrescriptionEngine {
                 selectionBias: profile.selectionBias,
                 familiarExerciseIDs: profile.familiarExerciseIDs
             ) else {
-                if slot.required { continue }
                 continue
             }
+            selectedExerciseIDs.insert(selection.exercise.exerciseID)
+            candidates.append(SlotAllocationCandidate(
+                slot: slot,
+                exercise: selection.exercise,
+                rationale: selection.rationale,
+                evidenceIDs: selection.evidenceIDs
+            ))
+        }
 
-            let catalogExercise = selection.exercise
-            let muscle = slot.primaryMuscle
-            let remaining = remainingByMuscle[muscle, default: Double(profile.durationBudget.maxSetsPerSlot)]
-            let muscleSlotCount = max(1, slotsPerMuscle[muscle, default: 1])
-            let baseSets = max(
-                1,
-                Int(ceil(remaining / Double(max(profile.remainingSessionsThisWeek, 1)) / Double(muscleSlotCount)))
-            )
-            let roleScaled: Double = switch slot.role {
-            case .primary: 1.0
-            case .secondary: 0.85
-            case .isolation: 0.75
-            }
-            var gatedSets = PrescriptionBounds.clampSets(
-                Int((Double(baseSets) * roleScaled * gating.volumeMultiplier * phaseMultiplier).rounded())
-            )
-            gatedSets = min(gatedSets, profile.durationBudget.maxSetsPerSlot)
-            gatedSets = min(gatedSets, max(1, maxSessionSets - sessionSets))
+        let allocations = SessionSetAllocator.allocate(
+            candidates: candidates,
+            budget: profile.durationBudget,
+            thinSession: thinSession || isDeload,
+            volumeMultiplier: volumeMultiplier,
+            remainingByMuscle: remainingByMuscle
+        )
 
-            selectedExerciseIDs.insert(catalogExercise.exerciseID)
-            // Consume roughly one slot's share so later slots for same muscle shrink.
-            remainingByMuscle[muscle] = max(0, remaining - Double(gatedSets))
-            slotsPerMuscle[muscle, default: 1] = max(1, (slotsPerMuscle[muscle] ?? 1) - 1)
+        var exercises: [PrescribedExercise] = []
+        var exerciseRoles: [String: PatternSlotRole] = [:]
+        var order = 0
+        for allocation in allocations {
+            let catalogExercise = allocation.candidate.exercise
+            let slot = allocation.candidate.slot
 
             let progression = ProgressionEngine.progression(
                 for: catalogExercise.exerciseID,
-                history: history.loggedSets
+                history: history.loggedSets,
+                muscleMap: catalogExercise.muscleMap
             )
             let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
 
             exercises.append(PrescribedExercise(
                 exerciseID: catalogExercise.exerciseID,
                 order: order,
-                targetSets: gatedSets,
+                targetSets: allocation.sets,
                 targetRepMin: progression.targetRepMin,
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
                 targetRPE: targetRPE,
-                rationale: selection.rationale,
-                evidenceIDs: selection.evidenceIDs
+                rationale: allocation.candidate.rationale,
+                evidenceIDs: allocation.candidate.evidenceIDs
             ))
+            exerciseRoles[catalogExercise.exerciseID] = slot.role
             order += 1
-            sessionSets += gatedSets
         }
 
-        // If catalog was too thin for required density, fall back to legacy one-per-muscle fill.
-        let thinOK = SessionComposer.allowsThinSession(
-            budget: profile.durationBudget,
-            readinessBand: readiness?.band,
-            isDeload: isDeload
-        )
-        if exercises.count < profile.durationBudget.minimumExerciseFloor, !thinOK {
+        let maxSessionSets = profile.durationBudget.maxTotalSets
+        if exercises.count < profile.durationBudget.minimumExerciseFloor, !thinSession {
+            let weeklyLedger = HardSetAccounting.weeklyHardSetTotals(
+                sessions: history.sessions,
+                muscleMaps: muscleMaps,
+                weekStart: history.weekStart
+            )
             exercises = legacyMuscleFill(
                 profile: profile,
-                readiness: readiness,
                 history: history,
                 weeklyLedger: weeklyLedger,
                 gating: gating,
@@ -132,12 +129,48 @@ enum PrescriptionEngine {
                 excluding: selectedExerciseIDs,
                 startingOrder: order,
                 existing: exercises,
-                sessionSets: &sessionSets,
-                maxSessionSets: maxSessionSets
+                maxSessionSets: maxSessionSets,
+                exerciseRoles: &exerciseRoles
             )
         }
 
-        return PrescribedSession(helmDay: profile.helmDay, exercises: exercises)
+        let weeklyLedger = HardSetAccounting.weeklyHardSetTotals(
+            sessions: history.sessions,
+            muscleMaps: muscleMaps,
+            weekStart: history.weekStart
+        )
+        return autoregulatedSession(
+            helmDay: profile.helmDay,
+            exercises: exercises,
+            gating: gating,
+            profile: profile,
+            muscleMaps: muscleMaps,
+            weeklyLedger: weeklyLedger,
+            exerciseRoles: exerciseRoles
+        )
+    }
+
+    private static func autoregulatedSession(
+        helmDay: HelmDay,
+        exercises: [PrescribedExercise],
+        gating: ReadinessGatingEffect,
+        profile: PrescriptionProfile,
+        muscleMaps: [String: ExerciseMuscleMap],
+        weeklyLedger: WeeklyHardSetLedger,
+        exerciseRoles: [String: PatternSlotRole]
+    ) -> PrescribedSession {
+        let session = PrescribedSession(helmDay: helmDay, exercises: exercises)
+        return SessionAutoregulator.apply(
+            session: session,
+            gating: gating,
+            context: SessionAutoregulationContext(
+                exerciseRoles: exerciseRoles,
+                muscleMaps: muscleMaps,
+                mesocycleState: profile.mesocycleState,
+                weeklyLedger: weeklyLedger,
+                remainingSessionsThisWeek: profile.remainingSessionsThisWeek
+            )
+        )
     }
 
     static func bestExercise(
@@ -160,7 +193,6 @@ enum PrescriptionEngine {
 
     private static func legacyMuscleFill(
         profile: PrescriptionProfile,
-        readiness: ReadinessScore?,
         history: PrescriptionHistory,
         weeklyLedger: WeeklyHardSetLedger,
         gating: ReadinessGatingEffect,
@@ -168,13 +200,17 @@ enum PrescriptionEngine {
         excluding: Set<String>,
         startingOrder: Int,
         existing: [PrescribedExercise],
-        sessionSets: inout Int,
-        maxSessionSets: Int
+        maxSessionSets: Int,
+        exerciseRoles: inout [String: PatternSlotRole]
     ) -> [PrescribedExercise] {
-        _ = readiness
         var exercises = existing
         var order = startingOrder
         var selected = excluding
+        var sessionSets = exercises.reduce(0) { $0 + $1.targetSets }
+        let readinessVolumeScale = gating.usesOrderedVolumeTrim ? 1.0 : gating.volumeMultiplier
+        let volumeMultiplier = readinessVolumeScale * phaseMultiplier
+        let thinSession = false
+
         for muscle in profile.targetMuscles {
             if sessionSets >= maxSessionSets { break }
             guard let muscleState = profile.mesocycleState.muscles[muscle] else { continue }
@@ -190,17 +226,20 @@ enum PrescriptionEngine {
             let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
             let doneThisWeek = weeklyLedger.totals[muscle, default: 0]
             let remaining = max(0, Double(weeklyTarget) - doneThisWeek)
-            let baseSets = max(1, Int(ceil(remaining / Double(profile.remainingSessionsThisWeek))))
+            let bounds = SessionSetAllocator.roleBounds(role: .primary, thinSession: thinSession)
             var gatedSets = PrescriptionBounds.clampSets(
-                Int((Double(baseSets) * gating.volumeMultiplier * phaseMultiplier).rounded())
+                Int((Double(bounds.min) * volumeMultiplier).rounded())
             )
             gatedSets = min(gatedSets, profile.durationBudget.maxSetsPerSlot)
-            gatedSets = min(gatedSets, max(1, maxSessionSets - sessionSets))
+            gatedSets = min(gatedSets, max(bounds.min, maxSessionSets - sessionSets))
+            _ = remaining
 
             selected.insert(selection.exercise.exerciseID)
+            exerciseRoles[selection.exercise.exerciseID] = .primary
             let progression = ProgressionEngine.progression(
                 for: selection.exercise.exerciseID,
-                history: history.loggedSets
+                history: history.loggedSets,
+                muscleMap: selection.exercise.muscleMap
             )
             exercises.append(PrescribedExercise(
                 exerciseID: selection.exercise.exerciseID,
