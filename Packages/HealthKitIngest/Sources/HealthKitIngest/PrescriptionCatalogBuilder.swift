@@ -1,6 +1,5 @@
 import Core
 import Foundation
-import Persistence
 import PlanKit
 
 /// Maps persisted exercise rows into PlanKit catalog entries.
@@ -31,21 +30,29 @@ enum PrescriptionCatalogBuilder {
     private static func muscleMap(for row: ExerciseCatalogRow) -> ExerciseMuscleMap? {
         var contributions: [ExerciseMuscleContribution] = []
         if let primary = row.primaryMuscleGroup, let muscle = mapMuscle(primary) {
-            contributions.append(ExerciseMuscleContribution(muscle: muscle, fraction: 0.7))
+            contributions.append(ExerciseMuscleContribution(
+                muscle: muscle,
+                fraction: 1.0,
+                tier: .primary
+            ))
         }
         let secondaryMuscles = row.secondaryMuscleGroups.compactMap(mapMuscle)
         if secondaryMuscles.isEmpty, contributions.isEmpty {
             return nil
         }
         if secondaryMuscles.isEmpty {
-            contributions[0] = ExerciseMuscleContribution(muscle: contributions[0].muscle, fraction: 1.0)
-        } else {
-            let secondaryFraction = (1.0 - contributions.reduce(0.0) { $0 + $1.fraction }) / Double(secondaryMuscles.count)
-            for muscle in secondaryMuscles {
-                contributions.append(ExerciseMuscleContribution(muscle: muscle, fraction: max(0.05, secondaryFraction)))
-            }
-            normalizeContributions(&contributions)
+            return ExerciseMuscleMap(exerciseID: row.id, contributions: contributions)
         }
+
+        for (index, muscle) in secondaryMuscles.enumerated() {
+            let tier: MuscleContributionTier = index == 0 ? .majorSynergist : .minorSynergist
+            contributions.append(ExerciseMuscleContribution(
+                muscle: muscle,
+                fraction: tier.credit,
+                tier: tier
+            ))
+        }
+        normalizeContributions(&contributions)
         return ExerciseMuscleMap(exerciseID: row.id, contributions: contributions)
     }
 
@@ -53,7 +60,11 @@ enum PrescriptionCatalogBuilder {
         let total = contributions.reduce(0.0) { $0 + $1.fraction }
         guard total > 0 else { return }
         contributions = contributions.map {
-            ExerciseMuscleContribution(muscle: $0.muscle, fraction: $0.fraction / total)
+            ExerciseMuscleContribution(
+                muscle: $0.muscle,
+                fraction: $0.fraction / total,
+                tier: $0.tier
+            )
         }
     }
 

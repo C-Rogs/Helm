@@ -6,11 +6,27 @@ public struct ExerciseMuscleContribution: Sendable, Hashable, Codable {
     public let muscle: MuscleGroup
     /// Share of the set credited to this muscle (0...1); contributions per exercise should sum to 1.
     public let fraction: Double
+    /// Explicit ledger tier; when nil, inferred from `fraction`.
+    public let tier: MuscleContributionTier?
 
-    public init(muscle: MuscleGroup, fraction: Double) {
+    public init(
+        muscle: MuscleGroup,
+        fraction: Double,
+        tier: MuscleContributionTier? = nil
+    ) {
         precondition(fraction > 0 && fraction <= 1, "fraction must be in (0, 1]")
         self.muscle = muscle
         self.fraction = fraction
+        self.tier = tier
+    }
+
+    /// Hard-set credit for one logged working set toward this muscle.
+    public var effectiveCredit: Double {
+        (tier ?? MuscleContributionTier.inferred(from: fraction)).credit
+    }
+
+    public var isDirect: Bool {
+        effectiveCredit >= MuscleContributionTier.primary.credit
     }
 }
 
@@ -36,9 +52,94 @@ public struct WeeklyHardSetLedger: Sendable, Hashable, Codable {
     }
 }
 
+/// Per-muscle direct vs synergist volume for synergist-cap accounting.
+public struct MuscleVolumeBreakdown: Sendable, Hashable, Codable {
+    public let direct: Double
+    public let synergist: Double
+
+    public init(direct: Double, synergist: Double) {
+        self.direct = direct
+        self.synergist = synergist
+    }
+
+    /// Effective weekly volume after applying the synergist ceiling.
+    public func effective(
+        weeklyTarget: Int,
+        synergistCapFraction: Double = 0.5
+    ) -> Double {
+        let cap = Double(weeklyTarget) * synergistCapFraction
+        return direct + min(synergist, cap)
+    }
+}
+
 enum HardSetAccounting {
+    /// Indirect fractional sets may satisfy at most this share of weekly target volume.
+    static let synergistWeeklyCapFraction = 0.5
+
     static func isHardSet(_ set: LoggedSet) -> Bool {
         !set.isWarmup && set.reps != nil
+    }
+
+    static func effectiveVolume(
+        direct: Double,
+        synergist: Double,
+        weeklyTarget: Int,
+        synergistCapFraction: Double = synergistWeeklyCapFraction
+    ) -> Double {
+        let cap = Double(weeklyTarget) * synergistCapFraction
+        return direct + min(synergist, cap)
+    }
+
+    static func weeklyVolumeBreakdown(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        weekStart: HelmDay
+    ) -> [MuscleGroup: MuscleVolumeBreakdown] {
+        volumeBreakdown(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            on: weekDays(startingAt: weekStart)
+        )
+    }
+
+    private static func volumeBreakdown(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        on days: Set<HelmDay>
+    ) -> [MuscleGroup: MuscleVolumeBreakdown] {
+        var direct: [MuscleGroup: Double] = [:]
+        var synergist: [MuscleGroup: Double] = [:]
+
+        for session in sessions where days.contains(session.helmDay) {
+            for set in session.sets where isHardSet(set) {
+                guard let map = muscleMaps[set.exerciseID] else { continue }
+                for contribution in map.contributions {
+                    let credit = contribution.effectiveCredit
+                    guard credit > 0 else { continue }
+                    if contribution.isDirect {
+                        direct[contribution.muscle, default: 0] += credit
+                    } else {
+                        synergist[contribution.muscle, default: 0] += credit
+                    }
+                }
+            }
+        }
+
+        let muscles = Set(direct.keys).union(synergist.keys)
+        return Dictionary(uniqueKeysWithValues: muscles.map { muscle in
+            (muscle, MuscleVolumeBreakdown(
+                direct: direct[muscle, default: 0],
+                synergist: synergist[muscle, default: 0]
+            ))
+        })
+    }
+
+    /// Weekly hard sets still available for prescription after synergist-cap accounting.
+    static func remainingWeeklyHardSets(
+        weeklyTarget: Int,
+        breakdown: MuscleVolumeBreakdown
+    ) -> Double {
+        max(0, Double(weeklyTarget) - breakdown.effective(weeklyTarget: weeklyTarget))
     }
 
     static func rollingDays(endingAt endDay: HelmDay, count: Int = 7) -> Set<HelmDay> {
@@ -81,16 +182,14 @@ enum HardSetAccounting {
         muscleMaps: [String: ExerciseMuscleMap],
         weekStart: HelmDay
     ) -> WeeklyHardSetLedger {
-        let weekDays = weekDays(startingAt: weekStart)
+        let breakdown = weeklyVolumeBreakdown(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            weekStart: weekStart
+        )
         var totals: [MuscleGroup: Double] = [:]
-
-        for session in sessions where weekDays.contains(session.helmDay) {
-            for set in session.sets where isHardSet(set) {
-                guard let map = muscleMaps[set.exerciseID] else { continue }
-                for contribution in map.contributions {
-                    totals[contribution.muscle, default: 0] += contribution.fraction
-                }
-            }
+        for (muscle, volume) in breakdown {
+            totals[muscle] = volume.direct + volume.synergist
         }
 
         return WeeklyHardSetLedger(weekStart: weekStart, totals: totals)
@@ -104,15 +203,14 @@ enum HardSetAccounting {
     ) -> WeeklyHardSetLedger {
         let windowStart = endDay.adding(days: -(windowDays - 1))
         let windowDaysSet = rollingDays(endingAt: endDay, count: windowDays)
+        let breakdown = volumeBreakdown(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            on: windowDaysSet
+        )
         var totals: [MuscleGroup: Double] = [:]
-
-        for session in sessions where windowDaysSet.contains(session.helmDay) {
-            for set in session.sets where isHardSet(set) {
-                guard let map = muscleMaps[set.exerciseID] else { continue }
-                for contribution in map.contributions {
-                    totals[contribution.muscle, default: 0] += contribution.fraction
-                }
-            }
+        for (muscle, volume) in breakdown {
+            totals[muscle] = volume.direct + volume.synergist
         }
 
         return WeeklyHardSetLedger(weekStart: windowStart, totals: totals)

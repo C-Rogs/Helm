@@ -111,6 +111,12 @@ struct SessionComposerTests {
             history: PrescriptionHistory(loggedSets: [], sessions: [], weekStart: weekStart)
         )
         #expect(session.exercises.count >= 4)
+        #expect(session.exercises.allSatisfy { $0.targetSets >= 2 })
+        let primaryPullIDs = Set(session.exercises.map(\.exerciseID))
+            .intersection(["lat_pulldown", "seated_cable_row"])
+        #expect(primaryPullIDs.count >= 2)
+        #expect(session.exercises.filter { primaryPullIDs.contains($0.exerciseID) }
+            .allSatisfy { $0.targetSets >= 3 })
         #expect(session.exercises.allSatisfy { $0.targetSets <= 4 })
         let ids = Set(session.exercises.map(\.exerciseID))
         #expect(ids.contains("lat_pulldown") || ids.contains("straight_arm_pulldown"))

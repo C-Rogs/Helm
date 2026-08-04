@@ -78,8 +78,8 @@ struct HardSetAccountingTests {
         let map = ExerciseMuscleMap(
             exerciseID: "incline_press",
             contributions: [
-                ExerciseMuscleContribution(muscle: .chest, fraction: 0.7),
-                ExerciseMuscleContribution(muscle: .shoulders, fraction: 0.3)
+                ExerciseMuscleContribution(muscle: .chest, fraction: 0.7, tier: .primary),
+                ExerciseMuscleContribution(muscle: .shoulders, fraction: 0.3, tier: .majorSynergist)
             ]
         )
 
@@ -110,8 +110,42 @@ struct HardSetAccountingTests {
             weekStart: HelmDay(year: 2026, month: 3, day: 10)
         )
 
-        #expect(ledger.totals[.chest] == 1.4)
-        #expect(ledger.totals[.shoulders] == 0.6)
+        #expect(ledger.totals[.chest] == 2.0)
+        #expect(ledger.totals[.shoulders] == 1.0)
+    }
+
+    @Test("synergist cap limits effective weekly volume toward target")
+    func synergistCap() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "row",
+            contributions: [
+                ExerciseMuscleContribution(muscle: .back, fraction: 1.0, tier: .primary),
+                ExerciseMuscleContribution(muscle: .biceps, fraction: 0.5, tier: .majorSynergist)
+            ]
+        )
+        let session = WorkoutSession(
+            helmDay: HelmDay(year: 2026, month: 3, day: 10),
+            startedAt: Date(),
+            sets: (1 ... 12).map { index in
+                LoggedSet(
+                    exerciseID: "row",
+                    sequence: index,
+                    reps: 10,
+                    completedAt: Date(),
+                    isWarmup: false
+                )
+            }
+        )
+        let breakdown = HardSetAccounting.weeklyVolumeBreakdown(
+            sessions: [session],
+            muscleMaps: ["row": map],
+            weekStart: HelmDay(year: 2026, month: 3, day: 10)
+        )
+        let biceps = breakdown[.biceps]!
+        #expect(biceps.direct == 0)
+        #expect(biceps.synergist == 6.0)
+        #expect(biceps.effective(weeklyTarget: 12) == 6.0)
+        #expect(HardSetAccounting.remainingWeeklyHardSets(weeklyTarget: 12, breakdown: biceps) == 6.0)
     }
 
     @Test("warmup sets do not count toward weekly volume")

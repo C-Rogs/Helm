@@ -24,10 +24,51 @@ public struct LiftProgression: Sendable, Hashable, Codable {
     }
 }
 
+/// Compound vs isolation progression style.
+enum LiftKind: Sendable, Hashable {
+    case compound
+    case isolation
+
+    var repRange: (min: Int, max: Int) {
+        switch self {
+        case .compound: (8, 12)
+        case .isolation: (10, 15)
+        }
+    }
+
+    var weightBumpFraction: Double {
+        switch self {
+        case .compound: 0.025
+        case .isolation: 0.0125
+        }
+    }
+}
+
 enum ProgressionEngine {
     static let defaultRepMin = 8
     static let defaultRepMax = 12
-    static let weightBumpFraction = 0.025
+
+    static func liftKind(exerciseID: String, muscleMap: ExerciseMuscleMap?) -> LiftKind {
+        let id = exerciseID.lowercased()
+        let isolationKeywords = [
+            "curl", "extension", "fly", "flye", "raise", "kickback",
+            "pullover", "pushdown", "crunch", "calf"
+        ]
+        let compoundKeywords = [
+            "press", "squat", "deadlift", "row", "pullup", "pull-up", "lunge", "rdl"
+        ]
+        if isolationKeywords.contains(where: { id.contains($0) }) {
+            return .isolation
+        }
+        if compoundKeywords.contains(where: { id.contains($0) }) {
+            return .compound
+        }
+        if let muscleMap, muscleMap.contributions.count == 1,
+           muscleMap.contributions[0].isDirect {
+            return .isolation
+        }
+        return .compound
+    }
 
     /// Epley estimated 1RM from a single logged set.
     static func estimatedOneRepMax(mass: Mass, reps: Int) -> Mass {
@@ -43,7 +84,15 @@ enum ProgressionEngine {
         }.max(by: { $0.kilograms < $1.kilograms })
     }
 
-    static func progression(for exerciseID: String, history: [LoggedSet]) -> LiftProgression {
+    static func progression(
+        for exerciseID: String,
+        history: [LoggedSet],
+        muscleMap: ExerciseMuscleMap? = nil
+    ) -> LiftProgression {
+        let kind = liftKind(exerciseID: exerciseID, muscleMap: muscleMap)
+        let repMin = kind.repRange.min
+        let repMax = kind.repRange.max
+
         let exerciseSets = history
             .filter { $0.exerciseID == exerciseID }
             .sorted { $0.completedAt < $1.completedAt }
@@ -56,14 +105,12 @@ enum ProgressionEngine {
                 exerciseID: exerciseID,
                 estimatedOneRepMax: e1rm,
                 workingWeight: nil,
-                targetRepMin: defaultRepMin,
-                targetRepMax: defaultRepMax
+                targetRepMin: repMin,
+                targetRepMax: repMax
             )
         }
 
         let currentWeight = latest.mass!
-        let repMin = defaultRepMin
-        let repMax = defaultRepMax
 
         let latestSessionSets = workingSets.filter {
             abs($0.completedAt.timeIntervalSince(latest.completedAt)) < 1
@@ -80,7 +127,7 @@ enum ProgressionEngine {
 
         let nextWeight: Mass
         if hitTopOfRange && recoveredEnough {
-            nextWeight = Mass(kilograms: currentWeight.kilograms * (1.0 + weightBumpFraction))
+            nextWeight = Mass(kilograms: currentWeight.kilograms * (1.0 + kind.weightBumpFraction))
         } else {
             nextWeight = currentWeight
         }

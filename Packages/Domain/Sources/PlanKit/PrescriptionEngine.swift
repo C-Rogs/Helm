@@ -98,10 +98,20 @@ enum PrescriptionEngine {
             )
             let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
 
+            let bounds = SessionSetAllocator.roleBounds(
+                role: slot.role,
+                thinSession: thinSession || isDeload
+            )
+            var sets = allocation.sets
+            if phaseMultiplier < 1.0, !gating.usesOrderedVolumeTrim {
+                sets = max(bounds.min > 2 ? bounds.min - 1 : bounds.min, Int((Double(sets) * phaseMultiplier).rounded()))
+            }
+            sets = PrescriptionBounds.clampSets(sets)
+
             exercises.append(PrescribedExercise(
                 exerciseID: catalogExercise.exerciseID,
                 order: order,
-                targetSets: allocation.sets,
+                targetSets: sets,
                 targetRepMin: progression.targetRepMin,
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
