@@ -30,7 +30,7 @@ Replace 1-exercise-per-muscle prescriptions with a **Movement Pattern Session Co
 | Phase | Scope | Status |
 |---|---|---|
 | **v1.1** | MPSC for PPL; duration budget; program template enum | done (`74c2e25`) |
-| **v1.2** | Set allocation floors; fractional synergist ledger; progression-by-lift; V_base | committing |
+| **v1.2** | Set allocation floors; fractional synergist ledger; progression-by-lift; V_base | done (`206c6fb`, follow-up `0f3e198`) |
 | **v1.3** | Readiness precedence; drift harden; deload ≥ MEV; reactive deload confirm | done (`8c48696`) |
 | **v2** | EmphasisProfile UI; UL/FB slot tables; methodology→knob map; Thread 4 nutrition | pending |
 
