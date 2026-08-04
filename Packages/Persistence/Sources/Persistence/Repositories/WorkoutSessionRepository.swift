@@ -393,6 +393,25 @@ public struct WorkoutSessionRepository: Sendable {
         }
     }
 
+    /// Soft-deletes a completed session so it no longer appears in history or trends.
+    public func delete(id: String, timestamp: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard let status: String = try String.fetchOne(
+                db,
+                sql: "SELECT status FROM workout_session WHERE id = ? AND deleted_at IS NULL",
+                arguments: [id]
+            ), status == WorkoutSessionStatus.completed.rawValue else {
+                throw PersistenceError.recordNotFound("completed session \(id)")
+            }
+
+            try db.execute(
+                sql: "UPDATE workout_session SET deleted_at = ?, updated_at = ? WHERE id = ?",
+                arguments: [now, now, id]
+            )
+        }
+    }
+
     public struct E1RMHistoryPoint: Sendable, Hashable {
         public let helmDay: HelmDay
         public let achievedAt: Date

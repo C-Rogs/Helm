@@ -35,8 +35,14 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
     public let readinessTeaser: String
     public let heartRateSamples: [SessionHeartRateSample]
     public let setMarkers: [SessionSetMarker]
+    public let exerciseMarkers: [SessionExerciseMarker]
+    public let musicSegments: [SessionMusicSegment]
 
     public var hasHeartRateSeries: Bool { !heartRateSamples.isEmpty }
+    public var hasMusicSegments: Bool { !musicSegments.isEmpty }
+    public var hasTimelineData: Bool {
+        hasHeartRateSeries || !setMarkers.isEmpty || !exerciseMarkers.isEmpty || hasMusicSegments
+    }
 
     public init(
         setCount: Int,
@@ -46,7 +52,9 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         muscleMovements: [MuscleLandmarkDelta],
         readinessTeaser: String,
         heartRateSamples: [SessionHeartRateSample] = [],
-        setMarkers: [SessionSetMarker] = []
+        setMarkers: [SessionSetMarker] = [],
+        exerciseMarkers: [SessionExerciseMarker] = [],
+        musicSegments: [SessionMusicSegment] = []
     ) {
         self.setCount = setCount
         self.totalVolumeKilograms = totalVolumeKilograms
@@ -56,11 +64,15 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         self.readinessTeaser = readinessTeaser
         self.heartRateSamples = heartRateSamples
         self.setMarkers = setMarkers
+        self.exerciseMarkers = exerciseMarkers
+        self.musicSegments = musicSegments
     }
 
-    public func withHeartRate(
+    public func withSessionTimeline(
         samples: [SessionHeartRateSample],
-        setMarkers: [SessionSetMarker]
+        setMarkers: [SessionSetMarker],
+        exerciseMarkers: [SessionExerciseMarker] = [],
+        musicSegments: [SessionMusicSegment] = []
     ) -> WorkoutFinishSummary {
         WorkoutFinishSummary(
             setCount: setCount,
@@ -70,8 +82,17 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
             muscleMovements: muscleMovements,
             readinessTeaser: readinessTeaser,
             heartRateSamples: samples,
-            setMarkers: setMarkers
+            setMarkers: setMarkers,
+            exerciseMarkers: exerciseMarkers,
+            musicSegments: musicSegments
         )
+    }
+
+    public func withHeartRate(
+        samples: [SessionHeartRateSample],
+        setMarkers: [SessionSetMarker]
+    ) -> WorkoutFinishSummary {
+        withSessionTimeline(samples: samples, setMarkers: setMarkers)
     }
 }
 

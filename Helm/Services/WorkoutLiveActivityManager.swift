@@ -129,14 +129,6 @@ final class WorkoutLiveActivityManager {
         }
     }
 
-    func endAllForTermination() {
-        DispatchQueue.main.async {
-            Task { @MainActor in
-                await self.endAll()
-            }
-        }
-    }
-
     func reconcileOrphanedActivities(hasActiveSession: Bool) async {
         guard !hasActiveSession else { return }
         await endAll()

@@ -48,6 +48,7 @@ final class WorkoutSessionSideEffects {
         targetSummary: String? = nil,
         heartRateBPM: Int? = nil
     ) async {
+        await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         musicCapture.startPolling(sessionID: snapshot.session.id)
@@ -70,8 +71,8 @@ final class WorkoutSessionSideEffects {
         await liveActivity.reconcileOrphanedActivities(hasActiveSession: hasActiveSession)
     }
 
-    func endLiveActivitiesForTermination() {
-        liveActivity.endAllForTermination()
+    func endLiveActivitiesForTermination() async {
+        await liveActivity.endAll()
     }
 
     func onSessionUpdated(

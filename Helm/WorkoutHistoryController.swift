@@ -63,6 +63,15 @@ final class WorkoutHistoryController {
         }
     }
 
+    func deleteSession(id: String) {
+        do {
+            try persistence.workoutSessions.delete(id: id)
+            refresh()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
     func createTemplate(from session: WorkoutSessionDraft, name: String) {
         do {
             _ = try persistence.workoutTemplates.createFromSession(session: session, name: name)

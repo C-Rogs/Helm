@@ -9,7 +9,13 @@ protocol NowPlayingReading: Sendable {
 
 struct MediaPlayerNowPlayingReader: NowPlayingReading {
     func currentSnapshot() -> NowPlayingSnapshot? {
-        let info = MPNowPlayingInfoCenter.default().nowPlayingInfo
+        if let fromCenter = snapshot(from: MPNowPlayingInfoCenter.default().nowPlayingInfo) {
+            return fromCenter
+        }
+        return snapshot(from: MPMusicPlayerController.systemMusicPlayer.nowPlayingItem)
+    }
+
+    private func snapshot(from info: [String: Any]?) -> NowPlayingSnapshot? {
         guard let info, !info.isEmpty else { return nil }
 
         let title = info[MPMediaItemPropertyTitle] as? String
@@ -20,14 +26,35 @@ struct MediaPlayerNowPlayingReader: NowPlayingReading {
         let rate = info[MPNowPlayingInfoPropertyPlaybackRate] as? Double
 
         let snapshot = NowPlayingSnapshot(
-            title: title,
-            artist: artist,
-            album: album,
-            genre: genre,
+            title: nonEmpty(title),
+            artist: nonEmpty(artist),
+            album: nonEmpty(album),
+            genre: nonEmpty(genre),
             bpm: bpm.flatMap { $0 > 0 ? $0 : nil },
             playbackRate: rate
         )
         return snapshot.isEmpty ? nil : snapshot
+    }
+
+    private func snapshot(from item: MPMediaItem?) -> NowPlayingSnapshot? {
+        guard let item else { return nil }
+        let snapshot = NowPlayingSnapshot(
+            title: nonEmpty(item.title),
+            artist: nonEmpty(item.artist),
+            album: nonEmpty(item.albumTitle),
+            genre: nonEmpty(item.genre),
+            bpm: item.beatsPerMinute > 0 ? Double(item.beatsPerMinute) : nil,
+            playbackRate: {
+                let rate = MPMusicPlayerController.systemMusicPlayer.currentPlaybackRate
+                return Double(rate)
+            }()
+        )
+        return snapshot.isEmpty ? nil : snapshot
+    }
+
+    private func nonEmpty(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 }
 
@@ -36,6 +63,8 @@ final class WorkoutMusicCaptureService {
     private let reader: any NowPlayingReading
     private let persistence: PersistenceStore
     private var lastTitleArtistKey: String?
+    private var pollTask: Task<Void, Never>?
+    private let pollIntervalSeconds: UInt64 = 15
 
     init(
         persistence: PersistenceStore,
@@ -65,7 +94,25 @@ final class WorkoutMusicCaptureService {
         try? persistence.workoutMusicSamples.insert(sample)
     }
 
+    func startPolling(sessionID: String) {
+        stopPolling()
+        pollTask = Task { [weak self] in
+            guard let self else { return }
+            while !Task.isCancelled {
+                self.sampleIfChanged(sessionID: sessionID)
+                try? await Task.sleep(nanoseconds: self.pollIntervalSeconds * 1_000_000_000)
+                guard !Task.isCancelled else { break }
+            }
+        }
+    }
+
+    func stopPolling() {
+        pollTask?.cancel()
+        pollTask = nil
+    }
+
     func reset() {
+        stopPolling()
         lastTitleArtistKey = nil
     }
 }

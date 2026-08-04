@@ -32,6 +32,7 @@ struct HelmApp: App {
             MethodologyBootstrap.start()
             ProactiveBootstrap.start()
             WatchReadinessBootstrap.start()
+            RestTimerSoundPlayer.shared.prewarmSession()
         }
     }
 

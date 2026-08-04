@@ -18,8 +18,25 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
     }
 
     func applicationWillTerminate(_ application: UIApplication) {
+        final class TaskIDBox: @unchecked Sendable {
+            var id = UIBackgroundTaskIdentifier.invalid
+        }
+        let box = TaskIDBox()
+        box.id = application.beginBackgroundTask(withName: "helm.endLiveActivities") {
+            let taskID = box.id
+            guard taskID != .invalid else { return }
+            application.endBackgroundTask(taskID)
+            box.id = .invalid
+        }
         Task { @MainActor in
-            TrainBootstrap.sideEffects.endLiveActivitiesForTermination()
+            defer {
+                let taskID = box.id
+                if taskID != .invalid {
+                    application.endBackgroundTask(taskID)
+                    box.id = .invalid
+                }
+            }
+            await TrainBootstrap.sideEffects.endLiveActivitiesForTermination()
         }
     }
 }
@@ -62,11 +79,16 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
         let categoryIdentifier = content.categoryIdentifier
 
         // `storePendingSessionID` is nonisolated (UserDefaults only). Safe on this queue.
+        // Do not run UI/recovery here - schedule the same deferred MainActor path used on
+        // scene activation (covers already-active taps and onChange-before-stash races).
         if RestNotificationLaunchPayload.isRestTimerNotification(categoryIdentifier: categoryIdentifier) {
             if let sessionID = RestNotificationLaunchPayload.sessionID(fromUserInfo: content.userInfo) {
                 RestNotificationRouter.storePendingSessionID(sessionID)
             } else {
                 RestNotificationRouter.storePendingSessionID(RestNotificationRouter.pendingTapWithoutSessionID)
+            }
+            Task { @MainActor in
+                await RestNotificationRouter.processPendingIfForeground()
             }
         }
 

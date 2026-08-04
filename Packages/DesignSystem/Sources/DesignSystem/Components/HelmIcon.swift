@@ -20,6 +20,7 @@ public enum HelmIcon: String, CaseIterable, Sendable {
     case trash = "trash"
     case plus = "plus.circle.fill"
     case send = "arrow.up.circle.fill"
+    case mic = "mic.fill"
     case refresh = "arrow.clockwise"
     case photo = "photo.on.rectangle"
     case camera = "camera.fill"

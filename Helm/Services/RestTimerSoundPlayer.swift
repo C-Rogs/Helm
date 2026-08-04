@@ -12,7 +12,6 @@ final class RestTimerSoundPlayer {
     static let bellResourceName = "boxing-bell"
 
     private var bellPlayer: AVAudioPlayer?
-    private var sessionConfigured = false
     private let logger = Logger(subsystem: "com.cameronro.helm", category: "Logger")
 
     init() {
@@ -79,7 +78,8 @@ final class RestTimerSoundPlayer {
     }
 
     private func configureSessionIfNeeded() {
-        guard !sessionConfigured else { return }
+        // Always re-assert category + active. Chat dictation may have switched to
+        // `.record` and deactivated the shared session after `prewarmSession()`.
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(
@@ -88,7 +88,6 @@ final class RestTimerSoundPlayer {
                 options: [.mixWithOthers]
             )
             try session.setActive(true)
-            sessionConfigured = true
         } catch {
             logger.error("Rest timer audio session failed: \(error.localizedDescription, privacy: .public)")
         }

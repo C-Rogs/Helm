@@ -79,6 +79,12 @@ public enum HelmLayout {
     public static let trainScrollBottomInset: CGFloat = HelmSpacing.lg * 5
     public static let numpadHeight: CGFloat = HelmNumpadMetrics.preferredHeight
     public static let trainScrollBottomInsetWithNumpad: CGFloat = numpadHeight + HelmSpacing.xl
+    public static let trainRPEWheelRowHeight: CGFloat = 44
+    public static let trainRPEWheelVisibleRows: CGFloat = 3
+    public static let trainRPEWheelHeight: CGFloat = trainRPEWheelRowHeight * trainRPEWheelVisibleRows
+    /// Dismiss chip + wheel + Done button clearance for RPE overlay.
+    public static let trainScrollBottomInsetWithRPE: CGFloat =
+        trainRPEWheelHeight + HelmSpacing.xl * 2 + HelmSpacing.sm * 4 + trainRPEWheelRowHeight
     /// Soft fade into bottom session chrome. Keep short so exercise list stays readable.
     public static let trainBottomFogHeight: CGFloat = HelmSpacing.xl + HelmSpacing.xs
     /// Extra scroll clearance for compact rest dock (progress + timer row + optional up-next).

@@ -86,8 +86,8 @@ struct WorkoutFinishSummaryBuilderTests {
         #expect(summary.setMarkers.isEmpty)
     }
 
-    @Test("Attaches heart rate samples and set markers")
-    func attachesHeartRateSeries() {
+    @Test("Attaches session timeline series")
+    func attachesSessionTimeline() {
         let base = WorkoutFinishSummary(
             setCount: 2,
             totalVolumeKilograms: 500,
@@ -96,15 +96,27 @@ struct WorkoutFinishSummaryBuilderTests {
             muscleMovements: [],
             readinessTeaser: "Moderate load; readiness should hold steady."
         )
-        let summary = base.withHeartRate(
+        let summary = base.withSessionTimeline(
             samples: [
                 SessionHeartRateSample(offsetSeconds: 0, bpm: 120),
                 SessionHeartRateSample(offsetSeconds: 60, bpm: 140)
             ],
-            setMarkers: [SessionSetMarker(offsetSeconds: 60, setNumber: 1)]
+            setMarkers: [SessionSetMarker(offsetSeconds: 60, setNumber: 1)],
+            exerciseMarkers: [SessionExerciseMarker(offsetSeconds: 60, shortName: "Bench")],
+            musicSegments: [
+                SessionMusicSegment(
+                    startOffsetSeconds: 0,
+                    endOffsetSeconds: 120,
+                    title: "Track",
+                    artist: "Artist"
+                )
+            ]
         )
         #expect(summary.hasHeartRateSeries)
+        #expect(summary.hasMusicSegments)
         #expect(summary.heartRateSamples.map(\.bpm) == [120, 140])
         #expect(summary.setMarkers.map(\.setNumber) == [1])
+        #expect(summary.exerciseMarkers.map(\.shortName) == ["Bench"])
+        #expect(summary.musicSegments.count == 1)
     }
 }

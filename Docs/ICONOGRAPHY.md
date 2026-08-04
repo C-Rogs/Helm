@@ -37,6 +37,7 @@ Dashboard and section eyebrows use the arc gauge symbol (`gauge.with.dots.needle
 | `trash` | `trash` | inline | Destructive row action |
 | `plus` | `plus.circle.fill` | inline | Add exercise |
 | `send` | `arrow.up.circle.fill` | action | Chat composer |
+| `mic` | `mic.fill` | action | Chat food dictation |
 | `refresh` | `arrow.clockwise` | inline | Pull to refresh toolbar |
 | `photo` | `photo.on.rectangle` | inline | Photo meal picker |
 | `camera` | `camera.fill` | inline | Camera meal capture |

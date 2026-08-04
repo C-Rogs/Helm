@@ -267,7 +267,7 @@ Exact dedup thresholds are implementation-tunable; fixture tests required.
 - Restaurant menu lookup
 - Water tracking
 - AI meal suggestions
-- Voice logging
+- Voice logging outside Chat coach dictate
 
 ---
 

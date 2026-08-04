@@ -80,6 +80,49 @@ struct WorkoutSessionHistoryTests {
         #expect(refetched.exercises[0].sets[0].mass?.kilograms == 105)
     }
 
+    @Test("soft-deletes completed sessions from history")
+    func softDeleteCompletedSession() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: squatID,
+            canonicalName: "squat (barbell)",
+            displayName: "Squat (Barbell)",
+            exerciseMode: .weightReps
+        )
+
+        let completedAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let session = WorkoutSessionDraft(
+            id: "session-delete",
+            title: "Test Day",
+            startedAt: completedAt,
+            endedAt: completedAt,
+            exercises: [
+                WorkoutSessionExerciseDraft(
+                    id: "wse-delete-1",
+                    exerciseID: squatID,
+                    displayOrder: 0,
+                    exerciseMode: .weightReps,
+                    sets: [
+                        SetEntryDraft(
+                            id: "set-delete-1",
+                            setIndex: 0,
+                            mass: Mass(kilograms: 100),
+                            reps: 5,
+                            completedAt: completedAt
+                        )
+                    ]
+                )
+            ]
+        )
+        try store.workoutSessions.insert(session)
+        #expect(try store.workoutSessions.listSummaries(limit: 10).count == 1)
+
+        try store.workoutSessions.delete(id: session.id)
+
+        #expect(try store.workoutSessions.listSummaries(limit: 10).isEmpty)
+        #expect(try store.workoutSessions.fetch(id: session.id) == nil)
+    }
+
     @Test("starts active session from template with prefilled sets")
     func templateStartPrefill() throws {
         let store = try PersistenceStore.inMemory()

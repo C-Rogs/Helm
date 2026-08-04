@@ -2,8 +2,6 @@ import SwiftUI
 
 public struct HelmRPESlider: View {
     @Binding public var value: Double
-    public let range: ClosedRange<Double>
-    public let step: Double
 
     public init(
         value: Binding<Double>,
@@ -11,48 +9,12 @@ public struct HelmRPESlider: View {
         step: Double = 0.5
     ) {
         _value = value
-        self.range = range
-        self.step = step
+        _ = range
+        _ = step
     }
 
     public var body: some View {
-        VStack(spacing: HelmSpacing.sm) {
-            Text(formattedValue)
-                .helmType(.bigNumber)
-                .frame(maxWidth: .infinity)
-
-            Slider(
-                value: Binding(
-                    get: { value },
-                    set: { newValue in
-                        let snappedValue = snapped(newValue)
-                        let previous = value
-                        value = snappedValue
-                        if snappedValue != previous {
-                            HapticEngine.shared.play(.selection)
-                        }
-                    }
-                ),
-                in: range,
-                step: step
-            )
-            .tint(HelmColor.accent)
-            .padding(.horizontal, HelmSpacing.sm)
-        }
-        .padding(.vertical, HelmSpacing.sm)
-        .background(HelmColor.surface)
-    }
-
-    private var formattedValue: String {
-        value.truncatingRemainder(dividingBy: 1) == 0
-            ? String(format: "%.0f", value)
-            : String(format: "%.1f", value)
-    }
-
-    private func snapped(_ raw: Double) -> Double {
-        let steps = (raw - range.lowerBound) / step
-        let rounded = (steps.rounded() * step) + range.lowerBound
-        return min(max(rounded, range.lowerBound), range.upperBound)
+        HelmRPEWheelPicker(value: $value)
     }
 }
 

@@ -503,13 +503,28 @@ final class TrainSessionController {
                         from: session,
                         startedAt: session.startedAt
                     )
+                    let exerciseIDs = session.exercises.map(\.exerciseID)
+                    let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
+                    let exerciseMarkers = SessionExerciseMarkerBuilder.markers(
+                        from: session,
+                        startedAt: session.startedAt,
+                        displayNames: displayNames
+                    )
+                    let musicSamples = (try? persistence.workoutMusicSamples.list(sessionID: finishedID)) ?? []
+                    let musicSegments = SessionMusicSegmentBuilder.build(
+                        samples: musicSamples,
+                        startedAt: session.startedAt,
+                        endedAt: session.endedAt ?? Date()
+                    )
                     if let summary = try? WorkoutFinishSummaryAssembler.build(
                         session: session,
                         store: persistence
                     ) {
-                        lastFinishSummary = summary.withHeartRate(
+                        lastFinishSummary = summary.withSessionTimeline(
                             samples: samples,
-                            setMarkers: markers
+                            setMarkers: markers,
+                            exerciseMarkers: exerciseMarkers,
+                            musicSegments: musicSegments
                         )
                     } else {
                         lastFinishSummary = nil

@@ -99,6 +99,8 @@ targets:
         INFOPLIST_KEY_NSHealthShareUsageDescription: Signal reads your Apple Health data to compute readiness, training, and nutrition guidance.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Signal writes workouts and meals you log back to Apple Health.
         INFOPLIST_KEY_NSCameraUsageDescription: Signal uses the camera to estimate meal macros from photos.
+        INFOPLIST_KEY_NSMicrophoneUsageDescription: Signal uses the microphone so you can dictate meals to the coach in chat.
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: Signal uses speech recognition to turn dictated meals into food logs via the coach.
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Signal uses your photo library to estimate meal macros from meal photos.
         INFOPLIST_KEY_NSCalendarsUsageDescription: Signal reads your calendar to flag busy days on your training schedule. Events are never written back.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES

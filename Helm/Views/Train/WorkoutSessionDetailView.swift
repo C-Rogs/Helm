@@ -12,6 +12,7 @@ struct WorkoutSessionDetailView: View {
     @State private var draft: WorkoutSessionDraft?
     @State private var templateName = ""
     @State private var isShowingSaveTemplate = false
+    @State private var isShowingDeleteConfirm = false
     @State private var didCopyExport = false
     @Environment(\.dismiss) private var dismiss
 
@@ -55,6 +56,10 @@ struct WorkoutSessionDetailView: View {
                         isShowingSaveTemplate = true
                     }
                     .buttonStyle(.helmSecondary)
+
+                    Button("Delete workout", role: .destructive) {
+                        isShowingDeleteConfirm = true
+                    }
                 } else {
                     ProgressView()
                 }
@@ -89,6 +94,19 @@ struct WorkoutSessionDetailView: View {
             Button("OK", role: .cancel) {}
         } message: {
             Text("Workout copied for Gemini verification.")
+        }
+        .confirmationDialog(
+            "Delete this workout?",
+            isPresented: $isShowingDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Delete workout", role: .destructive) {
+                history.deleteSession(id: sessionID)
+                dismiss()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Removes it from history. This cannot be undone.")
         }
     }
 

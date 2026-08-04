@@ -18,9 +18,11 @@ struct WorkoutFinishSummaryView: View {
 
             statsRow
 
-            SessionHeartRateChartView(
-                samples: summary.heartRateSamples,
-                markers: summary.setMarkers
+            SessionTimelineChartView(
+                heartRateSamples: summary.heartRateSamples,
+                setMarkers: summary.setMarkers,
+                exerciseMarkers: summary.exerciseMarkers,
+                musicSegments: summary.musicSegments
             )
 
             if !summary.muscleMovements.isEmpty {
@@ -146,6 +148,26 @@ struct WorkoutFinishSummaryView: View {
     .environment(\.helmReduceMotion, true)
 }
 
+#Preview("Workout finish summary songs only") {
+    ScrollView {
+        WorkoutFinishSummaryView(
+            summary: WorkoutFinishSummaryFixtures.songsOnly,
+            muscleLabel: { $0.rawValue.capitalized }
+        )
+    }
+    .helmTheme()
+}
+
+#Preview("Workout finish summary empty timeline") {
+    ScrollView {
+        WorkoutFinishSummaryView(
+            summary: WorkoutFinishSummaryFixtures.emptyTimeline,
+            muscleLabel: { $0.rawValue.capitalized }
+        )
+    }
+    .helmTheme()
+}
+
 enum WorkoutFinishSummaryFixtures {
     static let standard = WorkoutFinishSummary(
         setCount: 16,
@@ -157,6 +179,59 @@ enum WorkoutFinishSummaryFixtures {
             MuscleLandmarkDelta(muscle: .quads, setsBefore: 6, setsAfter: 10, mev: 8, mrv: 18),
             MuscleLandmarkDelta(muscle: .back, setsBefore: 14, setsAfter: 16, mev: 10, mrv: 18),
         ],
-        readinessTeaser: "Moderate load; readiness should hold steady."
+        readinessTeaser: "Moderate load; readiness should hold steady.",
+        heartRateSamples: [
+            SessionHeartRateSample(offsetSeconds: 0, bpm: 118),
+            SessionHeartRateSample(offsetSeconds: 120, bpm: 142),
+            SessionHeartRateSample(offsetSeconds: 240, bpm: 136)
+        ],
+        setMarkers: [
+            SessionSetMarker(offsetSeconds: 120, setNumber: 4),
+            SessionSetMarker(offsetSeconds: 240, setNumber: 8)
+        ],
+        exerciseMarkers: [
+            SessionExerciseMarker(offsetSeconds: 60, shortName: "Bench Press"),
+            SessionExerciseMarker(offsetSeconds: 300, shortName: "Squat")
+        ],
+        musicSegments: [
+            SessionMusicSegment(
+                startOffsetSeconds: 0,
+                endOffsetSeconds: 180,
+                title: "Lose Yourself",
+                artist: "Eminem"
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 180,
+                endOffsetSeconds: 540,
+                title: "POWER",
+                artist: "Kanye West"
+            )
+        ]
+    )
+
+    static let songsOnly = WorkoutFinishSummary(
+        setCount: 8,
+        totalVolumeKilograms: 3_200,
+        estimatedTRIMP: 90,
+        durationMinutes: 35,
+        muscleMovements: [],
+        readinessTeaser: "Light session; minimal readiness impact.",
+        musicSegments: [
+            SessionMusicSegment(
+                startOffsetSeconds: 0,
+                endOffsetSeconds: 2100,
+                title: "Eye of the Tiger",
+                artist: "Survivor"
+            )
+        ]
+    )
+
+    static let emptyTimeline = WorkoutFinishSummary(
+        setCount: 4,
+        totalVolumeKilograms: 1_200,
+        estimatedTRIMP: 45,
+        durationMinutes: 15,
+        muscleMovements: [],
+        readinessTeaser: "Light session; minimal readiness impact."
     )
 }

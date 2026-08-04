@@ -5,6 +5,7 @@ import SwiftUI
 struct WorkoutHistoryListView: View {
     @Bindable var history: WorkoutHistoryController
     @Namespace private var cardNamespace
+    @State private var pendingDeleteSessionID: String?
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -35,12 +36,37 @@ struct WorkoutHistoryListView: View {
                             .helmMatchedCardDetail(id: session.id, in: cardNamespace)
                     }
                     .buttonStyle(.helmPressableCard)
+                    .contextMenu {
+                        Button("Delete workout", role: .destructive) {
+                            pendingDeleteSessionID = session.id
+                        }
+                    }
                     .helmStaggeredAppear(index: index)
                     .onAppear {
                         history.loadMoreIfNeeded(currentSessionID: session.id)
                     }
                 }
             }
+        }
+        .confirmationDialog(
+            "Delete this workout?",
+            isPresented: Binding(
+                get: { pendingDeleteSessionID != nil },
+                set: { if !$0 { pendingDeleteSessionID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Delete workout", role: .destructive) {
+                if let id = pendingDeleteSessionID {
+                    history.deleteSession(id: id)
+                }
+                pendingDeleteSessionID = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingDeleteSessionID = nil
+            }
+        } message: {
+            Text("Removes it from history. This cannot be undone.")
         }
     }
 }
