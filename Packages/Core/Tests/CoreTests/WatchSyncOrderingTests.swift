@@ -13,7 +13,14 @@ struct WatchSyncOrderingTests {
     func higherSequence() {
         let previous = WatchSyncOriginWatermark(sequence: 5, sentAt: 100)
         #expect(WatchSyncOrdering.shouldAccept(sequence: 6, sentAt: 90, previous: previous))
-        #expect(!WatchSyncOrdering.shouldAccept(sequence: 4, sentAt: 200, previous: previous))
+        #expect(!WatchSyncOrdering.shouldAccept(sequence: 4, sentAt: 50, previous: previous))
+    }
+
+    @Test("lower sequence with newer sentAt is sender restart")
+    func sequenceResetWithNewerClock() {
+        let previous = WatchSyncOriginWatermark(sequence: 50, sentAt: 100)
+        #expect(WatchSyncOrdering.shouldAccept(sequence: 1, sentAt: 200, previous: previous))
+        #expect(!WatchSyncOrdering.shouldAccept(sequence: 1, sentAt: 100, previous: previous))
     }
 
     @Test("same sequence keeps newer sentAt only")

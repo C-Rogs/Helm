@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import HealthKit
 import Observation
 
 @MainActor
@@ -66,6 +67,38 @@ final class WatchWorkoutSessionStore {
             sessionID = nil
             isMirroringToCompanion = false
             apply(.teardownFailed)
+        }
+    }
+
+    /// Cold-wake from phone `startWatchApp`: skip auth and start from handed configuration.
+    func startWorkout(fromPhoneConfiguration configuration: HKWorkoutConfiguration) async {
+        guard phase == .idle || phase == .ended else { return }
+        lastError = nil
+        isMirroringToCompanion = false
+        apply(.startRequested)
+
+        let id = UUID().uuidString
+        sessionID = id
+        lifecycle.begin(sessionID: id)
+
+        do {
+            try await manager.start(configuration: configuration, sessionID: id)
+            isMirroringToCompanion = manager.isMirroringToCompanion
+            startedAt = Date()
+            apply(.sessionReady)
+            startElapsedTimer()
+            // Warm auth/baselines in background for the next launch.
+            Task { await prepareHealthKit() }
+        } catch {
+            lastError = error.localizedDescription
+            lifecycle.end()
+            teardownTracker.end()
+            sessionID = nil
+            isMirroringToCompanion = false
+            apply(.teardownFailed)
+            // Fall back: auth then normal start.
+            await prepareHealthKit()
+            await startWorkout()
         }
     }
 

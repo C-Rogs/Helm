@@ -95,6 +95,7 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm
         GENERATE_INFOPLIST_FILE: YES
         INFOPLIST_KEY_CFBundleDisplayName: Signal
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.healthcare-fitness
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_NSHealthShareUsageDescription: Signal reads your Apple Health data to compute readiness, training, and nutrition guidance.
         INFOPLIST_KEY_NSHealthUpdateUsageDescription: Signal writes workouts and meals you log back to Apple Health.

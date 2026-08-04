@@ -37,20 +37,28 @@ struct WatchRootView: View {
         .onAppear {
             if coordinator.workoutCompanionActive {
                 selectedTab = 0
+                Task { await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState() }
             }
         }
         .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
             if isActive {
                 selectedTab = 0
+                Task { await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState() }
             }
         }
         .onChange(of: coordinator.activationState) { _, state in
             guard state == .activated else { return }
-            WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
+            Task {
+                await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState()
+                WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
+            }
         }
         .onChange(of: coordinator.isReachable) { _, reachable in
             guard reachable else { return }
-            WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
+            Task {
+                await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState()
+                WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
+            }
         }
     }
 

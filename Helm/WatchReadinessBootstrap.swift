@@ -1,4 +1,5 @@
 import Core
+import Diagnostics
 import Foundation
 import HealthKitIngest
 import ReadinessKit
@@ -9,6 +10,20 @@ enum WatchReadinessBootstrap {
 
     @MainActor
     static func start() {
+        coordinator.onDiagnosticEvent = { event, detail in
+            Task {
+                var context: [String: String] = ["source": "watchRelay"]
+                if let detail, !detail.isEmpty {
+                    context["detail"] = String(detail.prefix(200))
+                }
+                await DiagnosticsLog.shared.record(
+                    category: .watch,
+                    level: .info,
+                    message: event.rawValue,
+                    context: context
+                )
+            }
+        }
         MirroredWorkoutSessionBridge.shared.start()
         Task(priority: .utility) {
             observeReadiness()

@@ -80,4 +80,21 @@ struct WatchSyncPayloadTests {
         #expect(restored == payload)
         #expect(restored?.companionSaveWatchWorkout == true)
     }
+
+    @Test("diagnostic event round-trips")
+    func diagnosticRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .watch,
+            sequence: 11,
+            helmDay: HelmDay(year: 2026, month: 8, day: 4),
+            sentAt: 1_723_456_789,
+            messageKind: .diagnostic,
+            diagnosticEvent: WatchCompanionDiagnosticEvent.watchHandleBegin.rawValue,
+            diagnosticDetail: "activity=strength"
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored == payload)
+        #expect(restored?.diagnosticEvent == "watch.handle.begin")
+        #expect(restored?.diagnosticDetail == "activity=strength")
+    }
 }

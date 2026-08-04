@@ -27,7 +27,12 @@ final class MirroredWorkoutSessionBridge: NSObject {
         workoutBuilder.delegate = self
         builder = workoutBuilder
 
-        WatchReadinessBootstrap.coordinator.isReceivingMirroredHeartRate = true
+        WatchReadinessBootstrap.coordinator.recordDiagnostic(
+            .phoneDiagnosticRelay,
+            detail: "mirror.adopt state=\(mirroredSession.state.rawValue)"
+        )
+        // Do not mark mirror-receiving until a BPM sample arrives. Premature flag
+        // blocked WCSession HR fallback while phone still had no live rate.
         publishHeartRateIfAvailable()
     }
 

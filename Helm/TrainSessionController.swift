@@ -595,18 +595,29 @@ final class TrainSessionController {
         guard store.snapshot != nil else { return }
         watchCompanionNotice = nil
         didRelaunchWatchForReachability = false
+        watchCompanionDeliveredHeartRate = false
+        let coordinator = WatchReadinessBootstrap.coordinator
+        coordinator.clearMirroredHeartRate()
+        coordinator.clearLiveHeartRate()
         activateWatchCompanionAfterSessionStart()
     }
 
     func handleWatchReachabilityChange(isReachable: Bool) {
-        guard isReachable, store.snapshot != nil else { return }
+        guard store.snapshot != nil else { return }
+        WatchReadinessBootstrap.coordinator.recordDiagnostic(
+            .phoneReachability,
+            detail: "reachable=\(isReachable) hrDelivered=\(watchCompanionDeliveredHeartRate)"
+        )
+        guard isReachable else { return }
         guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion else { return }
-        guard !watchCompanionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
-        didRelaunchWatchForReachability = true
         Task { @MainActor in
             pushWatchCompanionState()
+            WatchReadinessBootstrap.coordinator.flushPendingWorkoutCompanionPushIfNeeded()
+            guard !watchCompanionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
+            didRelaunchWatchForReachability = true
             _ = await WatchReadinessBootstrap.coordinator.launchWatchWorkoutCompanion()
             pushWatchCompanionState()
+            WatchReadinessBootstrap.coordinator.flushPendingWorkoutCompanionPushIfNeeded()
             scheduleWatchLiveConfirm()
         }
     }
@@ -1762,16 +1773,23 @@ final class TrainSessionController {
         startHeartRateSampling()
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.refreshPairingFlags()
+        coordinator.clearLiveHeartRate()
+        coordinator.clearMirroredHeartRate()
+        coordinator.recordDiagnostic(
+            .phoneLaunchBegin,
+            detail: "paired=\(coordinator.isPaired) installed=\(coordinator.isWatchAppInstalled) reachable=\(coordinator.isReachable) activation=\(coordinator.activationState.rawValue)"
+        )
         if coordinator.canDriveWatchCompanion {
             pushWatchCompanionState()
             Task { @MainActor in
                 let launched = await coordinator.launchWatchWorkoutCompanion()
                 pushWatchCompanionState()
+                coordinator.flushPendingWorkoutCompanionPushIfNeeded()
                 HapticEngine.shared.play(.phaseChange)
                 if !launched {
                     watchCompanionNotice =
                         coordinator.lastLaunchError
-                        ?? "Watch didn't wake. Open Signal on Watch once, then tap to retry."
+                        ?? "Watch didn't wake. Open Helm on Watch once, then tap to retry."
                     return
                 }
                 watchCompanionNotice = nil
@@ -1791,12 +1809,17 @@ final class TrainSessionController {
             while Date() < deadline, !Task.isCancelled {
                 let coordinator = WatchReadinessBootstrap.coordinator
                 if WatchWorkoutLaunchPolicy.isConfirmedLive(
-                    hasHeartRate: coordinator.latestLiveHeartRateBPM != nil,
+                    hasHeartRate: coordinator.liveHeartRateBPMForDisplay != nil,
                     isReachable: coordinator.isReachable
                 ) {
-                    if coordinator.latestLiveHeartRateBPM != nil {
+                    if coordinator.liveHeartRateBPMForDisplay != nil {
                         watchCompanionDeliveredHeartRate = true
+                        coordinator.recordDiagnostic(
+                            .phoneFirstHeartRate,
+                            detail: "bpm=\(coordinator.liveHeartRateBPMForDisplay ?? -1) mirrored=\(coordinator.isReceivingMirroredHeartRate)"
+                        )
                     }
+                    coordinator.recordDiagnostic(.phoneLiveConfirmOK, detail: "reachable=\(coordinator.isReachable)")
                     watchCompanionNotice = nil
                     return
                 }
@@ -1805,13 +1828,17 @@ final class TrainSessionController {
             guard !Task.isCancelled, store.snapshot != nil else { return }
             let coordinator = WatchReadinessBootstrap.coordinator
             if WatchWorkoutLaunchPolicy.isConfirmedLive(
-                hasHeartRate: coordinator.latestLiveHeartRateBPM != nil,
+                hasHeartRate: coordinator.liveHeartRateBPMForDisplay != nil,
                 isReachable: coordinator.isReachable
             ) {
                 watchCompanionNotice = nil
                 return
             }
-            watchCompanionNotice = "Watch didn't wake. Open Signal on Watch once, then tap to retry."
+            coordinator.recordDiagnostic(
+                .phoneLiveConfirmTimeout,
+                detail: "reachable=\(coordinator.isReachable) hr=\(coordinator.latestLiveHeartRateBPM.map(String.init) ?? "nil") launchError=\(coordinator.lastLaunchError ?? "none")"
+            )
+            watchCompanionNotice = "Watch didn't wake. Open Helm on Watch once, then tap to retry."
         }
     }
 
@@ -1827,6 +1854,9 @@ final class TrainSessionController {
             while !Task.isCancelled {
                 guard let self, self.store.snapshot != nil else { return }
                 self.recordLiveHeartRateSampleIfAvailable()
+                if !self.watchCompanionDeliveredHeartRate {
+                    self.pushWatchCompanionState()
+                }
                 try? await Task.sleep(for: .seconds(5))
             }
         }
@@ -1843,7 +1873,7 @@ final class TrainSessionController {
     private func recordLiveHeartRateSampleIfAvailable() {
         guard let snapshot = store.snapshot else { return }
         guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-              let bpm = WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+              let bpm = WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
         else {
             return
         }

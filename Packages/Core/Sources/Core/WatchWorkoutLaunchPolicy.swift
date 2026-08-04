@@ -2,25 +2,28 @@ import Foundation
 
 /// Pure policy for phone-driven Watch companion wake + live confirmation.
 public enum WatchWorkoutLaunchPolicy: Sendable {
-    /// Max `startWatchApp` attempts when earlier attempts fail.
-    public static let maxAttempts = 2
+    /// Always fire this many `startWatchApp` kicks (Apple cold-wake pattern).
+    public static let maxAttempts = 4
 
-    /// Seconds to wait for HR or reachability after launch attempts.
-    public static let confirmLiveTimeoutSeconds: TimeInterval = 12
+    /// Delay between kicks so Watch has time to continue a half-started wake.
+    public static let retryDelaySeconds: TimeInterval = 0.75
+
+    /// Seconds to wait for HR after launch attempts.
+    public static let confirmLiveTimeoutSeconds: TimeInterval = 16
 
     public static func shouldAttempt(attemptNumber: Int) -> Bool {
         attemptNumber >= 1 && attemptNumber <= maxAttempts
     }
 
-    /// Whether another `startWatchApp` should run after `completedAttempt` (1-based).
-    /// Retry only on failure. A successful wake must not fire a second kick.
+    /// Always double-kick. First `success` often means system queued a notification
+    /// only; second kick is what finishes waking `handle(_:)` on a locked Watch.
     public static func shouldRetryAfter(completedAttempt: Int, attemptSucceeded: Bool) -> Bool {
-        guard !attemptSucceeded else { return false }
+        _ = attemptSucceeded
         return completedAttempt >= 1 && completedAttempt < maxAttempts
     }
 
-    /// Live confirmed when Watch delivered HR; reachable alone is soft success (app may still be starting).
+    /// Live confirmed only when Watch delivered HR (reachability alone can show stale resting HR).
     public static func isConfirmedLive(hasHeartRate: Bool, isReachable: Bool) -> Bool {
-        hasHeartRate || isReachable
+        hasHeartRate
     }
 }

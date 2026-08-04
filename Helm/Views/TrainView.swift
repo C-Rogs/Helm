@@ -412,7 +412,7 @@ struct TrainView: View {
                                 startedAt: snapshot.session.startedAt,
                                 progress: TrainSessionProgress.from(snapshot: snapshot),
                                 heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
-                                    ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
+                                    ? WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
                                     : nil
                             )
 

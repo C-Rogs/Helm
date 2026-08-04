@@ -15,9 +15,14 @@ enum WatchCompanionBootstrap {
     static func start() {
         guard !didStart else { return }
         didStart = true
+        coordinator.recordDiagnostic(.watchBootstrapStart)
 
         coordinator.onWorkoutCompanionBecameActive = {
+            coordinator.recordDiagnostic(.watchCompanionActive, detail: "becameActive")
             Task { await startCompanionWorkoutIfNeeded(playHaptic: true) }
+        }
+        coordinator.onWorkoutCompanionPayloadReceived = {
+            Task { await syncCompanionWorkoutWithPhoneState() }
         }
         coordinator.onWorkoutCompanionDeactivated = { saveWatchWorkout in
             Task { await handleCompanionDeactivated(saveWatchWorkout: saveWatchWorkout) }
@@ -39,6 +44,19 @@ enum WatchCompanionBootstrap {
         }
     }
 
+    /// Hevy-style cold wake: start `HKWorkoutSession` before auth / WCSession work.
+    /// watchOS only keeps the app alive once a workout session is running.
+    static func handlePhoneLaunchConfiguration(_ configuration: HKWorkoutConfiguration) async {
+        let activity = configuration.activityType.rawValue
+        coordinator.recordDiagnostic(
+            .watchHandleBegin,
+            detail: "activityRaw=\(activity) phase=\(String(describing: workoutStore.phase))"
+        )
+        start()
+        WatchWorkoutLaunchBridge.shared.receive(configuration: configuration)
+        await consumePhoneLaunchIfNeeded()
+    }
+
     static func consumePhoneLaunchIfNeeded() async {
         guard let configuration = WatchWorkoutLaunchBridge.shared.consumePendingConfiguration() else {
             return
@@ -47,7 +65,34 @@ enum WatchCompanionBootstrap {
             configuration.activityType.rawValue
         )
         workoutStore.selectActivity(kind)
-        await startCompanionWorkoutIfNeeded(playHaptic: true)
+        guard workoutStore.phase == .idle || workoutStore.phase == .ended else {
+            coordinator.recordDiagnostic(
+                .watchSessionStart,
+                detail: "skip alreadyPhase=\(String(describing: workoutStore.phase))"
+            )
+            return
+        }
+        WKInterfaceDevice.current().play(.start)
+        coordinator.recordDiagnostic(.watchSessionStart, detail: "fromPhoneConfiguration")
+        await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
+        if workoutStore.phase == .active || workoutStore.phase == .paused {
+            coordinator.recordDiagnostic(
+                .watchSessionReady,
+                detail: "mirroring=\(workoutStore.isMirroringToCompanion)"
+            )
+        } else {
+            coordinator.recordDiagnostic(
+                .watchSessionFail,
+                detail: workoutStore.lastError ?? "phase=\(String(describing: workoutStore.phase))"
+            )
+        }
+        flushLiveHeartRateIfNeeded()
+    }
+
+    /// Starts HK workout when phone session is active but Watch missed auto-wake (manual open, hydrate race).
+    static func syncCompanionWorkoutWithPhoneState(playHaptic: Bool = false) async {
+        guard coordinator.workoutCompanionActive else { return }
+        await startCompanionWorkoutIfNeeded(playHaptic: playHaptic)
     }
 
     static func startCompanionWorkoutIfNeeded(playHaptic: Bool) async {
@@ -68,14 +113,14 @@ enum WatchCompanionBootstrap {
     private static func wireHeartRatePush() {
         workoutStore.onLiveHeartRateBPM = { bpm in
             guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
-            guard !workoutStore.isMirroringToCompanion else { return }
+            // Always push WCSession HR. HealthKit mirroring can succeed on Watch while the
+            // phone never receives mirror samples; WCSession is the reliable Train chip path.
             let day = HelmDay.day(for: .now, calendar: .current)
             coordinator.pushLiveHeartRate(Int(bpm.rounded()), helmDay: day)
         }
     }
 
     static func flushLiveHeartRateIfNeeded() {
-        guard !workoutStore.isMirroringToCompanion else { return }
         guard let bpm = workoutStore.heartRateBPM else { return }
         guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
         let day = HelmDay.day(for: .now, calendar: .current)

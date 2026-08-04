@@ -14,6 +14,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case workoutCompanion
         case restEnded
         case completeSet
+        case diagnostic
     }
 
     public static let contextKey = "helm.sync"
@@ -43,6 +44,10 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let companionSetID: String?
     /// When deactivating companion: true = save Watch HKWorkout; false/nil = discard.
     public let companionSaveWatchWorkout: Bool?
+    /// Wake/companion diagnostic event name (`WatchCompanionDiagnosticEvent.rawValue`).
+    public let diagnosticEvent: String?
+    /// Short free-text detail for diagnostics (no HealthKit samples / PII blobs).
+    public let diagnosticDetail: String?
 
     public init(
         origin: Origin,
@@ -61,7 +66,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionTargetSummary: String? = nil,
         companionSessionExerciseID: String? = nil,
         companionSetID: String? = nil,
-        companionSaveWatchWorkout: Bool? = nil
+        companionSaveWatchWorkout: Bool? = nil,
+        diagnosticEvent: String? = nil,
+        diagnosticDetail: String? = nil
     ) {
         self.origin = origin
         self.sequence = sequence
@@ -80,6 +87,8 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         self.companionSessionExerciseID = companionSessionExerciseID
         self.companionSetID = companionSetID
         self.companionSaveWatchWorkout = companionSaveWatchWorkout
+        self.diagnosticEvent = diagnosticEvent
+        self.diagnosticDetail = diagnosticDetail
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -100,6 +109,8 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case companionSessionExerciseID
         case companionSetID
         case companionSaveWatchWorkout
+        case diagnosticEvent
+        case diagnosticDetail
     }
 
     public init(from decoder: Decoder) throws {
@@ -121,6 +132,8 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionSessionExerciseID = try container.decodeIfPresent(String.self, forKey: .companionSessionExerciseID)
         companionSetID = try container.decodeIfPresent(String.self, forKey: .companionSetID)
         companionSaveWatchWorkout = try container.decodeIfPresent(Bool.self, forKey: .companionSaveWatchWorkout)
+        diagnosticEvent = try container.decodeIfPresent(String.self, forKey: .diagnosticEvent)
+        diagnosticDetail = try container.decodeIfPresent(String.self, forKey: .diagnosticDetail)
     }
 }
 

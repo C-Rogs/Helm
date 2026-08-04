@@ -1,6 +1,7 @@
 import Core
 import Foundation
 import HealthKit
+import OSLog
 import WatchConnectivity
 #if os(watchOS)
 import WatchKit
@@ -13,6 +14,8 @@ final class WatchSessionCoordinator: NSObject {
         case phone
         case watch
     }
+
+    private static let logger = Logger(subsystem: "com.cameronro.helm", category: "Watch")
 
     static let readinessThrottleInterval = WatchSyncPayload.readinessPushThrottleInterval
 
@@ -29,6 +32,14 @@ final class WatchSessionCoordinator: NSObject {
     var latestReadinessBand: String?
     var latestBriefSummary: String?
     var latestLiveHeartRateBPM: Int?
+    private(set) var lastHeartRateReceivedAt: Date?
+    /// Seconds without a fresh HR sample before Train hides the chip (avoids stuck resting HR).
+    static let liveHeartRateDisplayStaleInterval: TimeInterval = 20
+    var liveHeartRateBPMForDisplay: Int? {
+        guard let bpm = latestLiveHeartRateBPM, let receivedAt = lastHeartRateReceivedAt else { return nil }
+        guard Date().timeIntervalSince(receivedAt) <= Self.liveHeartRateDisplayStaleInterval else { return nil }
+        return bpm
+    }
     var workoutCompanionActive = false
     var companionExerciseName: String?
     var companionSetNumber: Int?
@@ -44,9 +55,28 @@ final class WatchSessionCoordinator: NSObject {
     var onWorkoutCompanionBecameActive: (() -> Void)?
     /// Fires when phone deactivates companion; bool = save Watch HK workout.
     var onWorkoutCompanionDeactivated: ((Bool) -> Void)?
+    /// Fires on every active companion payload (re-push while session already active).
+    var onWorkoutCompanionPayloadReceived: (() -> Void)?
+    #endif
+    #if os(iOS)
+    /// Phone records Watch-relayed + local companion diagnostics into DiagnosticsLog.
+    var onDiagnosticEvent: ((WatchCompanionDiagnosticEvent, String?) -> Void)?
     #endif
 
     let role: Role
+    private struct PendingWorkoutCompanionPush: Sendable {
+        let active: Bool
+        let exerciseName: String?
+        let setNumber: Int?
+        let setCount: Int?
+        let targetSummary: String?
+        let sessionExerciseID: String?
+        let setID: String?
+        let saveWatchWorkout: Bool?
+        let helmDay: HelmDay?
+    }
+
+    private var pendingWorkoutCompanionPush: PendingWorkoutCompanionPush?
     private var nextSequence = 1
     private var lastReadinessPushAt: TimeInterval?
     private var lastLiveHeartRatePushAt: TimeInterval?
@@ -121,13 +151,72 @@ final class WatchSessionCoordinator: NSObject {
         helmDay: HelmDay? = nil
     ) {
         guard role == .phone else { return }
-        guard activationState == .activated else { return }
 
         if !active {
             latestLiveHeartRateBPM = nil
+            lastHeartRateReceivedAt = nil
             isReceivingMirroredHeartRate = false
+            pendingWorkoutCompanionPush = nil
+        } else {
+            // New companion session: clear Watch inbound watermark so a Watch
+            // process restart (sequence reset to 1) is not treated as stale.
+            lastAcceptedByOrigin[.watch] = nil
+            pendingWorkoutCompanionPush = PendingWorkoutCompanionPush(
+                active: true,
+                exerciseName: exerciseName,
+                setNumber: setNumber,
+                setCount: setCount,
+                targetSummary: targetSummary,
+                sessionExerciseID: sessionExerciseID,
+                setID: setID,
+                saveWatchWorkout: saveWatchWorkout,
+                helmDay: helmDay
+            )
         }
 
+        guard activationState == .activated else { return }
+        deliverWorkoutCompanionPush(
+            active: active,
+            exerciseName: exerciseName,
+            setNumber: setNumber,
+            setCount: setCount,
+            targetSummary: targetSummary,
+            sessionExerciseID: sessionExerciseID,
+            setID: setID,
+            saveWatchWorkout: saveWatchWorkout,
+            helmDay: helmDay
+        )
+    }
+
+    /// Re-delivers the last active companion push (activation/reachability recovery).
+    func flushPendingWorkoutCompanionPushIfNeeded() {
+        guard role == .phone else { return }
+        guard activationState == .activated else { return }
+        guard let pending = pendingWorkoutCompanionPush, pending.active else { return }
+        deliverWorkoutCompanionPush(
+            active: pending.active,
+            exerciseName: pending.exerciseName,
+            setNumber: pending.setNumber,
+            setCount: pending.setCount,
+            targetSummary: pending.targetSummary,
+            sessionExerciseID: pending.sessionExerciseID,
+            setID: pending.setID,
+            saveWatchWorkout: pending.saveWatchWorkout,
+            helmDay: pending.helmDay
+        )
+    }
+
+    private func deliverWorkoutCompanionPush(
+        active: Bool,
+        exerciseName: String?,
+        setNumber: Int?,
+        setCount: Int?,
+        targetSummary: String?,
+        sessionExerciseID: String?,
+        setID: String?,
+        saveWatchWorkout: Bool?,
+        helmDay: HelmDay?
+    ) {
         let payload = makePayload(
             origin: .phone,
             messageKind: .workoutCompanion,
@@ -142,6 +231,18 @@ final class WatchSessionCoordinator: NSObject {
             companionSaveWatchWorkout: active ? nil : (saveWatchWorkout ?? false)
         )
         push(payload)
+        guard active else { return }
+        recordDiagnostic(
+            .phoneCompanionPush,
+            detail: "active=true exercise=\(exerciseName ?? "nil") set=\(setNumber.map(String.init) ?? "nil") reachable=\(WCSession.default.isReachable)"
+        )
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode sync payload"
+            return
+        }
+        deliverGuaranteed(message, via: session)
     }
 
     /// True when phone can drive a Watch workout companion (paired + app installed).
@@ -157,7 +258,7 @@ final class WatchSessionCoordinator: NSObject {
         workoutCompanionActive && isReachable && latestLiveHeartRateBPM != nil
     }
 
-    /// Wakes Watch workout app via HealthKit. Retries only when an attempt fails.
+    /// Wakes Watch workout app via HealthKit. Always double-kicks (Apple cold-wake).
     @discardableResult
     func launchWatchWorkoutCompanion() async -> Bool {
         guard role == .phone else { return false }
@@ -177,7 +278,15 @@ final class WatchSessionCoordinator: NSObject {
         var lastFailure: String?
         for attempt in 1...WatchWorkoutLaunchPolicy.maxAttempts {
             guard WatchWorkoutLaunchPolicy.shouldAttempt(attemptNumber: attempt) else { break }
+            recordDiagnostic(
+                .phoneLaunchAttempt,
+                detail: "attempt=\(attempt) reachable=\(isReachable) paired=\(isPaired) installed=\(isWatchAppInstalled)"
+            )
             let (ok, message) = await startWatchAppOnce()
+            recordDiagnostic(
+                .phoneLaunchResult,
+                detail: "attempt=\(attempt) ok=\(ok) error=\(message ?? "none")"
+            )
             if ok {
                 anySuccess = true
                 lastLaunchError = nil
@@ -192,6 +301,7 @@ final class WatchSessionCoordinator: NSObject {
             ) {
                 break
             }
+            try? await Task.sleep(for: .seconds(WatchWorkoutLaunchPolicy.retryDelaySeconds))
         }
         if !anySuccess, let lastFailure {
             lastError = lastFailure
@@ -231,6 +341,39 @@ final class WatchSessionCoordinator: NSObject {
     func refreshPairingFlags() {
         refreshSessionFlags()
     }
+
+    /// Local OSLog + phone DiagnosticsLog (and Watch→phone relay when on Watch).
+    func recordDiagnostic(_ event: WatchCompanionDiagnosticEvent, detail: String? = nil) {
+        let detailText = detail ?? ""
+        if detailText.isEmpty {
+            Self.logger.info("\(event.rawValue, privacy: .public)")
+        } else {
+            Self.logger.info("\(event.rawValue, privacy: .public) \(detailText, privacy: .public)")
+        }
+        #if os(iOS)
+        onDiagnosticEvent?(event, detail)
+        #endif
+        #if os(watchOS)
+        pushDiagnosticToPhone(event: event, detail: detail)
+        #endif
+    }
+
+    #if os(watchOS)
+    private func pushDiagnosticToPhone(event: WatchCompanionDiagnosticEvent, detail: String?) {
+        guard activationState == .activated else { return }
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .diagnostic,
+            diagnosticEvent: event.rawValue,
+            diagnosticDetail: detail
+        )
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else { return }
+        lastSent = payload
+        deliverGuaranteed(message, via: session)
+    }
+    #endif
 
     func requestCompleteSet(sessionExerciseID: String, setID: String, helmDay: HelmDay? = nil) {
         guard role == .watch else { return }
@@ -304,6 +447,7 @@ final class WatchSessionCoordinator: NSObject {
 
     func clearLiveHeartRate() {
         latestLiveHeartRateBPM = nil
+        lastHeartRateReceivedAt = nil
     }
 
     /// Applies live HR from HealthKit workout mirroring (preferred over WCSession).
@@ -311,9 +455,14 @@ final class WatchSessionCoordinator: NSObject {
         guard role == .phone else { return }
         isReceivingMirroredHeartRate = true
         latestLiveHeartRateBPM = bpm
+        lastHeartRateReceivedAt = Date()
     }
 
     func clearMirroredHeartRate() {
+        if isReceivingMirroredHeartRate {
+            latestLiveHeartRateBPM = nil
+            lastHeartRateReceivedAt = nil
+        }
         isReceivingMirroredHeartRate = false
     }
 
@@ -350,12 +499,16 @@ final class WatchSessionCoordinator: NSObject {
         lastError = nil
         applyDisplayFields(from: payload)
 
-        // Live HR: sendMessage only when reachable. Do not hammer updateApplicationContext.
-        guard session.isReachable else { return }
-        session.sendMessage(message, replyHandler: nil) { [weak self] error in
-            Task { @MainActor in
-                self?.lastError = error.localizedDescription
+        // Live HR: prefer sendMessage when reachable; queue transferUserInfo as backup.
+        if session.isReachable {
+            session.sendMessage(message, replyHandler: nil) { [weak self] error in
+                Task { @MainActor in
+                    self?.lastError = error.localizedDescription
+                    _ = session.transferUserInfo(message)
+                }
             }
+        } else {
+            _ = session.transferUserInfo(message)
         }
     }
 
@@ -374,7 +527,9 @@ final class WatchSessionCoordinator: NSObject {
         companionTargetSummary: String? = nil,
         companionSessionExerciseID: String? = nil,
         companionSetID: String? = nil,
-        companionSaveWatchWorkout: Bool? = nil
+        companionSaveWatchWorkout: Bool? = nil,
+        diagnosticEvent: String? = nil,
+        diagnosticDetail: String? = nil
     ) -> WatchSyncPayload {
         let sequence = nextSequence
         nextSequence += 1
@@ -395,7 +550,9 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: companionTargetSummary,
             companionSessionExerciseID: companionSessionExerciseID,
             companionSetID: companionSetID,
-            companionSaveWatchWorkout: companionSaveWatchWorkout
+            companionSaveWatchWorkout: companionSaveWatchWorkout,
+            diagnosticEvent: diagnosticEvent,
+            diagnosticDetail: diagnosticDetail
         )
     }
 
@@ -441,6 +598,12 @@ final class WatchSessionCoordinator: NSObject {
     }
 
     func handleReceived(_ payload: WatchSyncPayload) {
+        // Diagnostics must not be dropped by sequence watermarks (Watch process restarts).
+        if payload.messageKind == .diagnostic {
+            handleDiagnosticPayload(payload)
+            return
+        }
+
         let previous = lastAcceptedByOrigin[payload.origin]
         guard WatchSyncOrdering.shouldAccept(
             sequence: payload.sequence,
@@ -466,17 +629,29 @@ final class WatchSessionCoordinator: NSObject {
         }
     }
 
+    private func handleDiagnosticPayload(_ payload: WatchSyncPayload) {
+        guard let eventRaw = payload.diagnosticEvent,
+              let event = WatchCompanionDiagnosticEvent(rawValue: eventRaw)
+        else {
+            return
+        }
+        #if os(iOS)
+        onDiagnosticEvent?(event, payload.diagnosticDetail)
+        Self.logger.info(
+            "relay \(eventRaw, privacy: .public) \(payload.diagnosticDetail ?? "", privacy: .public)"
+        )
+        #endif
+    }
+
     private func handlePhoneReceived(_ payload: WatchSyncPayload) {
         switch payload.messageKind {
         case .ping:
             roundTripComplete = payload.origin == .watch
-        case .readiness, .workoutCompanion, .restEnded:
+        case .readiness, .workoutCompanion, .restEnded, .diagnostic:
             break
         case .liveHeartRate:
-            // Prefer HealthKit mirroring when active; WCSession HR is fallback only.
-            if !isReceivingMirroredHeartRate {
-                latestLiveHeartRateBPM = payload.liveHeartRateBPM
-            }
+            // HR applied in applyDisplayFields (mirror preferred when fresh).
+            break
         case .completeSet:
             postCompleteSetNotification(from: payload)
         }
@@ -492,7 +667,7 @@ final class WatchSessionCoordinator: NSObject {
             roundTripComplete = true
         case .readiness:
             roundTripComplete = false
-        case .liveHeartRate, .completeSet:
+        case .liveHeartRate, .completeSet, .diagnostic:
             break
         case .workoutCompanion:
             break
@@ -536,8 +711,13 @@ final class WatchSessionCoordinator: NSObject {
         if let briefSummary = payload.briefSummary {
             latestBriefSummary = briefSummary
         }
-        if let liveHeartRateBPM = payload.liveHeartRateBPM, !isReceivingMirroredHeartRate {
-            latestLiveHeartRateBPM = liveHeartRateBPM
+        if let liveHeartRateBPM = payload.liveHeartRateBPM {
+            // Prefer fresh HealthKit mirror samples; otherwise accept WCSession HR.
+            let preferMirror = isReceivingMirroredHeartRate && liveHeartRateBPMForDisplay != nil
+            if !preferMirror {
+                latestLiveHeartRateBPM = liveHeartRateBPM
+                lastHeartRateReceivedAt = Date()
+            }
         }
         if payload.messageKind == .workoutCompanion {
             let wasActive = workoutCompanionActive
@@ -554,6 +734,7 @@ final class WatchSessionCoordinator: NSObject {
             }
             if workoutCompanionActive == false {
                 latestLiveHeartRateBPM = nil
+                lastHeartRateReceivedAt = nil
                 isReceivingMirroredHeartRate = false
             }
             #if os(watchOS)
@@ -561,6 +742,8 @@ final class WatchSessionCoordinator: NSObject {
                 onWorkoutCompanionBecameActive?()
             } else if !isActive && wasActive {
                 onWorkoutCompanionDeactivated?(companionSaveWatchWorkout)
+            } else if isActive {
+                onWorkoutCompanionPayloadReceived?()
             }
             #endif
         }

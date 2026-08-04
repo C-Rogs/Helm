@@ -20,6 +20,7 @@ extension WatchSessionCoordinator: WCSessionDelegate {
 
             if self.role == .phone, activationState == .activated {
                 self.sendPing()
+                self.flushPendingWorkoutCompanionPushIfNeeded()
             }
         }
     }
@@ -33,8 +34,14 @@ extension WatchSessionCoordinator: WCSessionDelegate {
     #endif
 
     nonisolated func sessionReachabilityDidChange(_ session: WCSession) {
+        let reachable = session.isReachable
         Task { @MainActor in
             self.refreshSessionFlags()
+            #if os(iOS)
+            if self.role == .phone, reachable {
+                self.flushPendingWorkoutCompanionPushIfNeeded()
+            }
+            #endif
         }
     }
 

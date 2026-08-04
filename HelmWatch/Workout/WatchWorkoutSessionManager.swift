@@ -8,6 +8,7 @@ protocol WatchWorkoutSessionManaging: AnyObject {
     var isMirroringToCompanion: Bool { get }
     func requestAuthorization() async throws -> Bool
     func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws
+    func start(configuration: HKWorkoutConfiguration, sessionID: String) async throws
     func pause()
     func resume()
     func end(discard: Bool) async throws
@@ -82,11 +83,16 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
     }
 
     func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws {
-        guard session == nil else { throw WatchWorkoutSessionError.sessionAlreadyActive }
-
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = HKWorkoutActivityType(rawValue: activity.healthKitActivityTypeRawValue) ?? .other
         configuration.locationType = activity.usesOutdoorLocation ? .outdoor : .indoor
+        try await start(configuration: configuration, sessionID: sessionID)
+    }
+
+    /// Phone `startWatchApp` cold-wake path: start session from the handed configuration
+    /// with no auth/baseline delay. Auth must already be granted from a prior open.
+    func start(configuration: HKWorkoutConfiguration, sessionID: String) async throws {
+        guard session == nil else { throw WatchWorkoutSessionError.sessionAlreadyActive }
 
         let workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
         let workoutBuilder = workoutSession.associatedWorkoutBuilder()
@@ -104,6 +110,7 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         self.isMirroringToCompanion = false
 
         let startDate = Date()
+        // startActivity is what keeps watchOS from suspending the app after cold wake.
         workoutSession.startActivity(with: startDate)
 
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
@@ -118,12 +125,18 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             }
         }
 
-        do {
-            try await workoutSession.startMirroringToCompanionDevice()
-            isMirroringToCompanion = true
-        } catch {
-            // WCSession live HR remains the fallback path.
-            isMirroringToCompanion = false
+        // Mirror off the critical path so cold-wake budget is not spent on it.
+        Task { @MainActor in
+            do {
+                try await workoutSession.startMirroringToCompanionDevice()
+                if self.session === workoutSession {
+                    self.isMirroringToCompanion = true
+                }
+            } catch {
+                if self.session === workoutSession {
+                    self.isMirroringToCompanion = false
+                }
+            }
         }
     }
 
