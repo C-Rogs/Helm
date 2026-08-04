@@ -56,4 +56,12 @@ struct TrainingPlanCoachContextTests {
         #expect(!brief.summary.contains("Arm emphasis ·"))
         #expect(brief.title == "Push")
     }
+
+    @Test("hard set copy rounds float noise and keeps true tenths")
+    func formatHardSets() {
+        #expect(SessionDesignBriefBuilder.formatHardSets(11.9999999999999) == "12")
+        #expect(SessionDesignBriefBuilder.formatHardSets(8.0) == "8")
+        #expect(SessionDesignBriefBuilder.formatHardSets(0.5) == "0.5")
+        #expect(SessionDesignBriefBuilder.formatHardSets(12.0000000000001) == "12")
+    }
 }

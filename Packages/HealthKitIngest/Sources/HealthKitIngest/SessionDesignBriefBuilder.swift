@@ -99,9 +99,18 @@ public enum SessionDesignBriefBuilder {
             guard let muscleState = mesocycleState.muscles[muscle] else { return nil }
             let target = PlanKit.weeklyHardSetTarget(for: muscleState)
             let done = ledger.totals[muscle, default: 0]
-            return "\(muscle.rawValue.capitalized): \(done)/\(target) hard sets this week."
+            return "\(muscle.rawValue.capitalized): \(formatHardSets(done))/\(target) hard sets this week."
         }
         .prefix(2)
         .map { String($0) }
+    }
+
+    /// Quantize to one decimal so float noise (e.g. 11.9999999999999) never reaches UI copy.
+    static func formatHardSets(_ value: Double) -> String {
+        let tenths = (value * 10).rounded() / 10
+        if tenths == tenths.rounded() {
+            return String(Int(tenths.rounded()))
+        }
+        return String(format: "%.1f", tenths)
     }
 }

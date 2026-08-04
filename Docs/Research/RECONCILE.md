@@ -27,20 +27,12 @@ Replace 1-exercise-per-muscle prescriptions with a **Movement Pattern Session Co
 
 ## Build phases
 
-| Phase | Scope |
-|---|---|
-| **v1.1 (this ship)** | MPSC for PPL; duration budget setting; program template enum (PPL live; UL/FB stub); prescription uses slots; acceptance tests for Pull density |
-| **v1.2** | Fractional hard-set matrix + synergist cap; progression-by-lift; V_base seeding |
-| **v1.3** | Readiness precedence table; drift matrix; deload ≥ MEV floor + confirm UX |
-| **v2** | EmphasisProfile UI; UL/FB slot tables; methodology→knob map; Thread 4 nutrition depth |
-
-## ARC band map (from research floats)
-
-| Research-ish signal | Helm `ReadinessBand` |
-|---|---|
-| Very low / “ARC &lt; 0.40” thin-session exception | `.depleted` |
-| Normal training | `.balanced` |
-| High / green-light | `.primed` |
+| Phase | Scope | Status |
+|---|---|---|
+| **v1.1** | MPSC for PPL; duration budget; program template enum | done (`74c2e25`) |
+| **v1.2** | Set allocation floors; fractional synergist ledger; progression-by-lift; V_base | committing |
+| **v1.3** | Readiness precedence; drift harden; deload ≥ MEV; reactive deload confirm | done (`8c48696`) |
+| **v2** | EmphasisProfile UI; UL/FB slot tables; methodology→knob map; Thread 4 nutrition | pending |
 
 ## Acceptance (v1.1)
 
@@ -49,6 +41,14 @@ Replace 1-exercise-per-muscle prescriptions with a **Movement Pattern Session Co
 - Equipment filter still respected.
 - Changing duration re-plans incomplete days; does not rewrite completed history.
 - Program template setting persists; non-PPL templates fall back to PPL slots until their tables ship.
+
+## Acceptance (v1.2–v1.3)
+
+- Normal session: filled slots use role floors (primary ≥3, secondary/isolation ≥2); drop optional slots before emitting 1-set rows.
+- Synergist volume caps at 50% of weekly muscle target.
+- Depleted readiness: ordered trim via SessionAutoregulator (not global volume wipe).
+- Deload weekly target ≥ MEV.
+- Reactive full-week deload requires user confirm.
 
 ## Sources
 

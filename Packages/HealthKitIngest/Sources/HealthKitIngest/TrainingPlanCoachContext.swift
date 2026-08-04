@@ -69,9 +69,6 @@ public enum TrainingPlanCoachContext {
     }
 
     private static func formatSets(_ value: Double) -> String {
-        if value.rounded() == value {
-            return String(format: "%.0f", value)
-        }
-        return String(format: "%.1f", value)
+        SessionDesignBriefBuilder.formatHardSets(value)
     }
 }
