@@ -54,6 +54,17 @@ struct FoodLogPayloadTests {
         #expect(payload.carbsG == 12)
     }
 
+    @Test("decodes food_log with ingredient items")
+    func decodesItems() throws {
+        let json = """
+        {"schemaVersion":"food_log.v1","reply":"Logged breakfast.","action":"log","description":"Eggs and toast","bucket":"breakfast","caloriesKcal":350,"proteinG":18,"carbsG":30,"fatG":14,"items":[{"name":"egg","estimatedGrams":100,"confidence":"medium"},{"name":"toast","estimatedGrams":40,"confidence":"medium"}]}
+        """
+        let payload = try JSONDecoder().decode(FoodLogPayload.self, from: Data(json.utf8))
+        #expect(payload.hasIngredientBreakdown)
+        #expect(payload.items?.count == 2)
+        #expect(payload.items?.first?.name == "egg")
+    }
+
     private func fixtureText(named name: String) throws -> String {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json") else {
             Issue.record("Missing fixture \(name).json")

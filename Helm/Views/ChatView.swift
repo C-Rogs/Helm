@@ -6,6 +6,7 @@ import SwiftUI
 struct ChatView: View {
     @Bindable private var controller = ChatBootstrap.controller
     @Bindable private var activityGate = CoachActivityGate.shared
+    @State private var dictation = ChatFoodDictationController()
     @FocusState private var isInputFocused: Bool
 
     private var coachName: String { CoachDisplayNameStore.name }
@@ -36,9 +37,16 @@ struct ChatView: View {
                                     .id(message.id)
                             }
 
-                            if let lastTurnError = controller.lastTurnError, controller.pendingChatAction == nil {
+                            if let lastTurnError = controller.lastTurnError,
+                               controller.pendingChatAction == nil,
+                               controller.pendingFoodMealConfirm == nil {
                                 errorBubble(lastTurnError)
                                     .id("last-turn-error")
+                            }
+
+                            if showsCoachProgress {
+                                chatProgressCard
+                                    .id("chat-progress")
                             }
 
                             if let proposal = controller.pendingChatAction {
@@ -82,9 +90,15 @@ struct ChatView: View {
                     .onChange(of: controller.pendingChatAction?.id) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
+                    .onChange(of: controller.isPreparingFoodMealConfirm) { _, _ in
+                        scrollToBottom(proxy: proxy)
+                    }
+                    .onChange(of: controller.chatProgressStep) { _, _ in
+                        scrollToBottom(proxy: proxy)
+                    }
                 }
 
-                if controller.isApplyingChatAction {
+                if controller.isApplyingChatAction, controller.pendingFoodMealConfirm == nil {
                     CoachAIProgressCard(
                         eyebrow: "COACH",
                         title: "Applying change",
@@ -110,7 +124,29 @@ struct ChatView: View {
                 controller.consumeHandoffPromptIfNeeded()
             }
             .onDisappear {
+                dictation.cancel()
                 controller.onDisappear()
+            }
+            .onChange(of: controller.pendingFoodMealConfirm?.id) { _, newID in
+                if newID != nil {
+                    dictation.cancel()
+                }
+            }
+            .sheet(isPresented: Binding(
+                get: { controller.pendingFoodMealConfirm != nil },
+                set: { if !$0 { controller.dismissFoodMealConfirm() } }
+            )) {
+                if let state = controller.pendingFoodMealConfirm {
+                    CoachFoodMealConfirmSheet(
+                        state: state,
+                        isSaving: controller.isApplyingChatAction,
+                        errorMessage: controller.lastTurnError,
+                        onCancel: { controller.dismissFoodMealConfirm() },
+                        onConfirm: { estimate, name, bucket in
+                            controller.confirmFoodMeal(estimate: estimate, name: name, bucket: bucket)
+                        }
+                    )
+                }
             }
         }
     }
@@ -233,14 +269,46 @@ struct ChatView: View {
 
     private var composer: some View {
         HStack(spacing: HelmSpacing.sm) {
-            TextField("Ask the coach", text: $controller.draftText, axis: .vertical)
+            Button {
+                HapticEngine.shared.play(.selection)
+                isInputFocused = false
+                dictation.toggleListening(
+                    onPartial: { transcript in
+                        controller.draftText = transcript
+                    },
+                    onFinal: { transcript in
+                        controller.draftText = ""
+                        controller.sendFoodDictation(transcript)
+                    }
+                )
+            } label: {
+                Group {
+                    if showsMicBusy {
+                        ProgressView()
+                            .frame(width: 28, height: 28)
+                    } else {
+                        HelmIconView(.mic, context: .action)
+                            .foregroundStyle(micForegroundColor)
+                            .symbolEffect(.pulse, isActive: dictation.isListening)
+                    }
+                }
+            }
+            .buttonStyle(.helmPressable)
+            .disabled(!canUseMic)
+            .accessibilityLabel(dictation.isListening ? "Stop dictation" : "Dictate meal")
+
+            TextField(
+                dictation.isListening ? "Listening…" : "Ask the coach",
+                text: $controller.draftText,
+                axis: .vertical
+            )
                 .textFieldStyle(.plain)
                 .lineLimit(1 ... 4)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
                 .helmPanelChrome(.elevated)
                 .focused($isInputFocused)
-                .disabled(!controller.isCoachAvailable || controller.isStreaming || activityGate.isBlocked(for: .chat))
+                .disabled(isComposerDisabled || dictation.isListening)
 
             Button {
                 HapticEngine.shared.play(.selection)
@@ -258,18 +326,71 @@ struct ChatView: View {
         }
         .padding(HelmSpacing.md)
         .helmPanelChrome(.surface)
+        .onChange(of: dictation.errorMessage) { _, message in
+            if let message {
+                controller.reportSurfaceError(message)
+            }
+        }
+    }
+
+    private var showsCoachProgress: Bool {
+        controller.isPreparingFoodMealConfirm
+            || (controller.isStreaming
+                && !shouldShowStreamingBubble(controller.streamingText ?? ""))
+            || (controller.chatProgressStep != nil && controller.isStreaming)
+    }
+
+    private var showsMicBusy: Bool {
+        controller.isPreparingFoodMealConfirm
+            || (controller.isStreaming && controller.chatProgressTitle != nil)
+    }
+
+    private var chatProgressCard: some View {
+        CoachAIProgressCard(
+            eyebrow: "COACH",
+            title: controller.chatProgressTitle ?? "Working on it",
+            completedSteps: controller.chatProgressCompletedSteps,
+            currentStep: controller.chatProgressStep ?? "Please wait…",
+            footnote: controller.isPreparingFoodMealConfirm
+                ? "Signal matches each ingredient to CoFID on your phone."
+                : nil,
+            isImpactful: true
+        )
+    }
+
+    private var micForegroundColor: Color {
+        if dictation.isListening {
+            return HelmColor.accent
+        }
+        if dictation.phase == .denied {
+            return HelmColor.depleted
+        }
+        return canUseMic ? HelmColor.fgSecondary : HelmColor.fgMuted
+    }
+
+    private var isComposerDisabled: Bool {
+        !controller.isCoachAvailable
+            || controller.isStreaming
+            || controller.isPreparingFoodMealConfirm
+            || controller.pendingFoodMealConfirm != nil
+            || activityGate.isBlocked(for: .chat)
+    }
+
+    private var canUseMic: Bool {
+        !isComposerDisabled && !controller.isApplyingChatAction
     }
 
     private var canSend: Bool {
-        controller.isCoachAvailable
-            && !controller.isStreaming
-            && !activityGate.isBlocked(for: .chat)
+        canUseMic
+            && !dictation.isListening
             && !controller.draftText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         let scroll = {
-            if controller.isStreaming,
+            if showsCoachProgress {
+                proxy.scrollTo("chat-progress", anchor: .bottom)
+            } else if controller.isStreaming,
                let streamingText = controller.streamingText,
                shouldShowStreamingBubble(streamingText) {
                 proxy.scrollTo("streaming", anchor: .bottom)
