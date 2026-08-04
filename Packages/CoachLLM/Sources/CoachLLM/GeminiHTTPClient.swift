@@ -1,4 +1,7 @@
 import Foundation
+import OSLog
+
+private let coachLLMStreamLog = Logger(subsystem: "com.cameronro.helm", category: "CoachLLM")
 
 public struct GeminiStreamHTTPRequest: Sendable {
     public let requestID: UUID
@@ -40,13 +43,22 @@ public enum GeminiStreamAssembler {
     public static func textChunks(from stream: AsyncThrowingStream<Data, Error>) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
+                var lastUsage: GeminiUsageMetadata?
                 do {
                     for try await chunk in stream {
                         for line in GeminiSSEParser.eventDataLines(from: chunk) {
+                            if let usage = GeminiSSEParser.usageMetadata(fromJSONString: line) {
+                                lastUsage = usage
+                            }
                             if let text = GeminiSSEParser.textDelta(from: line), !text.isEmpty {
                                 continuation.yield(text)
                             }
                         }
+                    }
+                    if let lastUsage {
+                        coachLLMStreamLog.debug(
+                            "Gemini stream usage \(lastUsage.summary, privacy: .public)"
+                        )
                     }
                     continuation.finish()
                 } catch {

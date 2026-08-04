@@ -1,7 +1,7 @@
 import Foundation
 
-enum CoachTranscriptBuilder {
-    static func contents(
+public enum CoachTranscriptBuilder {
+    public static func contents(
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
@@ -20,7 +20,12 @@ enum CoachTranscriptBuilder {
             ])
         }
 
-        for message in thread.messages {
+        // Avoid duplicating the current user turn when it was already appended to thread.
+        let history = Self.historyExcludingTrailingDuplicate(
+            messages: thread.messages,
+            userMessage: userMessage
+        )
+        for message in history {
             let role = message.role == .assistant ? "model" : "user"
             contents.append([
                 "role": role,
@@ -37,11 +42,31 @@ enum CoachTranscriptBuilder {
         return contents
     }
 
-    static func systemInstruction(_ systemInstructions: String) -> [String: Any] {
+    /// Drops a trailing user message that exactly matches `userMessage` (or its stored raw form).
+    public static func historyExcludingTrailingDuplicate(
+        messages: [CoachMessage],
+        userMessage: String
+    ) -> [CoachMessage] {
+        guard let last = messages.last, last.role == .user else {
+            return messages
+        }
+        let lastText = last.text.trimmingCharacters(in: .whitespacesAndNewlines)
+        let current = userMessage.trimmingCharacters(in: .whitespacesAndNewlines)
+        if lastText == current {
+            return Array(messages.dropLast())
+        }
+        // Dictation: stored transcript vs framed coach user message.
+        if current.contains(lastText), current.contains("[Food dictation") {
+            return Array(messages.dropLast())
+        }
+        return messages
+    }
+
+    public static func systemInstruction(_ systemInstructions: String) -> [String: Any] {
         ["parts": [["text": systemInstructions]]]
     }
 
-    static func mealPhotoContents(
+    public static func mealPhotoContents(
         imageJPEGBase64: String,
         userMessage: String
     ) -> [[String: Any]] {

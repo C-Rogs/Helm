@@ -30,7 +30,7 @@ public enum ContextBuilder {
         let contextBlock: String
         switch turn {
         case .followUp:
-            contextBlock = followUpContextBlock(from: days)
+            contextBlock = followUpContextBlock(from: days, profile: profile)
         case .initial:
             contextBlock = assembleContextBlock(
                 stablePrefix: stablePrefix,
@@ -84,8 +84,12 @@ public enum ContextBuilder {
         return sections.joined(separator: "\n\n")
     }
 
-    private static func followUpContextBlock(from days: CoachContextDays) -> String {
+    private static func followUpContextBlock(from days: CoachContextDays, profile: MemoryProfile) -> String {
         var sections: [String] = []
+        let slim = normalized(profile.slimPhaseLine())
+        if !slim.isEmpty {
+            sections.append("# Phase\n\(slim)")
+        }
         let workouts = normalized(days.recentWorkouts)
         if !workouts.isEmpty {
             sections.append("# Recent Workouts\n\(workouts)")

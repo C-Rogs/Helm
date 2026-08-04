@@ -213,7 +213,9 @@ struct ContextBuilderTests {
             turn: .followUp
         )
 
-        #expect(prompt.contextBlock == "# Recent Workouts\n\(workouts)")
+        #expect(prompt.contextBlock.contains("# Recent Workouts"))
+        #expect(prompt.contextBlock.contains("Bench Press"))
+        #expect(prompt.contextBlock.contains("# Phase"))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 2)
         #expect(!prompt.contextBlock.contains("# Memory Profile"))
@@ -221,8 +223,8 @@ struct ContextBuilderTests {
         #expect(!prompt.contextBlock.contains("readiness=58"))
     }
 
-    @Test("follow-up omits context when there are no recent workouts")
-    func followUpOmitsContextWithoutRecentWorkouts() {
+    @Test("follow-up keeps slim phase when workouts missing")
+    func followUpKeepsSlimPhaseWithoutWorkouts() {
         let prompt = ContextBuilder.build(
             profile: profile,
             days: fixtureDays(),
@@ -230,7 +232,8 @@ struct ContextBuilderTests {
             turn: .followUp
         )
 
-        #expect(prompt.contextBlock.isEmpty)
+        #expect(prompt.contextBlock.contains("# Phase"))
+        #expect(prompt.contextBlock.contains("phase=gain"))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 3)
         #expect(!prompt.contextBlock.contains("# Recent Days"))

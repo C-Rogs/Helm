@@ -156,6 +156,78 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func workoutStartBody(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.contents(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread
+            ),
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": workoutStartSchema()
+            ]
+        )
+    }
+
+    public static func workoutStartSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.workoutStartV2.rawValue),
+                "reply": ["type": "string"],
+                "helmDay": ["type": "string"],
+                "title": ["type": "string"],
+                "useAdjustedPrescription": ["type": "boolean"],
+                "exercises": [
+                    "type": "array",
+                    "minItems": 1,
+                    "items": workoutStartExerciseSchema()
+                ]
+            ],
+            "required": ["schemaVersion", "reply", "exercises"]
+        ]
+    }
+
+    private static func workoutStartExerciseSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "name": ["type": "string"],
+                "restSeconds": ["type": "integer"],
+                "sets": [
+                    "type": "array",
+                    "items": workoutStartSetSchema()
+                ]
+            ],
+            "required": ["name", "sets"]
+        ]
+    }
+
+    private static func workoutStartSetSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "setType": [
+                    "type": "string",
+                    "enum": ["warmup", "normal", "drop_set", "failure", "bodyweight"]
+                ],
+                "reps": ["type": "integer"],
+                "massKg": ["type": "number"],
+                "rpe": ["type": "number"]
+            ],
+            "required": ["setType", "reps", "massKg"]
+        ]
+    }
+
     public static func sessionAdjustmentSchema() -> [String: Any] {
         sessionAdjustmentV2Schema()
     }

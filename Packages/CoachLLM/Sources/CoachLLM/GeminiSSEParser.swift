@@ -26,6 +26,33 @@ enum GeminiSSEParser {
         return parts.compactMap { $0["text"] as? String }.joined()
     }
 
+    /// Best-effort parse of Gemini `usageMetadata` (prompt / cached / output tokens).
+    static func usageMetadata(from jsonObject: [String: Any]) -> GeminiUsageMetadata? {
+        guard let usage = jsonObject["usageMetadata"] as? [String: Any] else { return nil }
+        return GeminiUsageMetadata(
+            promptTokenCount: intValue(usage["promptTokenCount"]),
+            cachedContentTokenCount: intValue(usage["cachedContentTokenCount"]),
+            candidatesTokenCount: intValue(usage["candidatesTokenCount"]),
+            totalTokenCount: intValue(usage["totalTokenCount"])
+        )
+    }
+
+    static func usageMetadata(fromJSONString json: String) -> GeminiUsageMetadata? {
+        guard let data = json.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+        return usageMetadata(from: object)
+    }
+
+    static func usageMetadata(fromResponseData data: Data) -> GeminiUsageMetadata? {
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return nil
+        }
+        return usageMetadata(from: object)
+    }
+
     static func responseText(from responseData: Data) throws -> String {
         guard let object = try JSONSerialization.jsonObject(with: responseData) as? [String: Any],
               let candidates = object["candidates"] as? [[String: Any]],
@@ -38,5 +65,26 @@ enum GeminiSSEParser {
         let text = parts.compactMap { $0["text"] as? String }.joined()
         guard !text.isEmpty else { throw CoachStructuredOutputError.emptyResponse }
         return text
+    }
+
+    private static func intValue(_ any: Any?) -> Int? {
+        if let int = any as? Int { return int }
+        if let number = any as? NSNumber { return number.intValue }
+        return nil
+    }
+}
+
+struct GeminiUsageMetadata: Sendable, Equatable {
+    let promptTokenCount: Int?
+    let cachedContentTokenCount: Int?
+    let candidatesTokenCount: Int?
+    let totalTokenCount: Int?
+
+    var summary: String {
+        let prompt = promptTokenCount.map(String.init) ?? "?"
+        let cached = cachedContentTokenCount.map(String.init) ?? "0"
+        let out = candidatesTokenCount.map(String.init) ?? "?"
+        let total = totalTokenCount.map(String.init) ?? "?"
+        return "prompt=\(prompt) cached=\(cached) candidates=\(out) total=\(total)"
     }
 }

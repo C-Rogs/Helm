@@ -81,7 +81,7 @@ public enum CoachContextAssembler {
             )
         }
 
-        let recentWorkouts = try recentWorkoutsBlock(from: store, limit: 3)
+        let recentWorkouts = try recentWorkoutsBlock(from: store, limit: 5)
         let trainingPlanSnapshot = try trainingPlanSnapshotBlock(
             from: store,
             endingAt: endDay,

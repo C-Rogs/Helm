@@ -112,6 +112,11 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         )
 
         let responseData = try await httpClient.generateContent(request)
+        if let usage = GeminiSSEParser.usageMetadata(fromResponseData: responseData) {
+            coachLLMLog.debug(
+                "Gemini generate usage requestID=\(requestID.uuidString, privacy: .public) \(usage.summary, privacy: .public)"
+            )
+        }
         let payload: Payload
         do {
             payload = try decodeStructuredPayload(
@@ -134,6 +139,11 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
                 "Gemini structured decode retry requestID=\(requestID.uuidString, privacy: .public) prompt=\(promptVersion.rawValue, privacy: .public)"
             )
             let retryData = try await httpClient.generateContent(request)
+            if let usage = GeminiSSEParser.usageMetadata(fromResponseData: retryData) {
+                coachLLMLog.debug(
+                    "Gemini generate retry usage requestID=\(requestID.uuidString, privacy: .public) \(usage.summary, privacy: .public)"
+                )
+            }
             do {
                 payload = try decodeStructuredPayload(
                     type,
@@ -184,6 +194,30 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             promptVersion: .sessionAdjustmentV2
         ) {
             try GeminiRequestBuilder.sessionAdjustmentBody(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread
+            )
+        }
+    }
+
+    public func generateWorkoutStart(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState
+    ) async throws -> CoachStructuredArtefact<WorkoutStartStructuredPayload> {
+        try await generateStructured(
+            WorkoutStartStructuredPayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: contextBlock,
+            userMessage: userMessage,
+            thread: thread,
+            expectedSchema: .workoutStartV2,
+            promptVersion: .chatV1
+        ) {
+            try GeminiRequestBuilder.workoutStartBody(
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
                 userMessage: userMessage,

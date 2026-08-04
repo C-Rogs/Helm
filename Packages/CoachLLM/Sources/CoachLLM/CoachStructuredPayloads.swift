@@ -243,6 +243,13 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
     public let carbsG: Double?
     public let fatG: Double?
     public let helmDay: String?
+    public let items: [MealDecompositionPayload.Item]?
+    public let implicitFats: [MealDecompositionPayload.Item]?
+    public let portionNotes: String?
+
+    public var hasIngredientBreakdown: Bool {
+        !(items ?? []).isEmpty
+    }
 
     public init(
         schemaVersion: String,
@@ -255,7 +262,10 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         proteinG: Double? = nil,
         carbsG: Double? = nil,
         fatG: Double? = nil,
-        helmDay: String? = nil
+        helmDay: String? = nil,
+        items: [MealDecompositionPayload.Item]? = nil,
+        implicitFats: [MealDecompositionPayload.Item]? = nil,
+        portionNotes: String? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.reply = reply
@@ -268,6 +278,9 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         self.carbsG = carbsG
         self.fatG = fatG
         self.helmDay = helmDay
+        self.items = items
+        self.implicitFats = implicitFats
+        self.portionNotes = portionNotes
     }
 
     public init(from decoder: any Decoder) throws {
@@ -296,6 +309,9 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         carbsG = try Self.decodeFlexibleDouble(from: container, forKey: .carbsG)
         fatG = try Self.decodeFlexibleDouble(from: container, forKey: .fatG)
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        items = try container.decodeIfPresent([MealDecompositionPayload.Item].self, forKey: .items)
+        implicitFats = try container.decodeIfPresent([MealDecompositionPayload.Item].self, forKey: .implicitFats)
+        portionNotes = try container.decodeIfPresent(String.self, forKey: .portionNotes)
     }
 
     private enum CodingKeys: String, CodingKey {
@@ -310,6 +326,9 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         case carbsG
         case fatG
         case helmDay
+        case items
+        case implicitFats
+        case portionNotes
     }
 
     private static func decodeFlexibleDouble(
@@ -521,6 +540,87 @@ public enum MealCopyPayloadParser: Sendable {
               let data = block.data(using: .utf8),
               let payload = try? JSONDecoder().decode(MealCopyPayload.self, from: data),
               payload.schemaVersion == CoachOutputSchemaVersion.mealCopyV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct WorkoutQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case latestCompleted
+        case onDay
+        case includingCardio
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "latestcompleted", "latest_completed", "latest", "last":
+                self = .latestCompleted
+            case "onday", "on_day", "day":
+                self = .onDay
+            case "includingcardio", "including_cardio", "cardio", "with_run":
+                self = .includingCardio
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let helmDay: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.workoutQueryV1.rawValue,
+        queryType: QueryType,
+        helmDay: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.helmDay = helmDay
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
+            queryType = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
+                  let flexible = QueryType(rawFlexible: raw) {
+            queryType = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .queryType,
+                in: container,
+                debugDescription: "workout_query.v1 queryType must be latestCompleted, onDay, or includingCardio"
+            )
+        }
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
+            lookbackDays = intValue
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
+                  let intValue = Int(raw) {
+            lookbackDays = intValue
+        } else {
+            lookbackDays = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, queryType, helmDay, lookbackDays
+    }
+}
+
+public enum WorkoutQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> WorkoutQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .workoutQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(WorkoutQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.workoutQueryV1.rawValue
         else {
             return nil
         }

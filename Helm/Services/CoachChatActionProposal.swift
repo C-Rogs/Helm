@@ -131,7 +131,7 @@ enum WorkoutStartCommandPreview {
 
         if let labels = payload.exercises?.map(\.name), !labels.isEmpty {
             return (
-                title: "Start today's workout",
+                title: payload.title ?? "Start today's workout",
                 detail: labels.joined(separator: " → "),
                 reason: "Reorders and starts today's prescription."
             )
@@ -140,8 +140,12 @@ enum WorkoutStartCommandPreview {
         let adjusted = payload.useAdjustedPrescription == true
         return (
             title: "Start today's workout",
-            detail: adjusted ? "Coach-adjusted prescription" : "Engine prescription",
-            reason: adjusted ? "Uses the plan adjusted earlier in chat." : nil
+            detail: adjusted
+                ? "Coach-adjusted prescription (confirm shows engine order)"
+                : "Today's engine prescription (confirm to open Train)",
+            reason: adjusted
+                ? "Uses the plan adjusted earlier in chat. Open Train if the exercise list looks wrong."
+                : "Starts the engine prescription for today. Negotiate a custom list in chat first if you want different exercises."
         )
     }
 }

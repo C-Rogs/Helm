@@ -86,6 +86,17 @@ enum CoachWorkoutStartAdjuster {
             }
         }
 
+        // Bare payload with no exercises: only allowed for unchanged engine prescription.
+        // Chat that discussed a custom list must not silently start a one-exercise stub.
+        if payload.exercises == nil || payload.exercises?.isEmpty == true {
+            if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue {
+                throw StartError.emptySession
+            }
+            // v1 bare start of today's engine prescription remains valid.
+            try await onStart(.prescription(useAdjusted: useAdjusted))
+            return
+        }
+
         try await onStart(.prescription(useAdjusted: useAdjusted || payload.exercises != nil))
     }
 }

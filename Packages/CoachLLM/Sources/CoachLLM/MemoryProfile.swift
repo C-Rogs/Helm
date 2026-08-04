@@ -41,6 +41,11 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
         return sections.joined(separator: "\n\n")
     }
 
+    /// One-line phase/goal for follow-up turns (token-cheap continuity).
+    public func slimPhaseLine() -> String {
+        Self.phaseStableLine(phaseGoal)
+    }
+
     private static func normalized(_ text: String) -> String {
         text
             .replacingOccurrences(of: "\r\n", with: "\n")
