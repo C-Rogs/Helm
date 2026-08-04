@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import Testing
 @testable import Persistence
 
@@ -9,7 +10,9 @@ struct TrainingPlanSettingsStoreTests {
         let store = try PersistenceStore.inMemory()
         let settings = StoredTrainingPlanSettings(
             phaseGoal: PhaseGoal(phase: .cut, weeklyRateKg: 0.5, emphasis: "v-taper"),
-            experienceRaw: "advanced"
+            experienceRaw: "advanced",
+            programTemplateRaw: "ppl",
+            sessionDurationMinutes: 45
         )
 
         try store.trainingPlan.save(settings)
@@ -23,5 +26,18 @@ struct TrainingPlanSettingsStoreTests {
         let store = try PersistenceStore.inMemory()
         let loaded = try store.trainingPlan.load()
         #expect(loaded == .default)
+        #expect(loaded.programTemplateRaw == "ppl")
+        #expect(loaded.sessionDurationMinutes == 60)
+    }
+
+    @Test("legacy JSON without session shape fields still loads")
+    func legacyDecode() throws {
+        let json = """
+        {"experienceRaw":"novice","phaseGoal":{"phase":"maintain"}}
+        """
+        let decoded = try JSONDecoder().decode(StoredTrainingPlanSettings.self, from: Data(json.utf8))
+        #expect(decoded.experienceRaw == "novice")
+        #expect(decoded.programTemplateRaw == "ppl")
+        #expect(decoded.sessionDurationMinutes == 60)
     }
 }

@@ -1,0 +1,445 @@
+Session Composition & Program Settings Taxonomy for Helm: Engineering Specification & Scientific Framework
+1. Executive Summary
+The current architecture of Helm evaluates daily volume allocation through a simplistic 1:1 muscle-to-exercise assignment model. In PrescriptionEngine, a session is constructed by assigning exactly one exercise to each target muscle defined within the active day's split. On a Pull day—defined in SessionSplitPlanner as back and biceps—the engine selects one movement for the back and one movement for the biceps. When the weekly volume target for back (e.g., 12 hard sets) is distributed across two weekly Pull exposures, the engine assigns 6 hard sets to the single back exercise in a single workout.
+This 1:1 design produces a severe structural failure: thin sessions consisting of only 2 exercises, where total weekly set targets are met by dumping high set volumes onto single movements.
+Current Helm Engine Allocation (Pull Day Example):
+  Back Muscle Target  ---> 1 Exercise Picked (e.g., Lat Pulldown) ---> Assigned 6 Hard Sets
+  Bicep Muscle Target ---> 1 Exercise Picked (e.g., Bicep Curl)   ---> Assigned 5 Hard Sets
+  Result: 2 Exercises, 11 Sets (Violates Gym Practice Norms & Biomechanical Principles)
+From a sports science and neuromuscular perspective, dumping 5 to 6 hard sets onto a single exercise in one session introduces significant physiological drawbacks:
+Intra-Session Diminishing Returns and Junk Volume: Empirical meta-regressions demonstrate that hypertrophic stimulus per set decays rapidly past 3 to 4 sets for a given movement vector in a single session. Beyond this threshold, acute localized neuromuscular fatigue, calcium ion handling impairment, and excitation-contraction coupling degradation accumulate, yielding "junk volume" that elevates systemic fatigue without stimulating additional muscle protein synthesis.
+Inadequate Regional Muscle Activation: Complex muscle groups like the latissimus dorsi, trapezius, and quadriceps cannot be fully stimulated by a single biomechanical movement. Biomechanical research confirms that heterogeneous muscle growth (regional hypertrophy) requires varied loading angles, resistance profiles, and muscle lengths. A single vertical pull fails to recruit the mid-trapezius and rhomboids as effectively as a horizontal row.
+Product Defect: A two-exercise session fails to align with realistic gym training durations, rendering the application's prescriptions incomplete to lifters regardless of mathematical accuracy.
+To resolve this defect, Helm must adopt a Movement Pattern Session Composer Architecture. This framework shifts the unit of session design from gross muscle labels to functional movement pattern slots (e.g., Vertical Pull, Horizontal Pull, Elbow Flexion). The composer enforces a maximum cap of 3 to 4 sets per exercise, dynamically expands pattern slots based on the athlete's explicit Session Duration Budget, and splits muscle volume across complimentary movement vectors.
+2. Program Settings Information Architecture & Taxonomy
+To prevent user interface settings from corrupting the deterministic math engine, Helm requires a clear taxonomy that classifies settings by their operational scope: top-level engine parameters, runtime filters, or non-calculating educational resources.
+Setting Name
+Data Type & Valid Values
+Deterministic Engine Function & Math Effect
+Re-Plan Scope
+UI Layer / IA Location
+Program Template / Split
+Enum: PPL_6DAY, PPL_4DAY, UPPER_LOWER_4DAY, FULL_BODY_3DAY
+Sets weekly split rotation, maps target muscle groups and movement pattern slots to specific days, and establishes exposure frequency per muscle.
+Immediate full block re-plan. Re-calculates frequency and session split structure.
+Program Settings $\to$ Training Structure
+Session Duration Budget
+Enum: MIN_30, MIN_45, MIN_60, MIN_75_PLUS
+Calculates total session set capacity ($T_{budget}$), bounds active pattern slots per session, and establishes set allocation thresholds.
+Re-plans remaining uncompleted sessions in the active block.
+Program Settings $\to$ Session Constraints
+Training Experience Level
+Enum: NOVICE, INTERMEDIATE, ADVANCED
+Scales initial MEV/MRV baseline seeds ($0.85\times, 1.0\times, 1.1\times$), sets max set caps per exercise (3 vs. 4), dictates RIR failure proximity rules, and adjusts slot complexity.
+Structural rules apply immediately to upcoming sessions; baseline volume seeds update on next block reset.
+Athlete Profile $\to$ Experience
+Structured Priority / Emphasis
+Struct Array: [{muscle: MuscleGroup, delta: +2|+4, priority: Rank}]
+Adds $+2$ or $+4$ weekly sets to target muscle MEV/MRV, elevates target pattern slots to primary session order, and guarantees dedicated isolation slots.
+Re-distributes weekly set targets across remaining sessions in active block.
+Block Setup / Priority Focus
+Allowed Equipment Filter
+Bitmask / Enum Set: {BARBELL, DUMBBELL, CABLE, MACHINE, BODYWEIGHT}
+Filters exercise catalog candidates for assigned pattern slots. Does not alter set math, pattern slot counts, or split structure.
+Runtime exercise selection update (zero re-plan of set targets).
+Methodology Preferences $\to$ Equipment
+Exercise Selection Bias
+Enum: BALANCED, STRETCH_FOCUSED, LOW_FATIGUE, COMPOUND_HEAVY
+Modifies ranking algorithm weights during exercise selection within pattern slots (e.g., prioritizing long muscle length resistance profiles).
+Runtime exercise selection update (zero re-plan of set targets).
+Methodology Preferences $\to$ Biomechanical Bias
+Methodology Content / Sources
+Read-Only Text / Citations
+Informs user on theoretical foundations and research papers. Emits zero mathematical inputs or parameters to the calculation engine.
+None (Read-only UI).
+Settings $\to$ Sources & Methodology
+
+The Methodology Bridge Pattern
+Educational essays within the Sources UI must not directly manipulate engine calculations. Instead, Helm employs a Methodology Bridge Pattern. When an athlete reads an educational essay (e.g., "The Case for Stretch-Mediated Hypertrophy") and taps "Apply Methodology," the UI triggers an explicit configuration prompt. This action updates typed, deterministic settings (e.g., setting Exercise Selection Bias to STRETCH_FOCUSED). The methodology text remains an educational citation, while the typed setting executes deterministic adjustments within the engine.
+3. Session Composer Engine Specification
+Movement Pattern Slots & Split Architecture
+The deterministic composer structures sessions around functional movement pattern slots. Every split day consists of mandatory primary pattern slots, secondary pattern slots, and accessory pattern slots.
+Split Day
+Primary Pattern Slots (Mandatory)
+Secondary Pattern Slots (Standard)
+Accessory / Overflow Slots (Extended)
+Push
+1. Horizontal Press (Chest/Anterior Delt)
+
+2. Incline / Overhead Press
+3. Lateral Delt Isolation
+
+4. Overhead Triceps Extension
+5. Chest Fly / Cable Isolation
+
+6. Neutral/Pronated Triceps Pushdown
+Pull
+1. Vertical Pull (Lat-Dominant)
+
+2. Horizontal Pull (Mid-Traps/Rhomboids)
+3. Supinated Bicep Curl
+
+4. Neutral/Pronated Flexion (Brachialis)
+5. Secondary Pullover / Lat Isolation
+
+6. Rear Delt / Upper Trap Isolation
+Legs
+1. Compound Knee Extension (Squat/Press)
+
+2. Compound Hip Extension (Hinge/RDL)
+3. Isolated Knee Extension (Leg Extension)
+
+4. Isolated Knee Flexion (Leg Curl)
+5. Plantar Flexion (Calf Raise)
+
+6. Abdominal / Core Isolation
+Upper
+1. Horizontal Press
+
+2. Vertical Pull
+3. Incline / Overhead Press
+
+4. Horizontal Row
+5. Lateral Delt Isolation
+
+6. Arms Superset (Bicep/Tricep)
+Lower
+1. Squat / Quad Compound
+
+2. Posterior Hinge / RDL
+3. Isolated Knee Extension
+
+4. Isolated Knee Flexion
+5. Plantar Flexion (Calf Raise)
+
+6. Core / Lower Back Isolation
+Full Body
+1. Lower Compound (Squat or Hinge)
+
+2. Upper Press Compound
+3. Upper Pull Compound
+
+4. Secondary Lower / Upper Isolation
+5. Core / Arm Accessory
+Session Duration Budget & Capacity Matrices
+Session set capacity is constrained by the athlete's explicit Session Duration Budget ($T_{budget}$). The duration required for a session ($T_{total}$) is calculated using warm-up allocations, set execution times, rest intervals, and exercise transition times:
+$$T_{total} = T_{warmup} + \sum_{i=1}^{E} \left( N_{sets, i} \cdot T_{exec} + (N_{sets, i} - 1) \cdot T_{rest, i} \right) + (E - 1) \cdot T_{trans}$$
+Where:
+$T_{warmup} = 5.0\text{ minutes}$ (general warm-up baseline).
+$T_{exec} = 0.75\text{ minutes}$ ($45\text{ seconds}$ total time-under-tension per set).
+$T_{rest, i} = 2.0\text{ minutes}$ for primary compound slots; $1.25\text{ minutes}$ for secondary isolation slots.
+$T_{trans} = 2.0\text{ minutes}$ (setup and movement transition time between distinct exercises $E$).
+Duration Budget
+Working Set Limit (Tbudget )
+Pattern Slots Allowed
+Max Sets / Exercise
+Rest Interval Standards
+Target Exercise Count
+30 Minutes
+6 – 8 sets
+2 – 3 slots
+3 sets max
+60 – 90 seconds
+2 – 3 exercises
+45 Minutes
+9 – 12 sets
+3 – 4 slots
+3 sets max
+90 – 120 seconds
+3 – 4 exercises
+60 Minutes (Default)
+13 – 16 sets
+4 – 5 slots
+4 sets max
+90 – 180 seconds
+4 – 5 exercises
+75+ Minutes
+17 – 22 sets
+5 – 7 slots
+4 sets max
+120 – 180 seconds
+5 – 7 exercises
+Volume Allocation, Set-Splitting, & Exercise Cap Rules
+Per-Exercise Set Cap: No single exercise may receive more than 4 working sets in a single workout session. If a target muscle requires 6 hard sets in a workout, the engine must split that volume across two distinct movement pattern slots (e.g., 3 sets of Vertical Pull + 3 sets of Horizontal Row).
+Primary vs. Secondary Allocation Ratios: Mandatory primary compound slots are assigned 3 to 4 working sets. Secondary isolation slots are assigned 2 to 3 working sets.
+Session Set Minimum Threshold: A standard 60-minute session must contain a minimum of 12 hard sets across at least 4 distinct exercises.
+Criteria for 2-Exercise Sessions: A 2-exercise session is classified as an engine composition defect unless one of the following explicit parameters is present:
+The user's Duration Budget is explicitly configured to 30 Minutes.
+The active microcycle is a designated Deload Phase (where overall volume is scaled down by $50\%$).
+An active Injury / Medical Constraint limits the session to specific isolated movements.
+Handling Residual Weekly Volume: If remaining weekly sets for a target muscle exceed the daily session budget ($T_{budget}$), excess volume is automatically distributed to subsequent split exposures within the same week.
+Deterministic Session Composer Algorithm & Logic
+The SessionComposer executes in linear steps without reliance on LLM inputs:
+INPUTS:
+  athlete_profile : AthleteProfile (Experience, DurationBudget)
+  split_day       : SplitDayEnum (PUSH, PULL, LEGS, UPPER, LOWER, FULL_BODY)
+  weekly_targets  : Map<MuscleGroup, Int> (Remaining weekly hard sets)
+  rem_sessions    : Map<MuscleGroup, Int> (Remaining session exposures this week)
+  equipment_filter: Bitmask (Allowed equipment IDs)
+  selection_bias  : BiasEnum (BALANCED, STRETCH_FOCUSED, LOW_FATIGUE)
+
+OUTPUT:
+  SessionPlan : Struct { exercises: List<ExerciseAssignment>, total_sets: Int, estimated_duration: Int }
+
+PROCEDURE ComposeSession(athlete_profile, split_day, weekly_targets, rem_sessions, equipment_filter, selection_bias):
+
+  1. Calculate Target Daily Volume per Muscle:
+     daily_muscle_targets = Map<MuscleGroup, Int>()
+     FOR EACH muscle IN split_day.target_muscles:
+       daily_muscle_targets[muscle] = CEIL(weekly_targets[muscle] / rem_sessions[muscle])
+
+  2. Determine Session Capacity Limit:
+     T_capacity = GetMaxSetBudget(athlete_profile.DurationBudget) // e.g., 15 sets for 60 min
+
+  3. Select and Order Pattern Slots:
+     active_slots = List<PatternSlot>()
+     active_slots.AppendAll(GetMandatoryPrimarySlots(split_day))
+     
+     // Add secondary slots if volume and time capacity allow
+     FOR EACH muscle IN split_day.target_muscles:
+       IF daily_muscle_targets[muscle] > 4 OR active_slots.ContainsMuscle(muscle) == FALSE:
+         active_slots.Append(GetSecondarySlotForMuscle(muscle))
+
+  4. Exercise Selection & Set Allocation:
+     session_exercises = List<ExerciseAssignment>()
+     accumulated_sets = 0
+
+     FOR EACH slot IN active_slots:
+       IF accumulated_sets >= T_capacity:
+         BREAK
+
+       candidate_catalog = FilterCatalog(slot, equipment_filter)
+       selected_lift = RankAndSelect(candidate_catalog, selection_bias)
+       
+       target_muscle = slot.PrimaryMuscle
+       needed_sets = daily_muscle_targets[target_muscle]
+       
+       // Enforce exercise cap of 4 sets max
+       sets_to_assign = MIN(needed_sets, 4)
+       sets_to_assign = MIN(sets_to_assign, T_capacity - accumulated_sets)
+       
+       IF sets_to_assign > 0:
+         session_exercises.Add(ExerciseAssignment(selected_lift, slot, sets_to_assign))
+         accumulated_sets += sets_to_assign
+         daily_muscle_targets[target_muscle] -= sets_to_assign
+
+  5. Construct and Return SessionPlan:
+     est_duration = CalculateDuration(session_exercises)
+     RETURN SessionPlan(session_exercises, accumulated_sets, est_duration)
+4. Training Experience & Structured Emphasis Framework
+Structural Redefinition of Training Experience
+Training experience must define structural workout complexity, exercise capping rules, movement mechanics, and failure proximity thresholds rather than functioning solely as an initial volume seed scalar.
+Parameter / Rule
+Novice
+Intermediate
+Advanced
+Initial MEV/MRV Volume Seed Scalar
+$0.85\times$ baseline seeds
+$1.0\times$ baseline seeds
+$1.1\times$ baseline seeds
+Max Sets per Exercise Cap
+3 sets max
+4 sets max
+4 sets max
+Movement Pattern Complexity
+Simple bilateral movements; machine and cable dominant.
+Standard multi-joint compounds and free-weight isolations.
+High biomechanical variation (unilateral, stretch-focused, regional isolation).
+Proximity to Failure (RIR)
+RIR 2 – 3 default (preserves movement mechanics).
+RIR 1 – 2 default (progresses toward RIR 1).
+RIR 0 – 1 default (planned failure on final isolation sets).
+Target Exercise Count (60 min)
+4 exercises max
+4 – 5 exercises
+5 – 6 exercises
+
+Policy for Mid-Block Experience Adjustments
+When an athlete modifies their Experience Level during an active mesocycle block:
+Immediate Engine Action: Structural rules (Max sets per exercise, RIR targets, movement complexity filters) update immediately for all remaining uncompleted sessions.
+Deferred Engine Action: Baseline MEV/MRV volume landmark seeds remain fixed for the active block. Landmarks reseed only when initiating a new mesocycle block, preserving volume progression tracking.
+Structured Emphasis Profile Architecture
+Free-text entry strings (e.g., "I want to focus on my arms") are non-deterministic and deprecated for engine calculations. Helm replaces free-text parsing with a structured EmphasisProfile.
+JSON
+
+
+
+
+{
+  "emphasis_profile": {
+    "target_muscle": "BICEPS",
+    "priority_level": "HIGH",
+    "volume_delta_weekly_sets": 4,
+    "slot_behavior_modifier": "PRIORITIZE_PRIMARY_SLOT_AND_ADD_ISOLATION"
+  }
+}
+Deterministic Mechanics of Structured Emphasis
+Volume Acceleration: Adds $+2$ sets/week (MODERATE) or $+4$ sets/week (HIGH) to the target muscle's MEV/MRV landmarks, capped at the absolute MRV ceiling.
+Slot Ordering Elevation: Promotes pattern slots matching the emphasized muscle to the front of the session order, ensuring work is performed prior to systemic fatigue.
+Isolation Slot Guarantee: Mandates dedicated isolation pattern slots (e.g., Biceps emphasis guarantees both Supinated Bicep Curl and Neutral Hammer Curl slots within Pull day composition).
+5. LLM Coach Behavioral Contract & Thin Session Detection
+Thin Session Diagnostic Criteria
+The LLM Coach monitors session quality using deterministic diagnostic conditions. A session is flagged as "thin" if any of the following parameters are satisfied:
+$$\text{ThinSession} = \begin{cases} \text{TRUE} & \text{if } N_{sets} < 10 \text{ AND } T_{budget} \ge 60\text{ min} \\ \text{TRUE} & \text{if } E_{count} < 4 \text{ AND } T_{budget} \ge 60\text{ min} \\ \text{TRUE} & \text{if Mandatory Primary Slot is Unfilled} \\ \text{FALSE} & \text{otherwise} \end{cases}$$
+Clamped Proposal Schema & Engine Verification
+When a thin session condition is triggered, the Coach generates an explanatory narrative alongside a typed schema proposal. The LLM cannot mutate state directly; proposals pass through an engine validation pipeline before rendering in the UI.
++------------------+     Proposes Typed Payload     +------------------------+
+|                  | -----------------------------> |                        |
+|    LLM Coach     |                                |  PrescriptionEngine    |
+|  (Narrator UI)   | <----------------------------- |  (Validation & Clamp)  |
++------------------+    Returns Validated Plan      +------------------------+
+                                                                |
+                                                                v
+                                                    +------------------------+
+                                                    |  User Confirm Prompt   |
+                                                    |  (State Mutation)      |
+                                                    +------------------------+
+JSON
+
+
+
+
+{
+  "proposal_id": "prop_pull_expansion_001",
+  "diagnostic_reason": "Active Pull session contains only 2 exercises (6 total sets) under a 60-minute duration budget.",
+  "proposed_action": "EXPAND_PATTERN_SLOTS",
+  "slot_additions": [
+    {
+      "pattern_slot": "NEUTRAL_ELBOW_FLEXION",
+      "recommended_exercise_id": "db_hammer_curl",
+      "assigned_sets": 3
+    },
+    {
+      "pattern_slot": "REAR_DELT_ISOLATION",
+      "recommended_exercise_id": "reverse_cable_fly",
+      "assigned_sets": 3
+    }
+  ],
+  "engine_constraints_checked": {
+    "duration_budget_exceeded": false,
+    "mrv_ceiling_exceeded": false,
+    "equipment_available": true
+  }
+}
+Context Window Payload Specification
+To inform the Coach without exposing raw calculation logic, the engine supplies a structured context payload prior to narrative generation:
+JSON
+
+
+
+
+{
+  "context_payload": {
+    "current_template": "PPL_6DAY",
+    "today_split": "PULL",
+    "duration_budget_minutes": 60,
+    "max_set_capacity": 15,
+    "assigned_session_sets": 7,
+    "assigned_exercise_count": 2,
+    "active_slots": ["VERTICAL_PULL", "SUPINATED_BICEP_CURL"],
+    "unfilled_available_slots": ["HORIZONTAL_PULL", "NEUTRAL_ELBOW_FLEXION", "REAR_DELT_ISOLATION"],
+    "muscle_weekly_volume_status": {
+      "back": {"target": 12, "completed": 6, "today_assigned": 4},
+      "biceps": {"target": 10, "completed": 5, "today_assigned": 3}
+    }
+  }
+}
+6. Migration Engineering Roadmap & Risk Analysis
+Phased Implementation Strategy
+Phase 1: Immediate Prescription Engine Patch (Hotfix)
+  ├── Enforce 4-set maximum cap per exercise across existing allocation logic.
+  └── Enforce minimum 2-pattern-slot split for muscles requiring >4 sets in a single session.
+
+Phase 2: SessionComposer Engine Architecture (Core Release)
+  ├── Implement full Pattern Slot Taxonomy and Movement Pattern Catalog.
+  ├── Deploy Session Duration Budget Matrix and set capacity engine.
+  └── Decouple exercise counts from simple 1:1 muscle group mappings.
+
+Phase 3: Settings IA & Coach Protocol Integration (Refinement)
+  ├── Migrate Settings UI to formal IA (separating sources from typed parameters).
+  ├── Deploy structured EmphasisProfile JSON configuration.
+  └── Enforce Coach Thin Session detection and clamped proposal schema.
+Failure Modes, Edge Cases, & Mitigation Matrix
+
+Engineering Acceptance Criteria
+SCENARIO 1: Default 60-Minute Pull Day Composition
+  GIVEN an athlete on PPL split with a 60-minute Duration Budget
+  WHEN SessionComposer generates a Pull Day session
+  THEN the session MUST contain >= 4 distinct exercises
+  AND total session working sets MUST fall between 13 and 16 sets
+  AND no single exercise MUST exceed 4 hard sets
+  AND pattern slots MUST include at least 1 Vertical Pull, 1 Horizontal Pull, and 1 Elbow Flexion.
+
+SCENARIO 2: Equipment Filter Respect
+  GIVEN an athlete with Allowed Equipment set to {DUMBBELL, BODYWEIGHT}
+  WHEN SessionComposer builds any session
+  THEN 100% of selected exercises MUST match the allowed equipment bitmask.
+
+SCENARIO 3: Deterministic Re-Plan Triggers
+  GIVEN an active mesocycle
+  WHEN the athlete changes Duration Budget from 60 min to 45 min
+  THEN uncompleted sessions MUST deterministically re-plan to set capacities <= 12 sets
+  AND completed historical sessions MUST remain unmodified.
+7. Evidence Appendix & Practice Standards
+Scientific research backing Helm's session composition rules is graded below using standard Strength-of-Evidence benchmarks:
+Grade A: Systematic reviews, meta-analyses, and robust RCTs.
+Grade B: Peer-reviewed individual RCTs and biomechanical mechanistic evidence.
+Grade C: Established strength & conditioning practice norms.
+Physiological / Biomechanical Principle
+Evidence Grade
+Scientific Literature & Citations
+Helm Engine Implementation Rule
+Per-Exercise Set Efficiency & Diminishing Returns
+Grade B+
+Meta-regressions demonstrate hypertrophic stimulus per set drops significantly past 3–4 sets per exercise, while local fatigue escalates.
+Enforces a strict cap of 4 working sets per exercise before requiring a new pattern slot.
+Single-Session Per-Muscle Set Ceilings
+Grade B
+Reviews indicate single-session volume per muscle group plateaus around 8–10 sets; higher volumes yield superior results when distributed across multiple sessions per week.
+Caps single-session target muscle volume at $\le 10$ sets, spilling residual volume to subsequent split exposures.
+Regional Hypertrophy & Vector Variation
+Grade B
+Biomechanical studies confirm muscle growth is non-homogeneous. Different exercise vectors and loading profiles stimulate distinct regions within muscle heads.
+Mandates diverse movement pattern slots (e.g., horizontal vs. vertical pulls) rather than repeating single exercise picks.
+Rest Interval Impact on Volume Quality
+Grade A
+Meta-analyses show rest periods of 2–3 minutes for compounds maintain mechanical tension and force output across sets compared to short rest periods.
+Embeds $2.0\text{ min}$ compound and $1.25\text{ min}$ isolation rest timers into the Duration Budget calculation.
+Volume-Equated Training Frequency
+Grade A
+Meta-analyses prove training frequency (1x, 2x, 3x per week) yields equivalent hypertrophy when total volume is equated. Higher frequencies allow higher total volume without hitting single-session fatigue limits.
+Uses split frequency to distribute volume cleanly without inflating single-session set density.
+
+8. Product Owner Decision Matrix
+Contested Architectural Choice
+Option A
+Option B
+Recommended Helm Default
+Rationale for Selection
+Default Program Template Split
+Push / Pull / Legs (PPL)
+Upper / Lower (UL)
+Push / Pull / Legs (PPL)
+Standard PPL offers clear isolation of push vs. pull movement vectors, simplifying initial slot taxonomy implementation.
+Default Session Duration Budget
+45 Minutes
+60 Minutes
+60 Minutes
+A 60-minute budget accommodates 13–16 working sets across 4–5 exercises, aligning with strength and conditioning standards.
+Mid-Block Experience Change Policy
+Reseed baseline volume immediately
+Apply structural rules now; defer landmark reseed to next block
+Apply structural rules now; defer landmark reseed to next block
+Prevents mid-mesocycle volume resets that disrupt progressive overload tracking.
+Emphasis Input Architecture
+Free-text parsing via LLM
+Structured EmphasisProfile tags (+2/+4 sets)
+Structured EmphasisProfile tags (+2/+4 sets)
+Eliminates non-deterministic keyword parsing and ensures volume allocation logic remains offline-capable.
+Minimum Exercise Count per 60 min Session
+2 Exercises
+4 Exercises
+4 Exercises
+Eliminates thin sessions while respecting per-exercise set caps.
+
+This is for informational purposes only. For medical advice or diagnosis, consult a professional.

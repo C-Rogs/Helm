@@ -4,7 +4,7 @@ import Foundation
 /// Safe bounds for prescription targets and in-session adjustments.
 public enum PrescriptionBounds {
     public static let minSetsPerExercise = 1
-    public static let maxSetsPerExercise = 6
+    public static let maxSetsPerExercise = 4
     public static let minRPE = 5.0
     public static let maxRPE = 10.0
     public static let maxLoadAdjustmentFraction = 0.10

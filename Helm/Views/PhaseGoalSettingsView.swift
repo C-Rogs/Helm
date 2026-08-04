@@ -2,6 +2,7 @@ import Core
 import DesignSystem
 import HealthKitIngest
 import Persistence
+import PlanKit
 import SwiftUI
 
 struct PhaseGoalSettingsView: View {
@@ -75,6 +76,20 @@ struct PhaseGoalSettingsView: View {
                 }
             }
 
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                Text("Session duration")
+                    .helmType(.label, color: HelmColor.fgSecondary)
+                Picker("Duration", selection: $settings.sessionDurationMinutes) {
+                    ForEach(SessionDurationBudget.allCases) { budget in
+                        Text(budget.label).tag(budget.rawValue)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .onChange(of: settings.sessionDurationMinutes) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+            }
+
             if let saveMessage {
                 Text(saveMessage)
                     .font(HelmTypography.caption)
@@ -104,6 +119,33 @@ struct PhaseGoalSettingsView: View {
             .onChange(of: settings.experienceRaw) { _, _ in
                 HapticEngine.shared.play(.selection)
             }
+        }
+
+        Section("Session shape") {
+            Picker("Program", selection: $settings.programTemplateRaw) {
+                ForEach(ProgramTemplate.allCases) { template in
+                    Text(template.label).tag(template.rawValue)
+                }
+            }
+            .onChange(of: settings.programTemplateRaw) { _, _ in
+                HapticEngine.shared.play(.selection)
+            }
+            Text(ProgramTemplate(rawValue: settings.programTemplateRaw)?.detail ?? "")
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.fgMuted)
+
+            Picker("Duration", selection: $settings.sessionDurationMinutes) {
+                ForEach(SessionDurationBudget.allCases) { budget in
+                    Text(budget.label).tag(budget.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: settings.sessionDurationMinutes) { _, _ in
+                HapticEngine.shared.play(.selection)
+            }
+            Text("Controls how many pattern slots and sets today's composer builds. Changing this re-plans incomplete days.")
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.fgMuted)
         }
 
         if let saveMessage {

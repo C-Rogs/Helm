@@ -165,7 +165,7 @@ struct ExerciseSelectionTests {
             history: history
         )
 
-        #expect(session.exercises.count == 2)
+        #expect(session.exercises.count >= 2)
         for exercise in session.exercises {
             #expect(exercise.rationale != nil)
             #expect(!(exercise.rationale ?? "").isEmpty)

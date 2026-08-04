@@ -1,0 +1,343 @@
+Autoregulation, Drift Management, and Periodization Policies for Helm: Deterministic Decision Engines for Hypertrophy Training
+Executive Summary
+Autoregulation in resistance training balances structural adaptation against dynamic physiological fatigue. While traditional fixed linear periodization assumes ideal recovery, human performance operates under stochastic stress from training loads, sleep disruption, psychological strain, and environmental factors. Helm employs an offline-first, deterministic policy engine designed to govern daily session adjustments, microcycle schedule deviations (drift), and macrocycle deload sequences.
+The core architecture treats morning Autonomic Recovery Condition (ARC) scores—derived primarily from sleep-window standard deviation of NN intervals (SDNN)—as a noisy, within-person prior rather than an absolute indicator of muscular force capacity. In resistance training for hypertrophy, autonomic markers such as heart rate variability (HRV) correlate weakly with acute single-joint force production and localized muscle damage. Consequently, the policy engine uses ARC to modulate systemic parameters—such as RPE caps, volume set trimming, and equipment selection—while relying on hard-set accounting to safeguard weekly Minimum Effective Volume (MEV) floors and Maximum Recoverable Volume (MRV) ceilings.
+The system architecture flows deterministically from morning input evaluation to final clamped session execution. Morning ARC metrics and subjective scores pass into the Readiness Band Classifier to establish baseline daily constraints. Concurrently, calendar drift logic checks the microcycle state to determine if sessions are delayed or out of sequence. Prescribed training loads are then passed through an Exponentially Weighted Moving Average (EWMA) Acute:Chronic Workload Ratio (ACWR) guard to prevent unmanaged volume spikes. Finally, the resulting clamped session target is passed to an offline set ledger, while the Large Language Model (LLM) Coach narrative layer interprets the engine's choices for the user without overriding numeric clamps.
+Calendar disruptions are handled by a deterministic drift matrix. Delayed or out-of-order sessions trigger automatic calendar shifts, volume redistributions, or week index freezes without relying on unstructured volume catch-up spikes. EWMA ACWR calculations act as structural guards to prevent acute volume overspikes. Macrocycle deloads transition from static set cuts to dynamic recovery cycles that preserve motor pattern retention while shedding systemic fatigue. The operational model provides clear boundaries between deterministic numeric engine rules and LLM-driven coach explanations, ensuring testability, safety, and consistent adherence to progressive overload principles.
+Readiness Signal Limits and Band-to-Action Mapping
+Limits of Autonomic Signals in Hypertrophy Programming
+Heart rate variability measures autonomic nervous system (ANS) balance, specifically cardiac parasympathetic modulation. While HRV-guided protocols demonstrate utility in endurance sports by optimizing maximal oxygen uptake ($\text{VO}_2\text{max}$) and managing cardiorespiratory strain, their direct translation to resistance training for muscle hypertrophy is limited.
+Modality / Metric Dimension
+Endurance Training Applications
+Resistance Training (Hypertrophy) Applications
+Structural Engineering Limitation
+Primary Physiological Driver
+Central cardiovascular strain & metabolic flux
+Local mechanical tension & peripheral fatigue
+Autonomic suppression does not equal localized muscle damage.
+Signal Sensitivity
+High sensitivity to central glycogen & aerobic fatigue
+Low-to-moderate sensitivity to localized neuromuscular fatigue
+SDNN metrics miss isolated peripheral skeletal muscle fatigue.
+Adaptation Mechanism
+Mitochondrial biogenesis & cardiac output
+Myofibrillar protein synthesis & mechanotransduction
+Hypertrophy requires mechanical tension near failure, independent of ANS tone.
+Actionability Threshold
+Direct scaling of session duration/intensity
+Trimming accessory volume & enforcing RPE caps
+Cannot justify acute load reductions based solely on HRV.
+
+Autonomic markers fail to capture localized muscular microtrauma, stimulus-induced excitation-contraction coupling failure, or joint-specific inflammation. An athlete may register suppressed nocturnal SDNN due to psychological stress or late-evening thermal strain while retaining baseline force production in isolated movement patterns. Conversely, systemic parasympathetic saturation can co-occur with severe localized quadriceps damage following eccentric loading.
+Therefore, morning ARC score is treated as a systemic fatigue prior. It gates total daily volume and systemic cardiovascular/axial strain, but it cannot override mechanical tension requirements or cause continuous volume drops below MEV without secondary subjective validation.
+Multi-Metric Priority Cascade
+To prevent noisy HRV signals from corrupting training prescriptions, daily gating follows an explicit hierarchically ordered cascade:
+Safety Red-Flags (Priority 1): User-reported sharp joint pain ($>4/10$), illness, or acute injury. Triggers immediate movement substitution or rest day recommendation.
+Subjective Recovery Composite (Priority 2): User-reported Perceived Soreness, Sleep Quality, and Stress (rated 1 to 5).
+ARC Readiness Score (Priority 3): Morning SDNN relative to an individual 30-day rolling baseline $z$-score ($z_{\text{ARC}}$).
+Prior-Day EWMA Acute Load Residual (Priority 4): Quantified fatigue residual calculated via systemic exponentially weighted workload tracking.
+Readiness Band Definitions and Engine Actions
+The $z$-score for the morning ARC signal is calculated as:
+$$z_{\text{ARC}} = \frac{\text{SDNN}_{\text{today}} - \mu_{\text{SDNN}, 30d}}{\sigma_{\text{SDNN}, 30d}}$$
+Combined readiness scores merge subjective inputs ($S_{\text{sub}}$, normalized $0.0 - 1.0$) with $z_{\text{ARC}}$ to map athletes into four operational bands:
+$$\text{Readiness Index (RI)} = 0.6 \cdot \left( \frac{z_{\text{ARC}} + 3}{6} \right) + 0.4 \cdot S_{\text{sub}}$$
+$$\text{Readiness Index (RI)} = 0.6 \cdot \left( \frac{z_{\text{ARC}} + 3}{6} \right) + 0.4 \cdot S_{\text{sub}}$$
+Same-Day Gating Precedence Algorithm
+High-Readiness Prescription Rule
+When an athlete enters a High/Peaking readiness state, the deterministic engine must not add set volume beyond the planned mesocycle progression. Hypertrophic adaptation is driven by progressive mechanical overload within structured volume windows, not by reactive volume spikes that generate excess residual fatigue. High readiness permits intensity auto-selection (achieving higher absolute working loads for the target RPE/RIR window), but hard-set counts remain pinned to the mesocycle plan.
+Protection of Weekly MEV Adherence
+Chronic low readiness risks stranding an athlete below MEV for consecutive weeks, leading to detraining or under-dosing. The engine protects MEV through a dynamic Volume Deficit Ledger (VDL):
+$$\text{VDL}_{\text{muscle}} = \sum_{d=1}^{t} \left( \text{Sets}_{\text{planned}, d} - \text{Sets}_{\text{executed}, d} \right)$$
+If $\text{VDL}_{\text{muscle}}$ threatens to drop weekly completed volume below $\text{MEV}_{\text{muscle}}$ by day 5 of the microcycle:
+The engine suspends set-trimming on compounds, enforcing an RPE cap of $7.5$ instead of trimming sets.
+If low readiness persists for $>72$ consecutive hours despite RPE caps, the engine overrides daily session execution and converts the remaining microcycle into a Reactive Micro-Deload, resetting weekly volume requirements.
+Ordered Precedence Execution Algorithm for Low-Readiness Days
+When $\text{RI} < 0.45$, the engine processes session modifications through an ordered, deterministic sequence. Processing halts immediately once the daily target set reduction factor ($M_V$) is satisfied.
+The engine executes modifications in the following order:
+Step 1: Apply RPE Ceiling. Clamp all prescribed RPE targets to $RPE_{\max}$ ($7.0$ for Depleted, $8.0$ for Low). Absolute working load is recalculated based on the reduced RPE.
+Step 2: Trim Accessory Sets. Reduce sets from isolation and secondary machine slots (Slot Priority 3 and 4) by 1 set per slot until the daily set target ($M_V \cdot \text{Sets}_{\text{prescribed}}$) is reached. If the target set reduction is satisfied, halt processing.
+Step 3: Equipment Swap (Axial-Fatigue Mitigation). If $\text{RI} < 0.35$, replace high axial-load compounds (e.g., Barbell Squat, Romanian Deadlift) with low axial-load equivalents (e.g., Hack Squat, Lying Leg Curl). Exercise selection maps retain primary target muscle groups without altering the muscle ledger.
+Step 4: Trim Compound Sets. If set targets are not met after Step 2, trim 1 set from primary multi-joint compound slots (Slot Priority 1 and 2), provided the remaining daily sets for the target muscle remain $\ge \text{MEV}_{\text{daily\_floor}}$. If the target set reduction is satisfied, halt processing.
+Step 5: Convert Session to Technique/Pump. If $\text{RI} < 0.30$ and set trimming would violate $\text{MEV}_{\text{daily\_floor}}$, convert all remaining working sets to fixed RPE $\le 6.0$ velocity/pump sets. Progression velocity tracking is disabled for the session.
+Step 6: Enforce Full Rest Day (Stop Condition). If $z_{\text{ARC}} < -2.0$ AND Subjective Soreness $\le 1.5/5$, OR if Step 5 fails to mitigate recovery deficits, the session status transitions to CANCELLED_REST_RECOMMENDED. The engine shifts the remaining calendar according to the Drift Policy.
+Intra-Session Autoregulation Rules
+Intra-session adjustments respond to acute failure or velocity loss during session execution:
+RIR/RPE Miss (Over-shooting): If an athlete reaches absolute failure (RPE 10) on a set prescribed at RPE 8, the engine dynamically recalculates working load for subsequent sets of that exercise using a $-5\%$ load reduction. If a second consecutive set misses the target RPE by $\ge 1.5$ units, remaining sets for that exercise slot are dropped.
+Intra-Session Fatigue Drop-off: If RPE rises by $>2.0$ units across consecutive sets at identical loads, or if completed reps drop by $>30\%$ between sets at equal load, the engine terminates the current exercise slot and cancels remaining secondary accessory slots for that target muscle.
+Drift and Missed-Session Policy Matrix
+Schedule disruptions (drift) occur when sessions are executed late, out of order, partially logged, or skipped. The Helm deterministic engine resolves calendar drift using strict precedence rules to preserve Push-Pull-Legs (PPL) rotation integrity, prevent back-to-back exposure of identical muscle groups, and prevent acute workload spikes.
+Deterministic Drift Policy Matrix
+Drift Scenario
+Trigger Condition
+Calendar Engine Action
+Weekly Ledger Action
+PPL Sequence Action
+On Time
+Elapsed time $= 0$ days from target
+Execute prescribed microcycle session.
+Baseline hard-set accumulation.
+Standard PPL sequence maintained.
+1 Day Late
+Session logged 24h past target
+Shift calendar forward by $+1$ day. Shift all remaining microcycle sessions by $+1$ day.
+Weekly ledger window expands by $+24\text{h}$; target set allocations remain unchanged.
+Sequence preserved. If Push shifted to Pull day, Pull shifts to Leg day.
+2 Days Late
+Session logged 48h past target
+Reshape remaining microcycle. Compress non-essential rest days if rest allocation $>48\text{h}$ exists in microcycle.
+Trim tertiary accessory sets by $20\%$ across remaining sessions to prevent volume stacking.
+Preserve 24h spacing for identical target muscles. Swap order if necessary.
+5+ Days Late
+Session logged $\ge 120\text{h}$ past target
+Skip remaining missed sessions. Freeze microcycle week index. Advance calendar to current date.
+Missed sets are marked SKIPPED_EXPIRED. Do not backfill or merge volume into upcoming week.
+Re-anchor PPL rotation starting at primary compound session of current mesocycle week.
+Out of Order
+Session $N+1$ logged before Session $N$ (e.g., Pull executed on Push day)
+Re-index PPL rotation starting from executed session type.
+Dynamically re-attribute set load to logged muscle targets for current rolling 7-day window.
+Force a minimum 24h separation before permitting the skipped session type (preventing back-to-back Pull/Pull).
+Partial Logged
+Session terminated with $<50\%$ prescribed slots completed
+Mark completed slots as EXECUTED; uncompleted slots marked TRUNCATED.
+If completed sets for target muscle $\ge \text{MEV}$, discard remaining. If $<\text{MEV}$, redistribute $50\%$ of missing sets into next matching slot (max $+2$ sets/slot cap).
+PPL sequence advances to next planned day; does not re-run truncated session.
+Skipped Intentional
+Athlete manually flags session as SKIPPED
+Advance calendar immediately to next scheduled training day.
+Hard sets logged as 0. Remaining microcycle volume targets recalculated up to MRV cap.
+Next session in PPL queue is presented on the next planned training date.
+Muscle Spacing Clamps
+To prevent structural overuse injuries and localized recovery failure, the engine enforces strict intra-muscle rest clamps. Primary multi-joint compound exercises require a minimum of 48 hours of elapsed recovery time between identical target muscle exposures, whereas secondary isolation accessories require a minimum of 24 hours.
+If a calendar shift causes a Pull session (targeting Latissimus Dorsi) to fall within 24 hours of a preceding Pull or Secondary Back exposure, the engine automatically transforms the schedule by swapping the sequence order or inserting an engine-enforced rest day:
+$$\text{Session Sequence}_{\text{adjusted}} = \text{Transform}\left( [\text{Pull}, \text{Push}] \to [\text{Push}, \text{Pull}] \right) \quad \text{if } \Delta t_{\text{Pull-Pull}} < 48\text{h}$$
+Planned vs. Actual Trend Data Logging Schema
+To maintain analytical accuracy for long-term trends and engine evaluations, all session executions preserve discrete records of planned, gated, and actual values. The system logs these values using a structured data schema that records drift status, readiness metrics, and individual slot execution parameters:
+JSON
+
+
+
+
+{
+  "session_id": "sess_89f2a10",
+  "timestamp": "2025-10-24T07:30:00Z",
+  "drift_status": {
+    "days_late": 2,
+    "action_applied": "RESHAPE_MICROCYCLE"
+  },
+  "readiness": {
+    "arc_z_score": -0.85,
+    "readiness_band": "LOW",
+    "composite_index": 0.41
+  },
+  "slot_ledger": [
+    {
+      "slot_id": 1,
+      "exercise_id": "barbell_incline_press",
+      "planned_sets": 4,
+      "prescribed_sets": 3,
+      "actual_completed_sets": 3,
+      "planned_load_kg": 100.0,
+      "prescribed_load_kg": 95.0,
+      "actual_load_kg": 95.0,
+      "target_rpe": 8.0,
+      "actual_mean_rpe": 8.2
+    }
+  ]
+}
+Deload Policy: Scheduled and Reactive Frameworks
+Deloads facilitate structural tissue healing, systemic fatigue clearance, and central nervous system recovery while resensitizing skeletal muscle to hypertrophic stimuli. The Helm periodization engine governs both scheduled mesocycle deloads and reactive, condition-triggered micro-deloads.
+Scheduled Deload Triggers and Execution
+Scheduled deloads occur at fixed mesocycle boundaries determined by athlete training age and baseline volume tolerance. Novice and intermediate athletes undergo a deload every 6th week (5 weeks of progressive overload followed by 1 week of deloading). Advanced athletes deload every 4th week (3 weeks of progressive overload followed by 1 week of deloading).
+During a scheduled deload, daily training parameters are constrained according to explicit numeric clamps:
+$$\text{Sets}_{\text{deload}} = \max\left( \text{MEV}_{\text{muscle}}, \, \text{Round}\left( 0.50 \cdot \text{Sets}_{\text{peak\_week}} \right) \right)$$
+$$\text{Sets}_{\text{deload}} = \max\left( \text{MEV}_{\text{muscle}}, \, \text{Round}\left( 0.50 \cdot \text{Sets}_{\text{peak\_week}} \right) \right)$$
+Reactive Deload Triggers
+A reactive deload overrides scheduled mesocycle timing when acute systemic fatigue threatens structural overload or overtraining syndrome. The engine evaluates reactive triggers daily using a binary decision structure evaluating three primary markers:
+Autonomic Suppression Trigger: Three or more consecutive training sessions categorized in the Depleted readiness band ($z_{\text{ARC}} < -1.5$).
+Performance Regression Trigger: Two or more consecutive microcycles displaying a statistically significant drop in estimated 1RM ($\text{e1RM}$) on primary compound movements despite reported RPE $\ge 9.0$: $$\text{e1RM} = \text{Load} \cdot \left(1 + \frac{\text{Reps}}{30}\right)$$  $$\text{Trigger Condition: } \frac{\text{e1RM}_{\text{current}} - \text{e1RM}_{\text{baseline}}}{\text{e1RM}_{\text{baseline}}} \le -0.035$$ 
+Joint Discomfort Trigger: Subjective joint soreness rating $\ge 4.0 / 5.0$ persisting for four or more consecutive days across movement patterns sharing a joint axis.
+Decision Protocol for Deload Severity
+The engine determines deload severity based on signal duration and physiological metrics:
+Single Easy Day: Triggered when ARC registers as Depleted for a single day while subjective soreness remains low ($<2.0$). Volume is cut by $50\%$ for that single session, and RPE is capped at $\le 6.0$.
+Full Reactive Deload Week: Triggered when ARC remains Depleted for three or more consecutive days, or when performance regression meets the threshold ($\ge 3.5\%$ drop in e1RM). Volume across the entire microcycle is reduced by $50\%$ and RPE is capped at $\le 5.0$.
+Regional Deload: Triggered when joint discomfort reaches $\ge 4.0$ for four or more days. The engine reduces volume on affected joint movement patterns while maintaining normal training parameters for unaffected muscle groups.
+Parameter Modification Profile Across Deload States
+Parameter
+Baseline Hypertrophy Microcycle
+Scheduled Deload Week
+Reactive Deload Week
+Single Easy Day
+Weekly Hard Sets
+$100\%$ of MEV $\to$ MRV Ramp
+$50\% - 60\%$ of Peak Week
+$50\%$ of Peak Week
+$50\%$ of Daily Target
+Primary Slot Count
+All prescribed slots active
+Retain primary compounds
+Retain primary compounds
+Retain primary compound only
+Accessory Slot Count
+All prescribed slots active
+Trim $50\%$ of isolation slots
+Drop all isolation slots
+Drop all isolation slots
+Intensity (% 1RM)
+$70\% - 85\%$ 1RM
+$60\% - 70\%$ 1RM
+$55\% - 65\%$ 1RM
+$60\%$ 1RM
+Proximity to Failure
+3 RIR $\to$ 0 RIR (RPE 7-10)
+5-4 RIR (RPE 5-6)
+6-5 RIR (RPE 4-5)
+5 RIR (RPE 5)
+Cardio / Conditioning
+Baseline steady-state/HIIT
+Low-Intensity Steady State
+Active Recovery / Walking
+Active Recovery
+Landmark Resets Post-Deload
+Upon successful completion of a scheduled or reactive deload week, the periodization engine resets fatigue tracking variables and progression anchors prior to initiating the subsequent mesocycle block:
+Volume Landmark Reset: Muscle group volume targets reset to baseline $\text{MEV}_{\text{baseline}}$. The cumulative hard-set volume accumulator clears to zero.
+Load Progression Re-anchor: Initial working loads for the new mesocycle are set to $92.5\% - 95.0\%$ of the pre-deload top working weights. This re-establishes a progressive overload ramp while accounting for structural fatigue clearance.
+Autonomic Baseline Recalibration: The 30-day rolling baseline mean ($\mu_{\text{SDNN}, 30d}$) and standard deviation ($\sigma_{\text{SDNN}, 30d}$) are recalculated, excluding deload-week data points to prevent skewing future readiness metrics.
+Deload Modulation by Nutritional Phase
+Energy Surplus (Mass Gain Phase): Deload set reductions are set at $50\%$ of peak volume. High energy availability supports rapid systemic recovery, allowing full neural supercompensation within 7 days.
+Energy Deficit (Fat Loss Cut Phase): Deload set reductions are capped at $60\%$ of peak volume (preserving slightly higher volume to maintain muscle retention signaling), but working loads are reduced by an additional $-5\%$ to account for impaired recovery capacity in an energy deficit.
+Acute:Chronic Workload Ratio (ACWR) and Spike Guards
+To prevent rapid volume expansions from increasing injury risk, the engine tracks workload dynamics using an Exponentially Weighted Moving Average (EWMA) ACWR model. The EWMA model places greater weight on recent training exposures, providing higher sensitivity to acute workload spikes than unweighted rolling averages.
+Mathematical Specification of EWMA ACWR
+Daily Session Load ($L_t$) is calculated as the sum of hard sets weighted by set intensity (RPE):
+$$L_t = \sum_{s=1}^{\text{Sets}} \left( 1.0 + 0.1 \cdot (\text{RPE}_s - 7.0) \right)$$
+The acute workload decay constant ($\lambda_a$) and chronic workload decay constant ($\lambda_c$) are defined based on traditional time windows ($N_a = 7 \text{ days}$, $N_c = 28 \text{ days}$):
+$$\lambda_a = \frac{2}{N_a + 1} = \frac{2}{7 + 1} = 0.25$$
+$$\lambda_a = \frac{2}{N_a + 1} = \frac{2}{7 + 1} = 0.25$$
+The acute exponentially weighted workload ($w_{\text{acute}, t}$) and chronic exponentially weighted workload ($w_{\text{chronic}, t}$) are updated daily:
+$$w_{\text{acute}, t} = L_t \cdot \lambda_a + (1 - \lambda_a) \cdot w_{\text{acute}, t-1}$$
+$$w_{\text{acute}, t} = L_t \cdot \lambda_a + (1 - \lambda_a) \cdot w_{\text{acute}, t-1}$$
+The resulting ratio defines the acute-to-chronic load equilibrium:
+$$\text{ACWR}_t = \frac{w_{\text{acute}, t}}{w_{\text{chronic}, t}}$$
+Deterministic ACWR Spike Guard Policy
+The engine continuously evaluates $\text{ACWR}_t$ to place athletes into distinct operational workload zones:
+Under-training / Detraining Zone ($\text{ACWR} < 0.80$): The engine permits weekly volume ramp-ups up to $+15\%$ toward target MEV to re-establish baseline training volume.
+Optimal Adaptation Zone ($0.80 \le \text{ACWR} \le 1.30$): Standard microcycle load progression is maintained, allowing normal volume increments of $+1$ to $+2$ sets per muscle group.
+Warning / High Load Zone ($1.31 \le \text{ACWR} \le 1.50$): Weekly volume growth is capped at $+5\%$ maximum over the prior week, and RPE is clamped at $\le 8.5$. Volume catch-up is restricted to a maximum of $+1$ set total backfill.
+Spike Danger Zone ($\text{ACWR} > 1.50$): The engine enforces a hard volume clamp, capping today's session load to $\le w_{\text{chronic}, t}$ and dropping non-essential accessory slots. Volume catch-up is strictly prohibited, and missed sets are discarded.
+ACWR Band
+Operational Zone
+Engine Constraint / Modification
+Volume Catch-Up Permission
+$\text{ACWR} < 0.80$
+Under-training / Detraining
+Permit volume ramp-up up to $+15\%$ per week toward target MEV.
+Allowed (Re-establish baseline volume).
+$0.80 \le \text{ACWR} \le 1.30$
+Optimal Adaptation Zone
+Standard microcycle load progression; normal volume increments ($+1-2$ sets/muscle).
+Allowed within standard MRV limits.
+$1.31 \le \text{ACWR} \le 1.50$
+Warning / High Load Zone
+Clamp weekly volume growth to $+5\%$ max over prior week. Force RPE cap $\le 8.5$.
+Restricted (Max $+1$ set backfill total).
+$\text{ACWR} > 1.50$
+Spike Danger Zone
+Hard Volume Clamp. Cap today's session load to $\le w_{\text{chronic}, t}$. Drop non-essential accessory slots.
+STRICTLY PROHIBITED. Discard missed sets.
+
+Coach Behaviour Contract
+The Helm architecture separates deterministic computational decision engines from the conversational LLM Coach layer. The deterministic engine calculates numeric values, set counts, exercise selections, and safety clamps offline before the user opens the application. The LLM Coach acts as an interpretive interface, explaining decision outputs without altering structural bounds.
+Division of Responsibilities
+The offline deterministic engine serves as the system-of-record. It calculates ARC $z$-scores, subjective composite indices, and ACWR values, while executing set trimming, slot dropping, equipment swaps, and RPE clamping. It enforces structural safety clamps and calendar drift transformations, outputting a definitive, immutable session payload.
+The online LLM Coach operates purely as a narrative and explanatory layer. It translates engine outputs into concise narrative explanations, such as detailing why an RPE cap was applied. The coach answers athlete questions regarding movement feel and execution, and offers pre-approved equipment alternatives within clamped boundaries. If an athlete reports qualitative pain or distress in their notes, the coach can suggest rest even if the engine scheduled a workout.
+Context Field Payload Schema
+The deterministic engine passes a structured JSON context to the LLM Coach layer prior to user interaction:
+JSON
+
+
+
+
+{
+  "athlete_id": "ath_40912",
+  "engine_state": {
+    "readiness_band": "LOW",
+    "arc_z_score": -1.12,
+    "composite_readiness_index": 0.38,
+    "ewma_acwr": 1.34,
+    "drift_state": "TWO_DAYS_LATE",
+    "deload_phase": "NONE",
+    "weekly_ledger_status": {
+      "Chest": {"completed_sets": 8, "target_mev": 10, "target_mrv": 18},
+      "Quads": {"completed_sets": 12, "target_mev": 12, "target_mrv": 20}
+    }
+  },
+  "applied_modifications": [
+    {
+      "rule": "RPE_CEILING_CLAMP",
+      "value": 8.0,
+      "reason": "Low readiness composite score (0.38)"
+    },
+    {
+      "rule": "ACCESSORY_SET_TRIM",
+      "value": "-1 set from Slot 4 (Cable Fly)",
+      "reason": "Volume target scaled by M_V = 0.75"
+    }
+  ],
+  "coach_boundary_clamps": {
+    "allow_volume_addition": false,
+    "max_allowed_rpe": 8.0,
+    "permitted_equipment_swaps": ["Dumbbell Fly", "Pec Deck Machine"]
+  }
+}
+Coach Narrative Guidelines and Boundaries
+Deterministic Precedence: The Coach must not override numerical prescriptions generated by the engine. It cannot add sets, raise RPE caps, or ignore ACWR volume limits.
+Rest Override Authority: The Coach may suggest a rest day against a scheduled workout only when the athlete's qualitative notes report acute joint pain ($>4/10$), symptoms of systemic illness, or severe mental fatigue. If the user accepts, the session status updates to COACH_RECOMMENDED_REST and triggers the 1-day late calendar shift.
+No Medical Diagnostics: The Coach operates under a strict non-diagnostic boundary. It must frame structural discomfort strictly around fatigue management and equipment substitution, referring athletes to qualified medical professionals when red-flag pain signals occur.
+Migration Architecture and Acceptance Test Suites
+Upgrading legacy Helm gating logic to this deterministic engine resolves several historical failure modes. The legacy binary HRV pass/fail thresholds are replaced by continuous $z$-score evaluation across four operational bands, scaling volume multipliers ($M_V$) and RPE caps incrementally.
+The static $\sim 50\%$ deload logic, which previously under-dosed advanced lifters below MEV, is replaced by dynamic deload scaling that preserves set floors at $\text{MEV}_{\text{muscle}}$ while capping RPE at $5.0-6.0$. Unmonitored catch-up volume spikes are eliminated through the integration of EWMA ACWR guards ($\lambda_a = 0.25, \lambda_c = 0.069$) that enforce hard clamps when $\text{ACWR} > 1.50$.
+Acceptance Test Suite
+The engine's deterministic behavior is verified using automated test fixtures:
+Test Case 1 (Depleted Readiness Set Cap): Given an input fixture with arc_z_score = -1.82, subjective_soreness = 1.5/5.0, and prescribed_sets = 16, the engine evaluates readiness band to Depleted ($M_V = 0.50$). The output sets must equal exactly 8, and RPE_max must be clamped to $\le 7.0$. Total output sets must not exceed baseline planned sets under any branch condition.
+Test Case 2 (EWMA ACWR Spike Guard): Given an acute load w_acute = 145.0 and chronic load w_chronic = 90.0 ($\text{ACWR} = 1.61$), where missed session recovery is attempted via a $+6$ set backfill, the engine detects $\text{ACWR} > 1.50$. The engine rejects volume backfill, clamping today's load to $\le w_{\text{chronic}}$ ($90.0$) and marking uncompleted backfill sets as DISCARDED_SPIKE_GUARD.
+Test Case 3 (5-Day Calendar Drift Resolution): Given Session 14 (Pull Day) logged $132\text{h}$ late (5.5 days) during Week 3, the engine evaluates the drift matrix condition 5+ Days Late. The engine skips all intermediate missed sessions, freezes the week index at Week 3, marks missed targets as SKIPPED_EXPIRED, and re-anchors the calendar sequence to the current date.
+Test Case 4 (Scheduled Deload Volume Floor): Given a transition from Week 5 (Peak Week, 20 sets/quads) to Week 6 (Scheduled Deload) where Quad $\text{MEV} = 8$ sets, the engine computes deload volume ($0.50 \cdot 20 = 10$ sets). The prescribed deload sets equal 10 (satisfying $\ge \text{MEV}$), and set RPE targets are clamped to $\le 6.0$.
+Test Case 5 (Signal Conflict Resolution): Given arc_z_score = -1.60 (Depleted), subjective_soreness = 4.5/5.0 (High), and sleep_quality = 4.0/5.0 (High), the engine computes composite index $\text{RI} = 0.6 \cdot ((-1.60 + 3)/6) + 0.4 \cdot (0.85) = 0.48$. The composite index maps to Normal/Baseline ($0.45 \le \text{RI} \le 0.75$), executing at standard baseline volume ($M_V = 1.00$) while clamping RPE_max to $8.5$ as an autonomic safeguard.
+Evidence Appendix and Open Decision Defaults
+Sports Science Literature Synthesis
+Extensive literature demonstrates that HRV-guided endurance protocols yield superior improvements in cardiorespiratory fitness compared to static periodization. In contrast, studies examining HRV-guided resistance training show comparable strength and hypertrophic adaptations between HRV-guided and pre-determined groups. Autonomic metrics reflect systemic recovery capacity rather than localized muscular repair or neuromuscular force output.
+Additionally, research on workload monitoring confirms that Exponentially Weighted Moving Averages (EWMA) offer superior sensitivity for detecting acute workload spikes compared to rolling average models. EWMA models account for the temporal decay of fitness and fatigue over time, making them better suited for dynamic volume adjustments.
+Open Decisions and Helm System Defaults
+Contested Design Parameter
+Option A
+Option B
+Helm Default Choice
+Engineering Rationale
+ACWR Calculation Model
+Simple Rolling Average (RA) (28-day unweighted)
+Exponentially Weighted Moving Average (EWMA)
+EWMA ($\lambda_a=0.25, \lambda_c=0.069$)
+EWMA responds faster to acute volume spikes and accounts for continuous fatigue decay.
+Volume Deficit Catch-Up
+Fully backfill missed sets into subsequent microcycle sessions.
+Discard missed sets violating ACWR caps.
+Discard sets violating ACWR cap
+Preventing workload spikes takes precedence over acute volume catch-up.
+ARC Suppression Action
+Uniformly trim all exercise slots.
+Trim secondary/isolation slots first; preserve compounds.
+Trim accessory slots first
+Preserves high-value multi-joint mechanical tension while shedding systemic set volume.
+High Readiness Volume Action
+Increment sets (+1 to +2 sets) on high readiness days.
+Keep sets pinned to mesocycle plan; permit higher loads.
+Pin volume to plan
+Prevents unplanned volume expansions from generating latent fatigue spikes.
+Deload Set Cut Floor
+Fixed $50\%$ reduction across all lifters.
+Dynamic cut clamped to muscle-specific MEV floor.
+Dynamic cut clamped to MEV floor
+Ensures advanced lifters retain sufficient stimulus to prevent detraining while shedding systemic fatigue.
+
+This is for informational purposes only. For medical advice or diagnosis, consult a professional.

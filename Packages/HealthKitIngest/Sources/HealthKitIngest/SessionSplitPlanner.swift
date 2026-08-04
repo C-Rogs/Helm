@@ -26,7 +26,8 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
         case .push:
             [.chest, .shoulders, .triceps]
         case .pull:
-            [.back, .biceps]
+            // Shoulders included for rear-delt pattern slots on composed Pull days.
+            [.back, .biceps, .shoulders]
         case .legs:
             [.quads, .hamstrings, .glutes, .calves]
         case .vTaper:
@@ -35,6 +36,15 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
             [.biceps, .triceps, .shoulders]
         case .custom:
             []
+        }
+    }
+
+    public var trainingDayKind: TrainingDayKind {
+        switch self {
+        case .push, .vTaper: .push
+        case .pull, .armFocus: .pull
+        case .legs: .legs
+        case .custom: .full
         }
     }
 }
@@ -86,7 +96,7 @@ public enum SessionSplitPlanner {
         guard !muscles.isEmpty else { return nil }
         let legMuscles: Set<MuscleGroup> = [.quads, .hamstrings, .glutes, .calves]
         let pushMuscles: Set<MuscleGroup> = [.chest, .shoulders, .triceps]
-        let pullMuscles: Set<MuscleGroup> = [.back, .biceps]
+        let pullMuscles: Set<MuscleGroup> = [.back, .biceps, .shoulders]
 
         let legOverlap = muscles.intersection(legMuscles).count
         let pushOverlap = muscles.intersection(pushMuscles).count

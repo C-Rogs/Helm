@@ -193,4 +193,21 @@ public enum PlanKit {
             familiarExerciseIDs: familiarExerciseIDs
         )
     }
+
+    /// Pattern-slot list for a training day (MPSC).
+    public static func sessionSlots(
+        dayKind: TrainingDayKind,
+        budget: SessionDurationBudget,
+        template: ProgramTemplate = .ppl,
+        readinessBand: ReadinessBand? = nil,
+        isDeload: Bool = false
+    ) -> [PatternSlot] {
+        SessionComposer.slots(
+            dayKind: dayKind,
+            budget: budget,
+            template: template,
+            readinessBand: readinessBand,
+            isDeload: isDeload
+        )
+    }
 }

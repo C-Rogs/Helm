@@ -51,8 +51,8 @@ enum ExerciseSelectionEngine {
 
         guard
             let best = candidates.max(by: { lhs, rhs in
-                let lhsScore = score(lhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
-                let rhsScore = score(rhs, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+                let lhsScore = score(lhs, for: muscle, slot: nil, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+                let rhsScore = score(rhs, for: muscle, slot: nil, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
                 if lhsScore != rhsScore { return lhsScore < rhsScore }
                 if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
                 return lhs.exerciseID > rhs.exerciseID
@@ -61,24 +61,89 @@ enum ExerciseSelectionEngine {
             return nil
         }
 
-        let rationalePayload = makeRationale(for: best, muscle: muscle)
+        let rationalePayload = makeRationale(for: best, muscle: muscle, slot: nil)
         return ExerciseSelection(
             exercise: best,
             rationale: rationalePayload.rationale,
             evidenceIDs: rationalePayload.evidenceIDs,
-            score: score(best, for: muscle, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+            score: score(best, for: muscle, slot: nil, weights: weights, familiarExerciseIDs: familiarExerciseIDs)
+        )
+    }
+
+    static func select(
+        for slot: PatternSlot,
+        catalog: [CatalogExercise],
+        excluding excludedExerciseIDs: Set<String>,
+        availableEquipment: Set<String>?,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced,
+        familiarExerciseIDs: Set<String> = []
+    ) -> ExerciseSelection? {
+        let weights = Weights.forBias(selectionBias)
+        let muscle = slot.primaryMuscle
+        let candidates = catalog.filter { exercise in
+            !excludedExerciseIDs.contains(exercise.exerciseID)
+                && isEquipmentAvailable(exercise.equipment, availableEquipment: availableEquipment)
+                && exercise.muscleMap.contributions.contains { $0.muscle == muscle }
+        }
+
+        let patterned = candidates.filter {
+            MovementPatternMatcher.patternScore(exerciseID: $0.exerciseID, pattern: slot.pattern) > 0
+        }
+        let pool = patterned.isEmpty ? candidates.filter {
+            MovementPatternMatcher.softMuscleFallback(exercise: $0, slot: slot)
+        } : patterned
+
+        guard
+            let best = pool.max(by: { lhs, rhs in
+                let lhsScore = score(
+                    lhs,
+                    for: muscle,
+                    slot: slot,
+                    weights: weights,
+                    familiarExerciseIDs: familiarExerciseIDs
+                )
+                let rhsScore = score(
+                    rhs,
+                    for: muscle,
+                    slot: slot,
+                    weights: weights,
+                    familiarExerciseIDs: familiarExerciseIDs
+                )
+                if lhsScore != rhsScore { return lhsScore < rhsScore }
+                if lhs.priority != rhs.priority { return lhs.priority > rhs.priority }
+                return lhs.exerciseID > rhs.exerciseID
+            })
+        else {
+            return nil
+        }
+
+        let rationalePayload = makeRationale(for: best, muscle: muscle, slot: slot)
+        return ExerciseSelection(
+            exercise: best,
+            rationale: rationalePayload.rationale,
+            evidenceIDs: rationalePayload.evidenceIDs,
+            score: score(
+                best,
+                for: muscle,
+                slot: slot,
+                weights: weights,
+                familiarExerciseIDs: familiarExerciseIDs
+            )
         )
     }
 
     static func makeRationale(
         for exercise: CatalogExercise,
-        muscle: MuscleGroup
+        muscle: MuscleGroup,
+        slot: PatternSlot? = nil
     ) -> (rationale: String, evidenceIDs: [String]) {
         if let evidence = exercise.evidence {
+            let patternNote = slot.map { " (\($0.pattern.rawValue) slot)" } ?? ""
             let rationale = String(
                 format:
-                    "Selected for %@: effectiveness %.0f%%, stretch-position bias %.0f%%, stimulus-to-fatigue %.0f%%.",
+                    "Selected for %@%@: effectiveness %.0f%%, stretch-position bias %.0f%%, stimulus-to-fatigue %.0f%%.",
                 muscle.rawValue,
+                patternNote,
                 evidence.effectiveness * 100,
                 evidence.stretchPositionBias * 100,
                 evidence.stimulusToFatigue * 100
@@ -86,6 +151,12 @@ enum ExerciseSelectionEngine {
             return (rationale, evidence.citationIDs)
         }
 
+        if let slot {
+            return (
+                "Best available \(slot.pattern.rawValue) movement for \(muscle.rawValue).",
+                []
+            )
+        }
         return (
             "Best available movement for \(muscle.rawValue) given current constraints.",
             []
@@ -111,6 +182,7 @@ enum ExerciseSelectionEngine {
     private static func score(
         _ exercise: CatalogExercise,
         for muscle: MuscleGroup,
+        slot: PatternSlot? = nil,
         weights: Weights,
         familiarExerciseIDs: Set<String>
     ) -> Double {
@@ -125,6 +197,13 @@ enum ExerciseSelectionEngine {
             }
         } else {
             total = 1.0 - (Double(exercise.priority) * 0.05)
+        }
+
+        if let slot {
+            total += MovementPatternMatcher.patternScore(
+                exerciseID: exercise.exerciseID,
+                pattern: slot.pattern
+            ) * 0.35
         }
 
         if familiarExerciseIDs.contains(exercise.exerciseID) {

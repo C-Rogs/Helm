@@ -7,16 +7,39 @@ public struct StoredTrainingPlanSettings: Sendable, Hashable, Codable {
     public var phaseGoal: PhaseGoal
     /// `TrainingExperience` raw value from PlanKit.
     public var experienceRaw: String
+    /// `ProgramTemplate` raw value from PlanKit (`ppl`, `upper_lower`, `full_body`).
+    public var programTemplateRaw: String
+    /// Session duration budget in minutes (30 / 45 / 60 / 75).
+    public var sessionDurationMinutes: Int
 
     public init(
         phaseGoal: PhaseGoal = PhaseGoal(phase: .maintain),
-        experienceRaw: String = "intermediate"
+        experienceRaw: String = "intermediate",
+        programTemplateRaw: String = "ppl",
+        sessionDurationMinutes: Int = 60
     ) {
         self.phaseGoal = phaseGoal
         self.experienceRaw = experienceRaw
+        self.programTemplateRaw = programTemplateRaw
+        self.sessionDurationMinutes = sessionDurationMinutes
     }
 
     public static let `default` = StoredTrainingPlanSettings()
+
+    enum CodingKeys: String, CodingKey {
+        case phaseGoal
+        case experienceRaw
+        case programTemplateRaw
+        case sessionDurationMinutes
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        phaseGoal = try container.decode(PhaseGoal.self, forKey: .phaseGoal)
+        experienceRaw = try container.decodeIfPresent(String.self, forKey: .experienceRaw) ?? "intermediate"
+        programTemplateRaw = try container.decodeIfPresent(String.self, forKey: .programTemplateRaw) ?? "ppl"
+        sessionDurationMinutes = try container.decodeIfPresent(Int.self, forKey: .sessionDurationMinutes) ?? 60
+    }
 }
 
 public struct TrainingPlanSettingsStore: Sendable {

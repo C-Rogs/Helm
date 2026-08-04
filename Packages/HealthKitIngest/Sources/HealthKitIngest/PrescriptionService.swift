@@ -109,11 +109,13 @@ public final class PrescriptionService {
 
     public func saveTrainingPlan(_ settings: StoredTrainingPlanSettings) async throws {
         try await engine.saveTrainingPlan(settings)
+        PrescriptionDayStore.clear(for: today())
         await refresh(readiness: nil)
     }
 
     public func saveMethodologyPreferences(_ preferences: MethodologyPreferences) async throws {
         try await engine.saveMethodologyPreferences(preferences)
+        PrescriptionDayStore.clear(for: today())
         await refresh(readiness: nil)
     }
 
@@ -267,6 +269,8 @@ public actor PlanPrescriptionEngine {
             experience: experience
         )
         let methodology = try methodologyPreferences()
+        let durationBudget = SessionDurationBudget.from(minutes: settings.sessionDurationMinutes)
+        let programTemplate = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
 
         let profile = PrescriptionProfile(
             helmDay: day,
@@ -280,7 +284,10 @@ public actor PlanPrescriptionEngine {
             ),
             availableEquipment: methodology.availableEquipmentFilter,
             selectionBias: methodology.selectionBias,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            durationBudget: durationBudget,
+            programTemplate: programTemplate,
+            dayKind: schedule.splitKind.trainingDayKind
         )
 
         let signpostID = signpost.makeSignpostID()
