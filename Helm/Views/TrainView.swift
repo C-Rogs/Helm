@@ -20,9 +20,6 @@ struct TrainView: View {
     @State private var isShowingSavePrescriptionTemplate = false
     @State private var prescriptionTemplateName = ""
     @State private var didCopyPrescriptionExport = false
-    @State private var measuredChromeHeight: CGFloat = 0
-    @State private var viewportHeight: CGFloat = 0
-    @State private var suppressChromeAnimations = false
 
     var body: some View {
         navigationRoot
@@ -47,13 +44,6 @@ struct TrainView: View {
                 await weekAheadStore.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
-                if newPhase == .active {
-                    controller.showCoachApplyWave = false
-                    suppressChromeAnimations = true
-                    DispatchQueue.main.async {
-                        suppressChromeAnimations = false
-                    }
-                }
                 Task { await controller.handleScenePhase(newPhase) }
             }
             .onChange(of: WatchReadinessBootstrap.coordinator.isReachable) { _, reachable in
@@ -77,22 +67,15 @@ struct TrainView: View {
                     bottomSessionChrome
                 }
             }
-            .onPreferenceChange(TrainBottomChromeHeightKey.self) { height in
-                measuredChromeHeight = height
-            }
             .helmScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(controller.hasActiveSession ? "" : "Train")
             .animation(
-                suppressChromeAnimations
-                    ? nil
-                    : HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                 value: controller.numpadTarget
             )
             .animation(
-                suppressChromeAnimations
-                    ? nil
-                    : HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                 value: controller.isRestTimerRunning
             )
         }
@@ -151,19 +134,6 @@ struct TrainView: View {
             }
             .frame(maxWidth: .infinity)
             .background(HelmColor.canvas)
-        }
-        .background {
-            GeometryReader { geometry in
-                Color.clear.preference(
-                    key: TrainBottomChromeHeightKey.self,
-                    value: geometry.size.height
-                )
-            }
-        }
-        .transaction { transaction in
-            if suppressChromeAnimations {
-                transaction.animation = nil
-            }
         }
         .ignoresSafeArea(edges: .bottom)
     }
@@ -441,10 +411,9 @@ struct TrainView: View {
                             TrainSessionHeaderView(
                                 startedAt: snapshot.session.startedAt,
                                 progress: TrainSessionProgress.from(snapshot: snapshot),
-                                watchLinkStatus: WatchCompanionLinkStatus.resolve(
-                                    canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                                    liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-                                )
+                                heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
+                                    ? WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                                    : nil
                             )
 
                             if let notice = controller.watchCompanionNotice {
@@ -513,85 +482,34 @@ struct TrainView: View {
                         .padding(.bottom, HelmSpacing.md)
                         .frame(maxWidth: .infinity)
                     }
-                    .background {
-                        GeometryReader { geometry in
-                            Color.clear.preference(
-                                key: TrainViewportHeightKey.self,
-                                value: geometry.size.height
-                            )
-                        }
-                    }
-                    .onPreferenceChange(TrainViewportHeightKey.self) { height in
-                        viewportHeight = height
-                    }
                     .animation(
                         HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                         value: controller.adjustmentBanner
                     )
-                    .onChange(of: controller.numpadTarget) { _, target in
-                        guard let setID = target?.setID else { return }
-                        scheduleScrollToFocusedSet(
-                            proxy: proxy,
-                            setID: setID,
-                            viewportHeight: viewportHeight
-                        )
-                    }
-                    .onChange(of: measuredChromeHeight) { _, _ in
-                        guard let setID = controller.numpadTarget?.setID else { return }
-                        scheduleScrollToFocusedSet(
-                            proxy: proxy,
-                            setID: setID,
-                            viewportHeight: viewportHeight
-                        )
+                    .animation(
+                        HelmMotion.animation(
+                            .spring(response: 0.4, dampingFraction: 0.7),
+                            reduceMotion: reduceMotion
+                        ),
+                        value: controller.numpadTarget?.setID
+                    )
+                    .onChange(of: controller.numpadTarget?.setID) { _, setID in
+                        guard let setID else { return }
+                        HapticEngine.shared.play(.selection)
+                        withAnimation(
+                            HelmMotion.animation(
+                                .spring(response: 0.4, dampingFraction: 0.7),
+                                reduceMotion: reduceMotion
+                            )
+                        ) {
+                            proxy.scrollTo(setID, anchor: .center)
+                        }
                     }
                 }
             }
 
             HelmCoachApplyWave(isActive: $controller.showCoachApplyWave)
         }
-    }
-
-    private func scheduleScrollToFocusedSet(
-        proxy: ScrollViewProxy,
-        setID: String,
-        viewportHeight: CGFloat
-    ) {
-        DispatchQueue.main.async {
-            scrollToFocusedSet(
-                proxy: proxy,
-                setID: setID,
-                viewportHeight: viewportHeight
-            )
-        }
-    }
-
-    private func scrollToFocusedSet(
-        proxy: ScrollViewProxy,
-        setID: String,
-        viewportHeight: CGFloat
-    ) {
-        HapticEngine.shared.play(.selection)
-        let anchor = focusedSetScrollAnchor(
-            chromeHeight: measuredChromeHeight,
-            viewportHeight: viewportHeight
-        )
-        withAnimation(
-            HelmMotion.animation(
-                .spring(response: 0.4, dampingFraction: 0.7),
-                reduceMotion: reduceMotion
-            )
-        ) {
-            proxy.scrollTo(setID, anchor: anchor)
-        }
-    }
-
-    private func focusedSetScrollAnchor(chromeHeight: CGFloat, viewportHeight: CGFloat) -> UnitPoint {
-        guard viewportHeight > 0, chromeHeight > 0 else {
-            return UnitPoint(x: 0.5, y: 0.35)
-        }
-        let visibleFraction = max(0.2, 1 - (chromeHeight / viewportHeight))
-        let y = min(0.5, max(0.15, visibleFraction * 0.5))
-        return UnitPoint(x: 0.5, y: y)
     }
 
     private func handleRestTimerTick(_ remaining: Int) {
@@ -623,18 +541,9 @@ struct TrainView: View {
     }
 
     private var bottomContentInset: CGFloat {
-        if measuredChromeHeight > 0 {
-            return measuredChromeHeight + HelmSpacing.sm
-        }
-
-        if controller.numpadTarget != nil {
-            if controller.numpadTarget?.field == .rpe {
-                return HelmLayout.trainScrollBottomInsetWithRPE
-            }
-            return HelmLayout.trainScrollBottomInsetWithNumpad
-        }
-
-        var inset = HelmLayout.trainScrollBottomInset
+        var inset = controller.numpadTarget == nil
+            ? HelmLayout.trainScrollBottomInset
+            : HelmLayout.trainScrollBottomInsetWithNumpad
         if controller.isRestTimerRunning {
             inset += HelmLayout.trainRestBannerScrollInset
         }
@@ -801,22 +710,6 @@ struct TrainView: View {
         .helmScreenPadding()
     }
     .helmTheme()
-}
-
-private struct TrainBottomChromeHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
-}
-
-private struct TrainViewportHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
 }
 
 private extension TrainingPhase {
