@@ -67,6 +67,22 @@ public struct WorkoutImportResult: Sendable {
     }
 }
 
+public struct HevyBulkImportResult: Sendable, Hashable {
+    public let importedSessionCount: Int
+    public let skippedDuplicateCount: Int
+    public let importedSetCount: Int
+
+    public init(
+        importedSessionCount: Int,
+        skippedDuplicateCount: Int,
+        importedSetCount: Int
+    ) {
+        self.importedSessionCount = importedSessionCount
+        self.skippedDuplicateCount = skippedDuplicateCount
+        self.importedSetCount = importedSetCount
+    }
+}
+
 public struct WorkoutImportService: Sendable {
     private let sessions: WorkoutSessionRepository
     private let exercises: ExerciseRepository
@@ -170,14 +186,20 @@ public struct WorkoutImportService: Sendable {
         )
     }
 
-    /// Legacy path: imports a pasted workout as a completed history session.
+    /// Imports a pasted or parsed workout as a completed history session.
     public func importToHistory(
         parsed: ParsedWorkout,
         mappings: [String: String],
+        sessionID: String? = nil,
         startedAt: Date = Date(),
         endedAt: Date? = nil,
-        saveAliases: Bool = true
-    ) throws -> WorkoutImportResult {
+        saveAliases: Bool = true,
+        skipIfExists: Bool = false
+    ) throws -> WorkoutImportResult? {
+        if let sessionID, skipIfExists, try sessions.fetch(id: sessionID) != nil {
+            return nil
+        }
+
         let ended = endedAt ?? startedAt
         let plan = try buildPlan(parsed: parsed, mappings: mappings, saveAliases: saveAliases)
         var sessionExercises: [WorkoutSessionExerciseDraft] = []
@@ -206,6 +228,7 @@ public struct WorkoutImportService: Sendable {
         }
 
         let draft = WorkoutSessionDraft(
+            id: sessionID ?? UUID().uuidString,
             title: plan.title,
             startedAt: startedAt,
             endedAt: ended,
@@ -232,6 +255,47 @@ public struct WorkoutImportService: Sendable {
         }
 
         return WorkoutImportResult(session: draft, personalRecords: detected)
+    }
+
+    /// Bulk-imports Hevy CSV sessions as completed history (skips existing session IDs).
+    public func importHevySessions(
+        _ sessionsToImport: [HevyCSVParsedSession],
+        mappings: [String: String],
+        saveAliases: Bool = true
+    ) throws -> HevyBulkImportResult {
+        if saveAliases {
+            for (title, exerciseID) in mappings {
+                try persistAliasIfNeeded(importedTitle: title, exerciseID: exerciseID)
+            }
+        }
+
+        var importedSessions = 0
+        var importedSets = 0
+        var skippedDuplicates = 0
+
+        for session in sessionsToImport {
+            let result = try importToHistory(
+                parsed: session.parsedWorkout,
+                mappings: mappings,
+                sessionID: session.id,
+                startedAt: session.startedAt,
+                endedAt: session.endedAt,
+                saveAliases: false,
+                skipIfExists: true
+            )
+            if let result {
+                importedSessions += 1
+                importedSets += result.session.exercises.reduce(0) { $0 + $1.sets.count }
+            } else {
+                skippedDuplicates += 1
+            }
+        }
+
+        return HevyBulkImportResult(
+            importedSessionCount: importedSessions,
+            skippedDuplicateCount: skippedDuplicates,
+            importedSetCount: importedSets
+        )
     }
 
     private func persistAliasIfNeeded(importedTitle: String, exerciseID: String) throws {

@@ -32,25 +32,38 @@ public struct WorkoutImportResolver: Sendable {
     }
 
     public func resolve(parsed: ParsedWorkout, manualMappings: [String: String] = [:]) throws -> [WorkoutImportExerciseResolution] {
-        try parsed.exercises.map { exercise in
-            if let manualID = manualMappings[exercise.exerciseTitle] {
+        try resolve(titles: parsed.exercises.map(\.exerciseTitle), manualMappings: manualMappings)
+    }
+
+    public func resolve(
+        titles: [String],
+        manualMappings: [String: String] = [:]
+    ) throws -> [WorkoutImportExerciseResolution] {
+        var seen = Set<String>()
+        var uniqueTitles: [String] = []
+        for title in titles where seen.insert(title).inserted {
+            uniqueTitles.append(title)
+        }
+
+        return try uniqueTitles.map { title in
+            if let manualID = manualMappings[title] {
                 return WorkoutImportExerciseResolution(
-                    importedTitle: exercise.exerciseTitle,
+                    importedTitle: title,
                     exerciseID: manualID,
                     matchKind: .manual
                 )
             }
 
-            if let resolved = try exercises.resolveImportedTitle(exercise.exerciseTitle) {
+            if let resolved = try exercises.resolveImportedTitle(title) {
                 return WorkoutImportExerciseResolution(
-                    importedTitle: exercise.exerciseTitle,
+                    importedTitle: title,
                     exerciseID: resolved.exerciseID,
                     matchKind: resolved.matchKind
                 )
             }
 
             return WorkoutImportExerciseResolution(
-                importedTitle: exercise.exerciseTitle,
+                importedTitle: title,
                 exerciseID: nil,
                 matchKind: .unresolved
             )

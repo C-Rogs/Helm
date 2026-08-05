@@ -312,15 +312,16 @@ struct WorkoutImportTests {
             startedAt: Date(timeIntervalSince1970: 1_700_000_000)
         )
 
-        #expect(result.session.status == .completed)
-        #expect(result.session.source == .importSource)
+        #expect(result != nil)
+        #expect(result?.session.status == .completed)
+        #expect(result?.session.source == .importSource)
 
         let summaries = try store.workoutSessions.listSummaries(limit: 10)
         #expect(summaries.count == 1)
         #expect(summaries[0].title == "PUSH")
         #expect(summaries[0].totalSetCount == 2)
 
-        let fetched = try store.workoutSessions.fetch(id: result.session.id)
+        let fetched = try store.workoutSessions.fetch(id: result!.session.id)
         #expect(fetched?.exercises.count == 1)
         #expect(fetched?.exercises[0].sets.count == 2)
 

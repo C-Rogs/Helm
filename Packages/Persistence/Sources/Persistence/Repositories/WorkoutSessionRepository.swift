@@ -327,7 +327,11 @@ public struct WorkoutSessionRepository: Sendable {
         guard let startInstant = startDay.startInstant(cutoff: cutoff, calendar: calendar) else {
             return []
         }
-        let startString = ISO8601Coding.string(from: startInstant)
+        return try fetchCompletedSessions(since: startInstant)
+    }
+
+    public func fetchCompletedSessions(since start: Date) throws -> [WorkoutSessionDraft] {
+        let startString = ISO8601Coding.string(from: start)
 
         return try pool.read { db in
             let headers = try Row.fetchAll(

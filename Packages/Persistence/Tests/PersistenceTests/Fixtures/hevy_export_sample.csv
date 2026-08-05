@@ -1,0 +1,9 @@
+"title","start_time","end_time","description","exercise_title","superset_id","exercise_notes","set_index","set_type","weight_kg","reps","distance_km","duration_seconds","rpe"
+"Push Day","15 Jan 2026, 17:00","15 Jan 2026, 18:00","","Bench Press (Barbell)",,"",0,"warmup",60,8,,,
+"Push Day","15 Jan 2026, 17:00","15 Jan 2026, 18:00","","Bench Press (Barbell)",,"",1,"normal",100,5,,,8
+"Push Day","15 Jan 2026, 17:00","15 Jan 2026, 18:00","","Bench Press (Barbell)",,"",2,"normal",100,5,,,9
+"Push Day","15 Jan 2026, 17:00","15 Jan 2026, 18:00","","Mystery Machine Fly",,"",0,"normal",40,12,,,7
+"Pull Day","20 Jan 2026, 17:30","20 Jan 2026, 18:20","","Pull Up",,"",0,"normal",0,8,,,
+"Pull Day","20 Jan 2026, 17:30","20 Jan 2026, 18:20","","Pull Up",,"",1,"normal",0,7,,,
+"Cardio Only","21 Jan 2026, 07:00","21 Jan 2026, 07:30","","Running",,"",0,"normal",,,1.5,900,
+"Ancient Push","1 Jun 2025, 17:00","1 Jun 2025, 18:00","","Bench Press (Barbell)",,"",0,"normal",90,5,,,

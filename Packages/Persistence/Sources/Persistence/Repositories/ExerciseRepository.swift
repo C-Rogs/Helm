@@ -306,6 +306,58 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    public func fetchCustomExercises() throws -> [ExerciseSummary] {
+        try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group
+                    FROM exercise
+                    WHERE deleted_at IS NULL AND is_custom = 1
+                    ORDER BY sort_name ASC
+                    """
+            )
+            return try rows.map(Self.summary(from:))
+        }
+    }
+
+    public func fetchAliases(forExerciseIDs exerciseIDs: Set<String>? = nil) throws -> [ExerciseAlias] {
+        try pool.read { db in
+            let rows: [Row]
+            if let exerciseIDs, !exerciseIDs.isEmpty {
+                let placeholders = Array(repeating: "?", count: exerciseIDs.count).joined(separator: ", ")
+                rows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT id, exercise_id, alias, normalized_alias
+                        FROM exercise_alias
+                        WHERE exercise_id IN (\(placeholders))
+                        ORDER BY normalized_alias ASC
+                        """,
+                    arguments: StatementArguments(Array(exerciseIDs))
+                )
+            } else {
+                rows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT id, exercise_id, alias, normalized_alias
+                        FROM exercise_alias
+                        ORDER BY normalized_alias ASC
+                        """
+                )
+            }
+
+            return rows.map { row in
+                ExerciseAlias(
+                    id: row["id"],
+                    exerciseID: row["exercise_id"],
+                    alias: row["alias"],
+                    normalizedAlias: row["normalized_alias"]
+                )
+            }
+        }
+    }
+
     public func resolveExerciseID(normalizedAlias: String) throws -> String? {
         try pool.read { db in
             try String.fetchOne(
