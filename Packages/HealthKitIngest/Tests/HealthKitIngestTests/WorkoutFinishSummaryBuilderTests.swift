@@ -108,7 +108,8 @@ struct WorkoutFinishSummaryBuilderTests {
                     startOffsetSeconds: 0,
                     endOffsetSeconds: 120,
                     title: "Track",
-                    artist: "Artist"
+                    artist: "Artist",
+                    bpm: 128
                 )
             ]
         )
@@ -118,5 +119,7 @@ struct WorkoutFinishSummaryBuilderTests {
         #expect(summary.setMarkers.map(\.setNumber) == [1])
         #expect(summary.exerciseMarkers.map(\.shortName) == ["Bench"])
         #expect(summary.musicSegments.count == 1)
+        #expect(summary.musicSegments[0].bpm == 128)
+        #expect(summary.musicSegments[0].displayBPM == 128)
     }
 }

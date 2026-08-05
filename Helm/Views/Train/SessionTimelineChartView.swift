@@ -12,13 +12,22 @@ struct SessionTimelineChartView: View {
     private static let heardListLimit = 2
     /// Minimum gap between exercise markers before later labels are dropped.
     private static let minExerciseLabelGapSeconds = 45
-    private static let musicLaneOpacity = 0.42
-    /// Max chars for in-chart exercise labels (full names live in a11y / session detail).
-    private static let exerciseLabelMaxLength = 10
     /// Visible X window before horizontal scroll kicks in (5 minutes).
     private static let visibleWindowSeconds = 5 * 60
+    /// Half-height of each song bar in BPM units. Wide enough to remain visible
+    /// against the heart-rate area while still reading as an exact tempo.
+    private static let songBarHalfHeight = 1.75
+
+    @State private var showsAllTracks = false
+
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private var hasHeartRate: Bool { !heartRateSamples.isEmpty }
+    private var songBPMSegments: [SessionMusicSegment] {
+        musicSegments.filter { $0.bpm != nil }
+    }
+    private var hasSongBPM: Bool { !songBPMSegments.isEmpty }
+    private var hasBPMScale: Bool { hasHeartRate || hasSongBPM }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -34,6 +43,13 @@ struct SessionTimelineChartView: View {
             }
 
             if hasRenderableTimeline {
+                if hasBPMScale {
+                    seriesLegend
+                }
+                if !musicSegments.isEmpty, !hasSongBPM {
+                    Text("Song BPM unavailable from playback source.")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                }
                 chartBody
                 if !musicSegments.isEmpty {
                     heardList
@@ -72,37 +88,42 @@ struct SessionTimelineChartView: View {
     }
 
     /// Seconds shown on screen at once. Shorter sessions fill width; longer ones scroll.
+    /// Marker-only / no-BPM timelines show the full session so the first 5 minutes of
+    /// empty lead-in before the first set do not look like a blank chart.
     private var visibleDomainLength: Int {
         let total = max(xDomain.upperBound - xDomain.lowerBound, 1)
+        if !hasBPMScale {
+            return total
+        }
         return min(total, Self.visibleWindowSeconds)
     }
 
-    /// BPM (or unit) range for data marks only; excludes label headroom.
+    /// BPM range for data marks only; excludes label headroom. Shared by heart rate and song tempo.
     private var dataYDomain: ClosedRange<Double> {
-        let bpms = heartRateSamples.map(\.bpm)
-        guard let lo = bpms.min(), let hi = bpms.max() else {
-            // Unit domain for songs/sets-only: music fills most of the plot.
+        var values: [Double] = heartRateSamples.map { Double($0.bpm) }
+        for segment in songBPMSegments {
+            if let bpm = segment.bpm {
+                values.append(bpm)
+            }
+        }
+        guard let lo = values.min(), let hi = values.max() else {
+            // Markers / songs without BPM: unit domain for layout only.
             return 0...1
         }
-        let pad = max(5, (hi - lo) / 8)
-        return Double(max(0, lo - pad))...Double(hi + pad)
-    }
-
-    /// Share of the data Y domain reserved for the music lane.
-    private var musicLaneHeightFraction: Double {
-        hasHeartRate ? 0.18 : 0.62
+        let pad = max(5.0, (hi - lo) / 8.0)
+        return max(0, lo - pad)...(hi + pad)
     }
 
     /// Extra Y headroom (fraction of data span) so exercise labels sit inside the plot.
     private var labelHeadroomFraction: Double {
-        hasHeartRate ? 0.28 : 0.45
+        hasBPMScale ? 0.28 : 0.45
     }
 
     /// Plot domain includes top headroom so exercise names render inside the chart frame.
     private var yDomain: ClosedRange<Double> {
         let data = dataYDomain
         let span = max(data.upperBound - data.lowerBound, 1)
-        let minHeadroom = hasHeartRate ? 10.0 : 0.55
+        let minHeadroom = hasBPMScale ? 10.0 : 0.55
         let headroom = max(span * labelHeadroomFraction, minHeadroom)
         return data.lowerBound...(data.upperBound + headroom)
     }
@@ -114,19 +135,11 @@ struct SessionTimelineChartView: View {
         return data.upperBound + (top - data.upperBound) * 0.5
     }
 
-    /// Bottom band of the data range reserved for song spans.
-    private var musicLane: (start: Double, end: Double) {
-        let data = dataYDomain
-        let span = data.upperBound - data.lowerBound
-        return (data.lowerBound, data.lowerBound + span * musicLaneHeightFraction)
-    }
-
     private var chartHeight: CGFloat {
-        if hasHeartRate {
-            return HelmChartStyle.standardHeight * 1.65
+        if hasBPMScale {
+            return HelmChartStyle.standardHeight * 2.2
         }
-        // Songs / sets only: thick music lane, no dead BPM grid.
-        return HelmChartStyle.standardHeight * 0.85
+        return HelmChartStyle.standardHeight * 1.2
     }
 
     private var genreSummary: String? {
@@ -135,6 +148,29 @@ struct SessionTimelineChartView: View {
 
     private var musicEmptyCopy: String {
         "No songs captured for this session."
+    }
+
+    private var seriesLegend: some View {
+        HStack(spacing: HelmSpacing.md) {
+            if hasHeartRate {
+                legendItem(color: HelmChartStyle.lineColor, systemImage: "heart.fill", label: "Heart")
+            }
+            if hasSongBPM {
+                legendItem(color: HelmColor.accent, systemImage: "music.note", label: "Song")
+            }
+        }
+    }
+
+    private func legendItem(color: Color, systemImage: String, label: String) -> some View {
+        HStack(spacing: HelmSpacing.xxs) {
+            Image(systemName: systemImage)
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(color)
+            Text(label)
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(label)
     }
 
     /// Exercise markers keep a label only when far enough from the previously labelled one.
@@ -159,7 +195,6 @@ struct SessionTimelineChartView: View {
 
     @ViewBuilder
     private var chartBody: some View {
-        let lane = musicLane
         let labelY = exerciseLabelY
         let labelled = labelledExerciseMarkers
         let domain = xDomain
@@ -173,34 +208,25 @@ struct SessionTimelineChartView: View {
 
                 LineMark(
                     x: .value("Time", sample.offsetSeconds),
-                    y: .value("BPM", Double(sample.bpm))
+                    y: .value("BPM", Double(sample.bpm)),
+                    series: .value("Series", "Heart")
                 )
                 .foregroundStyle(HelmChartStyle.lineColor)
                 .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
                 .interpolationMethod(.catmullRom)
             }
 
-            ForEach(musicSegments) { segment in
-                RectangleMark(
-                    xStart: .value("Song start", segment.startOffsetSeconds),
-                    xEnd: .value("Song end", max(segment.endOffsetSeconds, segment.startOffsetSeconds + 1)),
-                    yStart: .value("Lane bottom", lane.start),
-                    yEnd: .value("Lane top", lane.end)
-                )
-                .foregroundStyle(HelmColor.accent.opacity(Self.musicLaneOpacity))
-
-                PointMark(
-                    x: .value(
-                        "Song mark",
-                        segment.startOffsetSeconds
-                            + max(1, segment.endOffsetSeconds - segment.startOffsetSeconds) / 2
-                    ),
-                    y: .value("Lane mid", (lane.start + lane.end) / 2)
-                )
-                .symbol {
-                    Image(systemName: "music.note")
-                        .font(.system(size: hasHeartRate ? 8 : 10, weight: .bold))
-                        .foregroundStyle(HelmColor.accent)
+            ForEach(songBPMSegments) { segment in
+                if let bpm = segment.bpm {
+                    let endX = max(segment.endOffsetSeconds, segment.startOffsetSeconds + 1)
+                    RectangleMark(
+                        xStart: .value("Song start", segment.startOffsetSeconds),
+                        xEnd: .value("Song end", endX),
+                        yStart: .value("Song BPM lower", bpm - Self.songBarHalfHeight),
+                        yEnd: .value("Song BPM upper", bpm + Self.songBarHalfHeight)
+                    )
+                    .foregroundStyle(HelmColor.accent)
+                    .cornerRadius(2)
                 }
             }
 
@@ -221,15 +247,20 @@ struct SessionTimelineChartView: View {
                     x: .value("Exercise label", marker.offsetSeconds),
                     y: .value("Label band", labelY)
                 )
-                .opacity(0)
+                .symbolSize(1)
+                .foregroundStyle(Color.clear)
                 .annotation(
                     position: .overlay,
                     alignment: labelAlignment(for: marker.offsetSeconds, in: domain),
                     overflowResolution: .init(x: .fit(to: .plot), y: .fit(to: .plot))
                 ) {
-                    Text(chartExerciseLabel(marker.shortName))
+                    Text(marker.shortName)
                         .helmType(.monoTag, color: HelmColor.fgSecondary)
                         .lineLimit(1)
+                        .fixedSize()
+                        .padding(.horizontal, HelmSpacing.xxs)
+                        .padding(.vertical, 2)
+                        .background(HelmColor.canvas.opacity(0.88))
                 }
             }
         }
@@ -261,11 +292,12 @@ struct SessionTimelineChartView: View {
         }
         .modifier(
             TimelineYAxisModifier(
-                hasHeartRate: hasHeartRate,
+                hasBPMScale: hasBPMScale,
                 dataYDomain: dataYDomain
             )
         )
         .frame(height: chartHeight)
+        .clipped()
         .accessibilityLabel(accessibilityLabel)
     }
 
@@ -276,10 +308,6 @@ struct SessionTimelineChartView: View {
         if fraction < 0.18 { return .leading }
         if fraction > 0.82 { return .trailing }
         return .center
-    }
-
-    private func chartExerciseLabel(_ name: String) -> String {
-        SessionExerciseMarkerBuilder.truncate(name, maxLength: Self.exerciseLabelMaxLength)
     }
 
     /// ~4 ticks in the visible window; snap to whole minutes when window is long enough.
@@ -293,46 +321,88 @@ struct SessionTimelineChartView: View {
 
     private var heardList: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            HStack(spacing: HelmSpacing.xs) {
-                Text("Heard")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                Text("·")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                Text("\(musicSegments.count)")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-            }
+            Text("Heard")
+                .helmType(.monoTag, color: HelmColor.fgMuted)
 
-            ForEach(Array(musicSegments.prefix(Self.heardListLimit))) { segment in
+            ForEach(visibleMusicSegments) { segment in
                 heardRow(segment)
             }
 
             if musicSegments.count > Self.heardListLimit {
-                Text("+\(musicSegments.count - Self.heardListLimit) more")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                Button {
+                    withAnimation(
+                        HelmMotion.animation(
+                            HelmMotion.quickAnimation,
+                            reduceMotion: reduceMotion
+                        )
+                    ) {
+                        showsAllTracks.toggle()
+                    }
+                } label: {
+                    HStack(spacing: HelmSpacing.xxs) {
+                        Text(
+                            showsAllTracks
+                                ? "Show less"
+                                : "+\(musicSegments.count - Self.heardListLimit) more"
+                        )
+                        Image(systemName: showsAllTracks ? "chevron.up" : "chevron.down")
+                            .font(.system(size: 9, weight: .semibold))
+                    }
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .frame(minHeight: 44)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(showsAllTracks ? "Show fewer tracks" : "Show all tracks")
             }
         }
+    }
+
+    private var visibleMusicSegments: [SessionMusicSegment] {
+        if showsAllTracks {
+            return musicSegments
+        }
+        return Array(musicSegments.prefix(Self.heardListLimit))
     }
 
     private func heardRow(_ segment: SessionMusicSegment) -> some View {
         let timeRange = "\(formatOffset(segment.startOffsetSeconds))-\(formatOffset(segment.endOffsetSeconds))"
         let title = segment.displayTitle
         let artist = segment.displayArtist
+        let trackLabel: String = {
+            if let artist {
+                return "\(title) - \(artist)"
+            }
+            return title
+        }()
 
         return HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
             Text(timeRange)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
                 .frame(minWidth: 72, alignment: .leading)
-            if let artist {
-                Text("\(title) - \(artist)")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                    .lineLimit(1)
-            } else {
-                Text(title)
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                    .lineLimit(1)
+            Text(trackLabel)
+                .helmType(.body, color: HelmColor.fgSecondary)
+                .lineLimit(1)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            if let bpm = segment.displayBPM {
+                Text("\(bpm)")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                Text("BPM")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            bpmAccessibilityLabel(trackLabel: trackLabel, timeRange: timeRange, bpm: segment.displayBPM)
+        )
+    }
+
+    private func bpmAccessibilityLabel(trackLabel: String, timeRange: String, bpm: Int?) -> String {
+        if let bpm {
+            return "\(trackLabel), \(timeRange), \(bpm) BPM"
+        }
+        return "\(trackLabel), \(timeRange)"
     }
 
     private var accessibilityLabel: String {
@@ -340,7 +410,14 @@ struct SessionTimelineChartView: View {
         if let first = heartRateSamples.first, let last = heartRateSamples.last {
             parts.append("Heart rate from \(first.bpm) to \(last.bpm) BPM")
         }
-        if !musicSegments.isEmpty {
+        if hasSongBPM {
+            let tempos = songBPMSegments.compactMap(\.displayBPM).map(String.init).joined(separator: ", ")
+            if tempos.isEmpty {
+                parts.append("\(songBPMSegments.count) song tempos")
+            } else {
+                parts.append("Song tempos \(tempos) BPM")
+            }
+        } else if !musicSegments.isEmpty {
             parts.append("\(musicSegments.count) tracks")
         }
         if !exerciseMarkers.isEmpty {
@@ -361,13 +438,13 @@ struct SessionTimelineChartView: View {
     }
 }
 
-/// Y-axis ticks plus a heart glyph at the axis end when heart rate is present.
+/// Y-axis ticks plus a BPM glyph when heart rate or song tempo is present.
 private struct TimelineYAxisModifier: ViewModifier {
-    let hasHeartRate: Bool
+    let hasBPMScale: Bool
     let dataYDomain: ClosedRange<Double>
 
     func body(content: Content) -> some View {
-        if hasHeartRate {
+        if hasBPMScale {
             content
                 .chartYAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) { value in
@@ -384,10 +461,10 @@ private struct TimelineYAxisModifier: ViewModifier {
                     }
                 }
                 .chartYAxisLabel(position: .trailing, alignment: .top) {
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 11, weight: .semibold))
+                    Text("BPM")
+                        .font(HelmChartStyle.axisLabelFont)
                         .foregroundStyle(HelmChartStyle.axisLabelColor)
-                        .accessibilityLabel("Heart rate")
+                        .accessibilityLabel("BPM")
                 }
         } else {
             content.chartYAxis(.hidden)
@@ -400,33 +477,19 @@ private struct TimelineYAxisModifier: ViewModifier {
     SessionTimelineChartView(
         heartRateSamples: [
             SessionHeartRateSample(offsetSeconds: 0, bpm: 110),
-            SessionHeartRateSample(offsetSeconds: 60, bpm: 132),
-            SessionHeartRateSample(offsetSeconds: 120, bpm: 148),
+            SessionHeartRateSample(offsetSeconds: 90, bpm: 148),
             SessionHeartRateSample(offsetSeconds: 180, bpm: 140)
         ],
-        setMarkers: [
-            SessionSetMarker(offsetSeconds: 60, setNumber: 1),
-            SessionSetMarker(offsetSeconds: 180, setNumber: 2)
-        ],
-        exerciseMarkers: [
-            SessionExerciseMarker(offsetSeconds: 60, shortName: "Bench Press"),
-            SessionExerciseMarker(offsetSeconds: 85, shortName: "Incline DB"),
-            SessionExerciseMarker(offsetSeconds: 180, shortName: "Squat")
-        ],
+        setMarkers: [SessionSetMarker(offsetSeconds: 60, setNumber: 1)],
+        exerciseMarkers: [SessionExerciseMarker(offsetSeconds: 60, shortName: "Bench Press")],
         musicSegments: [
             SessionMusicSegment(
-                startOffsetSeconds: 0,
-                endOffsetSeconds: 90,
-                title: "Lose Yourself",
-                artist: "Eminem",
-                genre: "Hip-Hop"
+                startOffsetSeconds: 0, endOffsetSeconds: 90,
+                title: "Lose Yourself", artist: "Eminem", genre: "Hip-Hop", bpm: 171
             ),
             SessionMusicSegment(
-                startOffsetSeconds: 90,
-                endOffsetSeconds: 240,
-                title: "POWER",
-                artist: "Kanye West",
-                genre: "Hip-Hop"
+                startOffsetSeconds: 90, endOffsetSeconds: 180,
+                title: "POWER", artist: "Kanye West", genre: "Hip-Hop", bpm: 154
             )
         ]
     )
@@ -437,29 +500,39 @@ private struct TimelineYAxisModifier: ViewModifier {
 #Preview("Timeline songs only") {
     SessionTimelineChartView(
         heartRateSamples: [],
-        setMarkers: [
-            SessionSetMarker(offsetSeconds: 45, setNumber: 1),
-            SessionSetMarker(offsetSeconds: 120, setNumber: 2)
-        ],
-        exerciseMarkers: [
-            SessionExerciseMarker(offsetSeconds: 20, shortName: "Chest Dips"),
-            SessionExerciseMarker(offsetSeconds: 95, shortName: "Crunches"),
-            SessionExerciseMarker(offsetSeconds: 180, shortName: "Push-Ups")
-        ],
+        setMarkers: [SessionSetMarker(offsetSeconds: 45, setNumber: 1)],
+        exerciseMarkers: [SessionExerciseMarker(offsetSeconds: 20, shortName: "Chest Dips")],
         musicSegments: [
             SessionMusicSegment(
-                startOffsetSeconds: 0,
-                endOffsetSeconds: 90,
-                title: "EASTSIDE",
-                artist: "Georges",
-                genre: "Electronic"
+                startOffsetSeconds: 0, endOffsetSeconds: 90,
+                title: "EASTSIDE", artist: "Georges", genre: "Electronic", bpm: 124
             ),
             SessionMusicSegment(
-                startOffsetSeconds: 90,
-                endOffsetSeconds: 240,
-                title: "Not Enough",
-                artist: "Dam Swindle",
-                genre: "Electronic"
+                startOffsetSeconds: 90, endOffsetSeconds: 240,
+                title: "Not Enough", artist: "Dam Swindle", genre: "Electronic", bpm: 118
+            )
+        ]
+    )
+    .padding()
+    .helmTheme()
+}
+
+#Preview("Timeline mixed BPM") {
+    SessionTimelineChartView(
+        heartRateSamples: [
+            SessionHeartRateSample(offsetSeconds: 0, bpm: 105),
+            SessionHeartRateSample(offsetSeconds: 180, bpm: 125)
+        ],
+        setMarkers: [SessionSetMarker(offsetSeconds: 60, setNumber: 1)],
+        exerciseMarkers: [SessionExerciseMarker(offsetSeconds: 30, shortName: "Press")],
+        musicSegments: [
+            SessionMusicSegment(
+                startOffsetSeconds: 0, endOffsetSeconds: 80,
+                title: "With Tempo", artist: "Artist", genre: "Rock", bpm: 128
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 80, endOffsetSeconds: 180,
+                title: "No Tempo", artist: "Spotify Track", genre: "Rock", bpm: nil
             )
         ]
     )
@@ -469,32 +542,20 @@ private struct TimelineYAxisModifier: ViewModifier {
 
 #Preview("Timeline long scrollable") {
     let samples = stride(from: 0, through: 3600, by: 60).map { offset in
-        SessionHeartRateSample(
-            offsetSeconds: offset,
-            bpm: 120 + (offset / 60) % 40
-        )
+        SessionHeartRateSample(offsetSeconds: offset, bpm: 120 + (offset / 60) % 40)
     }
     let songs = [
         SessionMusicSegment(
-            startOffsetSeconds: 0,
-            endOffsetSeconds: 900,
-            title: "Lose Yourself",
-            artist: "Eminem",
-            genre: "Hip-Hop"
+            startOffsetSeconds: 0, endOffsetSeconds: 900,
+            title: "Lose Yourself", artist: "Eminem", genre: "Hip-Hop", bpm: 171
         ),
         SessionMusicSegment(
-            startOffsetSeconds: 900,
-            endOffsetSeconds: 2100,
-            title: "POWER",
-            artist: "Kanye West",
-            genre: "Hip-Hop"
+            startOffsetSeconds: 900, endOffsetSeconds: 2100,
+            title: "POWER", artist: "Kanye West", genre: "Hip-Hop", bpm: 154
         ),
         SessionMusicSegment(
-            startOffsetSeconds: 2100,
-            endOffsetSeconds: 3600,
-            title: "Stronger",
-            artist: "Kanye West",
-            genre: "Electronic"
+            startOffsetSeconds: 2100, endOffsetSeconds: 3600,
+            title: "Stronger", artist: "Kanye West", genre: "Electronic", bpm: 104
         )
     ]
     SessionTimelineChartView(
@@ -502,29 +563,10 @@ private struct TimelineYAxisModifier: ViewModifier {
         setMarkers: (1...20).map { SessionSetMarker(offsetSeconds: $0 * 180, setNumber: $0) },
         exerciseMarkers: [
             SessionExerciseMarker(offsetSeconds: 300, shortName: "Bench"),
-            SessionExerciseMarker(offsetSeconds: 320, shortName: "Close"),
             SessionExerciseMarker(offsetSeconds: 1500, shortName: "Squat"),
-            SessionExerciseMarker(offsetSeconds: 2700, shortName: "Row"),
-            SessionExerciseMarker(offsetSeconds: 2730, shortName: "Face Pull")
+            SessionExerciseMarker(offsetSeconds: 2700, shortName: "Row")
         ],
         musicSegments: songs
-    )
-    .padding()
-    .helmTheme()
-}
-
-#Preview("Timeline no songs") {
-    SessionTimelineChartView(
-        heartRateSamples: [
-            SessionHeartRateSample(offsetSeconds: 0, bpm: 100),
-            SessionHeartRateSample(offsetSeconds: 75, bpm: 130)
-        ],
-        setMarkers: [SessionSetMarker(offsetSeconds: 40, setNumber: 1)],
-        exerciseMarkers: [
-            SessionExerciseMarker(offsetSeconds: 20, shortName: "Iso-Lateral Row"),
-            SessionExerciseMarker(offsetSeconds: 55, shortName: "Heavy EZ Bar Curl")
-        ],
-        musicSegments: []
     )
     .padding()
     .helmTheme()

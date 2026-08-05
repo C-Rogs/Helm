@@ -9,6 +9,8 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
     public let artist: String?
     public let album: String?
     public let genre: String?
+    /// Track tempo when captured; nil when source omitted BPM or value was non-positive.
+    public let bpm: Double?
 
     public init(
         startOffsetSeconds: Int,
@@ -16,7 +18,8 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
         title: String? = nil,
         artist: String? = nil,
         album: String? = nil,
-        genre: String? = nil
+        genre: String? = nil,
+        bpm: Double? = nil
     ) {
         self.startOffsetSeconds = max(0, startOffsetSeconds)
         self.endOffsetSeconds = max(self.startOffsetSeconds, endOffsetSeconds)
@@ -24,6 +27,7 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
         self.artist = artist
         self.album = album
         self.genre = genre
+        self.bpm = Self.validatedBPM(bpm)
     }
 
     public var durationSeconds: Int {
@@ -47,6 +51,17 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
         guard !trimmed.isEmpty else { return nil }
         if trimmed == displayTitle { return nil }
         return trimmed
+    }
+
+    /// Rounded whole-number BPM for list/chart labels when present.
+    public var displayBPM: Int? {
+        guard let bpm else { return nil }
+        return Int(bpm.rounded())
+    }
+
+    static func validatedBPM(_ value: Double?) -> Double? {
+        guard let value, value > 0, value.isFinite else { return nil }
+        return value
     }
 }
 
@@ -87,7 +102,8 @@ public enum SessionMusicSegmentBuilder {
                 title: sample.title,
                 artist: sample.artist,
                 album: sample.album,
-                genre: sample.genre
+                genre: sample.genre,
+                bpm: sample.bpm
             )
 
             if let last = segments.last,
@@ -100,7 +116,8 @@ public enum SessionMusicSegmentBuilder {
                     title: last.title,
                     artist: last.artist,
                     album: last.album,
-                    genre: last.genre ?? segment.genre
+                    genre: last.genre ?? segment.genre,
+                    bpm: last.bpm ?? segment.bpm
                 )
             } else {
                 segments.append(segment)
@@ -162,7 +179,7 @@ public enum SessionMusicGenreSummary {
 }
 
 public enum SessionExerciseMarkerBuilder {
-    public static let defaultShortNameMaxLength = 16
+    public static let defaultShortNameMaxLength = 18
 
     /// Marks the first completed set of each exercise with a truncated friendly name.
     public static func markers(
@@ -197,6 +214,21 @@ public enum SessionExerciseMarkerBuilder {
     public static func truncate(_ text: String, maxLength: Int) -> String {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count > maxLength else { return trimmed }
-        return String(trimmed.prefix(maxLength - 1)) + "…"
+        guard maxLength > 1 else { return "…" }
+
+        let available = maxLength - 1
+        let words = trimmed.split(whereSeparator: \.isWhitespace).map(String.init)
+        var kept: [String] = []
+
+        for word in words {
+            let candidate = (kept + [word]).joined(separator: " ")
+            guard candidate.count <= available else { break }
+            kept.append(word)
+        }
+
+        if !kept.isEmpty {
+            return kept.joined(separator: " ") + "…"
+        }
+        return String(trimmed.prefix(available)) + "…"
     }
 }

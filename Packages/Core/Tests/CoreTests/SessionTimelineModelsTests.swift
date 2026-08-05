@@ -13,13 +13,15 @@ struct SessionMusicSegmentBuilderTests {
                 sessionID: "s1",
                 sampledAt: start.addingTimeInterval(0),
                 title: "Track A",
-                artist: "Artist A"
+                artist: "Artist A",
+                bpm: 128
             ),
             WorkoutMusicSample(
                 sessionID: "s1",
                 sampledAt: start.addingTimeInterval(120),
                 title: "Track B",
-                artist: "Artist B"
+                artist: "Artist B",
+                bpm: 140
             )
         ]
 
@@ -33,9 +35,51 @@ struct SessionMusicSegmentBuilderTests {
         #expect(segments[0].startOffsetSeconds == 0)
         #expect(segments[0].endOffsetSeconds == 120)
         #expect(segments[0].title == "Track A")
+        #expect(segments[0].bpm == 128)
         #expect(segments[1].startOffsetSeconds == 120)
         #expect(segments[1].endOffsetSeconds == 600)
         #expect(segments[1].title == "Track B")
+        #expect(segments[1].bpm == 140)
+    }
+
+    @Test("drops non-positive BPM and keeps nil BPM tracks")
+    func validatesBPM() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let samples = [
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start,
+                title: "Zero",
+                artist: "A",
+                bpm: 0
+            ),
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start.addingTimeInterval(30),
+                title: "Missing",
+                artist: "B",
+                bpm: nil
+            ),
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start.addingTimeInterval(60),
+                title: "Valid",
+                artist: "C",
+                bpm: 118
+            )
+        ]
+
+        let segments = SessionMusicSegmentBuilder.build(
+            samples: samples,
+            startedAt: start,
+            endedAt: start.addingTimeInterval(120)
+        )
+
+        #expect(segments.count == 3)
+        #expect(segments[0].bpm == nil)
+        #expect(segments[1].bpm == nil)
+        #expect(segments[2].bpm == 118)
+        #expect(segments[2].displayBPM == 118)
     }
 
     @Test("drops empty title and artist samples")
@@ -69,19 +113,22 @@ struct SessionMusicSegmentBuilderTests {
                 sessionID: "s1",
                 sampledAt: start,
                 title: "Same",
-                artist: "Artist"
+                artist: "Artist",
+                bpm: 120
             ),
             WorkoutMusicSample(
                 sessionID: "s1",
                 sampledAt: start.addingTimeInterval(60),
                 title: "Same",
-                artist: "Artist"
+                artist: "Artist",
+                bpm: 120
             ),
             WorkoutMusicSample(
                 sessionID: "s1",
                 sampledAt: start.addingTimeInterval(180),
                 title: "Other",
-                artist: "Artist"
+                artist: "Artist",
+                bpm: 132
             )
         ]
 
@@ -94,7 +141,39 @@ struct SessionMusicSegmentBuilderTests {
         #expect(segments.count == 2)
         #expect(segments[0].startOffsetSeconds == 0)
         #expect(segments[0].endOffsetSeconds == 180)
+        #expect(segments[0].bpm == 120)
         #expect(segments[1].title == "Other")
+        #expect(segments[1].bpm == 132)
+    }
+
+    @Test("merge keeps first available BPM")
+    func mergeKeepsFirstBPM() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let samples = [
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start,
+                title: "Same",
+                artist: "Artist",
+                bpm: nil
+            ),
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start.addingTimeInterval(60),
+                title: "Same",
+                artist: "Artist",
+                bpm: 128
+            )
+        ]
+
+        let segments = SessionMusicSegmentBuilder.build(
+            samples: samples,
+            startedAt: start,
+            endedAt: start.addingTimeInterval(180)
+        )
+
+        #expect(segments.count == 1)
+        #expect(segments[0].bpm == 128)
     }
 }
 
@@ -216,10 +295,26 @@ struct SessionExerciseMarkerBuilderTests {
     func truncatesNames() {
         let truncated = SessionExerciseMarkerBuilder.truncate(
             "Romanian Deadlift With Long Descriptor",
-            maxLength: 16
+            maxLength: 18
         )
-        #expect(truncated == "Romanian Deadli…")
-        #expect(truncated.count <= 16)
+        #expect(truncated == "Romanian Deadlift…")
+        #expect(truncated.count <= 18)
+    }
+
+    @Test("keeps leading whole words when shortening")
+    func truncatesAtWordBoundary() {
+        #expect(
+            SessionExerciseMarkerBuilder.truncate(
+                "Dumbbell Bench Press Incline",
+                maxLength: 18
+            ) == "Dumbbell Bench…"
+        )
+        #expect(
+            SessionExerciseMarkerBuilder.truncate(
+                "Extraordinarilylong Exercise",
+                maxLength: 10
+            ) == "Extraordi…"
+        )
     }
 }
 
