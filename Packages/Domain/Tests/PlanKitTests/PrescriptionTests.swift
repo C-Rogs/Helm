@@ -215,8 +215,8 @@ struct PrescriptionAdjustmentTests {
         )
     }
 
-    @Test("clamps reject set adjustments below minimum")
-    func rejectsBelowMinimumSets() {
+    @Test("set removals floor at one rather than rejecting")
+    func setRemovalFloorsAtOne() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [
                 PrescriptionAdjustmentOperation(
@@ -230,15 +230,15 @@ struct PrescriptionAdjustmentTests {
             catalog: catalog
         )
 
-        guard case .rejected(.setsBelowMinimum(let exerciseID)) = result else {
-            Issue.record("Expected setsBelowMinimum rejection")
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected set removal to apply")
             return
         }
-        #expect(exerciseID == "bench_press")
+        #expect(adjusted.exercises.first?.targetSets == 1)
     }
 
-    @Test("clamps reject set adjustments above maximum")
-    func rejectsAboveMaximumSets() {
+    @Test("set adds past the engine cap apply")
+    func setAddPastEngineCapApplies() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [
                 PrescriptionAdjustmentOperation(
@@ -252,12 +252,13 @@ struct PrescriptionAdjustmentTests {
             catalog: catalog
         )
 
-        guard case .rejected(.setsAboveMaximum(let exerciseID)) = result else {
-            Issue.record("Expected setsAboveMaximum rejection")
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected set add to apply")
             return
         }
-        #expect(exerciseID == "bench_press")
+        #expect(adjusted.exercises.first?.targetSets == 13)
     }
+
 
     @Test("exclude list honoured across repeated swaps")
     func excludeListHonouredAcrossSwaps() {
@@ -345,8 +346,8 @@ struct PrescriptionAdjustmentTests {
         #expect(adjusted.exercises[0].targetMass?.kilograms == 82.5)
     }
 
-    @Test("load adjustment rejects out-of-bounds coach-suggested increase")
-    func rejectsOutOfBoundsLoad() {
+    @Test("large coach-suggested load increase applies")
+    func largeCoachLoadIncreaseApplies() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [
                 PrescriptionAdjustmentOperation(
@@ -360,37 +361,14 @@ struct PrescriptionAdjustmentTests {
             catalog: catalog
         )
 
-        guard case .rejected(.loadOutOfBounds(let exerciseID)) = result else {
-            Issue.record("Expected loadOutOfBounds rejection")
-            return
-        }
-        #expect(exerciseID == "bench_press")
-    }
-
-    @Test("user-directed load increase bypasses coach cap")
-    func userDirectedIncreaseApplies() {
-        let result = PlanKit.apply(
-            adjustment: PrescriptionAdjustment(operations: [
-                PrescriptionAdjustmentOperation(
-                    kind: .adjustLoad,
-                    exerciseID: "bench_press",
-                    massDeltaKg: 20,
-                    loadAdjustmentIntent: .userDirected
-                )
-            ]),
-            to: session,
-            excluding: [],
-            catalog: catalog
-        )
-
         guard case .applied(let adjusted) = result else {
-            Issue.record("Expected user-directed load increase to apply")
+            Issue.record("Expected load increase to apply")
             return
         }
         #expect(adjusted.exercises[0].targetMass?.kilograms == 100)
     }
 
-    @Test("user-directed load decrease bypasses coach cap")
+    @Test("user-directed load decrease applies")
     func userDirectedDecreaseApplies() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [

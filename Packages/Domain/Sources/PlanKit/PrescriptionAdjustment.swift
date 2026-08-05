@@ -65,16 +65,13 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
 }
 
 public enum PrescriptionClampReason: Sendable, Hashable, Codable, Equatable {
-    case setsBelowMinimum(exerciseID: String)
-    case setsAboveMaximum(exerciseID: String)
     case swapTargetExcluded(exerciseID: String)
     case swapNoAlternativeAvailable(fromExerciseID: String)
     case invalidReorder(missingExerciseIDs: [String])
     case exerciseNotFound(exerciseID: String)
     case duplicateExercise(exerciseID: String)
     case loadMissing(exerciseID: String)
-    case loadOutOfBounds(exerciseID: String)
-    case rpeOutOfBounds(exerciseID: String)
+    case rpeMissing(exerciseID: String)
 }
 
 public enum PrescriptionAdjustmentResult: Sendable, Hashable, Equatable {
@@ -94,8 +91,7 @@ enum PrescriptionAdjustmentEngine {
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         availableEquipment: Set<String>? = nil,
-        familiarExerciseIDs: Set<String> = [],
-        enforceCoachLoadCaps: Bool = true
+        familiarExerciseIDs: Set<String> = []
     ) -> PrescriptionAdjustmentResult {
         var exercises = session.exercises.sorted { $0.order < $1.order }
         let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
@@ -108,8 +104,7 @@ enum PrescriptionAdjustmentEngine {
                 catalog: catalog,
                 catalogByID: catalogByID,
                 availableEquipment: availableEquipment,
-                familiarExerciseIDs: familiarExerciseIDs,
-                enforceCoachLoadCaps: enforceCoachLoadCaps
+                familiarExerciseIDs: familiarExerciseIDs
             ) {
             case .success:
                 continue
@@ -132,8 +127,7 @@ enum PrescriptionAdjustmentEngine {
         catalog: [CatalogExercise],
         catalogByID: [String: CatalogExercise],
         availableEquipment: Set<String>?,
-        familiarExerciseIDs: Set<String>,
-        enforceCoachLoadCaps: Bool
+        familiarExerciseIDs: Set<String>
     ) -> OperationOutcome {
         switch operation.kind {
         case .swap:
@@ -151,7 +145,7 @@ enum PrescriptionAdjustmentEngine {
         case .adjustSets:
             return applySetAdjustment(operation, to: &exercises)
         case .adjustLoad:
-            return applyLoadAdjustment(operation, to: &exercises, enforceCoachLoadCaps: enforceCoachLoadCaps)
+            return applyLoadAdjustment(operation, to: &exercises)
         case .adjustRPE:
             return applyRPEAdjustment(operation, to: &exercises)
         case .addExercise:
@@ -258,22 +252,14 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.exerciseNotFound(exerciseID: exerciseID))
         }
 
-        let proposed = exercises[index].targetSets + delta
-        if proposed < PrescriptionBounds.minSetsPerExercise {
-            return .failure(.setsBelowMinimum(exerciseID: exerciseID))
-        }
-        if proposed > PrescriptionBounds.maxSetsPerExercise {
-            return .failure(.setsAboveMaximum(exerciseID: exerciseID))
-        }
-
+        let proposed = max(1, exercises[index].targetSets + delta)
         exercises[index] = replacing(exercises[index], targetSets: proposed)
         return .success
     }
 
     private static func applyLoadAdjustment(
         _ operation: PrescriptionAdjustmentOperation,
-        to exercises: inout [PrescribedExercise],
-        enforceCoachLoadCaps: Bool
+        to exercises: inout [PrescribedExercise]
     ) -> OperationOutcome {
         guard let exerciseID = operation.exerciseID else {
             return .failure(.exerciseNotFound(exerciseID: ""))
@@ -282,29 +268,20 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.exerciseNotFound(exerciseID: exerciseID))
         }
 
-        guard let currentMass = exercises[index].targetMass else {
-            return .failure(.loadMissing(exerciseID: exerciseID))
-        }
-
         let proposedKg: Double
         if let targetMassKg = operation.targetMassKg {
             proposedKg = targetMassKg
         } else if let delta = operation.massDeltaKg {
+            // A relative move needs something to move from.
+            guard let currentMass = exercises[index].targetMass else {
+                return .failure(.loadMissing(exerciseID: exerciseID))
+            }
             proposedKg = currentMass.kilograms + delta
         } else {
             return .failure(.loadMissing(exerciseID: exerciseID))
         }
 
         let boundedKg = PrescriptionBounds.clampedLoadKg(proposedKg)
-        guard PrescriptionBounds.isLoadWithinBounds(
-            currentKg: currentMass.kilograms,
-            proposedKg: boundedKg,
-            intent: operation.loadAdjustmentIntent,
-            enforceCoachLoadCaps: enforceCoachLoadCaps
-        ) else {
-            return .failure(.loadOutOfBounds(exerciseID: exerciseID))
-        }
-
         exercises[index] = replacing(
             exercises[index],
             targetMass: Mass(kilograms: boundedKg)
@@ -330,15 +307,14 @@ enum PrescriptionAdjustmentEngine {
         } else if let delta = operation.rpeDelta {
             proposedRPE = currentRPE + delta
         } else {
-            return .failure(.rpeOutOfBounds(exerciseID: exerciseID))
+            return .failure(.rpeMissing(exerciseID: exerciseID))
         }
 
-        let clamped = PrescriptionBounds.clampRPE(proposedRPE)
-        if abs(clamped - proposedRPE) > 0.001 {
-            return .failure(.rpeOutOfBounds(exerciseID: exerciseID))
-        }
-
-        exercises[index] = replacing(exercises[index], targetRPE: clamped)
+        // Clamp to the RPE scale the logger accepts rather than refusing the change.
+        exercises[index] = replacing(
+            exercises[index],
+            targetRPE: PrescriptionBounds.clampRPE(proposedRPE)
+        )
         return .success
     }
 
@@ -357,7 +333,7 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.duplicateExercise(exerciseID: exerciseID))
         }
 
-        let setCount = PrescriptionBounds.clampSets(operation.targetSets ?? 3)
+        let setCount = max(1, operation.targetSets ?? 3)
         exercises.append(
             PrescribedExercise(
                 exerciseID: exerciseID,

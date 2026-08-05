@@ -39,7 +39,13 @@ struct WatchCompanionView: View {
 
                 doneButton
 
-                if !coordinator.isReachable {
+                if let setID = coordinator.companionSetID,
+                   coordinator.pendingCompleteSetIDs.contains(setID) {
+                    Text(coordinator.isReachable ? "Sending…" : "Queued for phone")
+                        .font(.caption2)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                } else if !coordinator.isReachable {
                     Text("Reconnect phone to complete set")
                         .font(.caption2)
                         .foregroundStyle(.secondary)
@@ -118,20 +124,23 @@ struct WatchCompanionView: View {
 
     @ViewBuilder
     private var doneButton: some View {
-        // Reachability optional: transferUserInfo queues when phone briefly unreachable.
+        // Reachability optional: outbox + transferUserInfo queue when phone briefly unreachable.
+        let setID = coordinator.companionSetID
+        let isPending = setID.map { coordinator.pendingCompleteSetIDs.contains($0) } ?? false
         let canComplete = coordinator.companionSessionExerciseID != nil
-            && coordinator.companionSetID != nil
+            && setID != nil
             && (store.phase == .active || store.phase == .paused)
+            && !isPending
 
         Button {
             guard
                 let exerciseID = coordinator.companionSessionExerciseID,
-                let setID = coordinator.companionSetID
+                let setID
             else { return }
             coordinator.requestCompleteSet(sessionExerciseID: exerciseID, setID: setID)
             WKInterfaceDevice.current().play(.click)
         } label: {
-            Text("Done")
+            Text(isPending ? "Sending…" : "Done")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
         }

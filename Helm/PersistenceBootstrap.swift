@@ -53,7 +53,7 @@ enum PersistenceBootstrap {
             message: "Persistence store opened",
             context: [
                 "schemaVersion": String(store.schemaVersion),
-                "iCloudBackup": "included"
+                "iCloudBackup": "excluded"
             ]
         )
     }

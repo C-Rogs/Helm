@@ -103,7 +103,7 @@ struct MemoryProfileEditorView: View {
         defer { isSaving = false }
         do {
             try PersistenceBootstrap.persistenceStore.memoryProfile.save(profile)
-            HapticEngine.shared.play(.coachAdjust)
+            CoachApplyMomentStore.shared.play()
             saveMessage = "Saved. Coach will use this on the next turn."
         } catch {
             saveMessage = error.localizedDescription

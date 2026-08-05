@@ -57,12 +57,41 @@ struct WatchSyncPayloadTests {
             sentAt: 1_723_456_789,
             messageKind: .completeSet,
             companionSessionExerciseID: "ex-1",
-            companionSetID: "set-2"
+            companionSetID: "set-2",
+            eventID: "evt-abc"
         )
         let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
         #expect(restored == payload)
         #expect(restored?.companionSessionExerciseID == "ex-1")
         #expect(restored?.companionSetID == "set-2")
+        #expect(restored?.eventID == "evt-abc")
+    }
+
+    @Test("completeSetAck eventID round-trips")
+    func completeSetAckRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .phone,
+            sequence: 10,
+            helmDay: HelmDay(year: 2026, month: 8, day: 4),
+            sentAt: 1_723_456_789,
+            messageKind: .completeSetAck,
+            eventID: "evt-ack-1"
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored == payload)
+        #expect(restored?.messageKind == .completeSetAck)
+        #expect(restored?.eventID == "evt-ack-1")
+    }
+
+    @Test("legacy completeSet without eventID still decodes")
+    func legacyCompleteSetWithoutEventID() throws {
+        let json = """
+        {"origin":"watch","sequence":2,"helmDay":"2026-08-04","sentAt":1723456789,"messageKind":"completeSet","companionSessionExerciseID":"ex","companionSetID":"set"}
+        """
+        let data = try #require(json.data(using: .utf8))
+        let payload = try JSONDecoder().decode(WatchSyncPayload.self, from: data)
+        #expect(payload.eventID == nil)
+        #expect(payload.messageKind == .completeSet)
     }
 
     @Test("workoutCompanion save flag round-trips")
@@ -96,5 +125,20 @@ struct WatchSyncPayloadTests {
         #expect(restored == payload)
         #expect(restored?.diagnosticEvent == "watch.handle.begin")
         #expect(restored?.diagnosticDetail == "activity=strength")
+    }
+
+    @Test("companion session start time round-trips")
+    func companionSessionStartedAtRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .phone,
+            sequence: 12,
+            helmDay: HelmDay(year: 2026, month: 8, day: 4),
+            sentAt: 1_723_456_789,
+            messageKind: .workoutCompanion,
+            workoutCompanionActive: true,
+            companionSessionStartedAt: 1_723_456_000
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored?.companionSessionStartedAt == 1_723_456_000)
     }
 }

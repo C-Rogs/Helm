@@ -8,7 +8,11 @@ protocol WatchWorkoutSessionManaging: AnyObject {
     var isMirroringToCompanion: Bool { get }
     func requestAuthorization() async throws -> Bool
     func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws
-    func start(configuration: HKWorkoutConfiguration, sessionID: String) async throws
+    func start(
+        configuration: HKWorkoutConfiguration,
+        sessionID: String,
+        activityStart: Date?
+    ) async throws
     func pause()
     func resume()
     func end(discard: Bool) async throws
@@ -86,12 +90,16 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = HKWorkoutActivityType(rawValue: activity.healthKitActivityTypeRawValue) ?? .other
         configuration.locationType = activity.usesOutdoorLocation ? .outdoor : .indoor
-        try await start(configuration: configuration, sessionID: sessionID)
+        try await start(configuration: configuration, sessionID: sessionID, activityStart: nil)
     }
 
-    /// Phone `startWatchApp` cold-wake path: start session from the handed configuration
-    /// with no auth/baseline delay. Auth must already be granted from a prior open.
-    func start(configuration: HKWorkoutConfiguration, sessionID: String) async throws {
+    /// Phone `startWatchApp` / late-adoption path.
+    /// `activityStart` may be in the past when Watch joins a phone session already underway.
+    func start(
+        configuration: HKWorkoutConfiguration,
+        sessionID: String,
+        activityStart: Date?
+    ) async throws {
         guard session == nil else { throw WatchWorkoutSessionError.sessionAlreadyActive }
 
         let workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
@@ -109,7 +117,7 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         self.sessionID = sessionID
         self.isMirroringToCompanion = false
 
-        let startDate = Date()
+        let startDate = activityStart ?? Date()
         // startActivity is what keeps watchOS from suspending the app after cold wake.
         workoutSession.startActivity(with: startDate)
 

@@ -369,7 +369,7 @@ enum TrendsDataBuilder {
         let trendStore = NutritionTrendStore(metadata: store.appMetadata)
         let trend = try trendStore.load()
         let bodyProfileStore = BodyProfileStore(metadata: store.appMetadata)
-        var storedProfile = bodyProfileStore.load()
+        let storedProfile = bodyProfileStore.load()
 
         let gauges = days.compactMap { day -> EnergyBalanceGauge? in
             guard let intake = day.totalEnergy?.kilocalories else { return nil }

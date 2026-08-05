@@ -51,30 +51,21 @@ struct ExerciseHistorySheet: View {
                     VStack(spacing: 0) {
                         ForEach(model.previousSets) { row in
                             HelmRuledRow {
-                                HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.sm) {
-                                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                                        Text("Set \(row.setNumber)")
-                                            .helmType(.label)
-                                        Text(row.setTypeLabel)
-                                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                                    }
-                                    .frame(width: 72, alignment: .leading)
+                                HStack(alignment: .center, spacing: HelmSpacing.sm) {
+                                    Text(row.setTypeLabel == "\(row.setNumber)" ? "\(row.setNumber)" : row.setTypeLabel)
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                        .frame(width: 22, alignment: .leading)
+                                        .accessibilityLabel("Set \(row.setNumber), \(row.setTypeLabel)")
 
-                                    if let previousLabel = row.previousLabel {
-                                        Text(previousLabel)
-                                            .helmType(.body, color: HelmColor.fg)
-                                            .helmNumericRoll(value: previousLabel)
-                                    } else {
-                                        Text("-")
-                                            .helmType(.body, color: HelmColor.fgMuted)
-                                    }
+                                    Text(row.previousLabel ?? "-")
+                                        .helmType(.number, color: row.previousLabel == nil ? HelmColor.fgMuted : HelmColor.fg)
+                                        .helmNumericRoll(value: row.previousLabel ?? "-")
+                                        .frame(maxWidth: .infinity, alignment: .leading)
 
-                                    Spacer(minLength: 0)
-
-                                    if let sessionLabel = row.sessionLabel {
-                                        Text(sessionLabel)
-                                            .helmType(.monoTag, color: HelmColor.fgMuted)
-                                    }
+                                    Text(row.sessionLabel ?? "")
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                        .frame(width: 56, alignment: .trailing)
+                                        .opacity(row.sessionLabel == nil ? 0 : 1)
                                 }
                             }
                         }
@@ -96,12 +87,13 @@ struct ExerciseHistorySheet: View {
                     VStack(spacing: 0) {
                         ForEach(model.e1RMHistory) { row in
                             HelmRuledRow {
-                                HStack {
+                                HStack(alignment: .center, spacing: HelmSpacing.sm) {
                                     Text(row.sessionLabel)
                                         .helmType(.body, color: HelmColor.fg)
-                                    Spacer()
+                                        .frame(maxWidth: .infinity, alignment: .leading)
                                     HelmNumericText(row.e1RMKilograms, format: "%.0f kg")
-                                        .helmType(.monoTag, color: HelmColor.accent)
+                                        .helmType(.number, color: HelmColor.accent)
+                                        .frame(width: 72, alignment: .trailing)
                                 }
                             }
                         }

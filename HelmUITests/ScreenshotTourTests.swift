@@ -217,18 +217,15 @@ final class ScreenshotTourTests: XCTestCase {
     }
 
     private static let settingsDestinations = [
-        "Health Access",
         "Body Profile",
-        "Notifications",
-        "Coach API Key",
-        "Health Import",
-        "Notifications & Shortcuts",
         "Training Plan",
         "Nutrition",
-        "Coach",
-        "Coach Memory",
         "Sources & Methodology",
-        "HealthKit",
+        "Coach settings",
+        "Coach Memory",
+        "Notifications",
+        "Apple Health",
+        "Spotify",
         "Calendar Hints",
         "Watch Sync",
         "Data & Backup",

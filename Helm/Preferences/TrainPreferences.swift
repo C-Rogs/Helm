@@ -9,7 +9,9 @@ final class TrainPreferences {
 
     static let workoutFeedbackEnabledKey = TrainPreferencePersistence.workoutFeedbackEnabledKey
     static let restTimerSoundEnabledKey = TrainPreferencePersistence.restTimerSoundEnabledKey
-    static let pawelModeEnabledKey = TrainPreferencePersistence.pawelModeEnabledKey
+    static let manualRestTimerEnabledKey = TrainPreferencePersistence.manualRestTimerEnabledKey
+    static let manualRestTimerDurationSecondsKey =
+        TrainPreferencePersistence.manualRestTimerDurationSecondsKey
 
     var workoutFeedbackEnabled: Bool {
         didSet { persist() }
@@ -43,9 +45,24 @@ final class TrainPreferences {
         }
     }
 
-    var pawelModeEnabled: Bool {
+    var manualRestTimerEnabled: Bool {
         didSet {
             guard !isHydrating else { return }
+            persist()
+        }
+    }
+
+    /// Last chosen manual rest duration, snapped to 5s steps within 15–600.
+    var manualRestTimerDurationSeconds: Int {
+        didSet {
+            guard !isHydrating else { return }
+            let snapped = TrainPreferencePersistence.ManualRestTimerDuration.snapped(
+                manualRestTimerDurationSeconds
+            )
+            if snapped != manualRestTimerDurationSeconds {
+                manualRestTimerDurationSeconds = snapped
+                return
+            }
             persist()
         }
     }
@@ -85,11 +102,18 @@ final class TrainPreferences {
         }
         restTimerVolume = resolvedVolume
         restTimerSoundEnabled = resolvedVolume.isEnabled
-        pawelModeEnabled = TrainPreferencePersistence.loadBool(
-            key: Self.pawelModeEnabledKey,
+        manualRestTimerEnabled = TrainPreferencePersistence.loadBool(
+            key: Self.manualRestTimerEnabledKey,
             defaults: defaults,
             defaultValue: false
         )
+        let storedDuration = TrainPreferencePersistence.loadInt(
+            key: Self.manualRestTimerDurationSecondsKey,
+            defaults: defaults,
+            defaultValue: TrainPreferencePersistence.ManualRestTimerDuration.defaultSeconds
+        )
+        manualRestTimerDurationSeconds =
+            TrainPreferencePersistence.ManualRestTimerDuration.snapped(storedDuration)
         isHydrating = false
     }
 
@@ -115,8 +139,13 @@ final class TrainPreferences {
             defaults: defaults
         )
         TrainPreferencePersistence.saveBool(
-            pawelModeEnabled,
-            key: Self.pawelModeEnabledKey,
+            manualRestTimerEnabled,
+            key: Self.manualRestTimerEnabledKey,
+            defaults: defaults
+        )
+        TrainPreferencePersistence.saveInt(
+            manualRestTimerDurationSeconds,
+            key: Self.manualRestTimerDurationSecondsKey,
             defaults: defaults
         )
     }

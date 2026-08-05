@@ -59,12 +59,12 @@ struct DataBrowserView: View {
             let store = PersistenceBootstrap.persistenceStore
             var loaded: [DailyMetricColumn: [HelmDay]] = [:]
             for column in DailyMetricColumn.allCases {
-                loaded[column] = try await store.dailyMetrics.listDays(where: column)
+                loaded[column] = try store.dailyMetrics.listDays(where: column)
             }
             vitalsDays = loaded
-            sleepDays = try await store.sleep.listDays()
-            nutritionDays = try await store.nutrition.listDays()
-            bodyCompositionDays = try await store.bodyComposition.listDays()
+            sleepDays = try store.sleep.listDays()
+            nutritionDays = try store.nutrition.listDays()
+            bodyCompositionDays = try store.bodyComposition.listDays()
         } catch {
             errorMessage = error.localizedDescription
         }

@@ -3,6 +3,7 @@ import Persistence
 import UIKit
 import UserNotifications
 
+@MainActor
 final class HelmAppDelegate: NSObject, UIApplicationDelegate {
     private let notificationDelegate = HelmNotificationDelegate()
 
@@ -13,6 +14,9 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
         notificationDelegate.configure()
         if let sessionID = RestNotificationLaunchOptions.pendingSessionID(from: launchOptions) {
             RestNotificationRouter.storePendingSessionID(sessionID)
+        }
+        Task { @MainActor in
+            SpotifyAppRemoteService.shared.configure()
         }
         return true
     }

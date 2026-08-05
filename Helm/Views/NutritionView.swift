@@ -91,7 +91,7 @@ struct NutritionView: View {
             }
             .helmScreenBackground()
             .navigationTitle("Nutrition")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar { nutritionToolbar }
         }
         .task { await refreshTargets() }

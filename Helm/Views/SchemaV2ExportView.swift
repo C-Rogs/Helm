@@ -18,17 +18,19 @@ struct SchemaV2ExportView: View {
             if let importedDayCount {
                 Section {
                     Text("Shared import loaded: \(importedDayCount) day(s) in app group cache.")
-                        .font(HelmType.body.font)
-                        .foregroundStyle(HelmColor.fgMuted)
+                        .helmType(.body, color: HelmColor.fgMuted)
+                        .helmListRowChrome()
                 }
             }
 
             Section("Export window") {
                 DatePicker("Start", selection: $window.start, displayedComponents: .date)
+                    .helmListRowChrome()
                 DatePicker("End", selection: $window.end, displayedComponents: .date)
+                    .helmListRowChrome()
                 Text("Sleep uses bioharvest's 18:00-18:00 window. Other metrics use local calendar days.")
-                    .font(HelmType.body.font)
-                    .foregroundStyle(HelmColor.fgMuted)
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .helmListRowChrome()
             }
 
             Section("Actions") {
@@ -36,29 +38,33 @@ struct SchemaV2ExportView: View {
                     Task { await exportJSON() }
                 }
                 .disabled(isExporting || !window.isValid)
+                .helmListRowChrome()
 
                 Button("Copy to Gemini") {
                     copyToGemini()
                 }
                 .disabled(lastJSON == nil)
+                .helmListRowChrome()
 
                 Button("Share JSON") {
                     shareJSON()
                 }
                 .disabled(lastJSON == nil)
+                .helmListRowChrome()
             }
 
             Section {
-                Text("Signal export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
-                    .font(HelmType.body.font)
-                    .foregroundStyle(HelmColor.fgMuted)
+                Text("Helm export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .helmListRowChrome()
             }
         }
+        .helmSettingsListChrome()
         .navigationTitle("Export health data")
         .overlay(alignment: .top) {
             if showCopiedBanner {
                 Text("Copied for Gemini")
-                    .font(HelmType.label.font)
+                    .helmType(.label)
                     .padding(.horizontal, HelmSpacing.sm)
                     .padding(.vertical, HelmSpacing.xs)
                     .background(.ultraThinMaterial, in: Capsule())

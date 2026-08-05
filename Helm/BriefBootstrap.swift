@@ -20,7 +20,7 @@ enum BriefBootstrap {
             if BriefIntentBootstrap.hasPendingMiss(for: day) {
                 _ = await BriefIntentBootstrap.runner.run(attemptNarration: true)
             }
-            await refreshBrief()
+            refreshBrief()
         }
     }
 

@@ -69,7 +69,7 @@ public struct ParsedWorkout: Sendable, Hashable, Codable {
 public enum ParsedWorkoutTitle {
     /// Strips trailing parenthetical coaching notes for catalog matching.
     public static func catalogMatchTitle(from displayTitle: String) -> String {
-        var text = displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        let text = displayTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         guard let open = text.lastIndex(of: "("), let close = text.lastIndex(of: ")"), open < close else {
             return text
         }

@@ -87,8 +87,8 @@ final class TrainSessionController {
 
     var coachPromptText = ""
     var isShowingCoachPrompt = false
-    var isShowingPawelTimer = false
-    var pawelTimerOpenExpanded = false
+    var isShowingManualRestTimer = false
+    var manualRestTimerOpenExpanded = false
     var historyExerciseSessionID: String?
     private(set) var coachMessages: [InSessionCoachMessage] = []
     private(set) var pendingCoachProposal: CoachSessionProposal?
@@ -179,9 +179,9 @@ final class TrainSessionController {
         snapshot?.restTimer?.phase == .running
     }
 
-    func openPawelTimer(expanded: Bool) {
-        pawelTimerOpenExpanded = expanded
-        isShowingPawelTimer = true
+    func openManualRestTimer(expanded: Bool) {
+        manualRestTimerOpenExpanded = expanded
+        isShowingManualRestTimer = true
     }
 
     func restTimerTotalSeconds(for timer: RestTimer) -> Int {
@@ -1736,10 +1736,10 @@ final class TrainSessionController {
                 pendingCoachProposal = nil
                 isShowingCoachPrompt = false
                 try await finishApplyingAdjustment(applied)
-            } catch InSessionCoachError.adjustmentRejected {
+            } catch InSessionCoachError.adjustmentRejected(let reason) {
                 WorkoutHapticCoordinator.play(.clampRejected)
                 pendingCoachProposal = nil
-                appendCoachFailureNotice("That adjustment is outside safe bounds.")
+                appendCoachFailureNotice(CoachProposalFailure.clamp(reason).userMessage)
             } catch InSessionCoachError.noApplicableChange {
                 pendingCoachProposal = nil
                 appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
@@ -2390,7 +2390,7 @@ final class TrainSessionController {
         lastFailedCoachMessage = nil
         coachThread = .empty
         isShowingCoachPrompt = false
-        isShowingPawelTimer = false
+        isShowingManualRestTimer = false
         isCoachThinking = false
         lastCoachRequestID = nil
         resetSessionFeedbackState()

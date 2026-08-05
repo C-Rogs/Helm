@@ -43,14 +43,20 @@ struct MuscleVolumeArcGridCard: View {
                                     .helmType(.monoTag, color: HelmColor.fgMuted)
                                     .lineLimit(1)
 
-                                Text(gauge.state.label)
-                                    .helmType(.monoTag, color: HelmColor.color(for: gauge.state))
+                                Text(
+                                    "\(Int(gauge.weeklySets.rounded())) / \(gauge.landmarks.mev)-\(gauge.landmarks.mrv)"
+                                )
+                                .helmType(.monoTag, color: HelmColor.color(for: gauge.state))
+                                .monospacedDigit()
 
                                 Text(
-                                    "MEV \(gauge.landmarks.mev) · MRV \(gauge.landmarks.mrv)"
+                                    VolumeLandmarkStatus.resolve(
+                                        sets: gauge.weeklySets,
+                                        mev: gauge.landmarks.mev,
+                                        mrv: gauge.landmarks.mrv
+                                    ).label
                                 )
                                 .helmType(.monoTag, color: HelmColor.fgMuted)
-                                .multilineTextAlignment(.center)
                             }
                         }
                     }

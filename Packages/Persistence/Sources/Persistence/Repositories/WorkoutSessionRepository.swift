@@ -2,6 +2,22 @@ import Core
 import Foundation
 import GRDB
 
+public enum WorkoutSessionHistoryScope: String, Sendable, Hashable, CaseIterable, Identifiable {
+    case active
+    case deleted
+
+    public var id: String { rawValue }
+
+    func deletedAtSQLPredicate(column: String) -> String {
+        switch self {
+        case .active:
+            "\(column) IS NULL"
+        case .deleted:
+            "\(column) IS NOT NULL"
+        }
+    }
+}
+
 public struct WorkoutSessionRepository: Sendable {
     private let pool: DatabasePool
 
@@ -278,7 +294,11 @@ public struct WorkoutSessionRepository: Sendable {
         }
     }
 
-    public func listSummaries(limit: Int, offset: Int = 0) throws -> [WorkoutSessionSummary] {
+    public func listSummaries(
+        limit: Int,
+        offset: Int = 0,
+        scope: WorkoutSessionHistoryScope = .active
+    ) throws -> [WorkoutSessionSummary] {
         try pool.read { db in
             let rows = try Row.fetchAll(
                 db,
@@ -291,7 +311,7 @@ public struct WorkoutSessionRepository: Sendable {
                                WHERE wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
                            ) AS exercise_count
                     FROM workout_session ws
-                    WHERE ws.status = 'completed' AND ws.deleted_at IS NULL
+                    WHERE ws.status = 'completed' AND \(scope.deletedAtSQLPredicate(column: "ws.deleted_at"))
                     ORDER BY ws.started_at DESC
                     LIMIT ? OFFSET ?
                     """,
@@ -313,9 +333,23 @@ public struct WorkoutSessionRepository: Sendable {
         }
     }
 
+    public func countSummaries(scope: WorkoutSessionHistoryScope = .active) throws -> Int {
+        try pool.read { db in
+            try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(*)
+                    FROM workout_session
+                    WHERE status = 'completed'
+                      AND \(scope.deletedAtSQLPredicate(column: "deleted_at"))
+                    """
+            ) ?? 0
+        }
+    }
+
     public func fetch(id: String) throws -> WorkoutSessionDraft? {
         try pool.read { db in
-            try Self.fetchDraft(db: db, sessionID: id)
+            try Self.fetchDraft(db: db, sessionID: id, includeDeleted: true)
         }
     }
 
@@ -349,18 +383,23 @@ public struct WorkoutSessionRepository: Sendable {
 
             return try headers.compactMap { row -> WorkoutSessionDraft? in
                 let sessionID: String = row["id"]
-                return try Self.fetchDraft(db: db, sessionID: sessionID)
+                return try Self.fetchDraft(db: db, sessionID: sessionID, includeDeleted: false)
             }
         }
     }
 
-    private static func fetchDraft(db: Database, sessionID: String) throws -> WorkoutSessionDraft? {
+    private static func fetchDraft(
+        db: Database,
+        sessionID: String,
+        includeDeleted: Bool
+    ) throws -> WorkoutSessionDraft? {
+        let deletedClause = includeDeleted ? "1 = 1" : "deleted_at IS NULL"
         guard let header = try Row.fetchOne(
             db,
             sql: """
                 SELECT id, title, started_at, ended_at, status, source
                 FROM workout_session
-                WHERE id = ? AND deleted_at IS NULL
+                WHERE id = ? AND \(deletedClause)
                 """,
             arguments: [sessionID]
         ) else {
@@ -412,6 +451,32 @@ public struct WorkoutSessionRepository: Sendable {
             try db.execute(
                 sql: "UPDATE workout_session SET deleted_at = ?, updated_at = ? WHERE id = ?",
                 arguments: [now, now, id]
+            )
+        }
+    }
+
+    /// Restores a soft-deleted completed session back into active history.
+    public func restore(id: String, timestamp: Date = Date()) throws {
+        let now = ISO8601Coding.string(from: timestamp)
+        try pool.write { db in
+            guard let status: String = try String.fetchOne(
+                db,
+                sql: """
+                    SELECT status FROM workout_session
+                    WHERE id = ? AND deleted_at IS NOT NULL
+                    """,
+                arguments: [id]
+            ), status == WorkoutSessionStatus.completed.rawValue else {
+                throw PersistenceError.recordNotFound("deleted session \(id)")
+            }
+
+            try db.execute(
+                sql: """
+                    UPDATE workout_session
+                    SET deleted_at = NULL, updated_at = ?
+                    WHERE id = ?
+                    """,
+                arguments: [now, id]
             )
         }
     }

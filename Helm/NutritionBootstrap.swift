@@ -69,7 +69,7 @@ enum NutritionBootstrap {
 
         Task(priority: .utility) {
             _ = await pendingFoodImportService.resolvePendingImports()
-            await refreshNutrition()
+            refreshNutrition()
         }
     }
 
@@ -95,7 +95,7 @@ enum NutritionBootstrap {
                         || snapshot.status.lastSyncDeletedCount > 0
                     else { continue }
                     await nutritionService.recomputeAfterIngest(affectedFamilies: [family])
-                    await refreshNutrition()
+                    refreshNutrition()
                 }
             }
         }

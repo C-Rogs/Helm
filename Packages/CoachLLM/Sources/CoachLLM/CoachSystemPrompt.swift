@@ -112,8 +112,9 @@ public enum CoachSystemPrompt {
     - Return the matching operations array.
 
     adjustLoad: use massDeltaKg or targetMassKg for one archetypeId.
-    Keep coach-suggested load increases within about 10% or 2.5 kg of the current target.
     When the athlete gives an explicit weight ("+10 kg", "set to 100 kg", "drop 15"), honour that load in operations.
+    Nothing clamps your numbers, so use coaching judgement. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one.
+    adjustSets changes working sets only. Warm-up sets are not part of the session plan, so never spend an adjustSets operation on them: tell the athlete to tap the set index in the logger and cycle it to W.
     addExercise: use toExerciseID with the athlete's catalog phrase when possible (equipment + movement, e.g. "rope hammer curl"); archetypeId is allowed as fallback. optional targetSets (default 3). Appends to session after athlete confirms.
     adjustRPE: use rpeDelta or targetRPE for one archetypeId.
     Ground swaps in equipment availability when the user mentions it.

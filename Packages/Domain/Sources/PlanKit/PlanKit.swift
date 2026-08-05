@@ -197,15 +197,18 @@ public enum PlanKit {
         PrescriptionEngine.prescription(for: profile, givenReadiness: readiness, history: history)
     }
 
-    /// Apply structured in-session adjustments with safe-bound clamping.
+    /// Apply structured in-session adjustments.
+    ///
+    /// Volume and intensity bounds shape engine-generated prescriptions only.
+    /// An adjustment is rejected here when it cannot be resolved, never because
+    /// the athlete asked for more than the engine would have prescribed.
     public static func apply(
         adjustment: PrescriptionAdjustment,
         to session: PrescribedSession,
         excluding excludedExerciseIDs: Set<String>,
         catalog: [CatalogExercise],
         availableEquipment: Set<String>? = nil,
-        familiarExerciseIDs: Set<String> = [],
-        enforceCoachLoadCaps: Bool = true
+        familiarExerciseIDs: Set<String> = []
     ) -> PrescriptionAdjustmentResult {
         PrescriptionAdjustmentEngine.apply(
             adjustment: adjustment,
@@ -213,8 +216,7 @@ public enum PlanKit {
             excluding: excludedExerciseIDs,
             catalog: catalog,
             availableEquipment: availableEquipment,
-            familiarExerciseIDs: familiarExerciseIDs,
-            enforceCoachLoadCaps: enforceCoachLoadCaps
+            familiarExerciseIDs: familiarExerciseIDs
         )
     }
 

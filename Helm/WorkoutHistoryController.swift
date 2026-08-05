@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import HealthKitIngest
 import Observation
 import Persistence
 
@@ -15,11 +16,17 @@ enum WorkoutHistoryLoadState: Equatable {
 final class WorkoutHistoryController {
     private let persistence: PersistenceStore
 
+    /// Active sessions for the current history-screen scope (Active or Bin).
     private(set) var sessions: [WorkoutSessionSummary] = []
+    /// Always the newest active (non-deleted) page. Used by Train Recent so Bin scope never leaks.
+    private(set) var activePreviewSessions: [WorkoutSessionSummary] = []
     private(set) var templates: [WorkoutTemplateSummary] = []
     private(set) var recentPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var exerciseNames: [String: String] = [:]
     private(set) var loadState: WorkoutHistoryLoadState = .idle
+    private(set) var activeCount = 0
+    private(set) var deletedCount = 0
+    private(set) var listScope: WorkoutSessionHistoryScope = .active
 
     var errorMessage: String?
 
@@ -31,11 +38,33 @@ final class WorkoutHistoryController {
         self.persistence = persistence
     }
 
+    func setListScope(_ scope: WorkoutSessionHistoryScope) {
+        guard listScope != scope else { return }
+        listScope = scope
+        refresh()
+    }
+
     func refresh() {
         loadState = .loadingInitial
         do {
             loadedCount = pageSize
-            sessions = try persistence.workoutSessions.listSummaries(limit: pageSize, offset: 0)
+            activeCount = try persistence.workoutSessions.countSummaries(scope: .active)
+            deletedCount = try persistence.workoutSessions.countSummaries(scope: .deleted)
+            let activePage = try persistence.workoutSessions.listSummaries(
+                limit: pageSize,
+                offset: 0,
+                scope: .active
+            )
+            activePreviewSessions = activePage
+            if listScope == .active {
+                sessions = activePage
+            } else {
+                sessions = try persistence.workoutSessions.listSummaries(
+                    limit: pageSize,
+                    offset: 0,
+                    scope: .deleted
+                )
+            }
             templates = try persistence.workoutTemplates.fetchSummaries()
             canLoadMore = sessions.count == pageSize
             refreshExerciseNames()
@@ -53,7 +82,11 @@ final class WorkoutHistoryController {
 
         loadState = .loadingMore
         do {
-            let next = try persistence.workoutSessions.listSummaries(limit: pageSize, offset: loadedCount)
+            let next = try persistence.workoutSessions.listSummaries(
+                limit: pageSize,
+                offset: loadedCount,
+                scope: listScope
+            )
             loadedCount += next.count
             sessions.append(contentsOf: next)
             canLoadMore = next.count == pageSize
@@ -68,6 +101,16 @@ final class WorkoutHistoryController {
 
     func fetchSession(id: String) -> WorkoutSessionDraft? {
         try? persistence.workoutSessions.fetch(id: id)
+    }
+
+    /// Synchronous stats + weekly landmarks for immediate history detail paint.
+    func finishSummaryBase(for session: WorkoutSessionDraft) -> WorkoutFinishSummary? {
+        SessionSummaryPresentationBuilder.base(session: session, store: persistence)
+    }
+
+    /// Full finish summary including timeline (HealthKit HR + markers + music).
+    func finishSummary(for session: WorkoutSessionDraft) async -> WorkoutFinishSummary? {
+        await SessionSummaryPresentationBuilder.build(session: session, store: persistence)
     }
 
     @discardableResult
@@ -86,6 +129,30 @@ final class WorkoutHistoryController {
     func deleteSession(id: String) -> Bool {
         do {
             try persistence.workoutSessions.delete(id: id)
+            // Drop from active surfaces immediately so Recent never keeps a soft-deleted row.
+            activePreviewSessions.removeAll { $0.id == id }
+            if listScope == .active {
+                sessions.removeAll { $0.id == id }
+            }
+            activeCount = max(0, activeCount - 1)
+            deletedCount += 1
+            refresh()
+            return true
+        } catch {
+            errorMessage = error.localizedDescription
+            return false
+        }
+    }
+
+    @discardableResult
+    func restoreSession(id: String) -> Bool {
+        do {
+            try persistence.workoutSessions.restore(id: id)
+            if listScope == .deleted {
+                sessions.removeAll { $0.id == id }
+            }
+            deletedCount = max(0, deletedCount - 1)
+            activeCount += 1
             refresh()
             return true
         } catch {

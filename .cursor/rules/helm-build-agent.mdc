@@ -26,6 +26,10 @@ Cameron's only instruction is the section id, e.g. `build M3.2` or `build F-DT1.
 3. `Docs/DIAGNOSTICS.md`: if the section touches logging or signposts.
 4. `Docs/DESIGN-SYSTEM.md` + `Docs/HAPTICS.md`: if the section touches UI, DesignSystem, haptics, or screen layout (normative from M0.7).
 
+### Build / test (token-cheap)
+
+Prefer `scripts/xcodebuild.sh build` or `scripts/xcodebuild.sh test` over raw `xcodebuild`. Wrapper uses `-quiet` + `xcbeautify --quieter` so compile chatter does not flood context. Install: `arch -arm64 brew install xcbeautify`. Fallback greps errors if xcbeautify missing.
+
 ### Do
 
 - Build **exactly** that section. Nothing else.

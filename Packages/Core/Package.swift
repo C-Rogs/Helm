@@ -4,7 +4,8 @@ import PackageDescription
 
 let package = Package(
     name: "Core",
-    platforms: [.iOS(.v26), .watchOS(.v26)],
+    // macOS is only here so `swift test` has a deployment target new enough for CryptoKit.
+    platforms: [.iOS(.v26), .watchOS(.v26), .macOS(.v15)],
     products: [
         .library(name: "Core", targets: ["Core"])
     ],

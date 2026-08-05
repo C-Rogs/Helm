@@ -117,15 +117,15 @@ extension View {
       InSessionCoachSheet(controller: controller)
     }
     .sheet(isPresented: Binding(
-      get: { controller.isShowingPawelTimer },
+      get: { controller.isShowingManualRestTimer },
       set: { isShowing in
-        controller.isShowingPawelTimer = isShowing
+        controller.isShowingManualRestTimer = isShowing
         if !isShowing {
-          controller.pawelTimerOpenExpanded = false
+          controller.manualRestTimerOpenExpanded = false
         }
       }
     )) {
-      PawelTimerModal(controller: controller)
+      ManualRestTimerSheet(controller: controller)
     }
     .sheet(isPresented: Binding(
       get: { controller.isShowingFinishSummary },

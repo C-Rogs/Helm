@@ -39,38 +39,92 @@ struct TrainPreferencePersistenceTests {
         )
     }
 
-    @Test("pawel mode defaults off when unset")
-    func pawelModeDefaultOff() {
+    @Test("manual rest timer defaults off when unset")
+    func manualRestTimerDefaultOff() {
         let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
 
         #expect(
             TrainPreferencePersistence.loadBool(
-                key: TrainPreferencePersistence.pawelModeEnabledKey,
+                key: TrainPreferencePersistence.manualRestTimerEnabledKey,
                 defaults: defaults,
                 defaultValue: false
             ) == false
         )
     }
 
-    @Test("pawel mode persists on")
-    func pawelModePersistsOn() {
+    @Test("manual rest timer keeps legacy pawel key string")
+    func manualRestTimerLegacyKeyString() {
+        #expect(
+            TrainPreferencePersistence.manualRestTimerEnabledKey
+                == "helm.train.pawelModeEnabled"
+        )
+    }
+
+    @Test("manual rest timer persists on via legacy key")
+    func manualRestTimerPersistsOn() {
         let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
         let defaults = UserDefaults(suiteName: suite)!
         defer { defaults.removePersistentDomain(forName: suite) }
 
         TrainPreferencePersistence.saveBool(
             true,
-            key: TrainPreferencePersistence.pawelModeEnabledKey,
+            key: TrainPreferencePersistence.manualRestTimerEnabledKey,
             defaults: defaults
         )
         #expect(
             TrainPreferencePersistence.loadBool(
-                key: TrainPreferencePersistence.pawelModeEnabledKey,
+                key: "helm.train.pawelModeEnabled",
                 defaults: defaults,
                 defaultValue: false
             ) == true
+        )
+    }
+
+    @Test("manual rest duration defaults to ninety")
+    func manualRestDurationDefault() {
+        let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        #expect(
+            TrainPreferencePersistence.loadInt(
+                key: TrainPreferencePersistence.manualRestTimerDurationSecondsKey,
+                defaults: defaults,
+                defaultValue: TrainPreferencePersistence.ManualRestTimerDuration.defaultSeconds
+            ) == 90
+        )
+    }
+
+    @Test("manual rest duration snaps and clamps")
+    func manualRestDurationSnapClamp() {
+        typealias Duration = TrainPreferencePersistence.ManualRestTimerDuration
+        #expect(Duration.snapped(0) == 15)
+        #expect(Duration.snapped(17) == 15)
+        #expect(Duration.snapped(18) == 20)
+        #expect(Duration.snapped(90) == 90)
+        #expect(Duration.snapped(999) == 600)
+        #expect(Duration.presets == [60, 90, 120, 180])
+    }
+
+    @Test("manual rest duration persists")
+    func manualRestDurationPersists() {
+        let suite = "helm.tests.trainPrefs.\(UUID().uuidString)"
+        let defaults = UserDefaults(suiteName: suite)!
+        defer { defaults.removePersistentDomain(forName: suite) }
+
+        TrainPreferencePersistence.saveInt(
+            135,
+            key: TrainPreferencePersistence.manualRestTimerDurationSecondsKey,
+            defaults: defaults
+        )
+        #expect(
+            TrainPreferencePersistence.loadInt(
+                key: TrainPreferencePersistence.manualRestTimerDurationSecondsKey,
+                defaults: defaults,
+                defaultValue: 90
+            ) == 135
         )
     }
 }

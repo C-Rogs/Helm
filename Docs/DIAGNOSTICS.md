@@ -44,6 +44,8 @@ Named intervals for every critical path, so Instruments and the overnight batter
 | `WorkoutSessionLifecycle` | `Logger` (phone side) / `Watch` (Watch side) | per session (UUID), begin at start, event at pause/resume, end at finish/discard | M3.4 (phone HK write), M8.1 (Watch session) |
 | `LiveWorkoutBuilderTeardown` | `Watch` | per session (UUID) | M8.1 |
 
+Phone AirPods HR (no Watch app) uses ring-buffer events `phone.hr.session.start` / `phone.hr.session.end` / `phone.hr.first` via `WatchCompanionDiagnosticEvent`, not a new signpost name.
+
 A section that owns one of these rows must emit it; a section landing a new critical path not in this table adds a row here in the same commit, it does not invent an unlisted signpost name.
 
 ---

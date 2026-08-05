@@ -1,7 +1,7 @@
 import DesignSystem
 import SwiftUI
 
-struct PawelTimerPill: View {
+struct ManualRestTimerPill: View {
     let isRunning: Bool
     let endsAt: Date?
     let onTap: () -> Void
@@ -21,7 +21,7 @@ struct PawelTimerPill: View {
             }
         }
         .buttonStyle(.helmPressable)
-        .accessibilityLabel(isRunning ? "Rest timer" : "Open manual timer")
+        .accessibilityLabel(isRunning ? "Rest timer" : "Open manual rest timer")
         .accessibilityHint(isRunning ? "Opens timer controls" : "Opens manual rest timer")
     }
 
@@ -56,14 +56,14 @@ struct PawelTimerPill: View {
     }
 }
 
-#Preview("Pawel timer pill idle") {
-    PawelTimerPill(isRunning: false, endsAt: nil) {}
+#Preview("Manual rest timer pill idle") {
+    ManualRestTimerPill(isRunning: false, endsAt: nil) {}
         .padding()
         .helmTheme()
 }
 
-#Preview("Pawel timer pill running") {
-    PawelTimerPill(isRunning: true, endsAt: Date().addingTimeInterval(83)) {}
+#Preview("Manual rest timer pill running") {
+    ManualRestTimerPill(isRunning: true, endsAt: Date().addingTimeInterval(83)) {}
         .padding()
         .helmTheme()
 }

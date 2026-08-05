@@ -15,12 +15,6 @@ struct CoachSettingsView: View {
     @State private var photoVisionPreferences = MealVisionPreferencesStore()
     @State private var coachDisplayName = CoachDisplayNameStore.name
     @State private var allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
-    @State private var proactivePeekEnabled = ProactiveCoachPreferences.peekEnabled
-    @State private var proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
-    @State private var proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
-    @State private var proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
-    @State private var proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
-    @State private var enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
 
     private let keyStore = APIKeyStore()
     private let openRouterMetadata = OpenRouterKeyMetadataStore()
@@ -29,8 +23,7 @@ struct CoachSettingsView: View {
         Form {
             Section {
                 Text("Coach chat uses Gemini. OpenRouter powers photo meal vision below.")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.fgSecondary)
+                    .helmType(.body, color: HelmColor.fgSecondary)
             }
 
             Section("Coach name") {
@@ -40,51 +33,20 @@ struct CoachSettingsView: View {
                         CoachDisplayNameStore.name = newValue
                     }
                 Text("Used in Chat and in-session coach.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgSecondary)
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
 
             Section("Concurrency") {
                 Toggle("Allow Chat and workout coach at the same time", isOn: $allowsParallelCoaches)
                     .onChange(of: allowsParallelCoaches) { _, newValue in
                         CoachActivityGate.shared.allowsParallelCoaches = newValue
+                        HapticEngine.shared.play(.selection)
                     }
             }
 
-            Section("Load safety") {
-                Toggle("Limit coach-suggested load increases (±10%)", isOn: $enforceCoachLoadCaps)
-                    .onChange(of: enforceCoachLoadCaps) { _, newValue in
-                        CoachLoadSafetyPreferences.enforceCoachLoadCaps = newValue
-                    }
-                Text("When off, coach may suggest larger load jumps without the ±10% / 2.5 kg cap. Your explicit weight instructions always apply.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgSecondary)
-            }
-
-            Section("Proactive coach") {
-                Toggle("Set milestones (~25%)", isOn: $proactiveMilestonesEnabled)
-                    .onChange(of: proactiveMilestonesEnabled) { _, newValue in
-                        ProactiveCoachPreferences.milestonesEnabled = newValue
-                    }
-                Toggle("Peek on Ask coach bar", isOn: $proactivePeekEnabled)
-                    .onChange(of: proactivePeekEnabled) { _, newValue in
-                        ProactiveCoachPreferences.peekEnabled = newValue
-                    }
-                Toggle("Inline banner during workout", isOn: $proactiveBannerEnabled)
-                    .onChange(of: proactiveBannerEnabled) { _, newValue in
-                        ProactiveCoachPreferences.bannerEnabled = newValue
-                    }
-                Toggle("Auto-insert coach messages", isOn: $proactiveAutoChatEnabled)
-                    .onChange(of: proactiveAutoChatEnabled) { _, newValue in
-                        ProactiveCoachPreferences.autoChatEnabled = newValue
-                    }
-                Toggle("Push notifications", isOn: $proactivePushEnabled)
-                    .onChange(of: proactivePushEnabled) { _, newValue in
-                        ProactiveCoachPreferences.pushEnabled = newValue
-                    }
-                Text("All proactive channels are on by default. Turn off any you do not want during workouts.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgSecondary)
+            Section {
+                Text("Proactive coach peeks, banners, milestones, and push live under Settings → Notifications.")
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
 
             Section("Provider") {
@@ -113,8 +75,7 @@ struct CoachSettingsView: View {
 
                 if !keyStatus.isEmpty {
                     Text(keyStatus)
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.fgSecondary)
+                        .helmType(.body, color: HelmColor.fgMuted)
                 }
             }
 
@@ -143,21 +104,18 @@ struct CoachSettingsView: View {
                 }
 
                 Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Macro math stays on-device via CoFID.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgSecondary)
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
 
             Section("OpenRouter (TestFlight)") {
                 Text(
                     "Release builds can auto-provision a capped, free-models-only key via the personal Coacher worker. Friends-only: the worker shared secret ships in the binary, not for App Store."
                 )
-                .font(HelmTypography.caption)
-                .foregroundStyle(HelmColor.fgSecondary)
+                .helmType(.body, color: HelmColor.fgMuted)
 
                 if keyStore.hasKey(kind: .openRouter) {
                     Text("OpenRouter key saved in Keychain.")
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.fgSecondary)
+                        .helmType(.body, color: HelmColor.fgMuted)
                 }
 
                 #if !DEBUG
@@ -178,22 +136,15 @@ struct CoachSettingsView: View {
 
                 if !openRouterStatus.isEmpty {
                     Text(openRouterStatus)
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.fgSecondary)
+                        .helmType(.body, color: HelmColor.fgMuted)
                 }
             }
         }
-        .navigationTitle("Coach")
+        .navigationTitle("Coach settings")
         .helmScreenBackground()
-        .onAppear {
+        .scrollContentBackground(.hidden)        .onAppear {
             coachDisplayName = CoachDisplayNameStore.name
             allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
-            proactivePeekEnabled = ProactiveCoachPreferences.peekEnabled
-            proactiveBannerEnabled = ProactiveCoachPreferences.bannerEnabled
-            proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
-            proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
-            proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
-            enforceCoachLoadCaps = CoachLoadSafetyPreferences.enforceCoachLoadCaps
             if geminiKey.isEmpty {
                 geminiKey = keyStore.displayValue(for: .gemini)
             }

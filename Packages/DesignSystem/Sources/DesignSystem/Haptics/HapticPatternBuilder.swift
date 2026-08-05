@@ -40,8 +40,10 @@ public enum HapticFallbackResolver {
             }
         case .restDone:
             .notification(.error)
-        case .mealConfirmed, .coachAdjust:
+        case .mealConfirmed:
             .impact(.soft)
+        case .coachAdjust:
+            .notification(.success)
         case .clampRejected:
             .notification(.error)
         case .selection:
@@ -72,7 +74,7 @@ enum HapticPatternBuilder {
         case .mealConfirmed:
             return try transient(intensity: 0.5, sharpness: 0.2)
         case .coachAdjust:
-            return try coachAdjust()
+            return try coachAdjust(lowPowerMode: lowPowerMode)
         case .clampRejected:
             return try clampRejected()
         case .selection:
@@ -257,18 +259,81 @@ enum HapticPatternBuilder {
         return try CHHapticPattern(events: [hit, settle], parameterCurves: [curve])
     }
 
-    private static func coachAdjust() throws -> CHHapticPattern {
-        let events = [0.0, 0.1].map { time in
+    /// Long playful swish paired with `HelmCoachApplyWave` (~reveal duration).
+    /// Soft continuous whoosh with ascending sparkle taps along the sweep.
+    private static func coachAdjust(lowPowerMode: Bool) throws -> CHHapticPattern {
+        if lowPowerMode {
+            // Keep the playful cascade; drop the continuous whoosh under Low Power.
+            let sparkles: [(TimeInterval, Float, Float)] = [
+                (0.0, 0.45, 0.35),
+                (0.12, 0.55, 0.4),
+                (0.24, 0.65, 0.45),
+                (0.36, 0.75, 0.5),
+                (0.48, 0.85, 0.4)
+            ]
+            let taps = sparkles.map { time, intensity, sharpness in
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
+                    ],
+                    relativeTime: time
+                )
+            }
+            return try CHHapticPattern(events: taps, parameters: [])
+        }
+
+        let whoosh = CHHapticEvent(
+            eventType: .hapticContinuous,
+            parameters: [
+                CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.4),
+                CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.25)
+            ],
+            relativeTime: 0,
+            duration: 0.9
+        )
+        let intensityCurve = CHHapticParameterCurve(
+            parameterID: .hapticIntensityControl,
+            controlPoints: [
+                .init(relativeTime: 0, value: 0.2),
+                .init(relativeTime: 0.3, value: 0.55),
+                .init(relativeTime: 0.65, value: 0.7),
+                .init(relativeTime: 0.9, value: 0.12)
+            ],
+            relativeTime: 0
+        )
+        let sharpnessCurve = CHHapticParameterCurve(
+            parameterID: .hapticSharpnessControl,
+            controlPoints: [
+                .init(relativeTime: 0, value: 0.18),
+                .init(relativeTime: 0.4, value: 0.42),
+                .init(relativeTime: 0.9, value: 0.28)
+            ],
+            relativeTime: 0
+        )
+        let sparkles: [(TimeInterval, Float, Float)] = [
+            (0.08, 0.4, 0.35),
+            (0.22, 0.5, 0.4),
+            (0.38, 0.55, 0.45),
+            (0.55, 0.65, 0.5),
+            (0.72, 0.75, 0.55),
+            (0.88, 0.9, 0.4)
+        ]
+        let taps = sparkles.map { time, intensity, sharpness in
             CHHapticEvent(
                 eventType: .hapticTransient,
                 parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: 0.5),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.3)
+                    CHHapticEventParameter(parameterID: .hapticIntensity, value: intensity),
+                    CHHapticEventParameter(parameterID: .hapticSharpness, value: sharpness)
                 ],
                 relativeTime: time
             )
         }
-        return try CHHapticPattern(events: events, parameters: [])
+        return try CHHapticPattern(
+            events: [whoosh] + taps,
+            parameterCurves: [intensityCurve, sharpnessCurve]
+        )
     }
 
     private static func clampRejected() throws -> CHHapticPattern {

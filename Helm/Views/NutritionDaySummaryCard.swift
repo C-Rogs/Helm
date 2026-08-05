@@ -214,7 +214,7 @@ struct NutritionDaySummaryCard: View {
                 Spacer()
                 Text(snapshot.dayType.rawValue.capitalized)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                if let explainMetric, onAskCoach != nil {
+                if explainMetric != nil, onAskCoach != nil {
                     Button {
                         isShowingTargetExplain = true
                     } label: {

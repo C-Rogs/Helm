@@ -139,7 +139,7 @@ final class ChatFoodDictationController {
                     onPartial(transcript)
                 }
 
-                if let error, self.phase == .listening {
+                if error != nil, self.phase == .listening {
                     self.tearDownRecognition()
                     self.phase = .idle
                     self.partialTranscript = ""

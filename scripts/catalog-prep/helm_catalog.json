@@ -9847,11 +9847,11 @@
     {
       "id": "seed-ez-bar-curl",
       "canonicalName": "ez bar biceps curl",
-      "displayName": "Heavy EZ Bar Biceps Curl",
+      "displayName": "EZ Bar Biceps Curl",
       "aliases": [
-        "Heavy EZ Bar Biceps Curl",
         "EZ Bar Biceps Curl",
-        "EZ Bar Curl"
+        "EZ Bar Curl",
+        "Heavy EZ Bar Biceps Curl"
       ],
       "equipment": "barbell",
       "primaryMuscleGroup": "biceps",

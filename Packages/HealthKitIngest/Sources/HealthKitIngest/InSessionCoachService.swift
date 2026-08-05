@@ -53,12 +53,10 @@ public enum CoachProposalFailure: Sendable, Equatable {
 
     private func clampMessage(_ reason: PrescriptionClampReason) -> String {
         switch reason {
-        case .setsBelowMinimum, .setsAboveMaximum:
-            return "Couldn't apply that change: set count is outside safe bounds."
-        case .loadMissing, .loadOutOfBounds:
-            return "Couldn't apply that change: coach-suggested load increase is outside safe bounds. Tell me the exact weight you want."
-        case .rpeOutOfBounds:
-            return "Couldn't apply that change: RPE is outside safe bounds."
+        case .loadMissing:
+            return "Couldn't apply that change: that exercise has no target weight yet. Tell me the exact weight you want."
+        case .rpeMissing:
+            return "Couldn't apply that change: I didn't catch a target RPE. Tell me the number you want."
         case .swapTargetExcluded, .swapNoAlternativeAvailable:
             return "Couldn't apply that change: no suitable swap is available."
         case .invalidReorder:
@@ -277,8 +275,7 @@ public struct InSessionCoachService: Sendable {
             to: currentPrescription,
             excluding: excludedExerciseIDs,
             catalog: catalog,
-            familiarExerciseIDs: familiarExerciseIDs,
-            enforceCoachLoadCaps: CoachLoadSafetyPreferences.enforceCoachLoadCaps
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         switch result {
@@ -424,8 +421,7 @@ public struct InSessionCoachService: Sendable {
             to: currentPrescription,
             excluding: excludedExerciseIDs,
             catalog: catalog,
-            familiarExerciseIDs: familiarExerciseIDs,
-            enforceCoachLoadCaps: CoachLoadSafetyPreferences.enforceCoachLoadCaps
+            familiarExerciseIDs: familiarExerciseIDs
         )
 
         switch result {

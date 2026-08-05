@@ -12,8 +12,9 @@ struct SleepDiagnosticsView: View {
         List {
             if let errorMessage {
                 Section("Error") {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .helmType(.body, color: HelmColor.depleted)
+                        .helmListRowChrome()
                 }
             }
 
@@ -23,23 +24,28 @@ struct SleepDiagnosticsView: View {
                     summary: snapshot.healthKitSummary
                 )
                 summarySection(
-                    title: "Signal persisted",
+                    title: "Helm persisted",
                     summary: snapshot.persistedSummary
                 )
 
                 Section("Window") {
-                    LabeledContent("Wake day", value: formattedDay(snapshot.wakeCalendarDay))
-                    LabeledContent("Start", value: formattedTime(snapshot.windowStart))
-                    LabeledContent("End", value: formattedTime(snapshot.windowEnd))
+                    HelmStatusRow(label: "Wake day", value: formattedDay(snapshot.wakeCalendarDay))
+                        .helmListRowChrome()
+                    HelmStatusRow(label: "Start", value: formattedTime(snapshot.windowStart))
+                        .helmListRowChrome()
+                    HelmStatusRow(label: "End", value: formattedTime(snapshot.windowEnd))
+                        .helmListRowChrome()
                 }
 
                 Section("HealthKit samples (\(snapshot.healthKitSamples.count))") {
                     if snapshot.healthKitSamples.isEmpty {
                         Text("No samples in window")
-                            .foregroundStyle(.secondary)
+                            .helmType(.body, color: HelmColor.fgMuted)
+                            .helmListRowChrome()
                     } else {
                         ForEach(snapshot.healthKitSamples) { sample in
                             sampleRow(sample)
+                                .helmListRowChrome()
                         }
                     }
                 }
@@ -47,19 +53,23 @@ struct SleepDiagnosticsView: View {
                 Section("Persisted intervals (\(snapshot.persistedRecords.count))") {
                     if snapshot.persistedRecords.isEmpty {
                         Text("No persisted intervals in window")
-                            .foregroundStyle(.secondary)
+                            .helmType(.body, color: HelmColor.fgMuted)
+                            .helmListRowChrome()
                     } else {
                         ForEach(snapshot.persistedRecords) { record in
                             persistedRow(record)
+                                .helmListRowChrome()
                         }
                     }
                 }
             } else if isLoading {
                 Section {
                     ProgressView("Loading sleep diagnostics…")
+                        .helmListRowChrome()
                 }
             }
         }
+        .helmSettingsListChrome()
         .navigationTitle("Sleep diagnostics")
         .refreshable { await reload() }
         .task { await reload() }

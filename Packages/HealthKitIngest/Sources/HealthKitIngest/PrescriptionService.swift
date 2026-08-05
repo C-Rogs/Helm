@@ -81,6 +81,30 @@ public struct PrescribedSessionSummary: Sendable, Equatable {
         let bullets = rationale.map { "• \($0)" }.joined(separator: "\n")
         return "Today's session is \(title): \(summary).\n\(bullets)"
     }
+
+    /// Chat hand-off seed: the engine plan is not in chat context, so the prescribed work ships in the message.
+    public var coachNegotiationSeed: String {
+        var lines = [coachPromptSeed]
+        if !exercises.isEmpty {
+            lines.append("")
+            lines.append("Prescribed work (\(totalSets) sets):")
+            lines.append(contentsOf: exercises.map(Self.exerciseLine))
+        }
+        lines.append("")
+        lines.append("I want to talk this through before I start.")
+        return lines.joined(separator: "\n")
+    }
+
+    private static func exerciseLine(_ exercise: PrescribedExerciseSummary) -> String {
+        var line = "• \(exercise.displayName): \(exercise.targetSets) x \(exercise.targetRepRange)"
+        if let load = exercise.targetLoad {
+            line += " @ \(load)"
+        }
+        if let rpe = exercise.targetRPE {
+            line += " (\(rpe))"
+        }
+        return line
+    }
 }
 
 @MainActor

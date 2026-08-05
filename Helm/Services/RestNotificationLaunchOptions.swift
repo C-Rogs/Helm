@@ -2,6 +2,7 @@ import Persistence
 import UIKit
 
 enum RestNotificationLaunchOptions {
+    @MainActor
     static func pendingSessionID(from launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> String? {
         guard let launchOptions else { return nil }
 

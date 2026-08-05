@@ -26,8 +26,15 @@ struct SessionTimelineChartView: View {
     private var songBPMSegments: [SessionMusicSegment] {
         musicSegments.filter { $0.bpm != nil }
     }
+    /// Tracks with no tempo still get a span in the bottom lane so the timeline never
+    /// loses the record of what was playing when.
+    private var songSpanSegments: [SessionMusicSegment] {
+        musicSegments.filter { $0.bpm == nil }
+    }
     private var hasSongBPM: Bool { !songBPMSegments.isEmpty }
+    private var hasSongSpans: Bool { !songSpanSegments.isEmpty }
     private var hasBPMScale: Bool { hasHeartRate || hasSongBPM }
+    private var tempoLookupEnabled: Bool { SongTempoPreferences.shared.lookupEnabled }
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -43,11 +50,11 @@ struct SessionTimelineChartView: View {
             }
 
             if hasRenderableTimeline {
-                if hasBPMScale {
+                if hasBPMScale || hasSongSpans {
                     seriesLegend
                 }
-                if !musicSegments.isEmpty, !hasSongBPM {
-                    Text("Song BPM unavailable from playback source.")
+                if let tempoHint {
+                    Text(tempoHint)
                         .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
                 chartBody
@@ -98,48 +105,12 @@ struct SessionTimelineChartView: View {
         return min(total, Self.visibleWindowSeconds)
     }
 
-    /// BPM range for data marks only; excludes label headroom. Shared by heart rate and song tempo.
-    private var dataYDomain: ClosedRange<Double> {
-        var values: [Double] = heartRateSamples.map { Double($0.bpm) }
-        for segment in songBPMSegments {
-            if let bpm = segment.bpm {
-                values.append(bpm)
-            }
-        }
-        guard let lo = values.min(), let hi = values.max() else {
-            // Markers / songs without BPM: unit domain for layout only.
-            return 0...1
-        }
-        let pad = max(5.0, (hi - lo) / 8.0)
-        return max(0, lo - pad)...(hi + pad)
-    }
-
-    /// Extra Y headroom (fraction of data span) so exercise labels sit inside the plot.
-    private var labelHeadroomFraction: Double {
-        hasBPMScale ? 0.28 : 0.45
-    }
-
-    /// Plot domain includes top headroom so exercise names render inside the chart frame.
-    private var yDomain: ClosedRange<Double> {
-        let data = dataYDomain
-        let span = max(data.upperBound - data.lowerBound, 1)
-        let minHeadroom = hasBPMScale ? 10.0 : 0.55
-        let headroom = max(span * labelHeadroomFraction, minHeadroom)
-        return data.lowerBound...(data.upperBound + headroom)
-    }
-
-    /// Y position for exercise name labels (middle of the headroom band).
-    private var exerciseLabelY: Double {
-        let data = dataYDomain
-        let top = yDomain.upperBound
-        return data.upperBound + (top - data.upperBound) * 0.5
-    }
-
-    private var chartHeight: CGFloat {
-        if hasBPMScale {
-            return HelmChartStyle.standardHeight * 2.2
-        }
-        return HelmChartStyle.standardHeight * 1.2
+    private var geometry: SessionTimelineChartGeometry {
+        SessionTimelineChartGeometry(
+            heartRateBPM: heartRateSamples.map { Double($0.bpm) },
+            songBPM: songBPMSegments.compactMap(\.bpm),
+            hasSongSpans: hasSongSpans
+        )
     }
 
     private var genreSummary: String? {
@@ -150,13 +121,29 @@ struct SessionTimelineChartView: View {
         "No songs captured for this session."
     }
 
+    /// Explains an empty tempo lane, and points at the switch that can fill it.
+    private var tempoHint: String? {
+        guard hasSongSpans else { return nil }
+        if tempoLookupEnabled {
+            return "No tempo found for \(songSpanSegments.count) track(s)."
+        }
+        return "Tempo lookup off. Turn it on in Settings › Spotify."
+    }
+
     private var seriesLegend: some View {
         HStack(spacing: HelmSpacing.md) {
             if hasHeartRate {
                 legendItem(color: HelmChartStyle.lineColor, systemImage: "heart.fill", label: "Heart")
             }
             if hasSongBPM {
-                legendItem(color: HelmColor.accent, systemImage: "music.note", label: "Song")
+                legendItem(color: HelmColor.accent, systemImage: "music.note", label: "Song BPM")
+            }
+            if hasSongSpans {
+                legendItem(
+                    color: HelmColor.fgMuted,
+                    systemImage: "rectangle.compress.vertical",
+                    label: "Song span"
+                )
             }
         }
     }
@@ -195,7 +182,9 @@ struct SessionTimelineChartView: View {
 
     @ViewBuilder
     private var chartBody: some View {
-        let labelY = exerciseLabelY
+        let layout = geometry
+        let labelY = layout.exerciseLabelY
+        let songLane = layout.songLaneBand
         let labelled = labelledExerciseMarkers
         let domain = xDomain
         Chart {
@@ -228,6 +217,18 @@ struct SessionTimelineChartView: View {
                     .foregroundStyle(HelmColor.accent)
                     .cornerRadius(2)
                 }
+            }
+
+            ForEach(Array(songSpanSegments.enumerated()), id: \.element.id) { index, segment in
+                let endX = max(segment.endOffsetSeconds, segment.startOffsetSeconds + 1)
+                RectangleMark(
+                    xStart: .value("Song start", segment.startOffsetSeconds),
+                    xEnd: .value("Song end", endX),
+                    yStart: .value("Song lane lower", songLane.lowerBound),
+                    yEnd: .value("Song lane upper", songLane.upperBound)
+                )
+                .foregroundStyle(HelmColor.fgMuted.opacity(index.isMultiple(of: 2) ? 0.45 : 0.25))
+                .cornerRadius(2)
             }
 
             ForEach(setMarkers) { marker in
@@ -265,7 +266,7 @@ struct SessionTimelineChartView: View {
             }
         }
         .chartXScale(domain: xDomain)
-        .chartYScale(domain: yDomain)
+        .chartYScale(domain: layout.yDomain)
         .chartScrollableAxes(.horizontal)
         .chartXVisibleDomain(length: visibleDomainLength)
         .chartPlotStyle { plot in
@@ -290,13 +291,8 @@ struct SessionTimelineChartView: View {
                 .foregroundStyle(HelmChartStyle.axisLabelColor)
                 .accessibilityLabel("Time")
         }
-        .modifier(
-            TimelineYAxisModifier(
-                hasBPMScale: hasBPMScale,
-                dataYDomain: dataYDomain
-            )
-        )
-        .frame(height: chartHeight)
+        .modifier(TimelineYAxisModifier(geometry: layout))
+        .frame(height: layout.chartHeight)
         .clipped()
         .accessibilityLabel(accessibilityLabel)
     }
@@ -417,8 +413,9 @@ struct SessionTimelineChartView: View {
             } else {
                 parts.append("Song tempos \(tempos) BPM")
             }
-        } else if !musicSegments.isEmpty {
-            parts.append("\(musicSegments.count) tracks")
+        }
+        if hasSongSpans {
+            parts.append("\(songSpanSegments.count) tracks without tempo")
         }
         if !exerciseMarkers.isEmpty {
             parts.append("\(exerciseMarkers.count) exercises")
@@ -440,11 +437,10 @@ struct SessionTimelineChartView: View {
 
 /// Y-axis ticks plus a BPM glyph when heart rate or song tempo is present.
 private struct TimelineYAxisModifier: ViewModifier {
-    let hasBPMScale: Bool
-    let dataYDomain: ClosedRange<Double>
+    let geometry: SessionTimelineChartGeometry
 
     func body(content: Content) -> some View {
-        if hasBPMScale {
+        if geometry.hasBPMScale {
             content
                 .chartYAxis {
                     AxisMarks(values: .automatic(desiredCount: 4)) { value in
@@ -452,7 +448,7 @@ private struct TimelineYAxisModifier: ViewModifier {
                             .foregroundStyle(HelmChartStyle.gridColor)
                         AxisValueLabel {
                             if let bpm = value.as(Double.self),
-                               bpm <= dataYDomain.upperBound + 0.5 {
+                               geometry.showsAxisLabel(at: bpm) {
                                 Text("\(Int(bpm.rounded()))")
                                     .font(HelmChartStyle.axisLabelFont)
                                     .foregroundStyle(HelmChartStyle.axisLabelColor)

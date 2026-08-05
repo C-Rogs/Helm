@@ -100,6 +100,16 @@ enum WatchCompanionBootstrap {
         if playHaptic {
             WKInterfaceDevice.current().play(.start)
         }
+        // Late adoption: if phone already pushed companion + start time, prefer that path.
+        if coordinator.workoutCompanionActive,
+           coordinator.companionSessionStartedAt != nil {
+            let configuration = HKWorkoutConfiguration()
+            configuration.activityType = .traditionalStrengthTraining
+            configuration.locationType = .indoor
+            await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
+            flushLiveHeartRateIfNeeded()
+            return
+        }
         await workoutStore.prepareHealthKit()
         await workoutStore.startWorkout()
         flushLiveHeartRateIfNeeded()

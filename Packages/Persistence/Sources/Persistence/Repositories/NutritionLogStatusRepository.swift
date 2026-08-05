@@ -29,7 +29,7 @@ public struct NutritionLogStatusRepository: Sendable {
     }
 
     public func clearComplete(helmDay: HelmDay) throws {
-        try pool.write { db in
+        _ = try pool.write { db in
             try NutritionDayLogStatusRecord
                 .filter(Column("helm_day") == HelmDayColumn.encode(helmDay))
                 .deleteAll(db)

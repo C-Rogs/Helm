@@ -12,20 +12,27 @@ struct CalendarHintStatusView: View {
         List {
             Section {
                 Text(
-                    "Signal reads your calendar to flag busy days on the week-ahead schedule. "
+                    "Helm reads your calendar to flag busy days on the week-ahead schedule. "
                         + "Events are never written back."
                 )
                 .helmType(.body, color: HelmColor.fgSecondary)
+                .helmListRowChrome()
             }
 
             Section("Status") {
-                LabeledContent("Access", value: statusLabel)
+                HelmStatusRow(
+                    label: "Access",
+                    value: statusLabel,
+                    valueColor: status == .authorized ? HelmColor.ready : HelmColor.fgMuted
+                )
+                .helmListRowChrome()
             }
 
             if let errorMessage {
                 Section("Error") {
-                    Text(errorMessage)
-                        .foregroundStyle(.red)
+                    Label(errorMessage, systemImage: "exclamationmark.triangle.fill")
+                        .helmType(.body, color: HelmColor.depleted)
+                        .helmListRowChrome()
                 }
             }
 
@@ -35,18 +42,18 @@ struct CalendarHintStatusView: View {
                         Task { await requestAccess() }
                     }
                     .disabled(isRequesting || status == .restricted)
+                    .helmListRowChrome()
                 }
 
                 if status == .denied {
                     Text("Open Settings → Privacy & Security → Calendars to change access.")
                         .helmType(.body, color: HelmColor.fgMuted)
+                        .helmListRowChrome()
                 }
             }
         }
-        .listStyle(.plain)
-        .listRowBackground(HelmColor.surface)
+        .helmSettingsListChrome()
         .navigationTitle("Calendar Hints")
-        .helmScreenBackground()
         .task {
             status = service.currentStatus()
         }
@@ -73,6 +80,7 @@ struct CalendarHintStatusView: View {
             errorMessage = "Calendar access was denied."
         }
         isRequesting = false
+        HapticEngine.shared.play(.selection)
     }
 }
 

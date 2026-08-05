@@ -26,7 +26,7 @@ struct NutritionDiaryHeader: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            HStack {
+            HStack(spacing: HelmSpacing.xs) {
                 Button {
                     onSelectDay(selectedDay.adding(days: -1))
                 } label: {
@@ -35,27 +35,23 @@ struct NutritionDiaryHeader: View {
                 .buttonStyle(.helmPressable)
                 .accessibilityLabel("Previous day")
 
-                Spacer()
-
-                Text(headerTitle)
-                    .helmType(.label)
-
-                Spacer()
+                HStack(spacing: HelmSpacing.xs) {
+                    ForEach(weekDays) { day in
+                        dayChip(day)
+                    }
+                }
+                .frame(maxWidth: .infinity)
+                .contentShape(Rectangle())
+                .gesture(weekSwipeGesture)
 
                 Button {
-                    onSelectDay(selectedDay.adding(days: 1))
+                    goToNextDay()
                 } label: {
                     Image(systemName: "chevron.right")
                 }
                 .buttonStyle(.helmPressable)
                 .disabled(selectedDay >= today)
                 .accessibilityLabel("Next day")
-            }
-
-            HStack(spacing: HelmSpacing.xs) {
-                ForEach(weekDays) { day in
-                    dayChip(day)
-                }
             }
 
             if selectedDay != today {
@@ -67,11 +63,29 @@ struct NutritionDiaryHeader: View {
         }
     }
 
-    private var headerTitle: String {
-        if selectedDay == today {
-            return "Today"
-        }
-        return selectedDay.formattedLabel
+    private var weekSwipeGesture: some Gesture {
+        DragGesture(minimumDistance: 24)
+            .onEnded { value in
+                if value.translation.width < -32 {
+                    goToNextWeek()
+                } else if value.translation.width > 32 {
+                    goToPreviousWeek()
+                }
+            }
+    }
+
+    private func goToPreviousWeek() {
+        onSelectDay(selectedDay.adding(days: -7))
+    }
+
+    private func goToNextWeek() {
+        let candidate = selectedDay.adding(days: 7)
+        onSelectDay(candidate <= today ? candidate : today)
+    }
+
+    private func goToNextDay() {
+        guard selectedDay < today else { return }
+        onSelectDay(selectedDay.adding(days: 1))
     }
 
     private func dayChip(_ day: HelmDay) -> some View {
@@ -105,16 +119,6 @@ struct NutritionDiaryHeader: View {
 }
 
 private extension HelmDay {
-    var formattedLabel: String {
-        let calendar = Calendar(identifier: .gregorian)
-        guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
-            return "\(day)/\(month)"
-        }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE d MMM"
-        return formatter.string(from: date)
-    }
-
     var shortWeekday: String {
         let calendar = Calendar(identifier: .gregorian)
         guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {

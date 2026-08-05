@@ -39,6 +39,14 @@ struct DataSafetyView: View {
     @State private var importTarget: ImportTarget?
     @State private var isImporting = false
     @State private var transferController: TrainingHistoryTransferController
+    @Bindable private var cloudPreferences = CloudBackupPreferences.shared
+    @Bindable private var cloudCoordinator = CloudBackupCoordinator.shared
+
+    private static let relativeDate: RelativeDateTimeFormatter = {
+        let formatter = RelativeDateTimeFormatter()
+        formatter.unitsStyle = .abbreviated
+        return formatter
+    }()
 
     private let store: PersistenceStore
     private let logExportService: LogExportService
@@ -55,6 +63,13 @@ struct DataSafetyView: View {
         self.logExportService = logExportService
         self.environment = environment
         _transferController = State(initialValue: TrainingHistoryTransferController(persistence: store))
+    }
+
+    private func historySizeLabel(_ estimate: CloudBackupSizeEstimate) -> String {
+        if cloudPreferences.historySyncEnabled {
+            return "\(estimate.historyByteCountFormatted) · \(estimate.historySessionCount) sessions"
+        }
+        return "\(estimate.historyByteCountFormatted) if enabled · \(estimate.historySessionCount) sessions"
     }
 
     var body: some View {
@@ -116,17 +131,111 @@ struct DataSafetyView: View {
             }
 
             Section {
-                HelmStatusRow(label: "Policy", value: "Excluded")
+                Toggle("Sync profile & engine config", isOn: $cloudPreferences.profileSyncEnabled)
                     .helmListRowChrome()
-                Text("Helm data in Application Support is excluded from iCloud device backup. HealthKit re-backfills after reinstall; use Training History JSON or a manual database export for Helm-logged workouts.")
+
+                Toggle("Include workout history (90 days)", isOn: $cloudPreferences.historySyncEnabled)
+                    .disabled(!cloudPreferences.profileSyncEnabled)
+                    .helmListRowChrome()
+
+                if let estimate = cloudCoordinator.sizeEstimate {
+                    HelmStatusRow(
+                        label: "Profile size",
+                        value: estimate.profileByteCountFormatted
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "History size",
+                        value: historySizeLabel(estimate)
+                    )
+                    .helmListRowChrome()
+                }
+
+                HelmStatusRow(
+                    label: "iCloud Drive",
+                    value: cloudCoordinator.isAvailable ? "Available" : "Unavailable"
+                )
+                .helmListRowChrome()
+
+                if let lastPushed = cloudPreferences.lastPushedAt {
+                    HelmStatusRow(
+                        label: "Last backup",
+                        value: Self.relativeDate.localizedString(for: lastPushed, relativeTo: Date())
+                    )
+                    .helmListRowChrome()
+                }
+                if let lastRestored = cloudPreferences.lastRestoredAt {
+                    HelmStatusRow(
+                        label: "Last restore",
+                        value: Self.relativeDate.localizedString(for: lastRestored, relativeTo: Date())
+                    )
+                    .helmListRowChrome()
+                }
+
+                Button("Back Up Now") {
+                    Task {
+                        let ok = await cloudCoordinator.pushNow()
+                        if ok { HapticEngine.shared.play(.selection) }
+                        else { HapticEngine.shared.play(.clampRejected) }
+                    }
+                }
+                .disabled(cloudCoordinator.isBusy || !cloudPreferences.profileSyncEnabled)
+                .helmListRowChrome()
+
+                Button("Restore from iCloud") {
+                    Task {
+                        let ok = await cloudCoordinator.restoreForced()
+                        if ok { HapticEngine.shared.play(.selection) }
+                        else { HapticEngine.shared.play(.clampRejected) }
+                    }
+                }
+                .disabled(cloudCoordinator.isBusy || !cloudCoordinator.isAvailable)
+                .helmListRowChrome()
+
+                if let status = cloudCoordinator.statusMessage {
+                    Text(status)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .helmListRowChrome()
+                }
+                if let error = cloudCoordinator.errorMessage {
+                    Text(error)
+                        .helmType(.body, color: HelmColor.depleted)
+                        .helmListRowChrome()
+                }
+            } header: {
+                Text("iCloud sync")
+            } footer: {
+                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. Local SQLite stays excluded from device iCloud Backup; HealthKit re-backfills health rows.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+
+            Section {
+                HelmStatusRow(label: "Device backup", value: "Excluded")
+                    .helmListRowChrome()
+                Text("Application Support/Helm is excluded from iCloud device backup. Use iCloud sync above or manual export for wipe recovery.")
                     .helmType(.body, color: HelmColor.fgMuted)
                     .helmListRowChrome()
             } header: {
-                Text("iCloud Backup")
+                Text("iCloud device backup")
             }
         }
         .helmSettingsListChrome()
         .navigationTitle("Data & Backup")
+        .task {
+            cloudCoordinator.refreshEstimate()
+        }
+        .onChange(of: cloudPreferences.profileSyncEnabled) { _, enabled in
+            cloudCoordinator.refreshEstimate()
+            if enabled {
+                cloudCoordinator.schedulePush()
+            }
+        }
+        .onChange(of: cloudPreferences.historySyncEnabled) { _, _ in
+            cloudCoordinator.refreshEstimate()
+            if cloudPreferences.profileSyncEnabled {
+                cloudCoordinator.schedulePush()
+            }
+        }
         .sheet(item: activeSheet) { sheet in
             switch sheet {
             case let .share(url):

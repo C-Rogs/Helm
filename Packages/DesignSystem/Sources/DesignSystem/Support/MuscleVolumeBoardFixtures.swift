@@ -9,13 +9,13 @@ public extension MuscleVolumeBoardModel {
             scheduledSets: 6,
             mev: 8,
             mrv: 18,
-            state: .ready,
+            state: .depleted,
             daysSinceTrained: 5
         ),
         MuscleVolumeBoardRow(
             id: "chest",
             label: "Chest",
-            weeklySets: 14,
+            weeklySets: 12,
             mev: 10,
             mrv: 20,
             state: .ready,
@@ -24,11 +24,11 @@ public extension MuscleVolumeBoardModel {
         MuscleVolumeBoardRow(
             id: "back",
             label: "Back",
-            weeklySets: 18,
-            scheduledSets: 3,
+            weeklySets: 16,
+            scheduledSets: 2,
             mev: 10,
             mrv: 18,
-            state: .compromised,
+            state: .primed,
             daysSinceTrained: 0
         ),
         MuscleVolumeBoardRow(
@@ -47,7 +47,7 @@ public extension MuscleVolumeBoardModel {
             scheduledSets: 8,
             mev: 8,
             mrv: 20,
-            state: .ready,
+            state: .depleted,
             daysSinceTrained: nil
         )
     ])

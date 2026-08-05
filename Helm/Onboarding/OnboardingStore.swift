@@ -20,5 +20,15 @@ final class OnboardingStore {
     func markCompleted() {
         isCompleted = true
         defaults.set(true, forKey: Self.completedDefaultsKey)
+        CloudBackupCoordinator.shared.schedulePush()
+    }
+
+    func applyCompleted(_ completed: Bool) {
+        isCompleted = completed
+        defaults.set(completed, forKey: Self.completedDefaultsKey)
+    }
+
+    func syncFromDefaults() {
+        isCompleted = defaults.bool(forKey: Self.completedDefaultsKey)
     }
 }

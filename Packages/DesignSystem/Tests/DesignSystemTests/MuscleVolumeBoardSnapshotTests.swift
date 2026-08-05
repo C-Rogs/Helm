@@ -10,6 +10,12 @@ struct MuscleVolumeBoardSnapshotTests {
         #expect(rows.contains { $0.state == .ready })
         #expect(rows.contains { $0.state == .primed })
         #expect(rows.contains { $0.state == .compromised })
+
+        for row in rows {
+            #expect(HelmState.volumeWeekly(sets: row.weeklySets, mev: row.mev, mrv: row.mrv) == row.state)
+            let status = VolumeLandmarkStatus.resolve(sets: row.weeklySets, mev: row.mev, mrv: row.mrv)
+            #expect(["below MEV", "in range", "over MRV"].contains(status.label))
+        }
     }
 
     @Test("load window labels describe rolling seven days")

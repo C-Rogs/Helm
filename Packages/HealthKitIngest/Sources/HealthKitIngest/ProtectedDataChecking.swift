@@ -12,7 +12,12 @@ public struct LiveProtectedDataChecker: ProtectedDataChecking {
 
     public var isProtectedDataAvailable: Bool {
         #if canImport(UIKit)
-        return UIApplication.shared.isProtectedDataAvailable
+        if Thread.isMainThread {
+            return MainActor.assumeIsolated { UIApplication.shared.isProtectedDataAvailable }
+        }
+        return DispatchQueue.main.sync {
+            MainActor.assumeIsolated { UIApplication.shared.isProtectedDataAvailable }
+        }
         #else
         return true
         #endif

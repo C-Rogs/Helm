@@ -165,7 +165,7 @@ struct DashboardView: View {
             HelmSkeletonCard(rowCount: 3)
         } else if let model = muscleVolumeStore.model {
             NavigationLink {
-                MuscleVolumeBoardContainer()
+                MuscleVolumeBoardContainer(matchedCardNamespace: muscleVolumeNamespace)
             } label: {
                 MuscleVolumeSummaryCard(model: model)
                     .helmMatchedCardDetail(id: "muscle-volume", in: muscleVolumeNamespace)
@@ -197,9 +197,7 @@ struct DashboardView: View {
                         summary: summary.summary,
                         rationale: summary.rationale,
                         onCoach: {
-                            chatController.requestCoachHandoff(prompt: summary.coachPromptSeed)
-                            AppTabRouter.shared.openTrain()
-                            TrainBootstrap.sessionController.discussTodaysSession()
+                            chatController.requestCoachHandoff(prompt: summary.coachNegotiationSeed)
                         },
                         onRegenerate: {
                             Task {

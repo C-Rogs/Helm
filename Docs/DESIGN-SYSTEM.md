@@ -12,6 +12,8 @@ An instrument, not an app. Helm reads out the body the way a cockpit reads out a
 
 Two profiles, selected automatically by the system appearance (the app follows Light/Dark, it does not offer its own switch). **Dark** is the primary: true black canvas for OLED, warm near-black surfaces (a trace of yellow, never blue-grey). **Light** is warm paper, never cold white. One brand accent in both; everything else is a semantic state ramp. Author every component against both token sets from the start; a component is not done until it reads correctly in both.
 
+Accent is selectable in Settings (`lime` default, `cyan` alternate). Tables below are the **lime** recipe. Cyan swaps the accent family only (`accent` / `accentFill` / `ready` / `primed` / chart derivatives); neutrals and depleted/compromised stay as listed. See §9 for `HelmAccentSource` (including reserved custom hex).
+
 ### Dark profile (primary)
 
 | Token | Hex | oklch (approx) | Use |
@@ -23,7 +25,7 @@ Two profiles, selected automatically by the system appearance (the app follows L
 | `fg` | `#F4F3EE` | oklch(0.96 0.006 95) | primary text, active numerals |
 | `fgSecondary` | `#A8A7A0` | oklch(0.73 0.005 95) | body, secondary labels |
 | `fgMuted` | `#6B6A63` | oklch(0.52 0.006 95) | units, captions, mono tags |
-| `accent` | `#C6F24E` | oklch(0.90 0.19 128) | brand, "primed", primary action, focus |
+| `accent` | `#C6F24E` (lime) / `#2EE6E0` (cyan) | oklch(0.90 0.19 128) | brand, "primed", primary action, focus |
 
 **State ramp** (readiness, volume-vs-landmark, energy balance, any good/bad signal):
 
@@ -31,8 +33,8 @@ Two profiles, selected automatically by the system appearance (the app follows L
 |---|---|---|
 | `depleted` | `#FF6A4D` | 0 to 39 |
 | `compromised` | `#FFB648` | 40 to 54 |
-| `ready` | `#D7E85A` | 55 to 74 |
-| `primed` | `#C6F24E` | 75+ (equals `accent`) |
+| `ready` | `#D7E85A` (lime) / `#5AE8D8` (cyan) | 55 to 74 |
+| `primed` | equals `accent` | 75+ |
 
 ### Light profile
 
@@ -47,11 +49,11 @@ Warm paper, dark ink, the same accent darkened to hold AA against light. The sta
 | `fg` | `#16150F` | primary text, active numerals |
 | `fgSecondary` | `#57564D` | body, secondary labels |
 | `fgMuted` | `#8A887E` | units, captions |
-| `accent` | `#4F6B00` | brand, actions, focus (AA on paper) |
-| `accentFill` | `#C6F24E` | accent used as a fill/highlight behind dark ink only |
-| state ramp | `#C24A2E` / `#B56B00` / `#5F7A0A` / `#4F6B00` | depleted / compromised / ready / primed |
+| `accent` | `#4F6B00` (lime) / `#0A5F5C` (cyan) | brand, actions, focus (AA on paper) |
+| `accentFill` | `#C6F24E` (lime) / `#2EE6E0` (cyan) | accent used as a fill/highlight behind dark ink only |
+| state ramp | `#C24A2E` / `#B56B00` / ready / primed | depleted / compromised fixed; ready/primed track accent |
 
-The bright acid-lime (`#C6F24E`) never carries text on light; it is a fill only, always with dark ink on top. Text-weight accent uses the darkened `#4F6B00`. In the full-bleed State-field direction the lime field is intentional and keeps its brightness in both profiles (dark ink on top).
+The bright brand hue (lime `#C6F24E`, cyan `#2EE6E0`) never carries text on light; it is a fill only, always with dark ink on top. Text-weight accent uses the darkened recipe colour. In the full-bleed State-field direction the bright field is intentional and keeps its brightness in both profiles (dark ink on top).
 
 Rules: one accent only, no second brand color. No decorative gradients; a radial vignette on the app icon and nowhere else. State colors are reserved for state. Never color body text; use the fg ladder.
 
@@ -143,6 +145,7 @@ Fitness-analysis, not nautical: the Arc reading a value against a scale. **Marqu
 Appearance is driven by two independent environment values so the app can carry more than one look without duplicating logic. Everything in sections 1 through 8 except the container treatment is shared across skins.
 
 - **`HelmTheme`** (palette): `dark` / `light` / `auto`. Defaults to `auto` (follows system appearance), with an explicit override in Settings. Selects the token set in section 1. Cheap: it is a value swap, and every component already reads tokens, never literals.
+- **`HelmAccentSource`** (brand accent): selectable presets (`lime` default, `cyan`) plus a reserved `.custom(baseHex:)` path for a future colour picker. Resolves the accent family only (`accent`, `accentFill`, `ready`, `primed`, chart/button derivatives). Neutrals and depleted/compromised stay fixed. Light mode always uses a darkened text-weight accent; the bright hue is fill-only (`accentFill`).
 - **`HelmSkin`** (layout family): which container treatment the shared components render through.
 
 Selectable skins:
@@ -157,4 +160,4 @@ Reserved behind the seam (stubs only): `stateField` (full-bleed state-color hero
 
 Rule: components do not hard-code their container. They render content through a `SkinnedContainer` (and, where relevant, a `SkinnedGauge`) that reads `HelmSkin` and picks the treatment. List rows use `helmListRowChrome()`. Chat bubbles use `CoachMessageBubble`. A section becomes a card, a ruled block, or a void block by skin, with identical content and tokens underneath.
 
-Both values are `@Observable` app state, persisted, and exposed through the SwiftUI environment so any view can read them without prop-drilling. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme. Signal may tune press scale and appear opacity only; it does not invent a second easing vocabulary or accent.
+Both theme mode, accent source, and skin are `@Observable` app state, persisted, and exposed through the SwiftUI environment so any view can read them without prop-drilling. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme. Signal may tune press scale and appear opacity only; it does not invent a second easing vocabulary or accent.

@@ -254,8 +254,7 @@ final class ChatController {
             NutritionBootstrap.refreshNutrition(for: pending.helmDay)
             pendingFoodMealConfirm = nil
             lastTurnError = nil
-            HapticEngine.shared.play(.phaseChange)
-            HapticEngine.shared.play(.mealConfirmed)
+            CoachApplyMomentStore.shared.play()
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatFoodMeal", error: error)
@@ -286,8 +285,7 @@ final class ChatController {
                 )
                 NutritionBootstrap.lastViewedHelmDay = loggedHelmDay
                 NutritionBootstrap.refreshNutrition(for: loggedHelmDay)
-                HapticEngine.shared.play(.phaseChange)
-                HapticEngine.shared.play(.mealConfirmed)
+                CoachApplyMomentStore.shared.play()
             case let .mealCopy(payload):
                 applyProgressStep = "Copying meal…"
                 guard let resolved = MealCopyCommandApplier.resolvedDays(payload) else {
@@ -301,19 +299,16 @@ final class ChatController {
                 )
                 NutritionBootstrap.lastViewedHelmDay = resolved.target
                 NutritionBootstrap.refreshNutrition(for: resolved.target)
-                HapticEngine.shared.play(.phaseChange)
-                HapticEngine.shared.play(.mealConfirmed)
+                CoachApplyMomentStore.shared.play()
             case let .memoryAdjustment(payload):
                 applyProgressStep = "Updating Memory…"
                 try CoachMemoryAdjuster.apply(payload, persistence: persistence)
-                HapticEngine.shared.play(.phaseChange)
-                HapticEngine.shared.play(.mealConfirmed)
+                CoachApplyMomentStore.shared.play()
             case let .workoutStart(payload):
                 applyProgressStep = "Preparing session…"
                 let today = HelmDay.day(for: .now, calendar: .current)
                 try await applyWorkoutStart(payload, helmDay: today)
-                HapticEngine.shared.play(.phaseChange)
-                HapticEngine.shared.play(.coachAdjust)
+                CoachApplyMomentStore.shared.play()
             }
             pendingChatAction = nil
             lastTurnError = nil

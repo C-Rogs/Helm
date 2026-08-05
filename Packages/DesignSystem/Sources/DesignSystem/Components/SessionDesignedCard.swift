@@ -134,7 +134,7 @@ public struct SessionExercisePreviewList: View {
         rationale: [
             "ARC 57 (balanced) sets today's volume and RPE cap.",
             "Cut phase with 1 exercises prescribed.",
-            "Biceps: 0.0/6 hard sets this week."
+            "Biceps: 0/6 hard sets this week."
         ],
         onCoach: {},
         onRegenerate: {}

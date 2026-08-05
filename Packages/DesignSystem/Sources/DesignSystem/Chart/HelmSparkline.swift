@@ -20,6 +20,7 @@ public struct HelmSparkline: View {
     private let latestState: HelmState?
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @State private var drawProgress: CGFloat = 0
 
     public init(points: [HelmSparklinePoint], latestState: HelmState? = nil) {
         self.points = points
@@ -30,12 +31,26 @@ public struct HelmSparkline: View {
         latestState ?? points.last?.state ?? .ready
     }
 
+    private var revealProgress: CGFloat {
+        reduceMotion ? 1 : drawProgress
+    }
+
     public var body: some View {
         Group {
             if points.count < 2 {
                 insufficientTrack
             } else {
                 chart
+                    .mask {
+                        Rectangle()
+                            .scaleEffect(x: revealProgress, y: 1, anchor: .leading)
+                    }
+                    .onAppear(perform: beginDraw)
+                    .onChange(of: reduceMotion) { _, isReduced in
+                        if isReduced {
+                            drawProgress = 1
+                        }
+                    }
             }
         }
         .frame(height: HelmSpacing.xs + 2)
@@ -69,6 +84,17 @@ public struct HelmSparkline: View {
             reduceMotion ? nil : HelmMotion.animation(HelmMotion.quickAnimation, reduceMotion: false),
             value: points.map(\.value)
         )
+    }
+
+    private func beginDraw() {
+        if reduceMotion {
+            drawProgress = 1
+            return
+        }
+        drawProgress = 0
+        withAnimation(HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: false)) {
+            drawProgress = 1
+        }
     }
 
     private var insufficientTrack: some View {

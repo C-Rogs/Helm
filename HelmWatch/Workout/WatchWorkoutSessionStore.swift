@@ -70,7 +70,7 @@ final class WatchWorkoutSessionStore {
         }
     }
 
-    /// Cold-wake from phone `startWatchApp`: skip auth and start from handed configuration.
+    /// Cold-wake / late adoption from phone: skip auth; align start with phone session when known.
     func startWorkout(fromPhoneConfiguration configuration: HKWorkoutConfiguration) async {
         guard phase == .idle || phase == .ended else { return }
         lastError = nil
@@ -81,10 +81,15 @@ final class WatchWorkoutSessionStore {
         sessionID = id
         lifecycle.begin(sessionID: id)
 
+        let phoneStart = WatchCompanionBootstrap.coordinator.companionSessionStartedAt
         do {
-            try await manager.start(configuration: configuration, sessionID: id)
+            try await manager.start(
+                configuration: configuration,
+                sessionID: id,
+                activityStart: phoneStart
+            )
             isMirroringToCompanion = manager.isMirroringToCompanion
-            startedAt = Date()
+            startedAt = phoneStart ?? Date()
             apply(.sessionReady)
             startElapsedTimer()
             // Warm auth/baselines in background for the next launch.

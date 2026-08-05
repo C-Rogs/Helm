@@ -128,7 +128,7 @@ final class PhotoMealController {
                 bucket: bucket,
                 loggedAt: loggedAt
             )
-            HapticEngine.shared.play(.mealConfirmed)
+            CoachApplyMomentStore.shared.play()
             pendingImageJPEG = nil
             pendingPreview = nil
             pendingPortionAssist = nil

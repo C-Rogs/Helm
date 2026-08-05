@@ -22,6 +22,11 @@ extension WatchSessionCoordinator: WCSessionDelegate {
                 self.sendPing()
                 self.flushPendingWorkoutCompanionPushIfNeeded()
             }
+            #if os(watchOS)
+            if self.role == .watch, activationState == .activated {
+                self.flushCompleteSetOutbox()
+            }
+            #endif
         }
     }
 
@@ -40,6 +45,11 @@ extension WatchSessionCoordinator: WCSessionDelegate {
             #if os(iOS)
             if self.role == .phone, reachable {
                 self.flushPendingWorkoutCompanionPushIfNeeded()
+            }
+            #endif
+            #if os(watchOS)
+            if self.role == .watch, reachable {
+                self.flushCompleteSetOutbox()
             }
             #endif
         }

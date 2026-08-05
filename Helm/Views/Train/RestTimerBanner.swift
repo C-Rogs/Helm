@@ -42,10 +42,10 @@ struct RestTimerBanner: View {
                     Capsule()
                         .fill(HelmColor.accent)
                         .frame(width: elapsedFraction > 0 ? max(6, geometry.size.width * elapsedFraction) : 0)
-                        .animation(
-                            reduceMotion ? nil : .linear(duration: 1),
-                            value: elapsedFraction
-                        )
+                        .transaction(value: elapsedFraction) { transaction in
+                            // Scope 1s tick to the fill only; do not slow chrome layout lifts.
+                            transaction.animation = reduceMotion ? nil : .linear(duration: 1)
+                        }
                 }
             }
             .frame(height: HelmSpacing.xxs)

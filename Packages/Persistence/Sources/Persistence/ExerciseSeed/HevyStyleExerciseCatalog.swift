@@ -51,7 +51,7 @@ enum HevyStyleExerciseCatalog {
         Row(canonical: "machine rear delt fly", display: "Rear Delt Reverse Fly (Machine)", mode: .weightReps),
         Row(canonical: "seated dumbbell shoulder press", display: "Seated Dumbbell Shoulder Press", mode: .weightReps),
         Row(canonical: "single-arm dumbbell row", display: "Single Arm Dumbbell Row", mode: .weightReps),
-        Row(canonical: "ez bar biceps curl", display: "Heavy EZ Bar Biceps Curl", mode: .weightReps),
+        Row(canonical: "ez bar biceps curl", display: "EZ Bar Biceps Curl", mode: .weightReps),
         Row(canonical: "triceps rope pushdown", display: "Triceps Rope Pushdown", mode: .weightReps),
         Row(canonical: "hack squat", display: "Hack Squat", mode: .weightReps),
         Row(canonical: "leg extension", display: "Leg Extension", mode: .weightReps),

@@ -14,6 +14,8 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case workoutCompanion
         case restEnded
         case completeSet
+        /// Phone → Watch: confirms a `completeSet` `eventID` was applied (or already complete).
+        case completeSetAck
         case diagnostic
     }
 
@@ -42,8 +44,12 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let companionSessionExerciseID: String?
     /// Current (or completing) set id for Watch Done / companion mirror.
     public let companionSetID: String?
+    /// Client-generated UUID for durable Watch complete-set outbox + phone ack.
+    public let eventID: String?
     /// When deactivating companion: true = save Watch HKWorkout; false/nil = discard.
     public let companionSaveWatchWorkout: Bool?
+    /// Phone session start (unix). Watch uses for late-adoption elapsed alignment.
+    public let companionSessionStartedAt: TimeInterval?
     /// Wake/companion diagnostic event name (`WatchCompanionDiagnosticEvent.rawValue`).
     public let diagnosticEvent: String?
     /// Short free-text detail for diagnostics (no HealthKit samples / PII blobs).
@@ -66,7 +72,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionTargetSummary: String? = nil,
         companionSessionExerciseID: String? = nil,
         companionSetID: String? = nil,
+        eventID: String? = nil,
         companionSaveWatchWorkout: Bool? = nil,
+        companionSessionStartedAt: TimeInterval? = nil,
         diagnosticEvent: String? = nil,
         diagnosticDetail: String? = nil
     ) {
@@ -86,7 +94,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         self.companionTargetSummary = companionTargetSummary
         self.companionSessionExerciseID = companionSessionExerciseID
         self.companionSetID = companionSetID
+        self.eventID = eventID
         self.companionSaveWatchWorkout = companionSaveWatchWorkout
+        self.companionSessionStartedAt = companionSessionStartedAt
         self.diagnosticEvent = diagnosticEvent
         self.diagnosticDetail = diagnosticDetail
     }
@@ -108,7 +118,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case companionTargetSummary
         case companionSessionExerciseID
         case companionSetID
+        case eventID
         case companionSaveWatchWorkout
+        case companionSessionStartedAt
         case diagnosticEvent
         case diagnosticDetail
     }
@@ -131,7 +143,9 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         companionTargetSummary = try container.decodeIfPresent(String.self, forKey: .companionTargetSummary)
         companionSessionExerciseID = try container.decodeIfPresent(String.self, forKey: .companionSessionExerciseID)
         companionSetID = try container.decodeIfPresent(String.self, forKey: .companionSetID)
+        eventID = try container.decodeIfPresent(String.self, forKey: .eventID)
         companionSaveWatchWorkout = try container.decodeIfPresent(Bool.self, forKey: .companionSaveWatchWorkout)
+        companionSessionStartedAt = try container.decodeIfPresent(TimeInterval.self, forKey: .companionSessionStartedAt)
         diagnosticEvent = try container.decodeIfPresent(String.self, forKey: .diagnosticEvent)
         diagnosticDetail = try container.decodeIfPresent(String.self, forKey: .diagnosticDetail)
     }

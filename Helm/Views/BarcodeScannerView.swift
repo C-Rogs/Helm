@@ -144,9 +144,7 @@ private final class BarcodeScannerViewController: UIViewController {
         view.layer.addSublayer(preview)
         previewLayer = preview
 
-        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-            self?.session.startRunning()
-        }
+        session.startRunning()
     }
 }
 

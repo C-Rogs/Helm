@@ -165,9 +165,6 @@ enum RestNotificationRouter {
             categoryIdentifier: categoryIdentifier,
             isAppForeground: isForeground
         ) {
-            if let sessionID {
-                await TrainBootstrap.sideEffects.notifications.cancelRestNotification(sessionID: sessionID)
-            }
             return []
         }
         return [.banner, .sound]

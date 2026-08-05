@@ -32,6 +32,9 @@ packages:
     path: Packages/CoachLLM
   ExportKit:
     path: Packages/ExportKit
+  SpotifyiOS:
+    url: https://github.com/spotify/ios-sdk
+    from: 5.0.1
 targets:
   Helm:
     type: application
@@ -107,12 +110,31 @@ targets:
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: Signal uses your photo library to estimate meal macros from meal photos.
         INFOPLIST_KEY_NSCalendarsUsageDescription: Signal reads your calendar to flag busy days on your training schedule. Events are never written back.
         INFOPLIST_KEY_NSSupportsLiveActivities: YES
-        INFOPLIST_KEY_CFBundleURLTypes:
-          - CFBundleURLName: com.cameronro.helm
-            CFBundleURLSchemes:
-              - helm
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         TARGETED_DEVICE_FAMILY: "1"
+    # CFBundleURLTypes and LSApplicationQueriesSchemes cannot be expressed as
+    # INFOPLIST_KEY_* build settings, so they need a real Info.plist.
+    info:
+      path: Helm/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.cameronro.helm
+            CFBundleTypeRole: Editor
+            CFBundleURLSchemes:
+              - helm
+        LSApplicationQueriesSchemes:
+          - spotify
+        # Rest bell: keeps the process alive off-screen so the timer rings on time
+        # and through the Silent switch (see RestTimerBackgroundAudio).
+        UIBackgroundModes:
+          - audio
+        NSUbiquitousContainers:
+          iCloud.com.cameronro.helm:
+            NSUbiquitousContainerIsDocumentScopePublic: false
+            NSUbiquitousContainerName: Helm
+            NSUbiquitousContainerSupportedFolderLevels: Any
     entitlements:
       path: Helm/Helm.entitlements
       properties:
@@ -120,6 +142,12 @@ targets:
         com.apple.developer.healthkit.background-delivery: true
         com.apple.security.application-groups:
           - group.com.cameronro.helm
+        com.apple.developer.icloud-container-identifiers:
+          - iCloud.com.cameronro.helm
+        com.apple.developer.ubiquity-container-identifiers:
+          - iCloud.com.cameronro.helm
+        com.apple.developer.icloud-services:
+          - CloudDocuments
     dependencies:
       - package: Core
       - package: Diagnostics
@@ -132,6 +160,8 @@ targets:
         product: ReadinessKit
       - package: Domain
         product: NutritionKit
+      - package: SpotifyiOS
+        product: SpotifyiOS
       - sdk: WatchConnectivity.framework
       - target: HelmWatch
         embed: true

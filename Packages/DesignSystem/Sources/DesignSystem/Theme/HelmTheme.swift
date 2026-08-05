@@ -15,7 +15,7 @@ public enum HelmThemeMode: String, Sendable, CaseIterable, Identifiable {
         }
     }
 
-    public func resolvedPalette(colorScheme: ColorScheme) -> HelmPalette {
+    public func resolvedAppearance(colorScheme: ColorScheme) -> HelmPaletteAppearance {
         switch self {
         case .auto:
             colorScheme == .dark ? .dark : .light
@@ -24,6 +24,13 @@ public enum HelmThemeMode: String, Sendable, CaseIterable, Identifiable {
         case .light:
             .light
         }
+    }
+
+    public func resolvedPalette(
+        colorScheme: ColorScheme,
+        accent: HelmAccentSource = .default
+    ) -> HelmPalette {
+        HelmPalette.resolved(appearance: resolvedAppearance(colorScheme: colorScheme), accent: accent)
     }
 
     public func preferredColorScheme(colorScheme: ColorScheme) -> ColorScheme? {
@@ -46,6 +53,16 @@ public final class HelmThemeCoordinator {
 
     public var skin: HelmSkin {
         didSet { persist() }
+    }
+
+    public var accentSource: HelmAccentSource {
+        didSet { persist() }
+    }
+
+    /// Settings binder for preset swatches. Setting a preset clears any future custom source.
+    public var accentPreset: HelmAccentPreset {
+        get { accentSource.selectablePreset ?? .lime }
+        set { accentSource = .preset(newValue) }
     }
 
     public var hapticsEnabled: Bool {
@@ -78,6 +95,7 @@ public final class HelmThemeCoordinator {
         } else {
             skin = .signal
         }
+        accentSource = HelmAccentSource.fromPersistence(defaults.string(forKey: Keys.accentSource))
         if defaults.object(forKey: Keys.hapticsEnabled) == nil {
             hapticsEnabled = true
         } else {
@@ -97,7 +115,7 @@ public final class HelmThemeCoordinator {
     }
 
     public func update(colorScheme: ColorScheme) {
-        let palette = themeMode.resolvedPalette(colorScheme: colorScheme)
+        let palette = themeMode.resolvedPalette(colorScheme: colorScheme, accent: accentSource)
         activePalette = palette
         HelmActivePalette.current = palette
     }
@@ -105,6 +123,7 @@ public final class HelmThemeCoordinator {
     private func persist() {
         defaults.set(themeMode.rawValue, forKey: Keys.themeMode)
         defaults.set(skin.rawValue, forKey: Keys.skin)
+        defaults.set(accentSource.persistenceToken, forKey: Keys.accentSource)
         defaults.set(hapticsEnabled, forKey: Keys.hapticsEnabled)
         defaults.set(thresholdInsightHapticsEnabled, forKey: Keys.thresholdInsightHapticsEnabled)
         defaults.set(prefersSystemFonts, forKey: Keys.prefersSystemFonts)
@@ -113,6 +132,7 @@ public final class HelmThemeCoordinator {
     private enum Keys {
         static let themeMode = "helm.themeMode"
         static let skin = "helm.skin"
+        static let accentSource = "helm.accentSource"
         static let hapticsEnabled = "helm.hapticsEnabled"
         static let thresholdInsightHapticsEnabled = "helm.thresholdInsightHapticsEnabled"
         static let prefersSystemFonts = "helm.prefersSystemFonts"
@@ -195,7 +215,10 @@ private struct HelmThemeContainer<Content: View>: View {
     }
 
     var body: some View {
-        let palette = coordinator.themeMode.resolvedPalette(colorScheme: colorScheme)
+        let palette = coordinator.themeMode.resolvedPalette(
+            colorScheme: colorScheme,
+            accent: coordinator.accentSource
+        )
         let preferredScheme = coordinator.themeMode.preferredColorScheme(colorScheme: colorScheme)
 
         content
@@ -218,6 +241,9 @@ private struct HelmThemeContainer<Content: View>: View {
                 coordinator.update(colorScheme: colorScheme)
             }
             .onChange(of: coordinator.skin) { _, _ in
+                coordinator.update(colorScheme: colorScheme)
+            }
+            .onChange(of: coordinator.accentSource) { _, _ in
                 coordinator.update(colorScheme: colorScheme)
             }
             .onChange(of: coordinator.prefersSystemFonts) { _, newValue in

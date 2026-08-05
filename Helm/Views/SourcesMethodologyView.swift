@@ -119,8 +119,9 @@ struct SourcesMethodologyView: View {
                 .disabled(isSaving || !isDirty)
             }
         }
-        .navigationTitle("Sources")
+        .navigationTitle("Sources & Methodology")
         .helmScreenBackground()
+        .scrollContentBackground(.hidden)
         .task {
             await load()
         }
@@ -174,7 +175,7 @@ struct SourcesMethodologyView: View {
         do {
             try await prescriptionService.saveMethodologyPreferences(preferences)
             loadedPreferences = preferences
-            HapticEngine.shared.play(.coachAdjust)
+            CoachApplyMomentStore.shared.play()
             saveMessage = "Saved. Today's prescription was re-planned."
             PlanBootstrap.refreshPrescription()
             await loadPrescriptionCitations()

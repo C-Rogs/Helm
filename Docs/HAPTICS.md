@@ -42,7 +42,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
-| `coachAdjust` | two gentle bumps | transient `i 0.5 / s 0.3 @ 0`, transient `i 0.5 / s 0.3 @ 0.1` | `impact(.soft)` x2 |
+| `coachAdjust` | long playful whoosh with ascending sparkle taps (~0.9s, matches apply-wave) | continuous whoosh `i 0.2->0.7->0.12` over 0.9s + transients along the sweep; Low Power drops continuous, keeps sparkle cascade | `.notificationSuccess` |
 | `clampRejected` | short sharp buzz, felt as resistance | transient `i 1.0 / s 1.0 @ 0`, transient `i 0.7 / s 1.0 @ 0.05` | `.notificationError` |
 | `selection` | lightest tick | `UISelectionFeedbackGenerator` (no custom pattern needed) | `.selectionChanged` |
 
@@ -61,7 +61,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `prHit` | a qualifying PR is detected, exactly once per record | M3.5 |
 | `sessionFinished` | a workout is finished (not discarded) | M3.2 / M3.3 |
 | `mealConfirmed` | a photo-to-macro estimate is confirmed and written to Health | M9.3 |
-| `coachAdjust` | an adjustment applies to the active session (swap, reorder, set change); also on the resulting undo | M6.2 |
+| `coachAdjust` | an AI adjustment applies on user confirm (coach swap/apply, chat action apply, photo meal confirm, memory/methodology save that feeds the coach); also on coach-adjustment undo. Paired with `HelmCoachApplyWave` via `CoachApplyMomentStore.play()` | M6.2 |
 | `clampRejected` | an adjustment or input hits a safe bound (RPE over cap, a clamp refusing an unsafe swap) | M5.3 / M6.2 |
 | `selection` | tab change, segmented control, numpad key, picker selection | M0.7 (tab bar), then per-control |
 
@@ -80,7 +80,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 - Settings: a single "Haptics" toggle (default on) read on every `play`. Independent of Reduce Motion (a user may want haptics with reduced motion, or the reverse).
 - Low power: skip continuous patterns (`readinessReveal` swell degrades to its crest transient only) under Low Power Mode.
 - Diagnostics: route engine start/stop/reset failures to the Diagnostics ring buffer per `Docs/DIAGNOSTICS.md`; never crash, never phone home.
-- AHAP: bundle the custom continuous/multi-event patterns (`readinessReveal`, `phaseChange`, `restDone`, `prHit`, `sessionFinished`, `clampRejected`, `thresholdInsight`) as `.ahap` resources loaded by name; `setLogged`, `restCountIn`, `coachAdjust`, `mealConfirmed`, and `selection` are code-built.
+- AHAP: bundle the custom continuous/multi-event patterns (`readinessReveal`, `phaseChange`, `restDone`, `prHit`, `sessionFinished`, `clampRejected`, `thresholdInsight`) as `.ahap` resources loaded by name; `setLogged`, `restCountIn`, `coachAdjust` (code-built whoosh + sparkles), `mealConfirmed`, and `selection` are code-built.
 
 ## Verification split
 

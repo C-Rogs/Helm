@@ -82,6 +82,7 @@ struct RecoveryDetailView: View {
             }
         }
         .skinAccentStripe(HelmColor.color(for: model.helmState))
+        .modifier(MatchedCardModifier(id: "arc-readiness", namespace: matchedCardNamespace))
     }
 
     private var contributorsCard: some View {

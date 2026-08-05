@@ -10,6 +10,8 @@ public enum WatchCompanionDiagnosticEvent: String, Sendable {
     case phoneCompanionPush = "phone.companion.push"
     case phoneReachability = "phone.reachability"
     case phoneFirstHeartRate = "phone.hr.first"
+    case phoneHeartRateSessionStart = "phone.hr.session.start"
+    case phoneHeartRateSessionEnd = "phone.hr.session.end"
     case phoneLiveConfirmTimeout = "phone.liveConfirm.timeout"
     case phoneLiveConfirmOK = "phone.liveConfirm.ok"
     case phoneDiagnosticRelay = "phone.diag.relay"

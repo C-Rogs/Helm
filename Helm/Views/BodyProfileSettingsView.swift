@@ -75,7 +75,7 @@ struct BodyProfileEditorView: View {
                     Text("kcal / day")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
-                Text("Starting point for calorie targets. Signal refines this from your food logs and weight trend, not from diet calories alone during a cut.")
+                Text("Starting point for calorie targets. Helm refines this from your food logs and weight trend, not from diet calories alone during a cut.")
                     .helmType(.body, color: HelmColor.fgMuted)
             } else {
                 Text("Enter weight, height, sex, and date of birth to calculate maintenance calories.")
@@ -133,8 +133,9 @@ struct BodyProfileSettingsView: View {
                 settingsContent
             }
         }
-        .navigationTitle("Body profile")
+        .navigationTitle("Body Profile")
         .helmScreenBackground()
+        .scrollContentBackground(.hidden)
         .task { await load() }
         .onAppear {
             registerActions?(BodyProfileSettingsActions(
@@ -151,9 +152,8 @@ struct BodyProfileSettingsView: View {
             formSections
         } else {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                Text("Signal uses these metrics to set your starting maintenance calories and macro targets. Values from Apple Health are prefilled when available.")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.fgSecondary)
+                Text("Helm uses these metrics to set your starting maintenance calories and macro targets. Values from Apple Health are prefilled when available.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
 
                 BodyProfileEditorView(profile: $profile)
                     .disabled(isLoading)
@@ -162,15 +162,13 @@ struct BodyProfileSettingsView: View {
                     HStack(spacing: HelmSpacing.xs) {
                         ProgressView()
                         Text("Reading Apple Health…")
-                            .font(HelmTypography.caption)
-                            .foregroundStyle(HelmColor.fgSecondary)
+                            .helmType(.body, color: HelmColor.fgSecondary)
                     }
                 }
 
                 if let saveMessage {
                     Text(saveMessage)
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.depleted)
+                        .helmType(.body, color: HelmColor.depleted)
                 }
             }
         }
@@ -179,9 +177,8 @@ struct BodyProfileSettingsView: View {
     @ViewBuilder
     private var formSections: some View {
         Section {
-            Text("Signal uses these metrics for calorie targets and coach context. Weight updates from Apple Health when available.")
-                .font(HelmType.body.font)
-                .foregroundStyle(HelmColor.fgSecondary)
+            Text("Helm uses these metrics for calorie targets and coach context. Weight updates from Apple Health when available.")
+                .helmType(.body, color: HelmColor.fgSecondary)
         }
 
         Section("Metrics") {
@@ -198,11 +195,10 @@ struct BodyProfileSettingsView: View {
 
         if showsInlineSaveButton {
             Section {
-                Button(isSaving ? "Saving…" : saveButtonTitle) {
-                    Task { await save() }
+                HelmAsyncActionButton(saveButtonTitle, successTitle: "Saved") {
+                    await save()
                 }
-                .buttonStyle(.borderless)
-                .disabled(isSaving || isLoading || !isValid)
+                .disabled(isLoading || !isValid)
             }
         }
     }
@@ -257,6 +253,7 @@ struct BodyProfileSettingsView: View {
         do {
             try store.save(profile)
             loadedProfile = profile
+            CloudBackupCoordinator.shared.schedulePush()
             saveMessage = "Body profile saved. Calorie targets will refresh."
             HapticEngine.shared.play(.selection)
             NutritionBootstrap.refreshNutrition()

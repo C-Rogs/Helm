@@ -5,6 +5,8 @@ enum LiveActivityCompleteSetBridge {
     static let notificationName = Notification.Name("com.cameronro.helm.liveActivity.completeSet")
     static let sessionExerciseIDKey = "sessionExerciseID"
     static let setIDKey = "setID"
+    /// Optional Watch outbox event UUID; phone acks after idempotent apply.
+    static let eventIDKey = "eventID"
 }
 
 /// Completes the current set from the Live Activity Done chip (runs in the app process).

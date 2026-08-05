@@ -17,7 +17,7 @@ enum WorkoutHapticCoordinator {
     }
 
     static func playCoachAdjustment() {
-        play(.coachAdjust)
+        CoachApplyMomentStore.shared.play()
     }
 
     static func playSessionFinished() {

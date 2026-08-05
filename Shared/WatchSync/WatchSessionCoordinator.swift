@@ -7,6 +7,11 @@ import WatchConnectivity
 import WatchKit
 #endif
 
+/// Carries a WCSession payload dictionary into the non-isolated WatchConnectivity callback queue.
+private struct UncheckedMessageBox: @unchecked Sendable {
+    let message: [String: Any]
+}
+
 @MainActor
 @Observable
 final class WatchSessionCoordinator: NSObject {
@@ -48,8 +53,14 @@ final class WatchSessionCoordinator: NSObject {
     var companionSessionExerciseID: String?
     var companionSetID: String?
     var companionSaveWatchWorkout = false
+    /// Phone session start for late Watch adoption elapsed display.
+    var companionSessionStartedAt: Date?
     /// True while phone is receiving live HR via HealthKit workout mirroring.
     var isReceivingMirroredHeartRate = false
+    /// True while phone `HKWorkoutSession` is publishing AirPods (or other) live HR.
+    var isReceivingPhoneHeartRate = false
+    /// True while phone HR workout session is running (may still be waiting for first BPM).
+    var isPhoneHeartRateSessionActive = false
     #if os(watchOS)
     /// Fires when phone activates workout companion (WCSession or hydrated context).
     var onWorkoutCompanionBecameActive: (() -> Void)?
@@ -73,6 +84,7 @@ final class WatchSessionCoordinator: NSObject {
         let sessionExerciseID: String?
         let setID: String?
         let saveWatchWorkout: Bool?
+        let sessionStartedAt: Date?
         let helmDay: HelmDay?
     }
 
@@ -82,10 +94,23 @@ final class WatchSessionCoordinator: NSObject {
     private var lastLiveHeartRatePushAt: TimeInterval?
     private var isLaunchingWatchApp = false
     private var lastAcceptedByOrigin: [WatchSyncPayload.Origin: WatchSyncOriginWatermark] = [:]
+    #if os(watchOS)
+    private let completeSetOutbox: WatchCompleteSetOutbox = {
+        let directory = (try? WatchCompleteSetOutbox.applicationSupportDirectory())
+            ?? FileManager.default.temporaryDirectory
+        return WatchCompleteSetOutbox(directoryURL: directory)
+    }()
+    /// Set IDs with unacked complete-set outbox rows (Watch UI pending state).
+    private(set) var pendingCompleteSetIDs: Set<String> = []
+    #endif
 
     init(role: Role) {
         self.role = role
         super.init()
+
+        #if os(watchOS)
+        refreshPendingCompleteSetIDs()
+        #endif
 
         guard WCSession.isSupported() else {
             lastError = "WatchConnectivity unavailable"
@@ -148,19 +173,26 @@ final class WatchSessionCoordinator: NSObject {
         sessionExerciseID: String? = nil,
         setID: String? = nil,
         saveWatchWorkout: Bool? = nil,
+        sessionStartedAt: Date? = nil,
         helmDay: HelmDay? = nil
     ) {
         guard role == .phone else { return }
 
         if !active {
-            latestLiveHeartRateBPM = nil
-            lastHeartRateReceivedAt = nil
+            // End of companion: clear Watch flags. Keep phone BPM until phone session ends
+            // so finish-chart wait / live chip are not wiped early.
             isReceivingMirroredHeartRate = false
+            if !isReceivingPhoneHeartRate {
+                latestLiveHeartRateBPM = nil
+                lastHeartRateReceivedAt = nil
+            }
+            companionSessionStartedAt = nil
             pendingWorkoutCompanionPush = nil
         } else {
             // New companion session: clear Watch inbound watermark so a Watch
             // process restart (sequence reset to 1) is not treated as stale.
             lastAcceptedByOrigin[.watch] = nil
+            companionSessionStartedAt = sessionStartedAt
             pendingWorkoutCompanionPush = PendingWorkoutCompanionPush(
                 active: true,
                 exerciseName: exerciseName,
@@ -170,6 +202,7 @@ final class WatchSessionCoordinator: NSObject {
                 sessionExerciseID: sessionExerciseID,
                 setID: setID,
                 saveWatchWorkout: saveWatchWorkout,
+                sessionStartedAt: sessionStartedAt,
                 helmDay: helmDay
             )
         }
@@ -184,6 +217,7 @@ final class WatchSessionCoordinator: NSObject {
             sessionExerciseID: sessionExerciseID,
             setID: setID,
             saveWatchWorkout: saveWatchWorkout,
+            sessionStartedAt: sessionStartedAt,
             helmDay: helmDay
         )
     }
@@ -202,6 +236,7 @@ final class WatchSessionCoordinator: NSObject {
             sessionExerciseID: pending.sessionExerciseID,
             setID: pending.setID,
             saveWatchWorkout: pending.saveWatchWorkout,
+            sessionStartedAt: pending.sessionStartedAt,
             helmDay: pending.helmDay
         )
     }
@@ -215,6 +250,7 @@ final class WatchSessionCoordinator: NSObject {
         sessionExerciseID: String?,
         setID: String?,
         saveWatchWorkout: Bool?,
+        sessionStartedAt: Date?,
         helmDay: HelmDay?
     ) {
         let payload = makePayload(
@@ -228,7 +264,8 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: targetSummary,
             companionSessionExerciseID: sessionExerciseID,
             companionSetID: setID,
-            companionSaveWatchWorkout: active ? nil : (saveWatchWorkout ?? false)
+            companionSaveWatchWorkout: active ? nil : (saveWatchWorkout ?? false),
+            companionSessionStartedAt: sessionStartedAt?.timeIntervalSince1970
         )
         push(payload)
         guard active else { return }
@@ -325,7 +362,7 @@ final class WatchSessionCoordinator: NSObject {
         configuration.activityType = .traditionalStrengthTraining
         configuration.locationType = .indoor
         return await withCheckedContinuation { continuation in
-            HKHealthStore().startWatchApp(with: configuration) { (success: Bool, error: Error?) in
+            HKHealthStore().startWatchApp(with: configuration) { @Sendable (success: Bool, error: Error?) in
                 if let error {
                     continuation.resume(returning: (false, error.localizedDescription))
                 } else if !success {
@@ -377,20 +414,75 @@ final class WatchSessionCoordinator: NSObject {
 
     func requestCompleteSet(sessionExerciseID: String, setID: String, helmDay: HelmDay? = nil) {
         guard role == .watch else { return }
-        guard activationState == .activated else {
-            lastError = "Session not activated"
+        #if os(watchOS)
+        // One unacked event per set; double-tap must not enqueue duplicates.
+        if completeSetOutbox.hasUnacked(setID: setID) {
+            flushCompleteSetOutbox(helmDay: helmDay)
             return
         }
 
-        let payload = makePayload(
-            origin: .watch,
-            messageKind: .completeSet,
-            helmDay: helmDay,
-            companionSessionExerciseID: sessionExerciseID,
-            companionSetID: setID
+        _ = completeSetOutbox.enqueue(
+            sessionExerciseID: sessionExerciseID,
+            setID: setID
         )
-        pushCompleteSet(payload)
+        refreshPendingCompleteSetIDs()
+        flushCompleteSetOutbox(helmDay: helmDay)
+        #endif
     }
+
+    /// Phone confirms Watch outbox event applied (or already complete).
+    func acknowledgeCompleteSet(eventID: String, helmDay: HelmDay? = nil) {
+        guard role == .phone else { return }
+        guard activationState == .activated else { return }
+        guard !eventID.isEmpty else { return }
+
+        let payload = makePayload(
+            origin: .phone,
+            messageKind: .completeSetAck,
+            helmDay: helmDay,
+            eventID: eventID
+        )
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode complete-set ack"
+            return
+        }
+        lastSent = payload
+        lastError = nil
+        deliverGuaranteed(message, via: session)
+    }
+
+    /// Re-delivers unacked Watch complete-set outbox rows.
+    func flushCompleteSetOutbox(helmDay: HelmDay? = nil) {
+        #if os(watchOS)
+        guard role == .watch else { return }
+        guard activationState == .activated else {
+            lastError = "Session not activated; complete-set queued"
+            return
+        }
+
+        for entry in completeSetOutbox.pending {
+            let payload = makePayload(
+                origin: .watch,
+                messageKind: .completeSet,
+                helmDay: helmDay,
+                companionSessionExerciseID: entry.sessionExerciseID,
+                companionSetID: entry.setID,
+                eventID: entry.eventID
+            )
+            pushCompleteSet(payload)
+            completeSetOutbox.markSent(eventID: entry.eventID)
+        }
+        refreshPendingCompleteSetIDs()
+        #endif
+    }
+
+    #if os(watchOS)
+    private func refreshPendingCompleteSetIDs() {
+        pendingCompleteSetIDs = completeSetOutbox.unackedSetIDs()
+    }
+    #endif
 
     private func pushCompleteSet(_ payload: WatchSyncPayload) {
         let session = WCSession.default
@@ -433,15 +525,23 @@ final class WatchSessionCoordinator: NSObject {
 
     /// Best-effort immediate delivery with queued fallback.
     private func deliverGuaranteed(_ message: [String: Any], via session: WCSession) {
-        if session.isReachable {
-            session.sendMessage(message, replyHandler: nil) { [weak self] error in
-                Task { @MainActor in
-                    self?.lastError = error.localizedDescription
-                    _ = session.transferUserInfo(message)
-                }
-            }
-        } else {
+        sendWithQueuedFallback(message, via: session)
+    }
+
+    /// WatchConnectivity calls the error handler on its own queue, so it must not be
+    /// actor-isolated: an inherited @MainActor handler traps in the Swift 6 isolation check.
+    private nonisolated func sendWithQueuedFallback(_ message: [String: Any], via session: WCSession) {
+        guard session.isReachable else {
             _ = session.transferUserInfo(message)
+            return
+        }
+        let box = UncheckedMessageBox(message: message)
+        session.sendMessage(message, replyHandler: nil) { @Sendable [weak self] error in
+            let description = error.localizedDescription
+            _ = WCSession.default.transferUserInfo(box.message)
+            Task { @MainActor in
+                self?.lastError = description
+            }
         }
     }
 
@@ -459,11 +559,37 @@ final class WatchSessionCoordinator: NSObject {
     }
 
     func clearMirroredHeartRate() {
-        if isReceivingMirroredHeartRate {
+        isReceivingMirroredHeartRate = false
+        // Keep chip if phone HKWorkoutSession is still publishing (AirPods / BLE).
+        if isReceivingPhoneHeartRate { return }
+        latestLiveHeartRateBPM = nil
+        lastHeartRateReceivedAt = nil
+    }
+
+    /// Applies live HR from phone `HKWorkoutSession` (AirPods Pro 3 path).
+    func applyPhoneHeartRate(_ bpm: Int) {
+        guard role == .phone else { return }
+        isReceivingPhoneHeartRate = true
+        isPhoneHeartRateSessionActive = true
+        latestLiveHeartRateBPM = bpm
+        lastHeartRateReceivedAt = Date()
+    }
+
+    func clearPhoneHeartRate() {
+        if isReceivingPhoneHeartRate {
             latestLiveHeartRateBPM = nil
             lastHeartRateReceivedAt = nil
         }
-        isReceivingMirroredHeartRate = false
+        isReceivingPhoneHeartRate = false
+        isPhoneHeartRateSessionActive = false
+    }
+
+    func setPhoneHeartRateSessionActive(_ active: Bool) {
+        guard role == .phone else { return }
+        isPhoneHeartRateSessionActive = active
+        if !active {
+            clearPhoneHeartRate()
+        }
     }
 
     func pushLiveHeartRate(_ bpm: Int, helmDay: HelmDay, force: Bool = false) {
@@ -500,16 +626,7 @@ final class WatchSessionCoordinator: NSObject {
         applyDisplayFields(from: payload)
 
         // Live HR: prefer sendMessage when reachable; queue transferUserInfo as backup.
-        if session.isReachable {
-            session.sendMessage(message, replyHandler: nil) { [weak self] error in
-                Task { @MainActor in
-                    self?.lastError = error.localizedDescription
-                    _ = session.transferUserInfo(message)
-                }
-            }
-        } else {
-            _ = session.transferUserInfo(message)
-        }
+        sendWithQueuedFallback(message, via: session)
     }
 
     private func makePayload(
@@ -527,7 +644,9 @@ final class WatchSessionCoordinator: NSObject {
         companionTargetSummary: String? = nil,
         companionSessionExerciseID: String? = nil,
         companionSetID: String? = nil,
+        eventID: String? = nil,
         companionSaveWatchWorkout: Bool? = nil,
+        companionSessionStartedAt: TimeInterval? = nil,
         diagnosticEvent: String? = nil,
         diagnosticDetail: String? = nil
     ) -> WatchSyncPayload {
@@ -550,7 +669,9 @@ final class WatchSessionCoordinator: NSObject {
             companionTargetSummary: companionTargetSummary,
             companionSessionExerciseID: companionSessionExerciseID,
             companionSetID: companionSetID,
+            eventID: eventID,
             companionSaveWatchWorkout: companionSaveWatchWorkout,
+            companionSessionStartedAt: companionSessionStartedAt,
             diagnosticEvent: diagnosticEvent,
             diagnosticDetail: diagnosticDetail
         )
@@ -603,6 +724,18 @@ final class WatchSessionCoordinator: NSObject {
             handleDiagnosticPayload(payload)
             return
         }
+        // completeSetAck must not be dropped: outbox clear depends on every eventID.
+        if payload.messageKind == .completeSetAck {
+            lastReceived = payload
+            lastError = nil
+            #if os(watchOS)
+            if role == .watch, let eventID = payload.eventID, !eventID.isEmpty {
+                completeSetOutbox.markAcked(eventID: eventID)
+                refreshPendingCompleteSetIDs()
+            }
+            #endif
+            return
+        }
 
         let previous = lastAcceptedByOrigin[payload.origin]
         guard WatchSyncOrdering.shouldAccept(
@@ -647,7 +780,7 @@ final class WatchSessionCoordinator: NSObject {
         switch payload.messageKind {
         case .ping:
             roundTripComplete = payload.origin == .watch
-        case .readiness, .workoutCompanion, .restEnded, .diagnostic:
+        case .readiness, .workoutCompanion, .restEnded, .diagnostic, .completeSetAck:
             break
         case .liveHeartRate:
             // HR applied in applyDisplayFields (mirror preferred when fresh).
@@ -673,6 +806,8 @@ final class WatchSessionCoordinator: NSObject {
             break
         case .restEnded:
             playRestEndedHaptic()
+        case .completeSetAck:
+            break
         }
     }
 
@@ -684,13 +819,17 @@ final class WatchSessionCoordinator: NSObject {
             return
         }
         #if os(iOS)
+        var userInfo: [String: Any] = [
+            LiveActivityCompleteSetBridge.sessionExerciseIDKey: exerciseID,
+            LiveActivityCompleteSetBridge.setIDKey: setID
+        ]
+        if let eventID = payload.eventID, !eventID.isEmpty {
+            userInfo[LiveActivityCompleteSetBridge.eventIDKey] = eventID
+        }
         NotificationCenter.default.post(
             name: LiveActivityCompleteSetBridge.notificationName,
             object: nil,
-            userInfo: [
-                LiveActivityCompleteSetBridge.sessionExerciseIDKey: exerciseID,
-                LiveActivityCompleteSetBridge.setIDKey: setID
-            ]
+            userInfo: userInfo
         )
         #endif
     }
@@ -732,18 +871,26 @@ final class WatchSessionCoordinator: NSObject {
             if let save = payload.companionSaveWatchWorkout {
                 companionSaveWatchWorkout = save
             }
+            if let started = payload.companionSessionStartedAt {
+                companionSessionStartedAt = Date(timeIntervalSince1970: started)
+            }
             if workoutCompanionActive == false {
-                latestLiveHeartRateBPM = nil
-                lastHeartRateReceivedAt = nil
                 isReceivingMirroredHeartRate = false
+                if !isReceivingPhoneHeartRate {
+                    latestLiveHeartRateBPM = nil
+                    lastHeartRateReceivedAt = nil
+                }
+                companionSessionStartedAt = nil
             }
             #if os(watchOS)
             if isActive && !wasActive {
                 onWorkoutCompanionBecameActive?()
+                flushCompleteSetOutbox()
             } else if !isActive && wasActive {
                 onWorkoutCompanionDeactivated?(companionSaveWatchWorkout)
             } else if isActive {
                 onWorkoutCompanionPayloadReceived?()
+                flushCompleteSetOutbox()
             }
             #endif
         }

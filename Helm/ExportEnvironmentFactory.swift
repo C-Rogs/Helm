@@ -6,14 +6,17 @@ enum ExportEnvironmentFactory {
         let bundle = Bundle.main
         let appVersion = bundle.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown"
         let buildNumber = bundle.infoDictionary?["CFBundleVersion"] as? String ?? "unknown"
+        let (deviceModel, osVersion) = MainActor.assumeIsolated {
+            (UIDevice.current.model, UIDevice.current.systemVersion)
+        }
 
         return ExportEnvironment(
             appVersion: appVersion,
             buildNumber: buildNumber,
             schemaVersion: schemaVersion,
             exerciseSeedVersion: PersistenceBootstrap.exerciseSeedVersion,
-            deviceModel: UIDevice.current.model,
-            osVersion: UIDevice.current.systemVersion
+            deviceModel: deviceModel,
+            osVersion: osVersion
         )
     }
 }

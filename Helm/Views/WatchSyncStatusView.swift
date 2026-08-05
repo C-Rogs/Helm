@@ -1,46 +1,89 @@
+import DesignSystem
 import SwiftUI
 
 struct WatchSyncStatusView: View {
     private var coordinator: WatchSessionCoordinator { WatchReadinessBootstrap.coordinator }
+    @State private var showsAdvancedDetail = false
 
     var body: some View {
         List {
+            Section {
+                Text(
+                    "Train always starts a phone workout session so HealthKit can pull heart rate from AirPods Pro or another paired sensor when available. If the Helm Watch app is installed, raising your wrist also joins the Watch companion for live HR and set controls. Wrist-down Watch will not run third-party workout code until you raise or open the app."
+                )
+                .helmType(.body, color: HelmColor.fgMuted)
+                .helmListRowChrome()
+            } header: {
+                Text("How heart rate works")
+            }
+
             Section("Session") {
-                LabeledContent("Activation", value: activationLabel)
-                LabeledContent("Paired", value: coordinator.isPaired ? "Yes" : "No")
-                LabeledContent("Watch app installed", value: coordinator.isWatchAppInstalled ? "Yes" : "No")
-                LabeledContent("Reachable", value: coordinator.isReachable ? "Yes" : "No")
-                LabeledContent("Link", value: linkLabel)
+                HelmStatusRow(label: "Activation", value: activationLabel)
+                    .helmListRowChrome()
+                HelmStatusRow(label: "Paired", value: coordinator.isPaired ? "Yes" : "No")
+                    .helmListRowChrome()
+                HelmStatusRow(label: "Watch app installed", value: coordinator.isWatchAppInstalled ? "Yes" : "No")
+                    .helmListRowChrome()
+                HelmStatusRow(label: "Reachable", value: coordinator.isReachable ? "Yes" : "No")
+                    .helmListRowChrome()
+                HelmStatusRow(
+                    label: "Link",
+                    value: linkLabel,
+                    valueColor: coordinator.isCompanionLive ? HelmColor.ready : HelmColor.fgMuted
+                )
+                .helmListRowChrome()
             }
 
             Section("Companion") {
-                LabeledContent("Active", value: coordinator.workoutCompanionActive ? "Yes" : "No")
+                HelmStatusRow(label: "Active", value: coordinator.workoutCompanionActive ? "Yes" : "No")
+                    .helmListRowChrome()
                 if let bpm = coordinator.latestLiveHeartRateBPM {
-                    LabeledContent("Live HR", value: "\(bpm)")
+                    HelmStatusRow(label: "Live HR", value: "\(bpm)")
+                        .helmListRowChrome()
                 }
                 if let name = coordinator.companionExerciseName {
-                    LabeledContent("Exercise", value: name)
+                    HelmStatusRow(label: "Exercise", value: name)
+                        .helmListRowChrome()
                 }
             }
 
-            Section("Round-trip") {
-                LabeledContent("Status", value: coordinator.roundTripComplete ? "Complete" : "Pending")
-                if let sent = coordinator.lastSent {
-                    LabeledContent("Last sent", value: "#\(sent.sequence) (\(sent.helmDay))")
-                }
-                if let received = coordinator.lastReceived {
-                    LabeledContent("Last received", value: "#\(received.sequence) from \(received.origin.rawValue)")
-                }
-                if let launchError = coordinator.lastLaunchError {
-                    Text("Launch: \(launchError)")
-                        .foregroundStyle(.red)
-                }
-                if let error = coordinator.lastError {
-                    Text(error)
-                        .foregroundStyle(.red)
+            Section {
+                Toggle("Show advanced detail", isOn: $showsAdvancedDetail)
+                    .helmListRowChrome()
+            }
+
+            if showsAdvancedDetail {
+                Section("Round-trip") {
+                    HelmStatusRow(
+                        label: "Status",
+                        value: coordinator.roundTripComplete ? "Complete" : "Pending"
+                    )
+                    .helmListRowChrome()
+                    if let sent = coordinator.lastSent {
+                        HelmStatusRow(label: "Last sent", value: "#\(sent.sequence) (\(sent.helmDay))")
+                            .helmListRowChrome()
+                    }
+                    if let received = coordinator.lastReceived {
+                        HelmStatusRow(
+                            label: "Last received",
+                            value: "#\(received.sequence) from \(received.origin.rawValue)"
+                        )
+                        .helmListRowChrome()
+                    }
+                    if let launchError = coordinator.lastLaunchError {
+                        Label("Launch: \(launchError)", systemImage: "exclamationmark.triangle.fill")
+                            .helmType(.body, color: HelmColor.depleted)
+                            .helmListRowChrome()
+                    }
+                    if let error = coordinator.lastError {
+                        Label(error, systemImage: "exclamationmark.triangle.fill")
+                            .helmType(.body, color: HelmColor.depleted)
+                            .helmListRowChrome()
+                    }
                 }
             }
         }
+        .helmSettingsListChrome()
         .navigationTitle("Watch Sync")
         .onAppear {
             coordinator.refreshPairingFlags()
@@ -72,4 +115,5 @@ struct WatchSyncStatusView: View {
     NavigationStack {
         WatchSyncStatusView()
     }
+    .helmTheme()
 }

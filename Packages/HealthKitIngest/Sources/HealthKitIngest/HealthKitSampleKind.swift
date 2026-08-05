@@ -99,6 +99,7 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
     public static var shareTypes: Set<HKSampleType> {
         [
             HKWorkoutType.workoutType(),
+            HKQuantityType(.heartRate),
             HKQuantityType(.dietaryEnergyConsumed),
             HKQuantityType(.dietaryProtein),
             HKQuantityType(.dietaryCarbohydrates),

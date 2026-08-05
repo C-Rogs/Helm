@@ -1,6 +1,7 @@
 public enum APIKeyKind: String, Sendable, CaseIterable {
     case gemini
     case openRouter
+    case spotifyClientID
 
     public var secretsFileName: String {
         switch self {
@@ -8,6 +9,8 @@ public enum APIKeyKind: String, Sendable, CaseIterable {
             "gemini.key"
         case .openRouter:
             "openrouter.key"
+        case .spotifyClientID:
+            "spotify-client-id.key"
         }
     }
 }

@@ -62,40 +62,60 @@ struct MediaPlayerNowPlayingReader: NowPlayingReading {
 final class WorkoutMusicCaptureService {
     private let reader: any NowPlayingReading
     private let persistence: PersistenceStore
+    private let spotify: SpotifyAppRemoteService
     private var lastTitleArtistKey: String?
     private var pollTask: Task<Void, Never>?
-    private let pollIntervalSeconds: UInt64 = 15
+    private var nowPlayingObserver: NSObjectProtocol?
+    private var activeSessionID: String?
+    /// Poll often enough to catch short sessions and track changes.
+    private let pollIntervalSeconds: UInt64 = 5
 
     init(
         persistence: PersistenceStore,
-        reader: any NowPlayingReading = MediaPlayerNowPlayingReader()
+        reader: any NowPlayingReading = MediaPlayerNowPlayingReader(),
+        spotify: SpotifyAppRemoteService = .shared
     ) {
         self.persistence = persistence
         self.reader = reader
+        self.spotify = spotify
+        self.spotify.configure()
+    }
+
+    var prefersSpotifyCapture: Bool {
+        spotify.isAuthorized
     }
 
     func sampleIfChanged(sessionID: String, now: Date = Date()) {
+        guard !spotify.isConnected else { return }
         guard let snapshot = reader.currentSnapshot() else { return }
-        let key = "\(snapshot.title ?? "")|\(snapshot.artist ?? "")"
-        guard key != lastTitleArtistKey else { return }
-        lastTitleArtistKey = key
-
-        let sample = WorkoutMusicSample(
-            sessionID: sessionID,
-            sampledAt: now,
-            title: snapshot.title,
-            artist: snapshot.artist,
-            album: snapshot.album,
-            genre: snapshot.genre,
-            bpm: snapshot.bpm,
-            playbackRate: snapshot.playbackRate,
-            source: "nowPlaying"
-        )
-        try? persistence.workoutMusicSamples.insert(sample)
+        insertSample(sessionID: sessionID, snapshot: snapshot, source: "nowPlaying", now: now)
     }
 
     func startPolling(sessionID: String) {
         stopPolling()
+        activeSessionID = sessionID
+        lastTitleArtistKey = nil
+
+        if spotify.isAuthorized {
+            spotify.connectForWorkout { [weak self] snapshot in
+                guard let self, self.activeSessionID == sessionID else { return }
+                self.insertSample(sessionID: sessionID, snapshot: snapshot, source: "spotify")
+            }
+            return
+        }
+
+        MPMusicPlayerController.systemMusicPlayer.beginGeneratingPlaybackNotifications()
+        nowPlayingObserver = NotificationCenter.default.addObserver(
+            forName: .MPMusicPlayerControllerNowPlayingItemDidChange,
+            object: MPMusicPlayerController.systemMusicPlayer,
+            queue: .main
+        ) { [weak self] _ in
+            guard let self else { return }
+            Task { @MainActor in
+                self.sampleIfChanged(sessionID: sessionID)
+            }
+        }
+
         pollTask = Task { [weak self] in
             guard let self else { return }
             while !Task.isCancelled {
@@ -109,10 +129,41 @@ final class WorkoutMusicCaptureService {
     func stopPolling() {
         pollTask?.cancel()
         pollTask = nil
+        if let nowPlayingObserver {
+            NotificationCenter.default.removeObserver(nowPlayingObserver)
+            self.nowPlayingObserver = nil
+        }
+        MPMusicPlayerController.systemMusicPlayer.endGeneratingPlaybackNotifications()
     }
 
     func reset() {
         stopPolling()
+        spotify.disconnectWorkoutSession()
+        activeSessionID = nil
         lastTitleArtistKey = nil
+    }
+
+    private func insertSample(
+        sessionID: String,
+        snapshot: NowPlayingSnapshot,
+        source: String,
+        now: Date = Date()
+    ) {
+        let key = "\(snapshot.title ?? "")|\(snapshot.artist ?? "")"
+        guard key != lastTitleArtistKey else { return }
+        lastTitleArtistKey = key
+
+        let sample = WorkoutMusicSample(
+            sessionID: sessionID,
+            sampledAt: now,
+            title: snapshot.title,
+            artist: snapshot.artist,
+            album: snapshot.album,
+            genre: snapshot.genre,
+            bpm: snapshot.bpm,
+            playbackRate: snapshot.playbackRate,
+            source: source
+        )
+        try? persistence.workoutMusicSamples.insert(sample)
     }
 }

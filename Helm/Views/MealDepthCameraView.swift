@@ -1,4 +1,4 @@
-import AVFoundation
+@preconcurrency import AVFoundation
 import Core
 import SwiftUI
 import UIKit
@@ -112,17 +112,13 @@ final class MealDepthCameraViewController: UIViewController {
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
         guard !session.isRunning else { return }
-        DispatchQueue.global(qos: .userInitiated).async { [session] in
-            session.startRunning()
-        }
+        session.startRunning()
     }
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
         guard session.isRunning else { return }
-        DispatchQueue.global(qos: .userInitiated).async { [session] in
-            session.stopRunning()
-        }
+        session.stopRunning()
     }
 
     private func configureSession() {

@@ -6,8 +6,26 @@ public enum TrainPreferencePersistence {
     public static let restTimerSoundEnabledKey = "helm.train.restTimerSoundEnabled"
     public static let restTimerSoundIDKey = "helm.train.restTimerSoundID"
     public static let restTimerVolumeKey = "helm.train.restTimerVolume"
-    public static let pawelModeEnabledKey = "helm.train.pawelModeEnabled"
+    /// Legacy string kept so existing installs retain the enablement toggle.
+    public static let manualRestTimerEnabledKey = "helm.train.pawelModeEnabled"
+    public static let manualRestTimerDurationSecondsKey = "helm.train.manualRestTimerDurationSeconds"
     public static let focusModeEnabledKey = "helm.ui.focusModeEnabled"
+
+    /// Duration policy for the manual rest timer (5s steps, 15s-10m).
+    public enum ManualRestTimerDuration {
+        public static let minSeconds = 15
+        public static let maxSeconds = 600
+        public static let stepSeconds = 5
+        public static let defaultSeconds = 90
+        public static let presets = [60, 90, 120, 180]
+
+        public static func snapped(_ raw: Int) -> Int {
+            let clamped = min(max(raw, minSeconds), maxSeconds)
+            let offset = clamped - minSeconds
+            let steps = Int((Double(offset) / Double(stepSeconds)).rounded())
+            return min(max(minSeconds + steps * stepSeconds, minSeconds), maxSeconds)
+        }
+    }
 
     public static func loadBool(
         key: String,
@@ -48,6 +66,21 @@ public enum TrainPreferencePersistence {
     }
 
     public static func saveDouble(_ value: Double, key: String, defaults: UserDefaults) {
+        defaults.set(value, forKey: key)
+    }
+
+    public static func loadInt(
+        key: String,
+        defaults: UserDefaults,
+        defaultValue: Int
+    ) -> Int {
+        if defaults.object(forKey: key) == nil {
+            return defaultValue
+        }
+        return defaults.integer(forKey: key)
+    }
+
+    public static func saveInt(_ value: Int, key: String, defaults: UserDefaults) {
         defaults.set(value, forKey: key)
     }
 }

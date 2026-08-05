@@ -34,6 +34,7 @@ struct PhaseGoalSettingsView: View {
         }
         .navigationTitle("Training Plan")
         .helmScreenBackground()
+        .scrollContentBackground(.hidden)
         .task { await load() }
         .onAppear {
             registerActions?(PhaseGoalSettingsActions(
@@ -153,9 +154,8 @@ struct PhaseGoalSettingsView: View {
         if pendingReactiveDeload {
             Section("Recovery") {
                 Text("Helm detected sustained low readiness. Confirm to start a reactive deload week at about half of peak volume with MEV floors held.")
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.fgSecondary)
-                Button("Start reactive deload week") {
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                Button("Start reactive deload week", role: .destructive) {
                     Task { await confirmReactiveDeload() }
                 }
                 Button("Not now", role: .cancel) {
@@ -163,8 +163,7 @@ struct PhaseGoalSettingsView: View {
                 }
                 if let reactiveDeloadMessage {
                     Text(reactiveDeloadMessage)
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.fgMuted)
+                        .helmType(.body, color: HelmColor.fgMuted)
                 }
             }
         }
@@ -223,11 +222,9 @@ struct PhaseGoalSettingsView: View {
 
     @ViewBuilder
     private var saveButton: some View {
-        Button(isSaving ? "Saving…" : saveButtonTitle) {
-            Task { await save() }
+        HelmAsyncActionButton(saveButtonTitle, successTitle: "Saved") {
+            await save()
         }
-        .buttonStyle(.borderless)
-        .disabled(isSaving)
     }
 
     private var phaseBinding: Binding<TrainingPhase> {
@@ -299,7 +296,7 @@ struct PhaseGoalSettingsView: View {
     }
 
     @MainActor
-    private func save() async {
+    private func save() async -> Bool {
         isSaving = true
         defer { isSaving = false }
         syncWeeklyRate()
@@ -308,13 +305,16 @@ struct PhaseGoalSettingsView: View {
         do {
             try await prescriptionService.saveTrainingPlan(settings)
             loadedSettings = settings
+            CloudBackupCoordinator.shared.schedulePush()
             HapticEngine.shared.play(.phaseChange)
             saveMessage = "Saved. Today's prescription was re-planned."
             PlanBootstrap.refreshPrescription()
             NutritionBootstrap.refreshNutrition()
             onSaved?()
+            return true
         } catch {
             saveMessage = error.localizedDescription
+            return false
         }
     }
 

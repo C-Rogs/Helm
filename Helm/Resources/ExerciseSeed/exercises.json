@@ -1,5 +1,5 @@
 {
-  "seedVersion": 4,
+  "seedVersion": 5,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -349,11 +349,11 @@
     {
       "id": "seed-ez-bar-curl",
       "canonicalName": "ez bar biceps curl",
-      "displayName": "Heavy EZ Bar Biceps Curl",
+      "displayName": "EZ Bar Biceps Curl",
       "aliases": [
-        "Heavy EZ Bar Biceps Curl",
         "EZ Bar Biceps Curl",
-        "EZ Bar Curl"
+        "EZ Bar Curl",
+        "Heavy EZ Bar Biceps Curl"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",

@@ -522,16 +522,12 @@ struct InSessionCoachServiceTests {
             || proposal.previewBanner?.toLabel.lowercased().contains("hammer") == true)
     }
 
-    @Test("disabled load safety allows large coach-suggested increase")
-    func disabledLoadSafetyAllowsLargeIncrease() async throws {
+    @Test("large coach-suggested load increase applies")
+    func largeLoadIncreaseApplies() async throws {
         let store = try PersistenceStore.inMemory()
         try seedExercises(in: store)
         let snapshot = try await startBenchSession(in: store)
         let service = InSessionCoachService(persistence: store)
-
-        let previous = CoachLoadSafetyPreferences.enforceCoachLoadCaps
-        CoachLoadSafetyPreferences.enforceCoachLoadCaps = false
-        defer { CoachLoadSafetyPreferences.enforceCoachLoadCaps = previous }
 
         let payload = SessionAdjustmentPayload(
             schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
@@ -554,38 +550,31 @@ struct InSessionCoachServiceTests {
         #expect(applied.banner.toLabel == "100 kg")
     }
 
-    @Test("coach-suggested large load increase is rejected when safety on")
-    func coachSuggestedLargeLoadRejected() async throws {
+    @Test("set adds past the engine cap apply")
+    func setAddPastEngineCapApplies() async throws {
         let store = try PersistenceStore.inMemory()
         try seedExercises(in: store)
         let snapshot = try await startBenchSession(in: store)
         let service = InSessionCoachService(persistence: store)
 
-        let previous = CoachLoadSafetyPreferences.enforceCoachLoadCaps
-        CoachLoadSafetyPreferences.enforceCoachLoadCaps = true
-        defer { CoachLoadSafetyPreferences.enforceCoachLoadCaps = previous }
-
         let payload = SessionAdjustmentPayload(
             schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
-            reply: "Jumping bench to 100 kg.",
+            reply: "Adding five sets on bench.",
             operations: [
                 SessionAdjustmentOperation(
-                    kind: .adjustLoad,
+                    kind: .adjustSets,
                     exerciseID: benchPressID,
-                    targetMassKg: 100
+                    setDelta: 5
                 )
             ]
         )
 
-        do {
-            _ = try service.applyAdjustment(
-                payload: payload,
-                snapshot: snapshot,
-                excludedExerciseIDs: []
-            )
-            Issue.record("Expected coach-suggested large load to be rejected")
-        } catch InSessionCoachError.adjustmentRejected(.loadOutOfBounds) {
-            #expect(true)
-        }
+        let applied = try service.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: []
+        )
+
+        #expect(applied.banner.toLabel == "+5 sets")
     }
 }

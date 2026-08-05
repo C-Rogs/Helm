@@ -101,6 +101,21 @@ struct PhotoMealConfirmSheet: View {
                         }
                         .buttonStyle(.helmSecondary)
                         .disabled(controller.isBusy)
+
+                        HelmActionButton(
+                            "Add meal",
+                            phase: controller.isBusy ? .loading : .idle,
+                            successTitle: "Added"
+                        ) {
+                            Task {
+                                await controller.confirm(
+                                    estimate: currentEstimate,
+                                    name: description,
+                                    bucket: bucket
+                                )
+                            }
+                        }
+                        .disabled(!isValid || controller.isBusy)
                     }
                     .padding(HelmSpacing.md)
                 }
@@ -113,22 +128,7 @@ struct PhotoMealConfirmSheet: View {
                     Button("Cancel") {
                         controller.cancel()
                     }
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if controller.isBusy {
-                        ProgressView()
-                    } else {
-                        Button("Add") {
-                            Task {
-                                await controller.confirm(
-                                    estimate: currentEstimate,
-                                    name: description,
-                                    bucket: bucket
-                                )
-                            }
-                        }
-                        .disabled(!isValid)
-                    }
+                    .disabled(controller.isBusy)
                 }
             }
         }

@@ -8,9 +8,6 @@ public enum CoachUserFacingError: Sendable {
         if let provider = error as? CoachProviderError {
             return message(for: provider)
         }
-        if let degraded = error as? CoachDegradedState {
-            return degraded.userMessage
-        }
         let localized = (error as? LocalizedError)?.errorDescription
         if let localized, !localized.isEmpty {
             return localized

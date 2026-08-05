@@ -40,7 +40,7 @@ public enum HelmIconContext: Sendable {
     case inline
     case action
 
-    var pointSize: CGFloat {
+    public var pointSize: CGFloat {
         switch self {
         case .tab: 22
         case .section: 20
@@ -49,7 +49,7 @@ public enum HelmIconContext: Sendable {
         }
     }
 
-    var weight: Font.Weight {
+    public var weight: Font.Weight {
         switch self {
         case .tab: .medium
         case .section: .regular
@@ -76,6 +76,7 @@ public struct HelmIconView: View {
 }
 
 public extension Label where Title == Text, Icon == HelmIconView {
+    @MainActor
     init(_ title: String, helmIcon: HelmIcon, context: HelmIconContext = .inline) {
         self.init {
             Text(title)

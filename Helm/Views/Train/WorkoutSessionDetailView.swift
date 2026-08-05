@@ -1,5 +1,6 @@
 import Core
 import DesignSystem
+import HealthKitIngest
 import Persistence
 import SwiftUI
 import UIKit
@@ -8,19 +9,23 @@ struct WorkoutSessionDetailView: View {
     let sessionID: String
     @Bindable var history: WorkoutHistoryController
     var matchedCardNamespace: Namespace.ID? = nil
+    var isDeleted: Bool = false
 
     @State private var draft: WorkoutSessionDraft?
     @State private var savedSnapshot: WorkoutSessionDraft?
+    @State private var finishSummary: WorkoutFinishSummary?
     @State private var isEditing = false
     @State private var templateName = ""
     @State private var isShowingSaveTemplate = false
     @State private var isShowingDeleteConfirm = false
+    @State private var isShowingRestoreConfirm = false
     @State private var isShowingDiscardConfirm = false
     @State private var didCopyExport = false
     @Environment(\.dismiss) private var dismiss
 
     private var summary: WorkoutSessionSummary? {
         history.sessions.first(where: { $0.id == sessionID })
+            ?? history.activePreviewSessions.first(where: { $0.id == sessionID })
     }
 
     private var hasUnsavedChanges: Bool {
@@ -32,8 +37,7 @@ struct WorkoutSessionDetailView: View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 if let draft {
-                    sessionSummaryCard(for: draft)
-                        .modifier(MatchedCardModifier(sessionID: sessionID, namespace: matchedCardNamespace))
+                    leadingSummaryBlock(for: draft)
 
                     ForEach(draft.exercises) { exercise in
                         exerciseSection(for: exercise)
@@ -57,7 +61,7 @@ struct WorkoutSessionDetailView: View {
                 }
             }
             .helmScreenPadding()
-            .padding(.bottom, HelmLayout.trainScrollBottomInset)
+            .padding(.bottom, HelmLayout.trainScrollBottomInset + HelmSpacing.xl)
         }
         .helmScreenBackground()
         .navigationTitle(draft?.title ?? "Workout")
@@ -72,7 +76,7 @@ struct WorkoutSessionDetailView: View {
             }
 
             ToolbarItem(placement: .topBarTrailing) {
-                if draft != nil {
+                if draft != nil, !isDeleted {
                     if isEditing {
                         Button("Save") {
                             saveChanges()
@@ -93,7 +97,7 @@ struct WorkoutSessionDetailView: View {
             }
         }
         .task {
-            loadSession()
+            await loadSession()
         }
         .alert("Template name", isPresented: $isShowingSaveTemplate) {
             TextField("Push Day", text: $templateName)
@@ -115,14 +119,28 @@ struct WorkoutSessionDetailView: View {
             isPresented: $isShowingDeleteConfirm,
             titleVisibility: .visible
         ) {
-            Button("Delete workout", role: .destructive) {
+            Button("Move to Bin", role: .destructive) {
                 if history.deleteSession(id: sessionID) {
                     dismiss()
                 }
             }
             Button("Cancel", role: .cancel) {}
         } message: {
-            Text("Removes it from history. This cannot be undone.")
+            Text("Removes it from history. Restore anytime from Bin.")
+        }
+        .confirmationDialog(
+            "Restore this workout?",
+            isPresented: $isShowingRestoreConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Restore workout") {
+                if history.restoreSession(id: sessionID) {
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Puts it back in your workout history.")
         }
         .confirmationDialog(
             "Discard changes?",
@@ -140,15 +158,21 @@ struct WorkoutSessionDetailView: View {
 
     private var overflowMenu: some View {
         Menu {
-            Button("Export") {
-                exportWorkout()
-            }
-            Button("Save as template") {
-                templateName = draft?.title ?? ""
-                isShowingSaveTemplate = true
-            }
-            Button("Delete workout", role: .destructive) {
-                isShowingDeleteConfirm = true
+            if isDeleted {
+                Button("Restore workout") {
+                    isShowingRestoreConfirm = true
+                }
+            } else {
+                Button("Export") {
+                    exportWorkout()
+                }
+                Button("Save as template") {
+                    templateName = draft?.title ?? ""
+                    isShowingSaveTemplate = true
+                }
+                Button("Move to Bin", role: .destructive) {
+                    isShowingDeleteConfirm = true
+                }
             }
         } label: {
             Image(systemName: "ellipsis.circle")
@@ -173,10 +197,46 @@ struct WorkoutSessionDetailView: View {
         }
     }
 
-    private func loadSession() {
+    @ViewBuilder
+    private func leadingSummaryBlock(for draft: WorkoutSessionDraft) -> some View {
+        if let finishSummary {
+            // No matchedGeometryEffect on the tall summary: source row frame would
+            // squeeze it and let the timeline chart paint outside its bounds.
+            WorkoutFinishSummaryView(
+                summary: finishSummary,
+                muscleLabel: TrendsChartSupport.muscleLabel,
+                // Nav bar already carries the workout title; avoid repeating it here.
+                eyebrow: "SESSION SUMMARY",
+                title: WorkoutHistoryFormatting.contextualDateTimeLabel(draft.startedAt),
+                playsCompletionHaptic: false,
+                horizontalPadding: 0,
+                animatesEntrance: false
+            )
+        } else {
+            // Compact card stays the matched-geometry destination until the full
+            // finish summary is ready (avoids ghosting + chart height jump).
+            sessionSummaryCard(for: draft)
+                .modifier(MatchedCardModifier(sessionID: sessionID, namespace: matchedCardNamespace))
+        }
+    }
+
+    private func loadSession() async {
+        // Sync draft first so the push transition has a matched destination card.
         let loaded = history.fetchSession(id: sessionID)
         draft = loaded
         savedSnapshot = loaded
+        finishSummary = nil
+        guard let loaded else { return }
+        // Wait for timeline-backed summary before swapping off the card.
+        finishSummary = await history.finishSummary(for: loaded)
+    }
+
+    private func rebuildFinishSummary(from session: WorkoutSessionDraft?) async {
+        guard let session else {
+            finishSummary = nil
+            return
+        }
+        finishSummary = await history.finishSummary(for: session)
     }
 
     private func beginEditing() {
@@ -202,6 +262,9 @@ struct WorkoutSessionDetailView: View {
         if history.saveSession(draft) {
             savedSnapshot = draft
             isEditing = false
+            Task {
+                await rebuildFinishSummary(from: draft)
+            }
         }
     }
 

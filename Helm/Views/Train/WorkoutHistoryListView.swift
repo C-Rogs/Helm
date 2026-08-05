@@ -1,5 +1,6 @@
 import Core
 import DesignSystem
+import Persistence
 import SwiftUI
 
 private enum WorkoutHistoryPresentation {
@@ -14,15 +15,15 @@ struct WorkoutHistoryRecentSection: View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             sectionHeader
 
-            if history.loadState == .loadingInitial, history.sessions.isEmpty {
+            if history.loadState == .loadingInitial, history.activePreviewSessions.isEmpty {
                 HelmLoadingState(rowCount: 2)
-            } else if let errorMessage = history.errorMessage, history.sessions.isEmpty {
+            } else if let errorMessage = history.errorMessage, history.activePreviewSessions.isEmpty {
                 HelmErrorState(
                     title: "History unavailable",
                     message: errorMessage,
                     onRetry: { history.refresh() }
                 )
-            } else if history.sessions.isEmpty {
+            } else if history.activePreviewSessions.isEmpty {
                 Text("Finish a session to see it here.")
                     .helmType(.body, color: HelmColor.fgSecondary)
             } else {
@@ -35,27 +36,50 @@ struct WorkoutHistoryRecentSection: View {
 
     private var sectionHeader: some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.sm) {
-            Text("Recent workouts")
-                .helmType(.label)
+            HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
+                Text("Recent workouts")
+                    .helmType(.label)
+
+                if history.activeCount > 0 {
+                    Text("\(history.activeCount)")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                        .monospacedDigit()
+                        .accessibilityLabel("\(history.activeCount) workouts")
+                }
+            }
 
             Spacer(minLength: HelmSpacing.sm)
 
-            if !history.sessions.isEmpty {
+            if history.activeCount > 0 || history.deletedCount > 0 {
                 NavigationLink {
                     WorkoutHistoryScreen(history: history)
                 } label: {
-                    Text("View all")
+                    Text(viewAllLabel)
                         .helmType(.monoTag, color: HelmColor.accent)
                         .frame(minHeight: 44, alignment: .trailing)
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel("View all workout history")
+                .accessibilityLabel(viewAllAccessibilityLabel)
             }
         }
     }
 
+    private var viewAllLabel: String {
+        if history.deletedCount > 0 {
+            return "View all · \(history.deletedCount) bin"
+        }
+        return "View all"
+    }
+
+    private var viewAllAccessibilityLabel: String {
+        if history.deletedCount > 0 {
+            return "View all workout history, \(history.deletedCount) in bin"
+        }
+        return "View all workout history"
+    }
+
     private var recentSessions: [WorkoutSessionSummary] {
-        Array(history.sessions.prefix(WorkoutHistoryPresentation.recentPreviewLimit))
+        Array(history.activePreviewSessions.prefix(WorkoutHistoryPresentation.recentPreviewLimit))
     }
 
     @ViewBuilder
@@ -79,14 +103,21 @@ struct WorkoutHistoryScreen: View {
     @Bindable var history: WorkoutHistoryController
     @Namespace private var cardNamespace
     @State private var pendingDeleteSessionID: String?
+    @State private var pendingRestoreSessionID: String?
 
     private var monthSections: [WorkoutHistoryMonthSection] {
         WorkoutHistoryFormatting.groupByMonth(history.sessions)
     }
 
+    private var isBin: Bool {
+        history.listScope == .deleted
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                scopePicker
+
                 if history.loadState == .loadingInitial, history.sessions.isEmpty {
                     HelmLoadingState(rowCount: 4)
                 } else if let errorMessage = history.errorMessage, history.sessions.isEmpty {
@@ -96,11 +127,7 @@ struct WorkoutHistoryScreen: View {
                         onRetry: { history.refresh() }
                     )
                 } else if history.sessions.isEmpty {
-                    HelmEmptyState(
-                        title: "No workouts yet",
-                        message: "Finish a session to see it here.",
-                        icon: .train
-                    )
+                    emptyState
                 } else {
                     ForEach(monthSections) { section in
                         monthSection(section)
@@ -131,7 +158,7 @@ struct WorkoutHistoryScreen: View {
             ),
             titleVisibility: .visible
         ) {
-            Button("Delete workout", role: .destructive) {
+            Button("Move to Bin", role: .destructive) {
                 if let id = pendingDeleteSessionID {
                     history.deleteSession(id: id)
                 }
@@ -141,7 +168,62 @@ struct WorkoutHistoryScreen: View {
                 pendingDeleteSessionID = nil
             }
         } message: {
-            Text("Removes it from history. This cannot be undone.")
+            Text("Removes it from history. Restore anytime from Bin.")
+        }
+        .confirmationDialog(
+            "Restore this workout?",
+            isPresented: Binding(
+                get: { pendingRestoreSessionID != nil },
+                set: { if !$0 { pendingRestoreSessionID = nil } }
+            ),
+            titleVisibility: .visible
+        ) {
+            Button("Restore workout") {
+                if let id = pendingRestoreSessionID {
+                    history.restoreSession(id: id)
+                }
+                pendingRestoreSessionID = nil
+            }
+            Button("Cancel", role: .cancel) {
+                pendingRestoreSessionID = nil
+            }
+        } message: {
+            Text("Puts it back in your workout history.")
+        }
+    }
+
+    private var scopePicker: some View {
+        Picker("History scope", selection: scopeBinding) {
+            Text("Active · \(history.activeCount)")
+                .tag(WorkoutSessionHistoryScope.active)
+            Text("Bin · \(history.deletedCount)")
+                .tag(WorkoutSessionHistoryScope.deleted)
+        }
+        .pickerStyle(.segmented)
+        .accessibilityLabel("Workout history scope")
+    }
+
+    private var scopeBinding: Binding<WorkoutSessionHistoryScope> {
+        Binding(
+            get: { history.listScope },
+            set: { history.setListScope($0) }
+        )
+    }
+
+    @ViewBuilder
+    private var emptyState: some View {
+        if isBin {
+            HelmEmptyState(
+                title: "Bin empty",
+                message: "Deleted workouts show up here so you can restore them.",
+                icon: .trash
+            )
+        } else {
+            HelmEmptyState(
+                title: "No workouts yet",
+                message: "Finish a session to see it here.",
+                icon: .train
+            )
         }
     }
 
@@ -157,7 +239,8 @@ struct WorkoutHistoryScreen: View {
                     WorkoutSessionDetailView(
                         sessionID: session.id,
                         history: history,
-                        matchedCardNamespace: cardNamespace
+                        matchedCardNamespace: cardNamespace,
+                        isDeleted: isBin
                     )
                 } label: {
                     WorkoutHistoryRow(summary: session)
@@ -165,8 +248,14 @@ struct WorkoutHistoryScreen: View {
                 }
                 .buttonStyle(.helmPressableCard)
                 .contextMenu {
-                    Button("Delete workout", role: .destructive) {
-                        pendingDeleteSessionID = session.id
+                    if isBin {
+                        Button("Restore workout") {
+                            pendingRestoreSessionID = session.id
+                        }
+                    } else {
+                        Button("Move to Bin", role: .destructive) {
+                            pendingDeleteSessionID = session.id
+                        }
                     }
                 }
                 .helmStaggeredAppear(index: index)

@@ -3,43 +3,26 @@ import Foundation
 import Testing
 @testable import PlanKit
 
-@Suite("Prescription load bounds")
+@Suite("Prescription planning bounds")
 struct PrescriptionBoundsTests {
-    @Test("coach-suggested increase respects max delta")
-    func coachIncreaseCap() {
-        #expect(PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: 88, intent: .coachSuggested))
-        #expect(!PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: 88.1, intent: .coachSuggested))
+    @Test("set clamp keeps engine allocations within the per-exercise cap")
+    func setClamp() {
+        #expect(PrescriptionBounds.clampSets(0) == PrescriptionBounds.minSetsPerExercise)
+        #expect(PrescriptionBounds.clampSets(3) == 3)
+        #expect(PrescriptionBounds.clampSets(9) == PrescriptionBounds.maxSetsPerExercise)
     }
 
-    @Test("user-directed increase is uncapped above")
-    func userIncreaseUncapped() {
-        #expect(PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: 100, intent: .userDirected))
+    @Test("RPE clamp holds the loggable scale")
+    func rpeClamp() {
+        #expect(PrescriptionBounds.clampRPE(2) == PrescriptionBounds.minRPE)
+        #expect(PrescriptionBounds.clampRPE(8) == 8)
+        #expect(PrescriptionBounds.clampRPE(12) == PrescriptionBounds.maxRPE)
+        #expect(PrescriptionBounds.clampRPE(9, cap: 7) == 7)
     }
 
-    @Test("decreases only floor at zero")
-    func decreaseFloor() {
-        #expect(PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: 20, intent: .coachSuggested))
-        #expect(!PrescriptionBounds.isLoadWithinBounds(currentKg: 80, proposedKg: -1, intent: .userDirected))
+    @Test("load floors at zero")
+    func loadFloor() {
         #expect(PrescriptionBounds.clampedLoadKg(-5) == 0)
-    }
-
-    @Test("disabled load safety allows large coach-suggested increases")
-    func disabledLoadSafety() {
-        #expect(
-            PrescriptionBounds.isLoadWithinBounds(
-                currentKg: 80,
-                proposedKg: 100,
-                intent: .coachSuggested,
-                enforceCoachLoadCaps: false
-            )
-        )
-        #expect(
-            !PrescriptionBounds.isLoadWithinBounds(
-                currentKg: 80,
-                proposedKg: 100,
-                intent: .coachSuggested,
-                enforceCoachLoadCaps: true
-            )
-        )
+        #expect(PrescriptionBounds.clampedLoadKg(42.5) == 42.5)
     }
 }

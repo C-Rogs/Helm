@@ -69,7 +69,9 @@ public struct WorkoutTRIMPIngester: Sendable {
         let unit = HKUnit.count().unitDivided(by: .minute())
         return samples.compactMap { sample -> Double? in
             guard let quantitySample = sample as? HKQuantitySample else { return nil }
-            return quantitySample.quantity.doubleValue(for: unit)
+            let bpm = quantitySample.quantity.doubleValue(for: unit)
+            guard bpm > 0 else { return nil }
+            return bpm
         }
     }
 }

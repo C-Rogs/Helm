@@ -80,7 +80,7 @@ struct WorkoutSessionHistoryTests {
         #expect(refetched.exercises[0].sets[0].mass?.kilograms == 105)
     }
 
-    @Test("soft-deletes completed sessions from history")
+    @Test("soft-deletes completed sessions into bin and restores them")
     func softDeleteCompletedSession() throws {
         let store = try PersistenceStore.inMemory()
         try store.exercises.upsert(
@@ -120,7 +120,17 @@ struct WorkoutSessionHistoryTests {
         try store.workoutSessions.delete(id: session.id)
 
         #expect(try store.workoutSessions.listSummaries(limit: 10).isEmpty)
-        #expect(try store.workoutSessions.fetch(id: session.id) == nil)
+        #expect(try store.workoutSessions.listSummaries(limit: 10, scope: .deleted).count == 1)
+        #expect(try store.workoutSessions.countSummaries(scope: .active) == 0)
+        #expect(try store.workoutSessions.countSummaries(scope: .deleted) == 1)
+        #expect(try store.workoutSessions.fetch(id: session.id) != nil)
+
+        try store.workoutSessions.restore(id: session.id)
+
+        #expect(try store.workoutSessions.listSummaries(limit: 10).count == 1)
+        #expect(try store.workoutSessions.listSummaries(limit: 10, scope: .deleted).isEmpty)
+        #expect(try store.workoutSessions.countSummaries(scope: .active) == 1)
+        #expect(try store.workoutSessions.countSummaries(scope: .deleted) == 0)
     }
 
     @Test("starts active session from template with prefilled sets")

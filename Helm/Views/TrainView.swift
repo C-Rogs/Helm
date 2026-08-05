@@ -667,16 +667,16 @@ struct TrainView: View {
         }
 
         return Group {
-            if trainPreferences.pawelModeEnabled {
+            if trainPreferences.manualRestTimerEnabled {
                 HStack(spacing: HelmSpacing.xs) {
                     coachBar
                         .layoutPriority(1)
 
-                    PawelTimerPill(
+                    ManualRestTimerPill(
                         isRunning: controller.isRestTimerRunning,
                         endsAt: restTimer?.endsAt
                     ) {
-                        controller.openPawelTimer(expanded: controller.isRestTimerRunning)
+                        controller.openManualRestTimer(expanded: controller.isRestTimerRunning)
                     }
                     .frame(minWidth: 88, maxWidth: 96)
                 }

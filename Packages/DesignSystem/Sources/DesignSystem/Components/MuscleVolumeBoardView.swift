@@ -46,7 +46,7 @@ public struct MuscleVolumeBoardView: View {
                     }
                 }
 
-                Text("Solid = logged · Tint = scheduled · Band = MEV to MRV")
+                Text("Solid = logged · Tint = scheduled · Band = MEV-MRV")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
         }
