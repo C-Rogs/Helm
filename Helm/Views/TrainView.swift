@@ -11,6 +11,7 @@ struct TrainView: View {
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     @Bindable private var weekAheadStore = WeekAheadScheduleBootstrap.store
     @Bindable private var trainPreferences = TrainPreferences.shared
+    @Bindable private var chatController = ChatBootstrap.controller
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -20,6 +21,9 @@ struct TrainView: View {
     @State private var isShowingSavePrescriptionTemplate = false
     @State private var prescriptionTemplateName = ""
     @State private var didCopyPrescriptionExport = false
+    @State private var measuredChromeHeight: CGFloat = 0
+    @State private var viewportHeight: CGFloat = 0
+    @State private var suppressChromeAnimations = false
 
     var body: some View {
         navigationRoot
@@ -44,6 +48,14 @@ struct TrainView: View {
                 await weekAheadStore.refresh()
             }
             .onChange(of: scenePhase) { _, newPhase in
+                if newPhase == .active {
+                    // Clear any mid-wave state after returning from background.
+                    CoachApplyMomentStore.shared.isActive = false
+                    suppressChromeAnimations = true
+                    DispatchQueue.main.async {
+                        suppressChromeAnimations = false
+                    }
+                }
                 Task { await controller.handleScenePhase(newPhase) }
             }
             .onChange(of: WatchReadinessBootstrap.coordinator.isReachable) { _, reachable in
@@ -66,6 +78,9 @@ struct TrainView: View {
                 if controller.hasActiveSession {
                     bottomSessionChrome
                 }
+            }
+            .onPreferenceChange(TrainBottomChromeHeightKey.self) { height in
+                measuredChromeHeight = height
             }
             .helmScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
@@ -113,6 +128,8 @@ struct TrainView: View {
                         },
                         upNextName: controller.upNextExerciseName
                     )
+                    .geometryGroup()
+                    .transition(.opacity)
                 }
 
                 if showCoach {
@@ -121,19 +138,37 @@ struct TrainView: View {
 
                 if showNumpad {
                     numpadOverlay
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
                 }
             }
             .frame(maxWidth: .infinity)
             .background(HelmColor.canvas)
+            // Numpad chrome uses standard (not settle) so rest banner layout
+            // lifts in lockstep with the pad. Settle left the dock behind.
             .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                suppressChromeAnimations
+                    ? nil
+                    : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
                 value: controller.numpadTarget
             )
             .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                suppressChromeAnimations
+                    ? nil
+                    : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
                 value: controller.isRestTimerRunning
             )
+        }
+        .background {
+            GeometryReader { geometry in
+                Color.clear.preference(
+                    key: TrainBottomChromeHeightKey.self,
+                    value: geometry.size.height
+                )
+            }
+        }
+        .transaction { transaction in
+            if suppressChromeAnimations {
+                transaction.animation = nil
+            }
         }
         .ignoresSafeArea(edges: .bottom)
     }
@@ -179,7 +214,7 @@ struct TrainView: View {
                 title: summary.title,
                 summary: summary.summary,
                 rationale: summary.rationale,
-                onCoach: { controller.discussTodaysSession() },
+                onCoach: { chatController.requestCoachHandoff(prompt: summary.coachNegotiationSeed) },
                 onRegenerate: {
                     Task {
                         await controller.regenerateTodaysPrescription()
@@ -396,8 +431,13 @@ struct TrainView: View {
             onOpenHistory: {
                 controller.openExerciseHistory(sessionExerciseID: exercise.id)
             },
-            onDropExercise: { sourceID in
-                controller.moveExerciseInDraft(from: sourceID, to: exercise.id)
+            canMoveUp: controller.canMoveExerciseUp(sessionExerciseID: exercise.id),
+            canMoveDown: controller.canMoveExerciseDown(sessionExerciseID: exercise.id),
+            onMoveUp: {
+                controller.moveExerciseUpInDraft(sessionExerciseID: exercise.id)
+            },
+            onMoveDown: {
+                controller.moveExerciseDownInDraft(sessionExerciseID: exercise.id)
             }
         )
     }
@@ -411,9 +451,11 @@ struct TrainView: View {
                             TrainSessionHeaderView(
                                 startedAt: snapshot.session.startedAt,
                                 progress: TrainSessionProgress.from(snapshot: snapshot),
-                                heartRateBPM: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
-                                    ? WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-                                    : nil
+                                watchLinkStatus: WatchCompanionLinkStatus.resolve(
+                                    canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+                                    phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
+                                    liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                                )
                             )
 
                             if let notice = controller.watchCompanionNotice {
@@ -458,6 +500,13 @@ struct TrainView: View {
                             ForEach(controller.exercisesForDisplay()) { exercise in
                                 exerciseSection(for: exercise)
                             }
+                            .animation(
+                                HelmMotion.animation(
+                                    HelmMotion.settleAnimation,
+                                    reduceMotion: reduceMotion
+                                ),
+                                value: controller.reorderDraftIDs
+                            )
 
                             if !controller.isReorderMode {
                                 Button {
@@ -482,24 +531,82 @@ struct TrainView: View {
                         .padding(.bottom, HelmSpacing.md)
                         .frame(maxWidth: .infinity)
                     }
+                    .background {
+                        GeometryReader { geometry in
+                            Color.clear.preference(
+                                key: TrainViewportHeightKey.self,
+                                value: geometry.size.height
+                            )
+                        }
+                    }
+                    .onPreferenceChange(TrainViewportHeightKey.self) { height in
+                        viewportHeight = height
+                    }
                     .animation(
                         HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                         value: controller.adjustmentBanner
                     )
-                    .onChange(of: controller.numpadTarget?.setID) { _, setID in
-                        guard let setID else { return }
-                        HapticEngine.shared.play(.selection)
-                        withAnimation(
-                            HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion)
-                        ) {
-                            proxy.scrollTo(setID, anchor: .center)
-                        }
+                    .onChange(of: controller.numpadTarget) { _, target in
+                        guard let setID = target?.setID else { return }
+                        scheduleScrollToFocusedSet(
+                            proxy: proxy,
+                            setID: setID,
+                            viewportHeight: viewportHeight
+                        )
+                    }
+                    .onChange(of: measuredChromeHeight) { _, _ in
+                        guard let setID = controller.numpadTarget?.setID else { return }
+                        scheduleScrollToFocusedSet(
+                            proxy: proxy,
+                            setID: setID,
+                            viewportHeight: viewportHeight
+                        )
                     }
                 }
             }
 
-            HelmCoachApplyWave(isActive: $controller.showCoachApplyWave)
+            // Coach apply wave mounts at AppRootView for app-wide AI applies.
         }
+    }
+
+    private func scheduleScrollToFocusedSet(
+        proxy: ScrollViewProxy,
+        setID: String,
+        viewportHeight: CGFloat
+    ) {
+        DispatchQueue.main.async {
+            scrollToFocusedSet(
+                proxy: proxy,
+                setID: setID,
+                viewportHeight: viewportHeight
+            )
+        }
+    }
+
+    private func scrollToFocusedSet(
+        proxy: ScrollViewProxy,
+        setID: String,
+        viewportHeight: CGFloat
+    ) {
+        HapticEngine.shared.play(.selection)
+        let anchor = focusedSetScrollAnchor(
+            chromeHeight: measuredChromeHeight,
+            viewportHeight: viewportHeight
+        )
+        withAnimation(
+            HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion)
+        ) {
+            proxy.scrollTo(setID, anchor: anchor)
+        }
+    }
+
+    private func focusedSetScrollAnchor(chromeHeight: CGFloat, viewportHeight: CGFloat) -> UnitPoint {
+        guard viewportHeight > 0, chromeHeight > 0 else {
+            return UnitPoint(x: 0.5, y: 0.35)
+        }
+        let visibleFraction = max(0.2, 1 - (chromeHeight / viewportHeight))
+        let y = min(0.5, max(0.15, visibleFraction * 0.5))
+        return UnitPoint(x: 0.5, y: y)
     }
 
     private func handleRestTimerTick(_ remaining: Int) {
@@ -531,9 +638,18 @@ struct TrainView: View {
     }
 
     private var bottomContentInset: CGFloat {
-        var inset = controller.numpadTarget == nil
-            ? HelmLayout.trainScrollBottomInset
-            : HelmLayout.trainScrollBottomInsetWithNumpad
+        if measuredChromeHeight > 0 {
+            return measuredChromeHeight + HelmSpacing.sm
+        }
+
+        if controller.numpadTarget != nil {
+            if controller.numpadTarget?.field == .rpe {
+                return HelmLayout.trainScrollBottomInsetWithRPE
+            }
+            return HelmLayout.trainScrollBottomInsetWithNumpad
+        }
+
+        var inset = HelmLayout.trainScrollBottomInset
         if controller.isRestTimerRunning {
             inset += HelmLayout.trainRestBannerScrollInset
         }
@@ -585,11 +701,15 @@ struct TrainView: View {
                     controller.isShowingDiscardConfirmation = true
                 }
                 .buttonStyle(.helmSecondary)
+                .disabled(controller.isFinishingWorkout)
 
-                Button("Finish workout") {
+                HelmActionButton(
+                    "Finish workout",
+                    phase: controller.isFinishingWorkout ? .loading : .idle,
+                    successTitle: "Done"
+                ) {
                     controller.isShowingFinishConfirmation = true
                 }
-                .buttonStyle(.helmPrimary)
             }
         }
         .padding(.bottom, HelmSpacing.sm)
@@ -630,14 +750,6 @@ struct TrainView: View {
                 .padding(.horizontal, HelmSpacing.sm)
                 .padding(.bottom, HelmSpacing.sm)
             } else {
-                if !controller.numpadWorkingText.isEmpty || controller.numpadSelectAll {
-                    Text(controller.numpadWorkingText.isEmpty ? "0" : controller.numpadWorkingText)
-                        .helmType(.bigNumber)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, HelmSpacing.sm)
-                        .background(HelmColor.surface)
-                }
-
                 HelmNumpad(
                     allowsDecimal: controller.numpadTarget?.field != .reps,
                     onDigit: { controller.appendNumpadDigit($0) },
@@ -647,7 +759,7 @@ struct TrainView: View {
             }
         }
         .background(HelmColor.canvas)
-        .transition(.move(edge: .bottom))
+        .transition(.move(edge: .bottom).combined(with: .opacity))
     }
 }
 
@@ -700,6 +812,22 @@ struct TrainView: View {
         .helmScreenPadding()
     }
     .helmTheme()
+}
+
+private struct TrainBottomChromeHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
+}
+
+private struct TrainViewportHeightKey: PreferenceKey {
+    static let defaultValue: CGFloat = 0
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = max(value, nextValue())
+    }
 }
 
 private extension TrainingPhase {

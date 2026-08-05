@@ -72,6 +72,8 @@ public enum HelmRadius {
 }
 
 public enum HelmLayout {
+    /// Apple HIG minimum touch target.
+    public static let minTapTarget: CGFloat = 44
     public static let chartHeight: CGFloat = HelmSpacing.sm * 15
     public static let emptyChartMinHeight: CGFloat = HelmSpacing.sm * 10
     public static let progressTrackHeight: CGFloat = HelmSpacing.xs - 2

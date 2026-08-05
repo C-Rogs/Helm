@@ -29,7 +29,10 @@ struct ExerciseSectionView: View {
     let onEnterReorderMode: () -> Void
     let onEditRest: () -> Void
     let onOpenHistory: () -> Void
-    let onDropExercise: (String) -> Void
+    let canMoveUp: Bool
+    let canMoveDown: Bool
+    let onMoveUp: () -> Void
+    let onMoveDown: () -> Void
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -46,27 +49,41 @@ struct ExerciseSectionView: View {
     }
 
     var body: some View {
-        Group {
-            if isReorderMode {
-                cardContent
-                    .draggable(exercise.id) {
-                        Text(displayName)
-                            .padding(HelmSpacing.sm)
-                            .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+        if isReorderMode {
+            cardContent
+        } else {
+            cardContent
+                .contextMenu {
+                    Button("Reorder exercises") {
+                        onEnterReorderMode()
                     }
-                    .dropDestination(for: String.self) { items, _ in
-                        guard let sourceID = items.first else { return false }
-                        onDropExercise(sourceID)
-                        return true
-                    }
-            } else {
-                cardContent
-                    .contextMenu {
-                        Button("Reorder exercises") {
-                            onEnterReorderMode()
-                        }
-                    }
+                }
+        }
+    }
+
+    private var reorderControls: some View {
+        HStack(spacing: HelmSpacing.xs) {
+            Button(action: onMoveUp) {
+                Image(systemName: "chevron.up")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(canMoveUp ? HelmColor.textPrimary : HelmColor.fgMuted)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
             }
+            .buttonStyle(.plain)
+            .disabled(!canMoveUp)
+            .accessibilityLabel("Move \(displayName) up")
+
+            Button(action: onMoveDown) {
+                Image(systemName: "chevron.down")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(canMoveDown ? HelmColor.textPrimary : HelmColor.fgMuted)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .disabled(!canMoveDown)
+            .accessibilityLabel("Move \(displayName) down")
         }
     }
 
@@ -75,7 +92,7 @@ struct ExerciseSectionView: View {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 HStack(alignment: .top, spacing: HelmSpacing.sm) {
                     if isReorderMode {
-                        Image(systemName: "line.3.horizontal")
+                        Image(systemName: "arrow.up.arrow.down")
                             .foregroundStyle(HelmColor.fgMuted)
                             .padding(.top, HelmSpacing.xxs)
                     }
@@ -114,7 +131,9 @@ struct ExerciseSectionView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                    if !isReorderMode {
+                    if isReorderMode {
+                        reorderControls
+                    } else {
                         Button(role: .destructive, action: onRemove) {
                             HelmIconView(.trash, context: .inline)
                                 .foregroundStyle(HelmColor.destructive)
@@ -224,7 +243,10 @@ struct ExerciseSectionView: View {
         onEnterReorderMode: {},
         onEditRest: {},
         onOpenHistory: {},
-        onDropExercise: { _ in }
+        canMoveUp: false,
+        canMoveDown: true,
+        onMoveUp: {},
+        onMoveDown: {}
     )
     .padding()
     .helmTheme()

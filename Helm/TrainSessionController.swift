@@ -82,6 +82,7 @@ final class TrainSessionController {
     var numpadShakeToken = 0
     var isShowingFinishSummary = false
     var isShowingPersonalRecords = false
+    var isFinishingWorkout = false
     var errorMessage: String?
 
     var coachPromptText = ""
@@ -94,7 +95,6 @@ final class TrainSessionController {
     private(set) var isCoachThinking = false
     private(set) var coachTurnError: String?
     private(set) var lastFailedCoachMessage: String?
-    var showCoachApplyWave = false
     private(set) var lastCoachRequestID: UUID?
     private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
     private(set) var proactiveCoachBanner: String?
@@ -499,6 +499,8 @@ final class TrainSessionController {
     }
 
     func finishWorkout() async {
+        isFinishingWorkout = true
+        defer { isFinishingWorkout = false }
         do {
             let skipPhoneEnergy = sessionDeliveredHeartRate
             let finishedID = try await store.finish()
@@ -907,17 +909,30 @@ final class TrainSessionController {
         reorderDraftIDs = []
     }
 
-    func moveExerciseInDraft(from sourceID: String, to destinationID: String) {
-        guard isReorderMode, sourceID != destinationID,
-              let fromIndex = reorderDraftIDs.firstIndex(of: sourceID),
-              let toIndex = reorderDraftIDs.firstIndex(of: destinationID),
-              fromIndex != toIndex else {
-            return
-        }
-        reorderDraftIDs.move(
-            fromOffsets: IndexSet(integer: fromIndex),
-            toOffset: toIndex > fromIndex ? toIndex + 1 : toIndex
-        )
+    func canMoveExerciseUp(sessionExerciseID: String) -> Bool {
+        guard let index = reorderDraftIDs.firstIndex(of: sessionExerciseID) else { return false }
+        return index > 0
+    }
+
+    func canMoveExerciseDown(sessionExerciseID: String) -> Bool {
+        guard let index = reorderDraftIDs.firstIndex(of: sessionExerciseID) else { return false }
+        return index < reorderDraftIDs.count - 1
+    }
+
+    func moveExerciseUpInDraft(sessionExerciseID: String) {
+        shiftExerciseInDraft(sessionExerciseID: sessionExerciseID, by: -1)
+    }
+
+    func moveExerciseDownInDraft(sessionExerciseID: String) {
+        shiftExerciseInDraft(sessionExerciseID: sessionExerciseID, by: 1)
+    }
+
+    private func shiftExerciseInDraft(sessionExerciseID: String, by offset: Int) {
+        guard isReorderMode,
+              let fromIndex = reorderDraftIDs.firstIndex(of: sessionExerciseID) else { return }
+        let toIndex = fromIndex + offset
+        guard reorderDraftIDs.indices.contains(toIndex) else { return }
+        reorderDraftIDs.swapAt(fromIndex, toIndex)
         HapticEngine.shared.play(.selection)
     }
 
@@ -931,7 +946,7 @@ final class TrainSessionController {
             await refreshMetadata()
             pushWatchCompanionState()
             await syncSideEffects(force: true)
-            HapticEngine.shared.play(.coachAdjust)
+            HapticEngine.shared.play(.selection)
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -994,7 +1009,6 @@ final class TrainSessionController {
                 )
             }
         case .active:
-            showCoachApplyWave = false
             if let snapshot = store.snapshot {
                 await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
             }
@@ -1311,7 +1325,7 @@ final class TrainSessionController {
 
         let exerciseID = exerciseID(for: sessionExerciseID)
         let set = findSet(setID: setID) ?? currentSet
-        withAnimation(settleMotion) {
+        withAnimation(chromeMotion) {
             numpadTarget = nextTarget
         }
         numpadValidationError = nil
@@ -1321,7 +1335,7 @@ final class TrainSessionController {
     func dismissNumpad() async {
         guard numpadTarget != nil else { return }
         if numpadTarget?.field == .rpe {
-            withAnimation(settleMotion) {
+            withAnimation(chromeMotion) {
                 numpadTarget = nil
             }
             numpadValidationError = nil
@@ -1329,16 +1343,16 @@ final class TrainSessionController {
             return
         }
         guard await applyNumpadInput() else { return }
-        withAnimation(settleMotion) {
+        withAnimation(chromeMotion) {
             numpadTarget = nil
         }
         numpadSelectAll = false
     }
 
-    /// Mirrors `helmReduceMotion` (system Reduce Motion) for controller-driven chrome.
-    private var settleMotion: Animation? {
+    /// Chrome open/close uses standard so rest dock and numpad move together.
+    private var chromeMotion: Animation? {
         HelmMotion.animation(
-            HelmMotion.settleAnimation,
+            HelmMotion.standardAnimation,
             reduceMotion: UIAccessibility.isReduceMotionEnabled
         )
     }
@@ -1722,8 +1736,6 @@ final class TrainSessionController {
                 pendingCoachProposal = nil
                 isShowingCoachPrompt = false
                 try await finishApplyingAdjustment(applied)
-                HapticEngine.shared.play(.phaseChange)
-                showCoachApplyWave = true
             } catch InSessionCoachError.adjustmentRejected {
                 WorkoutHapticCoordinator.play(.clampRejected)
                 pendingCoachProposal = nil
@@ -1755,8 +1767,7 @@ final class TrainSessionController {
             let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
             coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
             coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
-            HapticEngine.shared.play(.phaseChange)
-            showCoachApplyWave = true
+            WorkoutHapticCoordinator.playCoachAdjustment()
         } catch {
             pendingCoachProposal = nil
             appendCoachFailureNotice(error.localizedDescription)
@@ -2381,7 +2392,6 @@ final class TrainSessionController {
         isShowingCoachPrompt = false
         isShowingPawelTimer = false
         isCoachThinking = false
-        showCoachApplyWave = false
         lastCoachRequestID = nil
         resetSessionFeedbackState()
         sessionNoteText = ""
