@@ -16,15 +16,14 @@ struct TrainSessionHeaderView: View {
                         Image(systemName: "heart.fill")
                             .font(.caption2)
                             .foregroundStyle(HelmColor.destructive)
-                        Text("\(heartRateBPM)")
+                        HelmNumericText(heartRateBPM)
                             .helmType(.monoTag, color: HelmColor.fg)
-                            .monospacedDigit()
                     }
                 }
 
                 Text(TrainSessionProgressFormatter.elapsedLabel(seconds: elapsed))
                     .helmType(.label, color: HelmColor.textPrimary)
-                    .monospacedDigit()
+                    .helmNumericRoll(value: elapsed)
 
                 Text("·")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
@@ -34,7 +33,7 @@ struct TrainSessionHeaderView: View {
                     total: progress.totalSetCount
                 ))
                 .helmType(.monoTag, color: HelmColor.fgSecondary)
-                .monospacedDigit()
+                .helmNumericRoll(value: progress.completedSetCount)
 
                 Spacer(minLength: 0)
             }

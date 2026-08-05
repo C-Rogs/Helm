@@ -12,11 +12,11 @@ struct PawelTimerPill: View {
                 if isRunning, let endsAt {
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.down)))
-                        pillLabel(RestTimerFormatting.mmss(remaining), emphasized: true)
+                        pillLabel(seconds: remaining, emphasized: true)
                             .accessibilityValue(RestTimerFormatting.mmss(remaining))
                     }
                 } else {
-                    pillLabel(nil, emphasized: false)
+                    pillLabel(seconds: nil, emphasized: false)
                 }
             }
         }
@@ -26,12 +26,12 @@ struct PawelTimerPill: View {
     }
 
     @ViewBuilder
-    private func pillLabel(_ timeText: String?, emphasized: Bool) -> some View {
+    private func pillLabel(seconds: Int?, emphasized: Bool) -> some View {
         HStack(spacing: HelmSpacing.xxs) {
-            if let timeText {
-                Text(timeText)
+            if let seconds {
+                Text(RestTimerFormatting.mmss(seconds))
                     .helmType(.label, color: HelmColor.fg)
-                    .monospacedDigit()
+                    .helmNumericRoll(value: seconds)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
             } else {

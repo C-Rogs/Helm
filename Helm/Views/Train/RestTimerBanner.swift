@@ -62,7 +62,7 @@ struct RestTimerBanner: View {
             HStack(spacing: HelmSpacing.sm) {
                 Text(RestTimerFormatting.mmss(remainingSeconds))
                     .helmType(.bigNumber, color: HelmColor.fg)
-                    .monospacedDigit()
+                    .helmNumericRoll(value: remainingSeconds)
                     .accessibilityLabel("Rest remaining \(RestTimerFormatting.mmss(remainingSeconds))")
 
                 Spacer(minLength: HelmSpacing.xs)

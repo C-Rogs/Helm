@@ -90,7 +90,10 @@ struct SetRowView: View {
                     .strokeBorder(HelmColor.accent.opacity(0.8), lineWidth: 2)
                     .scaleEffect(showsPRCelebration ? 1.02 : 1)
                     .animation(
-                        reduceMotion ? nil : .easeOut(duration: 0.35).repeatCount(2, autoreverses: true),
+                        HelmMotion.animation(
+                            HelmMotion.quickAnimation.repeatCount(2, autoreverses: true),
+                            reduceMotion: reduceMotion
+                        ),
                         value: showsPRCelebration
                     )
             }

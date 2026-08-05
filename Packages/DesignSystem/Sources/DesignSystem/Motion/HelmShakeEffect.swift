@@ -29,7 +29,7 @@ private struct HelmShakeModifier: ViewModifier {
             .onChange(of: trigger) { _, _ in
                 guard !reduceMotion, trigger > 0 else { return }
                 shakeAmount = 0
-                withAnimation(.default) {
+                withAnimation(HelmMotion.animation(HelmMotion.quickAnimation, reduceMotion: false)) {
                     shakeAmount = 1
                 }
             }

@@ -76,7 +76,7 @@ public struct CoachAIProgressCard: View {
         )
         .onAppear {
             guard isImpactful, !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).repeatForever(autoreverses: true)) {
+            withAnimation(HelmMotion.pulseAnimation.repeatForever(autoreverses: true)) {
                 pulsePhase = true
             }
         }

@@ -132,7 +132,7 @@ struct WorkoutFinishSummaryView: View {
             return
         }
 
-        withAnimation(HelmMotion.revealAnimation) {
+        withAnimation(HelmMotion.animation(HelmMotion.revealAnimation, reduceMotion: reduceMotion)) {
             for movement in summary.muscleMovements {
                 animatedMovements[movement.muscle] = movement.setsAfter
             }

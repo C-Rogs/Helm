@@ -31,8 +31,14 @@ struct ExerciseSectionView: View {
     let onOpenHistory: () -> Void
     let onDropExercise: (String) -> Void
 
+    @Environment(\.helmReduceMotion) private var reduceMotion
+
     private var completedSetCount: Int {
         exercise.sets.filter { $0.status == .completed }.count
+    }
+
+    private var setIdentity: [String] {
+        exercise.sets.map(\.id)
     }
 
     private var canRemoveSet: Bool {
@@ -71,7 +77,7 @@ struct ExerciseSectionView: View {
                     if isReorderMode {
                         Image(systemName: "line.3.horizontal")
                             .foregroundStyle(HelmColor.fgMuted)
-                            .padding(.top, 4)
+                            .padding(.top, HelmSpacing.xxs)
                     }
 
                     VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
@@ -87,7 +93,7 @@ struct ExerciseSectionView: View {
                                 }
                             }
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.helmPressable)
                         .disabled(isReorderMode)
                         .accessibilityLabel("View history for \(displayName)")
 
@@ -97,7 +103,7 @@ struct ExerciseSectionView: View {
                             Text("Rest \(restSeconds)s")
                                 .helmType(.monoTag, color: HelmColor.fgSecondary)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.helmPressable)
                         .disabled(isReorderMode)
 
                         if let coachingCue {
@@ -141,7 +147,17 @@ struct ExerciseSectionView: View {
                             onCycleSetType: { onCycleSetType(set.id) },
                             onComplete: { onCompleteSet(exercise.id, set.id) }
                         )
+                        .transition(
+                            .asymmetric(
+                                insertion: .opacity.combined(with: .move(edge: .bottom)),
+                                removal: .opacity.combined(with: .move(edge: .top))
+                            )
+                        )
                     }
+                    .animation(
+                        HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                        value: setIdentity
+                    )
 
                     HStack(spacing: HelmSpacing.sm) {
                         Button {

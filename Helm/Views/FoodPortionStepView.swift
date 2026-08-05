@@ -19,6 +19,7 @@ struct FoodPortionStepView: View {
     @State private var selectedSizeLabel: String?
     @State private var showsGramsOverride = false
     @FocusState private var gramsFocused: Bool
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private let produceOptions: [ProducePortionOption]
     private let inputMode: PortionInputMode
@@ -217,7 +218,12 @@ struct FoodPortionStepView: View {
     private var gramsOverrideSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             Button {
-                withAnimation(.easeInOut(duration: 0.2)) {
+                withAnimation(
+                    HelmMotion.animation(
+                        HelmMotion.quickAnimation,
+                        reduceMotion: reduceMotion
+                    )
+                ) {
                     showsGramsOverride.toggle()
                 }
             } label: {

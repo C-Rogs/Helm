@@ -81,4 +81,22 @@ struct HelmStateTests {
         #expect(HelmState.readiness(score: 64) == .ready)
         #expect(HelmState.readiness(score: 88) == .primed)
     }
+
+    @Test("Volume landmark status uses plain MEV/MRV copy")
+    func volumeLandmarkStatus() {
+        #expect(VolumeLandmarkStatus.resolve(sets: 5, mev: 8, mrv: 18) == .belowMEV)
+        #expect(VolumeLandmarkStatus.resolve(sets: 5, mev: 8, mrv: 18).label == "below MEV")
+        #expect(VolumeLandmarkStatus.resolve(sets: 12, mev: 8, mrv: 18) == .inRange)
+        #expect(VolumeLandmarkStatus.resolve(sets: 12, mev: 8, mrv: 18).label == "in range")
+        #expect(VolumeLandmarkStatus.resolve(sets: 22, mev: 8, mrv: 18) == .overMRV)
+        #expect(VolumeLandmarkStatus.resolve(sets: 22, mev: 8, mrv: 18).label == "over MRV")
+    }
+
+    @Test("volumeWeekly fill colors still map under/over landmarks")
+    func volumeWeeklyFill() {
+        #expect(HelmState.volumeWeekly(sets: 5, mev: 8, mrv: 18) == .depleted)
+        #expect(HelmState.volumeWeekly(sets: 10, mev: 8, mrv: 18) == .ready)
+        #expect(HelmState.volumeWeekly(sets: 14, mev: 8, mrv: 18) == .primed)
+        #expect(HelmState.volumeWeekly(sets: 22, mev: 8, mrv: 18) == .compromised)
+    }
 }

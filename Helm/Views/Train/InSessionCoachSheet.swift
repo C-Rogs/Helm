@@ -11,6 +11,8 @@ struct InSessionCoachSheet: View {
     @State private var isShowingShareSheet = false
     @State private var shareExportText = ""
 
+    @Environment(\.helmReduceMotion) private var reduceMotion
+
     private var coachName: String { CoachDisplayNameStore.name }
 
     var body: some View {
@@ -232,7 +234,12 @@ struct InSessionCoachSheet: View {
             }
         }
         if animated {
-            withAnimation(HelmMotion.standardAnimation) { scroll() }
+            withAnimation(
+                HelmMotion.animation(
+                    HelmMotion.standardAnimation,
+                    reduceMotion: reduceMotion
+                )
+            ) { scroll() }
         } else {
             scroll()
         }

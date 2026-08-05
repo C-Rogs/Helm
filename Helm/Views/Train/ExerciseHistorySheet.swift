@@ -15,7 +15,7 @@ struct ExerciseHistorySheet: View {
                             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                                 Text("Current e1RM")
                                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                                Text(String(format: "%.0f kg", currentE1RM))
+                                HelmNumericText(currentE1RM, format: "%.0f kg")
                                     .helmType(.bigNumber, color: HelmColor.accent)
                             }
                             .frame(maxWidth: .infinity, alignment: .leading)
@@ -63,6 +63,7 @@ struct ExerciseHistorySheet: View {
                                     if let previousLabel = row.previousLabel {
                                         Text(previousLabel)
                                             .helmType(.body, color: HelmColor.fg)
+                                            .helmNumericRoll(value: previousLabel)
                                     } else {
                                         Text("-")
                                             .helmType(.body, color: HelmColor.fgMuted)
@@ -99,7 +100,7 @@ struct ExerciseHistorySheet: View {
                                     Text(row.sessionLabel)
                                         .helmType(.body, color: HelmColor.fg)
                                     Spacer()
-                                    Text(String(format: "%.0f kg", row.e1RMKilograms))
+                                    HelmNumericText(row.e1RMKilograms, format: "%.0f kg")
                                         .helmType(.monoTag, color: HelmColor.accent)
                                 }
                             }

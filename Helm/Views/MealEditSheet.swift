@@ -20,6 +20,8 @@ struct MealEditSheet: View {
     @State private var bucket: MealBucket
     @State private var showsDeleteConfirm = false
 
+    @Environment(\.helmReduceMotion) private var reduceMotion
+
     private let hasStoredLineItems: Bool
     private let isQuickAddStyle: Bool
 
@@ -75,7 +77,10 @@ struct MealEditSheet: View {
                                 onFocusedScrollIDChange: { scrollID in
                                     guard let scrollID else { return }
                                     withAnimation(
-                                        .spring(response: 0.4, dampingFraction: 0.7)
+                                        HelmMotion.animation(
+                                            HelmMotion.settleAnimation,
+                                            reduceMotion: reduceMotion
+                                        )
                                     ) {
                                         proxy.scrollTo(scrollID, anchor: .center)
                                     }

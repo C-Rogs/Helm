@@ -99,7 +99,9 @@ public struct SetRow: View {
             Button(action: onComplete) {
                 HelmIconView(isCompleted ? .checkmarkFilled : .circle, context: .inline)
                     .foregroundStyle(isCompleted ? HelmColor.accent : HelmColor.fgMuted)
-                    .frame(width: 44, height: 44)
+                    // Visual glyph stays ~15pt; hit target is intentionally larger for mid-set taps.
+                    .frame(width: 56, height: 56)
+                    .contentShape(Rectangle())
             }
             .buttonStyle(.helmPressable)
             .accessibilityLabel(isCompleted ? "Mark set incomplete" : "Complete set")
@@ -187,6 +189,7 @@ public struct SetRow: View {
                 ZStack(alignment: .bottom) {
                     Text(displayText)
                         .helmType(.number, color: textColor)
+                        .helmNumericRoll(value: displayText)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                         .padding(.horizontal, showsSelection ? HelmSpacing.xxs : 0)

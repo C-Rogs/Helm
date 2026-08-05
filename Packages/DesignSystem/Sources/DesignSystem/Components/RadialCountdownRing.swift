@@ -34,7 +34,7 @@ public struct RadialCountdownRing: View {
 
             Text(RestTimerFormatting.mmss(remainingSeconds))
                 .helmType(.bigNumber, color: HelmColor.fg)
-                .monospacedDigit()
+                .helmNumericRoll(value: remainingSeconds)
                 .accessibilityLabel("Time remaining \(RestTimerFormatting.mmss(remainingSeconds))")
         }
         .aspectRatio(1, contentMode: .fit)

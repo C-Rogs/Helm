@@ -20,7 +20,8 @@ struct SignatureMomentTests {
     @Test("Contributor reveal stagger collapses under reduce motion")
     func contributorStaggerReduceMotion() {
         #expect(HelmMotion.staggerDelay(index: 3, step: 0.05, reduceMotion: true) == 0)
-        #expect(HelmMotion.staggerDelay(index: 3, step: 0.05, reduceMotion: false) == 0.15)
+        let stagger = HelmMotion.staggerDelay(index: 3, step: 0.05, reduceMotion: false)
+        #expect(abs(stagger - 0.15) < 0.000_001)
     }
 
     @Test("Daily reveal gate still fires once per day")

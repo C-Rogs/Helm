@@ -55,7 +55,7 @@ public struct ArcBurstView: View {
         }
 
         burstProgress = 0
-        withAnimation(HelmMotion.revealAnimation) {
+        withAnimation(HelmMotion.animation(HelmMotion.revealAnimation, reduceMotion: reduceMotion)) {
             burstProgress = 1
         }
     }

@@ -79,7 +79,7 @@ struct MealLineItemEditor: View {
         }
         .animation(
             HelmMotion.animation(
-                .spring(response: 0.4, dampingFraction: 0.7),
+                HelmMotion.settleAnimation,
                 reduceMotion: reduceMotion
             ),
             value: focusedField

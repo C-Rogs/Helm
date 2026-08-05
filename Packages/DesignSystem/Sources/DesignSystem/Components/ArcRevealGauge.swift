@@ -71,13 +71,13 @@ public struct ArcRevealGauge<Center: View>: View {
             detailsVisible = false
             onRevealStart?()
 
-            withAnimation(HelmMotion.revealAnimation) {
+            withAnimation(HelmMotion.animation(HelmMotion.revealAnimation, reduceMotion: reduceMotion)) {
                 displayValue = targetValue
             }
 
-            let detailsDelay = HelmMotion.revealDuration(reduceMotion: false) - 0.3
+            let detailsDelay = HelmMotion.revealDuration(reduceMotion: reduceMotion) - 0.3
             DispatchQueue.main.asyncAfter(deadline: .now() + max(detailsDelay, 0)) {
-                withAnimation(HelmMotion.standardAnimation) {
+                withAnimation(HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion)) {
                     detailsVisible = true
                 }
             }

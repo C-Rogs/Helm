@@ -85,9 +85,10 @@ public struct LandmarkVolumeBar: View {
 
             VStack(alignment: .trailing, spacing: 0) {
                 if safeScheduled > 0.05 {
-                    Text("\(Int(safeWeekly.rounded()))+\(Int(safeScheduled.rounded()))")
+                    let scheduledReadout = "\(Int(safeWeekly.rounded()))+\(Int(safeScheduled.rounded()))"
+                    Text(scheduledReadout)
                         .helmType(.number, color: HelmColor.color(for: state))
-                        .monospacedDigit()
+                        .helmNumericRoll(value: scheduledReadout)
                 } else {
                     HelmNumericText(safeWeekly, format: "%.0f")
                         .helmType(.number, color: HelmColor.color(for: state))

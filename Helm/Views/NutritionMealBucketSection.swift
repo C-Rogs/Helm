@@ -22,12 +22,17 @@ struct NutritionMealBucketSection: View {
                     if bucketTotalKcal > 0 || bucketMacroCompactText != nil {
                         VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
                             if bucketTotalKcal > 0 {
-                                Text("\(bucketTotalKcal) kcal")
-                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                                HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                                    HelmNumericText(bucketTotalKcal)
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                    Text("kcal")
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                }
                             }
                             if let bucketMacroCompactText {
                                 Text(bucketMacroCompactText)
                                     .helmType(.monoTag, color: HelmColor.fgMuted)
+                                    .helmNumericRoll(value: bucketMacroCompactText)
                             }
                         }
                     }
@@ -96,8 +101,12 @@ struct NutritionMealBucketSection: View {
                             .helmType(.monoTag, color: HelmColor.fgMuted)
                     }
                     Spacer()
-                    Text("\(item.energyKcal) kcal")
-                        .helmType(.number, color: HelmColor.fgSecondary)
+                    HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                        HelmNumericText(item.energyKcal)
+                            .helmType(.number, color: HelmColor.fgSecondary)
+                        Text("kcal")
+                            .helmType(.number, color: HelmColor.fgSecondary)
+                    }
                 }
             }
         }

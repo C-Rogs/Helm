@@ -6,6 +6,7 @@ public struct HelmCoachApplyWave: View {
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var wavePhase: CGFloat = -1.2
+    @State private var clearTask: Task<Void, Never>?
 
     public init(isActive: Binding<Bool>) {
         _isActive = isActive
@@ -30,10 +31,20 @@ public struct HelmCoachApplyWave: View {
             }
         }
         .ignoresSafeArea()
+        .onChange(of: isActive) { _, active in
+            if !active {
+                resetWaveState()
+            }
+        }
+        .onDisappear {
+            resetWaveState()
+        }
     }
 
     private func playWave() {
         guard isActive else { return }
+
+        clearTask?.cancel()
 
         if reduceMotion {
             isActive = false
@@ -41,13 +52,23 @@ public struct HelmCoachApplyWave: View {
         }
 
         wavePhase = -1.2
-        withAnimation(HelmMotion.revealAnimation) {
+        withAnimation(HelmMotion.animation(HelmMotion.revealAnimation, reduceMotion: reduceMotion)) {
             wavePhase = 1.2
         }
 
-        DispatchQueue.main.asyncAfter(deadline: .now() + HelmMotion.revealDuration(reduceMotion: reduceMotion)) {
+        let duration = HelmMotion.revealDuration(reduceMotion: reduceMotion)
+        clearTask = Task { @MainActor in
+            try? await Task.sleep(for: .seconds(duration))
+            guard !Task.isCancelled else { return }
             isActive = false
+            wavePhase = -1.2
         }
+    }
+
+    private func resetWaveState() {
+        clearTask?.cancel()
+        clearTask = nil
+        wavePhase = -1.2
     }
 }
 

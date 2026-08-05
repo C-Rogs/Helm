@@ -30,14 +30,14 @@ public struct SpotlightCardModifier: ViewModifier {
             )
             .animation(
                 HelmMotion.animation(
-                    .spring(response: 0.4, dampingFraction: 0.7),
+                    HelmMotion.settleAnimation,
                     reduceMotion: reduceMotion
                 ),
                 value: isFocused
             )
             .animation(
                 HelmMotion.animation(
-                    .spring(response: 0.4, dampingFraction: 0.7),
+                    HelmMotion.settleAnimation,
                     reduceMotion: reduceMotion
                 ),
                 value: isFocusModeEnabled

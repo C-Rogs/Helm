@@ -19,12 +19,12 @@ struct DashboardSleepCard: View {
                 }
 
                 if let asleepHours = summary.asleepHours {
-                    Text(SleepDurationFormatting.hoursAndMinutes(from: asleepHours))
+                    HelmNumericText(SleepDurationFormatting.hoursAndMinutes(from: asleepHours))
                         .helmType(.heroNumber)
                         .accessibilityLabel("Time asleep \(SleepDurationFormatting.hoursAndMinutes(from: asleepHours))")
 
                     if let secondary = secondaryLine {
-                        Text(secondary)
+                        HelmNumericText(secondary)
                             .helmType(.body, color: HelmColor.fgSecondary)
                     }
                 } else {

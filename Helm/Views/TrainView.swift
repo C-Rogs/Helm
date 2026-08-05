@@ -70,14 +70,6 @@ struct TrainView: View {
             .helmScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
             .navigationTitle(controller.hasActiveSession ? "" : "Train")
-            .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                value: controller.numpadTarget
-            )
-            .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                value: controller.isRestTimerRunning
-            )
         }
     }
 
@@ -134,6 +126,14 @@ struct TrainView: View {
             }
             .frame(maxWidth: .infinity)
             .background(HelmColor.canvas)
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.numpadTarget
+            )
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.isRestTimerRunning
+            )
         }
         .ignoresSafeArea(edges: .bottom)
     }
@@ -486,21 +486,11 @@ struct TrainView: View {
                         HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                         value: controller.adjustmentBanner
                     )
-                    .animation(
-                        HelmMotion.animation(
-                            .spring(response: 0.4, dampingFraction: 0.7),
-                            reduceMotion: reduceMotion
-                        ),
-                        value: controller.numpadTarget?.setID
-                    )
                     .onChange(of: controller.numpadTarget?.setID) { _, setID in
                         guard let setID else { return }
                         HapticEngine.shared.play(.selection)
                         withAnimation(
-                            HelmMotion.animation(
-                                .spring(response: 0.4, dampingFraction: 0.7),
-                                reduceMotion: reduceMotion
-                            )
+                            HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion)
                         ) {
                             proxy.scrollTo(setID, anchor: .center)
                         }

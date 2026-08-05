@@ -8,11 +8,17 @@ struct SessionCoachNoteField: View {
     let savedConfirmation: Bool
 
     @State private var isExpanded = false
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             Button {
-                withAnimation(HelmMotion.settleAnimation) {
+                withAnimation(
+                    HelmMotion.animation(
+                        HelmMotion.settleAnimation,
+                        reduceMotion: reduceMotion
+                    )
+                ) {
                     isExpanded.toggle()
                 }
             } label: {

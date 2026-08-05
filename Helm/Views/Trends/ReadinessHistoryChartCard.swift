@@ -35,14 +35,14 @@ struct ReadinessHistoryChartCard: View {
         return TrendsChartCoverage.trendMessage(pointCount: points.count)
     }
 
-    private var selectedLabel: String? {
+    private var selectedScore: Int? {
         guard let selectedDay else { return nil }
         guard let point = points.first(where: {
             TrendsChartSupport.chartDate(for: $0.helmDay) == selectedDay
         }) else {
             return nil
         }
-        return "\(point.score)"
+        return point.score
     }
 
     var body: some View {
@@ -106,11 +106,27 @@ struct ReadinessHistoryChartCard: View {
         .helmChartStyle()
         .helmChartScrub(selection: $selectedDay)
         .chartOverlay { proxy in
-            TrendsChartSupport.scrubCalloutOverlay(
-                proxy: proxy,
-                selectedX: selectedDay,
-                label: selectedLabel
-            )
+            GeometryReader { geometry in
+                if let selectedDay,
+                   let selectedScore,
+                   let plotFrame = proxy.plotFrame,
+                   let xPosition = proxy.position(forX: selectedDay) {
+                    let origin = geometry[plotFrame].origin
+                    let x = origin.x + xPosition
+
+                    HelmNumericText(selectedScore)
+                        .helmType(.number)
+                        .padding(.horizontal, HelmSpacing.xs)
+                        .padding(.vertical, HelmSpacing.xxs)
+                        .background(HelmColor.surfaceElevated, in: Capsule())
+                        .overlay {
+                            Capsule()
+                                .stroke(HelmColor.hairline, lineWidth: 1)
+                        }
+                        .position(x: x, y: origin.y - HelmSpacing.sm)
+                }
+            }
+            .allowsHitTesting(false)
         }
         .frame(height: HelmChartStyle.standardHeight)
     }

@@ -50,7 +50,7 @@ public struct ArcDrawGauge<Center: View>: View {
 
         if HelmMotion.shouldAnimateReveal(reduceMotion: reduceMotion) {
             displayValue = 0
-            withAnimation(HelmMotion.revealAnimation) {
+            withAnimation(HelmMotion.animation(HelmMotion.revealAnimation, reduceMotion: reduceMotion)) {
                 displayValue = targetValue
             }
         } else {

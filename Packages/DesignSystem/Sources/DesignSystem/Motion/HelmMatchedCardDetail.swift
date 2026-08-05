@@ -35,7 +35,9 @@ public extension View {
                         }
                         .helmMatchedCardDetail(id: "score", in: namespace)
                         .onTapGesture {
-                            withAnimation(HelmMotion.standardAnimation) {
+                            withAnimation(
+                                HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: false)
+                            ) {
                                 isShowingDetail = true
                             }
                         }
