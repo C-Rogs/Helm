@@ -88,14 +88,7 @@ public actor BackfillService {
         return AsyncStream { continuation in
             let task = Task {
                 if await self.isComplete(for: window) {
-                    continuation.yield(
-                        BackfillProgress(
-                            completedChunks: 0,
-                            totalChunks: 0,
-                            samplesIngestedThisRun: 0,
-                            isComplete: true
-                        )
-                    )
+                    continuation.yield(await self.savedProgress(for: window))
                     continuation.finish()
                     return
                 }
@@ -111,6 +104,15 @@ public actor BackfillService {
         }
     }
 
+    private func effectiveWindow(for window: BackfillWindow, cursor: BackfillCursor) -> BackfillWindow {
+        guard let anchoredStart = cursor.anchoredStart,
+              let anchoredEnd = cursor.anchoredEnd
+        else {
+            return window
+        }
+        return BackfillWindow(start: anchoredStart, end: anchoredEnd, kind: window.kind)
+    }
+
     private func executeBackfill(
         window: BackfillWindow,
         continuation: AsyncStream<BackfillProgress>.Continuation
@@ -120,7 +122,22 @@ public actor BackfillService {
             return
         }
 
-        let chunks = BackfillChunkPlanner.monthlyChunks(in: window, calendar: calendar)
+        var storedCursor = await cursorStore.cursor(for: window)
+        let executionWindow = effectiveWindow(for: window, cursor: storedCursor)
+        if storedCursor.anchoredStart == nil, !storedCursor.isFinished {
+            do {
+                try await cursorStore.anchorWindow(window)
+                storedCursor = await cursorStore.cursor(for: window)
+            } catch {
+                await diagnosticsLog.capture(
+                    error: error,
+                    category: .healthKitIngest,
+                    message: "Backfill window anchor failed"
+                )
+            }
+        }
+
+        let chunks = BackfillChunkPlanner.monthlyChunks(in: executionWindow, calendar: calendar)
         guard !chunks.isEmpty else {
             continuation.yield(
                 BackfillProgress(
@@ -133,7 +150,7 @@ public actor BackfillService {
             return
         }
 
-        let cursor = await cursorStore.cursor(for: window)
+        let cursor = storedCursor
         if cursor.isFinished {
             continuation.yield(
                 BackfillProgress(

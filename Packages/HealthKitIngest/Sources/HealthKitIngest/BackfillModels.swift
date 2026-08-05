@@ -2,12 +2,19 @@ import Foundation
 
 /// Historical fetch window for bounded HealthKit backfill.
 public struct BackfillWindow: Sendable, Hashable, Codable {
+    public enum Kind: String, Sendable, Hashable, Codable {
+        case sixMonths
+        case custom
+    }
+
     public let start: Date
     public let end: Date
+    public let kind: Kind
 
-    public init(start: Date, end: Date) {
+    public init(start: Date, end: Date, kind: Kind = .custom) {
         self.start = start
         self.end = end
+        self.kind = kind
     }
 
     /// Six calendar months ending at `end` (default: now).
@@ -16,11 +23,17 @@ public struct BackfillWindow: Sendable, Hashable, Codable {
         calendar: Calendar = .current
     ) -> BackfillWindow {
         let start = calendar.date(byAdding: .month, value: -6, to: end) ?? end
-        return BackfillWindow(start: start, end: end)
+        return BackfillWindow(start: start, end: end, kind: .sixMonths)
     }
 
+    /// Stable key for cursor lookup. Preset windows use a fixed id so completion survives relaunch.
     public var identityKey: String {
-        "\(start.timeIntervalSince1970)-\(end.timeIntervalSince1970)"
+        switch kind {
+        case .sixMonths:
+            "sixMonths"
+        case .custom:
+            "\(start.timeIntervalSince1970)-\(end.timeIntervalSince1970)"
+        }
     }
 }
 

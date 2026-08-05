@@ -32,7 +32,7 @@ struct BackfillOnboardingStepView: View {
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                if isBackfilling || hasStarted {
+                if isBackfilling || hasStarted || progress.isComplete {
                     ArcProgressGauge(progress: progressFraction, state: .ready, reduceMotion: reduceMotion) {
                         VStack(spacing: HelmSpacing.xxs) {
                             HelmNumericText(Int((progressFraction * 100).rounded()))
@@ -53,7 +53,7 @@ struct BackfillOnboardingStepView: View {
                     Task { await runBackfill() }
                 }
                 .buttonStyle(.helmPrimary)
-                .disabled(isBackfilling)
+                .disabled(isBackfilling || progress.isComplete)
             }
             .padding(HelmSpacing.md)
             .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))

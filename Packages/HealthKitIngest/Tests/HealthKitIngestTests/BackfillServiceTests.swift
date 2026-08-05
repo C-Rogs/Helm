@@ -109,6 +109,84 @@ struct BackfillServiceTests {
 
         #expect(await service.isComplete(for: window))
     }
+
+    @Test("six month preset completion survives relaunch with a later clock")
+    func sixMonthCompletionPersistsAcrossRelaunch() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockStore = MockHealthKitStoreClient()
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let firstEnd = try #require(calendar.date(from: DateComponents(year: 2026, month: 7, day: 22, hour: 9)))
+        let firstWindow = BackfillWindow.sixMonths(endingAt: firstEnd, calendar: calendar)
+
+        let service = BackfillService(
+            persistence: store,
+            anchorDirectoryURL: tempDir,
+            store: mockStore,
+            calendar: calendar
+        )
+
+        for await progress in await service.run(window: firstWindow) {
+            #expect(progress.isComplete)
+        }
+
+        let laterEnd = try #require(calendar.date(from: DateComponents(year: 2026, month: 7, day: 23, hour: 15)))
+        let laterWindow = BackfillWindow.sixMonths(endingAt: laterEnd, calendar: calendar)
+        #expect(firstWindow.identityKey == laterWindow.identityKey)
+
+        let relaunched = BackfillService(
+            persistence: store,
+            anchorDirectoryURL: tempDir,
+            store: mockStore,
+            calendar: calendar
+        )
+
+        #expect(await relaunched.isComplete(for: laterWindow))
+        let saved = await relaunched.savedProgress(for: laterWindow)
+        #expect(saved.isComplete)
+        #expect(saved.totalChunks > 0)
+        #expect(saved.completedChunks == saved.totalChunks)
+    }
+
+    @Test("legacy timestamp cursor migrates to six month preset")
+    func legacyTimestampCursorMigrates() async throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+
+        let legacyStart = Date(timeIntervalSince1970: 1_735_689_600)
+        let legacyEnd = Date(timeIntervalSince1970: 1_755_072_000)
+        let legacyCursor = BackfillCursor(
+            windowIdentity: "\(legacyStart.timeIntervalSince1970)-\(legacyEnd.timeIntervalSince1970)",
+            anchoredStart: legacyStart,
+            anchoredEnd: legacyEnd,
+            completedChunkIndices: [0, 1, 2, 3, 4, 5],
+            isFinished: true
+        )
+        let fileURL = tempDir.appendingPathComponent("backfill_cursor.json")
+        let data = try JSONEncoder().encode(legacyCursor)
+        try data.write(to: fileURL)
+
+        let store = try PersistenceStore.inMemory()
+        let service = BackfillService(
+            persistence: store,
+            anchorDirectoryURL: tempDir,
+            store: MockHealthKitStoreClient(),
+            calendar: calendar
+        )
+
+        let window = BackfillWindow.sixMonths(
+            endingAt: try #require(calendar.date(from: DateComponents(year: 2026, month: 8, day: 5))),
+            calendar: calendar
+        )
+        #expect(await service.isComplete(for: window))
+
+        let migratedData = try Data(contentsOf: fileURL)
+        let migratedCursor = try JSONDecoder().decode(BackfillCursor.self, from: migratedData)
+        #expect(migratedCursor.windowIdentity == window.identityKey)
+    }
 }
 
 @Suite("Backfill baseline seed")
