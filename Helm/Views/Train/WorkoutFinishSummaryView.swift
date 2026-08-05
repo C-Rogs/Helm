@@ -13,7 +13,7 @@ struct WorkoutFinishSummaryView: View {
     @State private var settled = false
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+        VStack(alignment: .leading, spacing: HelmSpacing.md) {
             header
 
             statsRow
@@ -33,7 +33,8 @@ struct WorkoutFinishSummaryView: View {
                 .helmType(.body, color: HelmColor.fgMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .padding(HelmSpacing.md)
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.vertical, HelmSpacing.sm)
         .scaleEffect(settled ? 1 : 0.98)
         .opacity(settled ? 1 : 0)
         .onAppear {
@@ -46,7 +47,7 @@ struct WorkoutFinishSummaryView: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             HelmSectionEyebrow("SESSION COMPLETE")
             Text("Workout logged")
                 .helmType(.title)
@@ -56,11 +57,7 @@ struct WorkoutFinishSummaryView: View {
     private var statsRow: some View {
         HStack(spacing: HelmSpacing.sm) {
             statBlock(label: "SETS", value: "\(summary.setCount)")
-            statBlock(
-                label: "VOLUME",
-                value: String(format: "%.0f", summary.totalVolumeKilograms),
-                unit: "kg"
-            )
+            volumeStat
             statBlock(
                 label: "LOAD",
                 value: String(format: "%.0f", summary.estimatedTRIMP),
@@ -70,16 +67,30 @@ struct WorkoutFinishSummaryView: View {
         }
     }
 
+    /// Bodyweight / unloaded sessions often log 0 kg; dash reads clearer than a fake zero.
+    @ViewBuilder
+    private var volumeStat: some View {
+        if summary.totalVolumeKilograms > 0.5 {
+            statBlock(
+                label: "VOLUME",
+                value: String(format: "%.0f", summary.totalVolumeKilograms),
+                unit: "kg"
+            )
+        } else {
+            statBlock(label: "VOLUME", value: "-")
+        }
+    }
+
     private func statBlock(label: String, value: String, unit: String? = nil) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(label)
                 .helmType(.monoTag, color: HelmColor.fgMuted)
             HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
                 HelmNumericText(value)
-                    .helmType(.number)
+                    .helmType(.bigNumber)
                 if let unit {
                     Text(unit)
-                        .helmType(.body, color: HelmColor.fgMuted)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
             }
         }
@@ -89,7 +100,7 @@ struct WorkoutFinishSummaryView: View {
     private var landmarkSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             HelmHairlineRule()
-            Text("Weekly landmarks")
+            Text("Weekly hard sets")
                 .helmType(.label)
 
             ForEach(Array(summary.muscleMovements.enumerated()), id: \.element.id) { index, movement in
@@ -198,30 +209,69 @@ enum WorkoutFinishSummaryFixtures {
                 startOffsetSeconds: 0,
                 endOffsetSeconds: 180,
                 title: "Lose Yourself",
-                artist: "Eminem"
+                artist: "Eminem",
+                genre: "Hip-Hop"
             ),
             SessionMusicSegment(
                 startOffsetSeconds: 180,
                 endOffsetSeconds: 540,
                 title: "POWER",
-                artist: "Kanye West"
+                artist: "Kanye West",
+                genre: "Hip-Hop"
             )
         ]
     )
 
     static let songsOnly = WorkoutFinishSummary(
-        setCount: 8,
-        totalVolumeKilograms: 3_200,
-        estimatedTRIMP: 90,
-        durationMinutes: 35,
+        setCount: 12,
+        totalVolumeKilograms: 0,
+        estimatedTRIMP: 189,
+        durationMinutes: 7,
         muscleMovements: [],
         readinessTeaser: "Light session; minimal readiness impact.",
+        setMarkers: [
+            SessionSetMarker(offsetSeconds: 45, setNumber: 1),
+            SessionSetMarker(offsetSeconds: 120, setNumber: 4)
+        ],
+        exerciseMarkers: [
+            SessionExerciseMarker(offsetSeconds: 20, shortName: "Chest Dips"),
+            SessionExerciseMarker(offsetSeconds: 95, shortName: "Crunches")
+        ],
         musicSegments: [
             SessionMusicSegment(
                 startOffsetSeconds: 0,
-                endOffsetSeconds: 2100,
-                title: "Eye of the Tiger",
-                artist: "Survivor"
+                endOffsetSeconds: 21,
+                title: "EASTSIDE",
+                artist: "Georges",
+                genre: "Electronic"
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 21,
+                endOffsetSeconds: 236,
+                title: "Not Enough",
+                artist: "Dam Swindle",
+                genre: "Electronic"
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 236,
+                endOffsetSeconds: 245,
+                title: "More Than It Seems",
+                artist: "KOLA",
+                genre: "Electronic"
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 245,
+                endOffsetSeconds: 336,
+                title: "Two Hearts, Come Through",
+                artist: "BowAsWell",
+                genre: "Electronic"
+            ),
+            SessionMusicSegment(
+                startOffsetSeconds: 336,
+                endOffsetSeconds: 420,
+                title: "Encore",
+                artist: "Various",
+                genre: "Electronic"
             )
         ]
     )

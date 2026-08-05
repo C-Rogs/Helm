@@ -168,7 +168,6 @@ private struct TrainFinishSummarySheet: View {
             summary: summary,
             muscleLabel: TrendsChartSupport.muscleLabel
           )
-          .padding(HelmSpacing.md)
         }
       }
       .helmScreenBackground()

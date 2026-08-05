@@ -8,19 +8,31 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
     public let title: String?
     public let artist: String?
     public let album: String?
+    public let genre: String?
 
     public init(
         startOffsetSeconds: Int,
         endOffsetSeconds: Int,
         title: String? = nil,
         artist: String? = nil,
-        album: String? = nil
+        album: String? = nil,
+        genre: String? = nil
     ) {
         self.startOffsetSeconds = max(0, startOffsetSeconds)
         self.endOffsetSeconds = max(self.startOffsetSeconds, endOffsetSeconds)
         self.title = title
         self.artist = artist
         self.album = album
+        self.genre = genre
+    }
+
+    public var durationSeconds: Int {
+        max(0, endOffsetSeconds - startOffsetSeconds)
+    }
+
+    public var displayGenre: String? {
+        let trimmed = genre?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
     }
 
     public var displayTitle: String {
@@ -74,7 +86,8 @@ public enum SessionMusicSegmentBuilder {
                 endOffsetSeconds: endOffset,
                 title: sample.title,
                 artist: sample.artist,
-                album: sample.album
+                album: sample.album,
+                genre: sample.genre
             )
 
             if let last = segments.last,
@@ -86,7 +99,8 @@ public enum SessionMusicSegmentBuilder {
                     endOffsetSeconds: max(last.endOffsetSeconds, segment.endOffsetSeconds),
                     title: last.title,
                     artist: last.artist,
-                    album: last.album
+                    album: last.album,
+                    genre: last.genre ?? segment.genre
                 )
             } else {
                 segments.append(segment)
@@ -100,6 +114,50 @@ public enum SessionMusicSegmentBuilder {
         let titleTrimmed = title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         let artistTrimmed = artist?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return titleTrimmed.isEmpty && artistTrimmed.isEmpty
+    }
+}
+
+/// One-line "what you listened to" blurb for the session timeline header.
+public enum SessionMusicGenreSummary {
+    public static let separator = " · "
+
+    /// Top genres by total segment duration, capped at `limit`, joined with `separator`.
+    public static func format(segments: [SessionMusicSegment], limit: Int = 3) -> String? {
+        guard limit > 0 else { return nil }
+
+        var totals: [String: Int] = [:]
+        var displayNames: [String: String] = [:]
+        var firstSeen: [String: Int] = [:]
+
+        for (index, segment) in segments.enumerated() {
+            guard let genre = segment.displayGenre, !isUnknown(genre) else { continue }
+            let key = genre.lowercased()
+            totals[key, default: 0] += segment.durationSeconds
+            if displayNames[key] == nil {
+                displayNames[key] = genre
+                firstSeen[key] = index
+            }
+        }
+
+        guard !totals.isEmpty else { return nil }
+
+        let ordered = totals.keys.sorted { lhs, rhs in
+            let lhsTotal = totals[lhs] ?? 0
+            let rhsTotal = totals[rhs] ?? 0
+            if lhsTotal != rhsTotal { return lhsTotal > rhsTotal }
+            return (firstSeen[lhs] ?? 0) < (firstSeen[rhs] ?? 0)
+        }
+
+        let summary = ordered
+            .prefix(limit)
+            .compactMap { displayNames[$0] }
+            .joined(separator: separator)
+
+        return summary.isEmpty ? nil : summary
+    }
+
+    private static func isUnknown(_ genre: String) -> Bool {
+        genre.lowercased() == "unknown"
     }
 }
 

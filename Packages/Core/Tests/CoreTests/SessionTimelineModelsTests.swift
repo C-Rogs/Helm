@@ -98,6 +98,64 @@ struct SessionMusicSegmentBuilderTests {
     }
 }
 
+@Suite("Session music genre summary")
+struct SessionMusicGenreSummaryTests {
+    @Test("carries genre through segment build and merge")
+    func carriesGenre() {
+        let start = Date(timeIntervalSince1970: 1_700_000_000)
+        let samples = [
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start,
+                title: "Same",
+                artist: "Artist",
+                genre: "Hip-Hop"
+            ),
+            WorkoutMusicSample(
+                sessionID: "s1",
+                sampledAt: start.addingTimeInterval(60),
+                title: "Same",
+                artist: "Artist",
+                genre: "Rap"
+            )
+        ]
+
+        let segments = SessionMusicSegmentBuilder.build(
+            samples: samples,
+            startedAt: start,
+            endedAt: start.addingTimeInterval(180)
+        )
+
+        #expect(segments.count == 1)
+        #expect(segments[0].genre == "Hip-Hop")
+    }
+
+    @Test("orders genres by total duration and caps at limit")
+    func ordersByDuration() {
+        let segments = [
+            SessionMusicSegment(startOffsetSeconds: 0, endOffsetSeconds: 60, genre: "Rock"),
+            SessionMusicSegment(startOffsetSeconds: 60, endOffsetSeconds: 360, genre: "Hip-Hop"),
+            SessionMusicSegment(startOffsetSeconds: 360, endOffsetSeconds: 540, genre: "Electronic"),
+            SessionMusicSegment(startOffsetSeconds: 540, endOffsetSeconds: 600, genre: "Jazz")
+        ]
+
+        #expect(SessionMusicGenreSummary.format(segments: segments) == "Hip-Hop · Electronic · Rock")
+        #expect(SessionMusicGenreSummary.format(segments: segments, limit: 1) == "Hip-Hop")
+    }
+
+    @Test("skips blank and unknown genres")
+    func skipsBlanks() {
+        let segments = [
+            SessionMusicSegment(startOffsetSeconds: 0, endOffsetSeconds: 120, genre: "  "),
+            SessionMusicSegment(startOffsetSeconds: 120, endOffsetSeconds: 240, genre: "Unknown"),
+            SessionMusicSegment(startOffsetSeconds: 240, endOffsetSeconds: 300, genre: " Rock ")
+        ]
+
+        #expect(SessionMusicGenreSummary.format(segments: segments) == "Rock")
+        #expect(SessionMusicGenreSummary.format(segments: []) == nil)
+    }
+}
+
 @Suite("Session exercise markers")
 struct SessionExerciseMarkerBuilderTests {
     @Test("marks first completed set per exercise")
@@ -162,5 +220,29 @@ struct SessionExerciseMarkerBuilderTests {
         )
         #expect(truncated == "Romanian Deadli…")
         #expect(truncated.count <= 16)
+    }
+}
+
+@Suite("Spotify player state mapping")
+struct SpotifyPlayerStateMappingTests {
+    @Test("maps track fields into workout sample")
+    func mapsTrackFields() {
+        let sample = SpotifyPlayerStateMapping.workoutSample(
+            sessionID: "session-1",
+            title: "POWER",
+            artist: "Kanye West",
+            album: "My Beautiful Dark Twisted Fantasy"
+        )
+
+        #expect(sample?.title == "POWER")
+        #expect(sample?.artist == "Kanye West")
+        #expect(sample?.album == "My Beautiful Dark Twisted Fantasy")
+        #expect(sample?.source == "spotify")
+    }
+
+    @Test("drops empty track metadata")
+    func dropsEmptyMetadata() {
+        #expect(SpotifyPlayerStateMapping.workoutSample(sessionID: "s", title: nil, artist: nil, album: nil) == nil)
+        #expect(SpotifyPlayerStateMapping.workoutSample(sessionID: "s", title: "  ", artist: "", album: nil) == nil)
     }
 }
