@@ -22,7 +22,8 @@ enum SessionAdjustmentMapper {
             rpeDelta: operation.rpeDelta,
             targetRPE: operation.targetRPE,
             loadAdjustmentIntent: operation.loadAdjustmentIntent ?? .coachSuggested,
-            targetSets: operation.targetSets
+            targetSets: operation.targetSets,
+            warmupSets: operation.warmupSets
         )
     }
 
@@ -31,6 +32,7 @@ enum SessionAdjustmentMapper {
         case .swap: .swap
         case .reorder: .reorder
         case .adjustSets: .adjustSets
+        case .adjustWarmupSets: .adjustWarmupSets
         case .adjustLoad: .adjustLoad
         case .adjustRPE: .adjustRPE
         case .addExercise: .addExercise

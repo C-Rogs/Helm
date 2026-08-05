@@ -4,7 +4,10 @@ public struct PrescribedExercise: Sendable, Hashable, Codable, Identifiable {
     public let id: UUID
     public let exerciseID: String
     public let order: Int
+    /// Working (hard) sets only. Warm-ups live in `warmupSets` and do not count toward volume.
     public let targetSets: Int
+    /// Planned warm-up sets. Never counted as hard-set volume.
+    public let warmupSets: Int
     public let targetRepMin: Int?
     public let targetRepMax: Int?
     public let targetMass: Mass?
@@ -17,6 +20,7 @@ public struct PrescribedExercise: Sendable, Hashable, Codable, Identifiable {
         exerciseID: String,
         order: Int,
         targetSets: Int,
+        warmupSets: Int = 0,
         targetRepMin: Int? = nil,
         targetRepMax: Int? = nil,
         targetMass: Mass? = nil,
@@ -28,12 +32,49 @@ public struct PrescribedExercise: Sendable, Hashable, Codable, Identifiable {
         self.exerciseID = exerciseID
         self.order = order
         self.targetSets = targetSets
+        self.warmupSets = max(0, warmupSets)
         self.targetRepMin = targetRepMin
         self.targetRepMax = targetRepMax
         self.targetMass = targetMass
         self.targetRPE = targetRPE
         self.rationale = rationale
         self.evidenceIDs = evidenceIDs
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        exerciseID = try container.decode(String.self, forKey: .exerciseID)
+        order = try container.decode(Int.self, forKey: .order)
+        targetSets = try container.decode(Int.self, forKey: .targetSets)
+        // Pre-sidecar caches omit this key; default keeps same-day UserDefaults loads alive.
+        warmupSets = max(0, try container.decodeIfPresent(Int.self, forKey: .warmupSets) ?? 0)
+        targetRepMin = try container.decodeIfPresent(Int.self, forKey: .targetRepMin)
+        targetRepMax = try container.decodeIfPresent(Int.self, forKey: .targetRepMax)
+        targetMass = try container.decodeIfPresent(Mass.self, forKey: .targetMass)
+        targetRPE = try container.decodeIfPresent(Double.self, forKey: .targetRPE)
+        rationale = try container.decodeIfPresent(String.self, forKey: .rationale)
+        evidenceIDs = try container.decodeIfPresent([String].self, forKey: .evidenceIDs) ?? []
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(exerciseID, forKey: .exerciseID)
+        try container.encode(order, forKey: .order)
+        try container.encode(targetSets, forKey: .targetSets)
+        try container.encode(warmupSets, forKey: .warmupSets)
+        try container.encodeIfPresent(targetRepMin, forKey: .targetRepMin)
+        try container.encodeIfPresent(targetRepMax, forKey: .targetRepMax)
+        try container.encodeIfPresent(targetMass, forKey: .targetMass)
+        try container.encodeIfPresent(targetRPE, forKey: .targetRPE)
+        try container.encodeIfPresent(rationale, forKey: .rationale)
+        try container.encode(evidenceIDs, forKey: .evidenceIDs)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, exerciseID, order, targetSets, warmupSets
+        case targetRepMin, targetRepMax, targetMass, targetRPE, rationale, evidenceIDs
     }
 }
 

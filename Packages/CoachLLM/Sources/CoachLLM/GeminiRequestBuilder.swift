@@ -353,7 +353,7 @@ public enum GeminiRequestBuilder {
             "properties": [
                 "kind": [
                     "type": "string",
-                    "enum": ["swap", "reorder", "adjustSets", "adjustLoad", "adjustRPE"]
+                    "enum": ["swap", "reorder", "adjustSets", "adjustWarmupSets", "adjustLoad", "adjustRPE", "addExercise"]
                 ],
                 "fromExerciseID": ["type": "string"],
                 "toExerciseID": ["type": "string"],
@@ -374,7 +374,9 @@ public enum GeminiRequestBuilder {
                     "enum": ["userDirected", "coachSuggested"]
                 ],
                 "rpeDelta": ["type": "number"],
-                "targetRPE": ["type": "number"]
+                "targetRPE": ["type": "number"],
+                "targetSets": ["type": "integer"],
+                "warmupSets": ["type": "integer"]
             ],
             "required": ["kind"]
         ]

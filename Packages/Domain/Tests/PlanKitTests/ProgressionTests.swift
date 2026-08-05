@@ -163,7 +163,7 @@ struct HardSetAccountingTests {
                     sequence: 0,
                     reps: 12,
                     completedAt: Date(),
-                    isWarmup: true
+                    setType: .warmup
                 )
             ]
         )
@@ -175,5 +175,93 @@ struct HardSetAccountingTests {
         )
 
         #expect(ledger.totals[.biceps] == nil)
+    }
+
+    @Test("failure sets count as full hard sets")
+    func failureCountsAsHard() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "curl",
+            contributions: [ExerciseMuscleContribution(muscle: .biceps, fraction: 1.0, tier: .primary)]
+        )
+        let session = WorkoutSession(
+            helmDay: HelmDay(year: 2026, month: 3, day: 10),
+            startedAt: Date(),
+            sets: [
+                LoggedSet(
+                    exerciseID: "curl",
+                    sequence: 1,
+                    reps: 8,
+                    completedAt: Date(),
+                    setType: .failure
+                )
+            ]
+        )
+        let ledger = PlanKit.weeklyHardSetTotals(
+            sessions: [session],
+            muscleMaps: ["curl": map],
+            weekStart: HelmDay(year: 2026, month: 3, day: 10)
+        )
+        #expect(ledger.totals[.biceps] == 1.0)
+    }
+
+    @Test("drop set credits 0.5 primary only and caps drop credit at 1.5 per exercise")
+    func dropSetFractionalAndCap() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "bench",
+            contributions: [
+                ExerciseMuscleContribution(muscle: .chest, fraction: 1.0, tier: .primary),
+                ExerciseMuscleContribution(muscle: .triceps, fraction: 0.5, tier: .majorSynergist)
+            ]
+        )
+        let session = WorkoutSession(
+            helmDay: HelmDay(year: 2026, month: 3, day: 10),
+            startedAt: Date(),
+            sets: [
+                LoggedSet(
+                    exerciseID: "bench",
+                    sequence: 1,
+                    reps: 8,
+                    completedAt: Date(),
+                    setType: .normal
+                ),
+                LoggedSet(
+                    exerciseID: "bench",
+                    sequence: 2,
+                    reps: 6,
+                    completedAt: Date(),
+                    setType: .dropSet
+                ),
+                LoggedSet(
+                    exerciseID: "bench",
+                    sequence: 3,
+                    reps: 6,
+                    completedAt: Date(),
+                    setType: .dropSet
+                ),
+                LoggedSet(
+                    exerciseID: "bench",
+                    sequence: 4,
+                    reps: 6,
+                    completedAt: Date(),
+                    setType: .dropSet
+                ),
+                LoggedSet(
+                    exerciseID: "bench",
+                    sequence: 5,
+                    reps: 6,
+                    completedAt: Date(),
+                    setType: .dropSet
+                )
+            ]
+        )
+        let breakdown = HardSetAccounting.weeklyVolumeBreakdown(
+            sessions: [session],
+            muscleMaps: ["bench": map],
+            weekStart: HelmDay(year: 2026, month: 3, day: 10)
+        )
+        // 1.0 normal + min(0.5*4, 1.5) drop = 2.5 primary
+        #expect(breakdown[.chest]?.direct == 2.5)
+        // Drop portions do not credit synergists; only the normal set's 0.5
+        #expect(breakdown[.triceps]?.synergist == 0.5)
     }
 }

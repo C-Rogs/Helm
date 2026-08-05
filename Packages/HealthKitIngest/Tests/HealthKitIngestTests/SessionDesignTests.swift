@@ -299,7 +299,32 @@ struct PrescriptionDayStoreTests {
         let loaded = PrescriptionDayStore.load(for: day)
         #expect(loaded?.title == "Pull")
         #expect(loaded?.exercises.count == 1)
+        #expect(loaded?.exercises.first?.warmupSets == 0)
         PrescriptionDayStore.clear(for: day)
         #expect(PrescriptionDayStore.load(for: day) == nil)
+    }
+
+    @Test("decodes pre-warmupSets prescription JSON")
+    func decodesLegacyWithoutWarmupSets() throws {
+        let json = """
+        {
+          "id": "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+          "helmDay": {"year": 2026, "month": 8, "day": 5},
+          "title": "Push",
+          "exercises": [{
+            "id": "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE",
+            "exerciseID": "bench",
+            "order": 0,
+            "targetSets": 3,
+            "targetRepMin": 8,
+            "targetRepMax": 10,
+            "evidenceIDs": []
+          }]
+        }
+        """
+        let data = try #require(json.data(using: .utf8))
+        let decoded = try JSONDecoder().decode(SessionPrescription.self, from: data)
+        #expect(decoded.exercises.first?.targetSets == 3)
+        #expect(decoded.exercises.first?.warmupSets == 0)
     }
 }

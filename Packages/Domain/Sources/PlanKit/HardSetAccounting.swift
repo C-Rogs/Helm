@@ -75,9 +75,26 @@ public struct MuscleVolumeBreakdown: Sendable, Hashable, Codable {
 enum HardSetAccounting {
     /// Indirect fractional sets may satisfy at most this share of weekly target volume.
     static let synergistWeeklyCapFraction = 0.5
+    /// Drop / rest-pause slots cannot exceed this primary credit per exercise entry.
+    static let intensityTechniquePrimaryCap = 1.5
+    /// Drop-set portion credit toward the primary mover only.
+    static let dropSetStimulusCredit = 0.5
+
+    /// Hypertrophy stimulus multiplier for one logged set (0 = not a hard set).
+    static func stimulusCredit(_ set: LoggedSet) -> Double {
+        guard set.reps != nil else { return 0 }
+        switch set.setType {
+        case .warmup, .assisted, .timed, .distance:
+            return 0
+        case .dropSet:
+            return dropSetStimulusCredit
+        case .normal, .failure, .bodyweight:
+            return 1.0
+        }
+    }
 
     static func isHardSet(_ set: LoggedSet) -> Bool {
-        !set.isWarmup && set.reps != nil
+        stimulusCredit(set) > 0
     }
 
     static func effectiveVolume(
@@ -111,16 +128,42 @@ enum HardSetAccounting {
         var synergist: [MuscleGroup: Double] = [:]
 
         for session in sessions where days.contains(session.helmDay) {
-            for set in session.sets where isHardSet(set) {
-                guard let map = muscleMaps[set.exerciseID] else { continue }
-                for contribution in map.contributions {
-                    let credit = contribution.effectiveCredit
-                    guard credit > 0 else { continue }
-                    if contribution.isDirect {
-                        direct[contribution.muscle, default: 0] += credit
-                    } else {
-                        synergist[contribution.muscle, default: 0] += credit
+            let credited = session.sets.filter { stimulusCredit($0) > 0 }
+            let byExercise = Dictionary(grouping: credited, by: \.exerciseID)
+
+            for (exerciseID, sets) in byExercise {
+                guard let map = muscleMaps[exerciseID] else { continue }
+                var normalPrimary: [MuscleGroup: Double] = [:]
+                var intensityPrimary: [MuscleGroup: Double] = [:]
+
+                for set in sets {
+                    let stimulus = stimulusCredit(set)
+                    for contribution in map.contributions {
+                        // Drop portion credits primary mover only.
+                        if set.setType == .dropSet, !contribution.isDirect {
+                            continue
+                        }
+                        let credit = contribution.effectiveCredit * stimulus
+                        guard credit > 0 else { continue }
+                        if contribution.isDirect {
+                            if set.setType == .dropSet {
+                                intensityPrimary[contribution.muscle, default: 0] += credit
+                            } else {
+                                normalPrimary[contribution.muscle, default: 0] += credit
+                            }
+                        } else {
+                            synergist[contribution.muscle, default: 0] += credit
+                        }
                     }
+                }
+
+                let muscles = Set(normalPrimary.keys).union(intensityPrimary.keys)
+                for muscle in muscles {
+                    let intensity = min(
+                        intensityPrimary[muscle, default: 0],
+                        intensityTechniquePrimaryCap
+                    )
+                    direct[muscle, default: 0] += normalPrimary[muscle, default: 0] + intensity
                 }
             }
         }

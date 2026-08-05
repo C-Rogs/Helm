@@ -259,6 +259,28 @@ struct PrescriptionAdjustmentTests {
         #expect(adjusted.exercises.first?.targetSets == 13)
     }
 
+    @Test("warmup set adds do not change working targetSets")
+    func warmupSetAddPreservesWorkingVolume() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustWarmupSets,
+                    exerciseID: "bench_press",
+                    setDelta: 2
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected warmup set add to apply")
+            return
+        }
+        #expect(adjusted.exercises.first?.targetSets == 3)
+        #expect(adjusted.exercises.first?.warmupSets == 2)
+    }
 
     @Test("exclude list honoured across repeated swaps")
     func excludeListHonouredAcrossSwaps() {

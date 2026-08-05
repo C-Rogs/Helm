@@ -230,6 +230,7 @@ enum SessionAutoregulator {
             exerciseID: exercise.exerciseID,
             order: exercise.order,
             targetSets: targetSets ?? exercise.targetSets,
+            warmupSets: exercise.warmupSets,
             targetRepMin: exercise.targetRepMin,
             targetRepMax: exercise.targetRepMax,
             targetMass: exercise.targetMass,

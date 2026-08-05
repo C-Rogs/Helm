@@ -577,4 +577,41 @@ struct InSessionCoachServiceTests {
 
         #expect(applied.banner.toLabel == "+5 sets")
     }
+
+    @Test("warmup set add applies without changing working set count")
+    func warmupSetAddApplies() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding two warm-up sets on bench.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustWarmupSets,
+                    exerciseID: benchPressID,
+                    setDelta: 2
+                )
+            ]
+        )
+
+        let applied = try service.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: []
+        )
+        #expect(applied.banner.toLabel == "+2 warm-up")
+
+        let refreshed = try #require(try store.activeSessions.fetchActiveSnapshot(at: Date()))
+        let bench = try #require(refreshed.session.exercises.first { $0.exerciseID == benchPressID })
+        #expect(bench.sets.filter { $0.setType.isWarmup }.count == 2)
+        #expect(bench.sets.filter { !$0.setType.isWarmup }.count == 3)
+
+        let bridged = ActiveSessionPrescriptionBridge.prescribedSession(from: refreshed)
+        let bridgedBench = try #require(bridged.exercises.first { $0.exerciseID == benchPressID })
+        #expect(bridgedBench.targetSets == 3)
+        #expect(bridgedBench.warmupSets == 2)
+    }
 }

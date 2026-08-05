@@ -621,6 +621,16 @@ public struct InSessionCoachService: Sendable {
                 ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names),
                 "\(sign) sets"
             )
+        case .adjustWarmupSets:
+            let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
+            let previousWarmups = previous.exercises.first { $0.exerciseID == exerciseID }?.warmupSets ?? 0
+            let nextWarmups = adjusted.exercises.first { $0.exerciseID == exerciseID }?.warmupSets ?? previousWarmups
+            let delta = nextWarmups - previousWarmups
+            let sign = delta > 0 ? "+\(delta)" : "\(delta)"
+            return (
+                ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names),
+                "\(sign) warm-up"
+            )
         case .adjustLoad:
             let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
             let toExercise = adjusted.exercises.first { $0.exerciseID == exerciseID }

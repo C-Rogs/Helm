@@ -74,6 +74,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         case swap
         case reorder
         case adjustSets
+        case adjustWarmupSets
         case adjustLoad
         case adjustRPE
         case addExercise
@@ -92,6 +93,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
     public let targetRPE: Double?
     public let loadAdjustmentIntent: LoadAdjustmentIntent?
     public let targetSets: Int?
+    public let warmupSets: Int?
 
     public init(
         kind: Kind,
@@ -106,7 +108,8 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         rpeDelta: Double? = nil,
         targetRPE: Double? = nil,
         loadAdjustmentIntent: LoadAdjustmentIntent? = nil,
-        targetSets: Int? = nil
+        targetSets: Int? = nil,
+        warmupSets: Int? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -121,6 +124,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         self.targetRPE = targetRPE
         self.loadAdjustmentIntent = loadAdjustmentIntent
         self.targetSets = targetSets
+        self.warmupSets = warmupSets
     }
 }
 

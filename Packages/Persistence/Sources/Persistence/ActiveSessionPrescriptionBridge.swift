@@ -8,11 +8,17 @@ public enum ActiveSessionPrescriptionBridge {
             .sorted { $0.displayOrder < $1.displayOrder }
             .enumerated()
             .map { index, exercise in
-                let templateSet = exercise.sets.first(where: { $0.status == .planned }) ?? exercise.sets.first
+                let working = exercise.sets.filter { !$0.setType.isWarmup }
+                let warmups = exercise.sets.filter { $0.setType.isWarmup }
+                let templateSet = working.first(where: { $0.status == .planned })
+                    ?? working.first
+                    ?? exercise.sets.first(where: { $0.status == .planned })
+                    ?? exercise.sets.first
                 return PrescribedExercise(
                     exerciseID: exercise.exerciseID,
                     order: index,
-                    targetSets: max(exercise.sets.count, 1),
+                    targetSets: max(working.count, 1),
+                    warmupSets: warmups.count,
                     targetRepMin: templateSet?.reps,
                     targetRepMax: templateSet?.reps,
                     targetMass: templateSet?.mass,

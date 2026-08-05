@@ -126,7 +126,7 @@ enum SessionExerciseIDResolver {
                 kind: operation.kind,
                 orderedExerciseIDs: ordered
             )
-        case .adjustSets, .adjustLoad, .adjustRPE:
+        case .adjustSets, .adjustWarmupSets, .adjustLoad, .adjustRPE:
             let exerciseID = resolve(
                 operation.exerciseID,
                 sessionExerciseIDs: sessionExerciseIDs,

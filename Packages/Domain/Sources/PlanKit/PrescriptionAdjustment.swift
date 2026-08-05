@@ -14,6 +14,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         case swap
         case reorder
         case adjustSets
+        case adjustWarmupSets
         case adjustLoad
         case adjustRPE
         case addExercise
@@ -32,6 +33,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
     public let targetRPE: Double?
     public let loadAdjustmentIntent: LoadAdjustmentIntent
     public let targetSets: Int?
+    public let warmupSets: Int?
 
     public init(
         kind: Kind,
@@ -46,7 +48,8 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         rpeDelta: Double? = nil,
         targetRPE: Double? = nil,
         loadAdjustmentIntent: LoadAdjustmentIntent = .coachSuggested,
-        targetSets: Int? = nil
+        targetSets: Int? = nil,
+        warmupSets: Int? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -61,6 +64,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         self.targetRPE = targetRPE
         self.loadAdjustmentIntent = loadAdjustmentIntent
         self.targetSets = targetSets
+        self.warmupSets = warmupSets
     }
 }
 
@@ -144,6 +148,8 @@ enum PrescriptionAdjustmentEngine {
             return applyReorder(operation, to: &exercises)
         case .adjustSets:
             return applySetAdjustment(operation, to: &exercises)
+        case .adjustWarmupSets:
+            return applyWarmupSetAdjustment(operation, to: &exercises)
         case .adjustLoad:
             return applyLoadAdjustment(operation, to: &exercises)
         case .adjustRPE:
@@ -257,6 +263,30 @@ enum PrescriptionAdjustmentEngine {
         return .success
     }
 
+    private static func applyWarmupSetAdjustment(
+        _ operation: PrescriptionAdjustmentOperation,
+        to exercises: inout [PrescribedExercise]
+    ) -> OperationOutcome {
+        guard let exerciseID = operation.exerciseID else {
+            return .failure(.exerciseNotFound(exerciseID: ""))
+        }
+        guard let index = exercises.firstIndex(where: { $0.exerciseID == exerciseID }) else {
+            return .failure(.exerciseNotFound(exerciseID: exerciseID))
+        }
+
+        let proposed: Int
+        if let absolute = operation.warmupSets {
+            proposed = max(0, absolute)
+        } else if let delta = operation.setDelta {
+            proposed = max(0, exercises[index].warmupSets + delta)
+        } else {
+            return .failure(.exerciseNotFound(exerciseID: exerciseID))
+        }
+
+        exercises[index] = replacing(exercises[index], warmupSets: proposed)
+        return .success
+    }
+
     private static func applyLoadAdjustment(
         _ operation: PrescriptionAdjustmentOperation,
         to exercises: inout [PrescribedExercise]
@@ -334,11 +364,13 @@ enum PrescriptionAdjustmentEngine {
         }
 
         let setCount = max(1, operation.targetSets ?? 3)
+        let warmupCount = max(0, operation.warmupSets ?? 0)
         exercises.append(
             PrescribedExercise(
                 exerciseID: exerciseID,
                 order: exercises.count,
                 targetSets: setCount,
+                warmupSets: warmupCount,
                 targetRepMin: nil,
                 targetRepMax: nil,
                 targetMass: nil,
@@ -353,6 +385,7 @@ enum PrescriptionAdjustmentEngine {
         exerciseID: String? = nil,
         order: Int? = nil,
         targetSets: Int? = nil,
+        warmupSets: Int? = nil,
         targetMass: Mass? = nil,
         targetRPE: Double? = nil,
         rationale: String? = nil,
@@ -363,6 +396,7 @@ enum PrescriptionAdjustmentEngine {
             exerciseID: exerciseID ?? exercise.exerciseID,
             order: order ?? exercise.order,
             targetSets: targetSets ?? exercise.targetSets,
+            warmupSets: warmupSets ?? exercise.warmupSets,
             targetRepMin: exercise.targetRepMin,
             targetRepMax: exercise.targetRepMax,
             targetMass: targetMass ?? exercise.targetMass,
@@ -391,6 +425,7 @@ public enum PrescriptionDiff {
                     exerciseID: $0.exerciseID,
                     order: $0.order,
                     targetSets: $0.targetSets,
+                    warmupSets: $0.warmupSets,
                     targetMassKg: $0.targetMass?.kilograms,
                     targetRPE: $0.targetRPE
                 )
@@ -401,6 +436,7 @@ public enum PrescriptionDiff {
         let exerciseID: String
         let order: Int
         let targetSets: Int
+        let warmupSets: Int
         let targetMassKg: Double?
         let targetRPE: Double?
     }

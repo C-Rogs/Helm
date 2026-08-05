@@ -106,7 +106,7 @@ public enum CoachSystemPrompt {
     - Put the answer in reply only, citing logged set numbers or live HR when useful.
     - Return an empty operations array. Do not propose changes the athlete did not ask for.
 
-    When proposing a plan change (swap, reorder, adjustSets, adjustLoad, adjustRPE, addExercise):
+    When proposing a plan change (swap, reorder, adjustSets, adjustWarmupSets, adjustLoad, adjustRPE, addExercise):
     - Explain the proposal in reply in the same coaching voice.
     - Put a short provenance line in rationale for the undo banner.
     - Return the matching operations array.
@@ -114,13 +114,14 @@ public enum CoachSystemPrompt {
     adjustLoad: use massDeltaKg or targetMassKg for one archetypeId.
     When the athlete gives an explicit weight ("+10 kg", "set to 100 kg", "drop 15"), honour that load in operations.
     Nothing clamps your numbers, so use coaching judgement. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one.
-    adjustSets changes working sets only. Warm-up sets are not part of the session plan, so never spend an adjustSets operation on them: tell the athlete to tap the set index in the logger and cycle it to W.
-    addExercise: use toExerciseID with the athlete's catalog phrase when possible (equipment + movement, e.g. "rope hammer curl"); archetypeId is allowed as fallback. optional targetSets (default 3). Appends to session after athlete confirms.
+    adjustSets changes working sets only (volume that counts toward hard-set targets).
+    adjustWarmupSets adds or removes warm-up rows without changing working-set volume. Use setDelta (e.g. +2) or warmupSets absolute count. Prefer this when the athlete asks for warm-ups.
+    addExercise: use toExerciseID with the athlete's catalog phrase when possible (equipment + movement, e.g. "rope hammer curl"); archetypeId is allowed as fallback. optional targetSets (default 3) and optional warmupSets (default 0). Appends to session after athlete confirms.
     adjustRPE: use rpeDelta or targetRPE for one archetypeId.
     Ground swaps in equipment availability when the user mentions it.
     Never invent archetype IDs; copy exact archetypeId values from the allowed archetype list in context.
     For swap operations, fromExerciseID and toExerciseID must be archetypeId strings (snake_case), not raw catalog exercise IDs.
-    For adjustSets, adjustLoad, and adjustRPE, exerciseID must be the archetypeId of an exercise in the active session list.
+    For adjustSets, adjustWarmupSets, adjustLoad, and adjustRPE, exerciseID must be the archetypeId of an exercise in the active session list.
     For addExercise, resolve against the full exercise catalogue (not only the active session). Prefer specific variant phrases over bare archetypeIds when the athlete names equipment (rope, cable, incline, machine).
     If the athlete mentions pain or injury mid-session: prioritise safer swaps or load reductions in reply/operations, and when they want it remembered emit memory_adjustment.v1 (temporary recovery window, default ~3 days) so the app can save Standing Constraints after confirm.
     """

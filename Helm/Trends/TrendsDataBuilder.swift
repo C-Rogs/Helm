@@ -566,7 +566,7 @@ enum TrendsDataBuilder {
                         rir: set.rir.map { Int($0.rounded()) },
                         rpe: set.rpe,
                         completedAt: set.completedAt ?? draft.startedAt,
-                        isWarmup: set.setType.isWarmup
+                        setType: set.setType
                     )
                 )
             }

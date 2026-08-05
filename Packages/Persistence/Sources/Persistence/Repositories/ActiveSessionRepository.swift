@@ -169,7 +169,8 @@ public struct ActiveSessionRepository: Sendable {
                 ) ?? ExerciseMode.weightReps.rawValue
                 let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
                 let restSeconds = 90
-                let setCount = max(exercise.targetSets, 1)
+                let warmupCount = max(exercise.warmupSets, 0)
+                let workingCount = max(exercise.targetSets, 1)
                 let targetReps = exercise.targetRepMin ?? exercise.targetRepMax
 
                 try db.execute(
@@ -185,7 +186,31 @@ public struct ActiveSessionRepository: Sendable {
                     ]
                 )
 
-                for index in 0 ..< setCount {
+                var setIndex = 0
+                for _ in 0 ..< warmupCount {
+                    let setID = UUID().uuidString
+                    try db.execute(
+                        sql: """
+                            INSERT INTO set_entry (
+                                id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                                weight_kg, reps, rpe, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 'warmup', 'planned', ?, ?, ?, ?, ?)
+                            """,
+                        arguments: [
+                            setID,
+                            sessionExerciseID,
+                            exercise.exerciseID,
+                            setIndex,
+                            exercise.targetMass?.kilograms,
+                            targetReps,
+                            exercise.targetRPE,
+                            nowString,
+                            nowString
+                        ]
+                    )
+                    setIndex += 1
+                }
+                for _ in 0 ..< workingCount {
                     let setID = UUID().uuidString
                     try db.execute(
                         sql: """
@@ -198,7 +223,7 @@ public struct ActiveSessionRepository: Sendable {
                             setID,
                             sessionExerciseID,
                             exercise.exerciseID,
-                            index,
+                            setIndex,
                             exercise.targetMass?.kilograms,
                             targetReps,
                             exercise.targetRPE,
@@ -206,6 +231,7 @@ public struct ActiveSessionRepository: Sendable {
                             nowString
                         ]
                     )
+                    setIndex += 1
                 }
             }
         }
@@ -918,13 +944,17 @@ public struct ActiveSessionRepository: Sendable {
                         arguments: [index, now, sessionExerciseID, sessionID]
                     )
 
-                    try Self.adjustSetCount(
+                    try Self.adjustSetComposition(
                         db: db,
                         sessionExerciseID: sessionExerciseID,
                         exerciseID: prescribed.exerciseID,
-                        targetSetCount: max(prescribed.targetSets, 1),
+                        targetWorkingSets: max(prescribed.targetSets, 1),
+                        targetWarmupSets: max(prescribed.warmupSets, 0),
                         existingSets: matched.sets,
-                        now: now
+                        now: now,
+                        templateMassKg: prescribed.targetMass?.kilograms,
+                        templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
+                        templateRPE: prescribed.targetRPE
                     )
                 } else if index < existingSorted.count {
                     let sessionExercise = existingSorted[index]
@@ -960,13 +990,17 @@ public struct ActiveSessionRepository: Sendable {
                         arguments: [index, now, sessionExerciseID, sessionID]
                     )
 
-                    try Self.adjustSetCount(
+                    try Self.adjustSetComposition(
                         db: db,
                         sessionExerciseID: sessionExerciseID,
                         exerciseID: prescribed.exerciseID,
-                        targetSetCount: max(prescribed.targetSets, 1),
+                        targetWorkingSets: max(prescribed.targetSets, 1),
+                        targetWarmupSets: max(prescribed.warmupSets, 0),
                         existingSets: sessionExercise.sets,
-                        now: now
+                        now: now,
+                        templateMassKg: prescribed.targetMass?.kilograms,
+                        templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
+                        templateRPE: prescribed.targetRPE
                     )
                 } else {
                     try Self.insertPrescribedExercise(
@@ -1028,11 +1062,12 @@ public struct ActiveSessionRepository: Sendable {
                     arguments: [saved.displayOrder, now, sessionExerciseID, sessionID]
                 )
 
-                try Self.adjustSetCount(
+                try Self.adjustSetComposition(
                     db: db,
                     sessionExerciseID: sessionExerciseID,
                     exerciseID: saved.exerciseID,
-                    targetSetCount: max(saved.sets.count, 1),
+                    targetWorkingSets: max(saved.sets.filter { !$0.setType.isWarmup }.count, 1),
+                    targetWarmupSets: saved.sets.filter { $0.setType.isWarmup }.count,
                     existingSets: current.sets,
                     now: now
                 )
@@ -1312,7 +1347,8 @@ extension ActiveSessionRepository {
             ]
         )
 
-        let setCount = max(prescribed.targetSets, 1)
+        let warmupCount = max(prescribed.warmupSets, 0)
+        let workingCount = max(prescribed.targetSets, 1)
         let targetReps = prescribed.targetRepMin ?? prescribed.targetRepMax
         let preset = try previousPerformancePreset(
             db: db,
@@ -1320,7 +1356,31 @@ extension ActiveSessionRepository {
             excludingSessionID: sessionID
         )
 
-        for index in 0 ..< setCount {
+        var setIndex = 0
+        for _ in 0 ..< warmupCount {
+            let setID = UUID().uuidString
+            try db.execute(
+                sql: """
+                    INSERT INTO set_entry (
+                        id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
+                        weight_kg, reps, rpe, created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, 'warmup', 'planned', ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    setID,
+                    sessionExerciseID,
+                    prescribed.exerciseID,
+                    setIndex,
+                    prescribed.targetMass?.kilograms ?? preset?.mass?.kilograms,
+                    targetReps ?? preset?.reps,
+                    prescribed.targetRPE ?? preset?.rpe,
+                    now,
+                    now
+                ]
+            )
+            setIndex += 1
+        }
+        for _ in 0 ..< workingCount {
             let setID = UUID().uuidString
             try db.execute(
                 sql: """
@@ -1333,7 +1393,7 @@ extension ActiveSessionRepository {
                     setID,
                     sessionExerciseID,
                     prescribed.exerciseID,
-                    index,
+                    setIndex,
                     prescribed.targetMass?.kilograms ?? preset?.mass?.kilograms,
                     targetReps ?? preset?.reps,
                     prescribed.targetRPE ?? preset?.rpe,
@@ -1341,6 +1401,7 @@ extension ActiveSessionRepository {
                     now
                 ]
             )
+            setIndex += 1
         }
     }
 
@@ -1416,11 +1477,12 @@ extension ActiveSessionRepository {
             else {
                 throw PersistenceError.recordNotFound("session exercise")
             }
-            try Self.adjustSetCount(
+            try Self.adjustSetComposition(
                 db: db,
                 sessionExerciseID: sessionExerciseID,
                 exerciseID: sessionExercise.exerciseID,
-                targetSetCount: max(targetSetCount, 1),
+                targetWorkingSets: max(targetSetCount, 1),
+                targetWarmupSets: sessionExercise.sets.filter { $0.setType.isWarmup }.count,
                 existingSets: sessionExercise.sets,
                 now: now
             )
@@ -1428,6 +1490,53 @@ extension ActiveSessionRepository {
         }
     }
 
+    static func adjustSetComposition(
+        db: Database,
+        sessionExerciseID: String,
+        exerciseID: String,
+        targetWorkingSets: Int,
+        targetWarmupSets: Int,
+        existingSets: [SetEntryDraft],
+        now: String,
+        templateMassKg: Double? = nil,
+        templateReps: Int? = nil,
+        templateRPE: Double? = nil
+    ) throws {
+        let warmups = existingSets.filter { $0.setType.isWarmup }
+        let working = existingSets.filter { !$0.setType.isWarmup }
+        let completedWarmups = warmups.filter { $0.status == .completed }.count
+        let completedWorking = working.filter { $0.status == .completed }.count
+        let desiredWarmups = max(targetWarmupSets, completedWarmups)
+        let desiredWorking = max(max(targetWorkingSets, 1), completedWorking)
+
+        try adjustTypedSetCount(
+            db: db,
+            sessionExerciseID: sessionExerciseID,
+            exerciseID: exerciseID,
+            setType: .warmup,
+            desiredCount: desiredWarmups,
+            existingOfType: warmups,
+            now: now,
+            templateMassKg: templateMassKg,
+            templateReps: templateReps,
+            templateRPE: templateRPE
+        )
+        try adjustTypedSetCount(
+            db: db,
+            sessionExerciseID: sessionExerciseID,
+            exerciseID: exerciseID,
+            setType: .normal,
+            desiredCount: desiredWorking,
+            existingOfType: working,
+            now: now,
+            templateMassKg: templateMassKg,
+            templateReps: templateReps,
+            templateRPE: templateRPE
+        )
+        try normalizeSetIndices(db: db, sessionExerciseID: sessionExerciseID, now: now)
+    }
+
+    /// Legacy entry point: changes working-set count while preserving warm-ups.
     static func adjustSetCount(
         db: Database,
         sessionExerciseID: String,
@@ -1436,13 +1545,31 @@ extension ActiveSessionRepository {
         existingSets: [SetEntryDraft],
         now: String
     ) throws {
-        let completedSets = existingSets.filter { $0.status == .completed }
-        let plannedSets = existingSets.filter { $0.status != .completed }
-        let minimumCount = max(completedSets.count, targetSetCount)
-        let effectiveTarget = max(minimumCount, 1)
+        try adjustSetComposition(
+            db: db,
+            sessionExerciseID: sessionExerciseID,
+            exerciseID: exerciseID,
+            targetWorkingSets: max(targetSetCount, 1),
+            targetWarmupSets: existingSets.filter { $0.setType.isWarmup }.count,
+            existingSets: existingSets,
+            now: now
+        )
+    }
 
-        if plannedSets.count + completedSets.count < effectiveTarget {
-            let toAdd = effectiveTarget - existingSets.count
+    private static func adjustTypedSetCount(
+        db: Database,
+        sessionExerciseID: String,
+        exerciseID: String,
+        setType: SetType,
+        desiredCount: Int,
+        existingOfType: [SetEntryDraft],
+        now: String,
+        templateMassKg: Double?,
+        templateReps: Int?,
+        templateRPE: Double?
+    ) throws {
+        if existingOfType.count < desiredCount {
+            let toAdd = desiredCount - existingOfType.count
             let maxIndex = try Int.fetchOne(
                 db,
                 sql: """
@@ -1459,17 +1586,28 @@ extension ActiveSessionRepository {
                     sql: """
                         INSERT INTO set_entry (
                             id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
-                            created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?)
+                            weight_kg, reps, rpe, created_at, updated_at
+                        ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?)
                         """,
-                    arguments: [setID, sessionExerciseID, exerciseID, startIndex + offset, now, now]
+                    arguments: [
+                        setID,
+                        sessionExerciseID,
+                        exerciseID,
+                        startIndex + offset,
+                        setType.rawValue,
+                        templateMassKg,
+                        templateReps,
+                        templateRPE,
+                        now,
+                        now
+                    ]
                 )
             }
-        } else if existingSets.count > effectiveTarget {
-            let removable = existingSets
+        } else if existingOfType.count > desiredCount {
+            let removable = existingOfType
                 .filter { $0.status != .completed }
                 .sorted { $0.setIndex > $1.setIndex }
-            var toRemove = existingSets.count - effectiveTarget
+            var toRemove = existingOfType.count - desiredCount
             for set in removable where toRemove > 0 {
                 try db.execute(
                     sql: "DELETE FROM set_entry WHERE id = ? AND deleted_at IS NULL",
@@ -1477,6 +1615,52 @@ extension ActiveSessionRepository {
                 )
                 toRemove -= 1
             }
+        }
+    }
+
+    private static func normalizeSetIndices(
+        db: Database,
+        sessionExerciseID: String,
+        now: String
+    ) throws {
+        let rows = try Row.fetchAll(
+            db,
+            sql: """
+                SELECT id, set_type, set_index, status
+                FROM set_entry
+                WHERE workout_session_exercise_id = ? AND deleted_at IS NULL
+                ORDER BY set_index ASC
+                """,
+            arguments: [sessionExerciseID]
+        )
+        let warmups = rows.filter { ($0["set_type"] as String) == SetType.warmup.rawValue }
+            .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
+        let working = rows.filter { ($0["set_type"] as String) != SetType.warmup.rawValue }
+            .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
+        let ordered = warmups + working
+        // Two-phase rewrite avoids UNIQUE(workout_session_exercise_id, set_index) collisions.
+        let stagingBase = 10_000
+        for (index, row) in ordered.enumerated() {
+            let id: String = row["id"]
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET set_index = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                arguments: [stagingBase + index, now, id]
+            )
+        }
+        for (index, row) in ordered.enumerated() {
+            let id: String = row["id"]
+            try db.execute(
+                sql: """
+                    UPDATE set_entry
+                    SET set_index = ?, updated_at = ?
+                    WHERE id = ?
+                    """,
+                arguments: [index, now, id]
+            )
         }
     }
 }
