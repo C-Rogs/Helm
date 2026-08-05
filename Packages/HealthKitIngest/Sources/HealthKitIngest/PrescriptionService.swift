@@ -412,7 +412,7 @@ public actor PlanPrescriptionEngine {
             splitKind: schedule.splitKind,
             targetMuscles: schedule.targetMuscles,
             phaseGoal: settings.phaseGoal,
-            mesocycleState: trackedMesocycle,
+            mesocycleState: mesocycleState,
             totalSets: totalSets,
             exerciseCount: exerciseCount,
             readiness: readiness,
