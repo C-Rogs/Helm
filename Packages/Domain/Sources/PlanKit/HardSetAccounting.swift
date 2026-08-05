@@ -79,18 +79,33 @@ enum HardSetAccounting {
     static let intensityTechniquePrimaryCap = 1.5
     /// Drop-set portion credit toward the primary mover only.
     static let dropSetStimulusCredit = 0.5
+    /// Sets easier than this RIR are not hard sets (literature ~0–3 RIR).
+    static let maxHardSetRIR = 3
+    /// Sets easier than this RPE are not hard sets when RPE is logged.
+    static let minHardSetRPE = 6.0
 
     /// Hypertrophy stimulus multiplier for one logged set (0 = not a hard set).
     static func stimulusCredit(_ set: LoggedSet) -> Double {
         guard set.reps != nil else { return 0 }
+        let typeCredit: Double
         switch set.setType {
         case .warmup, .assisted, .timed, .distance:
-            return 0
+            typeCredit = 0
         case .dropSet:
-            return dropSetStimulusCredit
+            typeCredit = dropSetStimulusCredit
         case .normal, .failure, .bodyweight:
-            return 1.0
+            typeCredit = 1.0
         }
+        guard typeCredit > 0 else { return 0 }
+
+        // Proximity-to-failure gate. Missing RIR/RPE keeps type credit (assume working intent).
+        if let rir = set.rir, rir > maxHardSetRIR {
+            return 0
+        }
+        if set.rir == nil, let rpe = set.rpe, rpe < minHardSetRPE {
+            return 0
+        }
+        return typeCredit
     }
 
     static func isHardSet(_ set: LoggedSet) -> Bool {

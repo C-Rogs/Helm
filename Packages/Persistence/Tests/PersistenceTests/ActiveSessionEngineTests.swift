@@ -340,6 +340,39 @@ struct ActiveSessionEngineTests {
         #expect(typedSet.setType == .dropSet)
     }
 
+    @Test("bridge ignores drop rows for targetSets and sync preserves them")
+    func bridgeAndSyncPreserveDrops() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(exerciseID: benchPressID, order: 0, targetSets: 3, warmupSets: 0)
+            ]
+        )
+        var snapshot = try await engine.startFromPrescription(prescription)
+        let exercise = try #require(snapshot.session.exercises.first)
+        let lastSet = try #require(exercise.sets.last)
+        snapshot = try await engine.updateSetType(setID: lastSet.id, setType: .dropSet)
+
+        let bridged = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
+        let bridgedBench = try #require(bridged.exercises.first)
+        #expect(bridgedBench.targetSets == 2)
+        #expect(bridgedBench.warmupSets == 0)
+
+        // Sync back the bridged plan: working slots shrink, drop row must remain.
+        try persistence.activeSessions.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: bridged,
+            timestamp: Date()
+        )
+        let refreshed = try #require(try persistence.activeSessions.fetchActiveSnapshot(at: Date()))
+        let sets = try #require(refreshed.session.exercises.first?.sets)
+        #expect(sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count == 2)
+        #expect(sets.filter { $0.setType == .dropSet }.count == 1)
+    }
+
     @Test("reorder exercises preserves sets on each exercise")
     func reorderExercisesPreservesSets() async throws {
         let (persistence, engine, _) = try makeHarness()

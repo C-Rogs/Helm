@@ -1066,7 +1066,7 @@ public struct ActiveSessionRepository: Sendable {
                     db: db,
                     sessionExerciseID: sessionExerciseID,
                     exerciseID: saved.exerciseID,
-                    targetWorkingSets: max(saved.sets.filter { !$0.setType.isWarmup }.count, 1),
+                    targetWorkingSets: max(saved.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count, 1),
                     targetWarmupSets: saved.sets.filter { $0.setType.isWarmup }.count,
                     existingSets: current.sets,
                     now: now
@@ -1503,9 +1503,9 @@ extension ActiveSessionRepository {
         templateRPE: Double? = nil
     ) throws {
         let warmups = existingSets.filter { $0.setType.isWarmup }
-        let working = existingSets.filter { !$0.setType.isWarmup }
+        let prescribedWorking = existingSets.filter { $0.setType.countsAsPrescribedWorkingSet }
         let completedWarmups = warmups.filter { $0.status == .completed }.count
-        let completedWorking = working.filter { $0.status == .completed }.count
+        let completedWorking = prescribedWorking.filter { $0.status == .completed }.count
         let desiredWarmups = max(targetWarmupSets, completedWarmups)
         let desiredWorking = max(max(targetWorkingSets, 1), completedWorking)
 
@@ -1521,13 +1521,13 @@ extension ActiveSessionRepository {
             templateReps: templateReps,
             templateRPE: templateRPE
         )
-        try adjustTypedSetCount(
+        // Only add/remove normal working slots. Drop sets and other intensity rows stay put.
+        try adjustPrescribedWorkingSetCount(
             db: db,
             sessionExerciseID: sessionExerciseID,
             exerciseID: exerciseID,
-            setType: .normal,
             desiredCount: desiredWorking,
-            existingOfType: working,
+            existingWorking: prescribedWorking,
             now: now,
             templateMassKg: templateMassKg,
             templateReps: templateReps,
@@ -1536,7 +1536,7 @@ extension ActiveSessionRepository {
         try normalizeSetIndices(db: db, sessionExerciseID: sessionExerciseID, now: now)
     }
 
-    /// Legacy entry point: changes working-set count while preserving warm-ups.
+    /// Legacy entry point: changes working-set count while preserving warm-ups and drops.
     static func adjustSetCount(
         db: Database,
         sessionExerciseID: String,
@@ -1554,6 +1554,53 @@ extension ActiveSessionRepository {
             existingSets: existingSets,
             now: now
         )
+    }
+
+    private static func adjustPrescribedWorkingSetCount(
+        db: Database,
+        sessionExerciseID: String,
+        exerciseID: String,
+        desiredCount: Int,
+        existingWorking: [SetEntryDraft],
+        now: String,
+        templateMassKg: Double?,
+        templateReps: Int?,
+        templateRPE: Double?
+    ) throws {
+        if existingWorking.count < desiredCount {
+            try adjustTypedSetCount(
+                db: db,
+                sessionExerciseID: sessionExerciseID,
+                exerciseID: exerciseID,
+                setType: .normal,
+                desiredCount: desiredCount,
+                existingOfType: existingWorking,
+                now: now,
+                templateMassKg: templateMassKg,
+                templateReps: templateReps,
+                templateRPE: templateRPE
+            )
+            return
+        }
+
+        if existingWorking.count > desiredCount {
+            // Prefer removing planned normals; never touch completed or drop rows (drops excluded).
+            let removable = existingWorking
+                .filter { $0.status != .completed }
+                .sorted { lhs, rhs in
+                    if lhs.setType == .normal && rhs.setType != .normal { return true }
+                    if lhs.setType != .normal && rhs.setType == .normal { return false }
+                    return lhs.setIndex > rhs.setIndex
+                }
+            var toRemove = existingWorking.count - desiredCount
+            for set in removable where toRemove > 0 {
+                try db.execute(
+                    sql: "DELETE FROM set_entry WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [set.id]
+                )
+                toRemove -= 1
+            }
+        }
     }
 
     private static func adjustTypedSetCount(
@@ -1635,9 +1682,20 @@ extension ActiveSessionRepository {
         )
         let warmups = rows.filter { ($0["set_type"] as String) == SetType.warmup.rawValue }
             .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
-        let working = rows.filter { ($0["set_type"] as String) != SetType.warmup.rawValue }
+        let prescribedWorking = rows.filter {
+            (SetType(rawValue: $0["set_type"] as String) ?? .normal).countsAsPrescribedWorkingSet
+        }
+        .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
+        let intensity = rows.filter {
+            (SetType(rawValue: $0["set_type"] as String) ?? .normal).isPreservedIntensityTechnique
+        }
+        .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
+        let accountedIDs = Set(
+            (warmups + prescribedWorking + intensity).map { $0["id"] as String }
+        )
+        let other = rows.filter { !accountedIDs.contains($0["id"] as String) }
             .sorted { ($0["set_index"] as Int) < ($1["set_index"] as Int) }
-        let ordered = warmups + working
+        let ordered = warmups + prescribedWorking + intensity + other
         // Two-phase rewrite avoids UNIQUE(workout_session_exercise_id, set_index) collisions.
         let stagingBase = 10_000
         for (index, row) in ordered.enumerated() {

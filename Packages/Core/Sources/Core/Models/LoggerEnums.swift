@@ -69,6 +69,21 @@ public enum ActiveWorkoutRecoveryState: String, Codable, CaseIterable, Sendable 
 public extension SetType {
     var isWarmup: Bool { self == .warmup }
 
+    /// Counts toward prescribed `targetSets` (working slots). Drop sets are extras.
+    var countsAsPrescribedWorkingSet: Bool {
+        switch self {
+        case .normal, .failure, .bodyweight:
+            return true
+        case .warmup, .dropSet, .assisted, .timed, .distance:
+            return false
+        }
+    }
+
+    /// Intensity-technique rows kept across prescription sync; not part of `targetSets`.
+    var isPreservedIntensityTechnique: Bool {
+        self == .dropSet
+    }
+
     /// Set types cycled when tapping the set index during logging (Hevy-style).
     static let loggerCycle: [SetType] = [.normal, .warmup, .dropSet, .failure]
 

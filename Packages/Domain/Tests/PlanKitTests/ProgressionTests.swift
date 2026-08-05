@@ -264,4 +264,48 @@ struct HardSetAccountingTests {
         // Drop portions do not credit synergists; only the normal set's 0.5
         #expect(breakdown[.triceps]?.synergist == 0.5)
     }
+
+    @Test("easy RIR or RPE does not count as a hard set")
+    func proximityGateExcludesEasySets() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "curl",
+            contributions: [ExerciseMuscleContribution(muscle: .biceps, fraction: 1.0, tier: .primary)]
+        )
+        let session = WorkoutSession(
+            helmDay: HelmDay(year: 2026, month: 3, day: 10),
+            startedAt: Date(),
+            sets: [
+                LoggedSet(
+                    exerciseID: "curl",
+                    sequence: 1,
+                    reps: 12,
+                    rir: 5,
+                    completedAt: Date(),
+                    setType: .normal
+                ),
+                LoggedSet(
+                    exerciseID: "curl",
+                    sequence: 2,
+                    reps: 12,
+                    rpe: 5,
+                    completedAt: Date(),
+                    setType: .normal
+                ),
+                LoggedSet(
+                    exerciseID: "curl",
+                    sequence: 3,
+                    reps: 10,
+                    rir: 2,
+                    completedAt: Date(),
+                    setType: .normal
+                )
+            ]
+        )
+        let ledger = PlanKit.weeklyHardSetTotals(
+            sessions: [session],
+            muscleMaps: ["curl": map],
+            weekStart: HelmDay(year: 2026, month: 3, day: 10)
+        )
+        #expect(ledger.totals[.biceps] == 1.0)
+    }
 }
