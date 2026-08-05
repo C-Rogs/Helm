@@ -10,6 +10,7 @@ struct BodyProfileOnboardingStepView: View {
     var onSkip: () -> Void = {}
 
     @State private var settingsActions: BodyProfileSettingsActions?
+    @State private var isLoadingProfile = true
 
     var body: some View {
         OnboardingStepChrome(
@@ -18,6 +19,7 @@ struct BodyProfileOnboardingStepView: View {
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
             primaryTitle: showsFlowControls ? "Continue" : "Done",
+            isPrimaryLoading: isLoadingProfile,
             skipTitle: showsFlowControls ? "Set up later" : nil,
             onPrimary: {
                 Task {
@@ -35,7 +37,8 @@ struct BodyProfileOnboardingStepView: View {
                 embedInForm: false,
                 showsInlineSaveButton: false,
                 onSaved: showsFlowControls ? onContinue : nil,
-                registerActions: { settingsActions = $0 }
+                registerActions: { settingsActions = $0 },
+                onLoadingChanged: { isLoadingProfile = $0 }
             )
         }
     }

@@ -100,7 +100,9 @@ struct BodyProfileSettingsView: View {
     var saveButtonTitle: String = "Save profile"
     var onSaved: (() -> Void)?
     var registerActions: ((BodyProfileSettingsActions) -> Void)?
+    var onLoadingChanged: ((Bool) -> Void)?
 
+    @State private var isLoading = true
     @State private var profile = BodyProfile(
         bodyMassKg: 70,
         heightCm: 170,
@@ -154,6 +156,16 @@ struct BodyProfileSettingsView: View {
                     .foregroundStyle(HelmColor.fgSecondary)
 
                 BodyProfileEditorView(profile: $profile)
+                    .disabled(isLoading)
+
+                if isLoading {
+                    HStack(spacing: HelmSpacing.xs) {
+                        ProgressView()
+                        Text("Reading Apple Health…")
+                            .font(HelmTypography.caption)
+                            .foregroundStyle(HelmColor.fgSecondary)
+                    }
+                }
 
                 if let saveMessage {
                     Text(saveMessage)
@@ -174,6 +186,7 @@ struct BodyProfileSettingsView: View {
 
         Section("Metrics") {
             BodyProfileEditorView(profile: $profile)
+                .disabled(isLoading)
         }
 
         if let saveMessage {
@@ -189,12 +202,19 @@ struct BodyProfileSettingsView: View {
                     Task { await save() }
                 }
                 .buttonStyle(.borderless)
-                .disabled(isSaving || !isValid)
+                .disabled(isSaving || isLoading || !isValid)
             }
         }
     }
 
     private func load() async {
+        isLoading = true
+        onLoadingChanged?(true)
+        defer {
+            isLoading = false
+            onLoadingChanged?(false)
+        }
+
         if let stored = store.load() {
             profile = stored
             loadedProfile = stored

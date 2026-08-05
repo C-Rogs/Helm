@@ -26,9 +26,14 @@ struct WelcomeOnboardingStepView: View {
                     VStack(spacing: HelmSpacing.xxs) {
                         Text("Signal")
                             .helmType(.heroNumber)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.4)
                         Text("ARC")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
+                            .lineLimit(1)
                     }
+                    // Keeps the word inside the arc interior; hero type is sized for digits.
+                    .frame(maxWidth: 132)
                 }
                 .frame(maxWidth: 220)
                 .frame(maxWidth: .infinity)
