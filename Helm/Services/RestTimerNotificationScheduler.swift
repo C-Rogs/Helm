@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 import Persistence
 import UserNotifications
 
@@ -27,8 +28,35 @@ struct LiveNotificationCenter: NotificationScheduling {
     }
 }
 
+enum RestTimerNotificationSound {
+    /// IMA4-encoded CAF in the app bundle; required for reliable background notification playback.
+    static let notificationFileName = "boxing-bell-notification"
+    static let notificationFileExtension = "caf"
+
+    static func resolved(soundEnabled: Bool) -> UNNotificationSound? {
+        guard soundEnabled else { return nil }
+
+        if Bundle.main.url(
+            forResource: notificationFileName,
+            withExtension: notificationFileExtension
+        ) != nil {
+            return UNNotificationSound(
+                named: UNNotificationSoundName("\(notificationFileName).\(notificationFileExtension)")
+            )
+        }
+
+        if Bundle.main.url(forResource: "boxing-bell", withExtension: "caf") != nil {
+            return UNNotificationSound(named: UNNotificationSoundName("boxing-bell.caf"))
+        }
+
+        return .default
+    }
+}
+
 @MainActor
 final class RestTimerNotificationScheduler {
+    private static let logger = Logger(subsystem: "com.cameronro.helm", category: "RestTimerNotification")
+
     private let center: any NotificationScheduling
 
     init(center: any NotificationScheduling = LiveNotificationCenter()) {
@@ -36,7 +64,16 @@ final class RestTimerNotificationScheduler {
     }
 
     func requestPermissionIfNeeded() async {
-        _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
+        do {
+            let granted = try await center.requestAuthorization(options: [.alert, .sound, .badge])
+            if !granted {
+                Self.logger.warning("Rest-end notification permission not granted")
+            }
+        } catch {
+            Self.logger.error(
+                "Rest-end notification permission request failed: \(error.localizedDescription, privacy: .public)"
+            )
+        }
     }
 
     func scheduleRestEndIfNeeded(
@@ -55,9 +92,8 @@ final class RestTimerNotificationScheduler {
         let content = UNMutableNotificationContent()
         content.title = "Rest complete"
         content.body = "Time for your next set."
-        content.sound = soundEnabled
-            ? UNNotificationSound(named: UNNotificationSoundName("boxing-bell.caf"))
-            : nil
+        content.sound = RestTimerNotificationSound.resolved(soundEnabled: soundEnabled)
+        content.interruptionLevel = .timeSensitive
         content.categoryIdentifier = RestTimerNotificationPlanner.notificationCategoryID
         content.userInfo = [
             RestTimerNotificationPlanner.sessionIDKey: sessionID,
@@ -69,7 +105,16 @@ final class RestTimerNotificationScheduler {
         let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
 
         await cancelRestNotification(sessionID: sessionID)
-        try? await center.add(request)
+        do {
+            try await center.add(request)
+            Self.logger.info(
+                "Scheduled rest-end notification in \(interval, privacy: .public)s for session \(sessionID, privacy: .public)"
+            )
+        } catch {
+            Self.logger.error(
+                "Failed to schedule rest-end notification: \(error.localizedDescription, privacy: .public)"
+            )
+        }
     }
 
     func cancelRestNotification(sessionID: String) async {

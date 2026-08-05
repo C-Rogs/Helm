@@ -10,6 +10,8 @@ private enum LiveActivityMetrics {
     static let doneMinWidth: CGFloat = 72
     /// Signal-blue surround (matches brand accent used in Signal skin).
     static let signalBlue = Color(red: 0.16, green: 0.55, blue: 1.0)
+    /// Upper bound for count-up elapsed `timerInterval` (system-rendered, no 1Hz updates).
+    static let elapsedWindow: TimeInterval = 60 * 60 * 12
 }
 
 struct WorkoutLiveActivityWidget: Widget {
@@ -33,7 +35,7 @@ struct WorkoutLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     VStack(alignment: .trailing, spacing: 2) {
-                        Text(elapsedLabel(context.state.elapsedSeconds))
+                        elapsedTimerLabel(startedAt: context.attributes.startedAt)
                             .font(.caption.monospacedDigit().weight(.semibold))
                         restOrHeartTrailing(context.state)
                     }
@@ -56,7 +58,10 @@ struct WorkoutLiveActivityWidget: Widget {
                 Image(systemName: "dumbbell.fill")
                     .foregroundStyle(LiveActivityMetrics.signalBlue)
             } compactTrailing: {
-                compactRestOrElapsed(context.state)
+                compactRestOrElapsed(
+                    state: context.state,
+                    startedAt: context.attributes.startedAt
+                )
             } minimal: {
                 Image(systemName: "dumbbell.fill")
                     .foregroundStyle(LiveActivityMetrics.signalBlue)
@@ -74,7 +79,7 @@ struct WorkoutLiveActivityWidget: Widget {
                     .foregroundStyle(.white)
                     .lineLimit(1)
                 Spacer(minLength: 8)
-                Text(elapsedLabel(context.state.elapsedSeconds))
+                elapsedTimerLabel(startedAt: context.attributes.startedAt)
                     .font(.subheadline.monospacedDigit().weight(.semibold))
                     .foregroundStyle(.white.opacity(0.85))
             }
@@ -129,15 +134,26 @@ struct WorkoutLiveActivityWidget: Widget {
     }
 
     @ViewBuilder
-    private func compactRestOrElapsed(_ state: WorkoutActivityAttributes.ContentState) -> some View {
+    private func compactRestOrElapsed(
+        state: WorkoutActivityAttributes.ContentState,
+        startedAt: Date
+    ) -> some View {
         if state.isResting {
             restCountdownLabel(state)
                 .font(.caption2.monospacedDigit())
                 .foregroundStyle(LiveActivityMetrics.signalBlue)
         } else {
-            Text(elapsedLabel(state.elapsedSeconds))
+            elapsedTimerLabel(startedAt: startedAt)
                 .font(.caption2.monospacedDigit())
         }
+    }
+
+    /// System-rendered count-up from session start - stays accurate while app is suspended.
+    private func elapsedTimerLabel(startedAt: Date) -> Text {
+        Text(
+            timerInterval: startedAt ... startedAt.addingTimeInterval(LiveActivityMetrics.elapsedWindow),
+            countsDown: false
+        )
     }
 
     @ViewBuilder
@@ -178,12 +194,6 @@ struct WorkoutLiveActivityWidget: Widget {
             }
             .buttonStyle(.plain)
         }
-    }
-
-    private func elapsedLabel(_ seconds: Int) -> String {
-        let minutes = seconds / 60
-        let remainder = seconds % 60
-        return String(format: "%d:%02d", minutes, remainder)
     }
 
     private func restLabel(_ seconds: Int) -> String {

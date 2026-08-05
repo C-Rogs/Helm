@@ -18,8 +18,14 @@ final class RestTimerSoundPlayer {
         loadBellPlayer()
     }
 
+    /// Loads/prepares the bell player only - never activates `AVAudioSession`.
+    /// Activating playback on launch pauses Spotify/Apple Music.
     func prewarmSession() {
-        configureSessionIfNeeded()
+        if bellPlayer == nil {
+            loadBellPlayer()
+        } else {
+            bellPlayer?.prepareToPlay()
+        }
     }
 
     func playRestBellIfEnabled(_ enabled: Bool) {
@@ -78,8 +84,8 @@ final class RestTimerSoundPlayer {
     }
 
     private func configureSessionIfNeeded() {
-        // Always re-assert category + active. Chat dictation may have switched to
-        // `.record` and deactivated the shared session after `prewarmSession()`.
+        // Activate only when playing. Chat dictation may have switched to `.record`;
+        // re-assert mixable playback here so the bell overlays music instead of stopping it.
         do {
             let session = AVAudioSession.sharedInstance()
             try session.setCategory(

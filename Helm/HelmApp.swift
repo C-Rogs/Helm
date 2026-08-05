@@ -32,6 +32,7 @@ struct HelmApp: App {
             MethodologyBootstrap.start()
             ProactiveBootstrap.start()
             WatchReadinessBootstrap.start()
+            // Prepare bell buffer only - do not activate AVAudioSession (pauses music).
             RestTimerSoundPlayer.shared.prewarmSession()
         }
     }

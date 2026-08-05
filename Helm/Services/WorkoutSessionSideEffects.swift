@@ -1,10 +1,13 @@
 import Core
 import Foundation
 import HealthKitIngest
+import OSLog
 import Persistence
 
 @MainActor
 final class WorkoutSessionSideEffects {
+    private static let logger = Logger(subsystem: "com.cameronro.helm", category: "WorkoutSessionSideEffects")
+
     let lifecycle = WorkoutSessionLifecycleTracker()
     let notifications = RestTimerNotificationScheduler()
     let liveActivity = WorkoutLiveActivityManager()
@@ -46,7 +49,8 @@ final class WorkoutSessionSideEffects {
         _ snapshot: ActiveSessionSnapshot,
         restRemainingSeconds: Int?,
         targetSummary: String? = nil,
-        heartRateBPM: Int? = nil
+        heartRateBPM: Int? = nil,
+        restTimerSoundEnabled: Bool = true
     ) async {
         await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
@@ -65,6 +69,10 @@ final class WorkoutSessionSideEffects {
             restRemainingSeconds: restRemainingSeconds,
             restEndsAt: endsAt
         )
+        await syncRestEndNotification(
+            snapshot: snapshot,
+            restTimerSoundEnabled: restTimerSoundEnabled
+        )
     }
 
     func reconcileLiveActivitiesOnLaunch(hasActiveSession: Bool) async {
@@ -79,7 +87,8 @@ final class WorkoutSessionSideEffects {
         _ snapshot: ActiveSessionSnapshot,
         restRemainingSeconds: Int?,
         targetSummary: String? = nil,
-        heartRateBPM: Int? = nil
+        heartRateBPM: Int? = nil,
+        restTimerSoundEnabled: Bool = true
     ) async {
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         let endsAt: Date? = {
@@ -94,9 +103,17 @@ final class WorkoutSessionSideEffects {
             restEndsAt: endsAt,
             heartRateBPM: heartRateBPM
         )
+        await syncRestEndNotification(
+            snapshot: snapshot,
+            restTimerSoundEnabled: restTimerSoundEnabled
+        )
     }
 
-    func onEnterBackground(snapshot: ActiveSessionSnapshot, restTimerSoundEnabled: Bool = true, now: Date = Date()) async {
+    func syncRestEndNotification(
+        snapshot: ActiveSessionSnapshot,
+        restTimerSoundEnabled: Bool = true,
+        now: Date = Date()
+    ) async {
         guard let timer = snapshot.restTimer,
               timer.phase == .running,
               let endsAt = timer.endsAt else {
@@ -112,8 +129,18 @@ final class WorkoutSessionSideEffects {
         )
     }
 
+    func onEnterBackground(snapshot: ActiveSessionSnapshot, restTimerSoundEnabled: Bool = true, now: Date = Date()) async {
+        await syncRestEndNotification(
+            snapshot: snapshot,
+            restTimerSoundEnabled: restTimerSoundEnabled,
+            now: now
+        )
+    }
+
     func onEnterForeground(sessionID: String) async {
-        await notifications.cancelRestNotification(sessionID: sessionID)
+        // Keep the rest-end notification armed while the timer is running.
+        // Foreground delivery is suppressed in HelmNotificationDelegate; cancelling here
+        // left users with no sound when the app was backgrounded again before rest ended.
     }
 
     func resumeFromRestNotification(

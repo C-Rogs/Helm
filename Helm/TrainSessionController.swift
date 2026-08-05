@@ -132,6 +132,7 @@ final class TrainSessionController {
     private var sessionHeartRateBuffer = SessionHeartRateBuffer()
     private var sessionNoteIsDirty = false
     private var lastSyncedRestRemaining: Int?
+    private var lastSyncedRestEndsAt: Date?
     private var lastLiveActivitySyncDate: Date?
 
     var sessionNoteText = ""
@@ -992,6 +993,15 @@ final class TrainSessionController {
             )
             wasRestRunningOnBackground = false
             previousRestRemaining = currentRemaining
+        case .inactive:
+            if let snapshot = store.snapshot {
+                wasRestRunningOnBackground = snapshot.restTimer?.phase == .running
+                trackedRestTimerID = snapshot.restTimer?.id
+                await sideEffects.syncRestEndNotification(
+                    snapshot: snapshot,
+                    restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
+                )
+            }
         default:
             break
         }
@@ -1040,8 +1050,24 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else { return }
         recordLiveHeartRateSampleIfAvailable()
         let rest = restRemainingOverride ?? localRemainingRestSeconds()
-        guard shouldSyncLiveActivity(restRemaining: rest, force: force) else { return }
+        let restEndsAt: Date? = {
+            guard let timer = snapshot.restTimer, timer.phase == .running else { return nil }
+            return timer.endsAt
+        }()
+
+        // Keep notification armed even when Live Activity updates are throttled.
+        await sideEffects.syncRestEndNotification(
+            snapshot: snapshot,
+            restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
+        )
+
+        guard shouldSyncLiveActivity(
+            restRemaining: rest,
+            restEndsAt: restEndsAt,
+            force: force
+        ) else { return }
         lastSyncedRestRemaining = rest
+        lastSyncedRestEndsAt = restEndsAt
         lastLiveActivitySyncDate = Date()
         let currentExercise = snapshot.session.exercises.first { exercise in
             exercise.sets.contains { $0.status != .completed }
@@ -1054,7 +1080,8 @@ final class TrainSessionController {
             snapshot,
             restRemainingSeconds: rest,
             targetSummary: target,
-            heartRateBPM: bpm
+            heartRateBPM: bpm,
+            restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
         )
         await Self.reclaimMainThread()
     }
@@ -1122,8 +1149,16 @@ final class TrainSessionController {
         }
     }
 
-    private func shouldSyncLiveActivity(restRemaining: Int?, force: Bool) -> Bool {
+    private func shouldSyncLiveActivity(
+        restRemaining: Int?,
+        restEndsAt: Date?,
+        force: Bool
+    ) -> Bool {
         if force { return true }
+        // Rest start / ±15 / skip must push restEndsAt for system timerInterval countdown.
+        if restEndsAt != lastSyncedRestEndsAt {
+            return true
+        }
         if restRemaining == nil || restRemaining == 0 {
             return lastSyncedRestRemaining != restRemaining
         }
