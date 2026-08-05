@@ -9,6 +9,7 @@ import Persistence
 import PlanKit
 import ReadinessKit
 import SwiftUI
+import UIKit
 
 enum NumpadFieldKind: Hashable, Sendable {
     case weight
@@ -99,8 +100,10 @@ final class TrainSessionController {
     private(set) var proactiveCoachBanner: String?
     private(set) var coachPeekSnippet: String?
     private(set) var watchCompanionNotice: String?
-    /// True when Watch delivered live HR this session; prefer Watch HKWorkout, skip phone energy estimate.
-    private(set) var watchCompanionDeliveredHeartRate = false
+    /// True when Watch or phone live session delivered HR; skip MET energy estimate.
+    private(set) var sessionDeliveredHeartRate = false
+    /// True when live HR came from Watch (mirror/WCSession). Prefer Watch HKWorkout; discard phone save.
+    private var watchDeliveredHeartRate = false
 
     private var didSurfaceRestOverrunProactive = false
     private var firedMilestoneQuartiles: Set<Int> = []
@@ -129,6 +132,8 @@ final class TrainSessionController {
     private var isSyncingSideEffects = false
     private var pendingSideEffects: (rest: Int?, force: Bool)?
     private var heartRateSampleTask: Task<Void, Never>?
+    /// Phone-side live HR buffer during Train (best-effort chip / in-session coach).
+    /// Finish summary chart uses HealthKit via `WorkoutHeartRateSeriesFetcher`, not this buffer.
     private var sessionHeartRateBuffer = SessionHeartRateBuffer()
     private var sessionNoteIsDirty = false
     private var lastSyncedRestRemaining: Int?
@@ -208,7 +213,8 @@ final class TrainSessionController {
             let rest = localRemainingRestSeconds()
             await sideEffects.resumePersistedSession(
                 snapshot,
-                restRemainingSeconds: rest
+                restRemainingSeconds: rest,
+                restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
             )
             activateWatchCompanionAfterSessionStart()
         } else {
@@ -494,9 +500,9 @@ final class TrainSessionController {
 
     func finishWorkout() async {
         do {
-            let skipPhoneEnergy = watchCompanionDeliveredHeartRate
+            let skipPhoneEnergy = sessionDeliveredHeartRate
             let finishedID = try await store.finish()
-            deactivateWatchCompanion(saveWatchWorkout: true)
+            await deactivateHeartRateCompanion(saveWorkout: true)
             isShowingFinishConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
@@ -509,39 +515,26 @@ final class TrainSessionController {
                     sessionID: finishedID,
                     writePhoneEnergyEstimate: !skipPhoneEnergy
                 )
-                let samples = sessionHeartRateBuffer.samples
+                CloudBackupCoordinator.shared.schedulePush()
+                let liveFallback = sessionHeartRateBuffer.samples
                 stopHeartRateSampling(reset: true)
-                watchCompanionDeliveredHeartRate = false
+                sessionDeliveredHeartRate = false
+                watchDeliveredHeartRate = false
                 didRelaunchWatchForReachability = false
                 if let session = try? persistence.workoutSessions.fetch(id: finishedID) {
                     let records = (try? PersonalRecordDetector.detect(in: session, repository: persistence.workoutSessions)) ?? []
                     lastFinishedPersonalRecords = records
-                    let markers = SessionSetMarkerBuilder.markers(
-                        from: session,
-                        startedAt: session.startedAt
-                    )
-                    let exerciseIDs = session.exercises.map(\.exerciseID)
-                    let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
-                    let exerciseMarkers = SessionExerciseMarkerBuilder.markers(
-                        from: session,
-                        startedAt: session.startedAt,
-                        displayNames: displayNames
-                    )
-                    let musicSamples = (try? persistence.workoutMusicSamples.list(sessionID: finishedID)) ?? []
-                    let musicSegments = SessionMusicSegmentBuilder.build(
-                        samples: musicSamples,
-                        startedAt: session.startedAt,
-                        endedAt: session.endedAt ?? Date()
-                    )
-                    if let summary = try? WorkoutFinishSummaryAssembler.build(
+                    // Authoritative chart series from HealthKit (same window TRIMP uses).
+                    // Live buffer is display-only fallback if HK has not indexed samples yet.
+                    if let base = SessionSummaryPresentationBuilder.base(
                         session: session,
                         store: persistence
                     ) {
-                        lastFinishSummary = summary.withSessionTimeline(
-                            samples: samples,
-                            setMarkers: markers,
-                            exerciseMarkers: exerciseMarkers,
-                            musicSegments: musicSegments
+                        lastFinishSummary = await SessionSummaryPresentationBuilder.withTimeline(
+                            base,
+                            session: session,
+                            store: persistence,
+                            liveHeartRateFallback: liveFallback
                         )
                     } else {
                         lastFinishSummary = nil
@@ -572,14 +565,15 @@ final class TrainSessionController {
         do {
             let sessionID = store.snapshot?.session.id
             try await store.discard()
-            deactivateWatchCompanion(saveWatchWorkout: false)
+            await deactivateHeartRateCompanion(saveWorkout: false)
             isShowingDiscardConfirmation = false
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
             cancelWatchLiveConfirm()
             stopHeartRateSampling(reset: true)
-            watchCompanionDeliveredHeartRate = false
+            sessionDeliveredHeartRate = false
+            watchDeliveredHeartRate = false
             didRelaunchWatchForReachability = false
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             await refreshMetadata()
@@ -596,9 +590,11 @@ final class TrainSessionController {
         guard store.snapshot != nil else { return }
         watchCompanionNotice = nil
         didRelaunchWatchForReachability = false
-        watchCompanionDeliveredHeartRate = false
+        sessionDeliveredHeartRate = false
+        watchDeliveredHeartRate = false
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.clearMirroredHeartRate()
+        coordinator.clearPhoneHeartRate()
         coordinator.clearLiveHeartRate()
         activateWatchCompanionAfterSessionStart()
     }
@@ -607,14 +603,14 @@ final class TrainSessionController {
         guard store.snapshot != nil else { return }
         WatchReadinessBootstrap.coordinator.recordDiagnostic(
             .phoneReachability,
-            detail: "reachable=\(isReachable) hrDelivered=\(watchCompanionDeliveredHeartRate)"
+            detail: "reachable=\(isReachable) hrDelivered=\(sessionDeliveredHeartRate)"
         )
         guard isReachable else { return }
         guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion else { return }
         Task { @MainActor in
             pushWatchCompanionState()
             WatchReadinessBootstrap.coordinator.flushPendingWorkoutCompanionPushIfNeeded()
-            guard !watchCompanionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
+            guard !sessionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
             didRelaunchWatchForReachability = true
             _ = await WatchReadinessBootstrap.coordinator.launchWatchWorkoutCompanion()
             pushWatchCompanionState()
@@ -691,12 +687,10 @@ final class TrainSessionController {
         }
     }
 
+    /// In-app Train toggle: complete ↔ uncomplete.
     func completeSet(sessionExerciseID: String, setID: String) async {
         do {
             guard let existingSet = findSet(setID: setID) else { return }
-            let completedBefore = store.snapshot.map {
-                TrainSessionProgress.from(snapshot: $0).completedSetCount
-            } ?? 0
 
             if existingSet.status == .completed {
                 try await store.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
@@ -713,6 +707,25 @@ final class TrainSessionController {
                 await syncSideEffects(force: true)
                 return
             }
+
+            await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    /// Watch / Live Activity remote path: apply-if-incomplete (never uncomplete on redelivery).
+    func completeSetIfNeeded(sessionExerciseID: String, setID: String) async {
+        guard let existingSet = findSet(setID: setID) else { return }
+        guard RemoteCompleteSetPolicy.shouldApply(status: existingSet.status) else { return }
+        await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
+    }
+
+    private func performCompleteSet(sessionExerciseID: String, setID: String) async {
+        do {
+            let completedBefore = store.snapshot.map {
+                TrainSessionProgress.from(snapshot: $0).completedSetCount
+            } ?? 0
 
             if let target = numpadTarget, target.setID == setID {
                 guard await applyNumpadInput() else { return }
@@ -947,7 +960,7 @@ final class TrainSessionController {
     }
 
     private func persistSessionNote() async {
-        guard let sessionID = store.snapshot?.session.id else { return }
+        guard let _ = store.snapshot?.session.id else { return }
         let trimmed = sessionNoteText.trimmingCharacters(in: .whitespacesAndNewlines)
         let notes = trimmed.isEmpty ? nil : trimmed
         do {
@@ -981,6 +994,7 @@ final class TrainSessionController {
                 )
             }
         case .active:
+            showCoachApplyWave = false
             if let snapshot = store.snapshot {
                 await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
             }
@@ -1073,9 +1087,7 @@ final class TrainSessionController {
             exercise.sets.contains { $0.status != .completed }
         } ?? snapshot.session.exercises.first
         let target = currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
-        let bpm = WatchReadinessBootstrap.coordinator.canDriveWatchCompanion
-            ? WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM
-            : nil
+        let bpm = WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
         await sideEffects.onSessionUpdated(
             snapshot,
             restRemainingSeconds: rest,
@@ -1118,8 +1130,12 @@ final class TrainSessionController {
 
         guard snapshot?.restTimer?.phase == .running,
               snapshot?.restTimer?.endsAt != nil else {
+            RestTimerBackgroundAudio.shared.stop()
             return
         }
+
+        // Keeps the process alive off-screen so the bell rings on time and through Silent.
+        RestTimerBackgroundAudio.shared.start()
 
         restTimerMonitorTask = Task { @MainActor [weak self] in
             while !Task.isCancelled {
@@ -1143,10 +1159,21 @@ final class TrainSessionController {
                 }
 
                 let untilExpiry = endsAt.timeIntervalSince(now)
+                await dropRestNotificationIfBellWillRing(untilExpiry: untilExpiry)
                 let sleepSeconds = min(1.0, max(0.05, untilExpiry))
                 try? await Task.sleep(for: .seconds(sleepSeconds))
             }
         }
+    }
+
+    /// Still alive as rest ends, so the app rings itself; drop the queued system alert
+    /// rather than let both fire. If the process is suspended before this runs, the
+    /// notification survives as the backstop.
+    private func dropRestNotificationIfBellWillRing(untilExpiry: TimeInterval) async {
+        guard untilExpiry <= 1.5 else { return }
+        guard RestTimerBackgroundAudio.shared.isRunning else { return }
+        guard let sessionID = snapshot?.session.id else { return }
+        await sideEffects.notifications.cancelRestNotification(sessionID: sessionID)
     }
 
     private func shouldSyncLiveActivity(
@@ -1284,7 +1311,7 @@ final class TrainSessionController {
 
         let exerciseID = exerciseID(for: sessionExerciseID)
         let set = findSet(setID: setID) ?? currentSet
-        withAnimation(HelmMotion.settleAnimation) {
+        withAnimation(settleMotion) {
             numpadTarget = nextTarget
         }
         numpadValidationError = nil
@@ -1294,7 +1321,7 @@ final class TrainSessionController {
     func dismissNumpad() async {
         guard numpadTarget != nil else { return }
         if numpadTarget?.field == .rpe {
-            withAnimation(HelmMotion.settleAnimation) {
+            withAnimation(settleMotion) {
                 numpadTarget = nil
             }
             numpadValidationError = nil
@@ -1302,10 +1329,18 @@ final class TrainSessionController {
             return
         }
         guard await applyNumpadInput() else { return }
-        withAnimation(HelmMotion.settleAnimation) {
+        withAnimation(settleMotion) {
             numpadTarget = nil
         }
         numpadSelectAll = false
+    }
+
+    /// Mirrors `helmReduceMotion` (system Reduce Motion) for controller-driven chrome.
+    private var settleMotion: Animation? {
+        HelmMotion.animation(
+            HelmMotion.settleAnimation,
+            reduceMotion: UIAccessibility.isReduceMotionEnabled
+        )
     }
 
     func completeSetFromRPEDone() async {
@@ -1352,12 +1387,11 @@ final class TrainSessionController {
         guard let target = numpadTarget else { return }
         guard await applyNumpadInput() else { return }
 
-        guard let set = findSet(setID: target.setID) else {
+        guard let _ = findSet(setID: target.setID) else {
             numpadTarget = nil
             return
         }
 
-        let exerciseID = exerciseID(for: target.sessionExerciseID)
         let nextField: NumpadFieldKind? = switch target.field {
         case .weight: .reps
         case .reps: .rpe
@@ -1810,29 +1844,43 @@ final class TrainSessionController {
         coordinator.refreshPairingFlags()
         coordinator.clearLiveHeartRate()
         coordinator.clearMirroredHeartRate()
+        coordinator.clearPhoneHeartRate()
+        watchDeliveredHeartRate = false
+        watchCompanionNotice = nil
         coordinator.recordDiagnostic(
             .phoneLaunchBegin,
             detail: "paired=\(coordinator.isPaired) installed=\(coordinator.isWatchAppInstalled) reachable=\(coordinator.isReachable) activation=\(coordinator.activationState.rawValue)"
         )
+
+        // Always start phone HKWorkoutSession. HealthKit pulls AirPods / BLE HR when available.
+        // Watch companion is additive for wrist UI, not a gate on HR.
+        let sessionID = store.snapshot?.session.id ?? UUID().uuidString
+        let startedAt = store.snapshot?.session.startedAt
+        Task { @MainActor in
+            do {
+                try await PhoneWorkoutSessionManager.shared.start(
+                    sessionID: sessionID,
+                    activityStart: startedAt
+                )
+            } catch {
+                WatchReadinessBootstrap.coordinator.recordDiagnostic(
+                    .phoneHeartRateSessionEnd,
+                    detail: "startFail=\(error.localizedDescription)"
+                )
+            }
+        }
+
         if coordinator.canDriveWatchCompanion {
             pushWatchCompanionState()
             Task { @MainActor in
-                let launched = await coordinator.launchWatchWorkoutCompanion()
+                _ = await coordinator.launchWatchWorkoutCompanion()
                 pushWatchCompanionState()
                 coordinator.flushPendingWorkoutCompanionPushIfNeeded()
                 HapticEngine.shared.play(.phaseChange)
-                if !launched {
-                    watchCompanionNotice =
-                        coordinator.lastLaunchError
-                        ?? "Watch didn't wake. Open Helm on Watch once, then tap to retry."
-                    return
-                }
-                watchCompanionNotice = nil
                 scheduleWatchLiveConfirm()
             }
         } else {
-            WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(active: false, saveWatchWorkout: false)
-            watchCompanionNotice = "No Apple Watch connected. Heart rate hidden. Phone will record training load energy."
+            coordinator.pushWorkoutCompanion(active: false, saveWatchWorkout: false)
         }
     }
 
@@ -1848,14 +1896,16 @@ final class TrainSessionController {
                     isReachable: coordinator.isReachable
                 ) {
                     if coordinator.liveHeartRateBPMForDisplay != nil {
-                        watchCompanionDeliveredHeartRate = true
+                        sessionDeliveredHeartRate = true
+                        if !coordinator.isReceivingPhoneHeartRate {
+                            watchDeliveredHeartRate = true
+                        }
                         coordinator.recordDiagnostic(
                             .phoneFirstHeartRate,
                             detail: "bpm=\(coordinator.liveHeartRateBPMForDisplay ?? -1) mirrored=\(coordinator.isReceivingMirroredHeartRate)"
                         )
                     }
                     coordinator.recordDiagnostic(.phoneLiveConfirmOK, detail: "reachable=\(coordinator.isReachable)")
-                    watchCompanionNotice = nil
                     return
                 }
                 try? await Task.sleep(for: .seconds(1))
@@ -1866,14 +1916,14 @@ final class TrainSessionController {
                 hasHeartRate: coordinator.liveHeartRateBPMForDisplay != nil,
                 isReachable: coordinator.isReachable
             ) {
-                watchCompanionNotice = nil
                 return
             }
+            // Not a failure: wrist-down Watch simply has not executed yet. Keep
+            // companion pushes via heart-rate sampling; header shows connecting.
             coordinator.recordDiagnostic(
                 .phoneLiveConfirmTimeout,
-                detail: "reachable=\(coordinator.isReachable) hr=\(coordinator.latestLiveHeartRateBPM.map(String.init) ?? "nil") launchError=\(coordinator.lastLaunchError ?? "none")"
+                detail: "reachable=\(coordinator.isReachable) hr=\(coordinator.latestLiveHeartRateBPM.map(String.init) ?? "nil") launchError=\(coordinator.lastLaunchError ?? "none") lateAdoptionPending=true"
             )
-            watchCompanionNotice = "Watch didn't wake. Open Helm on Watch once, then tap to retry."
         }
     }
 
@@ -1889,7 +1939,7 @@ final class TrainSessionController {
             while !Task.isCancelled {
                 guard let self, self.store.snapshot != nil else { return }
                 self.recordLiveHeartRateSampleIfAvailable()
-                if !self.watchCompanionDeliveredHeartRate {
+                if WatchReadinessBootstrap.coordinator.canDriveWatchCompanion {
                     self.pushWatchCompanionState()
                 }
                 try? await Task.sleep(for: .seconds(5))
@@ -1907,12 +1957,24 @@ final class TrainSessionController {
 
     private func recordLiveHeartRateSampleIfAvailable() {
         guard let snapshot = store.snapshot else { return }
-        guard WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-              let bpm = WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-        else {
+        let coordinator = WatchReadinessBootstrap.coordinator
+        guard let bpm = coordinator.liveHeartRateBPMForDisplay else {
             return
         }
-        watchCompanionDeliveredHeartRate = true
+        if !sessionDeliveredHeartRate {
+            sessionDeliveredHeartRate = true
+            let fromPhone = coordinator.isReceivingPhoneHeartRate
+            if !fromPhone {
+                watchDeliveredHeartRate = true
+            }
+            coordinator.recordDiagnostic(
+                .phoneFirstHeartRate,
+                detail: "bpm=\(bpm) source=\(fromPhone ? "phone" : "watch")"
+            )
+        } else if coordinator.isReceivingMirroredHeartRate ||
+                    (!coordinator.isReceivingPhoneHeartRate && coordinator.canDriveWatchCompanion) {
+            watchDeliveredHeartRate = true
+        }
         let offset = Int(Date().timeIntervalSince(snapshot.session.startedAt))
         sessionHeartRateBuffer.record(bpm: bpm, offsetSeconds: offset)
     }
@@ -1936,15 +1998,23 @@ final class TrainSessionController {
             setCount: currentExercise?.sets.count,
             targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] },
             sessionExerciseID: currentExercise?.id,
-            setID: currentSet?.id
+            setID: currentSet?.id,
+            sessionStartedAt: snapshot.session.startedAt
         )
     }
 
-    private func deactivateWatchCompanion(saveWatchWorkout: Bool) {
+    /// Tears down Watch companion + phone live HR session.
+    /// Phone HKWorkout saved only when HR arrived and Watch did not (avoid double workout).
+    private func deactivateHeartRateCompanion(saveWorkout: Bool) async {
         WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
             active: false,
-            saveWatchWorkout: saveWatchWorkout
+            saveWatchWorkout: saveWorkout
         )
+        let shouldSavePhoneWorkout = saveWorkout
+            && sessionDeliveredHeartRate
+            && !watchDeliveredHeartRate
+            && PhoneWorkoutSessionManager.shared.isActive
+        await PhoneWorkoutSessionManager.shared.end(discard: !shouldSavePhoneWorkout)
     }
 
     func displayText(for field: NumpadFieldKind, set: SetEntryDraft, exerciseID: String) -> String {

@@ -156,6 +156,7 @@ final class WorkoutSessionSideEffects {
 
     func onSessionFinished(sessionID: String, writePhoneEnergyEstimate: Bool = true) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
+        RestTimerBackgroundAudio.shared.stop()
         musicCapture.sampleIfChanged(sessionID: sessionID)
         musicCapture.reset()
         liveActivity.end()
@@ -180,6 +181,7 @@ final class WorkoutSessionSideEffects {
 
     func onSessionDiscarded(sessionID: String) async {
         await notifications.cancelRestNotification(sessionID: sessionID)
+        RestTimerBackgroundAudio.shared.stop()
         musicCapture.reset()
         liveActivity.end()
         lifecycle.end()

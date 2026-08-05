@@ -14,23 +14,25 @@ final class RestTimerSoundPlayer {
     private var bellPlayer: AVAudioPlayer?
     private let logger = Logger(subsystem: "com.cameronro.helm", category: "Logger")
 
-    init() {
-        loadBellPlayer()
-    }
+    init() {}
 
-    /// Loads/prepares the bell player only - never activates `AVAudioSession`.
-    /// Activating playback on launch pauses Spotify/Apple Music.
+    /// Declares a mixable category at launch without activating the session or touching
+    /// audio hardware. `AVAudioPlayer` init/`prepareToPlay` acquires hardware implicitly, and
+    /// under the default solo-ambient category that pauses Spotify / Apple Music on open.
     func prewarmSession() {
-        if bellPlayer == nil {
-            loadBellPlayer()
-        } else {
-            bellPlayer?.prepareToPlay()
+        do {
+            try AVAudioSession.sharedInstance().setCategory(
+                .playback,
+                mode: .default,
+                options: [.mixWithOthers]
+            )
+        } catch {
+            logger.error("Rest timer audio category failed: \(error.localizedDescription, privacy: .public)")
         }
     }
 
     func playRestBellIfEnabled(_ enabled: Bool) {
         guard enabled else { return }
-        guard AppLifecycleState.isForeground else { return }
         play(
             soundID: TrainPreferences.shared.restTimerSoundID,
             volume: TrainPreferences.shared.restTimerVolume
@@ -39,7 +41,8 @@ final class RestTimerSoundPlayer {
 
     func play(soundID: RestTimerSoundID, volume: RestTimerVolumeLevel) {
         guard volume.isEnabled else { return }
-        guard AppLifecycleState.isForeground else { return }
+        // Backgrounded playback only works while the rest keep-alive session holds the app awake.
+        guard AppLifecycleState.isForeground || RestTimerBackgroundAudio.shared.isRunning else { return }
 
         switch soundID {
         case .boxingBell:
@@ -52,9 +55,9 @@ final class RestTimerSoundPlayer {
     }
 
     private func playBundledBell(volume: Float) {
-        configureSessionIfNeeded()
+        configureSessionForPlayback()
 
-        guard let player = bellPlayer else {
+        guard let player = loadedBellPlayer() else {
             logger.error("Boxing bell missing from bundle (checked mp3/caf in Sounds/)")
             playSystemSound(1_052)
             return
@@ -69,21 +72,25 @@ final class RestTimerSoundPlayer {
         }
     }
 
-    private func loadBellPlayer() {
+    /// Created on first play, never at launch: instantiating the player grabs audio hardware.
+    private func loadedBellPlayer() -> AVAudioPlayer? {
+        if let bellPlayer { return bellPlayer }
         guard let url = Self.bundledBellURL() else {
             logger.error("Boxing bell URL missing from bundle")
-            return
+            return nil
         }
         do {
             let player = try AVAudioPlayer(contentsOf: url)
             player.prepareToPlay()
             bellPlayer = player
+            return player
         } catch {
             logger.error("Boxing bell load failed: \(error.localizedDescription, privacy: .public)")
+            return nil
         }
     }
 
-    private func configureSessionIfNeeded() {
+    private func configureSessionForPlayback() {
         // Activate only when playing. Chat dictation may have switched to `.record`;
         // re-assert mixable playback here so the bell overlays music instead of stopping it.
         do {
@@ -122,7 +129,7 @@ final class RestTimerSoundPlayer {
     }
 
     private func playSystemSound(_ soundID: SystemSoundID) {
-        configureSessionIfNeeded()
+        configureSessionForPlayback()
         AudioServicesPlaySystemSound(soundID)
     }
 }

@@ -49,12 +49,16 @@ enum WorkoutHapticCoordinator {
 
     static func applyRestEvaluation(_ evaluation: RestTimerHapticPolicy.Evaluation) {
         restState.apply(evaluation)
-        // CoreHaptics / AVAudioSession fail (and can corrupt main-actor isolation) when
-        // the app is not active. Keep dedupe state, skip playback.
-        guard AppLifecycleState.isForeground else { return }
+        let isForeground = AppLifecycleState.isForeground
+        // Backgrounded, the bell still plays through the rest keep-alive session, but
+        // CoreHaptics fails (and can corrupt main-actor isolation) when the app is not active.
+        let canRingWhileBackgrounded = RestTimerBackgroundAudio.shared.isRunning
+        guard isForeground || canRingWhileBackgrounded else { return }
 
         for pattern in evaluation.patterns {
-            play(pattern)
+            if isForeground {
+                play(pattern)
+            }
             if pattern == .restDone {
                 RestTimerSoundPlayer.shared.playRestBellIfEnabled(
                     TrainPreferences.shared.restTimerVolume.isEnabled

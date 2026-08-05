@@ -12,6 +12,9 @@ private enum LiveActivityMetrics {
     static let signalBlue = Color(red: 0.16, green: 0.55, blue: 1.0)
     /// Upper bound for count-up elapsed `timerInterval` (system-rendered, no 1Hz updates).
     static let elapsedWindow: TimeInterval = 60 * 60 * 12
+    /// `Text(timerInterval:)` otherwise reserves room for the widest value in the range,
+    /// which stretches the compact pill. Pin it to digit-clock width instead.
+    static let compactTimerWidth: CGFloat = 46
 }
 
 struct WorkoutLiveActivityWidget: Widget {
@@ -138,14 +141,19 @@ struct WorkoutLiveActivityWidget: Widget {
         state: WorkoutActivityAttributes.ContentState,
         startedAt: Date
     ) -> some View {
-        if state.isResting {
-            restCountdownLabel(state)
-                .font(.caption2.monospacedDigit())
-                .foregroundStyle(LiveActivityMetrics.signalBlue)
-        } else {
-            elapsedTimerLabel(startedAt: startedAt)
-                .font(.caption2.monospacedDigit())
+        Group {
+            if state.isResting {
+                restCountdownLabel(state)
+                    .foregroundStyle(LiveActivityMetrics.signalBlue)
+            } else {
+                elapsedTimerLabel(startedAt: startedAt)
+            }
         }
+        .font(.caption2.monospacedDigit())
+        .multilineTextAlignment(.trailing)
+        .minimumScaleFactor(0.7)
+        .lineLimit(1)
+        .frame(width: LiveActivityMetrics.compactTimerWidth, alignment: .trailing)
     }
 
     /// System-rendered count-up from session start - stays accurate while app is suspended.
