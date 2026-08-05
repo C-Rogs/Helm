@@ -46,6 +46,11 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
         Self.phaseStableLine(phaseGoal)
     }
 
+    /// Standing constraints only, for follow-up / in-session context.
+    public func slimStandingConstraintsText() -> String {
+        Self.normalized(standingConstraints)
+    }
+
     private static func normalized(_ text: String) -> String {
         text
             .replacingOccurrences(of: "\r\n", with: "\n")

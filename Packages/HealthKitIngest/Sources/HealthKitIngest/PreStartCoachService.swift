@@ -50,6 +50,7 @@ public struct PreStartCoachService: Sendable {
         Exercises: \(summary.exercises.map(\.displayName).joined(separator: ", "))
         Invite the athlete to ask about volume, swaps, readiness, or how today's session fits their training emphasis before starting.
         If Training Plan Snapshot includes emphasis, explain briefly how it could fit today's \(brief.splitKind.label) session when relevant; do not rewrite the engine prescription unless asked.
+        \(warmUpGuidance(from: profile))
         """
 
         let budget = TokenBudget.maxInputTokens(for: .gemini)
@@ -76,6 +77,16 @@ public struct PreStartCoachService: Sendable {
             throw CoachStructuredOutputError.emptyResponse
         }
         return PreStartCoachIntro(text: trimmed, isEngineOnly: false)
+    }
+
+    private func warmUpGuidance(from profile: MemoryProfile) -> String {
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        let signals = StandingConstraintNotes.evaluate(profile.standingConstraints, on: today)
+        guard signals.encourageWarmUpStretch else { return "" }
+        if signals.pauseVerticalPress {
+            return "Standing Constraints show an active shoulder recovery window: encourage a thorough warm-up and stretch, and note that overhead pressing is soft-paused until the until-date passes."
+        }
+        return "Standing Constraints suggest encouraging a thorough warm-up and stretch for today's session."
     }
 
     public func proposeAdjustment(

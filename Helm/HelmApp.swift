@@ -16,6 +16,12 @@ struct HelmApp: App {
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
             await PersistenceBootstrap.importExerciseSeed()
+            if !ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
+                try? CoachMemoryAdjuster.seedShoulderNiggleIfNeeded(
+                    persistence: PersistenceBootstrap.persistenceStore
+                )
+            }
+            await CloudBackupCoordinator.shared.pullIfNeededOnLaunch()
             ReadinessBootstrap.start()
             PlanBootstrap.start()
             TrainBootstrap.start()

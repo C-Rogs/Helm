@@ -263,7 +263,7 @@ struct ChatView: View {
         switch pending.kind {
         case .workoutStart:
             return "Could not start. \(message)"
-        case .foodLog, .mealCopy:
+        case .foodLog, .mealCopy, .memoryAdjustment:
             return "Could not apply. \(message)"
         }
     }

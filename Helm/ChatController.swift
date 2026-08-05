@@ -303,6 +303,11 @@ final class ChatController {
                 NutritionBootstrap.refreshNutrition(for: resolved.target)
                 HapticEngine.shared.play(.phaseChange)
                 HapticEngine.shared.play(.mealConfirmed)
+            case let .memoryAdjustment(payload):
+                applyProgressStep = "Updating Memory…"
+                try CoachMemoryAdjuster.apply(payload, persistence: persistence)
+                HapticEngine.shared.play(.phaseChange)
+                HapticEngine.shared.play(.mealConfirmed)
             case let .workoutStart(payload):
                 applyProgressStep = "Preparing session…"
                 let today = HelmDay.day(for: .now, calendar: .current)

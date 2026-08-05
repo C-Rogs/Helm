@@ -301,13 +301,18 @@ public actor PlanPrescriptionEngine {
             history: history,
             muscleMaps: muscleMaps
         )
-        var trackedMesocycle = PlanKit.recordReadinessForReactiveDeload(
+        let trackedMesocycle = PlanKit.recordReadinessForReactiveDeload(
             state: mesocycleState,
             band: readiness?.band
         )
         let methodology = try methodologyPreferences()
         let durationBudget = SessionDurationBudget.from(minutes: settings.sessionDurationMinutes)
         let programTemplate = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
+        let constraintSignals = standingConstraintSignals(on: day)
+        var excludedPatterns = Set<MovementPatternKind>()
+        if constraintSignals.pauseVerticalPress {
+            excludedPatterns.insert(.verticalPress)
+        }
 
         let profile = PrescriptionProfile(
             helmDay: day,
@@ -324,7 +329,8 @@ public actor PlanPrescriptionEngine {
             familiarExerciseIDs: familiarExerciseIDs,
             durationBudget: durationBudget,
             programTemplate: programTemplate,
-            dayKind: schedule.splitKind.trainingDayKind
+            dayKind: schedule.splitKind.trainingDayKind,
+            excludedPatterns: excludedPatterns
         )
 
         let signpostID = signpost.makeSignpostID()
@@ -349,7 +355,8 @@ public actor PlanPrescriptionEngine {
                 sessions: history.sessions,
                 muscleMaps: muscleMaps,
                 weekStart: history.weekStart
-            )
+            ),
+            constraintNotes: constraintSignals.rationaleNotes
         )
         session = PrescribedSession(
             id: session.id,
@@ -421,8 +428,14 @@ public actor PlanPrescriptionEngine {
                 sessions: history.sessions,
                 muscleMaps: muscleMaps,
                 weekStart: history.weekStart
-            )
+            ),
+            constraintNotes: standingConstraintSignals(on: day).rationaleNotes
         )
+    }
+
+    private func standingConstraintSignals(on day: HelmDay) -> StandingConstraintNotes.Evaluation {
+        let text = (try? persistence.memoryProfile.load().standingConstraints) ?? ""
+        return StandingConstraintNotes.evaluate(text, on: day)
     }
 
     private func persistPlannedWorkouts(

@@ -37,7 +37,9 @@ enum PrescriptionEngine {
             template: profile.programTemplate,
             readinessBand: readiness?.band,
             isDeload: isDeload
-        )
+        ).filter { !profile.excludedPatterns.contains($0.pattern) }
+
+        let selectionCatalog = filteredCatalog(for: profile)
 
         var remainingByMuscle: [MuscleGroup: Double] = [:]
         for muscle in SessionComposer.primaryMuscles(in: slots) {
@@ -59,7 +61,7 @@ enum PrescriptionEngine {
         for slot in slots {
             guard let selection = ExerciseSelectionEngine.select(
                 for: slot,
-                catalog: profile.exerciseCatalog,
+                catalog: selectionCatalog,
                 excluding: selectedExerciseIDs,
                 availableEquipment: profile.availableEquipment,
                 selectionBias: profile.selectionBias,
@@ -226,7 +228,7 @@ enum PrescriptionEngine {
             guard let muscleState = profile.mesocycleState.muscles[muscle] else { continue }
             guard let selection = ExerciseSelectionEngine.select(
                 for: muscle,
-                catalog: profile.exerciseCatalog,
+                catalog: filteredCatalog(for: profile),
                 excluding: selected,
                 availableEquipment: profile.availableEquipment,
                 selectionBias: profile.selectionBias,
@@ -266,6 +268,14 @@ enum PrescriptionEngine {
             sessionSets += gatedSets
         }
         return exercises
+    }
+
+    private static func filteredCatalog(for profile: PrescriptionProfile) -> [CatalogExercise] {
+        profile.exerciseCatalog.filter { exercise in
+            !profile.excludedPatterns.contains { pattern in
+                MovementPatternMatcher.patternScore(exerciseID: exercise.exerciseID, pattern: pattern) > 0
+            }
+        }
     }
 
     private static func phaseVolumeMultiplier(for phase: TrainingPhase) -> Double {

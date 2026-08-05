@@ -7,6 +7,7 @@ enum CoachChatActionKind: Sendable, Equatable {
     case workoutStart(WorkoutStartPayload)
     case foodLog(FoodLogPayload)
     case mealCopy(MealCopyPayload)
+    case memoryAdjustment(MemoryAdjustmentPayload)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -74,6 +75,24 @@ enum CoachChatActionParser {
             )
         }
 
+        if let payload = MemoryAdjustmentPayloadParser.parse(from: text) {
+            let preview = MemoryAdjustmentPayloadParser.preview(for: payload)
+            let confirmLabel: String
+            switch payload.action {
+            case .add: confirmLabel = "Save to Memory"
+            case .clear: confirmLabel = "Clear constraint"
+            }
+            return CoachChatActionProposal(
+                reply: payload.reply,
+                kind: .memoryAdjustment(payload),
+                title: preview.title,
+                detail: preview.detail,
+                reason: payload.rationale ?? payload.reply,
+                confirmLabel: confirmLabel,
+                cancelLabel: "Cancel"
+            )
+        }
+
         if let payload = WorkoutStartPayloadParser.parse(from: text) {
             let preview = WorkoutStartCommandPreview.preview(for: payload)
             let stripped = CoachChatTextFormatter.userFacingText(from: text)
@@ -110,7 +129,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy:
+            case .foodLog, .mealCopy, .memoryAdjustment:
                 return pendingAction.title
             }
         }

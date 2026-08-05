@@ -90,6 +90,10 @@ public enum ContextBuilder {
         if !slim.isEmpty {
             sections.append("# Phase\n\(slim)")
         }
+        let constraints = normalized(profile.slimStandingConstraintsText())
+        if !constraints.isEmpty {
+            sections.append("# Standing Constraints\n\(constraints)")
+        }
         // Ambient recovery stays available every turn; deeper history uses recovery_query.v1.
         let baselines = normalized(days.readinessBaselines)
         if !baselines.isEmpty {

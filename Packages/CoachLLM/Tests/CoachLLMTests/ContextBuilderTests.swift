@@ -93,6 +93,18 @@ struct ContextBuilderTests {
         #expect(prompt.contextBlock.contains("emphasis=\"agility\""))
     }
 
+    @Test("follow-up includes standing constraints")
+    func followUpIncludesStandingConstraints() {
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: fixtureDays(),
+            budget: 48_000,
+            turn: .followUp
+        )
+        #expect(prompt.contextBlock.contains("# Standing Constraints"))
+        #expect(prompt.contextBlock.contains("No overhead pressing."))
+    }
+
     @Test("prefix ordering is byte-stable across calls")
     func prefixByteStable() {
         let days = fixtureDays()

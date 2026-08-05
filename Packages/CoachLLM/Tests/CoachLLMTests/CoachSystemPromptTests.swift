@@ -40,6 +40,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("workout_query.v1"))
         #expect(prompt.contains("meal_query.v1"))
         #expect(prompt.contains("recovery_query.v1"))
+        #expect(prompt.contains("memory_adjustment.v1"))
     }
 
     @Test("in-session coach shares main chat voice")

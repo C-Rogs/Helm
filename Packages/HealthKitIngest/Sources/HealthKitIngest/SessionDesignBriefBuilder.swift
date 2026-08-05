@@ -40,7 +40,8 @@ public enum SessionDesignBriefBuilder {
         exerciseCount: Int,
         readiness: ReadinessScore?,
         scheduleNotes: [String] = [],
-        weeklyLedger: WeeklyHardSetLedger? = nil
+        weeklyLedger: WeeklyHardSetLedger? = nil,
+        constraintNotes: [String] = []
     ) -> SessionDesignBrief {
         let title = splitKind.label
         let muscleText = SessionSplitPlanner.muscleSummary(for: targetMuscles)
@@ -52,6 +53,7 @@ public enum SessionDesignBriefBuilder {
         let summary = summaryParts.joined(separator: " · ")
 
         var rationale: [String] = []
+        rationale.append(contentsOf: constraintNotes)
         if let readiness {
             let band = readiness.band
             rationale.append("ARC \(readiness.score) (\(band.rawValue)) sets today's volume and RPE cap.")

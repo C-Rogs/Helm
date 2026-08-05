@@ -49,6 +49,8 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
     public let durationBudget: SessionDurationBudget
     public let programTemplate: ProgramTemplate
     public let dayKind: TrainingDayKind?
+    /// Movement patterns to skip for this prescription (e.g. verticalPress during shoulder recovery).
+    public let excludedPatterns: Set<MovementPatternKind>
 
     public init(
         helmDay: HelmDay,
@@ -63,7 +65,8 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         familiarExerciseIDs: Set<String> = [],
         durationBudget: SessionDurationBudget = .minutes60,
         programTemplate: ProgramTemplate = .ppl,
-        dayKind: TrainingDayKind? = nil
+        dayKind: TrainingDayKind? = nil,
+        excludedPatterns: Set<MovementPatternKind> = []
     ) {
         precondition(remainingSessionsThisWeek >= 1, "remainingSessionsThisWeek must be >= 1")
         self.helmDay = helmDay
@@ -79,6 +82,7 @@ public struct PrescriptionProfile: Sendable, Hashable, Codable {
         self.durationBudget = durationBudget
         self.programTemplate = programTemplate
         self.dayKind = dayKind
+        self.excludedPatterns = excludedPatterns
     }
 }
 

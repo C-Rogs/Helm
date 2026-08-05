@@ -4,7 +4,8 @@ import PackageDescription
 
 let package = Package(
     name: "Domain",
-    platforms: [.iOS(.v26)],
+    // macOS so `swift test` can run PlanKit/ReadinessKit/NutritionKit on the host.
+    platforms: [.iOS(.v26), .macOS(.v15)],
     products: [
         .library(name: "Domain", targets: ["Domain"]),
         .library(name: "PlanKit", targets: ["PlanKit"]),

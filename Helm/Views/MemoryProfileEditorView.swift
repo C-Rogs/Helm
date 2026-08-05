@@ -43,7 +43,7 @@ struct MemoryProfileEditorView: View {
 
             Section("Standing Constraints") {
                 editorField("Constraints", text: $profile.standingConstraints)
-                Text("Pain, injury, or movements to avoid. Free text is enough; coach will ask and plan around this.")
+                Text("Temporary recovery notes use dated lines with until/joint tags. Coach can save these via chat confirm. Example: 2026-08-05 [until:2026-08-08] [joint:shoulder] Soft pause overhead pressing.")
                     .font(HelmTypography.caption)
                     .foregroundStyle(HelmColor.fgSecondary)
             }

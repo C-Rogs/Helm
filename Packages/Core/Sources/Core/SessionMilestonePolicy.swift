@@ -38,7 +38,7 @@ public enum SessionMilestonePolicy {
         case 3:
             return "Three quarters. Finish strong, or ask if you want a safer swap."
         default:
-            return "Session nearly done. Note any pain or niggles in Memory so I can plan around them."
+            return "Session nearly done. Tell me about any pain or niggles and I can save a short recovery note to Memory."
         }
     }
 }
