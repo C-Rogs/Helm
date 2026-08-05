@@ -3,6 +3,13 @@ import Foundation
 import Observation
 import Persistence
 
+enum WorkoutHistoryLoadState: Equatable {
+    case idle
+    case loadingInitial
+    case loadingMore
+    case loaded
+}
+
 @MainActor
 @Observable
 final class WorkoutHistoryController {
@@ -12,6 +19,7 @@ final class WorkoutHistoryController {
     private(set) var templates: [WorkoutTemplateSummary] = []
     private(set) var recentPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var exerciseNames: [String: String] = [:]
+    private(set) var loadState: WorkoutHistoryLoadState = .idle
 
     var errorMessage: String?
 
@@ -24,29 +32,37 @@ final class WorkoutHistoryController {
     }
 
     func refresh() {
+        loadState = .loadingInitial
         do {
             loadedCount = pageSize
             sessions = try persistence.workoutSessions.listSummaries(limit: pageSize, offset: 0)
             templates = try persistence.workoutTemplates.fetchSummaries()
             canLoadMore = sessions.count == pageSize
             refreshExerciseNames()
+            errorMessage = nil
+            loadState = .loaded
         } catch {
             errorMessage = error.localizedDescription
+            loadState = .loaded
         }
     }
 
     func loadMoreIfNeeded(currentSessionID: String?) {
-        guard canLoadMore, let currentSessionID else { return }
+        guard canLoadMore, loadState != .loadingMore, let currentSessionID else { return }
         guard sessions.last?.id == currentSessionID else { return }
 
+        loadState = .loadingMore
         do {
             let next = try persistence.workoutSessions.listSummaries(limit: pageSize, offset: loadedCount)
             loadedCount += next.count
             sessions.append(contentsOf: next)
             canLoadMore = next.count == pageSize
             refreshExerciseNames()
+            errorMessage = nil
+            loadState = .loaded
         } catch {
             errorMessage = error.localizedDescription
+            loadState = .loaded
         }
     }
 
@@ -54,21 +70,27 @@ final class WorkoutHistoryController {
         try? persistence.workoutSessions.fetch(id: id)
     }
 
-    func saveSession(_ draft: WorkoutSessionDraft) {
+    @discardableResult
+    func saveSession(_ draft: WorkoutSessionDraft) -> Bool {
         do {
             try persistence.workoutSessions.updateCompletedSession(draft)
             refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
-    func deleteSession(id: String) {
+    @discardableResult
+    func deleteSession(id: String) -> Bool {
         do {
             try persistence.workoutSessions.delete(id: id)
             refresh()
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -76,6 +98,7 @@ final class WorkoutHistoryController {
         do {
             _ = try persistence.workoutTemplates.createFromSession(session: session, name: name)
             templates = try persistence.workoutTemplates.fetchSummaries()
+            errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -86,6 +109,7 @@ final class WorkoutHistoryController {
             try persistence.workoutTemplates.update(draft)
             templates = try persistence.workoutTemplates.fetchSummaries()
             refreshExerciseNames()
+            errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -95,6 +119,7 @@ final class WorkoutHistoryController {
         do {
             try persistence.workoutTemplates.delete(id: id)
             templates = try persistence.workoutTemplates.fetchSummaries()
+            errorMessage = nil
         } catch {
             errorMessage = error.localizedDescription
         }
