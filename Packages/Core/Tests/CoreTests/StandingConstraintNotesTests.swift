@@ -18,8 +18,8 @@ struct StandingConstraintNotesTests {
         #expect(line == "2026-08-05 [until:2026-08-08] [joint:shoulder] Soft pause overhead pressing")
     }
 
-    @Test("active shoulder pauses vertical press and nudges warm-up")
-    func activeShoulder() {
+    @Test("active joint window sets activeJoints and warm-up nudge")
+    func activeJoint() {
         let text = StandingConstraintNotes.formatAddLine(
             note: "Shoulder niggle",
             joint: "shoulder",
@@ -27,13 +27,27 @@ struct StandingConstraintNotesTests {
             until: until
         )
         let mid = StandingConstraintNotes.evaluate(text, on: HelmDay(year: 2026, month: 8, day: 7))
-        #expect(mid.pauseVerticalPress)
+        #expect(mid.activeJoints.contains("shoulder"))
         #expect(mid.encourageWarmUpStretch)
-        #expect(mid.rationaleNotes.contains(where: { $0.contains("soft pause overhead") }))
+        #expect(mid.rationaleNotes.contains(where: { $0.contains("soft pause overhead pressing") }))
     }
 
-    @Test("day after until restores overhead pressing")
-    func expiredRestoresOHP() {
+    @Test("knee note uses knee soft-pause copy")
+    func kneeCopy() {
+        let text = StandingConstraintNotes.formatAddLine(
+            note: "Knee sore on lunges",
+            joint: "knee",
+            notedOn: notedOn,
+            until: until
+        )
+        let mid = StandingConstraintNotes.evaluate(text, on: HelmDay(year: 2026, month: 8, day: 6))
+        #expect(mid.activeJoints == ["knee"])
+        #expect(mid.rationaleNotes.contains(where: { $0.lowercased().contains("knee") }))
+        #expect(mid.rationaleNotes.contains(where: { $0.contains("deep knee bends") }))
+    }
+
+    @Test("day after until clears activeJoints")
+    func expiredRestores() {
         let text = StandingConstraintNotes.formatAddLine(
             note: "Shoulder niggle",
             joint: "shoulder",
@@ -41,7 +55,7 @@ struct StandingConstraintNotesTests {
             until: until
         )
         let after = StandingConstraintNotes.evaluate(text, on: HelmDay(year: 2026, month: 8, day: 9))
-        #expect(!after.pauseVerticalPress)
+        #expect(after.activeJoints.isEmpty)
         #expect(after.encourageWarmUpStretch)
         #expect(after.rationaleNotes.contains(where: { $0.contains("allowed again") }))
     }
@@ -62,7 +76,7 @@ struct StandingConstraintNotesTests {
         )
         #expect(cleared.contains("[resolved:2026-08-06]"))
         let eval = StandingConstraintNotes.evaluate(cleared, on: HelmDay(year: 2026, month: 8, day: 6))
-        #expect(!eval.pauseVerticalPress)
+        #expect(eval.activeJoints.isEmpty)
         #expect(!eval.encourageWarmUpStretch)
     }
 
@@ -70,8 +84,8 @@ struct StandingConstraintNotesTests {
     func legacyWindow() {
         let text = "2026-08-05: No overhead pressing (shoulder)."
         let active = StandingConstraintNotes.evaluate(text, on: HelmDay(year: 2026, month: 8, day: 7))
-        #expect(active.pauseVerticalPress)
+        #expect(active.activeJoints.contains("shoulder"))
         let expired = StandingConstraintNotes.evaluate(text, on: HelmDay(year: 2026, month: 8, day: 9))
-        #expect(!expired.pauseVerticalPress)
+        #expect(expired.activeJoints.isEmpty)
     }
 }

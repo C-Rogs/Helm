@@ -83,8 +83,14 @@ public struct PreStartCoachService: Sendable {
         let today = HelmDay.day(for: Date(), calendar: .current)
         let signals = StandingConstraintNotes.evaluate(profile.standingConstraints, on: today)
         guard signals.encourageWarmUpStretch else { return "" }
-        if signals.pauseVerticalPress {
-            return "Standing Constraints show an active shoulder recovery window: encourage a thorough warm-up and stretch, and note that overhead pressing is soft-paused until the until-date passes."
+        let joints = signals.activeJoints.sorted()
+        if !joints.isEmpty {
+            let labels = joints.map { JointRecoveryCatalog.normalize($0) }.joined(separator: ", ")
+            let patterns = StandingConstraintPatternPolicy.excludedPatterns(forActiveJoints: signals.activeJoints)
+            if patterns.isEmpty {
+                return "Standing Constraints show an active recovery window (\(labels)): encourage a thorough warm-up and stretch; ease related loading until the until-date passes."
+            }
+            return "Standing Constraints show an active recovery window (\(labels)): encourage a thorough warm-up and stretch, and note that mapped stressful patterns are soft-paused until the until-date passes."
         }
         return "Standing Constraints suggest encouraging a thorough warm-up and stretch for today's session."
     }

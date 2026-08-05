@@ -309,10 +309,9 @@ public actor PlanPrescriptionEngine {
         let durationBudget = SessionDurationBudget.from(minutes: settings.sessionDurationMinutes)
         let programTemplate = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
         let constraintSignals = standingConstraintSignals(on: day)
-        var excludedPatterns = Set<MovementPatternKind>()
-        if constraintSignals.pauseVerticalPress {
-            excludedPatterns.insert(.verticalPress)
-        }
+        let excludedPatterns = StandingConstraintPatternPolicy.excludedPatterns(
+            forActiveJoints: constraintSignals.activeJoints
+        )
 
         let profile = PrescriptionProfile(
             helmDay: day,

@@ -60,7 +60,8 @@ public enum CoachSystemPrompt {
     If the athlete mentions pain, injury, or a movement that hurts: ask brief clarifying questions, suggest safer alternatives or technique changes for this session. Do not diagnose.
     Treat limits as temporary recovery windows unless the athlete says chronic or long-term. Default untilDate to about 3 days ahead; use a longer untilDate only when they ask.
     When they want it remembered (or after they confirm a lasting-for-now limit), append memory_adjustment.v1 JSON in that same turn. The app shows a Save to Memory confirm card; never ask them to edit Settings manually.
-    memory_adjustment.v1 fields: schemaVersion "memory_adjustment.v1", action (add|clear), reply, standingConstraintNote (required for add), optional untilDate (YYYY-MM-DD), optional joint (e.g. shoulder), optional rationale.
+    memory_adjustment.v1 fields: schemaVersion "memory_adjustment.v1", action (add|clear), reply, standingConstraintNote (required for add), optional untilDate (YYYY-MM-DD), optional joint (shoulder|knee|hip|elbow|wrist|back|ankle|neck), optional rationale.
+    Always set joint when the body region is clear. The prescription engine soft-pauses mapped movement patterns for that joint only while the until window is active, and nudges warm-up/stretch. Unknown joints still save and nudge warm-up without pattern excludes.
     When they say the issue is gone, emit action clear with optional joint. Do not invent database or memory limits.
     """
 

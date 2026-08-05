@@ -9,15 +9,11 @@ public enum StandingConstraintNotes: Sendable {
     public static let easeBackDays = 3
 
     public struct Evaluation: Sendable, Equatable {
-        /// Joints still inside an active recovery window (e.g. `shoulder`).
+        /// Joints still inside an active recovery window (e.g. `shoulder`, `knee`).
         public let activeJoints: Set<String>
         /// Brief lines for session design / pre-start coach.
         public let rationaleNotes: [String]
         public let encourageWarmUpStretch: Bool
-
-        public var pauseVerticalPress: Bool {
-            activeJoints.contains("shoulder")
-        }
 
         public static let empty = Evaluation(
             activeJoints: [],
@@ -33,7 +29,9 @@ public enum StandingConstraintNotes: Sendable {
         until: HelmDay
     ) -> String {
         let trimmedNote = note.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedJoint = normalizedJoint(joint) ?? inferJoint(from: trimmedNote) ?? "general"
+        let resolvedJoint = JointRecoveryCatalog.normalize(
+            normalizedJoint(joint) ?? inferJoint(from: trimmedNote) ?? "general"
+        )
         return "\(notedOn.formatted) [until:\(until.formatted)] [joint:\(resolvedJoint)] \(trimmedNote)"
     }
 
@@ -102,26 +100,10 @@ public enum StandingConstraintNotes: Sendable {
             if day <= parsed.until {
                 activeJoints.insert(joint)
                 encourage = true
-                if joint == "shoulder" {
-                    notes.append(
-                        "Shoulder recovery window through \(parsed.until.formatted): soft pause overhead pressing; warm up and stretch."
-                    )
-                } else {
-                    notes.append(
-                        "\(joint.capitalized) recovery window through \(parsed.until.formatted): warm up and stretch; ease related loading."
-                    )
-                }
+                notes.append(JointRecoveryCatalog.activeWindowNote(joint: joint, until: parsed.until))
             } else if day <= parsed.until.adding(days: easeBackDays) {
                 encourage = true
-                if joint == "shoulder" {
-                    notes.append(
-                        "Shoulder recently noted - warm up thoroughly; overhead pressing is allowed again."
-                    )
-                } else {
-                    notes.append(
-                        "\(joint.capitalized) recently noted - warm up thoroughly as you ease back."
-                    )
-                }
+                notes.append(JointRecoveryCatalog.easeBackNote(joint: joint))
             }
         }
 
@@ -161,9 +143,11 @@ public enum StandingConstraintNotes: Sendable {
             until = notedOn.adding(days: defaultWindowDays)
         }
 
-        let joint = jointTag(in: trimmed)
-            ?? inferJoint(from: trimmed)
-            ?? "general"
+        let joint = JointRecoveryCatalog.normalize(
+            jointTag(in: trimmed)
+                ?? inferJoint(from: trimmed)
+                ?? "general"
+        )
 
         let resolvedOn: HelmDay?
         if let resolvedTag = tagValue("resolved", in: trimmed) {
@@ -226,13 +210,9 @@ public enum StandingConstraintNotes: Sendable {
 
     private static func normalizedJoint(_ raw: String?) -> String? {
         guard let raw else { return nil }
-        let value = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let value = JointRecoveryCatalog.normalize(raw)
         guard !value.isEmpty else { return nil }
-        switch value {
-        case "shoulders": return "shoulder"
-        case "knees": return "knee"
-        default: return value
-        }
+        return value
     }
 
     private static func inferJoint(from text: String) -> String? {
