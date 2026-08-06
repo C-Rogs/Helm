@@ -4,10 +4,31 @@ public struct SessionDesignedCard<Content: View>: View {
     public let title: String
     public let summary: String
     public let rationale: [String]
-    public let onCoach: () -> Void
+    /// Leading chip label (Train: Discuss; legacy: Coach).
+    public let leadingChipTitle: String
+    public let onLeadingChip: () -> Void
     public let onRegenerate: () -> Void
     @ViewBuilder public let content: () -> Content
 
+    public init(
+        title: String,
+        summary: String,
+        rationale: [String],
+        leadingChipTitle: String = "Discuss",
+        onLeadingChip: @escaping () -> Void,
+        onRegenerate: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.summary = summary
+        self.rationale = rationale
+        self.leadingChipTitle = leadingChipTitle
+        self.onLeadingChip = onLeadingChip
+        self.onRegenerate = onRegenerate
+        self.content = content
+    }
+
+    /// Compatibility for call sites that still name the leading action Coach.
     public init(
         title: String,
         summary: String,
@@ -16,12 +37,15 @@ public struct SessionDesignedCard<Content: View>: View {
         onRegenerate: @escaping () -> Void,
         @ViewBuilder content: @escaping () -> Content
     ) {
-        self.title = title
-        self.summary = summary
-        self.rationale = rationale
-        self.onCoach = onCoach
-        self.onRegenerate = onRegenerate
-        self.content = content
+        self.init(
+            title: title,
+            summary: summary,
+            rationale: rationale,
+            leadingChipTitle: "Discuss",
+            onLeadingChip: onCoach,
+            onRegenerate: onRegenerate,
+            content: content
+        )
     }
 
     public var body: some View {
@@ -38,7 +62,7 @@ public struct SessionDesignedCard<Content: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                     VStack(alignment: .trailing, spacing: HelmSpacing.xs) {
-                        sessionChip(title: "Coach", action: onCoach)
+                        sessionChip(title: leadingChipTitle, action: onLeadingChip)
                         sessionChip(title: "Regenerate", action: onRegenerate)
                     }
                     .layoutPriority(1)

@@ -21,7 +21,6 @@ struct DashboardView: View {
     @State private var contributorDetailsVisible = true
     @State private var sleepSummary: SleepNightSummary?
     @Namespace private var readinessNamespace
-    @Namespace private var prescriptionNamespace
     @Namespace private var muscleVolumeNamespace
 
     private var today: HelmDay {
@@ -186,62 +185,13 @@ struct DashboardView: View {
                     .multilineTextAlignment(.leading)
             }
         case let .prescribed(summary):
-            NavigationLink {
-                ProgressionDetailContainer(matchedCardNamespace: prescriptionNamespace)
-            } label: {
-                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    HelmSectionEyebrow("TODAY'S SESSION")
-
-                    SessionDesignedCard(
-                        title: summary.title,
-                        summary: summary.summary,
-                        rationale: summary.rationale,
-                        onCoach: {
-                            chatController.requestCoachHandoff(prompt: summary.coachNegotiationSeed)
-                        },
-                        onRegenerate: {
-                            Task {
-                                await TrainBootstrap.sessionController.regenerateTodaysPrescription()
-                                await WeekAheadScheduleBootstrap.store.refresh()
-                            }
-                        }
-                    ) {
-                        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                            if summary.readinessAdjusted {
-                                Text("Volume trimmed for readiness")
-                                    .helmType(.monoTag, color: HelmColor.depleted)
-                            }
-
-                            SessionExercisePreviewList(
-                                exercises: summary.exercises.map(\.displayName)
-                            )
-
-                            HStack {
-                                HStack(spacing: HelmSpacing.xxs) {
-                                    HelmNumericText(summary.totalSets)
-                                    Text("total sets")
-                                        .helmType(.body, color: HelmColor.fgSecondary)
-                                }
-                                Spacer()
-                                Text(summary.phase.label)
-                                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                                HelmIconView(.chevronRight, context: .inline)
-                                    .foregroundStyle(HelmColor.fgMuted)
-                            }
-                            .explainable(
-                                ExplainableMetricMappers.prescriptionVolume(
-                                    summary,
-                                    baselineSets: estimatedBaselineSets(for: summary),
-                                    coachAvailable: chatController.isCoachAvailable
-                                ),
-                                onAskCoach: chatController.requestCoachHandoff(prompt:)
-                            )
-                        }
-                    }
-                }
-                .helmMatchedCardDetail(id: "plan-progression", in: prescriptionNamespace)
-            }
-            .buttonStyle(.helmPressableCard)
+            TodaySessionTeaser(
+                title: summary.title,
+                totalSets: summary.totalSets,
+                phaseLabel: summary.phase.label,
+                readinessAdjusted: summary.readinessAdjusted,
+                onOpenTrain: { AppTabRouter.shared.openTrain() }
+            )
         }
     }
 
@@ -275,34 +225,6 @@ struct DashboardView: View {
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         }
-    }
-
-    private func prescriptionExerciseRow(_ exercise: PrescribedExerciseSummary) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text(exercise.displayName)
-                .helmType(.body)
-            HStack(spacing: HelmSpacing.sm) {
-                Text("\(exercise.targetSets) × \(exercise.targetRepRange)")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                if let load = exercise.targetLoad {
-                    Text(load)
-                        .helmType(.body, color: HelmColor.fgSecondary)
-                }
-                if let rpe = exercise.targetRPE {
-                    Text(rpe)
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                }
-            }
-        }
-        .padding(.vertical, HelmSpacing.xxs)
-    }
-
-    private func prescriptionSubtitle(for summary: PrescribedSessionSummary) -> String {
-        var parts = ["\(summary.exercises.count) exercises"]
-        if let label = TrainingPlanCoachContext.emphasisDisplayLabel(summary.emphasis) {
-            parts.append(label)
-        }
-        return parts.joined(separator: " · ")
     }
 
     private var greetingHeader: some View {
@@ -641,11 +563,6 @@ struct DashboardView: View {
                 .helmType(.monoTag, color: HelmColor.fgMuted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func estimatedBaselineSets(for summary: PrescribedSessionSummary) -> Int? {
-        guard summary.readinessAdjusted else { return summary.totalSets }
-        return summary.totalSets + 4
     }
 }
 

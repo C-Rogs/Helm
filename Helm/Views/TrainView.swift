@@ -11,7 +11,7 @@ struct TrainView: View {
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     @Bindable private var weekAheadStore = WeekAheadScheduleBootstrap.store
     @Bindable private var trainPreferences = TrainPreferences.shared
-    @Bindable private var chatController = ChatBootstrap.controller
+    @ObservedObject private var spotify = SpotifyAppRemoteService.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -214,7 +214,8 @@ struct TrainView: View {
                 title: summary.title,
                 summary: summary.summary,
                 rationale: summary.rationale,
-                onCoach: { chatController.requestCoachHandoff(prompt: summary.coachNegotiationSeed) },
+                leadingChipTitle: "Discuss",
+                onLeadingChip: { controller.discussTodaysSession() },
                 onRegenerate: {
                     Task {
                         await controller.regenerateTodaysPrescription()
@@ -457,6 +458,24 @@ struct TrainView: View {
                                     liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
                                 )
                             )
+
+                            if spotify.isAuthorized, !spotify.isConnected {
+                                Button {
+                                    spotify.wakeSpotifyAndConnect()
+                                } label: {
+                                    HStack(spacing: HelmSpacing.xxs) {
+                                        Image(systemName: "music.note")
+                                            .font(.caption)
+                                        Text("Open Spotify")
+                                            .helmType(.monoTag, color: HelmColor.fgSecondary)
+                                    }
+                                    .padding(.horizontal, HelmSpacing.xs)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityLabel("Open Spotify")
+                                .accessibilityHint("Switches to Spotify so Helm can read now playing")
+                            }
 
                             if let notice = controller.watchCompanionNotice {
                                 Button {
