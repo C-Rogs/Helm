@@ -172,13 +172,24 @@ public enum CoachContextAssembler {
         let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
             ($0.exerciseID, $0.muscleMap)
         })
-        let schedule = SchedulePlanner.plan(
-            for: endDay,
-            emphasis: settings.phaseGoal.emphasis,
-            history: history,
-            muscleMaps: muscleMaps,
-            calendar: calendar
-        )
+        let plannedToday = try store.plan.fetchPlannedWorkouts(from: endDay, through: endDay)
+        let todaySplit: SessionSplitKind?
+        if let record = plannedToday.first,
+           let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON),
+           let kind = SessionSplitKind(rawValue: payload.splitKind) {
+            todaySplit = kind
+        } else if plannedToday.isEmpty {
+            todaySplit = nil
+        } else {
+            let schedule = SchedulePlanner.plan(
+                for: endDay,
+                emphasis: settings.phaseGoal.emphasis,
+                history: history,
+                muscleMaps: muscleMaps,
+                calendar: calendar
+            )
+            todaySplit = schedule.splitKind
+        }
         let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
             in: history,
             through: endDay
@@ -193,7 +204,7 @@ public enum CoachContextAssembler {
         return TrainingPlanCoachContext.build(
             from: TrainingPlanCoachContext.Input(
                 emphasis: settings.phaseGoal.emphasis,
-                todaySplit: schedule.splitKind,
+                todaySplit: todaySplit,
                 weeklyLedger: ledger,
                 mesocycleState: mesocycleState,
                 experience: experience,

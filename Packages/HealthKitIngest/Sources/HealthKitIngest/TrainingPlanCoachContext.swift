@@ -6,7 +6,8 @@ import PlanKit
 public enum TrainingPlanCoachContext {
     public struct Input: Sendable, Equatable {
         public let emphasis: String?
-        public let todaySplit: SessionSplitKind
+        /// Nil when today is an intentional rest / non-training day in the week plan.
+        public let todaySplit: SessionSplitKind?
         public let weeklyLedger: WeeklyHardSetLedger
         public let mesocycleState: MesocycleState?
         public let experience: TrainingExperience
@@ -14,7 +15,7 @@ public enum TrainingPlanCoachContext {
 
         public init(
             emphasis: String?,
-            todaySplit: SessionSplitKind,
+            todaySplit: SessionSplitKind?,
             weeklyLedger: WeeklyHardSetLedger,
             mesocycleState: MesocycleState?,
             experience: TrainingExperience,
@@ -32,7 +33,7 @@ public enum TrainingPlanCoachContext {
     public static func build(from input: Input) -> String {
         var lines: [String] = [
             "engine_note=split_rotation_only; emphasis is athlete intent for coach interpretation",
-            "today_split=\(input.todaySplit.label)",
+            "today_split=\(input.todaySplit?.label ?? "Rest")",
             "remaining_sessions_this_week=\(input.remainingSessionsThisWeek)"
         ]
 

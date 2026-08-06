@@ -32,6 +32,21 @@ struct TrainingPlanCoachContextTests {
         #expect(!snapshot.contains("Arm emphasis"))
     }
 
+    @Test("rest day snapshot uses today_split=Rest")
+    func restDaySplit() {
+        let snapshot = TrainingPlanCoachContext.build(
+            from: TrainingPlanCoachContext.Input(
+                emphasis: nil,
+                todaySplit: nil,
+                weeklyLedger: ledger(),
+                mesocycleState: nil,
+                experience: .intermediate,
+                remainingSessionsThisWeek: 3
+            )
+        )
+        #expect(snapshot.contains("today_split=Rest"))
+    }
+
     @Test("emphasis display label uses athlete wording")
     func displayLabel() {
         #expect(TrainingPlanCoachContext.emphasisDisplayLabel("calves") == "Emphasis: calves")
