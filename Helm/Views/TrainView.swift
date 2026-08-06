@@ -206,10 +206,6 @@ struct TrainView: View {
 
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-            if let staleMessage = controller.staleSessionMessage {
-                StaleSessionBanner(message: staleMessage)
-            }
-
             SessionDesignedCard(
                 title: summary.title,
                 summary: summary.summary,

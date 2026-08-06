@@ -56,7 +56,6 @@ final class TrainSessionController {
     private(set) var previousPerformance: [String: PreviousPerformance] = [:]
     private(set) var exerciseTargets: [String: String] = [:]
     private(set) var prescriptionSummary: PrescribedSessionSummary?
-    private(set) var staleSessionMessage: String?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var lastSetPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var sessionPRRecordsBySetID: [String: [DetectedPersonalRecord]] = [:]
@@ -227,7 +226,6 @@ final class TrainSessionController {
         let readiness = ReadinessBootstrap.readinessService.state.score
         await prescriptionService.refresh(readiness: readiness)
         prescriptionSummary = prescriptionService.state.summary
-        evaluatePrescriptionStaleness(readiness: readiness)
     }
 
     func regenerateTodaysPrescription() async {
@@ -236,8 +234,6 @@ final class TrainSessionController {
         let readiness = ReadinessBootstrap.readinessService.state.score
         await prescriptionService.refresh(readiness: readiness)
         prescriptionSummary = prescriptionService.state.summary
-        recordPrescriptionFingerprint(readiness: readiness)
-        staleSessionMessage = nil
     }
 
     func discussTodaysSession() {
@@ -360,41 +356,6 @@ final class TrainSessionController {
 
     func handleRestExpiredProactiveCoach() {
         // Rest-over feedback is haptic/sound only (F-DT8.5); no proactive coach surfacing.
-    }
-
-    private func evaluatePrescriptionStaleness(readiness: ReadinessScore?) {
-        guard prescriptionSummary != nil else {
-            staleSessionMessage = nil
-            return
-        }
-        let day = todayHelmDay()
-        let fingerprint = prescriptionFingerprint(readiness: readiness)
-        if PrescriptionStaleTracker.isStale(currentFingerprint: fingerprint, day: day) {
-            staleSessionMessage = PrescriptionStaleTracker.staleMessage(readinessScore: readiness?.score)
-        } else {
-            staleSessionMessage = nil
-            let hasBaseline = UserDefaults.standard.string(forKey: "helm.prescription.stale.day") == day.formatted
-                && UserDefaults.standard.string(forKey: "helm.prescription.stale.fingerprint") != nil
-            if !hasBaseline {
-                PrescriptionStaleTracker.recordFingerprint(fingerprint, for: day)
-            }
-        }
-    }
-
-    private func recordPrescriptionFingerprint(readiness: ReadinessScore?) {
-        PrescriptionStaleTracker.recordFingerprint(
-            prescriptionFingerprint(readiness: readiness),
-            for: todayHelmDay()
-        )
-    }
-
-    private func prescriptionFingerprint(readiness: ReadinessScore?) -> String {
-        let summary = prescriptionSummary
-        return [
-            todayHelmDay().formatted,
-            readiness.map { String($0.score) } ?? "nil",
-            summary.map { "\($0.phase)-\($0.totalSets)-\($0.exercises.count)-\($0.readinessAdjusted)" } ?? "none"
-        ].joined(separator: "|")
     }
 
     func startWorkout() async {
