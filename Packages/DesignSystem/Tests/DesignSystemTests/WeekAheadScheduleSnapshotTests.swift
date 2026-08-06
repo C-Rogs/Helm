@@ -8,8 +8,8 @@ struct WeekAheadScheduleSnapshotTests {
         let text = WeekAheadScheduleSnapshot.text(for: .weekAheadFixture)
         #expect(text == weekAheadSnapshotText)
         #expect(text.contains("status=today"))
-        #expect(text.contains("status=completed"))
-        #expect(text.contains("status=missed"))
+        #expect(text.contains("status=rest"))
+        #expect(text.contains("status=upcoming"))
     }
 
     @Test("empty fixture snapshot")
@@ -20,19 +20,24 @@ struct WeekAheadScheduleSnapshotTests {
 
     @Test("collapsed summary highlights next session")
     func collapsedSummary() {
-        #expect(WeekAheadScheduleModel.weekAheadFixture.collapsedSummary == "5 sessions · Pull next")
-        #expect(WeekAheadScheduleModel(rows: []).collapsedSummary == "No sessions planned")
+        #expect(
+            WeekAheadScheduleModel.weekAheadFixture.collapsedSummary
+                == "3 sessions · 4 rest · Pull next"
+        )
+        #expect(WeekAheadScheduleModel(rows: []).collapsedSummary == "No days planned")
     }
 
     @Test("chronological rows sort by planned day")
     func chronologicalRows() {
         let ordered = WeekAheadScheduleModel.weekAheadFixture.chronologicalRows.map(\.id)
         #expect(ordered == [
-            "planned-2026-07-26",
-            "planned-2026-07-27",
-            "planned-2026-07-28",
-            "planned-2026-07-29",
-            "planned-2026-07-30"
+            "2026-07-28",
+            "2026-07-29",
+            "2026-07-30",
+            "2026-07-31",
+            "2026-08-01",
+            "2026-08-02",
+            "2026-08-03"
         ])
     }
 }
@@ -40,8 +45,10 @@ struct WeekAheadScheduleSnapshotTests {
 private let weekAheadSnapshotText = """
 # Week ahead
 - Today: Pull | status=today | today=true | note=Push already logged this week - Pull is next.
-- Wed · Jul 29: Legs | status=upcoming | today=false
-- Thu · Jul 30: Push | status=upcoming | today=false
-- Mon · Jul 27: Push | status=completed | today=false
-- Sun · Jul 26: Legs | status=missed | today=false
+- Wed · Jul 29: Rest | status=rest | today=false
+- Thu · Jul 30: Legs | status=upcoming | today=false
+- Fri · Jul 31: Rest | status=rest | today=false
+- Sat · Aug 1: Push | status=upcoming | today=false
+- Sun · Aug 2: Rest | status=rest | today=false
+- Mon · Aug 3: Rest | status=rest | today=false
 """

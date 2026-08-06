@@ -388,7 +388,7 @@ final class ChatController {
 
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
-            let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
             let thread = CoachThreadState(
                 messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
             ).windowed()
@@ -716,7 +716,7 @@ final class ChatController {
         isStreaming = true
         streamingText = "Looking up workouts…"
 
-        let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(
             messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
@@ -758,7 +758,7 @@ final class ChatController {
         isStreaming = true
         streamingText = "Looking up recovery…"
 
-        let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(
             messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
@@ -800,7 +800,7 @@ final class ChatController {
         isStreaming = true
         streamingText = "Looking up meals…"
 
-        let contextDays = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(
             messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]

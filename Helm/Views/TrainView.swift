@@ -178,6 +178,8 @@ struct TrainView: View {
             HelmScreenStack {
                 if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
                     prescriptionIdleCard(summary)
+                } else if let rest = PlanBootstrap.prescriptionService.state.restDay {
+                    restIdleCard(rest)
                 } else {
                     manualIdleCard
                 }
@@ -220,25 +222,6 @@ struct TrainView: View {
                 }
             ) {
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    HStack(spacing: HelmSpacing.sm) {
-                        NavigationLink {
-                            ProgressionDetailContainer()
-                        } label: {
-                            HStack(spacing: HelmSpacing.xxs) {
-                                Text("Plan")
-                                    .helmType(.monoTag, color: HelmColor.accent)
-                                HelmIconView(.chevronRight, context: .inline)
-                                    .foregroundStyle(HelmColor.fgMuted)
-                            }
-                        }
-                        .buttonStyle(.plain)
-
-                        Text(summary.phase.label)
-                            .helmType(.monoTag, color: HelmColor.accent)
-
-                        Spacer(minLength: 0)
-                    }
-
                     if summary.readinessAdjusted {
                         Text("Volume trimmed for readiness")
                             .helmType(.monoTag, color: HelmColor.depleted)
@@ -247,9 +230,6 @@ struct TrainView: View {
                     SessionExercisePreviewList(
                         exercises: summary.exercises.map(\.displayName)
                     )
-
-                    Text("\(summary.totalSets) total sets")
-                        .helmType(.body, color: HelmColor.fgSecondary)
                 }
             }
 
@@ -317,6 +297,39 @@ struct TrainView: View {
             ) {
                 Task { await controller.startWorkout() }
             }
+
+            Button("Paste workout plan") {
+                isShowingImport = true
+            }
+            .buttonStyle(.helmSecondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, HelmSpacing.md)
+    }
+
+    private func restIdleCard(_ rest: RestDaySummary) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            SessionDesignedCard(
+                title: rest.title,
+                summary: rest.summary,
+                rationale: rest.rationale,
+                leadingChipTitle: "Discuss",
+                onLeadingChip: { controller.discussTodaysSession() },
+                onRegenerate: {
+                    Task {
+                        await controller.regenerateTodaysPrescription()
+                        await weekAheadStore.refresh()
+                    }
+                }
+            ) {
+                Text("Check week ahead for the next training day.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+            }
+
+            Button("Empty workout") {
+                Task { await controller.startWorkout() }
+            }
+            .buttonStyle(.helmSecondary)
 
             Button("Paste workout plan") {
                 isShowingImport = true
@@ -842,15 +855,5 @@ private struct TrainViewportHeightKey: PreferenceKey {
 
     static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
         value = max(value, nextValue())
-    }
-}
-
-private extension TrainingPhase {
-    var label: String {
-        switch self {
-        case .cut: "Cut"
-        case .maintain: "Maintain"
-        case .gain: "Gain"
-        }
     }
 }

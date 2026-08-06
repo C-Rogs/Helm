@@ -76,20 +76,23 @@ public enum SchedulePlanner {
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap],
         calendar: Calendar = .current,
-        sessionsPerWeek: Int = defaultSessionsPerWeek
+        sessionsPerWeek: Int = defaultSessionsPerWeek,
+        avoidDays: Set<HelmDay> = []
     ) -> [PlannedWorkoutRecord] {
         var records: [PlannedWorkoutRecord] = []
         var plannedSplitsThisWeek: [SessionSplitKind] = []
         var projectionWeekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
-        let trainingDays = projectedTrainingDays(
+        let placements = projectedTrainingDayPlacements(
             startingAt: startDay,
             dayCount: dayCount,
             sessionsPerWeek: sessionsPerWeek,
             history: history,
-            calendar: calendar
+            calendar: calendar,
+            avoidDays: avoidDays
         )
 
-        for day in trainingDays {
+        for placement in placements {
+            let day = placement.day
             let dayWeekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
             if dayWeekStart != projectionWeekStart {
                 plannedSplitsThisWeek = []
@@ -106,11 +109,18 @@ public enum SchedulePlanner {
                 additionalCompletedSplits: plannedSplitsThisWeek
             )
             plannedSplitsThisWeek.append(result.splitKind)
+            var notes = result.scheduleNotes
+            if let ideal = placement.idealDay, ideal != day {
+                notes.insert(
+                    "Calendar busy on \(ideal.formatted) - session moved to \(day.formatted).",
+                    at: 0
+                )
+            }
             let payload = PlannedWorkoutSessionPayload(
                 splitLabel: result.splitKind.label,
                 splitKind: result.splitKind.rawValue,
                 targetMuscles: result.targetMuscles.map(\.rawValue),
-                scheduleNotes: result.scheduleNotes
+                scheduleNotes: notes
             )
             let encoder = JSONEncoder()
             guard let data = try? encoder.encode(payload),
@@ -144,13 +154,39 @@ public enum SchedulePlanner {
         dayCount: Int,
         sessionsPerWeek: Int,
         history: PrescriptionHistory,
-        calendar: Calendar
+        calendar: Calendar,
+        avoidDays: Set<HelmDay> = []
     ) -> [HelmDay] {
+        projectedTrainingDayPlacements(
+            startingAt: startDay,
+            dayCount: dayCount,
+            sessionsPerWeek: sessionsPerWeek,
+            history: history,
+            calendar: calendar,
+            avoidDays: avoidDays
+        ).map(\.day)
+    }
+
+    struct TrainingDayPlacement: Equatable {
+        let day: HelmDay
+        /// Ideal offset day before calendar avoidance. Nil when ideal was already free.
+        let idealDay: HelmDay?
+    }
+
+    static func projectedTrainingDayPlacements(
+        startingAt startDay: HelmDay,
+        dayCount: Int,
+        sessionsPerWeek: Int,
+        history: PrescriptionHistory,
+        calendar: Calendar,
+        avoidDays: Set<HelmDay> = []
+    ) -> [TrainingDayPlacement] {
         let endDay = startDay.adding(days: dayCount - 1, calendar: calendar)
-        var days: [HelmDay] = []
+        var placements: [TrainingDayPlacement] = []
+        var usedDays = Set<HelmDay>()
         var weekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
 
-        while weekStart <= endDay, days.count < sessionsPerWeek {
+        while weekStart <= endDay, placements.count < sessionsPerWeek {
             let logged = loggedSessionsInWeek(
                 history: history,
                 weekStart: weekStart,
@@ -158,22 +194,77 @@ public enum SchedulePlanner {
                 calendar: calendar
             )
             var plannedInWeek = 0
+            let weekEnd = weekStart.adding(days: 6, calendar: calendar)
 
             for offset in trainingDayOffsets(sessionsPerWeek: sessionsPerWeek) {
-                guard days.count < sessionsPerWeek else { break }
+                guard placements.count < sessionsPerWeek else { break }
                 guard sessionsPerWeek - logged - plannedInWeek > 0 else { break }
 
-                let day = weekStart.adding(days: offset, calendar: calendar)
-                guard day >= startDay, day <= endDay else { continue }
+                let ideal = weekStart.adding(days: offset, calendar: calendar)
+                guard ideal >= startDay, ideal <= endDay else { continue }
 
-                days.append(day)
+                guard let placed = placeTrainingDay(
+                    ideal: ideal,
+                    startDay: startDay,
+                    endDay: min(endDay, weekEnd),
+                    avoidDays: avoidDays,
+                    usedDays: usedDays
+                ) else {
+                    continue
+                }
+
+                placements.append(
+                    TrainingDayPlacement(
+                        day: placed,
+                        idealDay: placed == ideal ? nil : ideal
+                    )
+                )
+                usedDays.insert(placed)
                 plannedInWeek += 1
             }
 
             weekStart = weekStart.adding(days: 7, calendar: calendar)
         }
 
-        return days
+        return placements
+    }
+
+    /// Prefer ideal day; if busy or taken, slide forward then backward within the week window.
+    private static func placeTrainingDay(
+        ideal: HelmDay,
+        startDay: HelmDay,
+        endDay: HelmDay,
+        avoidDays: Set<HelmDay>,
+        usedDays: Set<HelmDay>
+    ) -> HelmDay? {
+        func isFree(_ day: HelmDay) -> Bool {
+            day >= startDay
+                && day <= endDay
+                && !avoidDays.contains(day)
+                && !usedDays.contains(day)
+        }
+
+        if isFree(ideal) {
+            return ideal
+        }
+
+        var cursor = ideal.adding(days: 1)
+        while cursor <= endDay {
+            if isFree(cursor) {
+                return cursor
+            }
+            cursor = cursor.adding(days: 1)
+        }
+
+        cursor = ideal.adding(days: -1)
+        while cursor >= startDay {
+            if isFree(cursor) {
+                return cursor
+            }
+            cursor = cursor.adding(days: -1)
+        }
+
+        return nil
     }
 
     private static func loggedSessionsInWeek(

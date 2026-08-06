@@ -1,6 +1,7 @@
 import Core
 import DesignSystem
 import Foundation
+import HealthKitIngest
 import Observation
 import Persistence
 
@@ -14,17 +15,20 @@ final class WeekAheadScheduleStore {
 
     private let store: PersistenceStore
     private let calendarHintService: CalendarHintService
+    private let prescriptionService: PrescriptionService
     private let calendar: Calendar
     private let cutoff: DayCutoff
 
     init(
         store: PersistenceStore,
         calendarHintService: CalendarHintService = CalendarHintBootstrap.service,
+        prescriptionService: PrescriptionService = PlanBootstrap.prescriptionService,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) {
         self.store = store
         self.calendarHintService = calendarHintService
+        self.prescriptionService = prescriptionService
         self.calendar = calendar
         self.cutoff = cutoff
     }
@@ -43,6 +47,10 @@ final class WeekAheadScheduleStore {
                 calendar: calendar,
                 cutoff: cutoff
             )
+            let busyDays = Set(busyDayHints.keys)
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            await prescriptionService.refresh(readiness: readiness, busyDays: busyDays)
+
             model = try WeekAheadScheduleBuilder.build(
                 store: store,
                 today: today,

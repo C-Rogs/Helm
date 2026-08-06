@@ -15,7 +15,8 @@ public enum CoachContextAssembler {
         lookbackDays: Int = defaultLookbackDays,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
-        evidence: [EvidenceRecord] = bundledMethodologyEvidence()
+        evidence: [EvidenceRecord] = bundledMethodologyEvidence(),
+        busyDayHints: [HelmDay: String] = [:]
     ) async throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
@@ -92,6 +93,12 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
+        let weekAheadSchedule = try weekAheadScheduleBlock(
+            from: store,
+            startingAt: endDay,
+            calendar: calendar,
+            busyDayHints: busyDayHints
+        )
         let nutritionDiary = await CoachNutritionContextBuilder.diaryBlock(
             from: store,
             for: endDay,
@@ -106,6 +113,7 @@ public enum CoachContextAssembler {
             recent: recent,
             recentWorkouts: recentWorkouts,
             trainingPlanSnapshot: trainingPlanSnapshot,
+            weekAheadSchedule: weekAheadSchedule,
             nutritionDiary: nutritionDiary
         )
     }
@@ -194,6 +202,41 @@ public enum CoachContextAssembler {
                 )
             )
         )
+    }
+
+    private static func weekAheadScheduleBlock(
+        from store: PersistenceStore,
+        startingAt startDay: HelmDay,
+        calendar: Calendar,
+        busyDayHints: [HelmDay: String]
+    ) throws -> String {
+        let horizon = 7
+        let endDay = startDay.adding(days: horizon - 1, calendar: calendar)
+        let records = try store.plan.fetchPlannedWorkouts(from: startDay, through: endDay)
+        let recordsByDay = Dictionary(
+            uniqueKeysWithValues: try records.map { record in
+                (try record.decodedHelmDay(), record)
+            }
+        )
+
+        var lines = ["horizon_days=\(horizon)"]
+        for offset in 0 ..< horizon {
+            let day = startDay.adding(days: offset, calendar: calendar)
+            let busy = busyDayHints[day].map { " busy=\($0)" } ?? ""
+            if let record = recordsByDay[day],
+               let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) {
+                let note = payload.primaryNote.map { " note=\($0)" } ?? ""
+                lines.append(
+                    "- \(day.formatted): \(payload.splitLabel) status=\(record.status)\(note)\(busy)"
+                )
+            } else {
+                lines.append("- \(day.formatted): Rest\(busy)")
+            }
+        }
+        if busyDayHints.isEmpty {
+            lines.append("calendar_busy=none_or_unavailable")
+        }
+        return lines.joined(separator: "\n")
     }
 
     private static func decodeMesocycleState(from json: String?) -> MesocycleState? {

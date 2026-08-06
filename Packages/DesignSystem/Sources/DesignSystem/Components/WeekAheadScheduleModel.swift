@@ -7,6 +7,7 @@ public enum WeekAheadSessionStatus: String, Sendable, Hashable, Equatable {
     case missed
     case shifted
     case skipped
+    case rest
 }
 
 public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable {
@@ -49,9 +50,15 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
             "Moved"
         case .skipped:
             "Skipped"
+        case .rest:
+            "Rest"
         case .today, .upcoming:
             nil
         }
+    }
+
+    public var isRestDay: Bool {
+        status == .rest
     }
 }
 
@@ -69,16 +76,19 @@ public struct WeekAheadScheduleModel: Sendable, Hashable, Equatable {
     }
 
     public var collapsedSummary: String {
-        guard !rows.isEmpty else { return "No sessions planned" }
+        guard !rows.isEmpty else { return "No days planned" }
 
         let ordered = chronologicalRows
-        let sessionCount = ordered.count
-        if let next = ordered.first(where: { $0.status == .today || $0.status == .upcoming }) {
+        let trainingCount = ordered.filter { !$0.isRestDay }.count
+        let restCount = ordered.count - trainingCount
+        if let next = ordered.first(where: {
+            $0.status == .today || $0.status == .upcoming || ($0.isToday && $0.isRestDay)
+        }) {
             let busySuffix = next.busyDayHint.map { " · \($0)" } ?? ""
-            return "\(sessionCount) sessions · \(next.splitLabel) next\(busySuffix)"
+            return "\(trainingCount) sessions · \(restCount) rest · \(next.splitLabel) next\(busySuffix)"
         }
 
-        return "\(sessionCount) sessions this week"
+        return "\(trainingCount) sessions · \(restCount) rest"
     }
 }
 

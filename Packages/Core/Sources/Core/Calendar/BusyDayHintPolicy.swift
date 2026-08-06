@@ -17,7 +17,7 @@ public struct CalendarDayLoad: Sendable, Hashable, Equatable {
     }
 }
 
-/// Read-only busy-day classification for week-ahead hints.
+/// Read/write busy-day classification for week-ahead scheduling and coach context.
 public enum BusyDayHintPolicy {
     public static let minimumScheduledSeconds: TimeInterval = 4 * 3_600
     public static let minimumTimedEventCount = 3

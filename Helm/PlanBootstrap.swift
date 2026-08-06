@@ -1,3 +1,4 @@
+import Core
 import Foundation
 import HealthKitIngest
 import Persistence
@@ -11,8 +12,7 @@ enum PlanBootstrap {
     @MainActor
     static func start() {
         Task(priority: .userInitiated) {
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            await prescriptionService.refresh(readiness: readiness)
+            await refreshPrescriptionWithCalendar()
             await ProactiveBootstrap.refreshScheduling()
         }
     }
@@ -20,9 +20,17 @@ enum PlanBootstrap {
     @MainActor
     static func refreshPrescription() {
         Task {
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            await prescriptionService.refresh(readiness: readiness)
+            await refreshPrescriptionWithCalendar()
             await ProactiveBootstrap.refreshScheduling()
         }
+    }
+
+    @MainActor
+    static func refreshPrescriptionWithCalendar() async {
+        let today = HelmDay.day(for: .now, cutoff: .default, calendar: .current)
+        let endDay = today.adding(days: WeekAheadScheduleBuilder.horizonDays - 1)
+        let busyDays = await CalendarHintBootstrap.service.busyDays(from: today, through: endDay)
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        await prescriptionService.refresh(readiness: readiness, busyDays: busyDays)
     }
 }

@@ -17,9 +17,11 @@ enum WeekAheadScheduleBuilder {
     ) throws -> WeekAheadScheduleModel {
         let endDay = today.adding(days: horizonDays - 1, calendar: calendar)
         let records = try store.plan.fetchPlannedWorkouts(from: today, through: endDay)
-        guard !records.isEmpty else {
-            return WeekAheadScheduleModel(rows: [])
-        }
+        let recordsByDay = Dictionary(
+            uniqueKeysWithValues: try records.map { record in
+                (try record.decodedHelmDay(), record)
+            }
+        )
 
         let history = try PrescriptionHistoryBuilder.history(
             from: store,
@@ -29,28 +31,45 @@ enum WeekAheadScheduleBuilder {
         )
         let completedDays = Set(history.sessions.map(\.helmDay))
 
-        let rows = try records.compactMap { record -> WeekAheadScheduleRow? in
-            let helmDay = try record.decodedHelmDay()
-            let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON)
-            let splitLabel = payload?.splitLabel ?? "Session"
-            let note = payload?.primaryNote
-            let status = resolvedStatus(
-                storedStatus: record.status,
-                helmDay: helmDay,
-                today: today,
-                completedDays: completedDays
-            )
-
-            return WeekAheadScheduleRow(
-                id: record.id,
-                dayLabel: dayLabel(for: helmDay, today: today, calendar: calendar),
-                splitLabel: splitLabel,
-                note: note,
-                status: status,
-                driftNote: driftNote(for: record, helmDay: helmDay, calendar: calendar),
-                busyDayHint: busyDayHints[helmDay],
-                isToday: helmDay == today
-            )
+        var rows: [WeekAheadScheduleRow] = []
+        for offset in 0 ..< horizonDays {
+            let helmDay = today.adding(days: offset, calendar: calendar)
+            if let record = recordsByDay[helmDay] {
+                let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON)
+                let splitLabel = payload?.splitLabel ?? "Session"
+                let note = payload?.primaryNote
+                let status = resolvedStatus(
+                    storedStatus: record.status,
+                    helmDay: helmDay,
+                    today: today,
+                    completedDays: completedDays
+                )
+                rows.append(
+                    WeekAheadScheduleRow(
+                        id: helmDay.formatted,
+                        dayLabel: dayLabel(for: helmDay, today: today, calendar: calendar),
+                        splitLabel: splitLabel,
+                        note: note,
+                        status: status,
+                        driftNote: driftNote(for: record, helmDay: helmDay, calendar: calendar),
+                        busyDayHint: busyDayHints[helmDay],
+                        isToday: helmDay == today
+                    )
+                )
+            } else {
+                rows.append(
+                    WeekAheadScheduleRow(
+                        id: helmDay.formatted,
+                        dayLabel: dayLabel(for: helmDay, today: today, calendar: calendar),
+                        splitLabel: "Rest",
+                        note: nil,
+                        status: .rest,
+                        driftNote: nil,
+                        busyDayHint: busyDayHints[helmDay],
+                        isToday: helmDay == today
+                    )
+                )
+            }
         }
 
         return WeekAheadScheduleModel(rows: rows)

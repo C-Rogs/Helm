@@ -9,6 +9,7 @@ import ReadinessKit
 public enum PrescriptionDashboardState: Sendable, Equatable {
     case loading
     case awaitingCatalog
+    case restDay(RestDaySummary)
     case prescribed(PrescribedSessionSummary)
 
     public var summary: PrescribedSessionSummary? {
@@ -16,6 +17,25 @@ public enum PrescriptionDashboardState: Sendable, Equatable {
             return summary
         }
         return nil
+    }
+
+    public var restDay: RestDaySummary? {
+        if case let .restDay(summary) = self {
+            return summary
+        }
+        return nil
+    }
+}
+
+public struct RestDaySummary: Sendable, Equatable {
+    public let title: String
+    public let summary: String
+    public let rationale: [String]
+
+    public init(title: String, summary: String, rationale: [String] = []) {
+        self.title = title
+        self.summary = summary
+        self.rationale = rationale
     }
 }
 
@@ -117,17 +137,26 @@ public final class PrescriptionService {
     private var refreshGeneration = 0
     /// Retained so plan edits can re-prescribe without silently dropping readiness gating.
     private var lastReadiness: ReadinessScore?
+    /// Calendar-busy days that should not receive projected training sessions.
+    private var lastBusyDays: Set<HelmDay> = []
 
     public init(engine: PlanPrescriptionEngine) {
         self.engine = engine
     }
 
-    public func refresh(readiness: ReadinessScore?) async {
+    public func refresh(readiness: ReadinessScore?, busyDays: Set<HelmDay>? = nil) async {
         lastReadiness = readiness ?? lastReadiness
+        if let busyDays {
+            lastBusyDays = busyDays
+        }
         refreshGeneration += 1
         let generation = refreshGeneration
         do {
-            let next = try await engine.dashboardState(for: today(), readiness: lastReadiness)
+            let next = try await engine.dashboardState(
+                for: today(),
+                readiness: lastReadiness,
+                busyDays: lastBusyDays
+            )
             guard generation == refreshGeneration else { return }
             state = next
         } catch {
@@ -172,7 +201,7 @@ public final class PrescriptionService {
     }
 
     public func todaysPrescription(readiness: ReadinessScore?) async throws -> PrescribedSession {
-        try await engine.computeSession(for: today(), readiness: readiness)
+        try await engine.computeSession(for: today(), readiness: readiness, busyDays: lastBusyDays)
     }
 
     private func today(calendar: Calendar = .current, cutoff: DayCutoff = .default) -> HelmDay {
@@ -237,10 +266,25 @@ public actor PlanPrescriptionEngine {
 
     public func dashboardState(
         for day: HelmDay,
-        readiness: ReadinessScore?
+        readiness: ReadinessScore?,
+        busyDays: Set<HelmDay> = []
     ) throws -> PrescriptionDashboardState {
-        let session = try computeSession(for: day, readiness: readiness)
-        guard !session.exercises.isEmpty else {
+        let session = try computeSession(for: day, readiness: readiness, busyDays: busyDays)
+        if session.exercises.isEmpty {
+            if try isIntentionalRestDay(day) {
+                let busyHint = busyDays.contains(day)
+                return .restDay(
+                    RestDaySummary(
+                        title: "Rest day",
+                        summary: busyHint
+                            ? "Calendar is packed today, so training slides to a freer day."
+                            : "No session scheduled today. Recovery is part of the plan.",
+                        rationale: busyHint
+                            ? ["Busy calendar day - workout moved within the week ahead."]
+                            : ["Intentional rest between prescribed training days."]
+                    )
+                )
+            }
             return .awaitingCatalog
         }
 
@@ -288,7 +332,8 @@ public actor PlanPrescriptionEngine {
 
     public func computeSession(
         for day: HelmDay,
-        readiness: ReadinessScore?
+        readiness: ReadinessScore?,
+        busyDays: Set<HelmDay> = []
     ) throws -> PrescribedSession {
         PrescriptionDayStore.clearIfStale(currentDay: day)
 
@@ -323,6 +368,19 @@ public actor PlanPrescriptionEngine {
             currentFingerprint: historyFingerprint,
             for: day
         )
+
+        try persistPlannedWorkouts(
+            startingAt: day,
+            emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
+            avoidDays: busyDays
+        )
+
+        let plannedToday = try persistence.plan.fetchPlannedWorkouts(from: day, through: day)
+        if plannedToday.isEmpty {
+            return PrescribedSession(helmDay: day, title: "Rest day", exercises: [])
+        }
 
         if let adjusted = PrescriptionDayStore.load(for: day, historyFingerprint: historyFingerprint),
            !adjusted.exercises.isEmpty {
@@ -395,7 +453,12 @@ public actor PlanPrescriptionEngine {
             totalSets: session.exercises.reduce(0) { $0 + $1.targetSets },
             exerciseCount: session.exercises.count,
             readiness: readiness,
-            scheduleNotes: schedule.scheduleNotes + driftNotesForToday(day: day, history: history, muscleMaps: muscleMaps),
+            scheduleNotes: schedule.scheduleNotes + driftNotesForToday(
+                day: day,
+                history: history,
+                muscleMaps: muscleMaps,
+                avoidDays: busyDays
+            ),
             weeklyLedger: PlanKit.weeklyHardSetTotals(
                 sessions: history.sessions,
                 muscleMaps: muscleMaps,
@@ -411,13 +474,14 @@ public actor PlanPrescriptionEngine {
         )
 
         try persistMesocycleState(trackedMesocycle)
-        try persistPlannedWorkouts(
-            startingAt: day,
-            emphasis: settings.phaseGoal.emphasis,
-            history: history,
-            muscleMaps: muscleMaps
-        )
         return session
+    }
+
+    private func isIntentionalRestDay(_ day: HelmDay) throws -> Bool {
+        let catalogRows = try persistence.exercises.fetchCatalogRows()
+        guard !catalogRows.isEmpty else { return false }
+        let plannedToday = try persistence.plan.fetchPlannedWorkouts(from: day, through: day)
+        return plannedToday.isEmpty
     }
 
     public func saveAdjustedPrescription(
@@ -491,7 +555,8 @@ public actor PlanPrescriptionEngine {
         startingAt day: HelmDay,
         emphasis: String?,
         history: PrescriptionHistory,
-        muscleMaps: [String: ExerciseMuscleMap]
+        muscleMaps: [String: ExerciseMuscleMap],
+        avoidDays: Set<HelmDay> = []
     ) throws {
         var records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: day,
@@ -499,7 +564,8 @@ public actor PlanPrescriptionEngine {
             emphasis: emphasis,
             history: history,
             muscleMaps: muscleMaps,
-            calendar: calendar
+            calendar: calendar,
+            avoidDays: avoidDays
         )
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,
@@ -514,7 +580,8 @@ public actor PlanPrescriptionEngine {
     private func driftNotesForToday(
         day: HelmDay,
         history: PrescriptionHistory,
-        muscleMaps: [String: ExerciseMuscleMap]
+        muscleMaps: [String: ExerciseMuscleMap],
+        avoidDays: Set<HelmDay> = []
     ) -> [String] {
         let records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: history.weekStart,
@@ -522,7 +589,8 @@ public actor PlanPrescriptionEngine {
             emphasis: nil,
             history: history,
             muscleMaps: muscleMaps,
-            calendar: calendar
+            calendar: calendar,
+            avoidDays: avoidDays
         )
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,

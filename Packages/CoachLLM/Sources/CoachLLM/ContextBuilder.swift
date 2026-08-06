@@ -76,6 +76,11 @@ public enum ContextBuilder {
             sections.append("# Training Plan Snapshot\n\(trainingPlan)")
         }
 
+        let weekAhead = normalized(days.weekAheadSchedule)
+        if !weekAhead.isEmpty {
+            sections.append("# Week Ahead Schedule\n\(weekAhead)")
+        }
+
         let nutritionDiary = normalized(days.nutritionDiary)
         if !nutritionDiary.isEmpty {
             sections.append("# Nutrition Diary\n\(nutritionDiary)")
@@ -112,6 +117,10 @@ public enum ContextBuilder {
         let trainingPlan = normalized(days.trainingPlanSnapshot)
         if !trainingPlan.isEmpty {
             sections.append("# Training Plan Snapshot\n\(trainingPlan)")
+        }
+        let weekAhead = normalized(days.weekAheadSchedule)
+        if !weekAhead.isEmpty {
+            sections.append("# Week Ahead Schedule\n\(weekAhead)")
         }
         let nutritionDiary = normalized(days.nutritionDiary)
         if !nutritionDiary.isEmpty {

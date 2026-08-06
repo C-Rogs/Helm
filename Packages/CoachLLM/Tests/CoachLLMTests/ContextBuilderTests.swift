@@ -82,7 +82,8 @@ struct ContextBuilderTests {
     @Test("follow-up keeps training plan snapshot")
     func followUpKeepsTrainingPlanSnapshot() {
         let days = CoachContextDays(
-            trainingPlanSnapshot: "emphasis=\"agility\""
+            trainingPlanSnapshot: "emphasis=\"agility\"",
+            weekAheadSchedule: "- 2026-07-28: Rest busy=Busy day"
         )
         let prompt = ContextBuilder.build(
             profile: profile,
@@ -91,6 +92,8 @@ struct ContextBuilderTests {
             turn: .followUp
         )
         #expect(prompt.contextBlock.contains("emphasis=\"agility\""))
+        #expect(prompt.contextBlock.contains("# Week Ahead Schedule"))
+        #expect(prompt.contextBlock.contains("busy=Busy day"))
     }
 
     @Test("follow-up includes standing constraints")

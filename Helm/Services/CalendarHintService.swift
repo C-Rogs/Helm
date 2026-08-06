@@ -151,6 +151,22 @@ final class CalendarHintService {
             return [:]
         }
     }
+
+    func busyDays(
+        from startDay: HelmDay,
+        through endDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) async -> Set<HelmDay> {
+        Set(
+            await busyDayHints(
+                from: startDay,
+                through: endDay,
+                calendar: calendar,
+                cutoff: cutoff
+            ).keys
+        )
+    }
 }
 
 enum CalendarHintBootstrap {

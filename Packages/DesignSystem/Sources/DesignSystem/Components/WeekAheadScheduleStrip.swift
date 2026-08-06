@@ -2,6 +2,7 @@ import SwiftUI
 
 public struct WeekAheadScheduleStrip: View {
     private let model: WeekAheadScheduleModel
+    private let cardMinWidth: CGFloat = 112
 
     public init(model: WeekAheadScheduleModel) {
         self.model = model
@@ -12,7 +13,7 @@ public struct WeekAheadScheduleStrip: View {
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: HelmSpacing.xs) {
                     ForEach(model.chronologicalRows) { row in
-                        pill(for: row)
+                        dayCard(for: row)
                             .id(row.id)
                     }
                 }
@@ -29,27 +30,36 @@ public struct WeekAheadScheduleStrip: View {
 
     private func scrollToToday(using proxy: ScrollViewProxy) {
         guard let todayID = model.chronologicalRows.first(where: \.isToday)?.id else { return }
-        proxy.scrollTo(todayID, anchor: .center)
+        proxy.scrollTo(todayID, anchor: .leading)
     }
 
-    private func pill(for row: WeekAheadScheduleRow) -> some View {
+    private func dayCard(for row: WeekAheadScheduleRow) -> some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(row.dayLabel)
                 .helmType(.monoTag, color: row.isToday ? HelmColor.accent : HelmColor.fgMuted)
+                .lineLimit(1)
             Text(row.splitLabel)
                 .helmType(.label)
+                .foregroundStyle(row.isRestDay ? HelmColor.fgSecondary : HelmColor.fg)
+                .lineLimit(1)
             if let busyDayHint = row.busyDayHint {
                 Text(busyDayHint)
                     .helmType(.monoTag, color: HelmColor.compromised)
-                    .lineLimit(1)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
             } else if let statusLabel = row.statusLabel {
                 Text(statusLabel)
                     .helmType(.monoTag, color: statusColor(for: row.status))
+                    .lineLimit(1)
+            } else {
+                Text(" ")
+                    .helmType(.monoTag, color: .clear)
             }
         }
+        .frame(minWidth: cardMinWidth, alignment: .leading)
         .padding(.horizontal, HelmSpacing.sm)
-        .padding(.vertical, HelmSpacing.xs)
-        .background(row.isToday ? HelmColor.accent.opacity(0.12) : HelmColor.surface)
+        .padding(.vertical, HelmSpacing.sm)
+        .background(cardBackground(for: row))
         .clipShape(RoundedRectangle(cornerRadius: HelmRadius.sm, style: .continuous))
         .overlay {
             RoundedRectangle(cornerRadius: HelmRadius.sm, style: .continuous)
@@ -57,6 +67,16 @@ public struct WeekAheadScheduleStrip: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(for: row))
+    }
+
+    private func cardBackground(for row: WeekAheadScheduleRow) -> Color {
+        if row.isToday {
+            return HelmColor.accent.opacity(0.12)
+        }
+        if row.isRestDay {
+            return HelmColor.surface.opacity(0.55)
+        }
+        return HelmColor.surface
     }
 
     private func borderColor(for row: WeekAheadScheduleRow) -> Color {
@@ -77,6 +97,8 @@ public struct WeekAheadScheduleStrip: View {
             HelmColor.depleted
         case .shifted:
             HelmColor.compromised
+        case .rest:
+            HelmColor.fgMuted
         case .today, .upcoming:
             HelmColor.fgMuted
         }

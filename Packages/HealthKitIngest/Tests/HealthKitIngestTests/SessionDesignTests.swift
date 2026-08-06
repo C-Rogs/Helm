@@ -181,6 +181,45 @@ struct SchedulePlannerTests {
         #expect(Set(labels).count > 1)
     }
 
+    @Test("projection skips busy calendar days")
+    func plannedWorkoutRecordsAvoidBusyDays() throws {
+        let start = HelmDay(year: 2026, month: 7, day: 27)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: start
+        )
+        let unconstrained = SchedulePlanner.projectedTrainingDays(
+            startingAt: start,
+            dayCount: 7,
+            sessionsPerWeek: SchedulePlanner.defaultSessionsPerWeek,
+            history: history,
+            calendar: .current
+        )
+        guard let busyIdeal = unconstrained.first else {
+            Issue.record("Expected unconstrained training days")
+            return
+        }
+
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:],
+            avoidDays: [busyIdeal]
+        )
+
+        let days = try records.map { try $0.decodedHelmDay() }
+        #expect(records.count == 3)
+        #expect(!Set(days).contains(busyIdeal))
+
+        let movedNotes = records.compactMap {
+            PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.scheduleNotes
+        }.flatMap { $0 }
+        #expect(movedNotes.contains(where: { $0.contains("Calendar busy") }))
+    }
+
     @Test("projection restarts rotation at calendar week boundary")
     func plannedWorkoutRecordsRestartAtWeekBoundary() {
         let weekStart = HelmDay(year: 2026, month: 7, day: 27)

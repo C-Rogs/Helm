@@ -15,7 +15,7 @@ public struct WeekAheadScheduleView: View {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                     Text("Week ahead")
                         .helmType(.title)
-                    Text("Planned sessions from your prescription")
+                    Text("Planned training and rest days for the next week")
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
             }
@@ -82,6 +82,8 @@ public struct WeekAheadScheduleView: View {
             HelmColor.depleted
         case .shifted:
             HelmColor.compromised
+        case .rest:
+            HelmColor.fgMuted
         case .today, .upcoming:
             HelmColor.fgMuted
         }

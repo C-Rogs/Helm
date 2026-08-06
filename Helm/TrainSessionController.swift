@@ -223,16 +223,14 @@ final class TrainSessionController {
     }
 
     func refreshPrescriptionState() async {
-        let readiness = ReadinessBootstrap.readinessService.state.score
-        await prescriptionService.refresh(readiness: readiness)
+        await PlanBootstrap.refreshPrescriptionWithCalendar()
         prescriptionSummary = prescriptionService.state.summary
     }
 
     func regenerateTodaysPrescription() async {
         let day = todayHelmDay()
         PrescriptionDayStore.clear(for: day)
-        let readiness = ReadinessBootstrap.readinessService.state.score
-        await prescriptionService.refresh(readiness: readiness)
+        await PlanBootstrap.refreshPrescriptionWithCalendar()
         prescriptionSummary = prescriptionService.state.summary
     }
 
@@ -264,25 +262,50 @@ final class TrainSessionController {
     }
 
     private func loadPreStartCoachIntro() async {
-        guard let summary = prescriptionSummary else { return }
+        let brief: SessionDesignBrief
+        let summaryForCoach: PrescribedSessionSummary
+
+        if let summary = prescriptionSummary {
+            brief = SessionDesignBrief(
+                title: summary.title,
+                summary: summary.summary,
+                rationale: summary.rationale,
+                splitKind: summary.splitKind
+            )
+            summaryForCoach = summary
+        } else if let rest = prescriptionService.state.restDay {
+            brief = SessionDesignBrief(
+                title: rest.title,
+                summary: rest.summary,
+                rationale: rest.rationale,
+                splitKind: .custom
+            )
+            summaryForCoach = PrescribedSessionSummary(
+                phase: .maintain,
+                emphasis: nil,
+                title: rest.title,
+                summary: rest.summary,
+                rationale: rest.rationale,
+                splitKind: .custom,
+                exercises: [],
+                totalSets: 0,
+                readinessAdjusted: false
+            )
+        } else {
+            return
+        }
+
         isCoachThinking = true
         defer { isCoachThinking = false }
-
-        let brief = SessionDesignBrief(
-            title: summary.title,
-            summary: summary.summary,
-            rationale: summary.rationale,
-            splitKind: summary.splitKind
-        )
 
         do {
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
             let intro = try await preStartCoach.generateIntro(
                 brief: brief,
-                summary: summary,
+                summary: summaryForCoach,
                 provider: provider,
                 profile: profile,
                 context: context
@@ -1528,7 +1551,7 @@ final class TrainSessionController {
             let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
             let profile = try persistence.memoryProfile.load()
             let endDay = todayHelmDay()
-            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await preStartCoach.proposeAdjustment(
@@ -1614,7 +1637,7 @@ final class TrainSessionController {
             guard !Task.isCancelled else { return }
             let profile = try persistence.memoryProfile.load()
             let endDay = HelmDay.day(for: .now, calendar: .current)
-            let context = try await CoachContextAssembler.assemble(from: persistence, endingAt: endDay)
+            let context = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
             let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
 
             let proposal = try await inSessionCoach.proposeAdjustment(

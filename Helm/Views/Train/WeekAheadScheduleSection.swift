@@ -89,9 +89,9 @@ struct WeekAheadScheduleSection: View {
         switch store.calendarAuthorizationStatus {
         case .notDetermined:
             VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                Text("Busy-day hints")
+                Text("Busy days")
                     .helmType(.label)
-                Text("Connect your calendar to flag packed days on this schedule.")
+                Text("Connect your calendar so busy days shape training and rest.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                 Button("Allow Calendar Access") {
                     Task { await store.requestCalendarAccess() }
@@ -103,7 +103,7 @@ struct WeekAheadScheduleSection: View {
             VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                 Text("Calendar access off")
                     .helmType(.label)
-                Text("Enable calendar access in Settings to surface busy-day hints.")
+                Text("Enable calendar access in Settings so the plan can avoid busy days.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                 NavigationLink("Open Calendar Settings") {
                     CalendarHintStatusView()

@@ -20,6 +20,8 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let recentWorkouts: String
     /// Engine snapshot + weekly volume ledger. Coach interprets free-form emphasis against this.
     public let trainingPlanSnapshot: String
+    /// Rolling 7-day training/rest schedule including calendar busy days.
+    public let weekAheadSchedule: String
     /// Today's meal buckets, logged totals, and macro targets for nutrition Q&A.
     public let nutritionDiary: String
 
@@ -29,6 +31,7 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         recent: [CoachContextDay] = [],
         recentWorkouts: String = "",
         trainingPlanSnapshot: String = "",
+        weekAheadSchedule: String = "",
         nutritionDiary: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
@@ -36,6 +39,7 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         self.recent = recent
         self.recentWorkouts = recentWorkouts
         self.trainingPlanSnapshot = trainingPlanSnapshot
+        self.weekAheadSchedule = weekAheadSchedule
         self.nutritionDiary = nutritionDiary
     }
 

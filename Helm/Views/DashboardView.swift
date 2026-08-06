@@ -184,6 +184,17 @@ struct DashboardView: View {
                     .helmType(.body, color: HelmColor.fgMuted)
                     .multilineTextAlignment(.leading)
             }
+        case let .restDay(rest):
+            Button {
+                AppTabRouter.shared.openTrain()
+            } label: {
+                prescriptionShell(subtitle: rest.title, showsChevron: true) {
+                    Text(rest.summary)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .multilineTextAlignment(.leading)
+                }
+            }
+            .buttonStyle(.helmPressableCard)
         case let .prescribed(summary):
             TodaySessionTeaser(
                 title: summary.title,
