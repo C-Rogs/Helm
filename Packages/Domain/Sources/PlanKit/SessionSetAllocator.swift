@@ -46,7 +46,7 @@ enum SessionSetAllocator {
 
         let sessionBudget = max(
             1,
-            Int((Double(budget.maxTotalSets) * volumeMultiplier).rounded())
+            safeInt(from: (Double(budget.maxTotalSets) * volumeMultiplier).rounded(), fallback: 1)
         )
         var kept = candidates
         var setsByIndex = Array(repeating: 0, count: kept.count)
@@ -82,15 +82,12 @@ enum SessionSetAllocator {
         }
 
         var muscleRemaining = remainingByMuscle
-        for index in kept.indices {
-            let candidate = kept[index]
-            let bounds = roleBounds(role: candidate.slot.role, thinSession: thinSession)
-            let muscle = candidate.slot.primaryMuscle
-            let affordable = Int(floor(muscleRemaining[muscle, default: Double(bounds.max)]))
-            let assigned = min(bounds.max, max(bounds.min, affordable))
-            setsByIndex[index] = assigned
-            muscleRemaining[muscle] = max(0, muscleRemaining[muscle, default: 0] - Double(assigned))
-        }
+        seedFloors(
+            kept: kept,
+            thinSession: thinSession,
+            setsByIndex: &setsByIndex,
+            muscleRemaining: &muscleRemaining
+        )
 
         var used = setsByIndex.reduce(0, +)
         let priority = kept.indices.sorted { lhs, rhs in
@@ -115,18 +112,45 @@ enum SessionSetAllocator {
             }
         }
 
+        return emitAllocations(kept: kept, setsByIndex: setsByIndex, thinSession: thinSession)
+    }
+
+    /// Give every kept slot its role floor, bounded by what the muscle can still absorb.
+    private static func seedFloors(
+        kept: [SlotAllocationCandidate],
+        thinSession: Bool,
+        setsByIndex: inout [Int],
+        muscleRemaining: inout [MuscleGroup: Double]
+    ) {
+        for index in kept.indices {
+            let candidate = kept[index]
+            let bounds = roleBounds(role: candidate.slot.role, thinSession: thinSession)
+            let muscle = candidate.slot.primaryMuscle
+            let remaining = muscleRemaining[muscle, default: Double(bounds.max)]
+            let affordable = safeInt(from: floor(remaining), fallback: 0)
+            // A muscle with no headroom left earns no sets; the slot is dropped later
+            // rather than forced up to its role floor.
+            let assigned = remaining <= 0 ? 0 : min(bounds.max, max(bounds.min, affordable))
+            setsByIndex[index] = assigned
+            muscleRemaining[muscle] = max(0, muscleRemaining[muscle, default: 0] - Double(assigned))
+        }
+    }
+
+    private static func emitAllocations(
+        kept: [SlotAllocationCandidate],
+        setsByIndex: [Int],
+        thinSession: Bool
+    ) -> [Allocation] {
         var allocations: [Allocation] = []
         for index in kept.indices {
             var sets = setsByIndex[index]
-            if !thinSession, sets < 2, !kept[index].slot.required {
-                continue
-            }
+            if sets == 0 { continue }
+            if !thinSession, sets < 2, !kept[index].slot.required { continue }
             if !thinSession, sets < 2 {
                 sets = roleBounds(role: kept[index].slot.role, thinSession: thinSession).min
             }
             allocations.append(Allocation(candidate: kept[index], sets: PrescriptionBounds.clampSets(sets)))
         }
-
         return allocations
     }
 
@@ -136,5 +160,11 @@ enum SessionSetAllocator {
         case .secondary: 1
         case .isolation: 2
         }
+    }
+
+    private static func safeInt(from value: Double, fallback: Int) -> Int {
+        guard value.isFinite else { return fallback }
+        guard value >= Double(Int.min), value <= Double(Int.max) else { return fallback }
+        return Int(value)
     }
 }

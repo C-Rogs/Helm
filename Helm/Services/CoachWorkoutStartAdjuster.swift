@@ -77,7 +77,11 @@ enum CoachWorkoutStartAdjuster {
                 base: base,
                 persistence: persistence
             ) {
-                PrescriptionDayStore.save(adjusted, for: helmDay)
+                let fingerprint = try PrescriptionHistoryBuilder.historyFingerprint(
+                    from: persistence,
+                    endingAt: helmDay
+                )
+                PrescriptionDayStore.save(adjusted, for: helmDay, historyFingerprint: fingerprint)
             } else if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue {
                 let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)
                 guard !plan.exercises.isEmpty else { throw StartError.emptySession }

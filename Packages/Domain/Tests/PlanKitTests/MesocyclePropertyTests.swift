@@ -131,7 +131,7 @@ struct LandmarkTests {
         }
     }
 
-    @Test("declining performance pulls MRV down")
+    @Test("declining performance pulls MRV and MEV down")
     func decliningRefinement() {
         let landmarks = VolumeLandmarks(mev: 8, mrv: 18)
         let refined = PlanKit.refineLandmarks(
@@ -139,6 +139,6 @@ struct LandmarkTests {
             signals: ToleranceSignals(sorenessRating: 8, performanceTrend: .declining)
         )
         #expect(refined.mrv < landmarks.mrv)
-        #expect(refined.mev == landmarks.mev)
+        #expect(refined.mev <= landmarks.mev)
     }
 }

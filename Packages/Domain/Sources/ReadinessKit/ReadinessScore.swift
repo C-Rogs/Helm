@@ -5,7 +5,30 @@ public enum ReadinessBand: String, Sendable, Hashable, Codable {
   case balanced
   case primed
 
-  public static func classify(score: Int) -> ReadinessBand {
+  /// Hysteresis deadband on the 0...100 score scale. Prevents day-to-day band flips at thresholds.
+  private static let hysteresisDeadband = 3
+
+  public static func classify(score: Int, previous: ReadinessBand? = nil) -> ReadinessBand {
+    let raw = classifyWithoutHysteresis(score: score)
+    guard let previous else { return raw }
+
+    switch previous {
+    case .depleted:
+      if score >= 67 + hysteresisDeadband { return .primed }
+      if score >= 34 + hysteresisDeadband { return .balanced }
+      return .depleted
+    case .balanced:
+      if score < 34 - hysteresisDeadband { return .depleted }
+      if score >= 67 + hysteresisDeadband { return .primed }
+      return .balanced
+    case .primed:
+      if score < 34 - hysteresisDeadband { return .depleted }
+      if score < 67 - hysteresisDeadband { return .balanced }
+      return .primed
+    }
+  }
+
+  private static func classifyWithoutHysteresis(score: Int) -> ReadinessBand {
     if score < 34 { return .depleted }
     if score < 67 { return .balanced }
     return .primed

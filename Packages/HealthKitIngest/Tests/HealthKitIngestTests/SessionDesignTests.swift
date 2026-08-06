@@ -295,13 +295,28 @@ struct PrescriptionDayStoreTests {
                 PrescribedExercise(exerciseID: "row", order: 0, targetSets: 3, targetRepMin: 8, targetRepMax: 10)
             ]
         )
-        PrescriptionDayStore.save(prescription, for: day)
-        let loaded = PrescriptionDayStore.load(for: day)
+        PrescriptionDayStore.save(prescription, for: day, historyFingerprint: "fp-1")
+        let loaded = PrescriptionDayStore.load(for: day, historyFingerprint: "fp-1")
         #expect(loaded?.title == "Pull")
         #expect(loaded?.exercises.count == 1)
         #expect(loaded?.exercises.first?.warmupSets == 0)
         PrescriptionDayStore.clear(for: day)
         #expect(PrescriptionDayStore.load(for: day) == nil)
+    }
+
+    @Test("stale fingerprint invalidates cached prescription")
+    func staleFingerprintInvalidatesCache() {
+        let day = HelmDay(year: 2026, month: 7, day: 29)
+        let prescription = SessionPrescription(
+            helmDay: day,
+            title: "Push",
+            exercises: [
+                PrescribedExercise(exerciseID: "bench", order: 0, targetSets: 3, targetRepMin: 8, targetRepMax: 10)
+            ]
+        )
+        PrescriptionDayStore.save(prescription, for: day, historyFingerprint: "before-push")
+        PrescriptionDayStore.invalidateIfHistoryChanged(currentFingerprint: "after-push", for: day)
+        #expect(PrescriptionDayStore.load(for: day, historyFingerprint: "after-push") == nil)
     }
 
     @Test("decodes pre-warmupSets prescription JSON")

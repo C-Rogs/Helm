@@ -118,6 +118,7 @@ final class WorkoutHistoryController {
         do {
             try persistence.workoutSessions.updateCompletedSession(draft)
             refresh()
+            PlanBootstrap.refreshPrescription()
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -137,6 +138,7 @@ final class WorkoutHistoryController {
             activeCount = max(0, activeCount - 1)
             deletedCount += 1
             refresh()
+            PlanBootstrap.refreshPrescription()
             return true
         } catch {
             errorMessage = error.localizedDescription

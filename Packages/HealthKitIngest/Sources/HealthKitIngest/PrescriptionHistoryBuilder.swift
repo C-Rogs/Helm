@@ -95,4 +95,58 @@ public enum PrescriptionHistoryBuilder {
         }
         return HelmDay.day(for: interval.start, cutoff: .default, calendar: iso)
     }
+
+    /// Fingerprint of completed training this week; used to invalidate stale day-cache prescriptions.
+    public static func historyFingerprint(
+        _ history: PrescriptionHistory,
+        through endDay: HelmDay,
+        muscleMaps: [String: ExerciseMuscleMap],
+        calendar: Calendar = .current
+    ) -> String {
+        let weekStart = history.weekStart
+        let weekDays = Set((0 ..< 7).map { weekStart.adding(days: $0, calendar: calendar) })
+        let weekSessions = history.sessions
+            .filter { weekDays.contains($0.helmDay) && $0.helmDay <= endDay }
+            .sorted { lhs, rhs in
+                if lhs.helmDay != rhs.helmDay { return lhs.helmDay < rhs.helmDay }
+                return lhs.startedAt < rhs.startedAt
+            }
+
+        let sessionTokens = weekSessions.map { session in
+            let muscles = musclesTrained(in: session, muscleMaps: muscleMaps)
+            let split = SessionSplitPlanner.inferSplitKind(from: muscles)?.rawValue ?? "custom"
+            return "\(session.helmDay.formatted):\(split):\(session.sets.count)"
+        }
+        return "\(weekSessions.count)|\(sessionTokens.joined(separator: ";"))"
+    }
+
+    /// Build a week fingerprint from persisted history (for prescription cache invalidation).
+    public static func historyFingerprint(
+        from store: PersistenceStore,
+        endingAt endDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> String {
+        let history = try history(from: store, endingAt: endDay, calendar: calendar, cutoff: cutoff)
+        let rows = try store.exercises.fetchCatalogRows()
+        let familiar = familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(from: rows, familiarExerciseIDs: familiar)
+        let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0.muscleMap) })
+        return historyFingerprint(history, through: endDay, muscleMaps: muscleMaps, calendar: calendar)
+    }
+
+    private static func musclesTrained(
+        in session: WorkoutSession,
+        muscleMaps: [String: ExerciseMuscleMap]
+    ) -> Set<MuscleGroup> {
+        var muscles = Set<MuscleGroup>()
+        let exerciseIDs = Set(session.sets.map(\.exerciseID))
+        for exerciseID in exerciseIDs {
+            guard let map = muscleMaps[exerciseID] else { continue }
+            for contribution in map.contributions where contribution.fraction >= 0.25 {
+                muscles.insert(contribution.muscle)
+            }
+        }
+        return muscles
+    }
 }

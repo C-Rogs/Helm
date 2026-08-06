@@ -30,6 +30,8 @@ public enum SetType: String, Codable, CaseIterable, Sendable {
     case bodyweight
     case timed
     case distance
+    case restPauseActivation = "rest_pause_activation"
+    case restPauseFollowUp = "rest_pause_follow_up"
 }
 
 public enum SetStatus: String, Codable, CaseIterable, Sendable {
@@ -72,16 +74,21 @@ public extension SetType {
     /// Counts toward prescribed `targetSets` (working slots). Drop sets are extras.
     var countsAsPrescribedWorkingSet: Bool {
         switch self {
-        case .normal, .failure, .bodyweight:
+        case .normal, .failure, .bodyweight, .restPauseActivation:
             return true
-        case .warmup, .dropSet, .assisted, .timed, .distance:
+        case .warmup, .dropSet, .assisted, .timed, .distance, .restPauseFollowUp:
             return false
         }
     }
 
     /// Intensity-technique rows kept across prescription sync; not part of `targetSets`.
     var isPreservedIntensityTechnique: Bool {
-        self == .dropSet
+        switch self {
+        case .dropSet, .restPauseFollowUp:
+            return true
+        default:
+            return false
+        }
     }
 
     /// Set types cycled when tapping the set index during logging (Hevy-style).

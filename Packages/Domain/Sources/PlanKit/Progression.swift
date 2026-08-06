@@ -8,19 +8,22 @@ public struct LiftProgression: Sendable, Hashable, Codable {
     public let workingWeight: Mass?
     public let targetRepMin: Int
     public let targetRepMax: Int
+    public let isStalledBackoff: Bool
 
     public init(
         exerciseID: String,
         estimatedOneRepMax: Mass? = nil,
         workingWeight: Mass? = nil,
         targetRepMin: Int = 8,
-        targetRepMax: Int = 12
+        targetRepMax: Int = 12,
+        isStalledBackoff: Bool = false
     ) {
         self.exerciseID = exerciseID
         self.estimatedOneRepMax = estimatedOneRepMax
         self.workingWeight = workingWeight
         self.targetRepMin = targetRepMin
         self.targetRepMax = targetRepMax
+        self.isStalledBackoff = isStalledBackoff
     }
 }
 
@@ -42,11 +45,21 @@ enum LiftKind: Sendable, Hashable {
         case .isolation: 0.0125
         }
     }
+
+    var loadIncrement: LoadIncrement {
+        switch self {
+        case .compound: .barbell
+        case .isolation: .dumbbell
+        }
+    }
 }
 
 enum ProgressionEngine {
     static let defaultRepMin = 8
     static let defaultRepMax = 12
+    /// Sets above this rep count are excluded when picking a reference e1RM from history.
+    static let referenceRepCap = 12
+    static let stallBackoffFraction = 0.10
 
     static func liftKind(exerciseID: String, muscleMap: ExerciseMuscleMap?) -> LiftKind {
         let id = exerciseID.lowercased()
@@ -77,7 +90,12 @@ enum ProgressionEngine {
     }
 
     static func bestEstimatedOneRepMax(from sets: [LoggedSet]) -> Mass? {
-        let working = sets.filter { !$0.isWarmup && $0.mass != nil && $0.reps != nil }
+        let working = sets.filter {
+            !$0.isWarmup
+                && $0.mass != nil
+                && $0.reps != nil
+                && ($0.reps ?? 0) <= referenceRepCap
+        }
         guard !working.isEmpty else { return nil }
         return working.map { set in
             estimatedOneRepMax(mass: set.mass!, reps: set.reps!)
@@ -87,9 +105,11 @@ enum ProgressionEngine {
     static func progression(
         for exerciseID: String,
         history: [LoggedSet],
-        muscleMap: ExerciseMuscleMap? = nil
+        muscleMap: ExerciseMuscleMap? = nil,
+        loadIncrement: LoadIncrement? = nil
     ) -> LiftProgression {
         let kind = liftKind(exerciseID: exerciseID, muscleMap: muscleMap)
+        let increment = loadIncrement ?? kind.loadIncrement
         let repMin = kind.repRange.min
         let repMax = kind.repRange.max
 
@@ -111,25 +131,42 @@ enum ProgressionEngine {
         }
 
         let currentWeight = latest.mass!
+        let sessions = SessionGrouping.groupIntoSessions(workingSets)
+        let latestSessionSets = sessions.last ?? []
 
-        let latestSessionSets = workingSets.filter {
-            abs($0.completedAt.timeIntervalSince(latest.completedAt)) < 1
-        }
-
-        let hitTopOfRange = latestSessionSets.allSatisfy { set in
-            guard let reps = set.reps else { return false }
-            return reps >= repMax
-        }
-        let recoveredEnough = latestSessionSets.allSatisfy { set in
-            guard let rir = set.rir else { return true }
-            return rir >= 1
-        }
+        let stalled = isStalled(sessions: sessions, repMax: repMax)
 
         let nextWeight: Mass
-        if hitTopOfRange && recoveredEnough {
-            nextWeight = Mass(kilograms: currentWeight.kilograms * (1.0 + kind.weightBumpFraction))
+        let isStalledBackoff: Bool
+        if stalled {
+            let reduced = Mass(kilograms: currentWeight.kilograms * (1.0 - stallBackoffFraction))
+            nextWeight = LoadRounding.snapProgression(
+                from: currentWeight,
+                proposed: reduced,
+                increment: increment
+            )
+            isStalledBackoff = true
         } else {
-            nextWeight = currentWeight
+            let hitTopOfRange = latestSessionSets.allSatisfy { set in
+                guard let reps = set.reps else { return false }
+                return reps >= repMax
+            }
+            let recoveredEnough = latestSessionSets.allSatisfy { set in
+                guard let rir = set.rir else { return true }
+                return rir >= 1
+            }
+
+            if hitTopOfRange && recoveredEnough {
+                let bumped = Mass(kilograms: currentWeight.kilograms * (1.0 + kind.weightBumpFraction))
+                nextWeight = LoadRounding.snapProgression(
+                    from: currentWeight,
+                    proposed: bumped,
+                    increment: increment
+                )
+            } else {
+                nextWeight = currentWeight
+            }
+            isStalledBackoff = false
         }
 
         return LiftProgression(
@@ -137,7 +174,38 @@ enum ProgressionEngine {
             estimatedOneRepMax: e1rm,
             workingWeight: nextWeight,
             targetRepMin: repMin,
-            targetRepMax: repMax
+            targetRepMax: repMax,
+            isStalledBackoff: isStalledBackoff
         )
+    }
+
+    private static func isStalled(sessions: [[LoggedSet]], repMax: Int) -> Bool {
+        guard sessions.count >= 2 else { return false }
+        let previous = sessions[sessions.count - 2]
+        let latest = sessions[sessions.count - 1]
+        guard let previousWeight = sessionWorkingWeight(previous),
+              let latestWeight = sessionWorkingWeight(latest),
+              previousWeight.kilograms == latestWeight.kilograms else {
+            return false
+        }
+        // Sitting below the top of the rep range is ordinary double progression, not a
+        // stall. A stall is the same load buying no extra reps, so 8/8/8 followed by
+        // 9/9/9 must keep climbing rather than trigger a back-off.
+        guard sessionMissedRepTarget(latest, repMax: repMax) else { return false }
+        return totalReps(latest) <= totalReps(previous)
+    }
+
+    private static func totalReps(_ session: [LoggedSet]) -> Int {
+        session.reduce(0) { $0 + ($1.reps ?? 0) }
+    }
+
+    private static func sessionWorkingWeight(_ session: [LoggedSet]) -> Mass? {
+        session.compactMap(\.mass).max(by: { $0.kilograms < $1.kilograms })
+    }
+
+    private static func sessionMissedRepTarget(_ session: [LoggedSet], repMax: Int) -> Bool {
+        let sets = session.filter { $0.mass != nil && $0.reps != nil }
+        guard !sets.isEmpty else { return false }
+        return !sets.allSatisfy { ($0.reps ?? 0) >= repMax }
     }
 }

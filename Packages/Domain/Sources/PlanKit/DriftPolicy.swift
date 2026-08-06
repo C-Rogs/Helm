@@ -15,18 +15,13 @@ import Foundation
 //
 // Out-of-order logging: completing a session while earlier sessions are still pending skips every earlier pending session.
 //
-// ACWR guard: when acute:chronic workload ratio exceeds 1.5, downgrade `shift` and `restructure` to `skip` for the completion being resolved.
+// Optional ACWR guard (off by default): ratio lacks predictive validity for injury risk
+// (Impellizzeri et al., 2020; 2021). Kept for reporting; prescription gating is opt-in.
 
 enum HelmDayMath {
     static func daysLate(plannedDay: HelmDay, actualDay: HelmDay, calendar: Calendar) -> Int {
         guard plannedDay <= actualDay else { return 0 }
-        var count = 0
-        var cursor = plannedDay
-        while cursor < actualDay {
-            cursor = cursor.adding(days: 1, calendar: calendar)
-            count += 1
-        }
-        return count
+        return plannedDay.days(to: actualDay, calendar: calendar)
     }
 
     static func sameISOWeek(_ lhs: HelmDay, _ rhs: HelmDay, calendar: Calendar) -> Bool {
@@ -86,7 +81,8 @@ enum DriftPolicyEngine {
   static func resolveDrift(
         planned: PlannedCalendar,
         actual: ActualCalendar,
-        calendar: Calendar = Calendar(identifier: .iso8601)
+        calendar: Calendar = Calendar(identifier: .iso8601),
+        policy: DriftPolicy = .default
     ) -> PlanAdjustment {
         var updated = planned
         var resolutions: [SessionDriftResolution] = []
@@ -134,7 +130,9 @@ enum DriftPolicyEngine {
             calendar: calendar
         )
 
-        if workloadRatio.exceedsGuardThreshold, action == .shift || action == .restructure {
+        if policy.acwrGuardDowngradesPrescription,
+           workloadRatio.exceedsGuardThreshold,
+           action == .shift || action == .restructure {
             action = .skip
         }
 

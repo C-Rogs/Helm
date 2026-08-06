@@ -113,20 +113,30 @@ public final class PrescriptionService {
     public private(set) var state: PrescriptionDashboardState = .loading
 
     private let engine: PlanPrescriptionEngine
+    /// Bumped per refresh so a slow in-flight compute cannot publish over a newer one.
+    private var refreshGeneration = 0
+    /// Retained so plan edits can re-prescribe without silently dropping readiness gating.
+    private var lastReadiness: ReadinessScore?
 
     public init(engine: PlanPrescriptionEngine) {
         self.engine = engine
     }
 
     public func refresh(readiness: ReadinessScore?) async {
+        lastReadiness = readiness ?? lastReadiness
+        refreshGeneration += 1
+        let generation = refreshGeneration
         do {
-            state = try await engine.dashboardState(for: today(), readiness: readiness)
+            let next = try await engine.dashboardState(for: today(), readiness: lastReadiness)
+            guard generation == refreshGeneration else { return }
+            state = next
         } catch {
             await DiagnosticsLog.shared.capture(
                 error: error,
                 category: .planKit,
                 message: "Prescription dashboard refresh failed"
             )
+            guard generation == refreshGeneration else { return }
             state = .awaitingCatalog
         }
     }
@@ -282,10 +292,6 @@ public actor PlanPrescriptionEngine {
     ) throws -> PrescribedSession {
         PrescriptionDayStore.clearIfStale(currentDay: day)
 
-        if let adjusted = PrescriptionDayStore.load(for: day), !adjusted.exercises.isEmpty {
-            return adjusted
-        }
-
         let settings = try persistence.trainingPlan.load()
         let experience = TrainingExperience(rawValue: settings.experienceRaw) ?? .intermediate
         let catalogRows = try persistence.exercises.fetchCatalogRows()
@@ -307,6 +313,22 @@ public actor PlanPrescriptionEngine {
         let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
             ($0.exerciseID, $0.muscleMap)
         })
+        let historyFingerprint = PrescriptionHistoryBuilder.historyFingerprint(
+            history,
+            through: day,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        PrescriptionDayStore.invalidateIfHistoryChanged(
+            currentFingerprint: historyFingerprint,
+            for: day
+        )
+
+        if let adjusted = PrescriptionDayStore.load(for: day, historyFingerprint: historyFingerprint),
+           !adjusted.exercises.isEmpty {
+            return adjusted
+        }
+
         let schedule = SchedulePlanner.plan(
             for: day,
             emphasis: settings.phaseGoal.emphasis,
@@ -373,7 +395,7 @@ public actor PlanPrescriptionEngine {
             totalSets: session.exercises.reduce(0) { $0 + $1.targetSets },
             exerciseCount: session.exercises.count,
             readiness: readiness,
-            scheduleNotes: schedule.scheduleNotes,
+            scheduleNotes: schedule.scheduleNotes + driftNotesForToday(day: day, history: history, muscleMaps: muscleMaps),
             weeklyLedger: PlanKit.weeklyHardSetTotals(
                 sessions: history.sessions,
                 muscleMaps: muscleMaps,
@@ -398,8 +420,12 @@ public actor PlanPrescriptionEngine {
         return session
     }
 
-    public func saveAdjustedPrescription(_ prescription: PrescribedSession, for day: HelmDay) {
-        PrescriptionDayStore.save(prescription, for: day)
+    public func saveAdjustedPrescription(
+        _ prescription: PrescribedSession,
+        for day: HelmDay,
+        historyFingerprint: String? = nil
+    ) {
+        PrescriptionDayStore.save(prescription, for: day, historyFingerprint: historyFingerprint)
     }
 
     private func sessionDesignBrief(
@@ -467,7 +493,7 @@ public actor PlanPrescriptionEngine {
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap]
     ) throws {
-        let records = SchedulePlanner.plannedWorkoutRecords(
+        var records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: day,
             dayCount: 7,
             emphasis: emphasis,
@@ -475,7 +501,36 @@ public actor PlanPrescriptionEngine {
             muscleMaps: muscleMaps,
             calendar: calendar
         )
+        let drifted = ScheduleDriftResolver.resolveAndApply(
+            records: records,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        records = drifted.records
         try persistence.plan.replacePlannedWorkouts(records)
+    }
+
+    private func driftNotesForToday(
+        day: HelmDay,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap]
+    ) -> [String] {
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: history.weekStart,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        let drifted = ScheduleDriftResolver.resolveAndApply(
+            records: records,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar
+        )
+        return drifted.driftNotes.filter { $0.contains(day.formatted) }
     }
 
     private func loadMesocycleStateSnapshot() throws -> MesocycleState {

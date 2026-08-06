@@ -20,11 +20,27 @@ public enum PlanKit {
     }
 
     /// Refine landmarks from logged tolerance signals at the end of a block.
+    ///
+    /// Supply `muscle` and `experience` to bound how far repeated refinement can carry
+    /// landmarks away from their physiological seed.
     public static func refineLandmarks(
         _ landmarks: VolumeLandmarks,
-        signals: ToleranceSignals
+        signals: ToleranceSignals,
+        muscle: MuscleGroup? = nil,
+        experience: TrainingExperience = .intermediate
     ) -> VolumeLandmarks {
-        MesocycleEngine.refineLandmarks(landmarks, signals: signals)
+        let bounds = muscle.map {
+            MesocycleEngine.LandmarkBounds.forMuscle($0, experience: experience)
+        } ?? .permissive
+        return MesocycleEngine.refineLandmarks(landmarks, signals: signals, bounds: bounds)
+    }
+
+    /// Reseed landmarks mid-block when experience or history profile changes.
+    public static func reseedLandmarks(
+        current: VolumeLandmarks,
+        newSeed: VolumeLandmarks
+    ) -> VolumeLandmarks {
+        MesocycleEngine.reseedLandmarks(current: current, newSeed: newSeed)
     }
 
     /// Weekly hard-set target for a muscle given its current mesocycle position.
@@ -116,6 +132,20 @@ public enum PlanKit {
         ProgressionEngine.estimatedOneRepMax(mass: mass, reps: reps)
     }
 
+    /// Snap a proposed load to the nearest loadable weight.
+    public static func snapLoad(_ proposed: Mass, to increment: LoadIncrement) -> Mass {
+        LoadRounding.snap(proposed, to: increment)
+    }
+
+    /// Snap a progressed load so rounding never cancels an intended increase or decrease.
+    public static func snapLoadProgression(
+        from current: Mass,
+        proposed: Mass,
+        increment: LoadIncrement
+    ) -> Mass {
+        LoadRounding.snapProgression(from: current, proposed: proposed, increment: increment)
+    }
+
     /// Convert logged RPE to claimed RIR (10 - RPE), clamped to 0...10.
     public static func rirFromRPE(_ rpe: Double) -> Double {
         RIRConsistency.rirFromRPE(rpe)
@@ -144,13 +174,78 @@ public enum PlanKit {
     public static func weeklyHardSetTotals(
         sessions: [WorkoutSession],
         muscleMaps: [String: ExerciseMuscleMap],
-        weekStart: HelmDay
+        weekStart: HelmDay,
+        context: HardSetEvaluationContext? = nil
     ) -> WeeklyHardSetLedger {
         HardSetAccounting.weeklyHardSetTotals(
             sessions: sessions,
             muscleMaps: muscleMaps,
-            weekStart: weekStart
+            weekStart: weekStart,
+            context: context
         )
+    }
+
+    /// Build e1RM context for load-band hard-set gates from session history.
+    public static func hardSetEvaluationContext(from sessions: [WorkoutSession]) -> HardSetEvaluationContext {
+        HardSetAccounting.buildEvaluationContext(from: sessions)
+    }
+
+    /// Stimulus credit for one logged set (0 = not a hard set).
+    public static func stimulusCredit(
+        _ set: LoggedSet,
+        context: HardSetEvaluationContext = .empty,
+        policy: HardSetPolicy = .standard
+    ) -> Double {
+        HardSetAccounting.stimulusCredit(set, context: context, policy: policy)
+    }
+
+    /// Split stimulus and fatigue credit for one logged set.
+    public static func ledgerCredit(
+        _ set: LoggedSet,
+        context: HardSetEvaluationContext = .empty,
+        policy: HardSetPolicy = .standard
+    ) -> SetLedgerCredit {
+        HardSetAccounting.ledgerCredit(
+            set,
+            role: SetStimulusRole(set.setType),
+            context: context,
+            policy: policy
+        )
+    }
+
+    /// Per-muscle direct, synergist, and fatigue volume for the week starting at `weekStart`.
+    public static func weeklyVolumeBreakdown(
+        sessions: [WorkoutSession],
+        muscleMaps: [String: ExerciseMuscleMap],
+        weekStart: HelmDay,
+        policy: HardSetPolicy = .standard
+    ) -> [MuscleGroup: MuscleVolumeBreakdown] {
+        HardSetAccounting.weeklyVolumeBreakdown(
+            sessions: sessions,
+            muscleMaps: muscleMaps,
+            weekStart: weekStart,
+            policy: policy
+        )
+    }
+
+    /// Weekly hard sets still prescribable, limited by stimulus target and MRV alike.
+    public static func remainingWeeklyHardSets(
+        weeklyTarget: Int,
+        breakdown: MuscleVolumeBreakdown,
+        fatigueCeiling: Int? = nil,
+        policy: HardSetPolicy = .standard
+    ) -> Double {
+        HardSetAccounting.remainingWeeklyHardSets(
+            weeklyTarget: weeklyTarget,
+            breakdown: breakdown,
+            fatigueCeiling: fatigueCeiling,
+            policy: policy
+        )
+    }
+
+    /// Whether a drop-set row lacks a preceding top working set in the same exercise.
+    public static func isOrphanDropSet(_ set: LoggedSet, priorSetsInExercise: [LoggedSet]) -> Bool {
+        HardSetAccounting.isOrphanDropSet(set, priorSetsInExercise: priorSetsInExercise)
     }
 
     /// Count fractional hard sets per muscle across the rolling window ending at `endDay`.
@@ -173,9 +268,15 @@ public enum PlanKit {
     public static func resolveDrift(
         planned: PlannedCalendar,
         actual: ActualCalendar,
-        calendar: Calendar = Calendar(identifier: .iso8601)
+        calendar: Calendar = Calendar(identifier: .iso8601),
+        policy: DriftPolicy = .default
     ) -> PlanAdjustment {
-        DriftPolicyEngine.resolveDrift(planned: planned, actual: actual, calendar: calendar)
+        DriftPolicyEngine.resolveDrift(
+            planned: planned,
+            actual: actual,
+            calendar: calendar,
+            policy: policy
+        )
     }
 
     public static func acuteChronicWorkloadRatio(

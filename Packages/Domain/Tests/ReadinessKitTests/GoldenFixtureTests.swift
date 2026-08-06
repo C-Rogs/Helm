@@ -59,7 +59,11 @@ struct GoldenFixtureTests {
   }
 
   private func loadFixture(named name: String) throws -> Fixture {
-    let url = try #require(Bundle.module.url(forResource: name, withExtension: "json"))
+    // Package.swift declares `.copy("Fixtures")`, which preserves the directory rather
+    // than flattening it into the bundle root.
+    let url = try #require(
+      Bundle.module.url(forResource: name, withExtension: "json", subdirectory: "Fixtures")
+    )
     let data = try Data(contentsOf: url)
     return try JSONDecoder().decode(Fixture.self, from: data)
   }

@@ -186,7 +186,16 @@ public struct PreStartCoachService: Sendable {
                 title: prescription.title,
                 exercises: adjusted.exercises
             )
-            PrescriptionDayStore.save(titled, for: day)
+            let history = try PrescriptionHistoryBuilder.history(from: persistence, endingAt: day)
+            let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
+                ($0.exerciseID, $0.muscleMap)
+            })
+            let fingerprint = PrescriptionHistoryBuilder.historyFingerprint(
+                history,
+                through: day,
+                muscleMaps: muscleMaps
+            )
+            PrescriptionDayStore.save(titled, for: day, historyFingerprint: fingerprint)
             return titled
         }
     }

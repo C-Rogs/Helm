@@ -145,6 +145,8 @@ private extension SetType {
         case .normal: "working"
         case .warmup: "warmup"
         case .dropSet: "drop"
+        case .restPauseActivation: "rest_pause"
+        case .restPauseFollowUp: "rest_pause_follow_up"
         case .failure: "failure"
         case .assisted: "assisted"
         case .bodyweight: "bodyweight"

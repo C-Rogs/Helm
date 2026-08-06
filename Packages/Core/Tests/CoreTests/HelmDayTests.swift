@@ -204,6 +204,49 @@ struct HelmDayTests {
     }
 }
 
+@Suite("HelmDay arithmetic")
+struct HelmDayArithmeticTests {
+    private let calendar = Calendar(identifier: .gregorian)
+
+    private func day(_ y: Int, _ m: Int, _ d: Int) -> HelmDay {
+        HelmDay(year: y, month: m, day: d)
+    }
+
+    @Test("days(to:) spans a five-year gap in O(1)")
+    func largeGap() {
+        let start = day(2020, 1, 1)
+        let end = day(2025, 1, 1)
+        #expect(start.days(to: end, calendar: calendar) == 1_827)
+    }
+
+    @Test("days(to:) counts leap day")
+    func leapYear() {
+        let beforeLeap = day(2024, 2, 28)
+        let leapDay = day(2024, 2, 29)
+        let afterLeap = day(2024, 3, 1)
+        #expect(beforeLeap.days(to: leapDay, calendar: calendar) == 1)
+        #expect(leapDay.days(to: afterLeap, calendar: calendar) == 1)
+        #expect(beforeLeap.days(to: afterLeap, calendar: calendar) == 2)
+    }
+
+    @Test("days(to:) crosses year boundary")
+    func yearBoundary() {
+        let newYearsEve = day(2025, 12, 31)
+        let newYearsDay = day(2026, 1, 1)
+        #expect(newYearsEve.days(to: newYearsDay, calendar: calendar) == 1)
+        #expect(newYearsDay.days(to: newYearsEve, calendar: calendar) == -1)
+    }
+
+    @Test("days(to:) is negative when reversed")
+    func reversedOrdering() {
+        let earlier = day(2026, 3, 10)
+        let later = day(2026, 3, 15)
+        #expect(earlier.days(to: later, calendar: calendar) == 5)
+        #expect(later.days(to: earlier, calendar: calendar) == -5)
+        #expect(earlier.days(to: earlier, calendar: calendar) == 0)
+    }
+}
+
 @Suite("Units")
 struct UnitsTests {
     @Test("energy converts between kcal and kJ")
@@ -222,6 +265,15 @@ struct UnitsTests {
 
         let fromLb = Mass(pounds: 176.37)
         #expect(abs(fromLb.kilograms - 80) < 0.1)
+    }
+
+    @Test("mass clamps negative and non-finite values to zero")
+    func massValidation() {
+        #expect(Mass(kilograms: -10).kilograms == 0)
+        #expect(Mass(pounds: -50).kilograms == 0)
+        #expect(Mass(kilograms: .nan).kilograms == 0)
+        #expect(Mass(kilograms: .infinity).kilograms == 0)
+        #expect(Mass(kilograms: -.infinity).kilograms == 0)
     }
 
     @Test("duration stores milliseconds explicitly")

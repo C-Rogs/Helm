@@ -1,6 +1,18 @@
 import Core
 import Foundation
 
+/// Drift resolution policy knobs. ACWR prescription gating is off by default.
+public struct DriftPolicy: Sendable, Hashable, Codable {
+    /// When true, high ACWR downgrades shift/restructure to skip. Off by default.
+    public var acwrGuardDowngradesPrescription: Bool
+
+    public init(acwrGuardDowngradesPrescription: Bool = false) {
+        self.acwrGuardDowngradesPrescription = acwrGuardDowngradesPrescription
+    }
+
+    public static let `default` = DriftPolicy()
+}
+
 /// Lifecycle of a planned training session on the calendar.
 public enum PlannedSessionStatus: String, Sendable, Hashable, Codable {
     case pending

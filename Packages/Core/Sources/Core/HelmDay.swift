@@ -70,6 +70,37 @@ public struct HelmDay: Sendable, Hashable, Codable, Comparable, Identifiable {
 }
 
 public extension HelmDay {
+    private static var utcGregorian: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0) ?? .gmt
+        return calendar
+    }
+
+    private static let epochFallback = HelmDay(year: 1970, month: 1, day: 1)
+
+    private static func calendarDayFallback(for instant: Date) -> HelmDay {
+        let components = utcGregorian.dateComponents([.year, .month, .day], from: instant)
+        return HelmDay(components: components) ?? epochFallback
+    }
+
+    /// Signed calendar-day distance from this day to `other` (`other` minus `self`).
+    func days(to other: HelmDay, calendar: Calendar = Calendar(identifier: .gregorian)) -> Int {
+        guard
+            let fromDate = calendar.date(from: dateComponents()),
+            let toDate = calendar.date(from: other.dateComponents())
+        else {
+            let fallback = Self.utcGregorian
+            guard
+                let fromDate = fallback.date(from: dateComponents()),
+                let toDate = fallback.date(from: other.dateComponents())
+            else {
+                return 0
+            }
+            return fallback.dateComponents([.day], from: fromDate, to: toDate).day ?? 0
+        }
+        return calendar.dateComponents([.day], from: fromDate, to: toDate).day ?? 0
+    }
+
     /// Canonical logical day for an instant.
     ///
     /// Times before the cutoff on a calendar date belong to the previous logical day.
@@ -85,7 +116,7 @@ public extension HelmDay {
             let month = dayComponents.month,
             let day = dayComponents.day
         else {
-            preconditionFailure("calendar could not extract year/month/day")
+            return calendarDayFallback(for: instant)
         }
 
         let cutoffComponents = DateComponents(
@@ -99,20 +130,15 @@ public extension HelmDay {
         )
 
         guard let cutoffInstant = calendar.date(from: cutoffComponents) else {
-            preconditionFailure("calendar could not build cutoff instant")
+            return calendarDay(for: instant, calendar: calendar)
         }
 
         if instant < cutoffInstant {
-            guard
-                let previousCalendarDay = calendar.date(byAdding: .day, value: -1, to: cutoffInstant)
-            else {
-                preconditionFailure("calendar could not step back one day")
+            guard let previousCalendarDay = calendar.date(byAdding: .day, value: -1, to: cutoffInstant) else {
+                return HelmDay(year: year, month: month, day: day)
             }
             let previous = calendar.dateComponents([.year, .month, .day], from: previousCalendarDay)
-            guard let helmDay = HelmDay(components: previous) else {
-                preconditionFailure("calendar produced incomplete day components")
-            }
-            return helmDay
+            return HelmDay(components: previous) ?? HelmDay(year: year, month: month, day: day)
         }
 
         return HelmDay(year: year, month: month, day: day)
@@ -123,10 +149,7 @@ public extension HelmDay {
     /// Use for diary week chips and date pickers. Logging still uses `day(for:)` with cutoff.
     static func calendarDay(for date: Date, calendar: Calendar) -> HelmDay {
         let components = calendar.dateComponents([.year, .month, .day], from: date)
-        guard let helmDay = HelmDay(components: components) else {
-            preconditionFailure("calendar produced incomplete day components")
-        }
-        return helmDay
+        return HelmDay(components: components) ?? calendarDayFallback(for: date)
     }
 
     /// Returns the logical day `days` calendar days before or after this day.
@@ -136,12 +159,17 @@ public extension HelmDay {
             let date = calendar.date(from: components),
             let shifted = calendar.date(byAdding: .day, value: days, to: date)
         else {
-            preconditionFailure("calendar could not shift HelmDay")
+            let fallback = Self.utcGregorian
+            guard
+                let date = fallback.date(from: components),
+                let shifted = fallback.date(byAdding: .day, value: days, to: date)
+            else {
+                return self
+            }
+            let shiftedComponents = fallback.dateComponents([.year, .month, .day], from: shifted)
+            return HelmDay(components: shiftedComponents) ?? self
         }
         let shiftedComponents = calendar.dateComponents([.year, .month, .day], from: shifted)
-        guard let helmDay = HelmDay(components: shiftedComponents) else {
-            preconditionFailure("calendar produced incomplete day components")
-        }
-        return helmDay
+        return HelmDay(components: shiftedComponents) ?? self
     }
 }

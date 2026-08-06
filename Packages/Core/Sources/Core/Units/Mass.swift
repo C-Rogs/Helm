@@ -5,11 +5,19 @@ public struct Mass: Sendable, Hashable, Codable {
     public let kilograms: Double
 
     public init(kilograms: Double) {
-        self.kilograms = kilograms
+        if kilograms.isFinite {
+            self.kilograms = max(0, kilograms)
+        } else {
+            self.kilograms = 0
+        }
     }
 
     public init(pounds: Double) {
-        self.kilograms = pounds / Self.poundsPerKilogram
+        if pounds.isFinite {
+            self.kilograms = max(0, pounds / Self.poundsPerKilogram)
+        } else {
+            self.kilograms = 0
+        }
     }
 
     public var pounds: Double {

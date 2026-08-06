@@ -51,7 +51,8 @@ enum PrescriptionEngine {
             let breakdown = weeklyBreakdown[muscle] ?? MuscleVolumeBreakdown(direct: 0, synergist: 0)
             remainingByMuscle[muscle] = HardSetAccounting.remainingWeeklyHardSets(
                 weeklyTarget: weeklyTarget,
-                breakdown: breakdown
+                breakdown: breakdown,
+                fatigueCeiling: muscleState.landmarks.mrv
             )
         }
 

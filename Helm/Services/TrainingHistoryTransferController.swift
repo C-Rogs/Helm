@@ -128,6 +128,7 @@ final class TrainingHistoryTransferController {
             statusMessage =
                 "Imported \(result.importedSessionCount) sessions (\(result.importedSetCount) sets). Skipped \(result.skippedDuplicateCount) duplicates."
             isShowingHevyPreview = false
+            PlanBootstrap.refreshPrescription()
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -170,6 +171,7 @@ final class TrainingHistoryTransferController {
                 "Restored \(result.importedSessionCount) sessions (\(result.importedSetCount) sets). Skipped \(result.skippedDuplicateCount) duplicates."
             self.pendingTrainingImport = nil
             isShowingTrainingImportPreview = false
+            PlanBootstrap.refreshPrescription()
         } catch {
             errorMessage = error.localizedDescription
         }

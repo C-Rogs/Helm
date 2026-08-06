@@ -158,8 +158,41 @@ struct DriftPolicyTests {
         #expect(statuses["fri"] == .completed)
     }
 
-    @Test("ACWR guard downgrades shift to skip")
+    @Test("ACWR guard downgrades shift to skip when opted in")
     func acwrGuardDowngradesShift() {
+        let plannedDay = day(2026, 7, 20)
+        let actualDay = day(2026, 7, 22)
+        var loads: [HelmDay: Double] = [:]
+        for offset in 0..<7 {
+            loads[actualDay.adding(days: -offset, calendar: calendar)] = 150
+        }
+        for offset in 7..<28 {
+            loads[actualDay.adding(days: -offset, calendar: calendar)] = 50
+        }
+        let planned = PlannedCalendar(sessions: [
+            PlannedSession(id: "a", plannedDay: plannedDay, trainingLoad: 50)
+        ])
+        let actual = ActualCalendar(dailyLoadByDay: loads, completedLog: ActualSessionLog(
+            id: "log-1",
+            plannedSessionID: "a",
+            actualDay: actualDay,
+            trainingLoad: 50
+        ))
+
+        let adjustment = PlanKit.resolveDrift(
+            planned: planned,
+            actual: actual,
+            calendar: calendar,
+            policy: DriftPolicy(acwrGuardDowngradesPrescription: true)
+        )
+
+        #expect(adjustment.workloadRatio?.exceedsGuardThreshold == true)
+        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .skip })
+        #expect(adjustment.updatedCalendar.sessions.first?.status == .skipped)
+    }
+
+    @Test("ACWR guard off by default preserves shift")
+    func acwrGuardOffByDefault() {
         let plannedDay = day(2026, 7, 20)
         let actualDay = day(2026, 7, 22)
         var loads: [HelmDay: Double] = [:]
@@ -182,8 +215,8 @@ struct DriftPolicyTests {
         let adjustment = PlanKit.resolveDrift(planned: planned, actual: actual, calendar: calendar)
 
         #expect(adjustment.workloadRatio?.exceedsGuardThreshold == true)
-        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .skip })
-        #expect(adjustment.updatedCalendar.sessions.first?.status == .skipped)
+        #expect(adjustment.resolutions.contains { $0.sessionID == "a" && $0.action == .shift })
+        #expect(adjustment.updatedCalendar.sessions.first?.status == .shifted)
     }
 
     @Test("acute chronic workload ratio computation")

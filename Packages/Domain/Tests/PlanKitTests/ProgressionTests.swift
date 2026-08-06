@@ -69,6 +69,123 @@ struct ProgressionTests {
         #expect(progression.workingWeight!.kilograms == 70)
         #expect(progression.estimatedOneRepMax!.kilograms > 70)
     }
+
+    @Test("session grouping treats multi-set workouts as one session")
+    func sessionGroupingAcrossWorkout() {
+        let minute: TimeInterval = 60
+        let history = [
+            set(exerciseID: "bench_press", kg: 80, reps: 10, rir: 2, at: 0),
+            set(exerciseID: "bench_press", kg: 80, reps: 10, rir: 2, at: 3 * minute),
+            set(exerciseID: "bench_press", kg: 80, reps: 12, rir: 2, at: 6 * minute)
+        ]
+
+        let progression = PlanKit.progression(for: "bench_press", history: history)
+        #expect(progression.workingWeight!.kilograms == 80)
+    }
+
+    @Test("session grouping only evaluates the latest session for progression")
+    func latestSessionDrivesProgression() {
+        let minute: TimeInterval = 60
+        let day: TimeInterval = 24 * 60 * 60
+        let history = [
+            set(exerciseID: "bench_press", kg: 80, reps: 12, rir: 2, at: 0),
+            set(exerciseID: "bench_press", kg: 80, reps: 12, rir: 2, at: 3 * minute),
+            set(exerciseID: "bench_press", kg: 82.5, reps: 10, rir: 2, at: day),
+            set(exerciseID: "bench_press", kg: 82.5, reps: 10, rir: 2, at: day + 3 * minute)
+        ]
+
+        let progression = PlanKit.progression(for: "bench_press", history: history)
+        #expect(progression.workingWeight!.kilograms == 82.5)
+    }
+
+    @Test("reference e1RM ignores sets above the rep cap")
+    func epleyRepCapOnReference() {
+        let highRep = set(exerciseID: "squat", kg: 60, reps: 30, at: 0)
+        let working = set(exerciseID: "squat", kg: 80, reps: 10, at: 1)
+        let progression = PlanKit.progression(for: "squat", history: [highRep, working])
+
+        let uncappedHighRep = PlanKit.estimatedOneRepMax(mass: Mass(kilograms: 60), reps: 30)
+        #expect(uncappedHighRep.kilograms == 120)
+        #expect(progression.estimatedOneRepMax!.kilograms < uncappedHighRep.kilograms)
+        #expect(abs(progression.estimatedOneRepMax!.kilograms - 106.667) < 0.01)
+    }
+
+    @Test("stall backoff after two sessions miss the rep target at the same load")
+    func stallBackoff() {
+        let day: TimeInterval = 24 * 60 * 60
+        let minute: TimeInterval = 60
+        let history = [
+            set(exerciseID: "squat", kg: 100, reps: 10, rir: 1, at: 0),
+            set(exerciseID: "squat", kg: 100, reps: 9, rir: 1, at: 3 * minute),
+            set(exerciseID: "squat", kg: 100, reps: 10, rir: 1, at: day),
+            set(exerciseID: "squat", kg: 100, reps: 8, rir: 1, at: day + 3 * minute)
+        ]
+
+        let progression = PlanKit.progression(for: "squat", history: history)
+        #expect(progression.isStalledBackoff)
+        #expect(progression.workingWeight!.kilograms == 90)
+    }
+
+    @Test("adding reps at the same load is progress, not a stall")
+    func repProgressIsNotAStall() {
+        let day: TimeInterval = 24 * 60 * 60
+        let minute: TimeInterval = 60
+        let history = [
+            set(exerciseID: "squat", kg: 100, reps: 8, rir: 1, at: 0),
+            set(exerciseID: "squat", kg: 100, reps: 8, rir: 1, at: 3 * minute),
+            set(exerciseID: "squat", kg: 100, reps: 9, rir: 1, at: day),
+            set(exerciseID: "squat", kg: 100, reps: 9, rir: 1, at: day + 3 * minute)
+        ]
+
+        let progression = PlanKit.progression(for: "squat", history: history)
+        #expect(progression.isStalledBackoff == false)
+        #expect(progression.workingWeight!.kilograms == 100)
+    }
+}
+
+@Suite("Load rounding")
+struct LoadRoundingTests {
+    @Test("snap rounds to the nearest increment")
+    func snapNearest() {
+        let result = PlanKit.snapLoad(Mass(kilograms: 62.33), to: .barbell)
+        #expect(result.kilograms == 62.5)
+    }
+
+    @Test("snap clamps invalid and negative input to zero")
+    func snapSanitize() {
+        #expect(PlanKit.snapLoad(Mass(kilograms: -10), to: .barbell).kilograms == 0)
+        #expect(PlanKit.snapLoad(Mass(kilograms: .nan), to: .barbell).kilograms == 0)
+        #expect(PlanKit.snapLoad(Mass(kilograms: .infinity), to: .barbell).kilograms == 0)
+    }
+
+    @Test("snap leaves mass unchanged when increment step is zero")
+    func snapBodyweight() {
+        let mass = Mass(kilograms: 62.33)
+        #expect(PlanKit.snapLoad(mass, to: .bodyweight).kilograms == 62.33)
+    }
+
+    @Test("snapProgression never no-ops on a small intended increase")
+    func snapProgressionIncrease() {
+        let current = Mass(kilograms: 80)
+        let proposed = Mass(kilograms: 80.5)
+        let result = PlanKit.snapLoadProgression(from: current, proposed: proposed, increment: .barbell)
+        #expect(result.kilograms == 82.5)
+    }
+
+    @Test("snapProgression never no-ops on a small intended decrease")
+    func snapProgressionDecrease() {
+        let current = Mass(kilograms: 80)
+        let proposed = Mass(kilograms: 79.5)
+        let result = PlanKit.snapLoadProgression(from: current, proposed: proposed, increment: .barbell)
+        #expect(result.kilograms == 77.5)
+    }
+
+    @Test("snapProgression holds when proposed equals current")
+    func snapProgressionNoChange() {
+        let current = Mass(kilograms: 80)
+        let result = PlanKit.snapLoadProgression(from: current, proposed: current, increment: .barbell)
+        #expect(result.kilograms == 80)
+    }
 }
 
 @Suite("Weekly hard-set accounting")
@@ -265,8 +382,8 @@ struct HardSetAccountingTests {
         #expect(breakdown[.triceps]?.synergist == 0.5)
     }
 
-    @Test("easy RIR or RPE does not count as a hard set")
-    func proximityGateExcludesEasySets() {
+    @Test("easy RIR or RPE earns discounted credit and RPE stands in for missing RIR")
+    func proximityGateDiscountsEasySets() {
         let map = ExerciseMuscleMap(
             exerciseID: "curl",
             contributions: [ExerciseMuscleContribution(muscle: .biceps, fraction: 1.0, tier: .primary)]
@@ -306,6 +423,10 @@ struct HardSetAccountingTests {
             muscleMaps: ["curl": map],
             weekStart: HelmDay(year: 2026, month: 3, day: 10)
         )
-        #expect(ledger.totals[.biceps] == 1.0)
+        // RIR 5 and RPE 5 both sit one notch off the warmup threshold, so they earn half
+        // credit rather than nothing: 0.5 + 0.5 + 1.0.
+        #expect(ledger.totals[.biceps] == 2.0)
+        // Fatigue tracks effort, so the two easy sets cost less than the hard one.
+        #expect((ledger.fatigueTotals[.biceps] ?? 0) < 3.0)
     }
 }

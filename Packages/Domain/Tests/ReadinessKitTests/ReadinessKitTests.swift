@@ -203,10 +203,10 @@ struct ReadinessKitTests {
     #expect((score?.contributors.zHRV ?? 0) > 1.0)
   }
 
-  @Test("DurationMs spike scores higher than chronically low SDNN")
-  func hrvMillisecondsScale() {
-    var healthy = baselineHistory(nights: 19, hrvMilliseconds: 50)
-    healthy.append(
+    @Test("DurationMs spike scores higher than chronically low SDNN")
+    func hrvMillisecondsScale() {
+        var healthy = baselineHistory(nights: 19, hrvMilliseconds: 50)
+        healthy.append(
       ReadinessDayInput(
         helmDay: endDay,
         hrvDailyAverage: DurationMs(milliseconds: 80),
@@ -232,5 +232,36 @@ struct ReadinessKitTests {
     let healthyScore = ReadinessKit.readiness(for: endDay, history: healthy)?.score
     let lowScore = ReadinessKit.readiness(for: endDay, history: low)?.score
     #expect((healthyScore ?? 0) > (lowScore ?? 100))
+  }
+}
+
+@Suite("Readiness band hysteresis")
+struct ReadinessBandHysteresisTests {
+  @Test("no previous band matches legacy thresholds")
+  func noPreviousMatchesLegacy() {
+    #expect(ReadinessBand.classify(score: 0) == .depleted)
+    #expect(ReadinessBand.classify(score: 33) == .depleted)
+    #expect(ReadinessBand.classify(score: 34) == .balanced)
+    #expect(ReadinessBand.classify(score: 66) == .balanced)
+    #expect(ReadinessBand.classify(score: 67) == .primed)
+    #expect(ReadinessBand.classify(score: 100) == .primed)
+  }
+
+  @Test("narrow oscillation around threshold holds previous band")
+  func oscillationHoldsBand() {
+    #expect(ReadinessBand.classify(score: 35, previous: .depleted) == .depleted)
+    #expect(ReadinessBand.classify(score: 36, previous: .depleted) == .depleted)
+    #expect(ReadinessBand.classify(score: 65, previous: .primed) == .primed)
+    #expect(ReadinessBand.classify(score: 66, previous: .primed) == .primed)
+    #expect(ReadinessBand.classify(score: 35, previous: .balanced) == .balanced)
+    #expect(ReadinessBand.classify(score: 66, previous: .balanced) == .balanced)
+  }
+
+  @Test("decisive move crosses band boundary")
+  func decisiveCrossing() {
+    #expect(ReadinessBand.classify(score: 37, previous: .depleted) == .balanced)
+    #expect(ReadinessBand.classify(score: 70, previous: .balanced) == .primed)
+    #expect(ReadinessBand.classify(score: 63, previous: .primed) == .balanced)
+    #expect(ReadinessBand.classify(score: 30, previous: .balanced) == .depleted)
   }
 }

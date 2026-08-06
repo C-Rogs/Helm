@@ -48,9 +48,25 @@ struct ProgressionByLiftTests {
         let progression = PlanKit.progression(for: "dumbbell_curl", history: history, muscleMap: map)
         #expect(progression.targetRepMin == 10)
         #expect(progression.targetRepMax == 15)
+        // The old percentage bump asked for 0.3 kg on a 12 kg dumbbell, which does not exist.
+        // Isolation now steps to the next real dumbbell, and that step stays smaller than
+        // the barbell step a compound gets.
         let bump = progression.workingWeight!.kilograms - 12
-        #expect(bump > 0)
-        #expect(bump < 12 * 0.025)
+        #expect(bump == LoadIncrement.dumbbell.stepKilograms)
+        #expect(LoadIncrement.dumbbell.stepKilograms < LoadIncrement.barbell.stepKilograms)
+    }
+
+    @Test("prescribed loads are always loadable")
+    func progressionSnapsToLoadableWeight() {
+        let history = [
+            set(exerciseID: "bench_press", kg: 82.5, reps: 12, rir: 2, at: 0),
+            set(exerciseID: "bench_press", kg: 82.5, reps: 12, rir: 2, at: 1)
+        ]
+        let progression = PlanKit.progression(for: "bench_press", history: history)
+        let kilograms = progression.workingWeight!.kilograms
+        let step = LoadIncrement.barbell.stepKilograms
+        #expect(abs((kilograms / step).rounded() * step - kilograms) < 0.0001)
+        #expect(kilograms > 82.5)
     }
 }
 
