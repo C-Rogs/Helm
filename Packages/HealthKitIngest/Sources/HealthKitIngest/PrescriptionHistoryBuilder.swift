@@ -117,8 +117,15 @@ public enum PrescriptionHistoryBuilder {
             let split = SessionSplitPlanner.inferSplitKind(from: muscles)?.rawValue ?? "custom"
             return "\(session.helmDay.formatted):\(split):\(session.sets.count)"
         }
-        return "\(weekSessions.count)|\(sessionTokens.joined(separator: ";"))"
+        return "\(engineVersion)|\(weekSessions.count)|\(sessionTokens.joined(separator: ";"))"
     }
+
+    /// Bump whenever prescription maths changes.
+    ///
+    /// The cached plan is keyed on training history alone, so without this an upgrade
+    /// keeps serving a plan the previous engine produced until the athlete happens to log
+    /// something new. That is exactly the day a corrected prescription matters most.
+    static let engineVersion = "e2"
 
     /// Build a week fingerprint from persisted history (for prescription cache invalidation).
     public static func historyFingerprint(

@@ -102,5 +102,9 @@ struct ScheduleDriftRuntimeTests {
             calendar: calendar
         )
         #expect(before != after)
+        // The engine version is part of the key so an upgrade discards plans the previous
+        // engine produced instead of serving them until the next logged set.
+        #expect(before.hasPrefix(PrescriptionHistoryBuilder.engineVersion))
+        #expect(after.hasPrefix(PrescriptionHistoryBuilder.engineVersion))
     }
 }
