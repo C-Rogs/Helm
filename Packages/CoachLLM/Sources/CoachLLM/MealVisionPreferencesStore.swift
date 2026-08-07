@@ -52,9 +52,9 @@ public final class MealVisionPreferencesStore: @unchecked Sendable {
     public var geminiModelCandidates: [GeminiModel] {
         switch qualityPreference {
         case .accurate:
-            [.flash, .flashLite]
+            [.flash35, .flash, .flashLite]
         case .fast:
-            [.flashLite, .flash]
+            [.flash35, .flashLite, .flash]
         }
     }
 }

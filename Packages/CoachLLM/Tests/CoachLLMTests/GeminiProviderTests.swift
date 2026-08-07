@@ -9,10 +9,11 @@ struct GeminiRequestSchemaTests {
         #expect(GeminiModel.default.rawValue == "gemini-3.5-flash-lite")
     }
 
-    @Test("meal vision prefers 2.5 Flash with 3.5 Flash-Lite fallback")
+    @Test("meal vision prefers 3.5 Flash with 2.5 Flash and 3.5 Flash-Lite fallback")
     func mealVisionModel() {
-        #expect(GeminiModel.mealVision.rawValue == "gemini-2.5-flash")
-        #expect(GeminiModel.mealVisionCandidates.first?.rawValue == "gemini-2.5-flash")
+        #expect(GeminiModel.mealVision.rawValue == "gemini-3.5-flash")
+        #expect(GeminiModel.mealVisionCandidates.first?.rawValue == "gemini-3.5-flash")
+        #expect(GeminiModel.mealVisionCandidates[1].rawValue == "gemini-2.5-flash")
         #expect(GeminiModel.mealVisionCandidates.last?.rawValue == "gemini-3.5-flash-lite")
     }
 
@@ -111,7 +112,7 @@ struct GeminiStructuredDecodeTests {
             from: json,
             expectedSchema: .briefV1
         )
-        #expect(payload.narration.contains("ARC 72"))
+        #expect(payload.narration.contains("protein"))
         #expect(payload.citationIDs == ["ev-chest-1"])
     }
 }
