@@ -226,54 +226,6 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         }
     }
 
-    public func generateMealEstimate(
-        systemInstructions: String,
-        contextBlock: String,
-        userMessage: String,
-        thread: CoachThreadState
-    ) async throws -> CoachStructuredArtefact<MealEstimatePayload> {
-        try await generateStructured(
-            MealEstimatePayload.self,
-            systemInstructions: systemInstructions,
-            contextBlock: contextBlock,
-            userMessage: userMessage,
-            thread: thread,
-            expectedSchema: .mealEstimateV1,
-            promptVersion: .mealEstimateV1
-        ) {
-            try GeminiRequestBuilder.mealEstimateBody(
-                systemInstructions: systemInstructions,
-                contextBlock: contextBlock,
-                userMessage: userMessage,
-                thread: thread
-            )
-        }
-    }
-
-    public func estimateMacros(
-        imageJPEGData: Data
-    ) async throws -> CoachStructuredArtefact<MealEstimatePayload> {
-        let base64 = imageJPEGData.base64EncodedString()
-        let systemInstructions = """
-        You estimate meal macros from photos for a training athlete.
-        Return only JSON matching the schema. Round macros to whole grams and calories.
-        """
-        return try await generateStructured(
-            MealEstimatePayload.self,
-            systemInstructions: systemInstructions,
-            contextBlock: "",
-            userMessage: "Estimate the meal macros from this photo.",
-            thread: .empty,
-            expectedSchema: .mealEstimateV1,
-            promptVersion: .mealEstimateV1
-        ) {
-            try GeminiRequestBuilder.mealEstimatePhotoBody(
-                systemInstructions: systemInstructions,
-                imageJPEGBase64: base64
-            )
-        }
-    }
-
     public func generateMorningBrief(
         systemInstructions: String,
         contextBlock: String,
@@ -296,6 +248,33 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
                 thread: thread
             )
         }
+    }
+
+    public func classifyCalendarEvents(
+        titles: [String]
+    ) async throws -> CalendarEventClassifyPayload {
+        let systemInstructions = """
+        You classify calendar event titles for a training app.
+        Rules:
+        - fullyBlocking: the event consumes the entire day (all-day conference, wedding, travel, full-day hike, moving day, festival).
+        - partiallyBlocking: the event is social, an appointment, or time-limited (drinks, dinner, dentist, see a friend, haircut, coffee, meeting, deadline day, evening plans).
+        - If a title is ambiguous (e.g. "Deadline"), default to fullyBlocking.
+        - Return every title exactly as given, with its classification.
+        """
+        return try await generateStructured(
+            CalendarEventClassifyPayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: "",
+            userMessage: "",
+            thread: .empty,
+            expectedSchema: .calendarEventClassifyV1,
+            promptVersion: .calendarEventClassifyV1
+        ) {
+            try GeminiRequestBuilder.calendarEventClassifyBody(
+                systemInstructions: systemInstructions,
+                titles: titles
+            )
+        }.payload
     }
 
     private func requireAPIKey() throws -> String {

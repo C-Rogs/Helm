@@ -169,20 +169,6 @@ struct GeminiProviderFixtureTests {
         #expect(artefact.payload.operations.count == 1)
         #expect(client.lastGenerateRequestID != nil)
     }
-
-    @Test("fixture photo meal estimate decodes")
-    func generateMealEstimateFromPhotoFixture() async throws {
-        let client = FixtureGeminiHTTPClient(bundle: .module)
-        let store = fixtureKeyStore()
-        let provider = GeminiProvider(apiKeyStore: store, httpClient: client)
-
-        let artefact = try await provider.estimateMacros(imageJPEGData: Data([0xFF, 0xD8, 0xFF]))
-
-        #expect(artefact.schemaVersion == .mealEstimateV1)
-        #expect(artefact.promptVersion == .mealEstimateV1)
-        #expect(artefact.payload.caloriesKcal == 650)
-        #expect(client.lastGenerateRequestID != nil)
-    }
 }
 
 @Suite("CoachLLM redaction")

@@ -74,28 +74,6 @@ public enum GeminiRequestBuilder {
         )
     }
 
-    public static func mealEstimateBody(
-        systemInstructions: String,
-        contextBlock: String,
-        userMessage: String,
-        thread: CoachThreadState
-    ) throws -> GeminiGenerateRequestBody {
-        GeminiGenerateRequestBody(
-            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
-            contents: CoachTranscriptBuilder.contents(
-                systemInstructions: systemInstructions,
-                contextBlock: contextBlock,
-                userMessage: userMessage,
-                thread: thread
-            ),
-            generationConfig: [
-                "temperature": 0.2,
-                "responseMimeType": "application/json",
-                "responseSchema": mealEstimateSchema()
-            ]
-        )
-    }
-
     public static func mealEstimatePhotoBody(
         systemInstructions: String,
         imageJPEGBase64: String,
@@ -154,6 +132,51 @@ public enum GeminiRequestBuilder {
                 "responseSchema": morningBriefSchema()
             ]
         )
+    }
+
+    public static func calendarEventClassifyBody(
+        systemInstructions: String,
+        titles: [String]
+    ) throws -> GeminiGenerateRequestBody {
+        let titlesList = titles.map { "\"\($0)\"" }.joined(separator: ", ")
+        let userMessage = "Classify these calendar event titles: [\(titlesList)]"
+        return GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: [
+                [
+                    "role": "user",
+                    "parts": [["text": userMessage]]
+                ]
+            ],
+            generationConfig: [
+                "temperature": 0.0,
+                "responseMimeType": "application/json",
+                "responseSchema": calendarEventClassifySchema()
+            ]
+        )
+    }
+
+    public static func calendarEventClassifySchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "classifications": [
+                    "type": "array",
+                    "items": [
+                        "type": "object",
+                        "properties": [
+                            "title": ["type": "string"],
+                            "classification": [
+                                "type": "string",
+                                "enum": ["fullyBlocking", "partiallyBlocking"]
+                            ]
+                        ],
+                        "required": ["title", "classification"]
+                    ]
+                ]
+            ],
+            "required": ["classifications"]
+        ]
     }
 
     public static func workoutStartBody(
