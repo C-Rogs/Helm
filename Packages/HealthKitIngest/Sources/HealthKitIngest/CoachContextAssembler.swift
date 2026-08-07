@@ -264,11 +264,33 @@ public enum CoachContextAssembler {
 
         var blocks: [String] = []
         for summary in summaries {
-            guard let draft = try store.workoutSessions.fetch(id: summary.id) else { continue }
-            let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
-            blocks.append(WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names))
+            if summary.source == .healthKit {
+                blocks.append(formatHealthKitWorkout(summary))
+            } else {
+                guard let draft = try store.workoutSessions.fetch(id: summary.id) else { continue }
+                let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
+                blocks.append(WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names))
+            }
         }
         return blocks.joined(separator: "\n\n---\n\n")
+    }
+
+    private static func formatHealthKitWorkout(_ summary: WorkoutSessionSummary) -> String {
+        var parts: [String] = [
+            "workout=\"\(summary.title ?? "Workout")\" source=health_kit",
+        ]
+        if let ended = summary.endedAt {
+            let seconds = Int(ended.timeIntervalSince(summary.startedAt))
+            parts.append("duration_s=\(seconds)")
+        }
+        if let kcal = summary.hkActiveEnergyKilocalories {
+            parts.append("energy_kcal=\(Int(kcal))")
+        }
+        if let distance = summary.hkTotalDistanceMeters {
+            parts.append("distance_m=\(Int(distance))")
+        }
+        parts.append("started=\(ISO8601DateFormatter().string(from: summary.startedAt))")
+        return parts.joined(separator: " ")
     }
 
     public static func bundledMethodologyEvidence() -> [EvidenceRecord] {
@@ -376,6 +398,10 @@ public enum CoachContextAssembler {
             }
         }
 
+        if let activeEnergy = metrics?.activeEnergy {
+            parts.append("active_energy_kcal=\(format(activeEnergy.kilocalories))")
+        }
+
         if let bodyComposition {
             parts.append("weight=\(format(bodyComposition.mass.kilograms))kg")
             if let bodyFat = bodyComposition.bodyFatPercentage {
@@ -384,9 +410,26 @@ public enum CoachContextAssembler {
         }
 
         if !workouts.isEmpty {
-            let titles = workouts.map { $0.title ?? "Workout" }.joined(separator: ", ")
-            let setCount = workouts.reduce(0) { $0 + $1.totalSetCount }
-            parts.append("workout=\"\(titles)\" sets=\(setCount)")
+            let strengthWorkouts = workouts.filter { $0.source != .healthKit }
+            let hkWorkouts = workouts.filter { $0.source == .healthKit }
+
+            if !strengthWorkouts.isEmpty {
+                let titles = strengthWorkouts.map { $0.title ?? "Workout" }.joined(separator: ", ")
+                let setCount = strengthWorkouts.reduce(0) { $0 + $1.totalSetCount }
+                parts.append("workout=\"\(titles)\" sets=\(setCount)")
+            }
+
+            for hk in hkWorkouts {
+                var hkParts: [String] = ["cardio=\"\(hk.title ?? "Workout")\""]
+                if let ended = hk.endedAt {
+                    let seconds = Int(ended.timeIntervalSince(hk.startedAt))
+                    hkParts.append("duration_s=\(seconds)")
+                }
+                if let kcal = hk.hkActiveEnergyKilocalories {
+                    hkParts.append("energy_kcal=\(Int(kcal))")
+                }
+                parts.append(hkParts.joined(separator: " "))
+            }
         }
 
         if parts.isEmpty {

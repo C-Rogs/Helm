@@ -16,7 +16,7 @@ public enum PrescriptionHistoryBuilder {
             since: lookbackStart,
             calendar: calendar,
             cutoff: cutoff
-        )
+        ).filter { $0.source != .healthKit }
 
         var loggedSets: [LoggedSet] = []
         var sessions: [WorkoutSession] = []

@@ -1,7 +1,7 @@
 import HealthKit
 
-enum WorkoutActivityTypeFormatter {
-    static func displayName(for activityType: HKWorkoutActivityType) -> String {
+public enum WorkoutActivityTypeFormatter {
+    public static func displayName(for activityType: HKWorkoutActivityType) -> String {
         switch activityType {
         case .americanFootball: return "American Football"
         case .archery: return "Archery"
@@ -43,7 +43,7 @@ enum WorkoutActivityTypeFormatter {
         case .sailing: return "Sailing"
         case .skatingSports: return "Skating Sports"
         case .snowSports: return "Snow Sports"
-        case .soccer: return "Soccer"
+        case .soccer: return "Football"
         case .softball: return "Softball"
         case .squash: return "Squash"
         case .stairClimbing: return "Stair Climbing"

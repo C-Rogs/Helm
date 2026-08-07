@@ -19,6 +19,7 @@ public enum WorkoutSessionSource: String, Codable, Sendable {
     case template
     case prescription
     case importSource = "import"
+    case healthKit = "health_kit"
 }
 
 public enum SetType: String, Codable, CaseIterable, Sendable {

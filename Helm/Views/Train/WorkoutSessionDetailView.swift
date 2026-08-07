@@ -34,6 +34,77 @@ struct WorkoutSessionDetailView: View {
     }
 
     var body: some View {
+        if let summary, summary.source == .healthKit {
+            healthKitDetailView
+        } else {
+            strengthDetailView
+        }
+    }
+
+    private var healthKitDetailView: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                if let summary {
+                    healthKitSummaryBlock(for: summary)
+                }
+            }
+            .helmScreenPadding()
+            .padding(.bottom, HelmLayout.trainScrollBottomInset + HelmSpacing.xl)
+        }
+        .helmScreenBackground()
+        .navigationTitle(summary?.title ?? "Workout")
+        .navigationBarTitleDisplayMode(.inline)
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if !isDeleted {
+                    Menu {
+                        if isDeleted {
+                            Button("Restore workout") {
+                                isShowingRestoreConfirm = true
+                            }
+                        } else {
+                            Button("Move to Bin", role: .destructive) {
+                                isShowingDeleteConfirm = true
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                            .font(.system(size: HelmIconContext.inline.pointSize, weight: HelmIconContext.inline.weight))
+                    }
+                }
+            }
+        }
+        .confirmationDialog(
+            "Delete this workout?",
+            isPresented: $isShowingDeleteConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Move to Bin", role: .destructive) {
+                if history.deleteSession(id: sessionID) {
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Removes it from history. Restore anytime from Bin.")
+        }
+        .confirmationDialog(
+            "Restore this workout?",
+            isPresented: $isShowingRestoreConfirm,
+            titleVisibility: .visible
+        ) {
+            Button("Restore workout") {
+                if history.restoreSession(id: sessionID) {
+                    dismiss()
+                }
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text("Puts it back in your workout history.")
+        }
+    }
+
+    private var strengthDetailView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 if let draft {
@@ -194,6 +265,61 @@ struct WorkoutSessionDetailView: View {
             }
             .buttonStyle(.helmPrimary)
             .disabled(!hasUnsavedChanges)
+        }
+    }
+
+    @ViewBuilder
+    private func healthKitSummaryBlock(for summary: WorkoutSessionSummary) -> some View {
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                HStack {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        Text("From Health")
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+
+                        Text(summary.title ?? "Workout")
+                            .helmType(.title)
+                    }
+
+                    Spacer()
+                }
+
+                if let duration = WorkoutHistoryFormatting.durationLabel(
+                    startedAt: summary.startedAt,
+                    endedAt: summary.endedAt
+                ) {
+                    HStack(spacing: HelmSpacing.md) {
+                        HStack(spacing: HelmSpacing.xxs) {
+                            HelmIconView(.train, context: .inline)
+                                .foregroundStyle(HelmColor.fgMuted)
+                            Text(duration)
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                        }
+
+                        if let kcal = summary.hkActiveEnergyKilocalories {
+                            HStack(spacing: HelmSpacing.xxs) {
+                                HelmIconView(.flame, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                                Text("\(Int(kcal)) kcal")
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                            }
+                        }
+
+                        if let distance = summary.hkTotalDistanceMeters {
+                            HStack(spacing: HelmSpacing.xxs) {
+                                HelmIconView(.distance, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                                Text(WorkoutHistoryFormatting.distanceLabel(meters: distance))
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                            }
+                        }
+                    }
+                }
+
+                Text(WorkoutHistoryFormatting.contextualDateTimeLabel(summary.startedAt))
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
     }
 

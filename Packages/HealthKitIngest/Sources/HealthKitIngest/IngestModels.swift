@@ -56,12 +56,33 @@ public struct IngestWorkoutSample: Sendable, Hashable {
     public let start: Date
     public let end: Date
     public let sourceBundleID: String?
+    /// `HKWorkoutActivityType` raw value (UInt). Nil for pre-enrichment callers.
+    public let activityTypeRawValue: UInt?
+    /// Apple display name for the activity type. Nil for pre-enrichment callers.
+    public let activityDisplayName: String?
+    /// Active energy burned, in kilocalories. Nil when unavailable.
+    public let activeEnergyKilocalories: Double?
+    /// Total distance in meters. Nil when unavailable.
+    public let totalDistanceMeters: Double?
 
-    public init(id: UUID, start: Date, end: Date, sourceBundleID: String?) {
+    public init(
+        id: UUID,
+        start: Date,
+        end: Date,
+        sourceBundleID: String?,
+        activityTypeRawValue: UInt? = nil,
+        activityDisplayName: String? = nil,
+        activeEnergyKilocalories: Double? = nil,
+        totalDistanceMeters: Double? = nil
+    ) {
         self.id = id
         self.start = start
         self.end = end
         self.sourceBundleID = sourceBundleID
+        self.activityTypeRawValue = activityTypeRawValue
+        self.activityDisplayName = activityDisplayName
+        self.activeEnergyKilocalories = activeEnergyKilocalories
+        self.totalDistanceMeters = totalDistanceMeters
     }
 }
 

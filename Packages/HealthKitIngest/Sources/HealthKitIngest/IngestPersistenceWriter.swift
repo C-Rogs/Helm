@@ -61,6 +61,7 @@ public struct IngestPersistenceWriter: Sendable {
             } else if !delta.addedWorkouts.isEmpty || !delta.deletedSampleIDs.isEmpty {
                 families.insert(.workouts)
             }
+            try applyWorkoutHistory(delta.addedWorkouts)
         }
 
         return families
@@ -185,6 +186,29 @@ public struct IngestPersistenceWriter: Sendable {
             case .vitals, .activity, .workouts:
                 _ = key
             }
+        }
+    }
+
+    private func applyWorkoutHistory(_ workouts: [IngestWorkoutSample]) throws {
+        for workout in workouts {
+            guard IngestSampleFilter.shouldPersistToHistory(sourceBundleID: workout.sourceBundleID) else {
+                continue
+            }
+            let hkUUID = workout.id.uuidString
+
+            // Skip workouts with non-positive duration (defensive).
+            guard workout.end > workout.start else { continue }
+
+            _ = try store.workoutSessions.upsertHealthKitWorkout(
+                hkUUID: hkUUID,
+                title: workout.activityDisplayName,
+                startedAt: workout.start,
+                endedAt: workout.end,
+                activityType: workout.activityDisplayName,
+                activeEnergyKilocalories: workout.activeEnergyKilocalories,
+                distanceMeters: workout.totalDistanceMeters,
+                sourceBundleID: workout.sourceBundleID
+            )
         }
     }
 }

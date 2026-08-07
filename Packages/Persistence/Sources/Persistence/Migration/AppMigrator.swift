@@ -58,6 +58,12 @@ struct AppMigrator {
         if version >= 15 {
             SchemaHardeningMigration.register(on: &migrator)
         }
+        if version >= 16 {
+            SpotifyTrackIDSchemaMigration.register(on: &migrator)
+        }
+        if version >= 17 {
+            HealthKitWorkoutSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

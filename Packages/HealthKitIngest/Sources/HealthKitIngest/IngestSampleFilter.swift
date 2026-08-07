@@ -1,9 +1,19 @@
 import Foundation
 
 public enum IngestSampleFilter {
+    public static let phoneBundleID = "com.cameronro.helm"
+    public static let watchBundleID = "com.cameronro.helm.watchkitapp"
+
     public static func shouldIngest(sourceBundleID: String?, ownBundleID: String) -> Bool {
         guard let sourceBundleID else { return true }
         return sourceBundleID != ownBundleID
+    }
+
+    /// Returns true when the workout should be persisted as a history row in Train.
+    /// Excludes Helm phone and Watch bundles so Signal-logged sessions are not duplicated.
+    public static func shouldPersistToHistory(sourceBundleID: String?) -> Bool {
+        guard let sourceBundleID else { return true }
+        return sourceBundleID != phoneBundleID && sourceBundleID != watchBundleID
     }
 
     public static func filterQuantitySamples(

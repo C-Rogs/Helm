@@ -126,15 +126,39 @@ public enum WorkoutHistoryFormatting {
         return String(format: "%.0f", kilograms.rounded())
     }
 
+    public static func kcalLabel(kilocalories: Double) -> String {
+        if kilocalories >= 1000 {
+            return String(format: "%.0fk", kilocalories / 1000)
+        }
+        return String(format: "%.0f", kilocalories)
+    }
+
+    public static func distanceLabel(meters: Double) -> String {
+        if meters >= 1000 {
+            return String(format: "%.1f km", meters / 1000)
+        }
+        return String(format: "%.0f m", meters)
+    }
+
     public static func accessibilityLabel(for summary: WorkoutSessionSummary) -> String {
         var parts: [String] = [summary.title ?? "Workout"]
         parts.append(contextualDateTimeLabel(summary.startedAt))
         if let duration = durationLabel(startedAt: summary.startedAt, endedAt: summary.endedAt) {
             parts.append(duration)
         }
-        parts.append("\(summary.exerciseCount) exercises")
-        parts.append("\(summary.totalSetCount) sets")
-        parts.append("\(volumeLabel(kilograms: summary.totalVolumeKilograms)) kilograms volume")
+
+        if summary.source == .healthKit {
+            if let kcal = summary.hkActiveEnergyKilocalories {
+                parts.append("\(kcalLabel(kilocalories: kcal)) kilocalories")
+            }
+            if let distance = summary.hkTotalDistanceMeters {
+                parts.append(distanceLabel(meters: distance))
+            }
+        } else {
+            parts.append("\(summary.exerciseCount) exercises")
+            parts.append("\(summary.totalSetCount) sets")
+            parts.append("\(volumeLabel(kilograms: summary.totalVolumeKilograms)) kilograms volume")
+        }
         return parts.joined(separator: ", ")
     }
 

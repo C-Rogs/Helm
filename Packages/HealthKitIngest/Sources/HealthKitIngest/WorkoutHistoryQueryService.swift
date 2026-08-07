@@ -70,6 +70,10 @@ public struct WorkoutHistoryQueryService: Sendable {
     }
 
     private func formatSession(header: String, summary: WorkoutSessionSummary) throws -> String {
+        if summary.source == .healthKit {
+            return try formatHealthKitSession(header: header, summary: summary)
+        }
+
         guard let draft = try store.workoutSessions.fetch(id: summary.id) else {
             return "\(header)\nerror=missing_draft"
         }
@@ -90,6 +94,27 @@ public struct WorkoutHistoryQueryService: Sendable {
         title=\(title) sets=\(sets) volume_kg=\(volume) \(duration) started=\(started)
 
         \(body)
+        """
+    }
+
+    private func formatHealthKitSession(header: String, summary: WorkoutSessionSummary) throws -> String {
+        var parts: [String] = [
+            "source=health_kit type=\"\(summary.title ?? "Workout")\"",
+        ]
+        if let ended = summary.endedAt {
+            parts.append("duration_s=\(Int(ended.timeIntervalSince(summary.startedAt)))")
+        }
+        if let kcal = summary.hkActiveEnergyKilocalories {
+            parts.append("energy_kcal=\(Int(kcal))")
+        }
+        if let distance = summary.hkTotalDistanceMeters {
+            parts.append("distance_m=\(Int(distance))")
+        }
+        parts.append("started=\(ISO8601DateFormatter().string(from: summary.startedAt))")
+
+        return """
+        \(header)
+        \(parts.joined(separator: " "))
         """
     }
 

@@ -32,6 +32,8 @@ public enum HelmIcon: String, CaseIterable, Sendable {
     case empty = "tray"
     case error = "exclamationmark.triangle"
     case coach = "bubble.left.and.bubble.right.fill"
+    case flame = "flame.fill"
+    case distance = "ruler"
 }
 
 public enum HelmIconContext: Sendable {

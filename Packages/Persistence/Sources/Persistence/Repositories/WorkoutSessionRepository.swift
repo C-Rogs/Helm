@@ -305,6 +305,8 @@ public struct WorkoutSessionRepository: Sendable {
                 sql: """
                     SELECT ws.id, ws.title, ws.started_at, ws.ended_at,
                            ws.total_volume_kg_cache, ws.total_set_count_cache, ws.total_rep_count_cache,
+                           ws.source,
+                           ws.activity_type, ws.active_energy_kcal, ws.distance_meters,
                            (
                                SELECT COUNT(*)
                                FROM workout_session_exercise wse
@@ -319,7 +321,12 @@ public struct WorkoutSessionRepository: Sendable {
             )
 
             return try rows.map { row in
-                WorkoutSessionSummary(
+                let source = WorkoutSessionSource(rawValue: row["source"] as String) ?? .manual
+                let hkActivityType: String? = row["activity_type"]
+                let hkEnergy: Double? = row["active_energy_kcal"]
+                let hkDistance: Double? = row["distance_meters"]
+
+                return WorkoutSessionSummary(
                     id: row["id"],
                     title: row["title"],
                     startedAt: try ISO8601Coding.date(from: row["started_at"] as String),
@@ -327,7 +334,11 @@ public struct WorkoutSessionRepository: Sendable {
                     totalVolumeKilograms: row["total_volume_kg_cache"] ?? 0,
                     totalSetCount: row["total_set_count_cache"] ?? 0,
                     totalRepCount: row["total_rep_count_cache"] ?? 0,
-                    exerciseCount: row["exercise_count"] ?? 0
+                    exerciseCount: row["exercise_count"] ?? 0,
+                    source: source,
+                    hkActivityType: hkActivityType,
+                    hkActiveEnergyKilocalories: hkEnergy,
+                    hkTotalDistanceMeters: hkDistance
                 )
             }
         }
@@ -567,6 +578,82 @@ public struct WorkoutSessionRepository: Sendable {
                     """,
                 arguments: [startString, limit, offset]
             )
+        }
+    }
+
+    /// Upserts a HealthKit workout into the history table. Existing rows by `hk_uuid` are
+    /// updated; deleted rows are not resurrected. Returns the stable session ID.
+    public func upsertHealthKitWorkout(
+        hkUUID: String,
+        title: String?,
+        startedAt: Date,
+        endedAt: Date,
+        activityType: String?,
+        activeEnergyKilocalories: Double?,
+        distanceMeters: Double?,
+        sourceBundleID: String?,
+        timestamp: Date = Date()
+    ) throws -> String {
+        let now = ISO8601Coding.string(from: timestamp)
+        let started = ISO8601Coding.string(from: startedAt)
+        let ended = ISO8601Coding.string(from: endedAt)
+
+        return try pool.write { db in
+            if let existing = try String.fetchOne(
+                db,
+                sql: """
+                    SELECT id FROM workout_session
+                    WHERE hk_uuid = ? AND deleted_at IS NULL
+                    """,
+                arguments: [hkUUID]
+            ) {
+                try db.execute(
+                    sql: """
+                        UPDATE workout_session
+                        SET title = ?, started_at = ?, ended_at = ?,
+                            activity_type = ?, active_energy_kcal = ?, distance_meters = ?,
+                            source_bundle_id = ?, updated_at = ?
+                        WHERE id = ?
+                        """,
+                    arguments: [
+                        title, started, ended,
+                        activityType, activeEnergyKilocalories, distanceMeters,
+                        sourceBundleID, now,
+                        existing
+                    ]
+                )
+                return existing
+            }
+
+            let sessionID = "hk_\(hkUUID)"
+            try db.execute(
+                sql: """
+                    INSERT INTO workout_session (
+                        id, title, started_at, ended_at, status, source,
+                        hk_uuid, activity_type, active_energy_kcal, distance_meters,
+                        source_bundle_id,
+                        total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
+                        created_at, updated_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                arguments: [
+                    sessionID,
+                    title,
+                    started,
+                    ended,
+                    WorkoutSessionStatus.completed.rawValue,
+                    WorkoutSessionSource.healthKit.rawValue,
+                    hkUUID,
+                    activityType,
+                    activeEnergyKilocalories,
+                    distanceMeters,
+                    sourceBundleID,
+                    0.0, 0, 0,
+                    now,
+                    now
+                ]
+            )
+            return sessionID
         }
     }
 }

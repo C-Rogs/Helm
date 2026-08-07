@@ -274,30 +274,31 @@ struct WorkoutHistoryRow: View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                    Text(summary.title ?? "Workout")
-                        .helmType(.label)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HStack(spacing: HelmSpacing.xs) {
+                        Text(summary.title ?? "Workout")
+                            .helmType(.label)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+
+                        if summary.source == .healthKit {
+                            Text("Health")
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                                .padding(.horizontal, HelmSpacing.xxs)
+                                .padding(.vertical, 2)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 4)
+                                        .fill(HelmColor.surfaceElevated)
+                                )
+                        }
+                    }
 
                     Text(WorkoutHistoryFormatting.contextualDateTimeLabel(summary.startedAt))
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 
-                HStack(spacing: HelmSpacing.md) {
-                    if let duration = WorkoutHistoryFormatting.durationLabel(
-                        startedAt: summary.startedAt,
-                        endedAt: summary.endedAt
-                    ) {
-                        Text(duration)
-                            .helmType(.monoTag, color: HelmColor.fgSecondary)
-                    }
-                    metricChip(icon: .train, value: "\(summary.exerciseCount)", unit: "ex")
-                    metricChip(icon: .checkmark, value: "\(summary.totalSetCount)", unit: "sets")
-                    metricChip(
-                        icon: .scale,
-                        value: WorkoutHistoryFormatting.volumeLabel(kilograms: summary.totalVolumeKilograms),
-                        unit: "kg"
-                    )
-                    Spacer(minLength: 0)
+                if summary.source == .healthKit {
+                    healthKitChips
+                } else {
+                    strengthChips
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -305,6 +306,57 @@ struct WorkoutHistoryRow: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(WorkoutHistoryFormatting.accessibilityLabel(for: summary))
         .accessibilityAddTraits(.isButton)
+    }
+
+    @ViewBuilder
+    private var healthKitChips: some View {
+        HStack(spacing: HelmSpacing.md) {
+            if let duration = WorkoutHistoryFormatting.durationLabel(
+                startedAt: summary.startedAt,
+                endedAt: summary.endedAt
+            ) {
+                Text(duration)
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+            }
+
+            if let kcal = summary.hkActiveEnergyKilocalories {
+                metricChip(
+                    icon: .flame,
+                    value: WorkoutHistoryFormatting.kcalLabel(kilocalories: kcal),
+                    unit: nil
+                )
+            }
+
+            if let distance = summary.hkTotalDistanceMeters {
+                metricChip(
+                    icon: .distance,
+                    value: WorkoutHistoryFormatting.distanceLabel(meters: distance),
+                    unit: nil
+                )
+            }
+
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var strengthChips: some View {
+        HStack(spacing: HelmSpacing.md) {
+            if let duration = WorkoutHistoryFormatting.durationLabel(
+                startedAt: summary.startedAt,
+                endedAt: summary.endedAt
+            ) {
+                Text(duration)
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+            }
+            metricChip(icon: .train, value: "\(summary.exerciseCount)", unit: "ex")
+            metricChip(icon: .checkmark, value: "\(summary.totalSetCount)", unit: "sets")
+            metricChip(
+                icon: .scale,
+                value: WorkoutHistoryFormatting.volumeLabel(kilograms: summary.totalVolumeKilograms),
+                unit: "kg"
+            )
+            Spacer(minLength: 0)
+        }
     }
 
     private func metricChip(icon: HelmIcon, value: String, unit: String?) -> some View {

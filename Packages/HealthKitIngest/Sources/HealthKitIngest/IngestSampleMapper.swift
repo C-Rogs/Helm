@@ -101,9 +101,30 @@ enum IngestSampleMapper {
                 id: workout.uuid,
                 start: workout.startDate,
                 end: workout.endDate,
-                sourceBundleID: bundleID
+                sourceBundleID: bundleID,
+                activityTypeRawValue: workout.workoutActivityType.rawValue,
+                activityDisplayName: WorkoutActivityTypeFormatter.displayName(for: workout.workoutActivityType),
+                activeEnergyKilocalories: activeEnergyKcal(for: workout),
+                totalDistanceMeters: totalDistanceMeters(for: workout)
             )
         }
+    }
+
+    private static func activeEnergyKcal(for workout: HKWorkout) -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .activeEnergyBurned) else {
+            return nil
+        }
+        return workout.statistics(for: type)?
+            .sumQuantity()?
+            .doubleValue(for: .kilocalorie())
+    }
+
+    private static func totalDistanceMeters(for workout: HKWorkout) -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .distanceWalkingRunning),
+              let distance = workout.statistics(for: type)?.sumQuantity() else {
+            return nil
+        }
+        return distance.doubleValue(for: .meter())
     }
 
     static func delta(
