@@ -11,6 +11,7 @@ struct HelmWatchApp: App {
     var body: some Scene {
         WindowGroup {
             WatchRootView()
+                .helmWatchTheme()
         }
     }
 }

@@ -15,11 +15,13 @@ struct WatchWorkoutView: View {
                 case .idle, .ended:
                     idleView
                 case .preparing:
-                    ProgressView("Starting…")
+                    ProgressView("Starting...")
+                        .tint(WatchPalette.accent)
                 case .active, .paused:
                     WatchActiveWorkoutView(store: store)
                 case .ending:
-                    ProgressView("Saving…")
+                    ProgressView("Saving...")
+                        .tint(WatchPalette.accent)
                 }
             }
         }
@@ -29,25 +31,33 @@ struct WatchWorkoutView: View {
     }
 
     private var idleView: some View {
-        VStack(spacing: 12) {
+        VStack(spacing: 8) {
+            Spacer(minLength: 0)
+
             Text("Start a workout on your iPhone to track heart rate here.")
-                .font(.caption2)
-                .foregroundStyle(.secondary)
+                .font(WatchType.body.font)
+                .foregroundStyle(WatchPalette.fgSecondary)
                 .multilineTextAlignment(.center)
+                .padding(.horizontal, 8)
 
             NavigationLink {
                 WatchActivityPickerView(store: store)
             } label: {
                 Text("Manual workout")
-                    .font(.caption)
+                    .font(WatchType.label.font)
+                    .foregroundStyle(WatchPalette.accent)
             }
 
             if let error = store.lastError {
                 Text(error)
-                    .font(.caption2)
-                    .foregroundStyle(.red)
+                    .font(WatchType.monoTag.font)
+                    .foregroundStyle(WatchPalette.depleted)
                     .multilineTextAlignment(.center)
+                    .padding(.horizontal, 8)
             }
+
+            Spacer(minLength: 0)
         }
+        .frame(maxHeight: .infinity)
     }
 }

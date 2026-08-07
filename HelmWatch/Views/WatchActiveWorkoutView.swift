@@ -5,64 +5,65 @@ struct WatchActiveWorkoutView: View {
     @Bindable var store: WatchWorkoutSessionStore
 
     var body: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                Text(store.selectedActivity.displayName)
-                    .font(.caption)
-                    .foregroundStyle(.secondary)
+        VStack(spacing: 6) {
+            Text(store.selectedActivity.displayName)
+                .font(WatchType.monoTag.font)
+                .foregroundStyle(WatchPalette.fgMuted)
 
-                Text(elapsedLabel)
-                    .font(.title2.monospacedDigit())
+            Text(elapsedLabel)
+                .font(WatchType.bigNumber.font)
+                .foregroundStyle(WatchPalette.fg)
 
-                heartRateSection
+            heartRateSection
 
-                HStack {
-                    Button(store.phase == .paused ? "Resume" : "Pause") {
-                        Task { await store.togglePause() }
-                    }
-                    .buttonStyle(.bordered)
+            Spacer(minLength: 0)
 
-                    Button("End") {
-                        Task { await store.endWorkout(discard: false) }
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .tint(.green)
+            HStack(spacing: 8) {
+                Button(store.phase == .paused ? "Resume" : "Pause") {
+                    Task { await store.togglePause() }
                 }
+                .buttonStyle(.bordered)
+                .tint(WatchPalette.fgSecondary)
+
+                Button("End") {
+                    Task { await store.endWorkout(discard: false) }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(WatchPalette.accent)
+                .foregroundStyle(WatchPalette.buttonPrimaryForeground)
             }
-            .frame(maxWidth: .infinity)
-            .padding(.horizontal, 4)
-            .padding(.bottom, 8)
         }
+        .padding(.horizontal, 8)
+        .padding(.bottom, 6)
+        .frame(maxHeight: .infinity)
     }
 
     @ViewBuilder
     private var heartRateSection: some View {
         if store.phase == .active || store.phase == .paused {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 if let bpm = store.heartRateBPM {
                     Text("\(Int(bpm.rounded()))")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .monospacedDigit()
-                        .foregroundStyle(zoneColor)
-                    Text("BPM")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(WatchType.heroNumber.font)
+                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
                     if let zone = store.heartRateZone {
                         Text(zone.displayName)
-                            .font(.caption)
-                            .foregroundStyle(zoneColor)
+                            .font(WatchType.monoTag.font)
+                            .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
                     }
                 } else {
                     Text("--")
-                        .font(.system(size: 44, weight: .bold, design: .rounded))
-                        .foregroundStyle(.secondary)
-                    Text("BPM")
-                        .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .font(WatchType.heroNumber.font)
+                        .foregroundStyle(WatchPalette.fgSecondary)
+                    Image(systemName: "heart.fill")
+                        .font(.system(size: 10))
+                        .foregroundStyle(WatchPalette.fgMuted)
                 }
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
         }
     }
 
@@ -70,16 +71,5 @@ struct WatchActiveWorkoutView: View {
         let minutes = store.elapsedSeconds / 60
         let seconds = store.elapsedSeconds % 60
         return String(format: "%d:%02d", minutes, seconds)
-    }
-
-    private var zoneColor: Color {
-        switch store.heartRateZone {
-        case .zone1: .mint
-        case .zone2: .blue
-        case .zone3: .yellow
-        case .zone4: .orange
-        case .zone5: .red
-        case nil: .primary
-        }
     }
 }

@@ -2,6 +2,7 @@ import Core
 import SwiftUI
 
 struct WatchRootView: View {
+    @Environment(\.scenePhase) private var scenePhase
     private var coordinator: WatchSessionCoordinator { WatchCompanionBootstrap.coordinator }
     private var workoutStore: WatchWorkoutSessionStore { WatchCompanionBootstrap.workoutStore }
     @State private var selectedTab = 0
@@ -60,13 +61,16 @@ struct WatchRootView: View {
                 WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
             }
         }
+        .opacity(scenePhase == .active ? 1 : 0.4)
+        .animation(.easeInOut(duration: 0.25), value: scenePhase)
     }
 
     private var syncStatusTab: some View {
         List {
             Section("Signal") {
                 Text("Watch companion")
-                    .font(.headline)
+                    .font(WatchType.title.font)
+                    .foregroundStyle(WatchPalette.fg)
                 if let received = coordinator.lastReceived {
                     LabeledContent("Phone day", value: received.helmDay)
                     if let score = received.readinessScore {
@@ -75,9 +79,11 @@ struct WatchRootView: View {
                     LabeledContent("Sequence", value: "#\(received.sequence)")
                 } else {
                     Text("Waiting for phone context")
-                        .foregroundStyle(.secondary)
+                        .font(WatchType.body.font)
+                        .foregroundStyle(WatchPalette.fgSecondary)
                 }
             }
+            .listRowBackground(WatchPalette.surface)
 
             Section("Sync") {
                 LabeledContent("Activation", value: activationLabel)
@@ -92,10 +98,12 @@ struct WatchRootView: View {
                 }
                 if let error = coordinator.lastError {
                     Text(error)
-                        .foregroundStyle(.red)
+                        .foregroundStyle(WatchPalette.depleted)
                 }
             }
+            .listRowBackground(WatchPalette.surface)
         }
+        .helmWatchScreenBackground()
     }
 
     private var activationLabel: String {
@@ -110,4 +118,5 @@ struct WatchRootView: View {
 
 #Preview {
     WatchRootView()
+        .helmWatchTheme()
 }

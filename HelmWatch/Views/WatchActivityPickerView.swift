@@ -11,15 +11,20 @@ struct WatchActivityPickerView: View {
             } label: {
                 HStack {
                     Text(activity.displayName)
+                        .font(WatchType.label.font)
+                        .foregroundStyle(WatchPalette.fg)
                     Spacer()
                     if store.selectedActivity == activity {
                         Image(systemName: "checkmark")
-                            .foregroundStyle(.green)
+                            .foregroundStyle(WatchPalette.accent)
+                            .font(.system(size: 14, weight: .bold))
                     }
                 }
             }
             .buttonStyle(.plain)
+            .listRowBackground(WatchPalette.surfaceElevated)
         }
         .navigationTitle("Activity")
+        .helmWatchScreenBackground()
     }
 }
