@@ -12,6 +12,10 @@ public enum TrainingPlanCoachContext {
         public let mesocycleState: MesocycleState?
         public let experience: TrainingExperience
         public let remainingSessionsThisWeek: Int
+        public let pendingReactiveDeload: Bool
+        public let sessionDurationMinutes: Int
+        public let programTemplate: String
+        public let allowedEquipment: Set<String>
 
         public init(
             emphasis: String?,
@@ -19,7 +23,11 @@ public enum TrainingPlanCoachContext {
             weeklyLedger: WeeklyHardSetLedger,
             mesocycleState: MesocycleState?,
             experience: TrainingExperience,
-            remainingSessionsThisWeek: Int
+            remainingSessionsThisWeek: Int,
+            pendingReactiveDeload: Bool = false,
+            sessionDurationMinutes: Int = 60,
+            programTemplate: String = "ppl",
+            allowedEquipment: Set<String> = []
         ) {
             self.emphasis = emphasis
             self.todaySplit = todaySplit
@@ -27,6 +35,10 @@ public enum TrainingPlanCoachContext {
             self.mesocycleState = mesocycleState
             self.experience = experience
             self.remainingSessionsThisWeek = max(1, remainingSessionsThisWeek)
+            self.pendingReactiveDeload = pendingReactiveDeload
+            self.sessionDurationMinutes = sessionDurationMinutes
+            self.programTemplate = programTemplate
+            self.allowedEquipment = allowedEquipment
         }
     }
 
@@ -34,8 +46,30 @@ public enum TrainingPlanCoachContext {
         var lines: [String] = [
             "engine_note=split_rotation_only; emphasis is athlete intent for coach interpretation",
             "today_split=\(input.todaySplit?.label ?? "Rest")",
-            "remaining_sessions_this_week=\(input.remainingSessionsThisWeek)"
+            "remaining_sessions_this_week=\(input.remainingSessionsThisWeek)",
+            "session_duration_min=\(input.sessionDurationMinutes)",
+            "program_template=\(input.programTemplate)"
         ]
+
+        if input.pendingReactiveDeload {
+            lines.append("pending_reactive_deload=true (engine proposes full-week deload; needs athlete confirm)")
+        }
+
+        if let meso = input.mesocycleState {
+            lines.append("consecutive_depleted_days=\(meso.consecutiveDepletedDays)")
+            if !meso.muscles.isEmpty {
+                lines.append("mesocycle_per_muscle:")
+                for (muscle, muscleState) in meso.muscles.sorted(by: { $0.key.rawValue < $1.key.rawValue }) {
+                    lines.append(
+                        "  \(muscle.rawValue): phase=\(muscleState.phase) week=\(muscleState.currentWeek)/\(muscleState.blockLengthWeeks)"
+                    )
+                }
+            }
+        }
+
+        if !input.allowedEquipment.isEmpty {
+            lines.append("allowed_equipment=\(input.allowedEquipment.sorted().joined(separator: ","))")
+        }
 
         if let emphasis = normalizedEmphasis(input.emphasis) {
             lines.append("emphasis=\"\(emphasis)\"")

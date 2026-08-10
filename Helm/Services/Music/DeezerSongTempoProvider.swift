@@ -2,7 +2,7 @@ import Core
 import Foundation
 
 protocol SongTempoProviding: Sendable {
-    func tempo(for query: SongTempoQuery) async throws -> Double?
+    func tempo(for segment: SessionMusicSegment) async throws -> Double?
 }
 
 /// Name-based tempo lookup against Deezer's public catalog.
@@ -24,7 +24,8 @@ struct DeezerSongTempoProvider: SongTempoProviding {
         self.load = load ?? Self.defaultLoader
     }
 
-    func tempo(for query: SongTempoQuery) async throws -> Double? {
+    func tempo(for segment: SessionMusicSegment) async throws -> Double? {
+        guard let query = SongTempoQuery(title: segment.title, artist: segment.artist) else { return nil }
         let candidates = try await search(query)
         for candidate in candidates {
             guard SongTempoMatching.matches(

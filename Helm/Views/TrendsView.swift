@@ -44,7 +44,8 @@ struct TrendsView: View {
     @ViewBuilder
     private var trendCards: some View {
         TrendWeightChartCard(
-            points: controller.snapshot.bodyWeight,
+            rawPoints: controller.snapshot.bodyWeight,
+            trendPoints: controller.snapshot.trendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg
         )
 
@@ -54,20 +55,12 @@ struct TrendsView: View {
             onPickExercise: { isShowingExercisePicker = true }
         )
 
-        if controller.snapshot.canLoadMoreHistory, !controller.snapshot.hasDisplayedHistory {
+        if controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {
                 controller.loadMoreHistoryIfNeeded()
             }
             .buttonStyle(.helmSecondary)
             .frame(maxWidth: .infinity)
-        }
-
-        if controller.snapshot.canLoadMoreHistory {
-            Color.clear
-                .frame(height: 0)
-                .onAppear {
-                    controller.loadMoreHistoryIfNeeded()
-                }
         }
 
         if let errorMessage = controller.errorMessage {
@@ -105,7 +98,7 @@ struct TrendsView: View {
 #Preview("Trends empty charts") {
     ScrollView {
         LazyVStack(spacing: HelmSpacing.lg) {
-            TrendWeightChartCard(points: [], targetWeightKg: nil)
+            TrendWeightChartCard(rawPoints: [], trendPoints: [], targetWeightKg: nil)
             E1RMProgressionChartCard(
                 points: [],
                 exerciseName: "Squat (Barbell)",
@@ -127,7 +120,8 @@ struct TrendsView: View {
     ScrollView {
         LazyVStack(spacing: HelmSpacing.lg) {
             TrendWeightChartCard(
-                points: TrendChartFixtures.trendWeight,
+                rawPoints: TrendChartFixtures.bodyWeight,
+                trendPoints: TrendChartFixtures.trendWeight,
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
             E1RMProgressionChartCard(
@@ -146,7 +140,8 @@ struct TrendsView: View {
     ScrollView {
         LazyVStack(spacing: HelmSpacing.sm) {
             TrendWeightChartCard(
-                points: TrendChartFixtures.trendWeight,
+                rawPoints: TrendChartFixtures.bodyWeight,
+                trendPoints: TrendChartFixtures.trendWeight,
                 targetWeightKg: TrendChartFixtures.targetWeightKg
             )
             E1RMProgressionChartCard(

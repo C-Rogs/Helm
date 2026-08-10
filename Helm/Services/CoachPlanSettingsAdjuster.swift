@@ -4,14 +4,6 @@ import Foundation
 import Persistence
 import PlanKit
 
-struct SettingsAdjustmentPayload: Codable, Sendable, Equatable {
-    let schemaVersion: String
-    let phase: String?
-    let weeklyRateKg: Double?
-    let emphasis: String?
-    let rationale: String?
-}
-
 enum CoachPlanSettingsAdjuster {
     static func tryApplyEmbeddedJSON(in text: String, persistence: PersistenceStore) throws -> Bool {
         guard let json = extractJSONObject(from: text) else { return false }

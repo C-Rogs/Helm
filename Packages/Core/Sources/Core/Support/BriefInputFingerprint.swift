@@ -1,6 +1,9 @@
 import Foundation
 
 public enum BriefInputFingerprint {
+    /// Bump when engine brief copy shape changes so cached briefs regenerate.
+    private static let copyRevision = "v2-human"
+
     public static func compute(from snapshot: BriefInputsSnapshot) -> String {
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -8,6 +11,6 @@ public enum BriefInputFingerprint {
               let json = String(data: data, encoding: .utf8) else {
             return "invalid"
         }
-        return json
+        return "\(copyRevision)|\(json)"
     }
 }

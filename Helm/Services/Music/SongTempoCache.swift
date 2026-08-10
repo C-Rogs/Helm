@@ -10,8 +10,10 @@ import Observation
 final class SongTempoCache {
     static let shared = SongTempoCache()
 
-    static let tempoKey = "helm.songTempo.cache.tempos"
-    static let missKey = "helm.songTempo.cache.misses"
+    // v2 separates ReccoBeats-backed values from old Deezer-only misses, so an old
+    // catalog miss cannot suppress an exact Spotify-ID lookup for another 14 days.
+    static let tempoKey = "helm.songTempo.cache.v2.tempos"
+    static let missKey = "helm.songTempo.cache.v2.misses"
 
     /// How long a known miss is trusted before the catalog is asked again.
     private static let missRetryInterval: TimeInterval = 14 * 24 * 60 * 60

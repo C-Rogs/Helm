@@ -5,7 +5,9 @@ import ReadinessKit
 
 /// Maps persisted health rows into readiness inputs for scoring.
 public enum ReadinessHistoryBuilder {
-    public static let defaultHistoryDays = 180
+    /// Scoring windows need up to 14 days of history (HRV acute/medium, sleep debt).
+    /// 30 days provides a buffer while keeping queries fast.
+    public static let defaultHistoryDays = 30
 
     public static func history(
         from store: PersistenceStore,

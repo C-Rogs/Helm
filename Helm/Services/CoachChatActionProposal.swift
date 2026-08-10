@@ -8,6 +8,9 @@ enum CoachChatActionKind: Sendable, Equatable {
     case foodLog(FoodLogPayload)
     case mealCopy(MealCopyPayload)
     case memoryAdjustment(MemoryAdjustmentPayload)
+    case settingsAdjustment(SettingsAdjustmentPayload)
+    case reactiveDeload(ReactiveDeloadPayload)
+    case planRegenerate(PlanRegeneratePayload)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -110,6 +113,52 @@ enum CoachChatActionParser {
             )
         }
 
+        if let payload = SettingsAdjustmentPayloadParser.parse(from: text) {
+            let preview = SettingsAdjustmentPreview.preview(for: payload)
+            let stripped = CoachChatTextFormatter.userFacingText(from: text)
+            let reply = stripped.isEmpty
+                ? "Settings updated."
+                : stripped
+            return CoachChatActionProposal(
+                reply: reply,
+                kind: .settingsAdjustment(payload),
+                title: preview.title,
+                detail: preview.detail,
+                reason: payload.rationale ?? payload.reply,
+                confirmLabel: "Apply",
+                cancelLabel: "Cancel"
+            )
+        }
+
+        if let payload = ReactiveDeloadPayloadParser.parse(from: text) {
+            let label = payload.action == .confirm ? "Confirm deload" : "Dismiss deload"
+            let title = payload.action == .confirm ? "Take a deload week" : "Skip deload"
+            let detail = payload.action == .confirm
+                ? "Engine proposes a full-week deload for recovery."
+                : "Continue training as scheduled."
+            return CoachChatActionProposal(
+                reply: payload.reply,
+                kind: .reactiveDeload(payload),
+                title: title,
+                detail: detail,
+                reason: payload.reply,
+                confirmLabel: label,
+                cancelLabel: "Cancel"
+            )
+        }
+
+        if let payload = PlanRegeneratePayloadParser.parse(from: text) {
+            return CoachChatActionProposal(
+                reply: payload.reply,
+                kind: .planRegenerate(payload),
+                title: "Regenerate today's plan",
+                detail: "Clears today's prescription and re-plans from the engine.",
+                reason: payload.reply,
+                confirmLabel: "Regenerate",
+                cancelLabel: "Cancel"
+            )
+        }
+
         return nil
     }
 }
@@ -129,7 +178,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment:
+            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
                 return pendingAction.title
             }
         }
@@ -165,6 +214,27 @@ enum WorkoutStartCommandPreview {
             reason: adjusted
                 ? "Uses the plan adjusted earlier in chat. Open Train if the exercise list looks wrong."
                 : "Starts the engine prescription for today. Negotiate a custom list in chat first if you want different exercises."
+        )
+    }
+}
+
+enum SettingsAdjustmentPreview {
+    static func preview(for payload: SettingsAdjustmentPayload) -> (title: String, detail: String, reason: String?) {
+        var parts: [String] = []
+        if let phase = payload.phase {
+            parts.append("Phase: \(phase)")
+        }
+        if let rate = payload.weeklyRateKg {
+            parts.append("Rate: \(String(format: "%.1f", rate)) kg/wk")
+        }
+        if let emphasis = payload.emphasis {
+            parts.append("Emphasis: \(emphasis)")
+        }
+        let detail = parts.joined(separator: " · ")
+        return (
+            title: "Update training plan",
+            detail: detail.isEmpty ? "No changes" : detail,
+            reason: payload.rationale ?? payload.reply
         )
     }
 }

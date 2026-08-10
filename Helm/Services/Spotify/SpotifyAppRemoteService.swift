@@ -32,7 +32,8 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     private var workoutCaptureActive = false
     private var connectAttempts = 0
     private var didRetryAfterAuthFailure = false
-    private var didAutoWake = false
+    /// True while we tear down App Remote for scene resign; skip error UI and reconnect until become-active.
+    private var disconnectingForLifecycle = false
     /// Short-lived token handed back by the Spotify app switch. Preferred for App Remote when we
     /// have one, because App Remote may reject a token minted by the web flow.
     private var appRemoteToken: String?
@@ -85,8 +86,25 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         workoutCaptureActive = true
         connectAttempts = 0
         didRetryAfterAuthFailure = false
-        didAutoWake = false
         guard isAuthorized else { return }
+        Task { await connectUsingFreshToken() }
+    }
+
+    /// Spotify lifecycle: disconnect App Remote when Helm resigns active. Keeps the account link
+    /// and workout capture intent so become-active can silently reconnect.
+    func handleAppResignActive() {
+        guard appRemote?.isConnected == true || isConnected else { return }
+        disconnectingForLifecycle = true
+        appRemote?.playerAPI?.unsubscribe(toPlayerState: { _, _ in })
+        appRemote?.disconnect()
+        isConnected = false
+    }
+
+    /// Spotify lifecycle: silent `connect()` when returning to foreground with a token.
+    func handleAppBecomeActive() {
+        disconnectingForLifecycle = false
+        guard isAuthorized, workoutCaptureActive else { return }
+        guard appRemoteToken != nil || session != nil else { return }
         Task { await connectUsingFreshToken() }
     }
 
@@ -99,9 +117,8 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         Task { await connectUsingFreshToken() }
     }
 
-    /// `connect()` only works while Spotify is awake. This is the SDK's documented way to wake it:
-    /// it app-switches to Spotify, resumes the last track, and returns a token via `handleRedirect`.
-    /// The PKCE session stays the source of truth for whether the account is linked.
+    /// Explicit user action ("Open Spotify"). App-switches to wake Spotify, resumes the last track,
+    /// and returns a token via `handleRedirect`. Never call this automatically on workout start.
     func wakeSpotifyAndConnect() {
         guard isAuthorized, let clientID, !clientID.isEmpty else { return }
         lastErrorMessage = nil
@@ -154,6 +171,7 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
 
     func disconnectWorkoutSession() {
         workoutCaptureActive = false
+        disconnectingForLifecycle = false
         onTrackChange = nil
         lastTrackKey = nil
         appRemote?.playerAPI?.unsubscribe(toPlayerState: { _, _ in })
@@ -269,9 +287,16 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
 
     private func handleConnectionFailure(_ error: Error?) {
         isConnected = false
-        lastErrorMessage = Self.connectionFailureMessage(error)
         if let error {
             logger.error("Spotify App Remote connect failed: \(String(describing: error), privacy: .public)")
+        }
+
+        // Asleep Spotify during a workout is expected; the Open Spotify CTA covers it.
+        // Keep Settings errors for verify/link flows and non-idle failures.
+        if workoutCaptureActive, Self.isAsleepStyleFailure(error) {
+            lastErrorMessage = nil
+        } else {
+            lastErrorMessage = Self.connectionFailureMessage(error)
         }
 
         // A rejected token can survive our expiry check (revoked, scope change), so force one refresh.
@@ -284,14 +309,13 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
             )
         }
 
-        // Spotify may simply be asleep at the start of a workout; the app switch is the only way
-        // to wake it. Do that once per workout rather than retrying into a suspended app.
-        if workoutCaptureActive, !didAutoWake {
-            didAutoWake = true
-            wakeSpotifyAndConnect()
-            return
-        }
         scheduleReconnect()
+    }
+
+    private static func isAsleepStyleFailure(_ error: Error?) -> Bool {
+        guard let error else { return true }
+        let nsError = error as NSError
+        return nsError.domain.hasPrefix("com.spotify.app-remote")
     }
 
     /// The SDK reports "Connection attempt failed." for the common case of Spotify being asleep,
@@ -310,11 +334,12 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         return "\(spotifyIdleMessage)\n\(error.localizedDescription) [\(detail)]"
     }
 
-    private func publishTrackChange(title: String?, artist: String?, album: String?) {
+    private func publishTrackChange(title: String?, artist: String?, album: String?, spotifyURI: String?) {
         guard let snapshot = SpotifyPlayerStateMapping.nowPlayingSnapshot(
             title: title,
             artist: artist,
-            album: album
+            album: album,
+            spotifyURI: spotifyURI
         ) else {
             return
         }
@@ -333,6 +358,7 @@ extension SpotifyAppRemoteService: SPTAppRemoteDelegate {
             self.isConnected = true
             self.connectAttempts = 0
             self.didRetryAfterAuthFailure = false
+            self.lastErrorMessage = nil
             appRemote.playerAPI?.delegate = self
             appRemote.playerAPI?.subscribe(toPlayerState: { [weak self] _, error in
                 if let error {
@@ -346,8 +372,9 @@ extension SpotifyAppRemoteService: SPTAppRemoteDelegate {
                 let title = state.track.name
                 let artist = state.track.artist.name
                 let album = state.track.album.name
+                let spotifyURI = state.track.uri
                 Task { @MainActor in
-                    self?.publishTrackChange(title: title, artist: artist, album: album)
+                    self?.publishTrackChange(title: title, artist: artist, album: album, spotifyURI: spotifyURI)
                 }
             }
         }
@@ -362,6 +389,10 @@ extension SpotifyAppRemoteService: SPTAppRemoteDelegate {
     nonisolated func appRemote(_ appRemote: SPTAppRemote, didDisconnectWithError error: Error?) {
         Task { @MainActor in
             self.isConnected = false
+            if self.disconnectingForLifecycle {
+                self.disconnectingForLifecycle = false
+                return
+            }
             if let error {
                 self.lastErrorMessage = error.localizedDescription
             }
@@ -375,8 +406,9 @@ extension SpotifyAppRemoteService: SPTAppRemotePlayerStateDelegate {
         let title = playerState.track.name
         let artist = playerState.track.artist.name
         let album = playerState.track.album.name
+        let spotifyURI = playerState.track.uri
         Task { @MainActor in
-            self.publishTrackChange(title: title, artist: artist, album: album)
+            self.publishTrackChange(title: title, artist: artist, album: album, spotifyURI: spotifyURI)
         }
     }
 }

@@ -54,6 +54,23 @@ public enum SongTempoMatching {
         value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
     }
 
+    /// Catalogs commonly store drum & bass in half-time (about 85–95 BPM), while
+    /// listeners and DJs conventionally use its full tempo (about 170–190 BPM).
+    /// Only normalize when the playback source explicitly supplied a DnB genre;
+    /// other low-tempo music must retain its authored BPM.
+    public static func workoutTempo(_ tempo: Double, genre: String?) -> Double {
+        guard tempo >= 80, tempo < 100, isDrumAndBass(genre) else { return tempo }
+        return tempo * 2
+    }
+
+    private static func isDrumAndBass(_ genre: String?) -> Bool {
+        let genre = normalized(trimmed(genre))
+        return genre.contains("drum and bass")
+            || genre.contains("drum n bass")
+            || genre.contains("drum bass")
+            || genre == "dnb"
+    }
+
     public static func cacheKey(title: String, artist: String?) -> String {
         "\(normalized(artist ?? ""))|\(normalized(title))"
     }
@@ -145,7 +162,8 @@ public enum SessionMusicSegmentTempoFiller {
                 artist: segment.artist,
                 album: segment.album,
                 genre: segment.genre,
-                bpm: tempo
+                spotifyTrackID: segment.spotifyTrackID,
+                bpm: SongTempoMatching.workoutTempo(tempo, genre: segment.genre)
             )
         }
     }

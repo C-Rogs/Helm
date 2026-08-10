@@ -13,12 +13,12 @@ enum CalendarAuthorizationStatus: String, Equatable {
 protocol CalendarEventAccessProviding {
     func authorizationStatus() -> CalendarAuthorizationStatus
     func requestAccess() async -> CalendarAuthorizationStatus
-    func dayLoads(
+    func dayDetails(
         from startDay: HelmDay,
         through endDay: HelmDay,
         calendar: Calendar,
         cutoff: DayCutoff
-    ) async throws -> [HelmDay: CalendarDayLoad]
+    ) async throws -> [HelmDay: CalendarDayDetail]
 }
 
 @MainActor
@@ -55,12 +55,12 @@ final class LiveCalendarEventAccess: CalendarEventAccessProviding {
         }
     }
 
-    func dayLoads(
+    func dayDetails(
         from startDay: HelmDay,
         through endDay: HelmDay,
         calendar: Calendar,
         cutoff: DayCutoff
-    ) async throws -> [HelmDay: CalendarDayLoad] {
+    ) async throws -> [HelmDay: CalendarDayDetail] {
         guard authorizationStatus() == .authorized else {
             return [:]
         }
@@ -81,8 +81,16 @@ final class LiveCalendarEventAccess: CalendarEventAccessProviding {
             .filter { $0.status != .canceled }
 
         var loads: [HelmDay: CalendarDayLoad] = [:]
+        var eventLists: [HelmDay: [CalendarEventDetail]] = [:]
         for event in events {
-            let helmDay = HelmDay.day(for: event.startDate, cutoff: cutoff, calendar: calendar)
+            let helmDay: HelmDay
+            if event.isAllDay {
+                // All-day events start at midnight; the 04:00 cutoff would
+                // shift them to the previous logical day. Use calendar day.
+                helmDay = HelmDay.calendarDay(for: event.startDate, calendar: calendar)
+            } else {
+                helmDay = HelmDay.day(for: event.startDate, cutoff: cutoff, calendar: calendar)
+            }
             guard helmDay >= startDay, helmDay <= endDay else { continue }
 
             var load = loads[helmDay] ?? CalendarDayLoad(
@@ -90,26 +98,52 @@ final class LiveCalendarEventAccess: CalendarEventAccessProviding {
                 scheduledSeconds: 0,
                 hasAllDayEvent: false
             )
+            let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
 
             if event.isAllDay {
+                var titles = load.allDayEventTitles
+                if !title.isEmpty {
+                    titles.append(title)
+                }
                 load = CalendarDayLoad(
                     timedEventCount: load.timedEventCount,
                     scheduledSeconds: load.scheduledSeconds,
-                    hasAllDayEvent: true
+                    hasAllDayEvent: true,
+                    allDayEventTitles: titles
                 )
             } else {
                 let duration = max(0, event.endDate.timeIntervalSince(event.startDate))
                 load = CalendarDayLoad(
                     timedEventCount: load.timedEventCount + 1,
                     scheduledSeconds: load.scheduledSeconds + duration,
-                    hasAllDayEvent: load.hasAllDayEvent
+                    hasAllDayEvent: load.hasAllDayEvent,
+                    allDayEventTitles: load.allDayEventTitles
                 )
             }
 
             loads[helmDay] = load
+            var list = eventLists[helmDay] ?? []
+            list.append(
+                CalendarEventDetail(
+                    title: title,
+                    start: event.startDate,
+                    end: event.endDate,
+                    isAllDay: event.isAllDay
+                )
+            )
+            eventLists[helmDay] = list
         }
 
-        return loads
+        return Dictionary(uniqueKeysWithValues: loads.map { day, load in
+            (
+                day,
+                CalendarDayDetail(
+                    helmDay: day,
+                    load: load,
+                    events: eventLists[day] ?? []
+                )
+            )
+        })
     }
 }
 
@@ -129,27 +163,52 @@ final class CalendarHintService {
         await access.requestAccess()
     }
 
+    func dayDetails(
+        from startDay: HelmDay,
+        through endDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) async -> [HelmDay: CalendarDayDetail] {
+        guard access.authorizationStatus() == .authorized else {
+            return [:]
+        }
+
+        do {
+            return try await access.dayDetails(
+                from: startDay,
+                through: endDay,
+                calendar: calendar,
+                cutoff: cutoff
+            )
+        } catch {
+            return [:]
+        }
+    }
+
+    func dayLoads(
+        from startDay: HelmDay,
+        through endDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) async -> [HelmDay: CalendarDayLoad] {
+        await dayDetails(from: startDay, through: endDay, calendar: calendar, cutoff: cutoff)
+            .mapValues(\.load)
+    }
+
     func busyDayHints(
         from startDay: HelmDay,
         through endDay: HelmDay,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) async -> [HelmDay: String] {
-        guard access.authorizationStatus() == .authorized else {
-            return [:]
-        }
-
-        do {
-            let loads = try await access.dayLoads(
+        BusyDayHintPolicy.hints(
+            from: await dayLoads(
                 from: startDay,
                 through: endDay,
                 calendar: calendar,
                 cutoff: cutoff
             )
-            return BusyDayHintPolicy.hints(from: loads)
-        } catch {
-            return [:]
-        }
+        )
     }
 
     func busyDays(
@@ -172,4 +231,6 @@ final class CalendarHintService {
 enum CalendarHintBootstrap {
     @MainActor
     static let service = CalendarHintService()
+    @MainActor
+    static let eventClassifier = CalendarEventClassifierService()
 }

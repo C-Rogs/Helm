@@ -1,0 +1,24 @@
+---
+description: Helm context hygiene - thin chats, subagents for broad search, ignore lab/TSE/Z2H rules.
+alwaysApply: true
+---
+
+# Helm context hygiene
+
+## Scope
+
+This workspace is Helm only. Ignore lab `Development/CLAUDE.md`, Z2H, and Zendesk/TSE rules even if a parent or global copy is still visible.
+
+## Chat
+
+- Fresh chat when prior thread is long or off-topic.
+- `@` 2-3 relevant files. No large pastes (RTF research, full audits, giant logs).
+- Engine research truth: `Docs/Research/RECONCILE.md` (not `Docs/Research/*.rtf`).
+
+## Subagents
+
+Broad "where is X / how does Y work" exploration: Task tool with `subagent_type=explore`. Keep parent chat for decisions and edits.
+
+## Build noise
+
+Use `scripts/xcodebuild.sh` so compile chatter stays out of context.

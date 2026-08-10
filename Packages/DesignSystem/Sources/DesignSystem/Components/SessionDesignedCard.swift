@@ -8,6 +8,7 @@ public struct SessionDesignedCard<Content: View>: View {
     public let leadingChipTitle: String
     public let onLeadingChip: () -> Void
     public let onRegenerate: () -> Void
+    public let showsRegenerate: Bool
     @ViewBuilder public let content: () -> Content
 
     public init(
@@ -25,6 +26,26 @@ public struct SessionDesignedCard<Content: View>: View {
         self.leadingChipTitle = leadingChipTitle
         self.onLeadingChip = onLeadingChip
         self.onRegenerate = onRegenerate
+        self.showsRegenerate = true
+        self.content = content
+    }
+
+    /// Without regenerate chip.
+    public init(
+        title: String,
+        summary: String,
+        rationale: [String],
+        leadingChipTitle: String = "Discuss",
+        onLeadingChip: @escaping () -> Void,
+        @ViewBuilder content: @escaping () -> Content
+    ) {
+        self.title = title
+        self.summary = summary
+        self.rationale = rationale
+        self.leadingChipTitle = leadingChipTitle
+        self.onLeadingChip = onLeadingChip
+        self.onRegenerate = {}
+        self.showsRegenerate = false
         self.content = content
     }
 
@@ -63,7 +84,9 @@ public struct SessionDesignedCard<Content: View>: View {
 
                     VStack(alignment: .trailing, spacing: HelmSpacing.xs) {
                         sessionChip(title: leadingChipTitle, action: onLeadingChip)
-                        sessionChip(title: "Regenerate", action: onRegenerate)
+                        if showsRegenerate {
+                            sessionChip(title: "Regenerate", action: onRegenerate)
+                        }
                     }
                     .layoutPriority(1)
                 }
@@ -135,7 +158,6 @@ public struct SessionExercisePreviewList: View {
         title: "Pull",
         summary: "Back + Biceps · 16 sets · week 3 accumulating",
         rationale: [
-            "ARC 72 (primed) sets today's volume and RPE cap.",
             "Back: 8/14 hard sets this week."
         ],
         onCoach: {},
@@ -154,10 +176,8 @@ public struct SessionExercisePreviewList: View {
 #Preview("Session designed card long summary") {
     SessionDesignedCard(
         title: "Arm Focus",
-        summary: "Biceps + Triceps + Shoulders · 3 sets · week 1 weekly accumulating · Arms",
+        summary: "Biceps + Triceps + Shoulders · 3 sets · week 1 accumulating · Emphasis: Arms",
         rationale: [
-            "ARC 57 (balanced) sets today's volume and RPE cap.",
-            "Cut phase with 1 exercises prescribed.",
             "Biceps: 0/6 hard sets this week."
         ],
         onCoach: {},

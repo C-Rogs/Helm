@@ -6,7 +6,6 @@ import SwiftUI
 struct ChatView: View {
     @Bindable private var controller = ChatBootstrap.controller
     @Bindable private var activityGate = CoachActivityGate.shared
-    @State private var dictation = ChatFoodDictationController()
     @FocusState private var isInputFocused: Bool
 
     private var coachName: String { CoachDisplayNameStore.name }
@@ -127,20 +126,19 @@ struct ChatView: View {
                 }
             }
             .onAppear {
-                Task { await controller.onAppear() }
+                // Handoff prompt must apply immediately; hydration waits for tab chrome.
                 controller.consumeHandoffPromptIfNeeded()
+                Task {
+                    await AppTabRouter.shared.preferChromeOverContentLoad()
+                    guard !Task.isCancelled else { return }
+                    await controller.onAppear()
+                }
             }
             .onChange(of: controller.handoffGeneration) { _, _ in
                 controller.consumeHandoffPromptIfNeeded()
             }
             .onDisappear {
-                dictation.cancel()
                 controller.onDisappear()
-            }
-            .onChange(of: controller.pendingFoodMealConfirm?.id) { _, newID in
-                if newID != nil {
-                    dictation.cancel()
-                }
             }
             .sheet(isPresented: Binding(
                 get: { controller.pendingFoodMealConfirm != nil },
@@ -201,13 +199,77 @@ struct ChatView: View {
                 let display = CoachChatTextFormatter.userFacingText(from: message.text)
                 let chart = ChartPayloadParser.parse(from: message.text)
                 if display.isEmpty, chart == nil {
-                    EmptyView()
+                    if let caption = schemaActionCaption(for: message.text) {
+                        actionCaption(caption)
+                    } else {
+                        EmptyView()
+                    }
                 } else {
                     assistantBubble(message.text, isStreaming: false)
                 }
             case .system:
                 EmptyView()
             }
+        }
+    }
+
+    private func schemaActionCaption(for text: String) -> String? {
+        guard let block = CoachEmbeddedJSONBlockFinder.blocks(in: text).first else { return nil }
+        let sanitized = CoachJSONSanitizer.sanitize(block)
+        guard let data = sanitized.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let schemaVersion = object["schemaVersion"] as? String
+        else { return nil }
+
+        switch schemaVersion {
+        case CoachOutputSchemaVersion.settingsAdjustmentV1.rawValue:
+            return "Coach updated training plan settings."
+        case CoachOutputSchemaVersion.reactiveDeloadV1.rawValue:
+            return "Coach proposed a deload week."
+        case CoachOutputSchemaVersion.planRegenerateV1.rawValue:
+            return "Coach regenerated today's plan."
+        case CoachOutputSchemaVersion.foodLogV1.rawValue:
+            return "Coach logged a meal."
+        case CoachOutputSchemaVersion.mealCopyV1.rawValue:
+            return "Coach copied a meal."
+        case CoachOutputSchemaVersion.memoryAdjustmentV1.rawValue:
+            return "Coach updated Memory."
+        case CoachOutputSchemaVersion.workoutStartV1.rawValue,
+             CoachOutputSchemaVersion.workoutStartV2.rawValue:
+            return "Coach prepared a workout."
+        case CoachOutputSchemaVersion.chartV1.rawValue:
+            return "Coach created a chart."
+        case CoachOutputSchemaVersion.sessionAdjustmentV1.rawValue,
+             CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue:
+            return "Coach adjusted this session."
+        case CoachOutputSchemaVersion.mealEstimateV1.rawValue:
+            return "Coach estimated a meal."
+        case CoachOutputSchemaVersion.mealDecompositionV1.rawValue:
+            return "Coach broke down a meal."
+        case CoachOutputSchemaVersion.mealQueryV1.rawValue:
+            return "Coach ran a meal query."
+        case CoachOutputSchemaVersion.workoutQueryV1.rawValue:
+            return "Coach ran a workout query."
+        case CoachOutputSchemaVersion.recoveryQueryV1.rawValue:
+            return "Coach ran a recovery query."
+        case CoachOutputSchemaVersion.calendarQueryV1.rawValue:
+            return "Coach ran a calendar query."
+        case CoachOutputSchemaVersion.trendsQueryV1.rawValue:
+            return "Coach ran a trends query."
+        case CoachOutputSchemaVersion.calendarEventClassifyV1.rawValue:
+            return "Coach classified calendar events."
+        default:
+            return nil
+        }
+    }
+
+    private func actionCaption(_ text: String) -> some View {
+        HStack {
+            Text(text)
+                .helmType(.label, color: HelmColor.fgMuted)
+                .padding(.horizontal, HelmSpacing.md)
+                .padding(.vertical, HelmSpacing.sm)
+            Spacer(minLength: 0)
         }
     }
 
@@ -263,7 +325,7 @@ struct ChatView: View {
         switch pending.kind {
         case .workoutStart:
             return "Could not start. \(message)"
-        case .foodLog, .mealCopy, .memoryAdjustment:
+        case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
             return "Could not apply. \(message)"
         }
     }
@@ -283,34 +345,18 @@ struct ChatView: View {
         HStack(spacing: HelmSpacing.sm) {
             Button {
                 HapticEngine.shared.play(.selection)
-                isInputFocused = false
-                dictation.toggleListening(
-                    onPartial: { transcript in
-                        controller.draftText = transcript
-                    },
-                    onFinal: { transcript in
-                        controller.draftText = ""
-                        controller.sendFoodDictation(transcript)
-                    }
-                )
+                isInputFocused = true
             } label: {
-                Group {
-                    if showsMicBusy {
-                        ProgressView()
-                            .frame(width: 28, height: 28)
-                    } else {
-                        HelmIconView(.mic, context: .action)
-                            .foregroundStyle(micForegroundColor)
-                            .symbolEffect(.pulse, isActive: dictation.isListening)
-                    }
-                }
+                HelmIconView(.mic, context: .action)
+                    .foregroundStyle(canUseMic ? HelmColor.fgSecondary : HelmColor.fgMuted)
             }
             .buttonStyle(.helmPressable)
             .disabled(!canUseMic)
-            .accessibilityLabel(dictation.isListening ? "Stop dictation" : "Dictate meal")
+            .accessibilityLabel("Show keyboard dictation")
+            .accessibilityHint("Opens the keyboard. Use its Dictation button to speak.")
 
             TextField(
-                dictation.isListening ? "Listening…" : "Ask the coach",
+                "Ask the coach",
                 text: $controller.draftText,
                 axis: .vertical
             )
@@ -320,7 +366,7 @@ struct ChatView: View {
                 .padding(.vertical, HelmSpacing.sm)
                 .helmPanelChrome(.elevated)
                 .focused($isInputFocused)
-                .disabled(isComposerDisabled || dictation.isListening)
+                .disabled(isComposerDisabled)
 
             Button {
                 HapticEngine.shared.play(.selection)
@@ -338,11 +384,6 @@ struct ChatView: View {
         }
         .padding(HelmSpacing.md)
         .helmPanelChrome(.surface)
-        .onChange(of: dictation.errorMessage) { _, message in
-            if let message {
-                controller.reportSurfaceError(message)
-            }
-        }
     }
 
     private var showsCoachProgress: Bool {
@@ -350,11 +391,6 @@ struct ChatView: View {
             || (controller.isStreaming
                 && !shouldShowStreamingBubble(controller.streamingText ?? ""))
             || (controller.chatProgressStep != nil && controller.isStreaming)
-    }
-
-    private var showsMicBusy: Bool {
-        controller.isPreparingFoodMealConfirm
-            || (controller.isStreaming && controller.chatProgressTitle != nil)
     }
 
     private var chatProgressCard: some View {
@@ -368,16 +404,6 @@ struct ChatView: View {
                 : nil,
             isImpactful: true
         )
-    }
-
-    private var micForegroundColor: Color {
-        if dictation.isListening {
-            return HelmColor.accent
-        }
-        if dictation.phase == .denied {
-            return HelmColor.depleted
-        }
-        return canUseMic ? HelmColor.fgSecondary : HelmColor.fgMuted
     }
 
     private var isComposerDisabled: Bool {
@@ -394,7 +420,6 @@ struct ChatView: View {
 
     private var canSend: Bool {
         canUseMic
-            && !dictation.isListening
             && !controller.draftText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 

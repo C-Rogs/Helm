@@ -335,6 +335,26 @@ struct SpotifyPlayerStateMappingTests {
         #expect(sample?.source == "spotify")
     }
 
+    @Test("retains App Remote Spotify track ID")
+    func retainsSpotifyTrackID() {
+        let sample = SpotifyPlayerStateMapping.workoutSample(
+            sessionID: "session-1",
+            title: "Casio",
+            artist: "Jungle",
+            album: "For Ever",
+            spotifyURI: "spotify:track:44ZKnfWEkp7wPs035j4Tua"
+        )
+
+        #expect(sample?.spotifyTrackID == "44ZKnfWEkp7wPs035j4Tua")
+    }
+
+    @Test("rejects non-track and malformed Spotify URIs")
+    func rejectsInvalidSpotifyURIs() {
+        #expect(SpotifyTrackIdentifier.fromURI("spotify:episode:44ZKnfWEkp7wPs035j4Tua") == nil)
+        #expect(SpotifyTrackIdentifier.fromURI("spotify:track:not-a-track") == nil)
+        #expect(SpotifyTrackIdentifier.fromURI(nil) == nil)
+    }
+
     @Test("drops empty track metadata")
     func dropsEmptyMetadata() {
         #expect(SpotifyPlayerStateMapping.workoutSample(sessionID: "s", title: nil, artist: nil, album: nil) == nil)

@@ -6,7 +6,13 @@ import HealthKit
 protocol WatchWorkoutSessionManaging: AnyObject {
     var delegate: (any WatchWorkoutSessionManagerDelegate)? { get set }
     var isMirroringToCompanion: Bool { get }
+    var hasActiveSession: Bool { get }
     func requestAuthorization() async throws -> Bool
+    /// Full session setup synchronously: session + builder + data source + delegates +
+    /// startActivity + beginCollection. Called from `handle(_:)` before it returns.
+    /// watchOS suspends cold-waked apps that don't reach a complete HKWorkoutSession
+    /// before handle returns.
+    func emergencyFullStart(configuration: HKWorkoutConfiguration, sessionID: String)
     func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws
     func start(
         configuration: HKWorkoutConfiguration,
@@ -53,6 +59,7 @@ enum WatchWorkoutSessionError: LocalizedError {
 final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
     weak var delegate: (any WatchWorkoutSessionManagerDelegate)?
     private(set) var isMirroringToCompanion = false
+    var hasActiveSession: Bool { session != nil }
 
     private let healthStore: HKHealthStore
     private var session: HKWorkoutSession?
@@ -86,23 +93,18 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         return true
     }
 
-    func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws {
-        let configuration = HKWorkoutConfiguration()
-        configuration.activityType = HKWorkoutActivityType(rawValue: activity.healthKitActivityTypeRawValue) ?? .other
-        configuration.locationType = activity.usesOutdoorLocation ? .outdoor : .indoor
-        try await start(configuration: configuration, sessionID: sessionID, activityStart: nil)
-    }
+    /// Called synchronously from `handle(_:)` before it returns.
+    /// Full session setup: creates session, builder, data source, delegates,
+    /// starts activity, and begins collection. This is the complete HKWorkoutSession
+    /// contract that watchOS requires to keep the app alive and sampling HR.
+    /// `beginCollection` completion fires asynchronously -- the delegate handles it.
+    func emergencyFullStart(configuration: HKWorkoutConfiguration, sessionID: String) {
+        guard session == nil else { return }
+        guard let workoutSession = try? HKWorkoutSession(
+            healthStore: healthStore,
+            configuration: configuration
+        ) else { return }
 
-    /// Phone `startWatchApp` / late-adoption path.
-    /// `activityStart` may be in the past when Watch joins a phone session already underway.
-    func start(
-        configuration: HKWorkoutConfiguration,
-        sessionID: String,
-        activityStart: Date?
-    ) async throws {
-        guard session == nil else { throw WatchWorkoutSessionError.sessionAlreadyActive }
-
-        let workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
         let workoutBuilder = workoutSession.associatedWorkoutBuilder()
         workoutBuilder.dataSource = HKLiveWorkoutDataSource(
             healthStore: healthStore,
@@ -117,23 +119,11 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         self.sessionID = sessionID
         self.isMirroringToCompanion = false
 
-        let startDate = activityStart ?? Date()
-        // startActivity is what keeps watchOS from suspending the app after cold wake.
+        let startDate = Date()
         workoutSession.startActivity(with: startDate)
+        workoutBuilder.beginCollection(withStart: startDate) { _, _ in }
 
-        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-            workoutBuilder.beginCollection(withStart: startDate) { success, error in
-                if let error {
-                    continuation.resume(throwing: error)
-                } else if success {
-                    continuation.resume()
-                } else {
-                    continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
-                }
-            }
-        }
-
-        // Mirror off the critical path so cold-wake budget is not spent on it.
+        // Mirror off the critical path.
         Task { @MainActor in
             do {
                 try await workoutSession.startMirroringToCompanionDevice()
@@ -143,6 +133,97 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             } catch {
                 if self.session === workoutSession {
                     self.isMirroringToCompanion = false
+                }
+            }
+        }
+    }
+
+    func start(activity: WatchWorkoutActivityKind, sessionID: String) async throws {
+        let configuration = HKWorkoutConfiguration()
+        configuration.activityType = HKWorkoutActivityType(rawValue: activity.healthKitActivityTypeRawValue) ?? .other
+        configuration.locationType = activity.usesOutdoorLocation ? .outdoor : .indoor
+        try await start(configuration: configuration, sessionID: sessionID, activityStart: nil)
+    }
+
+    /// Phone `startWatchApp` / late-adoption path.
+    /// `activityStart` may be in the past when Watch joins a phone session already underway.
+    /// If `emergencyFullStart` already created a complete session, just sets delegates
+    /// and starts mirroring (if not already started).
+    func start(
+        configuration: HKWorkoutConfiguration,
+        sessionID: String,
+        activityStart: Date?
+    ) async throws {
+        let workoutSession: HKWorkoutSession
+        let startDate = activityStart ?? Date()
+
+        if let existing = self.session {
+            workoutSession = existing
+            // Emergency session already has startActivity + beginCollection.
+            // Ensure delegates are set in case emergencyFullStart was called
+            // before the delegate was wired.
+            if workoutSession.delegate == nil {
+                workoutSession.delegate = self
+            }
+            if self.builder == nil {
+                let workoutBuilder = workoutSession.associatedWorkoutBuilder()
+                workoutBuilder.dataSource = HKLiveWorkoutDataSource(
+                    healthStore: healthStore,
+                    workoutConfiguration: configuration
+                )
+                workoutBuilder.delegate = self
+                self.builder = workoutBuilder
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    workoutBuilder.beginCollection(withStart: startDate) { success, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else if success {
+                            continuation.resume()
+                        } else {
+                            continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
+                        }
+                    }
+                }
+            }
+        } else {
+            workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
+            workoutSession.startActivity(with: startDate)
+            let workoutBuilder = workoutSession.associatedWorkoutBuilder()
+            workoutBuilder.dataSource = HKLiveWorkoutDataSource(
+                healthStore: healthStore,
+                workoutConfiguration: configuration
+            )
+            workoutSession.delegate = self
+            workoutBuilder.delegate = self
+            self.builder = workoutBuilder
+            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                workoutBuilder.beginCollection(withStart: startDate) { success, error in
+                    if let error {
+                        continuation.resume(throwing: error)
+                    } else if success {
+                        continuation.resume()
+                    } else {
+                        continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
+                    }
+                }
+            }
+        }
+
+        self.session = workoutSession
+        self.sessionID = sessionID
+
+        // Mirror if not already started.
+        if !isMirroringToCompanion {
+            Task { @MainActor in
+                do {
+                    try await workoutSession.startMirroringToCompanionDevice()
+                    if self.session === workoutSession {
+                        self.isMirroringToCompanion = true
+                    }
+                } catch {
+                    if self.session === workoutSession {
+                        self.isMirroringToCompanion = false
+                    }
                 }
             }
         }

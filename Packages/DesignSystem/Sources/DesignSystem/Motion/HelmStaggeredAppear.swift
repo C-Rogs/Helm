@@ -5,6 +5,7 @@ public struct HelmStaggeredAppearModifier: ViewModifier {
     public let staggerStep: TimeInterval
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @Environment(\.helmStaggerBaseDelay) private var baseDelay
     @State private var appeared = false
 
     public init(index: Int, staggerStep: TimeInterval = 0.04) {
@@ -20,6 +21,7 @@ public struct HelmStaggeredAppearModifier: ViewModifier {
                 let delay = HelmMotion.staggerDelay(
                     index: index,
                     step: staggerStep,
+                    baseDelay: baseDelay,
                     reduceMotion: reduceMotion
                 )
                 if delay == 0 {

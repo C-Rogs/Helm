@@ -101,9 +101,9 @@ final class WorkoutMusicCaptureService {
                 guard let self, self.activeSessionID == sessionID else { return }
                 self.insertSample(sessionID: sessionID, snapshot: snapshot, source: "spotify")
             }
-            return
         }
 
+        // Always poll system Now Playing. App Remote wins while connected (`sampleIfChanged` skips).
         MPMusicPlayerController.systemMusicPlayer.beginGeneratingPlaybackNotifications()
         nowPlayingObserver = NotificationCenter.default.addObserver(
             forName: .MPMusicPlayerControllerNowPlayingItemDidChange,
@@ -160,6 +160,7 @@ final class WorkoutMusicCaptureService {
             artist: snapshot.artist,
             album: snapshot.album,
             genre: snapshot.genre,
+            spotifyTrackID: snapshot.spotifyTrackID,
             bpm: snapshot.bpm,
             playbackRate: snapshot.playbackRate,
             source: source

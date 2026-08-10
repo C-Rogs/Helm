@@ -1,7 +1,6 @@
 import Core
 import DesignSystem
 import Foundation
-import HealthKitIngest
 import Observation
 import Persistence
 
@@ -15,20 +14,17 @@ final class WeekAheadScheduleStore {
 
     private let store: PersistenceStore
     private let calendarHintService: CalendarHintService
-    private let prescriptionService: PrescriptionService
     private let calendar: Calendar
     private let cutoff: DayCutoff
 
     init(
         store: PersistenceStore,
         calendarHintService: CalendarHintService = CalendarHintBootstrap.service,
-        prescriptionService: PrescriptionService = PlanBootstrap.prescriptionService,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) {
         self.store = store
         self.calendarHintService = calendarHintService
-        self.prescriptionService = prescriptionService
         self.calendar = calendar
         self.cutoff = cutoff
     }
@@ -41,22 +37,38 @@ final class WeekAheadScheduleStore {
         do {
             let today = HelmDay.day(for: .now, cutoff: cutoff, calendar: calendar)
             let endDay = today.adding(days: WeekAheadScheduleBuilder.horizonDays - 1, calendar: calendar)
-            let busyDayHints = await calendarHintService.busyDayHints(
+
+            let loads = await calendarHintService.dayLoads(
                 from: today,
                 through: endDay,
                 calendar: calendar,
                 cutoff: cutoff
             )
-            let busyDays = Set(busyDayHints.keys)
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            await prescriptionService.refresh(readiness: readiness, busyDays: busyDays)
+            let classifications = await CalendarHintBootstrap.eventClassifier.classify(
+                loads: loads
+            )
+            let fullyBlocked = CalendarEventClassifier.fullyBlockedDays(
+                from: [:],
+                classifications: classifications
+            )
+            let partiallyBlocked = CalendarEventClassifier.partiallyBlockedDays(
+                from: classifications
+            )
+
+            let busyDayHints = buildBusyDayHints(
+                loads: loads,
+                classifications: classifications,
+                fullyBlocked: fullyBlocked,
+                partiallyBlocked: partiallyBlocked
+            )
 
             model = try WeekAheadScheduleBuilder.build(
                 store: store,
                 today: today,
                 calendar: calendar,
                 cutoff: cutoff,
-                busyDayHints: busyDayHints
+                busyDayHints: busyDayHints,
+                partiallyBlockedDays: partiallyBlocked
             )
         } catch {
             model = WeekAheadScheduleModel(rows: [])
@@ -66,8 +78,34 @@ final class WeekAheadScheduleStore {
         isLoading = false
     }
 
+    private func buildBusyDayHints(
+        loads: [HelmDay: CalendarDayLoad],
+        classifications: [HelmDay: EventBlockingClassification],
+        fullyBlocked: Set<HelmDay>,
+        partiallyBlocked: Set<HelmDay>
+    ) -> [HelmDay: String] {
+        var hints: [HelmDay: String] = [:]
+
+        for (helmDay, load) in loads {
+            if fullyBlocked.contains(helmDay) {
+                hints[helmDay] = "Busy day"
+            } else if partiallyBlocked.contains(helmDay) {
+                let titles = load.allDayEventTitles.map { "\"\($0)\"" }.joined(separator: ", ")
+                hints[helmDay] = "Busy (PM) - \(titles)"
+            } else if let hint = BusyDayHintPolicy.hint(for: load) {
+                hints[helmDay] = hint
+            }
+        }
+
+        return hints
+    }
+
     func requestCalendarAccess() async {
+        let prior = calendarAuthorizationStatus
         calendarAuthorizationStatus = await calendarHintService.requestAccess()
+        if prior != .authorized, calendarAuthorizationStatus == .authorized {
+            await PlanBootstrap.refreshPrescriptionWithCalendar()
+        }
         await refresh()
     }
 }

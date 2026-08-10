@@ -24,6 +24,22 @@ public enum CoachNutritionContextBuilder {
             "logging_complete=\(snapshot.loggingComplete)"
         ]
 
+        if let tdee = snapshot.trend.estimatedTDEEKcal {
+            lines.append("estimated_tdee=\(format(tdee))kcal")
+        }
+        if let trendWeight = snapshot.trend.smoothedTrendWeightKg {
+            lines.append("trend_weight=\(format(trendWeight))kg")
+        }
+        if let priorWeight = snapshot.trend.priorWeekTrendWeightKg {
+            lines.append("prior_week_trend_weight=\(format(priorWeight))kg")
+        }
+        if let intakeAvg = snapshot.trend.weeklyIntakeAverageKcal {
+            lines.append("weekly_intake_avg=\(format(intakeAvg))kcal")
+        }
+        if let lastUpdate = snapshot.trend.lastWeeklyUpdate {
+            lines.append("last_weekly_update=\(lastUpdate.formatted)")
+        }
+
         if let intake = snapshot.actual?.totalEnergy?.kilocalories {
             lines.append("logged_kcal=\(format(intake))")
         }
@@ -35,6 +51,19 @@ public enum CoachNutritionContextBuilder {
         }
         if let fat = snapshot.actual?.totalFatGrams {
             lines.append("logged_fat_g=\(format(fat))")
+        }
+
+        if let burnKcal = snapshot.activeEnergyFreshness.displayKilocalories {
+            lines.append("active_energy_kcal=\(burnKcal)")
+            lines.append("active_energy_freshness=\(snapshot.activeEnergyFreshness.freshnessLabel)")
+        } else {
+            lines.append("active_energy_freshness=\(snapshot.activeEnergyFreshness.freshnessLabel)")
+        }
+        if let note = snapshot.activeEnergyFreshness.note {
+            lines.append("active_energy_note=\(note)")
+        }
+        if case let .fresh(burned) = snapshot.activeEnergyFreshness, burned > 0 {
+            lines.append("adjusted_target_kcal=\(snapshot.energyBalance.adjustedTargetKcal.map { String($0) } ?? "?")")
         }
 
         let buckets = Dictionary(grouping: meals, by: \.bucket)

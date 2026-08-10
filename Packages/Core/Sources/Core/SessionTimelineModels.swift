@@ -9,6 +9,8 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
     public let artist: String?
     public let album: String?
     public let genre: String?
+    /// Spotify track ID, when capture came from Spotify App Remote.
+    public let spotifyTrackID: String?
     /// Track tempo when captured; nil when source omitted BPM or value was non-positive.
     public let bpm: Double?
 
@@ -19,6 +21,7 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
         artist: String? = nil,
         album: String? = nil,
         genre: String? = nil,
+        spotifyTrackID: String? = nil,
         bpm: Double? = nil
     ) {
         self.startOffsetSeconds = max(0, startOffsetSeconds)
@@ -27,6 +30,7 @@ public struct SessionMusicSegment: Sendable, Hashable, Codable, Equatable, Ident
         self.artist = artist
         self.album = album
         self.genre = genre
+        self.spotifyTrackID = spotifyTrackID
         self.bpm = Self.validatedBPM(bpm)
     }
 
@@ -103,6 +107,7 @@ public enum SessionMusicSegmentBuilder {
                 artist: sample.artist,
                 album: sample.album,
                 genre: sample.genre,
+                spotifyTrackID: sample.spotifyTrackID,
                 bpm: sample.bpm
             )
 
@@ -117,6 +122,7 @@ public enum SessionMusicSegmentBuilder {
                     artist: last.artist,
                     album: last.album,
                     genre: last.genre ?? segment.genre,
+                    spotifyTrackID: last.spotifyTrackID ?? segment.spotifyTrackID,
                     bpm: last.bpm ?? segment.bpm
                 )
             } else {

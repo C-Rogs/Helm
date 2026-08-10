@@ -50,7 +50,7 @@ public struct WeekAheadScheduleView: View {
                 }
                 if let busyDayHint = row.busyDayHint {
                     Text(busyDayHint)
-                        .helmType(.monoTag, color: HelmColor.compromised)
+                        .helmType(.monoTag, color: row.isPartiallyBlocked ? HelmColor.compromised : HelmColor.depleted)
                 }
             }
 

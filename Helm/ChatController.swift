@@ -309,6 +309,32 @@ final class ChatController {
                 let today = HelmDay.day(for: .now, calendar: .current)
                 try await applyWorkoutStart(payload, helmDay: today)
                 CoachApplyMomentStore.shared.play()
+            case let .settingsAdjustment(payload):
+                applyProgressStep = "Updating plan…"
+                try CoachPlanSettingsAdjuster.apply(payload, persistence: persistence)
+                await PlanBootstrap.prescriptionService.refresh(
+                    readiness: ReadinessBootstrap.readinessService.state.score
+                )
+                CoachApplyMomentStore.shared.play()
+            case let .reactiveDeload(payload):
+                applyProgressStep = "Updating plan…"
+                if payload.action == .confirm {
+                    try await PlanBootstrap.prescriptionService.confirmReactiveDeload()
+                } else {
+                    try await PlanBootstrap.prescriptionService.dismissReactiveDeload()
+                }
+                await PlanBootstrap.prescriptionService.refresh(
+                    readiness: ReadinessBootstrap.readinessService.state.score
+                )
+                CoachApplyMomentStore.shared.play()
+            case let .planRegenerate:
+                applyProgressStep = "Regenerating…"
+                let today = HelmDay.day(for: .now, calendar: .current)
+                PrescriptionDayStore.clear(for: today)
+                await PlanBootstrap.prescriptionService.refresh(
+                    readiness: ReadinessBootstrap.readinessService.state.score
+                )
+                CoachApplyMomentStore.shared.play()
             }
             pendingChatAction = nil
             lastTurnError = nil
@@ -459,6 +485,42 @@ final class ChatController {
                 )
             }
 
+            if let calendarQuery = CalendarQueryPayloadParser.parse(from: assembled) {
+                assembled = try await runCalendarQueryFollowUp(
+                    query: calendarQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            } else if let inferred = CoachChatIntent.inferredCalendarQuery(from: text) {
+                assembled = try await runCalendarQueryFollowUp(
+                    query: inferred,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            }
+
+            if let trendsQuery = TrendsQueryPayloadParser.parse(from: assembled) {
+                assembled = try await runTrendsQueryFollowUp(
+                    query: trendsQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            } else if let inferred = CoachChatIntent.inferredTrendsQuery(from: text) {
+                assembled = try await runTrendsQueryFollowUp(
+                    query: inferred,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            }
+
             if let workoutQuery = WorkoutQueryPayloadParser.parse(from: assembled) {
                 assembled = try await runWorkoutQueryFollowUp(
                     query: workoutQuery,
@@ -550,12 +612,6 @@ final class ChatController {
             }
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clear()
-
-            if (try? CoachPlanSettingsAdjuster.tryApplyEmbeddedJSON(in: assembled, persistence: persistence)) == true {
-                await PlanBootstrap.prescriptionService.refresh(
-                    readiness: ReadinessBootstrap.readinessService.state.score
-                )
-            }
 
             if pendingAction == nil, FoodLogPayloadParser.hasMalformedBlock(in: assembled) {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
@@ -757,6 +813,90 @@ final class ChatController {
 
         isStreaming = true
         streamingText = "Looking up recovery…"
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantText(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true
+        )
+    }
+
+    private func runCalendarQueryFollowUp(
+        query: CalendarQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> String {
+        let service = CalendarHistoryQueryService()
+        let results = await service.run(query)
+        let toolMessage = """
+        # Calendar query results
+        \(results)
+
+        Answer from these EventKit results. List real event titles and times. If engine_busy=true, explain the reason line (all-day, scheduled-hours threshold, or event-count threshold). If engine_busy=false, say the day is below the busy thresholds even if some events exist. Never invent events. If calendar_status is not authorized, tell the athlete to enable calendar access in Settings.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up calendar…"
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantText(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true
+        )
+    }
+
+    private func runTrendsQueryFollowUp(
+        query: TrendsQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> String {
+        let service = TrendsHistoryQueryService(store: persistence)
+        let results = try service.run(query)
+        let toolMessage = """
+        # Trends query results
+        \(results)
+
+        Answer in chat-length style grounded in the numbers. Explain what the trend shows (up, down, stable) and what might be driving it. Not a raw metric dump.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up trends…"
 
         let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(

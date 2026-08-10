@@ -8,6 +8,8 @@ public struct WorkoutMusicSample: Sendable, Hashable, Codable, Equatable {
     public let artist: String?
     public let album: String?
     public let genre: String?
+    /// Spotify track ID when App Remote supplied one. Enables exact tempo lookup.
+    public let spotifyTrackID: String?
     public let bpm: Double?
     public let playbackRate: Double?
     public let source: String
@@ -20,6 +22,7 @@ public struct WorkoutMusicSample: Sendable, Hashable, Codable, Equatable {
         artist: String? = nil,
         album: String? = nil,
         genre: String? = nil,
+        spotifyTrackID: String? = nil,
         bpm: Double? = nil,
         playbackRate: Double? = nil,
         source: String = "nowPlaying"
@@ -31,6 +34,7 @@ public struct WorkoutMusicSample: Sendable, Hashable, Codable, Equatable {
         self.artist = artist
         self.album = album
         self.genre = genre
+        self.spotifyTrackID = spotifyTrackID
         self.bpm = bpm
         self.playbackRate = playbackRate
         self.source = source
@@ -43,6 +47,8 @@ public struct NowPlayingSnapshot: Sendable, Hashable, Equatable {
     public let artist: String?
     public let album: String?
     public let genre: String?
+    /// Spotify track ID when now-playing came from Spotify App Remote.
+    public let spotifyTrackID: String?
     public let bpm: Double?
     public let playbackRate: Double?
 
@@ -51,6 +57,7 @@ public struct NowPlayingSnapshot: Sendable, Hashable, Equatable {
         artist: String? = nil,
         album: String? = nil,
         genre: String? = nil,
+        spotifyTrackID: String? = nil,
         bpm: Double? = nil,
         playbackRate: Double? = nil
     ) {
@@ -58,6 +65,7 @@ public struct NowPlayingSnapshot: Sendable, Hashable, Equatable {
         self.artist = artist
         self.album = album
         self.genre = genre
+        self.spotifyTrackID = spotifyTrackID
         self.bpm = bpm
         self.playbackRate = playbackRate
     }

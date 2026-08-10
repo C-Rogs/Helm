@@ -26,22 +26,50 @@ public final class ReadinessService {
     public private(set) var state: ReadinessDashboardState = .loading
 
     private let engine: ReadinessEngine
+    private var refreshTask: Task<Void, Never>?
 
     public init(engine: ReadinessEngine) {
         self.engine = engine
     }
 
-    public func refresh() async {
+    /// Paint last persisted score immediately (no 180-day history rebuild).
+    /// Call before `refresh()` so ARC is not stuck on `.loading`.
+    public func hydrateFromCache() async {
+        guard case .loading = state else { return }
         do {
-            let next = try await engine.dashboardState(for: today())
-            // Actor hop from ReadinessEngine can resume off the real main thread;
-            // assign Observable state only after a real main-queue hop.
+            guard let cached = try await engine.cachedDashboardState(for: today()) else { return }
             await reclaimMainThread()
-            state = next
+            guard case .loading = state else { return }
+            state = cached
         } catch {
-            await reclaimMainThread()
-            state = .awaitingData
+            // Cache miss / decode failure: stay loading until refresh.
         }
+    }
+
+    public func refresh() async {
+        if let refreshTask {
+            await refreshTask.value
+            return
+        }
+
+        let task = Task { @MainActor in
+            await self.hydrateFromCache()
+            do {
+                let next = try await self.engine.dashboardState(for: self.today())
+                // Actor hop from ReadinessEngine can resume off the real main thread;
+                // assign Observable state only after a real main-queue hop.
+                await self.reclaimMainThread()
+                self.state = next
+            } catch {
+                await self.reclaimMainThread()
+                if case .loading = self.state {
+                    self.state = .awaitingData
+                }
+            }
+        }
+        refreshTask = task
+        await task.value
+        refreshTask = nil
     }
 
     public func recomputeAfterIngest(affectedFamilies: Set<HealthKitMetricFamily>) async {
@@ -96,6 +124,18 @@ public actor ReadinessEngine {
         self.cutoff = cutoff
         signpost = HelmSignpost(name: .readinessCompute, category: .readinessKit)
         log = helmLogger(category: .readinessKit)
+    }
+
+    /// Last persisted score for `day`, or most recent prior day (stale paint only).
+    /// Does not rebuild history or recompute.
+    public func cachedDashboardState(for day: HelmDay) throws -> ReadinessDashboardState? {
+        if let json = try persistence.readiness.fetchScoreJSON(helmDay: day) {
+            return .scored(try decode(ReadinessScore.self, from: json))
+        }
+        // Morning launch often has yesterday scored and today not yet - show that until recompute.
+        let recent = try persistence.readiness.fetchScores(endingAt: day, limit: 1)
+        guard let (_, json) = recent.first else { return nil }
+        return .scored(try decode(ReadinessScore.self, from: json))
     }
 
     public func dashboardState(for day: HelmDay) throws -> ReadinessDashboardState {
@@ -159,6 +199,14 @@ public actor ReadinessEngine {
 
         let payload = try encode(score)
         try persistence.readiness.upsertScore(helmDay: day, scoreJSON: payload)
+
+        // Incrementally update baseline from today's data and persist.
+        if let todayInput = history.first(where: { $0.helmDay == day }) {
+            let updated = (baseline ?? ReadinessBaselineState()).updating(today: todayInput, history: history)
+            let baselinePayload = try encode(updated)
+            try persistence.readiness.upsertBaseline(stateJSON: baselinePayload)
+        }
+
         return score
     }
 

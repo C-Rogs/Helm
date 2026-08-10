@@ -44,6 +44,15 @@ struct SongTempoMatchingTests {
         #expect(SongTempoMatching.validated(.infinity) == nil)
     }
 
+    @Test("doubles half-time DnB but preserves other low tempos")
+    func normalisesDrumAndBassTempo() {
+        #expect(SongTempoMatching.workoutTempo(87, genre: "Drum & Bass") == 174)
+        #expect(SongTempoMatching.workoutTempo(87, genre: "Drum and Bass") == 174)
+        #expect(SongTempoMatching.workoutTempo(87, genre: "Hip-Hop") == 87)
+        #expect(SongTempoMatching.workoutTempo(120, genre: "Drum & Bass") == 120)
+        #expect(SongTempoMatching.workoutTempo(87, genre: nil) == 87)
+    }
+
     @Test("normalisation strips diacritics, brackets, and version suffixes")
     func normalises() {
         #expect(SongTempoMatching.normalized("Björk") == "bjork")

@@ -31,11 +31,19 @@ struct RootTabView: View {
                 SettingsView()
             }
         }
-        .toolbarBackground(HelmColor.surface, for: .tabBar)
-        .toolbarBackground(.visible, for: .tabBar)
+        // Let system liquid glass own the tab bar. Opaque surface fill fights
+        // the morph and makes chrome lag behind tab content work.
         .onChange(of: tabRouter.selectedTab) { oldValue, newValue in
             guard oldValue != newValue else { return }
+            tabRouter.noteSelectionChanged()
             HapticEngine.shared.play(.selection)
+            if newValue == .train {
+                Task {
+                    await tabRouter.preferChromeOverContentLoad()
+                    guard !Task.isCancelled else { return }
+                    await WeekAheadScheduleBootstrap.store.refresh()
+                }
+            }
         }
         .onChange(of: chatController.handoffGeneration) { _, _ in
             guard chatController.pendingHandoffPrompt != nil else { return }

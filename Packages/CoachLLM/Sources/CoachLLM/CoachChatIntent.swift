@@ -201,4 +201,98 @@ public enum CoachChatIntent: Sendable {
         }
         return RecoveryQueryPayload(queryType: .range, lookbackDays: 14)
     }
+
+    public static func looksLikeCalendarLookup(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "what's on my calendar",
+            "whats on my calendar",
+            "what is on my calendar",
+            "what events",
+            "what do i have on",
+            "what do i have today",
+            "what's on today",
+            "whats on today",
+            "why am i busy",
+            "why am i marked busy",
+            "why does it think i'm busy",
+            "why does it think im busy",
+            "calendar today",
+            "calendar tomorrow",
+            "my calendar",
+            "meetings today",
+            "meetings tomorrow"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    public static func inferredCalendarQuery(
+        from text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> CalendarQueryPayload? {
+        guard looksLikeCalendarLookup(text) else { return nil }
+        let lower = text.lowercased()
+        if lower.contains("tomorrow") {
+            guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) else {
+                return CalendarQueryPayload(queryType: .today)
+            }
+            let formatter = DateFormatter()
+            formatter.calendar = calendar
+            formatter.locale = Locale(identifier: "en_US_POSIX")
+            formatter.timeZone = calendar.timeZone
+            formatter.dateFormat = "yyyy-MM-dd"
+            return CalendarQueryPayload(
+                queryType: .day,
+                helmDay: formatter.string(from: tomorrow)
+            )
+        }
+        if lower.contains("week") || lower.contains("ahead") {
+            return CalendarQueryPayload(queryType: .weekAhead)
+        }
+        return CalendarQueryPayload(queryType: .today)
+    }
+
+    public static func looksLikeTrendsLookup(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "trimp history",
+            "trimp over time",
+            "training load history",
+            "how has my weight trended",
+            "weight trend",
+            "my e1rm",
+            "e1rm progression",
+            "strength progression",
+            "energy balance history",
+            "calorie balance history",
+            "readiness history",
+            "readiness over time",
+            "how has readiness trended",
+            "trend data",
+            "my trends"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    public static func inferredTrendsQuery(from text: String) -> TrendsQueryPayload? {
+        guard looksLikeTrendsLookup(text) else { return nil }
+        let lower = text.lowercased()
+        if lower.contains("trimp") || lower.contains("training load") || lower.contains("strain") {
+            return TrendsQueryPayload(queryType: .trimp)
+        }
+        if lower.contains("weight") || lower.contains("trend") && lower.contains("weight") {
+            return TrendsQueryPayload(queryType: .weight)
+        }
+        if lower.contains("e1rm") || lower.contains("strength") || lower.contains("progression") {
+            return TrendsQueryPayload(queryType: .e1rm)
+        }
+        if lower.contains("energy") && lower.contains("balance") || lower.contains("calorie") {
+            return TrendsQueryPayload(queryType: .energyBalance)
+        }
+        if lower.contains("readiness") {
+            return TrendsQueryPayload(queryType: .readiness)
+        }
+        return TrendsQueryPayload(queryType: .all)
+    }
 }

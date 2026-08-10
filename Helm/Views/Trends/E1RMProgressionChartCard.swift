@@ -21,6 +21,15 @@ struct E1RMProgressionChartCard: View {
         return String(format: "%.0f kg", point.e1RMKilograms)
     }
 
+    private var focusedYDomain: ClosedRange<Double>? {
+        TrendsChartSupport.autoZoomYDomain(
+            values: points.map(\.e1RMKilograms),
+            minimumSpan: 2.5,
+            minimumPadding: 1.0,
+            nearbySlack: 5.0
+        )
+    }
+
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -51,7 +60,7 @@ struct E1RMProgressionChartCard: View {
                 x: .value("Session", point.achievedAt),
                 y: .value("e1RM", point.e1RMKilograms)
             )
-            .interpolationMethod(.catmullRom)
+            .interpolationMethod(.linear)
             .foregroundStyle(HelmColor.color(for: .primed))
             .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
 
@@ -69,6 +78,7 @@ struct E1RMProgressionChartCard: View {
             }
         }
         .helmChartStyle()
+        .modifier(E1RMYScaleModifier(domain: focusedYDomain))
         .helmChartScrub(selection: $selectedSession)
         .chartOverlay { proxy in
             TrendsChartSupport.scrubCalloutOverlay(
@@ -78,6 +88,18 @@ struct E1RMProgressionChartCard: View {
             )
         }
         .frame(height: HelmChartStyle.standardHeight)
+    }
+}
+
+private struct E1RMYScaleModifier: ViewModifier {
+    let domain: ClosedRange<Double>?
+
+    func body(content: Content) -> some View {
+        if let domain {
+            content.chartYScale(domain: domain)
+        } else {
+            content
+        }
     }
 }
 

@@ -10,6 +10,8 @@ final class TrendsController {
     private let calendar: Calendar
 
     private(set) var snapshot = TrendsSnapshot.empty
+    /// Dashboard default: recent window, not full lifetime history.
+    var historyWindow: TrendsHistoryWindow = .days90
     var errorMessage: String?
 
     private var historyOffset = 0
@@ -25,6 +27,16 @@ final class TrendsController {
         historyOffset = 0
         canLoadMore = true
         reload()
+        coverSelectedWindowIfNeeded()
+    }
+
+    func setHistoryWindow(_ window: TrendsHistoryWindow) {
+        guard historyWindow != window else { return }
+        historyWindow = window
+        if window == .all {
+            return
+        }
+        coverSelectedWindowIfNeeded()
     }
 
     func loadMoreHistoryIfNeeded() {
@@ -36,6 +48,66 @@ final class TrendsController {
     func selectExercise(id: String) {
         selectedExerciseID = id
         reload()
+        coverSelectedWindowIfNeeded()
+    }
+
+    var displayedBodyWeight: [TrendWeightPoint] {
+        windowedWeight(snapshot.bodyWeight)
+    }
+
+    var displayedTrendWeight: [TrendWeightPoint] {
+        windowedWeight(snapshot.trendWeight)
+    }
+
+    var displayedE1RMHistory: [E1RMProgressionPoint] {
+        let today = HelmDay.day(for: .now, calendar: calendar)
+        return TrendsChartSupport.windowed(
+            snapshot.e1RMHistory,
+            window: historyWindow,
+            today: today,
+            calendar: calendar,
+            day: \.helmDay
+        )
+    }
+
+    private func windowedWeight(_ points: [TrendWeightPoint]) -> [TrendWeightPoint] {
+        let today = HelmDay.day(for: .now, calendar: calendar)
+        return TrendsChartSupport.windowed(
+            points,
+            window: historyWindow,
+            today: today,
+            calendar: calendar,
+            day: \.helmDay
+        )
+    }
+
+    /// Page in older samples until the selected window is covered (or history ends).
+    private func coverSelectedWindowIfNeeded() {
+        guard let start = TrendsChartSupport.windowStart(
+            for: historyWindow,
+            today: HelmDay.day(for: .now, calendar: calendar),
+            calendar: calendar
+        ) else {
+            return
+        }
+
+        var guardRails = 0
+        while canLoadMore, guardRails < 20 {
+            guardRails += 1
+            let oldestWeight = snapshot.trendWeight.first?.helmDay
+            let oldestE1RM = snapshot.e1RMHistory.first?.helmDay
+            let oldest = [oldestWeight, oldestE1RM].compactMap { $0 }.min()
+
+            if let oldest, oldest <= start {
+                break
+            }
+            if oldest == nil, !canLoadMore {
+                break
+            }
+
+            historyOffset += TrendsDataBuilder.pageSize
+            reload(appendHistory: true)
+        }
     }
 
     private func reload(appendHistory: Bool = false) {

@@ -26,6 +26,31 @@ final class WatchWorkoutSessionStore {
     /// Skipped by callers when `isMirroringToCompanion` so phone uses HealthKit mirror path.
     var onLiveHeartRateBPM: ((Double) -> Void)?
 
+    /// Full session setup synchronously: session + builder + data source + delegates +
+    /// startActivity + beginCollection + mirroring. Called from `handle(_:)` before it returns.
+    /// watchOS suspends cold-waked apps that don't reach a complete HKWorkoutSession
+    /// before handle returns.
+    func emergencyFullStart(configuration: HKWorkoutConfiguration, emergencySessionID: String) {
+        guard phase == .idle || phase == .ended else { return }
+        lastError = nil
+        isMirroringToCompanion = false
+        apply(.startRequested)
+        sessionID = emergencySessionID
+        lifecycle.begin(sessionID: emergencySessionID)
+        manager.emergencyFullStart(configuration: configuration, sessionID: emergencySessionID)
+        guard manager.hasActiveSession else {
+            lastError = "Emergency session creation failed"
+            lifecycle.end()
+            sessionID = nil
+            apply(.teardownFailed)
+            return
+        }
+        isMirroringToCompanion = manager.isMirroringToCompanion
+        startedAt = Date()
+        apply(.sessionReady)
+        startElapsedTimer()
+    }
+
     init(manager: WatchWorkoutSessionManaging = WatchWorkoutSessionManager()) {
         self.manager = manager
         self.manager.delegate = self
@@ -71,10 +96,25 @@ final class WatchWorkoutSessionStore {
     }
 
     /// Cold-wake / late adoption from phone: skip auth; align start with phone session when known.
+    /// If emergencyFullStart already set up the session, just sync state without duplicating work.
     func startWorkout(fromPhoneConfiguration configuration: HKWorkoutConfiguration) async {
-        guard phase == .idle || phase == .ended else { return }
+        guard phase == .idle || phase == .ended || phase == .active || phase == .paused else { return }
         lastError = nil
         isMirroringToCompanion = false
+
+        // Emergency session already active -- just sync state and mirroring.
+        if phase == .active || phase == .paused {
+            let phoneStart = WatchCompanionBootstrap.coordinator.companionSessionStartedAt
+            if let phoneStart {
+                startedAt = phoneStart
+            }
+            isMirroringToCompanion = manager.isMirroringToCompanion
+            startElapsedTimer()
+            Task { await prepareHealthKit() }
+            return
+        }
+
+        // Normal path: no emergency session, create from scratch.
         apply(.startRequested)
 
         let id = UUID().uuidString

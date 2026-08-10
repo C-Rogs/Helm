@@ -23,7 +23,7 @@ final class SongTempoLookupService {
     private let logger = helmLogger(category: .ui)
 
     init(
-        provider: any SongTempoProviding = DeezerSongTempoProvider(),
+        provider: any SongTempoProviding = CompositeSongTempoProvider(),
         cache: SongTempoCache = .shared,
         preferences: SongTempoPreferences = .shared
     ) {
@@ -42,7 +42,18 @@ final class SongTempoLookupService {
             let pending = queries.filter {
                 resolved[$0.cacheKey] == nil && cache.shouldQuery(key: $0.cacheKey)
             }
-            for outcome in await lookup(Array(pending.prefix(Self.maxLookupsPerRender))) {
+            var segmentsByKey: [String: SessionMusicSegment] = [:]
+            for segment in segments where segment.bpm == nil {
+                guard let query = SongTempoQuery(title: segment.title, artist: segment.artist) else { continue }
+                // Prefer a Spotify-identified occurrence; otherwise retain first occurrence.
+                if segmentsByKey[query.cacheKey]?.spotifyTrackID == nil || segment.spotifyTrackID != nil {
+                    segmentsByKey[query.cacheKey] = segment
+                }
+            }
+            for outcome in await lookup(
+                Array(pending.prefix(Self.maxLookupsPerRender)),
+                segmentsByKey: segmentsByKey
+            ) {
                 // A nil tempo is a real catalog answer, so it is cached as a miss.
                 // Failures never reach here, keeping transient errors retryable.
                 cache.store(key: outcome.key, tempo: outcome.tempo)
@@ -55,7 +66,10 @@ final class SongTempoLookupService {
         return SessionMusicSegmentTempoFiller.apply(tempos: resolved, to: segments)
     }
 
-    private func lookup(_ queries: [SongTempoQuery]) async -> [ResolvedTempo] {
+    private func lookup(
+        _ queries: [SongTempoQuery],
+        segmentsByKey: [String: SessionMusicSegment]
+    ) async -> [ResolvedTempo] {
         guard !queries.isEmpty else { return [] }
         let provider = self.provider
         let budget = Self.lookupBudgetSeconds
@@ -66,9 +80,13 @@ final class SongTempoLookupService {
                 return .budgetExpired
             }
             for query in queries {
+                let segment = segmentsByKey[query.cacheKey]
                 group.addTask {
                     do {
-                        let tempo = try await provider.tempo(for: query)
+                        guard let segment else {
+                            return .resolved(ResolvedTempo(key: query.cacheKey, tempo: nil))
+                        }
+                        let tempo = try await provider.tempo(for: segment)
                         return .resolved(ResolvedTempo(key: query.cacheKey, tempo: tempo))
                     } catch {
                         return .failed(error.localizedDescription)
@@ -98,6 +116,7 @@ final class SongTempoLookupService {
             return resolved
         }
     }
+
 }
 
 private struct ResolvedTempo: Sendable {

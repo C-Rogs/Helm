@@ -94,7 +94,11 @@ struct NutritionView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { nutritionToolbar }
         }
-        .task { await refreshTargets() }
+        .task {
+            await AppTabRouter.shared.preferChromeOverContentLoad()
+            guard !Task.isCancelled else { return }
+            await refreshTargets()
+        }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
             Task {

@@ -15,6 +15,8 @@ struct HelmApp: App {
         Task { @MainActor in
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
+            // Hydrate ARC before seed/iCloud so dashboard is not blocked on those.
+            ReadinessBootstrap.start()
             await PersistenceBootstrap.importExerciseSeed()
             if !ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
                 try? CoachMemoryAdjuster.seedShoulderNiggleIfNeeded(
@@ -22,7 +24,6 @@ struct HelmApp: App {
                 )
             }
             await CloudBackupCoordinator.shared.pullIfNeededOnLaunch()
-            ReadinessBootstrap.start()
             PlanBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()

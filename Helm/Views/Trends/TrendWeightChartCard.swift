@@ -4,22 +4,27 @@ import DesignSystem
 import SwiftUI
 
 enum TrendWeightChartMode {
-    /// Full-range daily scale readings (Trends tab).
+    /// Full Trends surface: raw scale + smooth overlay.
     case detail
-    /// Smoothed trend with a tight Y-axis on recent readings (Dashboard).
+    /// Dashboard at-a-glance: same series, tighter chrome.
     case dashboard
 }
 
 struct TrendWeightChartCard: View {
-    let points: [TrendWeightPoint]
+    /// Daily scale readings (noise visible as dots).
+    let rawPoints: [TrendWeightPoint]
+    /// EWMA-smoothed trend (line).
+    let trendPoints: [TrendWeightPoint]
     let targetWeightKg: Double?
     var mode: TrendWeightChartMode = .detail
     var showsSparkline = false
+    var showsWindowPicker = false
+    var historyWindow: Binding<TrendsHistoryWindow>? = nil
 
     @State private var selectedDay: Date?
 
     private var latestState: HelmState {
-        points.last?.state ?? .ready
+        trendPoints.last?.state ?? rawPoints.last?.state ?? .ready
     }
 
     private var chartTitle: String {
@@ -30,37 +35,24 @@ struct TrendWeightChartCard: View {
     }
 
     private var chartSubtitle: String {
-        switch mode {
-        case .detail: "Daily scale readings vs target"
-        case .dashboard: "Smoothed body mass vs target"
-        }
+        "Scale readings + smoothed trend"
     }
 
-    private var interpolation: InterpolationMethod {
-        switch mode {
-        case .detail: .linear
-        case .dashboard: .monotone
-        }
-    }
-
+    /// Zoom Y to every plotted series so history never clips below the plot.
     private var focusedYDomain: ClosedRange<Double>? {
-        guard mode == .dashboard else { return nil }
-        let recent = Array(points.suffix(7))
-        guard !recent.isEmpty else { return nil }
-
-        var values = recent.map(\.trendWeightKg)
-        if let targetWeightKg {
-            values.append(targetWeightKg)
-        }
-
-        guard let minValue = values.min(), let maxValue = values.max() else { return nil }
-        let span = max(maxValue - minValue, 0.5)
-        let padding = max(span * 0.15, 0.2)
-        return (minValue - padding)...(maxValue + padding)
+        let values = rawPoints.map(\.trendWeightKg) + trendPoints.map(\.trendWeightKg)
+        return TrendsChartSupport.autoZoomYDomain(
+            values: values,
+            nearby: targetWeightKg,
+            minimumSpan: 0.5,
+            minimumPadding: 0.2,
+            nearbySlack: 2.0
+        )
     }
 
     private var sparklinePoints: [HelmSparklinePoint] {
-        TrendsChartSupport.sparklinePoints(from: points) { point, index in
+        let source = trendPoints.isEmpty ? rawPoints : trendPoints
+        return TrendsChartSupport.sparklinePoints(from: source) { point, index in
             HelmSparklinePoint(
                 id: point.helmDay.id,
                 index: index,
@@ -70,33 +62,57 @@ struct TrendWeightChartCard: View {
         }
     }
 
+    private var hasSeries: Bool {
+        !rawPoints.isEmpty || !trendPoints.isEmpty
+    }
+
+    private var primaryCount: Int {
+        max(rawPoints.count, trendPoints.count)
+    }
+
     private var insufficientMessage: String? {
-        TrendsChartCoverage.trendMessage(pointCount: points.count)
+        TrendsChartCoverage.trendMessage(pointCount: primaryCount)
     }
 
     private var selectedLabel: String? {
         guard let selectedDay else { return nil }
-        guard let point = points.first(where: {
+        let raw = rawPoints.first {
             TrendsChartSupport.chartDate(for: $0.helmDay) == selectedDay
-        }) else {
+        }
+        let trend = trendPoints.first {
+            TrendsChartSupport.chartDate(for: $0.helmDay) == selectedDay
+        }
+        switch (raw, trend) {
+        case let (raw?, trend?):
+            return String(format: "%.1f kg · trend %.1f", raw.trendWeightKg, trend.trendWeightKg)
+        case let (raw?, nil):
+            return String(format: "%.1f kg", raw.trendWeightKg)
+        case let (nil, trend?):
+            return String(format: "trend %.1f kg", trend.trendWeightKg)
+        case (nil, nil):
             return nil
         }
-        return String(format: "%.1f kg", point.trendWeightKg)
     }
 
     var body: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                chartHeader(
-                    title: chartTitle,
-                    subtitle: chartSubtitle
-                )
+                HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                    chartHeader(
+                        title: chartTitle,
+                        subtitle: chartSubtitle
+                    )
+                    Spacer(minLength: 0)
+                    if showsWindowPicker, let historyWindow {
+                        windowPicker(historyWindow)
+                    }
+                }
 
                 if showsSparkline {
                     HelmSparkline(points: sparklinePoints, latestState: latestState)
                 }
 
-                if points.isEmpty {
+                if !hasSeries {
                     emptyChartCopy("Log body weight in Health to see your trend.")
                 } else if let insufficientMessage {
                     insufficientChartCopy(insufficientMessage)
@@ -118,6 +134,31 @@ struct TrendWeightChartCard: View {
         }
     }
 
+    private func windowPicker(_ binding: Binding<TrendsHistoryWindow>) -> some View {
+        HStack(spacing: HelmSpacing.xxs) {
+            ForEach(TrendsHistoryWindow.allCases) { window in
+                let selected = binding.wrappedValue == window
+                Button {
+                    binding.wrappedValue = window
+                } label: {
+                    Text(window.label)
+                        .helmType(.monoTag, color: selected ? HelmColor.accent : HelmColor.fgMuted)
+                        .padding(.horizontal, HelmSpacing.xs)
+                        .padding(.vertical, HelmSpacing.xxs)
+                        .background(
+                            selected ? HelmColor.accent.opacity(0.12) : Color.clear,
+                            in: Capsule()
+                        )
+                        .overlay(
+                            Capsule()
+                                .stroke(selected ? HelmColor.accent.opacity(0.35) : HelmColor.hairline, lineWidth: 1)
+                        )
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
     private var chartBody: some View {
         Chart {
             if let targetWeightKg {
@@ -126,23 +167,25 @@ struct TrendWeightChartCard: View {
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [4, 4]))
             }
 
-            ForEach(points) { point in
+            ForEach(rawPoints) { point in
                 let day = TrendsChartSupport.chartDate(for: point.helmDay)
-
-                LineMark(
-                    x: .value("Day", day),
-                    y: .value("Weight", point.trendWeightKg)
-                )
-                .interpolationMethod(interpolation)
-                .foregroundStyle(HelmColor.color(for: point.state))
-                .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
-
                 PointMark(
                     x: .value("Day", day),
-                    y: .value("Weight", point.trendWeightKg)
+                    y: .value("Scale", point.trendWeightKg)
                 )
+                .foregroundStyle(HelmColor.fgMuted.opacity(0.55))
+                .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize * 0.55)
+            }
+
+            ForEach(trendPoints) { point in
+                let day = TrendsChartSupport.chartDate(for: point.helmDay)
+                LineMark(
+                    x: .value("Day", day),
+                    y: .value("Trend", point.trendWeightKg)
+                )
+                .interpolationMethod(.monotone)
                 .foregroundStyle(HelmColor.color(for: point.state))
-                .symbolSize(HelmChartStyle.pointSize * HelmChartStyle.pointSize)
+                .lineStyle(StrokeStyle(lineWidth: HelmChartStyle.lineWidth))
             }
 
             if let selectedDay {
@@ -181,7 +224,8 @@ private struct TrendWeightYScaleModifier: ViewModifier {
 
 #Preview("Body weight detail") {
     TrendWeightChartCard(
-        points: TrendChartFixtures.bodyWeight,
+        rawPoints: TrendChartFixtures.bodyWeight,
+        trendPoints: TrendChartFixtures.trendWeight,
         targetWeightKg: TrendChartFixtures.targetWeightKg
     )
     .padding()
@@ -190,8 +234,12 @@ private struct TrendWeightYScaleModifier: ViewModifier {
 
 #Preview("Trend weight") {
     TrendWeightChartCard(
-        points: TrendChartFixtures.trendWeight,
-        targetWeightKg: TrendChartFixtures.targetWeightKg
+        rawPoints: TrendChartFixtures.bodyWeight,
+        trendPoints: TrendChartFixtures.trendWeight,
+        targetWeightKg: TrendChartFixtures.targetWeightKg,
+        mode: .dashboard,
+        showsWindowPicker: true,
+        historyWindow: .constant(.days90)
     )
     .padding()
     .helmTheme()
@@ -199,7 +247,8 @@ private struct TrendWeightYScaleModifier: ViewModifier {
 
 #Preview("Trend weight sparkline") {
     TrendWeightChartCard(
-        points: TrendChartFixtures.trendWeight,
+        rawPoints: TrendChartFixtures.bodyWeight,
+        trendPoints: TrendChartFixtures.trendWeight,
         targetWeightKg: TrendChartFixtures.targetWeightKg,
         mode: .dashboard,
         showsSparkline: true
@@ -210,7 +259,8 @@ private struct TrendWeightYScaleModifier: ViewModifier {
 
 #Preview("Trend weight insufficient") {
     TrendWeightChartCard(
-        points: Array(TrendChartFixtures.trendWeight.prefix(1)),
+        rawPoints: Array(TrendChartFixtures.bodyWeight.prefix(1)),
+        trendPoints: Array(TrendChartFixtures.trendWeight.prefix(1)),
         targetWeightKg: TrendChartFixtures.targetWeightKg
     )
     .padding()

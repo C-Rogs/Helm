@@ -69,7 +69,7 @@ private let goodRecoverySnapshotText = """
 72
 state=primed
 targetBand=67-100
-narration=ARC 72, primed, high confidence. Today's session: 16 sets across 5 exercises (gain).
+narration=Push today: 16 sets across 5 exercises. Fuel with 2400 kcal and 180g protein.
 engineOnly=false
 validNights=18
 citation=ev-readiness-arc

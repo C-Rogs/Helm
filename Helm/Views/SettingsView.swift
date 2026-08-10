@@ -32,7 +32,11 @@ struct SettingsView: View {
             }
             .helmSettingsListChrome()
             .navigationTitle("Settings")
-            .task { await refreshStatusSummaries() }
+            .task {
+                await AppTabRouter.shared.preferChromeOverContentLoad()
+                guard !Task.isCancelled else { return }
+                await refreshStatusSummaries()
+            }
         }
     }
 

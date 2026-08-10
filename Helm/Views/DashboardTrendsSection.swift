@@ -10,6 +10,13 @@ struct DashboardTrendsSection: View {
 
     private var persistence: PersistenceStore { PersistenceBootstrap.persistenceStore }
 
+    private var historyWindowBinding: Binding<TrendsHistoryWindow> {
+        Binding(
+            get: { controller.historyWindow },
+            set: { controller.setHistoryWindow($0) }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: skin.sectionSpacing) {
             HelmSectionEyebrow("TRENDS", showsArcMark: true)
@@ -18,6 +25,8 @@ struct DashboardTrendsSection: View {
             trendCards
         }
         .task {
+            await AppTabRouter.shared.preferChromeOverContentLoad()
+            guard !Task.isCancelled else { return }
             controller.refresh()
         }
         .sheet(isPresented: $isShowingExercisePicker) {
@@ -37,32 +46,27 @@ struct DashboardTrendsSection: View {
     @ViewBuilder
     private var trendCards: some View {
         TrendWeightChartCard(
-            points: controller.snapshot.trendWeight,
+            rawPoints: controller.displayedBodyWeight,
+            trendPoints: controller.displayedTrendWeight,
             targetWeightKg: controller.snapshot.targetWeightKg,
             mode: .dashboard,
-            showsSparkline: false
+            showsSparkline: false,
+            showsWindowPicker: true,
+            historyWindow: historyWindowBinding
         )
 
         E1RMProgressionChartCard(
-            points: controller.snapshot.e1RMHistory,
+            points: controller.displayedE1RMHistory,
             exerciseName: controller.snapshot.selectedExerciseName,
             onPickExercise: { isShowingExercisePicker = true }
         )
 
-        if controller.snapshot.canLoadMoreHistory, !controller.snapshot.hasDisplayedHistory {
+        if controller.historyWindow == .all, controller.snapshot.canLoadMoreHistory {
             Button("Load earlier history") {
                 controller.loadMoreHistoryIfNeeded()
             }
             .buttonStyle(.helmSecondary)
             .frame(maxWidth: .infinity)
-        }
-
-        if controller.snapshot.canLoadMoreHistory {
-            Color.clear
-                .frame(height: 0)
-                .onAppear {
-                    controller.loadMoreHistoryIfNeeded()
-                }
         }
 
         if let errorMessage = controller.errorMessage {

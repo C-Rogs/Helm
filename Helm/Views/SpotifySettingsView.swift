@@ -30,7 +30,7 @@ struct SpotifySettingsView: View {
                     )
                     .helmListRowChrome()
 
-                    Button("Wake Spotify and connect") {
+                    Button("Open Spotify") {
                         spotify.wakeSpotifyAndConnect()
                     }
                     .helmListRowChrome()
@@ -54,10 +54,10 @@ struct SpotifySettingsView: View {
 
                 Text(
                     """
-                    Spotify stopped serving tempo to apps in 2024 and Apple Music never did, \
-                    so only tracks in your own library arrive with a BPM tag. With this on, \
-                    Helm asks Deezer's public catalog for the tempo of everything else, \
-                    sending only the track title and artist. Coverage is partial; tracks \
+                    Spotify stopped serving tempo to apps in 2024 and Apple Music never did. \
+                    With this on, Helm fills in missing tempos: \
+                    Helm first asks ReccoBeats using Spotify's track ID, then falls back to \
+                    Deezer by title and artist. Coverage is partial; tracks \
                     without a tempo still show as spans on the timeline.
                     """
                 )
@@ -107,8 +107,9 @@ struct SpotifySettingsView: View {
                 Section {
                     Text(
                         """
-                        Linking is one time. App Remote only goes live while Spotify is actually \
-                        playing, so start a track before or during your workout and Helm will pick it up.
+                        Linking is one time. Helm connects silently when Spotify is already \
+                        playing. Open Spotify (here or during a workout) only when you want \
+                        Helm to wake the Spotify app; that switch is intentional.
                         """
                     )
                     .helmType(.body, color: HelmColor.fgMuted)

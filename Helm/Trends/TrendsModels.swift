@@ -4,6 +4,30 @@ import Foundation
 import PlanKit
 import ReadinessKit
 
+enum TrendsHistoryWindow: Int, CaseIterable, Identifiable, Sendable {
+    case days30 = 30
+    case days90 = 90
+    case all = 0
+
+    var id: Int { rawValue }
+
+    var label: String {
+        switch self {
+        case .days30: "30d"
+        case .days90: "90d"
+        case .all: "All"
+        }
+    }
+
+    /// Inclusive lookback in calendar days; `nil` means unbounded.
+    var lookbackDays: Int? {
+        switch self {
+        case .days30, .days90: rawValue
+        case .all: nil
+        }
+    }
+}
+
 struct TrendWeightPoint: Identifiable, Sendable, Hashable {
     let helmDay: HelmDay
     let trendWeightKg: Double

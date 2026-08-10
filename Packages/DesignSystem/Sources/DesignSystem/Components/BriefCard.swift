@@ -52,7 +52,7 @@ public struct BriefCard: View {
 #Preview("BriefCard instrument") {
     BriefCard(
         citationLabel: "ev-chest-1",
-        narration: "ARC 72, balanced. Hit today's compounds at RIR 2. Protein target 150g.",
+        narration: "Hit today's compounds at RIR 2. Aim for 150g protein.",
         isEngineOnly: false
     )
     .padding()
@@ -63,7 +63,7 @@ public struct BriefCard: View {
 #Preview("BriefCard data sheet") {
     BriefCard(
         citationLabel: "ev-chest-1",
-        narration: "ARC 72, balanced. Hit today's compounds at RIR 2. Protein target 150g.",
+        narration: "Hit today's compounds at RIR 2. Aim for 150g protein.",
         isEngineOnly: false
     )
     .padding()

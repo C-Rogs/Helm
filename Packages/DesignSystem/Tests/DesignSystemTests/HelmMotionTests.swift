@@ -27,6 +27,12 @@ struct HelmMotionTests {
     func reduceMotionStaggerDelay() {
         #expect(HelmMotion.staggerDelay(index: 4, reduceMotion: true) == 0)
         #expect(HelmMotion.staggerDelay(index: 4, reduceMotion: false) == 0.16)
+        #expect(
+            HelmMotion.staggerDelay(index: 4, baseDelay: 0.28, reduceMotion: false) == 0.44
+        )
+        #expect(
+            HelmMotion.staggerDelay(index: 4, baseDelay: 0.28, reduceMotion: true) == 0
+        )
     }
 
     @Test("Reduce motion disables skeleton shimmer")

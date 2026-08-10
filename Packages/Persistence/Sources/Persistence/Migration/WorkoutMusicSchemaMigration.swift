@@ -12,6 +12,7 @@ enum WorkoutMusicSchemaMigration {
                 table.column("artist", .text)
                 table.column("album", .text)
                 table.column("genre", .text)
+                table.column("spotify_track_id", .text)
                 table.column("bpm", .double)
                 table.column("playback_rate", .double)
                 table.column("source", .text).notNull()

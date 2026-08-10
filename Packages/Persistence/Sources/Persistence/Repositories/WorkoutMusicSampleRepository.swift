@@ -12,6 +12,7 @@ struct WorkoutMusicSampleRecord: Codable, FetchableRecord, PersistableRecord {
     var artist: String?
     var album: String?
     var genre: String?
+    var spotifyTrackID: String?
     var bpm: Double?
     var playbackRate: Double?
     var source: String
@@ -24,6 +25,7 @@ struct WorkoutMusicSampleRecord: Codable, FetchableRecord, PersistableRecord {
         case artist
         case album
         case genre
+        case spotifyTrackID = "spotify_track_id"
         case bpm
         case playbackRate = "playback_rate"
         case source
@@ -38,6 +40,7 @@ struct WorkoutMusicSampleRecord: Codable, FetchableRecord, PersistableRecord {
             artist: artist,
             album: album,
             genre: genre,
+            spotifyTrackID: spotifyTrackID,
             bpm: bpm,
             playbackRate: playbackRate,
             source: source
@@ -53,6 +56,7 @@ struct WorkoutMusicSampleRecord: Codable, FetchableRecord, PersistableRecord {
             artist: sample.artist,
             album: sample.album,
             genre: sample.genre,
+            spotifyTrackID: sample.spotifyTrackID,
             bpm: sample.bpm,
             playbackRate: sample.playbackRate,
             source: sample.source

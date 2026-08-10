@@ -716,6 +716,180 @@ public enum RecoveryQueryPayloadParser: Sendable {
     }
 }
 
+public struct CalendarQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case today
+        case day
+        case range
+        case weekAhead
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "today", "now", "current":
+                self = .today
+            case "day", "onday", "on_day":
+                self = .day
+            case "range", "history", "week":
+                self = .range
+            case "weekahead", "week_ahead", "ahead", "schedule":
+                self = .weekAhead
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let helmDay: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.calendarQueryV1.rawValue,
+        queryType: QueryType,
+        helmDay: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.helmDay = helmDay
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
+            queryType = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
+                  let flexible = QueryType(rawFlexible: raw) {
+            queryType = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .queryType,
+                in: container,
+                debugDescription: "calendar_query.v1 queryType must be today, day, range, or weekAhead"
+            )
+        }
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
+            lookbackDays = intValue
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
+                  let intValue = Int(raw) {
+            lookbackDays = intValue
+        } else {
+            lookbackDays = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, queryType, helmDay, lookbackDays
+    }
+}
+
+public enum CalendarQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> CalendarQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .calendarQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(CalendarQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.calendarQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct TrendsQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case trimp
+        case weight
+        case e1rm
+        case energyBalance
+        case readiness
+        case all
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "trimp", "training_load", "strain", "load":
+                self = .trimp
+            case "weight", "body_weight", "scale", "trend_weight":
+                self = .weight
+            case "e1rm", "e1rm_progression", "strength", "progression":
+                self = .e1rm
+            case "energybalance", "energy_balance", "balance", "calories":
+                self = .energyBalance
+            case "readiness", "readiness_history", "scores":
+                self = .readiness
+            case "all", "everything", "overview":
+                self = .all
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let exerciseName: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.trendsQueryV1.rawValue,
+        queryType: QueryType,
+        exerciseName: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.exerciseName = exerciseName
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
+            queryType = decoded
+        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
+                  let flexible = QueryType(rawFlexible: raw) {
+            queryType = flexible
+        } else {
+            throw DecodingError.dataCorruptedError(
+                forKey: .queryType,
+                in: container,
+                debugDescription: "trends_query.v1 queryType must be trimp, weight, e1rm, energyBalance, readiness, or all"
+            )
+        }
+        exerciseName = try container.decodeIfPresent(String.self, forKey: .exerciseName)
+        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
+            lookbackDays = intValue
+        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
+                  let intValue = Int(raw) {
+            lookbackDays = intValue
+        } else {
+            lookbackDays = nil
+        }
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, queryType, exerciseName, lookbackDays
+    }
+}
+
+public enum TrendsQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> TrendsQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .trendsQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(TrendsQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.trendsQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
 public enum CoachChatChartSnapshot: Sendable {
     public static func text(for payload: ChartPayload) -> String {
         var lines = [
@@ -736,5 +910,135 @@ public enum CoachChatChartSnapshot: Sendable {
         value.truncatingRemainder(dividingBy: 1) == 0
             ? String(format: "%.0f", value)
             : String(format: "%.1f", value)
+    }
+}
+
+public struct SettingsAdjustmentPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let phase: String?
+    public let weeklyRateKg: Double?
+    public let emphasis: String?
+    public let rationale: String?
+    public let reply: String?
+
+    public init(
+        schemaVersion: String,
+        phase: String? = nil,
+        weeklyRateKg: Double? = nil,
+        emphasis: String? = nil,
+        rationale: String? = nil,
+        reply: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.phase = phase
+        self.weeklyRateKg = weeklyRateKg
+        self.emphasis = emphasis
+        self.rationale = rationale
+        self.reply = reply
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
+        phase = try container.decodeIfPresent(String.self, forKey: .phase)
+        weeklyRateKg = try container.decodeIfPresent(Double.self, forKey: .weeklyRateKg)
+        emphasis = try container.decodeIfPresent(String.self, forKey: .emphasis)
+        rationale = try container.decodeIfPresent(String.self, forKey: .rationale)
+        reply = try container.decodeIfPresent(String.self, forKey: .reply)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, phase, weeklyRateKg, emphasis, rationale, reply
+    }
+}
+
+public enum SettingsAdjustmentPayloadParser: Sendable {
+    public static func parse(from text: String) -> SettingsAdjustmentPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .settingsAdjustmentV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(SettingsAdjustmentPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.settingsAdjustmentV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct ReactiveDeloadPayload: Codable, Sendable, Equatable {
+    public enum Action: String, Codable, Sendable, Equatable {
+        case confirm
+        case dismiss
+    }
+
+    public let schemaVersion: String
+    public let action: Action
+    public let reply: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.reactiveDeloadV1.rawValue,
+        action: Action,
+        reply: String
+    ) {
+        self.schemaVersion = schemaVersion
+        self.action = action
+        self.reply = reply
+    }
+}
+
+public enum ReactiveDeloadPayloadParser: Sendable {
+    public static func parse(from text: String) -> ReactiveDeloadPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .reactiveDeloadV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(ReactiveDeloadPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.reactiveDeloadV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct PlanRegeneratePayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let reply: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.planRegenerateV1.rawValue,
+        reply: String
+    ) {
+        self.schemaVersion = schemaVersion
+        self.reply = reply
+    }
+}
+
+public enum PlanRegeneratePayloadParser: Sendable {
+    public static func parse(from text: String) -> PlanRegeneratePayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .planRegenerateV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(PlanRegeneratePayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.planRegenerateV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct CalendarEventClassifyPayload: Codable, Sendable, Equatable {
+    public struct Entry: Codable, Sendable, Equatable {
+        public let title: String
+        public let classification: String
+
+        public init(title: String, classification: String) {
+            self.title = title
+            self.classification = classification
+        }
+    }
+
+    public let classifications: [Entry]
+
+    public init(classifications: [Entry]) {
+        self.classifications = classifications
     }
 }

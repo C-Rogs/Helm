@@ -31,6 +31,58 @@ enum TrendsChartSupport {
         }
     }
 
+    /// Inclusive start day for a history window ending at `today`.
+    static func windowStart(
+        for window: TrendsHistoryWindow,
+        today: HelmDay,
+        calendar: Calendar = .current
+    ) -> HelmDay? {
+        guard let lookback = window.lookbackDays else { return nil }
+        return today.adding(days: -(lookback - 1), calendar: calendar)
+    }
+
+    static func windowed<Point>(
+        _ points: [Point],
+        window: TrendsHistoryWindow,
+        today: HelmDay,
+        calendar: Calendar = .current,
+        day: (Point) -> HelmDay
+    ) -> [Point] {
+        guard let start = windowStart(for: window, today: today, calendar: calendar) else {
+            return points
+        }
+        return points.filter { day($0) >= start }
+    }
+
+    /// Tight Y domain for the plotted series so the line fills the plot.
+    /// Optional `nearby` (e.g. target weight) joins the domain only when close enough
+    /// that including it won't flatten the trend into a flat band.
+    static func autoZoomYDomain(
+        values: [Double],
+        nearby: Double? = nil,
+        minimumSpan: Double = 0.5,
+        paddingFraction: Double = 0.15,
+        minimumPadding: Double = 0.2,
+        nearbySlack: Double = 2.0
+    ) -> ClosedRange<Double>? {
+        guard let dataMin = values.min(), let dataMax = values.max() else { return nil }
+
+        var low = dataMin
+        var high = dataMax
+        if let nearby {
+            let dataSpan = max(high - low, minimumSpan)
+            let slack = max(nearbySlack, dataSpan)
+            if nearby >= low - slack, nearby <= high + slack {
+                low = min(low, nearby)
+                high = max(high, nearby)
+            }
+        }
+
+        let span = max(high - low, minimumSpan)
+        let padding = max(span * paddingFraction, minimumPadding)
+        return (low - padding)...(high + padding)
+    }
+
     static func sparklinePoints<Point>(
         from points: [Point],
         last count: Int = 7,

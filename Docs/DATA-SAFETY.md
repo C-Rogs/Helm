@@ -49,13 +49,13 @@ Only local-library tracks arrive with a BPM tag (`MPMediaItemPropertyBeatsPerMin
 
 | Item | Behaviour |
 |---|---|
-| Provider | Deezer public catalog (`api.deezer.com`), no key and no account |
-| Sent off device | Track title and artist only, for tracks with no BPM tag |
+| Providers | ReccoBeats audio features for Spotify track IDs, then Deezer public catalog (`api.deezer.com`) as fallback; no key or account |
+| Sent off device | Spotify track ID when available; otherwise track title and artist only, for tracks with no BPM tag |
 | Never sent | Workout, health, session, or account data |
 | Stored | Resolved tempo in UserDefaults (`helm.songTempo.cache.tempos`), misses retried after 14 days |
 | Clearing | **Clear cached tempos** on the same screen |
 
-Coverage is partial (roughly 6 in 10 tracks). Tracks with no tempo still render as spans on the session timeline, so the chart degrades rather than emptying. Lookup is capped per summary render and bounded by a time budget, so the finish summary never waits on the network.
+Coverage is partial and provider-dependent. Exact Spotify track IDs provide substantially better coverage than title/artist matching; tracks without a tempo still render as spans on the session timeline, so the chart degrades rather than emptying. Lookup is capped per summary render and bounded by a time budget, so the finish summary never waits on the network.
 
 ---
 

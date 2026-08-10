@@ -8,6 +8,17 @@ public struct ReadinessBaseline: Sendable, Hashable, Codable, Equatable {
     self.mean = mean
     self.robustSigma = robustSigma
   }
+
+  /// Incremental EWMA update. Returns new baseline from one day's value.
+  /// Alpha is the EWMA smoothing factor (0.048 for 14-day half-life).
+  public func updating(with value: Double) -> ReadinessBaseline {
+    let alpha = BaselineTracker.alpha
+    let deviation = abs(value - mean)
+    let newMad = alpha * deviation + (1 - alpha) * robustSigma / 1.253
+    let newMean = alpha * value + (1 - alpha) * mean
+    let newSigma = max(1.253 * newMad, 0)
+    return ReadinessBaseline(mean: newMean, robustSigma: newSigma)
+  }
 }
 
 /// Pre-computed EWMA baselines from historical backfill.
@@ -45,6 +56,68 @@ public struct ReadinessBaselineState: Sendable, Hashable, Codable, Equatable {
     self.wristTemperature = wristTemperature
     self.trimpP75 = trimpP75
     self.seededNightCount = seededNightCount
+  }
+
+  /// Incrementally update all baselines from today's input and recent history.
+  /// Returns new state - caller must persist.
+  public func updating(
+    today: ReadinessDayInput,
+    history: [ReadinessDayInput]
+  ) -> ReadinessBaselineState {
+    var next = self
+
+    if let hrv = today.effectiveHRVMilliseconds {
+      next.hrvChronic = (hrvChronic ?? ReadinessBaseline(mean: hrv, robustSigma: 0))
+        .updating(with: hrv)
+      next.seededNightCount += 1
+    }
+
+    if let rhr = today.restingHeartRate {
+      let rhrDouble = Double(rhr)
+      next.restingHR = (restingHR ?? ReadinessBaseline(mean: rhrDouble, robustSigma: 0))
+        .updating(with: rhrDouble)
+    }
+
+    if let duration = today.sleepDurationHours {
+      next.sleepDuration = (sleepDuration ?? ReadinessBaseline(mean: duration, robustSigma: 0))
+        .updating(with: duration)
+    }
+
+    if let efficiency = today.sleepEfficiency {
+      next.sleepEfficiency = (sleepEfficiency ?? ReadinessBaseline(mean: efficiency, robustSigma: 0))
+        .updating(with: efficiency)
+    }
+
+    if let stage = ReadinessKit.stageQuality(today) {
+      next.sleepStageQuality = (sleepStageQuality ?? ReadinessBaseline(mean: stage, robustSigma: 0))
+        .updating(with: stage)
+    }
+
+    if let resp = today.respiratoryRate {
+      next.respiratoryRate = (respiratoryRate ?? ReadinessBaseline(mean: resp, robustSigma: 0))
+        .updating(with: resp)
+    }
+
+    if let temp = today.wristTemperatureDeltaCelsius {
+      next.wristTemperature = (wristTemperature ?? ReadinessBaseline(mean: temp, robustSigma: 0))
+        .updating(with: temp)
+    }
+
+    // Sleep debt: today's deficit = sleep need baseline - today's duration.
+    if let todayDuration = today.sleepDurationHours {
+      let need = sleepDuration?.mean ?? todayDuration
+      let deficit = max(0, need - todayDuration)
+      next.sleepDebt = (sleepDebt ?? ReadinessBaseline(mean: deficit, robustSigma: 0))
+        .updating(with: deficit)
+    }
+
+    // TRIMP P75: compute from recent history (30-day window).
+    let trimpValues = history.compactMap(\.priorDayTRIMP)
+    if !trimpValues.isEmpty {
+      next.trimpP75 = StrainCalculator.percentile75(trimpValues)
+    }
+
+    return next
   }
 }
 

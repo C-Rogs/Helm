@@ -63,7 +63,10 @@ struct DashboardView: View {
             .helmScreenBackground()
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
+            .environment(\.helmStaggerBaseDelay, HelmMotion.standard)
             .task {
+                await AppTabRouter.shared.preferChromeOverContentLoad()
+                guard !Task.isCancelled else { return }
                 await readinessService.refresh()
                 await loadSleepSummary()
                 await prescriptionService.refresh(readiness: readinessService.state.score)

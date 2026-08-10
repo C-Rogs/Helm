@@ -19,6 +19,7 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
     public let driftNote: String?
     public let busyDayHint: String?
     public let isToday: Bool
+    public let isPartiallyBlocked: Bool
 
     public init(
         id: String,
@@ -28,7 +29,8 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
         status: WeekAheadSessionStatus,
         driftNote: String? = nil,
         busyDayHint: String? = nil,
-        isToday: Bool
+        isToday: Bool,
+        isPartiallyBlocked: Bool = false
     ) {
         self.id = id
         self.dayLabel = dayLabel
@@ -38,6 +40,7 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
         self.driftNote = driftNote
         self.busyDayHint = busyDayHint
         self.isToday = isToday
+        self.isPartiallyBlocked = isPartiallyBlocked
     }
 
     public var statusLabel: String? {

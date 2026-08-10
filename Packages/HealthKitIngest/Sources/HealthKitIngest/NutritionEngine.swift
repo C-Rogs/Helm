@@ -23,6 +23,23 @@ public enum ActiveEnergyFreshness: Sendable, Equatable {
         if case .fresh = self { return true }
         return false
     }
+
+    public var freshnessLabel: String {
+        switch self {
+        case .unavailable: "unavailable"
+        case .stale: "stale"
+        case .fresh: "fresh"
+        }
+    }
+
+    public var note: String? {
+        switch self {
+        case .unavailable: nil
+        case let .stale(partialKilocalories):
+            partialKilocalories == nil ? ActiveEnergyDisplayCopy.stalePending : ActiveEnergyDisplayCopy.stalePartial
+        case .fresh: nil
+        }
+    }
 }
 
 public enum ActiveEnergyDisplayCopy {

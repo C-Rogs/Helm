@@ -43,6 +43,7 @@ public enum SessionDesignBriefBuilder {
         weeklyLedger: WeeklyHardSetLedger? = nil,
         constraintNotes: [String] = []
     ) -> SessionDesignBrief {
+        _ = (exerciseCount, readiness)
         let title = splitKind.label
         let muscleText = SessionSplitPlanner.muscleSummary(for: targetMuscles)
         let mesoText = mesocycleSummary(for: targetMuscles, state: mesocycleState)
@@ -52,16 +53,10 @@ public enum SessionDesignBriefBuilder {
         }
         let summary = summaryParts.joined(separator: " · ")
 
+        // Keep rationale to actionable notes only. Phase and readiness score
+        // already surface elsewhere on Dashboard / Train.
         var rationale: [String] = []
         rationale.append(contentsOf: constraintNotes)
-        if let readiness {
-            let band = readiness.band
-            rationale.append("ARC \(readiness.score) (\(band.rawValue)) sets today's volume and RPE cap.")
-            if band == .depleted {
-                rationale.append("Volume trimmed for readiness.")
-            }
-        }
-        rationale.append("\(phaseGoal.phase.rawValue.capitalized) phase with \(exerciseCount) exercises prescribed.")
         if let weeklyLedger {
             let progressNotes = weeklyProgressNotes(
                 muscles: targetMuscles,
@@ -71,8 +66,8 @@ public enum SessionDesignBriefBuilder {
             rationale.append(contentsOf: progressNotes)
         }
         rationale.append(contentsOf: scheduleNotes)
-        if rationale.count > 4 {
-            rationale = Array(rationale.prefix(4))
+        if rationale.count > 3 {
+            rationale = Array(rationale.prefix(3))
         }
 
         return SessionDesignBrief(

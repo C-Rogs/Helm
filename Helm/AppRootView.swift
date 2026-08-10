@@ -7,6 +7,8 @@ struct AppRootView: View {
     @State private var onboardingStore = OnboardingStore.shared
     @Environment(\.scenePhase) private var scenePhase
 
+    // MARK: - Body
+
     var body: some View {
         Group {
             if onboardingStore.shouldPresent {
@@ -19,12 +21,19 @@ struct AppRootView: View {
         .helmCoachApplyWaveOverlay()
         .onChange(of: scenePhase) { _, newPhase in
             AppLifecycleState.update(scenePhase: newPhase)
-            if newPhase == .active {
+            switch newPhase {
+            case .active:
+                SpotifyAppRemoteService.shared.handleAppBecomeActive()
                 Task { @MainActor in
                     await RestNotificationRouter.processPendingIfForeground()
                 }
-            } else if newPhase == .background {
-                CloudBackupCoordinator.shared.schedulePush()
+            case .inactive, .background:
+                SpotifyAppRemoteService.shared.handleAppResignActive()
+                if newPhase == .background {
+                    CloudBackupCoordinator.shared.schedulePush()
+                }
+            @unknown default:
+                break
             }
         }
         .onAppear {

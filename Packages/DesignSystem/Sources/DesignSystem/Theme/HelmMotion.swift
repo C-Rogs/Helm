@@ -42,9 +42,10 @@ public enum HelmMotion {
     public static func staggerDelay(
         index: Int,
         step: TimeInterval = 0.04,
+        baseDelay: TimeInterval = 0,
         reduceMotion: Bool
     ) -> TimeInterval {
-        reduceMotion ? 0 : step * Double(index)
+        reduceMotion ? 0 : baseDelay + step * Double(index)
     }
 
     public static func usesShimmer(reduceMotion: Bool) -> Bool {
@@ -58,4 +59,6 @@ public enum HelmMotion {
 
 public extension EnvironmentValues {
     @Entry var helmReduceMotion: Bool = false
+    /// Extra delay before staggered appear (e.g. after tab liquid-glass morph).
+    @Entry var helmStaggerBaseDelay: TimeInterval = 0
 }

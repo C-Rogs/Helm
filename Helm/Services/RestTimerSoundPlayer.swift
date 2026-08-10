@@ -91,7 +91,7 @@ final class RestTimerSoundPlayer {
     }
 
     private func configureSessionForPlayback() {
-        // Activate only when playing. Chat dictation may have switched to `.record`;
+        // Activate only when playing. System keyboard dictation may have switched to `.record`;
         // re-assert mixable playback here so the bell overlays music instead of stopping it.
         do {
             let session = AVAudioSession.sharedInstance()

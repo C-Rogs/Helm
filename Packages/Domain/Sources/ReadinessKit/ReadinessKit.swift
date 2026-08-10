@@ -254,7 +254,7 @@ public enum ReadinessKit {
     return max(0, nightsFactor * coverage * stabilityFactor)
   }
 
-  private static func stageQuality(_ input: ReadinessDayInput) -> Double? {
+  public static func stageQuality(_ input: ReadinessDayInput) -> Double? {
     guard let deep = input.deepSleepMinutes, let rem = input.remSleepMinutes else { return nil }
     return deep + rem
   }

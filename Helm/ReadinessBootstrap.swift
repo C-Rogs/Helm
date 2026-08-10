@@ -13,6 +13,8 @@ enum ReadinessBootstrap {
     @MainActor
     static func start() {
         Task(priority: .userInitiated) { @MainActor in
+            // Persisted score first so ARC paints before 180-day recompute.
+            await readinessService.hydrateFromCache()
             await readinessService.refresh()
         }
 

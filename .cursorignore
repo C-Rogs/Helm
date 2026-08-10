@@ -1,0 +1,22 @@
+# Cursor indexing / context exclusions (Helm)
+
+# Raw research dumps (use Docs/Research/RECONCILE.md instead)
+Docs/Research/*.rtf
+Docs/Research/extracted/
+
+# Build artifacts
+**/DerivedData/
+**/.build/
+build/
+Helm.xcodeproj/
+
+# Local / generated noise
+Screenshots/
+Secrets/
+.swiftlint-cache
+**/xcuserdata/
+**/*.xcuserstate
+
+# Large LLM/test fixtures (open explicitly when editing tests)
+Packages/**/Tests/**/Fixtures/
+Packages/**/Tests/**/fixtures/

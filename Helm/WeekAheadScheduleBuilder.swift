@@ -13,7 +13,8 @@ enum WeekAheadScheduleBuilder {
         today: HelmDay,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
-        busyDayHints: [HelmDay: String] = [:]
+        busyDayHints: [HelmDay: String] = [:],
+        partiallyBlockedDays: Set<HelmDay> = []
     ) throws -> WeekAheadScheduleModel {
         let endDay = today.adding(days: horizonDays - 1, calendar: calendar)
         let records = try store.plan.fetchPlannedWorkouts(from: today, through: endDay)
@@ -53,7 +54,8 @@ enum WeekAheadScheduleBuilder {
                         status: status,
                         driftNote: driftNote(for: record, helmDay: helmDay, calendar: calendar),
                         busyDayHint: busyDayHints[helmDay],
-                        isToday: helmDay == today
+                        isToday: helmDay == today,
+                        isPartiallyBlocked: partiallyBlockedDays.contains(helmDay)
                     )
                 )
             } else {
@@ -66,7 +68,8 @@ enum WeekAheadScheduleBuilder {
                         status: .rest,
                         driftNote: nil,
                         busyDayHint: busyDayHints[helmDay],
-                        isToday: helmDay == today
+                        isToday: helmDay == today,
+                        isPartiallyBlocked: partiallyBlockedDays.contains(helmDay)
                     )
                 )
             }

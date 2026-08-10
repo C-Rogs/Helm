@@ -55,7 +55,7 @@ public enum StrainCalculator {
     return BaselineTracker.zInverted(value: ratio, baseline: baseline, sigmaFloor: 0.2)
   }
 
-  private static func percentile75(_ values: [Double]) -> Double? {
+  public static func percentile75(_ values: [Double]) -> Double? {
     guard !values.isEmpty else { return nil }
     let sorted = values.sorted()
     let index = Int((Double(sorted.count - 1) * 0.75).rounded())

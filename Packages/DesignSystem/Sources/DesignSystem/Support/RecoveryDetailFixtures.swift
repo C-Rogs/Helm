@@ -5,7 +5,7 @@ public extension RecoveryDetailModel {
         score: 72,
         helmState: .primed,
         targetBand: 67 ... 100,
-        narration: "ARC 72, primed, high confidence. Today's session: 16 sets across 5 exercises (gain).",
+        narration: "Push today: 16 sets across 5 exercises. Fuel with 2400 kcal and 180g protein.",
         isEngineOnly: false,
         citationLabel: "ev-readiness-arc",
         contributors: [

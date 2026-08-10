@@ -38,9 +38,10 @@ struct BriefEngineTests {
         )
 
         #expect(brief.source == .engineOnly)
-        #expect(brief.engineText.contains("ARC 72"))
+        #expect(!brief.engineText.contains("ARC 72"))
         #expect(brief.engineText.contains("sets"))
         #expect(brief.engineText.contains("kcal"))
+        #expect(brief.engineText.contains("protein"))
     }
 
     @Test("brief regenerates only when inputs change")

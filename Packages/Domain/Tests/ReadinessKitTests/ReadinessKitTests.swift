@@ -186,6 +186,76 @@ struct ReadinessKitTests {
     #expect(seeded.restingHR != nil)
   }
 
+  @Test("incremental baseline update produces same result as batch EWMA")
+  func incrementalMatchesBatch() {
+    let history = baselineHistory(nights: 30, hrvMilliseconds: 50)
+    let seeded = ReadinessKit.seedBaselines(from: history)
+
+    // Simulate one new day
+    let today = ReadinessDayInput(
+      helmDay: endDay.adding(days: 1),
+      hrvDailyAverage: DurationMs(milliseconds: 55),
+      restingHeartRate: 58,
+      sleepDurationHours: 8.0,
+      sleepEfficiency: 0.92,
+      deepSleepMinutes: 55,
+      remSleepMinutes: 95
+    )
+    let updated = seeded.updating(today: today, history: history)
+
+    // Batch baseline from full history + today
+    let fullHistory = history + [today]
+    let batch = ReadinessKit.seedBaselines(from: fullHistory)
+
+    // EWMA means should be close (within 0.5 after 30 days of same values)
+    if let batchHRV = batch.hrvChronic?.mean,
+       let updatedHRV = updated.hrvChronic?.mean {
+      #expect(abs(batchHRV - updatedHRV) < 0.5)
+    }
+    #expect(updated.seededNightCount == seeded.seededNightCount + 1)
+  }
+
+  @Test("incremental baseline update works from nil state")
+  func incrementalFromNil() {
+    let state = ReadinessBaselineState()
+    let today = ReadinessDayInput(
+      helmDay: endDay,
+      hrvDailyAverage: DurationMs(milliseconds: 50),
+      restingHeartRate: 60,
+      sleepDurationHours: 7.5,
+      sleepEfficiency: 0.9,
+      deepSleepMinutes: 50,
+      remSleepMinutes: 90
+    )
+    let updated = state.updating(today: today, history: [today])
+    #expect(updated.hrvChronic?.mean == 50)
+    #expect(updated.restingHR?.mean == 60)
+    #expect(updated.sleepDuration?.mean == 7.5)
+    #expect(updated.seededNightCount == 1)
+  }
+
+  @Test("incremental baseline update preserves missing fields")
+  func incrementalPreservesMissing() {
+    let history = baselineHistory(nights: 10, hrvMilliseconds: 50)
+    let seeded = ReadinessKit.seedBaselines(from: history)
+
+    let today = ReadinessDayInput(
+      helmDay: endDay.adding(days: 1),
+      hrvDailyAverage: DurationMs(milliseconds: 55),
+      restingHeartRate: nil,  // no RHR today
+      sleepDurationHours: nil,  // no sleep today
+      sleepEfficiency: nil
+    )
+    let updated = seeded.updating(today: today, history: history)
+
+    // HRV updated
+    #expect(updated.hrvChronic?.mean != seeded.hrvChronic?.mean)
+    // RHR unchanged (nil today)
+    #expect(updated.restingHR?.mean == seeded.restingHR?.mean)
+    // Sleep unchanged (nil today)
+    #expect(updated.sleepDuration?.mean == seeded.sleepDuration?.mean)
+  }
+
   @Test("spike in SDNN milliseconds raises HRV z-score")
   func hrvUnitGuard() {
     var history = baselineHistory(nights: 20, hrvMilliseconds: 50)
