@@ -1,0 +1,212 @@
+{
+  "modules": [
+    {
+      "id": "nutrition",
+      "title": "Sports Nutrition",
+      "description": "How caloric state modifies training parameters and the foundational nutrition principles every athlete needs for recovery, body composition, and performance.",
+      "topicIDs": [
+        "nutrition-phase-interaction",
+        "nutrition-low-energy-availability",
+        "nutrition-macro-partitioning",
+        "nutrition-body-composition-rates",
+        "nutrition-periworkout",
+        "nutrition-supplements",
+        "nutrition-recovery"
+      ],
+      "evidenceIDs": [
+        "ev-nutrition-deficit-mrv",
+        "ev-nutrition-surplus-recovery",
+        "ev-nutrition-lea-risk",
+        "ev-nutrition-phase-table",
+        "ev-nutrition-protein-targets",
+        "ev-nutrition-fat-minimums",
+        "ev-nutrition-carb-periodization",
+        "ev-nutrition-rate-limits",
+        "ev-nutrition-creatine",
+        "ev-nutrition-caffeine",
+        "ev-nutrition-refeeds-diet-breaks",
+        "ev-nutrition-hydration",
+        "ev-nutrition-sleep-nutrition"
+      ],
+      "autoAssign": {
+        "phases": ["cut", "maintain", "gain"],
+        "goals": [],
+        "always": true
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-nutrition-deficit-mrv",
+      "title": "Caloric deficit reduces recovery capacity and MRV by 15\u201325%",
+      "summary": "During a caloric deficit, systemic recovery capacity and muscle protein synthesis rates are attenuated. PlanKit lowers default MRV caps by 15\u201325%, halts progressive volume ramps once MAV is reached, and prioritises absolute intensity of effort (\u22642 RIR) over high volume accumulation to preserve lean mass. Sustained energy deficits impair recovery and elevate overuse injury risk.",
+      "citation": "Mountjoy et al. (2018, 2023). IOC consensus statement on relative energy deficiency in sport (RED-S). British Journal of Sports Medicine.",
+      "url": "https://doi.org/10.1136/bjsports-2018-099193",
+      "placeholder": false
+    },
+    {
+      "id": "ev-nutrition-surplus-recovery",
+      "title": "Caloric surplus enhances recovery and enables aggressive volume progression",
+      "summary": "In a caloric surplus, glycogen availability and systemic recovery capacities are optimised. PlanKit enables aggressive volume progression rates of +2 to +3 sets per week up to the full MRV_hard ceiling. The enhanced recovery environment supports higher training volumes and more frequent progressive overload.",
+      "citation": "Helm engine evidence derived from Mountjoy et al. (2018) RED-S consensus and phase-adjustment scaling logic in PlanKit volume model (0.txt \u00a79, 2.txt Phase Interaction table).",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-nutrition-lea-risk",
+      "title": "Low Energy Availability (LEA) and REDs risk detection signals",
+      "summary": "If an athlete logs persistent performance declines across more than 2 microcycles alongside low ARC readiness, elevated muscle soreness (4/4), and suppressed resting heart rate metrics, the engine flags potential LEA risk. The system restricts session volume to MV (maintenance volume), locks RIR at \u22653, and prompts the user to evaluate their nutritional intake.",
+      "citation": "Mountjoy et al. (2023). 2023 International Olympic Committee's (IOC) consensus statement on Relative Energy Deficiency in Sport (REDs). British Journal of Sports Medicine.",
+      "url": "https://doi.org/10.1136/bjsports-2023-106994",
+      "placeholder": false
+    },
+    {
+      "id": "ev-nutrition-phase-table",
+      "title": "Caloric state modifies MEV, MRV, progression rate, session caps, and deload frequency",
+      "summary": "Nutritional phase systematically alters training parameters: during a cut, MEV scales up (\u00d71.15 \u2014 more volume needed to retain muscle) while MRV scales down (\u00d70.80 \u2014 reduced recovery); during a surplus, MEV scales down (\u00d70.85) while MRV scales up (\u00d71.15). Progression rate shifts from maintenance-only in a deficit to aggressive load progression in a surplus. Max intra-session sets per muscle are capped at 6 (cut), 8 (maintain), or 10 (gain). Deload frequency tightens to every 4\u20135 weeks in a deficit and extends to every 6\u20138 weeks in a surplus.",
+      "citation": "Helm engine PlanKit Phase Interaction Table (2.txt). Derived from RED-S consensus (Mountjoy et al., 2018) and volume recovery modelling.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-nutrition-protein-targets",
+      "title": "Protein intake should be 1.6\u20132.2 g/kg for hypertrophy and lean mass retention",
+      "summary": "Daily protein intake of 1.6\u20132.2 g/kg bodyweight maximises muscle protein synthesis and supports lean mass retention during caloric deficits. Higher intakes (up to 2.2 g/kg) are recommended during cuts to offset the anti-catabolic effect of energy restriction. Protein should be distributed across 3\u20135 meals with 0.4\u20130.55 g/kg per feeding to optimise MPS.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-fat-minimums",
+      "title": "Dietary fat minimums are critical for hormonal health",
+      "summary": "Fat intake should not fall below 0.5\u20130.7 g/kg bodyweight to maintain testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins (A, D, E, K). Severe fat restriction during cuts compounds the hormonal stress of caloric deficits and impairs recovery.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-carb-periodization",
+      "title": "Carbohydrate intake should be periodised around training demand",
+      "summary": "Carbohydrate intake is the most flexible macronutrient and should be titrated to training volume. On high-volume training days, higher carbohydrate intake replenishes glycogen and supports performance. On rest or low-volume days, lower carbohydrate intake aids fat oxidation and insulin sensitivity. During cuts, carbohydrate periodisation helps maintain training intensity while sustaining the deficit.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-rate-limits",
+      "title": "Body composition change should not exceed 0.25\u20130.5% bodyweight per week",
+      "summary": "Rate of weight loss during a cut should be limited to 0.5\u20131.0% bodyweight per week, with 0.25\u20130.5% per week recommended for lean individuals to minimise lean mass loss. Rate of weight gain in a surplus should not exceed 0.25\u20130.5% bodyweight per week to limit excessive fat gain. Faster rates increase the ratio of fat gain to muscle gain in a surplus and muscle loss in a deficit.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-creatine",
+      "title": "Creatine monohydrate is the most evidence-backed performance supplement",
+      "summary": "Creatine monohydrate (3\u20135 g/day) increases intramuscular phosphocreatine stores, improving repeated high-intensity exercise performance, strength output, and lean mass accrual. It is safe for long-term use, well-tolerated, and effective without a loading phase (though loading accelerates saturation). Benefits extend beyond performance to cognitive function and recovery.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-caffeine",
+      "title": "Caffeine is an effective ergogenic aid for strength and endurance",
+      "summary": "Caffeine (3\u20136 mg/kg) reduces perceived exertion, improves muscular endurance, and enhances focus during training. Timing 30\u201360 minutes pre-training is optimal. Habitual users may experience attenuated effects; cycling off caffeine periodically can restore sensitivity. Excessive intake (>6 mg/kg) increases anxiety and may impair fine motor control without additional performance benefit.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-refeeds-diet-breaks",
+      "title": "Refeeds and diet breaks attenuate metabolic adaptation during prolonged deficits",
+      "summary": "Scheduled refeeds (1\u20132 days at maintenance calories with elevated carbohydrate) and diet breaks (1\u20132 weeks at maintenance) help restore leptin levels, reduce diet fatigue, and preserve training performance during prolonged cuts. Diet breaks every 4\u20138 weeks of deficit improve long-term adherence and reduce the magnitude of metabolic adaptation. Refeeds are most effective when aligned with high-volume training days.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-hydration",
+      "title": "Hydration status directly impacts strength, endurance, and recovery",
+      "summary": "Even mild dehydration (2% body mass loss) impairs strength, power output, and cognitive function during training. Athletes should consume 5\u201310 mL/kg bodyweight 2\u20134 hours pre-training and replace 150% of fluid lost during exercise within 4\u20136 hours post-training. Electrolyte replacement (sodium, potassium) is critical for sessions exceeding 60 minutes or in hot environments.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    },
+    {
+      "id": "ev-nutrition-sleep-nutrition",
+      "title": "Sleep deprivation impairs nutrient partitioning and recovery",
+      "summary": "Sleep restriction (<6 hours) reduces insulin sensitivity, increases evening cortisol, and blunts muscle protein synthesis. It also elevates ghrelin and reduces leptin, increasing hunger and undermining dietary adherence. Nutritional strategies that support sleep include avoiding large meals within 2\u20133 hours of bedtime, moderating evening caffeine, and ensuring adequate magnesium and zinc intake.",
+      "citation": "Content to be authored with specific citations.",
+      "url": "",
+      "placeholder": true
+    }
+  ],
+  "topics": [
+    {
+      "id": "nutrition-phase-interaction",
+      "title": "Caloric State and Training Parameters",
+      "body": "An athlete's nutritional phase \u2014 cut (deficit), maintain (eucaloric), or gain (surplus) \u2014 directly alters recovery capacity and therefore every volume landmark in the training engine. This is not a suggestion layer; it is a mechanical adjustment the engine applies automatically.\n\nDuring a caloric deficit, systemic recovery is impaired. The engine scales MRV down by 15\u201325%, halts progressive volume ramps at MAV rather than MRV, and prioritises intensity (\u22642 RIR) over volume accumulation. This preserves the anabolic signal per set while reducing total fatigue. MEV is raised (\u00d71.15) because more volume is required to retain muscle when energy is restricted. Max sets per muscle per session are capped at 6, and deloads come every 4\u20135 weeks.\n\nDuring a caloric surplus, the opposite occurs: recovery capacity is enhanced, MRV scales up (\u00d71.15), MEV falls (\u00d70.85) because less volume is needed to initiate growth, progression rates become aggressive (+2 to +3 sets/week), session caps rise to 10 sets per muscle, and deload frequency extends to every 6\u20138 weeks. The maintenance phase sits at baseline (\u00d71.00) with standard double progression and 8-set session caps.\n\nThese scalars are applied at mesocycle compilation and are not user-facing toggles \u2014 they are structural parameters that reflect the biological reality that you cannot train a calorie-restricted body the same way you train a well-fed one.",
+      "citationIDs": [
+        "ev-nutrition-deficit-mrv",
+        "ev-nutrition-surplus-recovery",
+        "ev-nutrition-phase-table"
+      ]
+    },
+    {
+      "id": "nutrition-low-energy-availability",
+      "title": "Low Energy Availability and REDs Risk",
+      "body": "Low Energy Availability (LEA) occurs when energy intake is insufficient to support both exercise expenditure and basic physiological function. It is the underlying cause of Relative Energy Deficiency in Sport (REDs), a syndrome affecting metabolic rate, bone health, immunity, and reproductive function.\n\nThe engine monitors for LEA risk signals automatically. If an athlete logs persistent performance declines across more than 2 consecutive microcycles paired with low ARC readiness scores, elevated muscle soreness (4/4), and suppressed resting heart rate, the system flags potential LEA. When flagged, the engine forcibly restricts session volume to maintenance volume (MV), locks target RIR at \u22653, and prompts the athlete to evaluate their nutritional intake.\n\nLEA is not the same as a planned caloric deficit. A planned deficit is intentional, rate-limited, and monitored. LEA is often unintentional \u2014 the athlete is simply not eating enough to fuel their training \u2014 and leads to a cascade of negative outcomes that training cannot outrun. The only fix is increased energy intake.",
+      "citationIDs": [
+        "ev-nutrition-lea-risk"
+      ]
+    },
+    {
+      "id": "nutrition-macro-partitioning",
+      "title": "Macro Partitioning: Protein, Fat, and Carbohydrate",
+      "body": "Protein is the highest-priority macronutrient for athletes. Target 1.6\u20132.2 g/kg bodyweight daily, distributed across 3\u20135 meals with roughly 0.4\u20130.55 g/kg per feeding to repeatedly spike muscle protein synthesis. Higher intakes (upper end of the range) are recommended during caloric deficits to offset the catabolic pressure of energy restriction. Protein quality matters: prioritise complete sources (animal proteins, soy) with high leucine content (\u22652.5 g per meal) to maximally stimulate MPS.\n\nDietary fat must not fall below 0.5\u20130.7 g/kg bodyweight. Fat is essential for testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins. Severe fat restriction during a cut compounds the hormonal stress of the deficit and impairs recovery. The remainder of fat intake beyond this floor depends on personal preference and adherence.\n\nCarbohydrate is the most flexible macro and should be periodised around training demand. Higher training days warrant higher carbohydrate intake to replenish glycogen and support performance. Rest days or low-volume days can be lower to improve insulin sensitivity. During a cut, carbohydrate periodisation helps maintain training intensity while sustaining the deficit. Total carb intake fills the remaining calorie budget after protein and fat targets are satisfied.",
+      "citationIDs": [
+        "ev-nutrition-protein-targets",
+        "ev-nutrition-fat-minimums",
+        "ev-nutrition-carb-periodization"
+      ]
+    },
+    {
+      "id": "nutrition-body-composition-rates",
+      "title": "Rate Limits for Cutting and Gaining",
+      "body": "The maximum sustainable rate of body composition change is constrained by biology, not willpower. For lean individuals, weight loss during a cut should not exceed 0.5\u20131.0% of bodyweight per week, with 0.25\u20130.5% per week recommended. Faster cuts increase the proportion of weight lost from lean mass rather than fat, slow metabolic rate more aggressively, and degrade training performance and recovery.\n\nWeight gain in a surplus should similarly not exceed 0.25\u20130.5% bodyweight per week. Beyond this rate, the ratio of fat gain to muscle gain deteriorates sharply. Since muscle protein synthesis has a finite ceiling regardless of energy surplus, excess calories beyond what supports MPS are partitioned to adipose tissue. A smaller surplus sustained for longer produces a better muscle-to-fat gain ratio than an aggressive surplus.\n\nThe engine phase table (gain \u00d70.85 MEV, cut \u00d71.15 MEV) reflects the biological reality that rate-limited changes create the most favourable environment for body recomposition. These are not prescriptive rates enforced by the engine but coaching guidelines the system can surface when an athlete's logged weight trend exceeds them.",
+      "citationIDs": [
+        "ev-nutrition-rate-limits",
+        "ev-nutrition-phase-table"
+      ]
+    },
+    {
+      "id": "nutrition-periworkout",
+      "title": "Peri-Workout Nutrition and Timing",
+      "body": "Peri-workout nutrition encompasses the meals consumed before, during, and after training. The primary goal is to fuel performance and initiate recovery without causing gastrointestinal distress during the session.\n\nThe pre-training meal (1\u20133 hours before) should contain moderate protein (20\u201340 g) and carbohydrate, with fat kept low to speed gastric emptying. A liquid or easily digestible option is preferred closer to training. Intra-workout nutrition is generally unnecessary for sessions under 60 minutes unless training fasted; for longer sessions, 30\u201360 g carbohydrate per hour can sustain performance.\n\nPost-training, the 'anabolic window' is wider than often claimed. Total daily protein intake and distribution across meals matters more than immediate post-workout timing. However, consuming 20\u201340 g of protein within 2 hours post-training is a practical habit that ensures MPS stimulation. Adding carbohydrate post-training accelerates glycogen resynthesis, which is most critical when training the same muscle group within 24 hours.\n\nNutrient timing is a refinement layer, not a replacement for total daily intake. An athlete who hits protein and calorie targets but eats at irregular times will outperform an athlete with perfect timing who undereats.",
+      "citationIDs": [
+        "ev-nutrition-protein-targets",
+        "ev-nutrition-carb-periodization"
+      ]
+    },
+    {
+      "id": "nutrition-supplements",
+      "title": "Evidence-Based Supplements",
+      "body": "Most supplements marketed to athletes lack robust evidence. Three stand out with strong, replicated support and low risk profiles.\n\nCreatine monohydrate (3\u20135 g/day) is the most thoroughly researched performance supplement. It increases intramuscular phosphocreatine stores, improving repeated high-intensity effort, strength, and lean mass accrual. It is safe for long-term use. A loading phase (20 g/day for 5\u20137 days) accelerates saturation but is not required; consistent daily dosing achieves the same result over 3\u20134 weeks. Benefits extend to cognitive function, making it relevant during periods of sleep restriction or high stress.\n\nCaffeine (3\u20136 mg/kg, 30\u201360 minutes pre-training) reduces perceived exertion, improves muscular endurance, and sharpens focus. Effects are more pronounced in non-habitual users; chronic high intake attenuates response. Cycling off caffeine periodically restores sensitivity. Doses exceeding 6 mg/kg increase anxiety and jitter without additional performance benefit.\n\nBeta-alanine (3\u20136 g/day) elevates intramuscular carnosine, buffering hydrogen ion accumulation during high-intensity efforts lasting 60\u2013240 seconds. It is most relevant for athletes performing repeated sprint or high-rep training. Paraesthesia (tingling) is a benign side effect that can be mitigated with split dosing or sustained-release formulations.\n\nProtein powder (whey or plant-based blends) is not a supplement in the ergogenic sense \u2014 it is a convenience food that helps athletes hit daily protein targets. It offers no benefit beyond equivalent protein from whole food, but its practicality for peri-workout use and meal gaps makes it a staple tool.",
+      "citationIDs": [
+        "ev-nutrition-creatine",
+        "ev-nutrition-caffeine",
+        "ev-nutrition-protein-targets"
+      ]
+    },
+    {
+      "id": "nutrition-recovery",
+      "title": "Nutrition-Supported Recovery: Sleep, Hydration, Refeeds, and Diet Breaks",
+      "body": "Recovery is a nutritional event as much as a training event. Three domains interact directly with the engine's readiness and progression systems.\n\nHydration status directly impacts strength, endurance, and cognitive function. Even mild dehydration (2% body mass loss) measurably impairs performance. Athletes should consume 5\u201310 mL/kg bodyweight 2\u20134 hours pre-training and replace 150% of fluid lost during exercise within 4\u20136 hours post-training. Electrolyte replacement (sodium and potassium) is critical for sessions exceeding 60 minutes or training in hot environments.\n\nSleep-nutrition interaction is bidirectional. Sleep restriction below 6 hours reduces insulin sensitivity, elevates evening cortisol, blunts MPS, and disrupts appetite-regulating hormones (elevated ghrelin, reduced leptin) \u2014 making dietary adherence harder. Nutritional strategies that support sleep include avoiding large meals within 2\u20133 hours of bedtime, moderating evening caffeine intake, and ensuring adequate magnesium and zinc. The engine already scales volume when ARC readiness is depressed by poor sleep; nutrition amplifies or mitigates the root cause.\n\nRefeeds and diet breaks are tools for prolonged deficits. A refeed (1\u20132 days at maintenance calories with elevated carbohydrate) restores leptin and glycogen, improving training quality and psychological adherence. A diet break (1\u20132 weeks at maintenance) every 4\u20138 weeks of deficit reduces metabolic adaptation and preserves lean mass. These are particularly relevant when the engine is operating in cut-phase parameters with compressed MRV \u2014 if an athlete cannot sustain performance at those reduced volumes, a diet break may be the correct intervention, not a training adjustment.",
+      "citationIDs": [
+        "ev-nutrition-refeeds-diet-breaks",
+        "ev-nutrition-hydration",
+        "ev-nutrition-sleep-nutrition"
+      ]
+    }
+  ]
+}

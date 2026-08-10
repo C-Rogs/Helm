@@ -1,0 +1,550 @@
+Programming Specification for Helm’s Adaptive Training Engine: Architecture, Session Composition, and Autoregulation Schema
+1. Executive Summary
+The fundamental architectural flaw in Helm’s legacy training engine stems from an oversimplified volume allocation model within the PrescriptionEngine. While weekly hard-set calculations managed by PlanKit accurately compute volume landmarks such as Minimum Effective Volume (MEV) and Maximum Recoverable Volume (MRV), collapsing a muscle group’s total weekly volume into a single selected exercise per session creates severely compromised training programs. For example, when a Pull session prescribes eight weekly sets of back work and six weekly sets of bicep work across two weekly exposures, the legacy engine assigns four sets to a single back exercise (e.g., Lat Pulldown) and three sets to a single bicep movement (e.g., Standing Barbell Curl).
+This approach breaks down in real-world personal training environments due to four major physiological and biomechanical factors:
+Intra-Session Stimulus Decay: Concentrating four to six consecutive hard sets onto a single movement vector produces acute localized fatigue that dramatically degrades the stimulus-to-fatigue ratio (SFR) of subsequent sets.
+Anatomical and Sub-Division Neglect: Complex skeletal muscle structures—such as the latissimus dorsi, trapezius, and deltoids—comprise distinct fiber orientations and regional innervation patterns that require varied movement vectors (e.g., vertical pulling, horizontal rowing, and isolation extension) to achieve comprehensive muscular development.
+Connective Tissue Micro-Trauma: Repeatedly loading a single joint angle under high volume increases cumulative mechanical stress on periarticular structures, elevating overuse injury risk compared to distributing volume across complementary movement patterns.
+Session Density and Time Constraints: Single-exercise set dumping leads to unrealistic session flow and density, failing to reflect professional personal training standards.
+To eliminate this systemic defect without compromising offline deterministic calculation, Helm must transition from a Muscle-First Set Allocator to a dual-layer Movement Pattern Session Composer (MPSC) coupled with a Dynamic Volume Allocation & Autoregulation System (DVAAS). Under this updated architecture, weekly hard-set targets calculated by PlanKit are dynamically mapped across mandatory movement pattern slots structured by session duration budgets, equipment constraints, and movement selection preferences.
+Architectural Dimension
+Legacy Implementation
+Recommended Architecture (v2.0)
+Session Generation Model
+Single exercise selection per target muscle per session split.
+Multi-slot Movement Pattern Session Composer (MPSC).
+Volume Allocation Logic
+Weekly sets divided evenly by remaining session frequency.
+Pattern-based priority allocation constrained by time budgets.
+Experience Seeding Prior
+Static scalar multipliers ($0.85\times$, $1.0\times$, $1.1\times$).
+Individualized Historical Baseline ($V_{base}$) bounded by empirical priors.
+Synergist Set Accounting
+Ignored or unconstrained fractional counting.
+Explicit dual-tier set accounting (1.0 direct / 0.5 synergist).
+Autoregulation Hierarchy
+Undefined set/exercise drop sequence.
+Rigid 5-tier precedence order (RIR $\rightarrow$ Load $\rightarrow$ Accessory $\rightarrow$ Pattern Slot $\rightarrow$ MV).
+LLM Engine Boundary
+Unclamped text proposals risking mathematical drift.
+Deterministic state machine with clamped structured JSON proposals.
+
+2. Settings Taxonomy & Information Architecture
+To resolve ambiguity between engine operations, user intent, and instructional content, Helm’s system architecture explicitly categorizes settings into five distinct operational domains.
+Setting Domain
+Data Type / Structure
+Deterministic Engine Ownership
+System Re-Plan Scope
+User UI / Modality
+Program Parameters
+Enumerated Structs
+SessionSplitPlanner, MPSC
+Immediate mesocycle structural re-compilation.
+Top-level app setup & primary program settings.
+Methodology Preferences
+Scalar Variables & Enums
+PrescriptionEngine, PlanKit
+Re-slots active microcycle exercises and targets.
+Dynamic preference sliders & selectors.
+Operational Constraints
+Bitmasks & Structural Lists
+PrescriptionEngine
+Dynamic runtime filtering of exercise candidate pool.
+Interactive body map & equipment checklist.
+User Experience Prior
+Floating-Point Baseline ($V_{base}$)
+PlanKit
+Seeds initial microcycle set budgets for new blocks.
+Onboarding assessment form.
+Educational Library
+Immutable Content Strings
+None (Read-only knowledge base for LLM Coach)
+Zero engine effect; context injection for LLM explanations.
+Knowledge tab & inline methodology citations.
+Domain Functional Specifications
+Program Parameters (Top-Level Architecture)
+Defines structural training components including Primary Split Strategy (PPL, Upper_Lower, Full_Body), Microcycle Frequency ($3$ to $6$ days per week), and Target Session Duration ($30$, $45$, $60$, $75+$ minutes). Modifying any Program Parameter forces a complete re-compilation of the active mesocycle schedule.
+Methodology Preferences
+Controls engine heuristics within established program structures. Key variables include Movement Selection Bias (Stretch_Focused, SFR_Optimized, Compound_Heavy), Proximity-to-Failure Policy (Target_RIR_Ramp, Fixed_RIR), Progression Schemes (Double_Progression, Dynamic_Double_Progression), and Volume Aggressiveness Multipliers ($0.8\times$ to $1.2\times$ baseline velocity).
+Operational Constraints
+Acts as a dynamic filter on the exercise database prior to movement pattern slotting. Includes Equipment Availability Bitmasks (Barbell, Dumbbell, Cable, Plate_Loaded, Bodyweight) and Joint/Pain Constraints (Flexion_Intolerant_Lumbar, Subacromial_Impingement, Patellar_Tendinopathy).
+User Experience Prior
+Replaces static experience scalars with an Individualized Historical Baseline ($V_{base}$) derived from user-reported training volume over the preceding eight weeks. This value initializes the starting microcycle volume budget.
+Educational & Scientific Library
+Houses verified exercise physiology documentation. These assets configure zero engine code directly; instead, they provide structured context for LLM Coach interactions, enabling accurate, evidence-backed user feedback.
+USER SETTINGS INTERFACE
+  |
+  +---> Program Parameters        --> Triggers Full Mesocycle Re-Plan
+  +---> Methodology Preferences   --> Triggers Exercise Slotting Re-Plan
+  +---> Operational Constraints   --> Triggers Dynamic Exercise Filtering
+  +---> User Experience Prior     --> Seeds Microcycle Baseline (V_base)
+  +---> Educational Library       --> Injects Context into LLM Coach
+Preference Negotiation Workflow
+When a user alters a methodology preference (e.g., switching selection bias from Compound_Heavy to Stretch_Focused), the app executes a structured state update:
+The UI captures the selection and writes the change to the persistent MemoryProfile struct.
+MemoryProfile emits an update event to PlanKit and PrescriptionEngine.
+PrescriptionEngine re-slotifies the active microcycle session array, selecting candidate exercises that emphasize long muscle length loading patterns.
+The engine passes the updated session plan to the LLM Coach alongside corresponding citations from the Educational Library (e.g., Maeo et al., 2023; Wolf et al., 2023).
+The LLM Coach generates a user notification explaining the technical adjustments made to the session plan.
+3. Session Composer Specification
+Movement Pattern Hierarchy by Session Split
+The Session Composer eliminates single-exercise volume dumping by requiring every session to populate specific movement pattern slots based on the active split template.
+Session Split
+Mandatory Primary Slots
+Mandatory Secondary Slots
+Isolation & Accessory Slots
+Push
+Horizontal Press (Chest-Bias), Overhead Press (Anterior Delt-Bias)
+Lengthened Fly / Dip (Lower Pectoral Vector)
+Triceps Lateral/Medial Head, Triceps Long Head, Lateral Deltoid
+Pull
+Vertical Pull (Lat-Bias), Horizontal Row (Upper Back / Trapezius)
+Straight-Arm Extension / Lat Isolation
+Supinated Biceps, Neutral/Pronated Biceps, Rear Deltoid
+Legs
+Knee Extension Compound (Squat/Leg Press), Hip Extension Hinge (RDL/Goodmorning)
+Unilateral Knee Extension / Hack Squat
+Knee Flexion (Seated/Lying Leg Curl), Calf Extension, Abdominal / Adductor
+Upper
+Horizontal Press, Vertical Pull
+Overhead Press / Incline Press, Horizontal Row
+Triceps Isolation, Biceps Isolation, Lateral Deltoid Isolation
+Lower
+Knee Extension Compound, Hip Extension Hinge
+Unilateral Leg Press / Lunges
+Seated Leg Curl, Standing Calf Raise, Abdominal Isolation
+Full Body
+Lower Knee Extension / Hip Extension, Upper Press
+Upper Vertical / Horizontal Pull
+Secondary Lower Hinge / Leg Curl, Arm Flexor / Extensor Isolation
+Exercise Count & Set Allocation Matrix by Duration Budget
+Session duration budgets enforce strict boundaries on total exercise slots and set volumes to ensure session density matches real-world training environments.
+Time Duration Budget
+Maximum Exercise Slots
+Prescribed Total Set Range
+Maximum Sets Per Exercise Slot
+Target Allocation Pattern Split
+30 Minutes
+2–3 slots
+6–9 total sets
+3 sets max
+1 Primary Compound, 1 Secondary Compound, 1 Isolation (Optional)
+45 Minutes
+3–4 slots
+10–14 total sets
+4 sets max
+2 Primary Compounds, 1 Secondary Compound, 1 Isolation
+60 Minutes
+4–5 slots
+14–18 total sets
+4 sets max
+2 Primary Compounds, 1 Secondary Compound, 2 Isolations
+75+ Minutes
+5–7 slots
+18–24 total sets
+4 sets max
+2 Primary Compounds, 2 Secondary Compounds, 3 Isolations
+Two-Exercise Session Validation Rules
+A session containing only two exercise slots is classified as an engine Defect unless one of the following validated system conditions is active:
+Time Budget Limit: User active time budget is set to $30\text{ minutes}$.
+Readiness Depressed: Morning Readiness (ARC) score falls below $0.40$, triggering an automated volume reduction to prevent excessive fatigue.
+Deload Phase: Active microcycle phase is flagged as Deload, reducing targets to Maintenance Volume ($MV$, $\sim 50\%$ of baseline volume).
+Acute Joint Constraint: Active pain constraints exclude $\ge 50\%$ of candidate movement patterns for the targeted muscle groups.
+Overlap and Synergy Set Accounting Logic
+To track fatigue and volume accurately without double-counting set totals, Helm utilizes a dual-tier set credit system:
+Direct Set Credit (1.0): Granted to primary mover muscles in a movement pattern (e.g., Barbell Incline Bench Press grants 1.0 set credit to Pectoralis Major).
+Synergy Set Credit (0.5): Granted to primary synergist muscles receiving substantial mechanical tension and proximity to failure (e.g., Barbell Incline Bench Press grants 0.5 set credit to Anterior Deltoid and Triceps Brachii).
+Stabilizer Credit (0.0): Secondary postural stabilizers receive 0.0 set credit toward hypertrophic volume landmarks, but their mechanical contribution is logged for systemic fatigue calculations (e.g., Erector Spinae during Barbell Rows).
+MOVEMENT INPUT: Barbell Incline Bench Press (3 Hard Sets Performed)
+  |
+  +---> Pectoralis Major (Primary Mover)  --> 1.0 Credit x 3 Sets = 3.0 Direct Sets Logged
+  +---> Anterior Deltoid (Synergist)      --> 0.5 Credit x 3 Sets = 1.5 Synergy Sets Logged
+  +---> Triceps Brachii (Synergist)       --> 0.5 Credit x 3 Sets = 1.5 Synergy Sets Logged
+  +---> Erector Spinae (Stabilizer)       --> 0.0 Credit x 3 Sets = 0.0 Hypertrophy Credit (Fatigue Only)
+Deterministic Session Composer Algorithm
+Algorithm: DeterministicSessionComposer
+Input:
+    TargetMuscles: Array of Muscle Enums for active day split
+    WeeklySetBudgets: Map<Muscle, Int> derived from PlanKit MEV->MRV models
+    RemainingSessionsInMicrocycle: Map<Muscle, Int>
+    TimeBudgetMinutes: Int
+    EquipmentMask: Bitmask
+    PainConstraints: Array<Constraint>
+    UserSelectionBias: SelectionBias Enum
+
+Output:
+    ResolvedSessionPlan: Array<ExerciseAssignment>
+
+Begin:
+    1. Set MaxSlots, MaxSets, MaxSetsPerSlot = LookupDurationRules(TimeBudgetMinutes)
+    2. CandidatePatterns = ResolvePatternSlotsForSplit(TargetMuscles)
+    
+    3. Filter CandidatePatterns:
+         For each pattern in CandidatePatterns:
+             If PainConstraints.Excludes(pattern):
+                 Remove pattern from CandidatePatterns
+                 
+    4. Compute DailyMuscleTargets:
+         For each muscle in TargetMuscles:
+             DailyMuscleTargets[muscle] = Ceiling(WeeklySetBudgets[muscle] / RemainingSessionsInMicrocycle[muscle])
+             
+    5. Initialize SessionPlan = Empty Array
+    6. Set RemainingSessionSets = MaxSets
+    
+    7. Sort CandidatePatterns by Priority (Primary Compounds -> Secondary Compounds -> Isolation)
+    
+    8. For each slot in CandidatePatterns:
+         If RemainingSessionSets <= 0 OR SessionPlan.Length >= MaxSlots:
+             Break Loop
+             
+         Set TargetMuscle = slot.PrimaryMuscle
+         If DailyMuscleTargets[TargetMuscle] <= 0:
+             Continue Loop
+             
+         Set EligibleExercises = QueryDatabase(slot.Pattern, EquipmentMask, PainConstraints)
+         If EligibleExercises is Empty:
+             Continue Loop
+             
+         Set SelectedExercise = RankAndSelect(EligibleExercises, UserSelectionBias)
+         
+         // Calculate set assignment
+         Set AllocatedSets = Minimum(DailyMuscleTargets[TargetMuscle], MaxSetsPerSlot)
+         Set AllocatedSets = Minimum(AllocatedSets, RemainingSessionSets)
+         
+         If AllocatedSets > 0:
+             Append ExerciseAssignment(SelectedExercise, AllocatedSets, slot.Pattern) to SessionPlan
+             
+             // Deduct Direct Volume Target
+             DailyMuscleTargets[TargetMuscle] -= AllocatedSets
+             RemainingSessionSets -= AllocatedSets
+             
+             // Apply Synergy Credits
+             For each synergist in SelectedExercise.SynergistList:
+                 If DailyMuscleTargets.Contains(synergist.Muscle):
+                     DailyMuscleTargets[synergist.Muscle] -= (AllocatedSets * 0.5)
+
+    9. Return SessionPlan
+End
+4. Volume & Experience Model
+Critique of Static Experience Multipliers
+Helm’s legacy volume seeding model applied fixed scalars ($0.85\times$ Novice, $1.0\times$ Intermediate, $1.1\times$ Advanced) to static baseline landmarks. This approach presents significant physiological limitations. Training experience does not scale hypertrophic volume landmarks linearly. Novice lifters generate low fatigue per set and achieve robust muscle growth from low absolute set counts ($6$–$10$ sets/muscle/week), but possess limited work capacity. Conversely, highly advanced lifters recruit motor units more efficiently and produce far greater mechanical force per set, generating substantial localized micro-trauma and neurological fatigue. Consequently, an advanced athlete may hit their Maximum Recoverable Volume (MRV) at a lower set count for heavy compound lifts than an intermediate lifter.
+Helm replaces fixed experience scalars with an Individualized Historical Baseline ($V_{base}$) model. Initial microcycle set targets are computed from the user's self-reported weekly hard sets over the preceding eight weeks, clamped within evidence-based starting boundaries:
+$$V_{start} = \text{Clamp}\left(V_{reported\_historical\_average}, \, 8, \, 15\right)$$
+USER ONBOARDING INPUT: Reported Average Hard Sets (Past 8 Weeks)
+  |
+  v
+ENGINE CLAMPING FUNCTION: Clamp(V_reported, Min: 8, Max: 15)
+  |
+  +---> Input: 5 sets/wk   --> Clamped Output: 8 sets/wk (MEV Baseline)
+  +---> Input: 12 sets/wk  --> Clamped Output: 12 sets/wk (Personalized Baseline)
+  +---> Input: 22 sets/wk  --> Clamped Output: 15 sets/wk (Safe Upper Ceiling)
+  |
+  v
+INITIAL MICROCYCLE SEED (V_start) -> Passed to PlanKit Engine
+Mid-Program Experience Multiplier Change Policy
+If a user modifies their self-selected experience level mid-mesocycle, PlanKit must not re-seed active microcycle set volumes. Modifying landmarks mid-block disrupts progressive overload progression and invalidates dynamic autoregulation data. Changes to experience settings are locked and only applied during the compilation of the subsequent mesocycle block.
+Algorithmic Landmark Refinement Matrix
+At the conclusion of each microcycle, PlanKit refines individual muscle group MEV and MRV parameters using an empirical evaluation matrix combining logged Soreness (1–4), Performance Progression (1–4), and Average Weekly Readiness (ARC).
+Soreness Metrics (S):
+  1: No soreness / fully recovered > 48h prior to next exposure
+  2: Recovered just in time for next session
+  3: Residual soreness present during subsequent session
+  4: Severe soreness impairing movement performance
+
+Performance Progression (P):
+  1: Exceeded load/rep targets with reserve (+2 RIR margin)
+  2: Met load/rep targets at prescribed RIR exactly
+  3: Failed target reps by 1-2 reps or missed target RIR
+  4: Performance regression (failed targets by > 2 reps across sets)
+Logged Soreness (S)
+Logged Performance (P)
+Weekly Set Adjustment (ΔV)
+Dynamic Parameter Action
+1
+1
+$+2\text{ to }+3\text{ sets/week}$
+Elevate MAV upper ceiling; ramp volume aggressively.
+1 or 2
+2
+$+1\text{ set/week}$
+Maintain standard progressive volume ramp.
+2 or 3
+2 or 3
+$+0\text{ sets/week}$
+Hold volume constant; landmark consolidated.
+3
+4
+$-2\text{ sets/week}$
+Step down set allocation; local MRV threshold lowered.
+4
+4
+$-30\text{ to }-50\%\text{ (Trigger Deload)}$
+Force immediate reactive deload; step down global MRV limit.
+
+Special Population Adaptations
+Masters Athletes ($\ge 45$ Years): Connective tissue remodeling rates are prolonged relative to muscular recovery. PlanKit caps progressive volume accumulation at $+1\text{ set/week}$, applies a $0.85\times$ scalar to calculated MRV caps, and mandates a recovery deload every 4th microcycle.
+Layoff Returnees ($\ge 3$ Weeks Un-trained): Muscular adaptation baseline resets while vulnerability to exercise-induced muscle damage increases. The engine sets Microcycle 1 volume to Maintenance Volume ($MV \approx 6\text{ sets/week}$), progressing to $MEV$ in Microcycle 2.
+High Stress / Low Sleep (ARC $< 0.45$ 7-Day Average): Systemic recovery capacity is compromised. PlanKit clamps peak mesocycle volume to $MEV + 2\text{ sets}$, overriding progressive set ramps until systemic readiness metrics normalize.
+Overreaching Detection & MRV Threshold Enforcements
+To prevent overtraining, PlanKit establishes two MRV boundary limits:
+Soft Warning Cap ($MRV_{soft} = 0.90 \times MRV$): The LLM Coach alerts the athlete that recovery capacity is reaching saturation. Progressive volume additions are halved.
+Hard Operational Cap ($MRV_{hard} = 1.00 \times MRV$): The engine strictly rejects set additions beyond this ceiling regardless of user adjustments.
+Overreaching Alarm: If a muscle group logs a Performance Rating of $4$ for two consecutive microcycles while operating at or above $MRV_{soft}$, the engine terminates the active mesocycle and schedules a 7-day reactive deload.
+5. Autoregulation & Deload Policy
+Autoregulation Precedence Order
+When morning readiness (ARC) drops or acute fatigue manifests during a session, the PrescriptionEngine adjusts session parameters following a strict priority hierarchy.
+Priority Tier
+Engine Adjustment Action
+Trigger Parameter
+Physiological Purpose
+Tier 1 (First Action)
+Increase Target RIR (e.g., 2 RIR $\rightarrow$ 3 RIR)
+ARC Score $0.60$–$0.69$
+Reduces neurological strain while preserving pattern execution and movement volume.
+Tier 2
+Reduce Load at Target Rep Range
+In-Session Bar Velocity Drop / High RPE
+Maintains set volume and pattern work while reducing absolute joint and mechanical load.
+Tier 3
+Trim Secondary Isolation Sets
+ARC Score $0.45$–$0.59$
+Removes lower-priority accessory volume to protect core compound movement quality.
+Tier 4
+Drop Final Pattern Slot Exercise
+ARC Score $0.35$–$0.44$
+Shortens session duration to limit systemic fatigue and glycogen depletion.
+Tier 5 (Last Action)
+Truncate Session to MV (2 Sets/Muscle)
+ARC Score $< 0.35$
+Converts session to maintenance exposure to facilitate systemic recovery.
+
+Readiness Gating vs. MEV Floor Protection
+Autoregulation must not depress training volume so frequently that an athlete spends consecutive weeks training below MEV.
+$$\text{Floor Constraint: If } \sum_{i=1}^{2} V_{\text{actual}, i} < 2 \times MEV \quad \Longrightarrow \quad \text{Trigger Mandatory Plan Realignment}$$
+If readiness gating depresses total weekly volume below MEV for two consecutive microcycles, the engine locks session set allocations at exact MEV baseline targets and enforces an increased proximity-to-failure buffer ($\ge 3$ RIR). This preserves hypertrophy-stimulating volume while preventing excessive central fatigue accumulation.
+MICROCYCLE EVALUATION: Evaluate Logged Volume vs. MEV Baseline
+  |
+  +---> Has V_actual fallen below MEV for 2 consecutive weeks?
+  |         |
+  |         +---> YES: Trigger MEV Floor Protection
+  |         |           - Lock volume at exact MEV baseline
+  |         |           - Force Target RIR >= 3
+  |         |           - Suspend dynamic readiness set reductions
+  |         |
+  |         +---> NO:  Continue Standard Autoregulation Pipeline
+Deload Execution Triggers
+Deload microcycles are governed by two distinct mechanisms within PlanKit:
+Scheduled Deloads: Standard mesocycle periodization schedules a deload automatically every 4th to 6th microcycle based on user training age and recovery capacity.
+Reactive Deloads: Triggered immediately at the next microcycle boundary if any of the following conditions occur:
+Performance Failure: Estimated 1RM drops by $>5\%$ across primary movements over two consecutive sessions.
+Unresolved Soreness: Soreness rating of $4/4$ persists for $>72\text{ hours}$ across two or more primary muscle groups.
+Readiness Depression: ARC score remains below $0.40$ for three consecutive days.
+6. Constraints & Safety Model
+Joint Stress Mapping & Movement Substitution Rules
+The engine translates user-reported pain symptoms into explicit movement pattern exclusions, substituting high-stress lifts with biomechanically compatible alternatives.
+Pain / Injury Flag
+Prohibited Movement Patterns
+Mandatory Engine Substitutions
+Pathomechanical Rationale
+Subacromial Impingement
+Overhead Pressing ($>90^\circ$ Abduction), Deep Parallel Dips
+Neutral-Grip Dumbbell Press, Low-Incline Cable Fly, Landmine Press
+Reduces acromioclavicular pinches and preserves subacromial clearance space.
+Patellar Tendinopathy
+Forward-Translating Knee Squats, Hack Squats, Short-Length Quad Partials
+Spanish Squats, Box Squats (Vertical Shin Vector), Romanian Deadlifts
+Decreases peak quadriceps tendon shear stress at deep knee flexion angles.
+Flexion-Intolerant Lumbar
+Bent-Over Barbell Rows, Stiff-Leg Deadlifts, Standing Overhead Press
+Chest-Supported T-Bar Rows, Seated Cable Rows, Incline Dumbbell Press
+Eliminates high anterior shear loads on the lumbar spine under heavy axial loading.
+Distal Biceps Tendinopathy
+Straight-Bar Preacher Curls, Heavy Supinated Cable Curls
+Neutral-Grip Hammer Curls, Cable Bayesian Curls (Controlled Lengthening)
+Reduces peak pronated and supinated tensile strain at the radial tuberosity insertion.
+Red-Flag Boundaries & Medical Referrals
+Non-Diagnostic Imperative: Helm does not provide medical diagnoses. The user interface strictly avoids clinical labels such as "Patellofemoral Pain Syndrome" or "Rotator Cuff Tendinitis." Pain inputs are categorized strictly as functional movement constraints (e.g., Knee_Flexion_Pain_Gated).
+Automated Care Referrals: If a user logs a Pain Severity Rating $\ge 7/10$ during session tracking, or if joint pain persists for $>3$ consecutive weeks despite pattern substitutions, the engine locks progression for the affected muscle groups and displays a prompt advising evaluation by a licensed physical therapist or sports physician.
+Asymmetry & Physical Therapy Integration
+Rehabilitation exercises prescribed by physical therapists are integrated into session plans via Unilateral Rehab Slots:
+Physical therapy exercises are flagged as Rehab_Accessory within the exercise database.
+Volume completed within Rehab_Accessory slots is tracked separately and does not count toward hypertrophic MRV limits.
+If a user specifies a limb strength asymmetry $>15\%$, PlanKit automatically assigns $1.5\times$ set volume to the lagging limb using unilateral movement variants, matching working loads to the capacity of the weaker side.
+7. LLM Coach Behavior Contract & Extensibility Schema
+Engine-LLM Operational Boundary
+The LLM Coach operates strictly as a narrative interpreter and proposal agent. It lacks administrative authority to modify numerical set targets, exercise selection arrays, load calculations, or RIR values directly.
+Training Engine Function
+Deterministic Engine Ownership
+LLM Coach Ownership
+Volume Calculation
+Absolute authority; computes MEV, MAV, MRV, and set distributions.
+Read-only access; reads computed set values to explain targets to the user.
+Exercise Candidate Filtering
+Filters exercise pool by equipment, pain constraints, and pattern slots.
+Proposes exercise substitutions strictly from the engine-validated candidate array.
+Session Composition
+Enforces minimum pattern slots, time duration limits, and exercise order.
+Narrates exercise ordering logic (e.g., explaining why compounds precede isolations).
+Progression Math
+Computes load increments, rep target adjustments, and RIR modifications.
+Translates numerical progression output into conversational coaching tips and cues.
+User Expansion Proposals
+Validates expansion proposals against system caps ($MRV_{hard}$, time limits).
+Formulates structured JSON expansion proposals for user confirmation.
+JSON Schema for Emerging Exercise Science Trends
+To accommodate emerging training methodologies (e.g., lengthened partials, dynamic tempo control, eccentric overload) without requiring engine code changes, exercise definitions utilize an extensible JSON schema.
+JSON
+
+
+
+
+{
+  "$schema": "https://helm.app/schemas/v2/exercise-definition.json",
+  "exercise_id": "lat_pulldown_neutral_wide",
+  "canonical_name": "Neutral Wide-Grip Lat Pulldown",
+  "primary_movement_pattern": "PULL_VERTICAL",
+  "primary_muscle_target": "LATISSIMUS_DORSI",
+  "secondary_muscles": [
+    {"muscle": "BRACHIALIS", "credit_weight": 0.5},
+    {"muscle": "RHOMBOIDS", "credit_weight": 0.5}
+  ],
+  "mechanics": {
+    "length_bias": "LENGTHENED",
+    "effective_rom_type": "FULL_OR_LENGTHENED_PARTIAL",
+    "stimulus_to_fatigue_ratio": 0.85,
+    "axial_loading_score": 0.15
+  },
+  "science_extensions": {
+    "lengthened_partial_eligible": true,
+    "lengthened_partial_hypertrophy_modifier": 1.08,
+    "recommended_tempo_eccentric_concentric": "3-0-1-0",
+    "literature_citations": ["Wolf_et_al_2023", "Kassiano_et_al_2023"]
+  },
+  "constraints_compatibility": {
+    "flexion_intolerant_lumbar_safe": true,
+    "subacromial_impingement_safe": false
+  }
+}
+Free-Text User Intent (Emphasis Mapping)
+When a user enters free-text intent (e.g., "I want to prioritize my arms and side delts"), the LLM Coach converts the input into a structured engine payload rather than applying unstructured modifications:
+The LLM Coach parses the request and generates a ProposalPayload JSON object specifying target muscle priorities.
+The payload is sent to PlanKit for validation against safety rules.
+If validated, PlanKit reallocates volume targets (e.g., increasing arm volume to $MAV$ while shifting non-emphasized muscles toward $MEV$).
+The user receives a UI confirmation prompt outlining the proposed program adjustments before changes are committed to the training plan.
+8. Migration Path
+Transitioning Helm from its legacy architecture to the v2.0 engine will be executed across three rollout phases to preserve data integrity and system stability.
+Migration Phase
+Target Engine Components
+Primary System Risks
+Technical Mitigation Strategy
+Phase 1: Session Composer Integration (v1.1)
+PrescriptionEngine, MPSC
+Increased generation latency due to multi-slot pattern resolution.
+Pre-index exercise movement patterns in local SQLite database; benchmark query execution to $<5\text{ms}$.
+Phase 2: Volume Seeding Overhaul (v1.2)
+PlanKit, Baseline Seeding ($V_{base}$)
+Sudden target set changes for existing users migrating to $V_{base}$.
+Lock existing user targets for active mesocycles; apply $V_{base}$ logic only upon block renewal.
+Phase 3: Full Constraints & Extensibility (v2.0)
+Pain Constraints Engine, Science Extensions, LLM Boundary
+Complex pain filters over-restricting exercise candidates.
+Implement low-stress machine fallback exercises when primary compound patterns are gated.
+
+9. Evidence Appendix & Nutrition Interface
+Nutrition Interface & Training Periodization
+Nutritional state directly impacts muscular recovery capacity, altering training engine parameters across distinct dietary phases:
+Caloric Deficit (Fat Loss / Cut Phase): Systemic recovery capacity and muscle protein synthesis rates are attenuated. PlanKit lowers default MRV caps by $15$–$25\%$, halts progressive volume ramps once $MAV$ baseline is reached, and prioritizes absolute intensity of effort ($\le 2$ RIR) over high volume accumulation to preserve lean mass.
+Caloric Surplus (Hypertrophy / Gain Phase): Glycogen availability and systemic recovery capacities are optimized. PlanKit enables aggressive volume progression rates ($+2\text{ to }+3\text{ sets/week}$) up to the full $MRV_{hard}$ ceiling.
+Low Energy Availability (LEA) & REDs Risk Signals: If an athlete logs persistent performance declines across $>2$ microcycles alongside low ARC readiness, elevated muscle soreness ($4/4$), and suppressed resting heart rate metrics, the engine flags potential LEA risk. The system restricts session volume to $MV$, locks RIR at $\ge 3$, and prompts the user to evaluate their nutritional intake.
+Scientific Evidence Evaluation Matrix
+Topic / Domain
+Key Primary Literature
+Evidence Grade
+Consensus vs. Practice Norms
+Product Implementation Rule
+Volume Dose-Response
+Schoenfeld et al. (2017), Baz-Valle et al. (2022)
+Grade A (Meta-analyses of RCTs)
+Strong consensus for 10–20 weekly sets/muscle as optimal threshold. Returns diminish beyond 20 sets/week for most muscle groups (except triceps).
+Hard cap weekly set progression at 20 sets/muscle unless recovery metrics consistently score 1/4.
+Individualized Baseline Seeding
+Scarpelli et al. (2020), Hammert et al. (2023)
+Grade B (Controlled Trials)
+High individual variability in volume tolerance. Baseline-adjusted set progression outperforms fixed volume presets.
+Replace fixed experience scalars ($0.85/1.0/1.1$) with historical set averaging ($V_{base}$).
+Lengthened Range Hypertrophy
+Wolf et al. (2023), Maeo et al. (2023), Pedrosa et al. (2022)
+Grade B (Systematic reviews / Emerging RCTs)
+Loading extended muscle lengths yields equal or superior regional hypertrophy compared to shortened ROM.
+Incorporate length_bias into JSON schema; prioritize lengthened LML Lifts under Stretch_Focused bias.
+Energy Availability & Recovery
+Mountjoy et al. (2018, 2023), Safe Exercise at Every Stage
+Grade A (International Consensus Statements)
+Sustained energy deficits impair systemic recovery capacity, lower MRV, and elevate overuse injury risk.
+Automatically scale down MRV caps by $15$–$25\%$ during caloric cut phases.
+
+10. Open Decisions for Product Owner
+#
+Architecture Decision Topic
+Option A
+Option B
+Recommended Default
+Technical & Practical Rationale
+1
+Synergy Set Accounting Logic
+Fractional Synergy Credit ($0.5$ set credit to synergists like triceps on bench press).
+Direct-Only Set Accounting ($1.0$ credit to prime movers only; synergists ignored).
+Option A (Fractional Synergy Credit)
+Prevents systemic overtraining of secondary muscles (triceps/biceps) when heavy pressing and pulling volume is prescribed.
+2
+Session Duration Enforcement
+Rigid Cutoff (Truncate sets strictly to fit target time budget).
+Soft Target (Allow duration overrun by up to $15\%$ to complete planned sets).
+Option A (Rigid Cutoff)
+Preserves session viability in real-world training environments where time constraints are strict.
+3
+Reactive Deload Automation
+Fully Automated (Engine enforces deload microcycle directly upon triggering threshold).
+User Confirmation Required (Engine prompts user to approve recommended deload).
+Option B (User Confirmation Required)
+Prevents user frustration if a single bad session (e.g., due to acute life stress) triggers an unprompted program-wide deload.
+4
+Unilateral Asymmetry Correction
+Auto-Allocate Extra Sets (Engine schedules $1.5\times$ volume for lagging limb automatically).
+Coach Proposal Only (LLM Coach flags asymmetry and suggests dynamic adjustment).
+Option B (Coach Proposal Only)
+Keeps user aware of program alterations and avoids unexpected volume disparities across limbs without explicit opt-in.
+
+11. Comprehensive Acceptance & Testing Suite
+To ensure engine reliability, software engineering teams must validate all PlanKit and PrescriptionEngine implementation updates against the following deterministic acceptance tests and property specifications.
+Deterministic Acceptance Checklist
+[ ] AC-101: Pattern Diversity Floor: Every generated Push, Pull, and Legs session with a duration budget $\ge 45\text{ minutes}$ must contain $\ge 3$ distinct exercise slots representing $\ge 2$ unique movement patterns.
+[ ] AC-102: Defect Elimination: No Pull session generated under standard readiness ($\text{ARC} \ge 0.70$) and non-deload states shall contain $< 3$ exercises unless the user time budget is set to $30\text{ minutes}$.
+[ ] AC-103: Dynamic Gating Floor Protection: No sequence of low ARC readiness scores shall depress total weekly volume below $MV$ ($6\text{ sets/muscle/week}$) for more than 2 consecutive microcycles.
+[ ] AC-104: Hard MRV Cap Enforcement: Under no condition shall PlanKit allocate a weekly set target exceeding $MRV_{hard}$ for any target muscle group.
+[ ] AC-105: Equipment Constraint Invariance: The exercise array output by PrescriptionEngine must contain zero exercises requiring equipment absent from the active EquipmentMask.
+[ ] AC-106: Deterministic Re-Plan Replicability: Given identical input states (User Profile, Seeding Prior, ARC Score, Soreness/Performance Ratings), the engine must produce bit-level identical session structures across execution runs.
+Property-Based Testing Specifications
+Property 1: Session Duration Upper Bound Constraints
+For all TimeBudgets T in {30, 45, 60, 75},
+For all UserProfiles P with valid EquipmentMasks,
+  Let ResolvedSession = SessionComposer.Compose(P, T)
+  Assert ResolvedSession.TotalEstimatedDuration <= T * 1.05
+
+Property 2: Overlap Synergy Credit Accounting Accuracy
+For all GeneratedSessions S,
+  Let DirectSets = Sum(S.Exercises.Filter(PrimeMover).Sets)
+  Let SynergySets = Sum(S.Exercises.Filter(Synergist).Sets * 0.5)
+  Assert TotalVolumeCredit(TargetMuscle) == DirectSets + SynergySets
+
+Property 3: Readiness Volume Non-Inversion
+For all ARC Readiness Scores R1, R2 where R1 < R2,
+  Let PrescribedVolume1 = PrescriptionEngine.Generate(R1)
+  Let PrescribedVolume2 = PrescriptionEngine.Generate(R2)
+  Assert PrescribedVolume1.TotalSets <= PrescribedVolume2.TotalSets
+
+Property 4: Pain Constraint Exclusion Safety
+For all ActivePainConstraints C in UserProfile,
+  Let ProhibitedPatterns = Matrix.GetProhibitedPatterns(C)
+  Let GeneratedSession = SessionComposer.Compose(UserProfile)
+  Assert Intersection(GeneratedSession.MovementPatterns, ProhibitedPatterns) == EmptySet

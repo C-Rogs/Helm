@@ -1,0 +1,307 @@
+{
+  "modules": [
+    {
+      "id": "lifting",
+      "title": "Science-Based Lifting",
+      "description": "Biomechanical and neuromuscular execution science for squatting, hinging, pressing, bracing, and form management — bridging the gap between gym folklore and evidence-based technique.",
+      "topicIDs": [
+        "lifting-attentional-focus",
+        "lifting-squat-execution",
+        "lifting-deadlift-kinematics",
+        "lifting-pressing-technique",
+        "lifting-bracing-stability",
+        "lifting-tempo-failure",
+        "lifting-unilateral-stability",
+        "lifting-form-safety"
+      ],
+      "evidenceIDs": [
+        "ev-lifting-mind-muscle-emg",
+        "ev-lifting-mind-muscle-hypertrophy",
+        "ev-lifting-mmc-load-ceiling",
+        "ev-lifting-external-focus",
+        "ev-lifting-deep-squat-safety",
+        "ev-lifting-butt-wink",
+        "ev-lifting-sumo-spinal",
+        "ev-lifting-bench-angles",
+        "ev-lifting-elbow-impingement",
+        "ev-lifting-bracing",
+        "ev-lifting-pause-cat",
+        "ev-lifting-unstable-fallacy",
+        "ev-lifting-injury-rate",
+        "ev-lifting-form-degradation"
+      ],
+      "autoAssign": {
+        "phases": ["cut", "maintain", "gain"],
+        "goals": [],
+        "always": true
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-lifting-mind-muscle-emg",
+      "title": "Internal focus increases target-muscle EMG amplitude up to 22%",
+      "body": "When resistance-trained individuals consciously focus on the pectoralis major during a bench press or push-up, surface EMG activity increases by up to 22% compared to a neutral or external focus, without decreasing triceps brachii activation. The mechanism is selective enhancement of targeted motor-unit excitation.",
+      "source": "EMG studies on bench press and push-up; Schoenfeld et al. (2018) cited in comprehensive review.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-mind-muscle-hypertrophy",
+      "title": "Internal focus yields nearly double elbow flexor hypertrophy (12.4% vs 6.9%)",
+      "body": "An eight-week RCT comparing internal and external focus during resistance training found the internal focus group achieved 12.4% elbow flexor thickness increase versus 6.9% in the external focus group. The mind-muscle connection is a quantifiable mechanism for maximizing localized mechanical tension and metabolic stress, not mere gym folklore.",
+      "source": "Eight-week randomized controlled trial on attentional focus and muscle thickness.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-mmc-load-ceiling",
+      "title": "Mind-muscle connection vanishes at 80% 1RM",
+      "body": "The ability to selectively activate a target muscle via internal focus is most pronounced at 20-60% 1RM. As load approaches 80% 1RM and beyond, the CNS must obligatorily recruit motor units en masse per Henneman's size principle. At these loads the selective activation effect vanishes entirely, rendering internal cueing redundant and potentially detrimental to lift completion. For hypertrophy work (<75% 1RM), cue internal focus; for max strength (>80% 1RM), switch to external.",
+      "source": "Load-dependency analysis of attentional focus; motor-unit recruitment threshold research.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-external-focus",
+      "title": "External focus reduces antagonist co-activation and improves max strength performance",
+      "body": "The constrained action hypothesis shows that internal focus disrupts the motor system's natural self-organization. Conscious monitoring of individual joint angles or contractions increases cortical resource demand, slows neurological processing, and increases antagonist co-activation — reducing net joint torque. An external focus (e.g. 'explode the bar upward' or 'drive the floor away') allows the CNS to self-organize, increasing both task efficiency and muscle activation patterns. External focus consistently yields superior acute performance in max strength, endurance, and explosive movement tests.",
+      "source": "Constrained action hypothesis literature; motor learning and attentional focus research.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-deep-squat-safety",
+      "title": "Deep squats are biomechanically safe — half squats concentrate peak retropatellar stress",
+      "body": "Peak retropatellar compressive stress occurs at approximately 90° of knee flexion — the turnaround point of a half squat. Descending past 90° triggers the 'wrapping effect': the quadriceps tendon wraps around the femoral condyles, enhancing load distribution. Continued knee flexion causes cranial displacement of facet contact areas, enlarging the retropatellar articulating surface. Since stress = force / area, the expanded contact area lowers compressive stress. Half or quarter squats with supramaximal weight (enabled by the shorter ROM's mechanical advantage) are more dangerous to passive knee and lumbar tissues long-term.",
+      "source": "Cadaveric joint measurements; retropatellar compressive force modeling.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-butt-wink",
+      "title": "Posterior pelvic rotation ('butt wink') forces lumbar flexion under load",
+      "body": "If an athlete lacks adequate ankle dorsiflexion or hip mobility, the pelvis may undergo posterior rotation at the bottom of the squat — the 'butt wink.' This pelvic deviation forces the lumbar spine out of neutral alignment into flexion under load, significantly increasing anterior shear forces on intervertebral discs. The coach's decision rule: if the spine remains neutral, deeper is better for hypertrophy (stretch-mediated glute and adductor growth) and joint health. If posterior pelvic tilt occurs, restrict ROM to just above the point of deviation while treating the root cause with mobility work.",
+      "source": "Lumbopelvic kinematic analysis; spinal shear modeling under squat loads.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-sumo-spinal",
+      "title": "Sumo deadlift reduces lumbar extensor torque by 25-35% and mechanical work by 25-40%",
+      "body": "The sumo deadlift's wide stance (~70 cm vs ~32 cm conventional) and extreme external foot rotation (~42° vs ~14°) produce a 5-10° more vertical trunk and 11-16° more horizontal thigh at liftoff. The shorter horizontal moment arm from the barbell to the L5/S1 joint reduces lumbar extensor torque by an estimated 25-35%. Barbell vertical displacement is 25-40% shorter, requiring 25-40% less mechanical work. Despite these kinematic differences, peak hip extension moments are remarkably similar between styles. Sumo shifts more demand to knee extensors and hip abductors; conventional demands more from erector spinae and ankle plantar flexors.",
+      "source": "3-D kinematic analysis; quasi-static joint-moment modeling; force-plate studies.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-bench-angles",
+      "title": "Flat bench is the optimal primary press; 45° incline drops lower pec activation",
+      "body": "Surface EMG analysis across bench angles (-15° decline, 0° flat, 30° incline, 45° incline) shows the flat bench effectively activates both clavicular (upper) and sternocostal (lower) pec heads. At 30-45° incline, upper pec and anterior deltoid activation increases marginally during 26-50% of the concentric phase, but lower pec activation drops significantly at 45°. Flat bench should remain the primary driver for overall chest development. Inclines are accessory movements for anterior deltoid and clavicular fibers only. Cable pulley systems generate larger maximum shoulder joint moments than free-weight bench press, making them superior for pectoral isolation through full-range horizontal adduction without triceps limitation.",
+      "source": "Surface EMG analysis of bench press at -15°, 0°, 30°, 45°; cable vs free-weight biomechanics.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-elbow-impingement",
+      "title": "90° elbow flare mirrors the Hawkins-Kennedy impingement test; optimal tuck is 45-75°",
+      "body": "Benching with elbows flared to 90° (upper arms perpendicular to torso) places the shoulder in the exact biomechanical position of the Hawkins-Kennedy clinical test used to intentionally provoke rotator cuff impingement. The humerus compresses rotator cuff tendons against the AC joint under load. Safe technique requires elbow tuck between 45-75°. This demands a non-linear, diagonal bar path: the barbell descends to the mid-to-lower chest (sternum) and presses upward and backward diagonally to lock out over the shoulder joints. Coach cue: 'drive the elbows up and back diagonally' — this fixes the humerus/trunk angle at its source rather than focusing on hand position.",
+      "source": "Shoulder impingement biomechanics; Hawkins-Kennedy test positioning analysis.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-bracing",
+      "title": "360° intra-abdominal pressure creates a rigid spinal cylinder; loaded carries train the transfer",
+      "body": "Bracing requires a deep diaphragmatic inhale expanding the abdominal wall 360° against a belt or transversus abdominis. This internal fluid pressure turns the abdominal cavity into a rigid cylinder, drastically reducing compressive forces on intervertebral discs and preventing lumbar flexion under load. Loaded carries (farmer's walk, suitcase carry, yoke walk) are unparalleled for training this capacity: they challenge the core to maintain isometric rigidity while the legs are in dynamic motion. Asymmetric carries (e.g. unilateral suitcase carry) demand massive contralateral quadratus lumborum and oblique activation to prevent lateral spinal flexion, directly transferring to the spinal rigidity required for heavy squats and deadlifts.",
+      "source": "Spine biomechanics research; intra-abdominal pressure and core stability studies.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-pause-cat",
+      "title": "Pause training dissipates elastic energy and forces high-threshold motor-unit recruitment from a dead stop",
+      "body": "Pause reps (e.g. paused bench at chest, paused squat in the hole) serve two purposes: first, they completely dissipate elastic energy stored in the muscle-tendon complex during the eccentric phase, forcing the CNS to recruit higher-threshold motor units from a dead stop without stretch-shortening cycle assistance. Second, they build isometric strength at the exact joint angle of the sticking point. During the pause, absolute IAP and muscular tension must be maintained — the athlete must not relax. Upon initiating the concentric phase, cue Compensatory Acceleration Training (CAT): maximally accelerate the barbell through the remainder of the lift. Because F = m × a, maximal acceleration intent ensures maximal motor-unit recruitment even when bar speed appears slow.",
+      "source": "Link-chain biomechanical models; stretch-shortening cycle and motor-unit recruitment research.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-unstable-fallacy",
+      "title": "Unstable surface training reduces force output by up to 80%",
+      "body": "When the distal segment is not fixed against a stable surface, the CNS defensively down-regulates agonist motor-unit recruitment to protect the joints. Research comparing isometric squat force output in stable vs unstable conditions shows surface-induced instability reduces joint ROM and slashes force output by up to 80%. While unstable surfaces increase ankle joint sway and small-stabilizer demand, they severely compromise the mechanical loading needed for strength and hypertrophy. If the goal is strength, power, or muscle, stable environments are non-negotiable. Unstable surface training should be strictly relegated to specialized proprioceptive rehabilitation protocols, never progressive overload.",
+      "source": "Isometric squat force output studies; CNS stability-perception and motor-unit down-regulation research.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-injury-rate",
+      "title": "Resistance training injury rate is 1.0-4.4 per 1,000 hours — safer than field sports",
+      "body": "Systematic reviews of elite weightlifting and powerlifting report an injury incidence of 1.0-4.4 injuries per 1,000 hours of training — vastly lower than contact sports (rugby, football) and non-contact field sports (soccer, track). When injuries occur (predominantly lower back, shoulder, knee), they are almost universally the result of chronic load mismanagement, insufficient recovery, and cumulative fatigue — not singular acute technique failure. Tissues adapt to specific stresses over time; injury occurs when applied load outpaces tissue adaptation capacity over a mesocycle, not because a knee caved slightly on a max attempt.",
+      "source": "Systematic reviews of injury epidemiology in elite weightlifting and powerlifting.",
+      "confidence": "high"
+    },
+    {
+      "id": "ev-lifting-form-degradation",
+      "title": "Accept ugly-but-safe form degradation on near-failure sets; distinguish from dangerous breakdown",
+      "body": "As prime movers fatigue, the CNS actively explores alternate motor patterns and recruits secondary musculature. This may manifest as minor thoracic rounding during a heavy deadlift, slight valgus knee twitch out of the hole on a squat, or hips rising slightly faster than the chest. If foundational safety constraints are maintained — neutral lumbar bracing, high IAP, and controlled eccentrics — coaches must accept a degree of form degradation on near-failure sets. The pursuit of perfect form at the expense of progressive overload blunts progression; athletes will never experience the mechanical tension required for adaptation if sets are terminated at the first sign of slowed or labored reps. The distinction: an unsafe rep (extreme lumbar flexion, uncontrolled bouncing eccentric) vs an ugly-but-safe rep (slow grinding squat with minor thoracic rounding). Primary injury prevention focus must remain on systemic fatigue management, intelligent volume titration, and appropriate exercise selection — not rigid perfection on every rep.",
+      "source": "Motor-pattern exploration under fatigue; injury epidemiology in strength sports.",
+      "confidence": "high"
+    }
+  ],
+  "topics": [
+    {
+      "id": "lifting-attentional-focus",
+      "title": "Mind-Muscle Connection & Attentional Focus",
+      "description": "How your cognitive focus — internal (on the muscle) vs external (on the outcome) — alters neuromuscular recruitment, force output, and long-term adaptation. The right focus depends entirely on load and goal.",
+      "coachQuestions": [
+        "Should I squeeze the muscle or just move the weight?",
+        "When does the mind-muscle connection stop working?",
+        "Is 'feel the muscle' a real cue or gym lore?"
+      ],
+      "keyPoints": [
+        "Internal focus (mind-muscle connection) increases target-muscle EMG up to 22% and nearly doubles hypertrophy vs external focus at submaximal loads",
+        "MMC is most effective at 20-60% 1RM and vanishes entirely at 80% 1RM — at heavy loads the CNS must recruit motor units en masse",
+        "External focus reduces antagonist co-activation, decreases cortical interference, and lets the motor system self-organize — superior for max strength, power, and endurance",
+        "Mismatching focus to load actively hurts performance: cueing 'squeeze the pecs' on a 3RM squat is as counterproductive as cueing 'move the weight fast' on a triceps isolation"
+      ],
+      "coachCues": [
+        {"load": "Hypertrophy (<75% 1RM)", "focus": "Internal", "cues": ["Squeeze the pecs", "Feel the lats stretch", "Contract the glutes"]},
+        {"load": "Max Strength (>80% 1RM)", "focus": "External", "cues": ["Push the floor away", "Bend the bar", "Explode toward the ceiling"]},
+        {"load": "Endurance / Power", "focus": "External", "cues": ["Throw the weight", "Drive the sled", "Reach for the target"]}
+      ],
+      "relatedEvidence": ["ev-lifting-mind-muscle-emg", "ev-lifting-mind-muscle-hypertrophy", "ev-lifting-mmc-load-ceiling", "ev-lifting-external-focus"]
+    },
+    {
+      "id": "lifting-squat-execution",
+      "title": "Squat Depth & Biomechanics",
+      "description": "Why deep squats are safer than half squats for the knees, when to limit depth due to the butt wink, and how to coach depth based on spinal integrity rather than arbitrary rules.",
+      "coachQuestions": [
+        "Is my squat depth good enough?",
+        "Are deep squats bad for my knees?",
+        "Should I stop when my lower back rounds?",
+        "How deep is deep enough for hypertrophy?"
+      ],
+      "keyPoints": [
+        "Peak retropatellar compressive stress occurs at ~90° (half squat) — descending deeper triggers the wrapping effect, which distributes load across a larger contact area and lowers stress",
+        "Deep squats are biomechanically safe for the knee; loading half or quarter squats supramaximally is more dangerous to knee and lumbar tissues long-term",
+        "The butt wink (posterior pelvic rotation) forces the lumbar spine into flexion under load and must be avoided — limit depth to just above the deviation point",
+        "Decision rule: if the spine stays neutral, deeper is better for stretch-mediated glute/adductor hypertrophy and joint health; if posterior tilt occurs, restrict ROM and treat the mobility root cause"
+      ],
+      "coachCues": [],
+      "relatedEvidence": ["ev-lifting-deep-squat-safety", "ev-lifting-butt-wink"]
+    },
+    {
+      "id": "lifting-deadlift-kinematics",
+      "title": "Deadlift: Sumo vs Conventional",
+      "description": "How stance width, foot angle, and anthropometry dictate the choice between sumo and conventional deadlifts — and why neither style is inherently superior.",
+      "coachQuestions": [
+        "Should I pull sumo or conventional?",
+        "Is sumo cheating?",
+        "Which deadlift is safer for my back?"
+      ],
+      "keyPoints": [
+        "Sumo reduces lumbar extensor torque by 25-35% via a more vertical trunk and shorter L5/S1 moment arm — mechanically advantageous for athletes with low back history or longer torsos",
+        "Conventional deadlift requires 25-40% more mechanical work due to greater bar displacement — superior for pure posterior chain hypertrophy and maximum work capacity",
+        "Peak hip extension moments are remarkably similar between styles; the divergence is in accessory demands (sumo → quads, abductors; conventional → erectors, plantar flexors)",
+        "Sumo prescription requires adequate hip external rotation and abduction; if the hip capsule can't accommodate the wide stance pain-free, conventional is the default"
+      ],
+      "coachCues": [],
+      "relatedEvidence": ["ev-lifting-sumo-spinal"]
+    },
+    {
+      "id": "lifting-pressing-technique",
+      "title": "Bench Press: Angles, Bar Path & Shoulder Safety",
+      "description": "How bench angle affects regional hypertrophy, why elbow flare is the most critical safety variable, and the optimal bar path for protecting the shoulder girdle.",
+      "coachQuestions": [
+        "Are my elbows flaring a problem?",
+        "Should I incline or flat bench for chest growth?",
+        "Why does my shoulder hurt when I bench?",
+        "What's the right bar path?"
+      ],
+      "keyPoints": [
+        "Flat bench activates both clavicular and sternocostal pec heads; 45° incline drops lower pec activation significantly — flat bench is the primary chest driver, inclines are accessory for anterior deltoid and upper pec",
+        "Cable pulley systems generate larger shoulder joint moments than free-weight bench, making them superior for pectoral isolation through full-range horizontal adduction",
+        "90° elbow flare = Hawkins-Kennedy impingement test position — compresses rotator cuff tendons against the AC joint under load",
+        "Optimal elbow tuck: 45-75°, requiring a non-linear diagonal bar path — descend to mid/lower chest, press upward and backward to lock out over shoulders",
+        "Coach cue: 'drive the elbows up and back diagonally' fixes the humerus/trunk angle at its source rather than focusing on hand position"
+      ],
+      "coachCues": [
+        {"context": "Bar path", "cue": "Drive the elbows up and back diagonally — don't just push hands to the ceiling"},
+        {"context": "Shoulder safety", "cue": "Tuck your elbows to 45-75°, never flare to 90°"}
+      ],
+      "relatedEvidence": ["ev-lifting-bench-angles", "ev-lifting-elbow-impingement"]
+    },
+    {
+      "id": "lifting-bracing-stability",
+      "title": "Bracing, Intra-Abdominal Pressure & Core Stability",
+      "description": "How to create a rigid spinal cylinder through 360° bracing, and why loaded carries are the best transfer exercise for spinal stability under heavy loads.",
+      "coachQuestions": [
+        "How do I brace for a heavy set?",
+        "Should I use a belt?",
+        "What's the best core exercise for lifting?"
+      ],
+      "keyPoints": [
+        "Bracing = deep diaphragmatic inhale expanding the abdominal wall 360° — turns the abdominal cavity into a rigid cylinder, reducing intervertebral disc compression and preventing lumbar flexion",
+        "A belt provides a rigid boundary for the abdominal wall to push against, amplifying IAP",
+        "Loaded carries (farmer's walk, suitcase carry, yoke walk) train the core to maintain isometric rigidity while the legs move dynamically — the most direct transfer to spinal stability in squats and deadlifts",
+        "Asymmetric carries (unilateral suitcase carry) demand massive contralateral QL and oblique activation to prevent lateral spinal flexion"
+      ],
+      "coachCues": [
+        {"context": "Bracing", "cue": "Breathe into your belly, expand 360° like filling a cylinder — not just your chest"},
+        {"context": "Core transfer", "cue": "Heavy carries teach your spine to stay rigid when your legs are moving"}
+      ],
+      "relatedEvidence": ["ev-lifting-bracing"]
+    },
+    {
+      "id": "lifting-tempo-failure",
+      "title": "Sticking Points, Pauses & Compensatory Acceleration",
+      "description": "Why you fail at specific points in a lift, how pause training conquers those sticking regions, and why acceleration intent matters even when the bar is moving slowly.",
+      "coachQuestions": [
+        "Should I pause at the bottom?",
+        "Why do I always fail at the same point?",
+        "Does bar speed matter if the weight is heavy?"
+      ],
+      "keyPoints": [
+        "Every compound lift has a sticking region where net shoulder/elbow joint torques drop below the threshold to overcome the barbell — in the bench press, this is a few inches off the chest as the pecs lose mechanical advantage",
+        "Pause reps (e.g. 2-second pause at chest or in the hole) dissipate elastic energy from the stretch-shortening cycle, forcing the CNS to recruit higher-threshold motor units from a dead stop",
+        "Pauses build isometric strength at the exact joint angle of weakness — the athlete must maintain absolute IAP and tension throughout, never relaxing",
+        "Compensatory Acceleration Training (CAT): attempt to maximally accelerate the barbell through the concentric. F = m × a, so maximal acceleration intent ensures maximal motor-unit recruitment even when bar speed appears slow"
+      ],
+      "coachCues": [
+        {"context": "Pause execution", "cue": "Stay tight — don't relax at the pause. Maintain full-body tension."},
+        {"context": "CAT", "cue": "Accelerate through the sticking point — don't just push, explode"}
+      ],
+      "relatedEvidence": ["ev-lifting-pause-cat"]
+    },
+    {
+      "id": "lifting-unilateral-stability",
+      "title": "Unilateral Training & Stability Myths",
+      "description": "Why unilateral work is essential for structural balance but can't replace bilateral lifts for max strength — and why unstable surface training (BOSU balls, balance boards) is actively counterproductive for strength and hypertrophy.",
+      "coachQuestions": [
+        "Should I do Bulgarian split squats or barbell squats?",
+        "Is training on a BOSU ball good for core strength?",
+        "Do unilateral exercises build as much strength as bilateral?"
+      ],
+      "keyPoints": [
+        "Unilateral exercises (split squats, single-arm presses) identify strength asymmetries, increase training volume safely, and stimulate fixator/synergist muscles against rotational forces — but absolute prime-mover force output is inherently reduced vs bilateral",
+        "Five-week bilateral vs unilateral study in rugby players: both improved sprint and agility, but bilateral maintained superior absolute max strength capacity — bilateral lifts are the primary mechanism for maximal neural strength adaptation",
+        "Unstable surface training (BOSU balls, Swiss balls, balance boards) reduces force output by up to 80% — the CNS defensively down-regulates agonist motor-unit recruitment when the distal segment isn't fixed against a stable surface",
+        "Unstable surfaces should be strictly relegated to proprioceptive rehabilitation protocols, never progressive overload for strength or hypertrophy"
+      ],
+      "coachCues": [],
+      "relatedEvidence": ["ev-lifting-unstable-fallacy"]
+    },
+    {
+      "id": "lifting-form-safety",
+      "title": "Form Breakdown, Injury Risk & Safe Rep Execution",
+      "description": "Why resistance training is safer than most sports, how to distinguish ugly-but-safe reps from dangerous form breakdown, and when to accept form degradation on near-failure sets.",
+      "coachQuestions": [
+        "How dangerous is bad form really?",
+        "Should I stop when my reps get ugly?",
+        "Is that grinding deadlift safe or should I drop it?",
+        "When is form breakdown acceptable?"
+      ],
+      "keyPoints": [
+        "Resistance training injury rate is 1.0-4.4 per 1,000 hours — dramatically safer than contact and non-contact field sports",
+        "Injuries are almost universally from chronic load mismanagement and cumulative fatigue over a mesocycle, not from a single acute technique failure",
+        "Near-failure form degradation is a physiological reality — the CNS explores alternate motor patterns as prime movers fatigue; minor thoracic rounding, slight knee valgus, or hips rising slightly ahead of chest are often ugly-but-safe",
+        "The danger line: extreme lumbar flexion under load, uncontrolled bouncing eccentrics, or loss of bracing — these are unsafe, not just ugly",
+        "Pursuing perfect form at the expense of progressive overload blunts adaptation — the focus should be on systemic fatigue management, intelligent volume, and exercise selection, not rigid perfection on every rep"
+      ],
+      "coachCues": [
+        {"context": "Ugly-but-safe vs dangerous", "cue": "Is the spine still braced? Is the eccentric controlled? If yes, let them grind."},
+        {"context": "Injury prevention", "cue": "Manage fatigue across the week — injuries come from accumulated load, not one bad rep"}
+      ],
+      "relatedEvidence": ["ev-lifting-injury-rate", "ev-lifting-form-degradation"]
+    }
+  ]
+}

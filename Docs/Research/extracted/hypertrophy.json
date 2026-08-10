@@ -1,0 +1,180 @@
+{
+  "modules": [{
+    "id": "hypertrophy",
+    "title": "Muscle Hypertrophy",
+    "description": "Evidence-based volume prescription, progression, and recovery monitoring for muscle growth across all training phases.",
+    "topicIDs": [
+      "hypertrophy-volume-landmarks",
+      "hypertrophy-hard-set-definition",
+      "hypertrophy-session-design",
+      "hypertrophy-progression",
+      "hypertrophy-training-frequency",
+      "hypertrophy-proximity-to-failure",
+      "hypertrophy-recovery-monitoring",
+      "hypertrophy-intensity-techniques"
+    ],
+    "evidenceIDs": [
+      "ev-hypertrophy-volume-landmarks",
+      "ev-hypertrophy-volume-landmarks-2",
+      "ev-hypertrophy-hard-set-definition",
+      "ev-hypertrophy-hard-set-definition-2",
+      "ev-hypertrophy-session-design",
+      "ev-hypertrophy-session-design-2",
+      "ev-hypertrophy-progression",
+      "ev-hypertrophy-training-frequency",
+      "ev-hypertrophy-proximity-to-failure",
+      "ev-hypertrophy-recovery-monitoring",
+      "ev-hypertrophy-recovery-monitoring-2",
+      "ev-hypertrophy-intensity-techniques"
+    ],
+    "autoAssign": { "phases": ["cut", "maintain", "gain"], "goals": [], "always": true }
+  }],
+  "evidence": [
+    {
+      "id": "ev-hypertrophy-volume-landmarks",
+      "title": "Muscle-Specific MEV, MAV, and MRV Baseline Landmarks",
+      "summary": "Muscle groups exhibit distinct volume thresholds. Chest MEV is 8.0 sets/week and MRV 22.0; back MEV is 10.0 and MRV 25.0; quadriceps MEV is 6.0 and MRV 20.0; side deltoids MEV is 6.0 and MRV 24.0; biceps and triceps have a direct-work MEV of 4.0 with MRV 18.0. Anterior deltoids receive sufficient stimulus from pressing (MEV 0.0). The optimal 10–20 weekly set range provides the MAV window for most muscle groups. Coaches should seed volume targets per muscle group rather than applying a single global target.",
+      "citation": "Schoenfeld et al. (2017). Meta-analysis of volume dose-response. Baz-Valle et al. (2022). Systematic review of weekly set thresholds.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-volume-landmarks-2",
+      "title": "Demographic Volume Scalars for Landmark Initialization",
+      "summary": "MEV and MRV landmarks are modulated by experience (novice ×0.80, intermediate ×1.00, advanced ×1.10), age (<40 ×1.00, 40–55 ×0.90, >55 ×0.80), and biological sex (male ×1.00, female ×1.05). These scalars compound: MEV_seeded = MEV_base × α_exp × α_age × α_sex. Female athletes show superior fatigue resistance in high-rep ranges and faster intra-set recovery. Masters athletes (≥45) require caps of +1 set/week progression, 0.85× MRV ceilings, and a deload every 4th microcycle.",
+      "citation": "Scarpelli et al. (2020). Individual variability in volume tolerance. Hammert et al. (2023). Baseline-adjusted set progression.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-hard-set-definition",
+      "title": "Hard Set Criteria: Load, Rep Range, and Proximity Thresholds",
+      "summary": "A hard set is defined as any set performed at 30%–85% 1RM, across 5–30 repetitions, terminating at 0–4 RIR (RPE 6–10). Sets below 30% 1RM, above 30 reps, or with RIR >4 fail to generate sufficient mechanical tension and motor unit recruitment to drive hypertrophy. Warm-up sets (RIR >5 or load <30% 1RM) receive 0.00 volume credit. Coaches should ensure every working set falls within these boundaries to accumulate effective training volume.",
+      "citation": "Schoenfeld et al. (2017). Meta-analysis of volume dose-response. Mechanistic studies on motor unit recruitment and mechanical tension thresholds.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-hard-set-definition-2",
+      "title": "Fractional Set Accounting: Synergist Contribution Model",
+      "summary": "Compound movements provide hypertrophic stimulus to synergist muscles that traditional binary counting either overstates or ignores. A tiered model assigns 1.00 credit to primary movers, 0.50 to major synergists (e.g., triceps on bench press, biceps on rows), and 0.25 to minor stabilizers. Fractional sets cannot satisfy more than 50% of a muscle's weekly target volume. When a muscle's MEV exceeds 8.0 sets/week, PlanKit enforces a minimum floor of 4.0 direct sets per week. Multi-level meta-regressions confirm fractional accounting provides superior fit for growth models.",
+      "citation": "Meta-regression analyses on synergist contribution coefficients. PlanKit engineering specification v2.0.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-session-design",
+      "title": "Per-Exercise Set Caps and Intra-Session Volume Ceilings",
+      "summary": "Meta-regressions demonstrate that hypertrophic stimulus per set drops significantly past 3–4 sets per exercise in a single session as acute local fatigue accumulates. Helm enforces a strict cap of 4 sets per exercise (3 for novices). Research also shows diminishing returns beyond 8–10 total effective sets per muscle group within a single session; working sets beyond 10.0 receive only 0.50 stimulus credit. Coaches should split muscle volume across multiple movement pattern slots rather than dumping sets onto one exercise.",
+      "citation": "Meta-regressions on per-exercise set efficiency and diminishing returns. Neuromuscular fatigue studies on intra-session set allocation caps.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-session-design-2",
+      "title": "Rest Interval Prescriptions by Movement Class",
+      "summary": "Meta-analyses show that rest periods of 2–3 minutes for compound lifts maintain mechanical tension and force output across subsequent sets compared to short rest. Helm allocates 180 seconds rest for compound movements (squat, press, row) and 90 seconds for isolation exercises. Session time budgets are calculated deterministically: T_session = Σ(S_j × 40s per set + (S_j − 1) × rest_j) + 300s warmup. Shorter rest degrades volume quality on heavy compounds.",
+      "citation": "Meta-analyses on rest interval duration and force maintenance across sets. Grade A evidence.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-progression",
+      "title": "Linear-Step Weekly Volume Ramp and Double Progression",
+      "summary": "A mesocycle uses a linear-step progression from MEV to MRV across 4–6 weeks: V_target(W_k) = MEV + ((k−1)/(N−1)) × (MRV − MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, weekly targets are 10.0, 12.0, 14.0, 16.0, 18.0, followed by a deload at 50% MEV (5.0 sets). Volume aggressiveness controls step size: Conservative +1, Moderate +2, Aggressive +3 sets/week. Load progression uses Standard Double Progression (reach rep ceiling, then add load) for most compounds and Rep-First Step Progression for isolations.",
+      "citation": "PlanKit engine specification v2.0. Progression scheme algorithms by lift class.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-training-frequency",
+      "title": "Volume-Equated Training Frequency and Hypertrophy",
+      "summary": "Meta-analyses demonstrate that training frequency (1×, 2×, or 3× per week) yields equivalent hypertrophy when total weekly volume is equated. However, higher frequencies allow higher total volume without exceeding single-session fatigue limits of 8–10 sets per muscle. Helm distributes weekly targets across exposures: V_session = V_target ÷ M (where M is the number of weekly sessions hitting that muscle). Coaches should not add days for the same volume but may add frequency to accommodate higher weekly totals.",
+      "citation": "Meta-analyses on training frequency and hypertrophy when volume is equated. Grade A evidence.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-proximity-to-failure",
+      "title": "Proximity to Failure Thresholds and RIR Policy by Experience",
+      "summary": "Working sets require termination within 0–4 RIR to generate sufficient mechanical tension and motor unit recruitment. Sets completed at RIR >4 fail to provide hypertrophic stimulus and receive 0.00 volume ledger credit. Experience-level policies: Novices train at RIR 2–3 to preserve technique; Intermediates progress toward RIR 1–2; Advanced lifters use RIR 0–1 with planned failure on final isolation sets. During autoregulation, increasing RIR is Tier 1 action (least disruptive) before reducing load or trimming volume.",
+      "citation": "Mechanical tension and motor unit recruitment studies. Autoregulation precedence hierarchy (Helm PrescriptionEngine v2.0).",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-recovery-monitoring",
+      "title": "Biofeedback-Driven Landmark Refinement",
+      "summary": "MEV and MRV landmarks adjust dynamically from three weekly biofeedback inputs per muscle group: Soreness (S, 0–4 scale), RIR Delta (ΔRIR, prescribed vs actual), and Performance Trend (Δe1RM, 2-week rolling). High recovery (S≤1, ΔRIR≤0, e1RM stable or rising) allows MRV+1 and V_target+1. Optimal adaptive state (S=2, ΔRIR within ±0.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate fatigue (S=3 or ΔRIR>1.0) holds volume constant. Safety bounds clamp MEV to [4.0, MEV_base+2.0] and MRV to [MEV+2.0, MRV_base+6.0].",
+      "citation": "PlanKit autoregulated landmark refinement engine v2.0. Dual state machine adjusting MEV and MRV from recovery and performance trends.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-recovery-monitoring-2",
+      "title": "Overreaching Detection, MRV Enforcement, and Deload Triggers",
+      "summary": "PlanKit establishes two MRV boundaries: a soft warning cap at 0.90×MRV (halve progressive additions) and a hard operational cap at 1.00×MRV (reject all set additions). An overreaching alarm triggers when a muscle logs Performance=4 for two consecutive microcycles while at or above MRV_soft, terminating the mesocycle and scheduling a 7-day reactive deload. Reactive deloads also trigger on estimated 1RM drop >5% across two sessions, persistent soreness (4/4 for >72h), or ARC readiness <0.40 for three consecutive days. Scheduled deloads occur every 4–6 microcycles depending on training age.",
+      "citation": "PlanKit overreaching detection and MRV threshold enforcement specification. Deload execution trigger criteria.",
+      "url": "",
+      "placeholder": false
+    },
+    {
+      "id": "ev-hypertrophy-intensity-techniques",
+      "title": "Drop Sets, Rest-Pause, and Stretch-Mediated Hypertrophy",
+      "summary": "Intensity techniques receive fractional set credit in the volume ledger. Drop sets credit 1.00 for the initial set plus 0.50 for the drop portion (primary mover only, synergist credit 0.00 on drops). Rest-pause/Myo-reps aggregate mini-sets into 0.50 fractional credit after the activation set. Maximum credit per exercise slot with intensity techniques is capped at 1.50 effective sets. Lengthened partials at long muscle lengths count identically to full-ROM sets (1.00) when performed within 0–4 RIR. Stretch-mediated loading yields equal or superior regional hypertrophy compared to shortened ranges.",
+      "citation": "Wolf et al. (2023), Maeo et al. (2023), Pedrosa et al. (2022). Lengthened-range hypertrophy systematic reviews and emerging RCTs. Intensity technique set-credit accounting (PlanKit v2.0).",
+      "url": "",
+      "placeholder": false
+    }
+  ],
+  "topics": [
+    {
+      "id": "hypertrophy-volume-landmarks",
+      "title": "MEV, MAV, and MRV Volume Landmarks",
+      "body": "Muscle groups have distinct volume thresholds, not a single universal target. Minimum Effective Volume (MEV) is the lowest weekly hard-set count that produces measurable hypertrophy: 8.0 sets/week for chest, 10.0 for back, 6.0 for quadriceps and side delts, 4.0 for hamstrings and direct arm work. Maximum Recoverable Volume (MRV) defines the ceiling beyond which recovery is compromised: 22.0 for chest, 25.0 for back, 20.0 for quads and calves, 24.0 for side delts, 18.0 for hamstrings, biceps, and triceps. The Maximum Adaptive Volume (MAV) window sits between MEV and MRV, representing the 10–20 set weekly range where most muscle groups show optimal dose-response.\n\nThese baseline landmarks are not fixed. They seed from demographic scalars. A novice (<1 year) multiplies landmarks by 0.80, an intermediate (1–4 years) by 1.00, and an advanced lifter (>4 years) by 1.10. Age modifiers reduce MRV: 0.90 for ages 40–55 and 0.80 for >55. Female athletes multiply by 1.05 due to superior fatigue resistance, especially in high-rep work. All scalars compound multiplicatively: MEV_seeded = MEV_base × α_exp × α_age × α_sex.\n\nNutritional phase further modulates these landmarks. During a cut, MEV is multiplied by 1.15 (higher volume needed to retain muscle) while MRV drops to 0.80 (reduced recovery capacity). In a surplus, MEV drops to 0.85 (less volume needed to initiate growth) and MRV expands to 1.15 (enhanced recovery). Coaches should never apply a single global volume target—each muscle group and each athlete context requires individualized seeding.",
+      "citationIDs": ["ev-hypertrophy-volume-landmarks", "ev-hypertrophy-volume-landmarks-2"]
+    },
+    {
+      "id": "hypertrophy-hard-set-definition",
+      "title": "What Counts as a Hard Set",
+      "body": "Not every set in the gym contributes to hypertrophy. A hard set is a completed working set at 30%–85% 1RM, 5–30 repetitions, terminating within 0–4 Reps in Reserve (RIR), which corresponds to RPE 6–10. Sets below 30% 1RM, above 30 reps, or stopped at RIR >4 fail to recruit high-threshold motor units and generate insufficient mechanical tension to drive muscle growth—they receive 0.00 volume credit in the ledger. Warm-up sets (RIR >5 or load <30% 1RM) are similarly excluded.\n\nFractional set accounting captures the reality that compound movements stimulate synergist muscles. A bench press credits pectorals at 1.00, anterior deltoids and triceps at 0.50 each. A barbell row credits lats and rhomboids at 1.00 while biceps and rear delts receive 0.50. Stabilizers like the erector spinae on rows get 0.00 hypertrophy credit (logged for systemic fatigue only). The formula is V_eff = ΣS_direct + Σ(ω × S_indirect), where ω ∈ {0.50, 0.25}.\n\nTwo guardrails prevent fractional volume from masking gaps. The synergist contribution ceiling limits fractional sets to at most 50% of a muscle's weekly target—the other 50% must come from direct work. The direct floor minimum mandates that when MEV is ≥8.0 sets/week, at least 4.0 direct sets must be allocated to dedicated isolation or primary mover slots. A lifter accumulating 10.0 fractional biceps sets from rows still needs to do curls.",
+      "citationIDs": ["ev-hypertrophy-hard-set-definition", "ev-hypertrophy-hard-set-definition-2"]
+    },
+    {
+      "id": "hypertrophy-session-design",
+      "title": "Session Design: Exercise Caps, Intra-Session Limits, and Rest",
+      "body": "The engine of a good hypertrophy session is movement pattern diversity, not volume dumping. Research demonstrates that hypertrophic stimulus per set decays sharply past 3–4 sets on the same exercise in a single session as localized fatigue impairs excitation-contraction coupling. Helm enforces a hard cap of 4 sets per exercise (3 for novices). If a muscle needs 6 sets in a session, that volume must split across two distinct movement pattern slots—e.g., 3 sets of vertical pull plus 3 sets of horizontal row.\n\nA muscle group also hits diminishing returns within a single session. Total primary set volume per muscle is capped at 8.0–10.0 effective sets per workout. Any working set beyond 10.0 receives only 0.50 stimulus credit in the weekly ledger, reflecting junk volume that elevates fatigue without meaningful additional stimulus. Session time budgets map to total set capacities: a 30-minute session fits 6–8 sets across 2–3 exercises, 45 minutes fits 9–12 sets across 3–4 exercises, 60 minutes fits 13–16 sets across 4–5 exercises, and 75+ minutes fits 17–22 sets across 5–7 exercises.\n\nRest intervals directly impact set quality. Heavy compound movements (squat, press, row) require 2–3 minutes between sets to maintain force output and mechanical tension. Isolation exercises operate on 90-second rest. These timers are embedded in session duration calculations: T_total = warmup (5 min) + Σ(S_j × 0.75 min exec + (S_j − 1) × rest_j) + transitions (2 min each). Short-changing rest on compounds degrades the very volume you are trying to accumulate, making it counterproductive.",
+      "citationIDs": ["ev-hypertrophy-session-design", "ev-hypertrophy-session-design-2"]
+    },
+    {
+      "id": "hypertrophy-progression",
+      "title": "Weekly Volume Ramp and Load Progression",
+      "body": "A mesocycle runs 4–6 accumulation weeks followed by a 1-week deload. Volume progresses linearly from MEV to MRV: V_target(W_k) = MEV + ((k−1)/(N−1)) × (MRV − MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, the ramp is 10.0 → 12.0 → 14.0 → 16.0 → 18.0, then deload at 5.0 sets (50% of MEV, also called Maintenance Volume). The step size is dictated by the volume_aggressiveness setting: Conservative (+1 set/week), Moderate (+2 sets/week), Aggressive (+3 sets/week).\n\nLoad progression varies by movement class. Squats and hinges use Load-First Double Progression in the 6–8 rep range, adding 2.5 kg when all sets hit the rep ceiling at target RIR. Horizontal and vertical presses use Standard Double Progression at 8–12 reps with 2.5 kg and 1.25 kg increments respectively. Pulling movements use Dynamic Rep-Range Progression at 10–12 reps. Isolation lifts use Rep-First Step Progression in the 12–15 rep range, adding reps set-by-set before increasing load by 1.25 kg.\n\nStall detection is automated. After two consecutive exposures failing to progress at target RIR, a micro-reset triggers: load drops by 10% (W_new = W_current × 0.90), volume holds static, and RIR target resets to 3. This unwinds accumulated fatigue and re-sensitizes the muscle. Novices get three missed exposures before stalling; advanced lifters get two. Estimated 1RM is calculated via the Epley formula (w × (1 + r/30)) with a time-decay factor of λ=0.005 day⁻¹ applied to logs older than 14 days.",
+      "citationIDs": ["ev-hypertrophy-progression"]
+    },
+    {
+      "id": "hypertrophy-training-frequency",
+      "title": "Training Frequency: 2× vs 3× per Week",
+      "body": "When total weekly volume is equated, training a muscle 1×, 2×, or 3× per week produces equivalent hypertrophy. The advantage of higher frequency is not in the frequency itself—it is that higher frequencies allow higher total volume without violating the single-session ceiling of 8–10 sets per muscle. A lifter targeting 20 weekly sets for back cannot fit that into one session under the intra-session cap. Splitting across two or three exposures makes the target achievable without junk volume.\n\nHelm allocates session volume by dividing the weekly target by remaining exposures: V_session_base = V_target ÷ M. For a PPL split repeated twice weekly (M=2), a quadriceps target of 14.0 sets becomes 7.0 sets per session. Within each session, volume is distributed across primary compound slots (3–4 sets) and secondary isolation slots (2–3 sets). If a session assignment drops below 2.0 sets for any exercise, that slot is removed and its sets reallocated to remaining slots—single-set exercises are mechanically ineffective.\n\nCoaches should not add a training day just to match a frequency number. Add frequency when volume demands exceed what a single session can accommodate. If a muscle's per-session allocation exceeds 10.0 effective sets, spill the excess into an additional weekly exposure or add a secondary session slot. Frequency is a volume distribution tool, not an independent hypertrophy driver.",
+      "citationIDs": ["ev-hypertrophy-training-frequency"]
+    },
+    {
+      "id": "hypertrophy-proximity-to-failure",
+      "title": "How Close to Failure Should You Train",
+      "body": "Proximity to failure is measured in Reps in Reserve (RIR)—how many more repetitions you could have completed. Hypertrophy requires 0–4 RIR. Above 4 RIR, motor unit recruitment and mechanical tension are insufficient to stimulate growth; those sets receive 0.00 volume credit. The optimal RIR target depends on experience: novices train at RIR 2–3 to protect movement mechanics while building work capacity; intermediates progress toward RIR 1–2; advanced lifters use RIR 0–1 with planned failure on final isolation sets only.\n\nAutoregulation adjusts RIR before touching load or volume. The five-tier precedence order is: Tier 1—increase target RIR (e.g., 2→3 RIR) when ARC readiness is 0.60–0.69. Tier 2—reduce load at the target rep range if bar velocity drops or RPE spikes. Tier 3—trim secondary isolation sets when ARC is 0.45–0.59. Tier 4—drop the final pattern slot exercise at ARC 0.35–0.44. Tier 5—truncate to Maintenance Volume (2 sets/muscle) at ARC <0.35. Increasing RIR is always the first and least disruptive adjustment, preserving movement execution and volume while reducing neurological strain.\n\nA critical floor protection prevents chronic undertraining. If readiness gating depresses actual volume below MEV for two consecutive microcycles, the engine locks volume at exact MEV targets, forces RIR ≥3, and suspends dynamic readiness reductions. This ensures the athlete continues to receive a growth stimulus even during periods of compromised recovery.",
+      "citationIDs": ["ev-hypertrophy-proximity-to-failure"]
+    },
+    {
+      "id": "hypertrophy-recovery-monitoring",
+      "title": "Biofeedback Titration and Overreaching Detection",
+      "body": "Volume landmarks are not static. Each microcycle, PlanKit processes three biofeedback inputs per muscle group: Soreness (S, 0–4 scale where 0=none, 4=severe and impairing), RIR Delta (ΔRIR, the gap between prescribed and actual RIR), and Performance Trend (Δe1RM over a 2-week rolling window). These feed a state machine with four recovery states. High Recovery (S≤1, ΔRIR≤0, e1RM stable or rising) increases MRV by 1.0 and adds +1 set/week. Optimal Adaptive (S=2, ΔRIR within ±0.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate Fatigue (S=3 or ΔRIR>1.0) holds volume constant. Overreaching (S=4 or Δe1RM <−2.0% across 2 consecutive weeks) drops MRV by 2.0, MEV by 1.0, and V_target by 2.0, triggering an early deload evaluation.\n\nMEV and MRV are safety-bounded: MEV cannot drop below 4.0 or exceed MEV_base + 2.0; MRV cannot drop below MEV + 2.0 or exceed MRV_base + 6.0. These boundaries prevent the engine from ratcheting an athlete into either zero stimulus or unsustainable volume.\n\nOverreaching detection uses two MRV thresholds. The soft warning cap at 0.90×MRV halves progressive volume additions and alerts the athlete that recovery capacity is saturating. The hard operational cap at 1.00×MRV strictly rejects all set additions. If a muscle group logs Performance=4 for two consecutive microcycles while operating at or above the soft cap, the engine terminates the active mesocycle and schedules a 7-day reactive deload. Reactive deloads also fire on estimated 1RM drops >5% across two sessions, persistent soreness (4/4 for >72 hours across ≥2 muscle groups), or ARC readiness <0.40 for three consecutive days.",
+      "citationIDs": ["ev-hypertrophy-recovery-monitoring", "ev-hypertrophy-recovery-monitoring-2"]
+    },
+    {
+      "id": "hypertrophy-intensity-techniques",
+      "title": "Drop Sets, Rest-Pause, and Stretch-Mediated Hypertrophy",
+      "body": "Intensity techniques extend a set's stimulus but do not multiply set credit. Drop sets log 1.00 for the initial set (performed at 0–2 RIR) plus 0.50 for the drop portion—applied to the primary mover only; synergists receive 0.00 on the drop. Rest-pause and Myo-reps log 1.00 for the activation set plus 0.50 aggregated from the 3–4 mini-sets. A single exercise slot using either technique cannot exceed 1.50 total effective sets toward the primary target muscle, preventing arbitrary volume inflation. These techniques increase per-set stimulus density but do not replace additional working sets.\n\nLengthened partials—sets performed exclusively in the stretched portion of a movement—count identically to full-ROM sets (1.00) when executed within 0–4 RIR at long muscle lengths. Research demonstrates that loading extended muscle lengths yields equal or superior regional hypertrophy compared to shortened ranges. The engine records a length_bias field per exercise (LENGTHENED, SHORTENED, FULL) and applies a lengthened_partial_hypertrophy_modifier of 1.08 in its JSON exercise definitions.\n\nWhen an athlete selects the Stretch_Focused exercise selection bias, the engine prioritizes exercises with long muscle length resistance profiles (e.g., seated leg curls over lying leg curls for hamstrings, incline curls over preacher curls for biceps). This bias is a ranking weight applied during exercise slot selection, not a volume or load modifier. Coaches should view intensity techniques and stretch-focused exercise selection as tools within a volume framework, not replacements for adequate hard-set totals.",
+      "citationIDs": ["ev-hypertrophy-intensity-techniques"]
+    }
+  ]
+}

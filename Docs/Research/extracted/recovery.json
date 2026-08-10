@@ -1,0 +1,222 @@
+{
+  "modules": [
+    {
+      "id": "recovery",
+      "title": "Recovery and Readiness",
+      "description": "Deterministic recovery and readiness engine that governs daily training modifications using HRV/ARC signals, subjective markers, readiness band classification, workload monitoring (EWMA ACWR), MEV floor protection, and deload policies for hypertrophy training.",
+      "topicIDs": [
+        "recovery-hrv-signals",
+        "recovery-readiness-bands",
+        "recovery-priority-cascade",
+        "recovery-autoregulation",
+        "recovery-mev-protection",
+        "recovery-deload",
+        "recovery-acwr"
+      ],
+      "evidenceIDs": [
+        "ev-recovery-hrv-sdnn",
+        "ev-recovery-hrv-local-damage",
+        "ev-recovery-sleep-arc",
+        "ev-recovery-cold-travel",
+        "ev-recovery-readiness-bands",
+        "ev-recovery-readiness-index",
+        "ev-recovery-safety-cascade",
+        "ev-recovery-autoreg-order",
+        "ev-recovery-low-readiness-seq",
+        "ev-recovery-mev-vdl",
+        "ev-recovery-deload-types",
+        "ev-recovery-deload-params",
+        "ev-recovery-ewma-acwr",
+        "ev-recovery-deload-nutrition"
+      ],
+      "autoAssign": {
+        "phases": ["cut", "maintain", "gain"],
+        "goals": [],
+        "always": true
+      }
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-recovery-hrv-sdnn",
+      "title": "HRV/SDNN as Autonomic Recovery Marker",
+      "summary": "Morning Autonomic Recovery Condition (ARC) scores are derived from sleep-window standard deviation of NN intervals (SDNN), a time-domain heart rate variability metric that reflects cardiac parasympathetic modulation. The ARC z-score is calculated against a 30-day rolling individual baseline: z_ARC = (SDNN_today − μ_SDNN,30d) / σ_SDNN,30d. rMSSD serves as an alternative time-domain HRV metric likewise sensitive to parasympathetic tone. ARC is treated as a systemic fatigue prior that gates total daily volume and cardiovascular strain, not as an absolute indicator of localized muscular force capacity.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L8-9, L40-41" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-hrv-local-damage",
+      "title": "Autonomic Marker Limits for Hypertrophy",
+      "summary": "HRV measures autonomic nervous system balance and correlates weakly with acute single-joint force production and localized muscle damage. Autonomic markers cannot capture localized muscular microtrauma, excitation-contraction coupling failure, or joint-specific inflammation. An athlete may register suppressed nocturnal SDNN from psychological stress or late-evening thermal strain while retaining baseline force production. Conversely, systemic parasympathetic saturation can co-occur with severe localized eccentric-induced muscle damage. In hypertrophy, the primary driver is local mechanical tension and peripheral fatigue, not central cardiovascular strain — so HRV-guided protocols that directly scale session intensity are inappropriate for resistance training.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L8-32" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-sleep-arc",
+      "title": "Sleep Quality and ARC Relationship",
+      "summary": "ARC scores are explicitly derived from sleep-window SDNN, making sleep duration and quality direct inputs to the readiness calculation. Sleep disruption suppresses parasympathetic nervous system activity and reduces SDNN, which cascades into lower ARC z-scores and potentially lower readiness band classification. Poor sleep therefore flows through the Readiness Index formula both via the ARC z-score term (60% weight) and indirectly through the subjective sleep quality rating in the S_sub composite (40% weight).",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L8-9, L35-38, L43-44" },
+      "confidence": "medium"
+    },
+    {
+      "id": "ev-recovery-cold-travel",
+      "title": "Cold Exposure Interference and Travel Effects on Recovery",
+      "summary": "Post-training cold exposure (cold water immersion, cryotherapy) may blunt hypertrophic signaling by attenuating the inflammatory and satellite cell responses necessary for muscle protein synthesis, creating interference with the mechanotransduction pathways that drive hypertrophy. Travel-induced schedule disruptions are routed through the deterministic drift policy matrix: sessions logged 24h–48h late trigger calendar shifts and accessory volume trimming; 5+ day gaps freeze the microcycle week index and mark missed sets as SKIPPED_EXPIRED. PPL sequence integrity and intra-muscle rest clamps (48h compounds, 24h isolation) are preserved throughout.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L68-113, L307-309" },
+      "confidence": "medium"
+    },
+    {
+      "id": "ev-recovery-readiness-bands",
+      "title": "Readiness Band Definitions",
+      "summary": "Four operational readiness bands are defined by the composite Readiness Index (RI). High/Peaking (RI > 0.75): volume pinned to mesocycle plan, no RPE cap, permits higher absolute loads within target RPE/RIR windows but hard-set counts remain fixed. Normal/Baseline (0.45 ≤ RI ≤ 0.75): standard baseline volume (M_V = 1.00), RPE clamped ≤ 8.5 as autonomic safeguard. Low (0.30 ≤ RI < 0.45): volume scaled to ~75% (M_V ≈ 0.75), RPE clamped ≤ 8.0. Depleted (RI < 0.30): volume scaled to ~50% (M_V ≈ 0.50), RPE clamped ≤ 7.0. High readiness does not authorize set volume additions beyond planned mesocycle progression.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L39-47, L300-305" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-readiness-index",
+      "title": "Readiness Index Formula",
+      "summary": "The composite Readiness Index merges objective autonomic data with subjective athlete input: RI = 0.6 × ((z_ARC + 3) / 6) + 0.4 × S_sub. The ARC term maps z_ARC (typically ranging −3 to +3) into a 0–1 range by adding 3 and dividing by 6, then weights it at 60%. The S_sub term is the normalized (0.0–1.0) subjective recovery composite incorporating perceived soreness, sleep quality, and stress ratings (each 1–5). The 0.6/0.4 weighting gives ARC majority influence while subjective markers prevent purely autonomic signals from dominating when they conflict with athlete experience. Signal conflict example: z_ARC = −1.60 (Depleted) combined with high subjective scores (4.5/5.0 soreness, 4.0/5.0 sleep) yields RI = 0.48, mapping to Normal/Baseline with an RPE cap of 8.5 as safeguard.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L43-44, L305" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-safety-cascade",
+      "title": "Multi-Metric Priority Cascade",
+      "summary": "Daily gating follows a strictly ordered hierarchical cascade designed to prevent noisy HRV signals from corrupting training prescriptions. Priority 1: Safety Red-Flags — user-reported sharp joint pain (>4/10), illness, or acute injury triggers immediate movement substitution or rest day recommendation. Priority 2: Subjective Recovery Composite — perceived soreness, sleep quality, and stress (rated 1–5), normalized to S_sub (0.0–1.0). Priority 3: ARC Readiness Score — morning SDNN z-score against 30-day rolling baseline. Priority 4: Prior-Day EWMA Acute Load Residual — quantified systemic fatigue residual from exponentially weighted workload tracking.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L33-38" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-autoreg-order",
+      "title": "Intra-Session Autoregulation Precedence",
+      "summary": "Intra-session modification follows a deterministic precedence order: (1) RIR/RPE correction — if athlete reaches absolute failure (RPE 10) on a set prescribed at RPE 8, the engine recalculates working load at −5% for subsequent sets of that exercise. If a second consecutive set misses target RPE by ≥1.5 units, remaining sets for that exercise slot are dropped. (2) Fatigue drop-off — if RPE rises by >2.0 units across consecutive sets at identical loads OR completed reps drop by >30% between sets at equal load, the engine terminates the current exercise slot and cancels remaining secondary accessory slots for that target muscle.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L63-66" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-low-readiness-seq",
+      "title": "Low-Readiness Day Modification Algorithm",
+      "summary": "When RI < 0.45, the engine processes session modifications through a 6-step ordered sequence, halting immediately once the daily target set reduction factor (M_V) is satisfied. Step 1: Apply RPE Ceiling — clamp all prescribed RPE to 7.0 (Depleted) or 8.0 (Low), recalculating absolute working loads. Step 2: Trim Accessory Sets — reduce isolation/secondary machine slots (Priority 3–4) by 1 set/slot. Step 3: Equipment Swap (if RI < 0.35) — replace high axial-load compounds (barbell squat, RDL) with low axial-load equivalents (hack squat, lying leg curl), preserving target muscle mapping. Step 4: Trim Compound Sets — reduce primary multi-joint slots (Priority 1–2) by 1 set, provided remaining daily sets stay ≥ MEV_daily_floor. Step 5: Convert to Technique/Pump (if RI < 0.30 and MEV floor would be violated) — all working sets become fixed RPE ≤ 6.0 velocity/pump sets, progression tracking disabled. Step 6: Full Rest Day — if z_ARC < −2.0 AND subjective soreness ≤ 1.5/5.0, OR if prior steps fail to mitigate deficits, session transitions to CANCELLED_REST_RECOMMENDED and drift policy advances the calendar.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L54-62" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-mev-vdl",
+      "title": "MEV Floor Protection and Volume Deficit Ledger",
+      "summary": "Chronic low readiness risks stranding an athlete below Minimum Effective Volume for consecutive weeks. The Volume Deficit Ledger tracks cumulative per-muscle set deficit: VDL_muscle = Σ(Sets_planned,d − Sets_executed,d). If VDL threatens to drop weekly completed volume below MEV by day 5 of the microcycle, the engine suspends set-trimming on compounds and enforces an RPE cap of 7.5 instead of trimming sets. If low readiness persists for >72 consecutive hours despite RPE caps, the engine overrides daily session execution and converts the remaining microcycle into a Reactive Micro-Deload, resetting weekly volume requirements.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L48-53" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-deload-types",
+      "title": "Deload Types and Trigger Criteria",
+      "summary": "Scheduled deloads occur at fixed mesocycle boundaries: every 6th week for novice/intermediate athletes (5:1 overload:deload), every 4th week for advanced athletes (3:1). Three reactive deload triggers are evaluated daily: (1) Autonomic Suppression — 3+ consecutive Depleted sessions (z_ARC < −1.5). (2) Performance Regression — 2+ consecutive microcycles with ≥3.5% e1RM drop on primary compounds at RPE ≥ 9.0, where e1RM = Load × (1 + Reps/30). (3) Joint Discomfort — subjective joint soreness ≥4.0/5.0 for 4+ consecutive days across movement patterns sharing a joint axis. Severity levels: Single Easy Day (50% volume cut, RPE ≤ 6.0, triggered by single Depleted day with low soreness); Full Reactive Deload Week (50% cut across microcycle, RPE ≤ 5.0, triggered by 3+ days Depleted or ≥3.5% e1RM drop); Regional Deload (reduce affected joint patterns only, normal training on unaffected groups).",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L148-169" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-deload-params",
+      "title": "Deload Parameter Profiles Across States",
+      "summary": "Baseline hypertrophy microcycle: 100% MEV→MRV ramp, all slots active, 70–85% 1RM, 3–0 RIR. Scheduled deload week: 50–60% of peak week sets (clamped to MEV floor), primary compounds retained, 50% isolation trimmed, 60–70% 1RM, 5–4 RIR (RPE 5–6), LISS conditioning only. Reactive deload week: 50% of peak week sets, primary compounds retained, all isolation dropped, 55–65% 1RM, 6–5 RIR (RPE 4–5), active recovery/walking only. Single easy day: 50% of daily target, primary compound only, all isolation dropped, 60% 1RM, 5 RIR (RPE 5), active recovery. Deload set floors use the formula: Sets_deload = max(MEV_muscle, Round(0.50 × Sets_peak_week)).",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L153-200, L165-200" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-ewma-acwr",
+      "title": "EWMA ACWR Model and Operational Zones",
+      "summary": "Exponentially Weighted Moving Average (EWMA) ACWR tracks workload dynamics with acute decay constant λ_a = 0.25 (7-day window) and chronic decay constant λ_c = 0.069 (28-day window). Daily session load: L_t = Σ(1.0 + 0.1 × (RPE_s − 7.0)) per hard set. Acute workload w_acute,t = L_t × λ_a + (1 − λ_a) × w_acute,t−1; chronic workload w_chronic,t = L_t × λ_c + (1 − λ_c) × w_chronic,t−1; ACWR_t = w_acute,t / w_chronic,t. Four operational zones: Under-training/Detraining (ACWR < 0.80) — permit +15%/wk ramp-up toward target MEV; Optimal Adaptation (0.80–1.30) — standard progression, +1–2 sets/muscle; Warning/High Load (1.31–1.50) — cap +5%/wk growth, RPE ≤ 8.5, max +1 set backfill; Spike Danger (>1.50) — hard volume clamp to ≤ w_chronic,t, drop non-essential accessories, volume catch-up strictly prohibited, missed sets discarded.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L209-247" },
+      "confidence": "high"
+    },
+    {
+      "id": "ev-recovery-deload-nutrition",
+      "title": "Deload Modulation by Nutritional Phase and Landmark Resets",
+      "summary": "Energy surplus (mass gain phase): deload sets at 50% of peak volume; high energy availability supports rapid systemic recovery enabling full neural supercompensation within 7 days. Energy deficit (fat loss cut phase): deload sets capped at 60% of peak volume (preserving higher volume for muscle retention signaling), but working loads reduced by additional −5% to account for impaired recovery capacity. Post-deload landmark resets: volume targets reset to MEV_baseline and cumulative hard-set accumulator cleared; initial working loads re-anchored at 92.5–95.0% of pre-deload top weights; 30-day ARC rolling baseline (μ_SDNN,30d and σ_SDNN,30d) recalculated excluding deload-week data to prevent skewing future readiness metrics.",
+      "citation": { "source": "Autoregulation, Drift Management, and Periodization Policies for Helm", "line": "L201-208, L153-154" },
+      "confidence": "medium"
+    }
+  ],
+  "topics": [
+    {
+      "id": "recovery-hrv-signals",
+      "title": "HRV and Autonomic Recovery Signals",
+      "description": "Heart rate variability (SDNN/rMSSD) measured during sleep as the Autonomic Recovery Condition (ARC) score, z-score normalization against a 30-day rolling baseline, and the fundamental limits of autonomic markers for hypertrophy training where local mechanical tension dominates over central cardiovascular strain.",
+      "coachLens": [
+        "Slept 5 hours — adjust?"
+      ],
+      "evidence": [
+        "ev-recovery-hrv-sdnn",
+        "ev-recovery-hrv-local-damage",
+        "ev-recovery-sleep-arc",
+        "ev-recovery-cold-travel"
+      ]
+    },
+    {
+      "id": "recovery-readiness-bands",
+      "title": "Readiness Bands and Composite Index",
+      "description": "Four operational readiness bands (High/Peaking, Normal/Baseline, Low, Depleted) defined by the composite Readiness Index formula (RI = 0.6 × ARC + 0.4 × subjective), with per-band volume multipliers and RPE caps that gate daily session intensity without overriding mesocycle volume plans.",
+      "coachLens": [
+        "HRV dropped — skip today?"
+      ],
+      "evidence": [
+        "ev-recovery-readiness-bands",
+        "ev-recovery-readiness-index"
+      ]
+    },
+    {
+      "id": "recovery-priority-cascade",
+      "title": "Multi-Metric Priority Cascade",
+      "description": "Strictly ordered daily gating hierarchy that prevents noisy HRV signals from corrupting prescriptions: safety red-flags (pain, illness, injury) take absolute precedence, followed by subjective recovery composite, then ARC z-score, then prior-day EWMA acute load residual.",
+      "coachLens": [],
+      "evidence": [
+        "ev-recovery-safety-cascade"
+      ]
+    },
+    {
+      "id": "recovery-autoregulation",
+      "title": "Session Autoregulation and Low-Readiness Protocol",
+      "description": "Deterministic intra-session adjustment rules (RIR miss correction, fatigue drop-off termination) and the 6-step low-readiness day modification algorithm that applies RPE ceilings, trims accessories before compounds, swaps high axial-load exercises, and falls through to technique-only sessions or recommended rest.",
+      "coachLens": [
+        "HRV dropped — skip today?",
+        "Slept 5 hours — adjust?"
+      ],
+      "evidence": [
+        "ev-recovery-autoreg-order",
+        "ev-recovery-low-readiness-seq"
+      ]
+    },
+    {
+      "id": "recovery-mev-protection",
+      "title": "MEV Floor Protection",
+      "description": "Volume Deficit Ledger (VDL) that tracks cumulative per-muscle set deficits, suspends set-trimming on compounds when MEV is threatened by day 5 of the microcycle, and triggers a Reactive Micro-Deload if low readiness persists beyond 72 consecutive hours to prevent chronic under-dosing.",
+      "coachLens": [],
+      "evidence": [
+        "ev-recovery-mev-vdl"
+      ]
+    },
+    {
+      "id": "recovery-deload",
+      "title": "Deload Policy and Execution",
+      "description": "Scheduled deloads at fixed mesocycle boundaries (4–6 week cycles), reactive deloads triggered by autonomic suppression, performance regression, or joint discomfort thresholds, severity-graded parameter profiles for sets/intensity/RIR, nutritional-phase modulation, and post-deload landmark resets for volume, load, and ARC baseline.",
+      "coachLens": [
+        "When should I deload?"
+      ],
+      "evidence": [
+        "ev-recovery-deload-types",
+        "ev-recovery-deload-params",
+        "ev-recovery-deload-nutrition"
+      ]
+    },
+    {
+      "id": "recovery-acwr",
+      "title": "ACWR Workload Monitoring and Spike Guards",
+      "description": "EWMA acute:chronic workload ratio (λ_a=0.25, λ_c=0.069) with RPE-weighted set load calculation, four operational zones (Under-training, Optimal, Warning, Spike Danger), and deterministic spike guards that enforce volume clamps and prohibit catch-up when ACWR exceeds safety thresholds.",
+      "coachLens": [
+        "When should I deload?"
+      ],
+      "evidence": [
+        "ev-recovery-ewma-acwr"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,518 @@
+Deep Research — Thread 2 of 4: Volume Ruler (Hard Sets, MEV/MRV, Progression) for Helm
+Executive Summary
+The Helm Volume Ruler provides a deterministic computational framework for tracking, allocating, and progressing training volume for muscle hypertrophy. Hypertrophy engines often suffer from two operational flaws: subjective volume modifications based on anecdotal user feedback and binary set accounting that either overcounts synergist movements—leading to under-prescribed direct work—or ignores them entirely, inducing systemic overtraining. The system specified herein resolves these flaws by implementing an offline-first calculation engine within PlanKit that treats training volume as an explicit ledger of direct and fractional hard sets.
+By establishing strict mathematical boundaries for what constitutes a hard set, mapping compound exercise muscle contributions through fractional coefficients, and regulating weekly targets via an autoregulated Minimum Effective Volume (MEV) to Maximum Recoverable Volume (MRV) state machine, PlanKit generates testable exercise prescriptions. The Large Language Model (LLM) conversational layer functions strictly as an interface to explain ledger state and propose bounded adaptations. All numerical modifications are calculated and clamped by the deterministic rules of the PlanKit core engine.
+Hard-Set Definition and Counting Rules
+Primary Definition of a Hard Set
+A hard set is defined within PlanKit as any completed exercise set executed within a load intensity of $30\%\text{--}85\%$ of one-repetition maximum ($1\text{RM}$), across a rep range of $5\text{--}30$ repetitions, terminating at a proximity to failure of $0\text{--}4$ Reps in Reserve ($\text{RIR}$) (or Rating of Perceived Exertion ($\text{RPE}$) $6\text{--}10$). Sets executed below $30\% \text{ 1RM}$, at reps exceeding 30, or with an $\text{RIR} > 4$ fail to generate sufficient mechanical tension or motor unit recruitment across high-threshold motor units to drive hypertrophic adaptations. Consequently, such sets are assigned a value of $0.00$ hard sets in the volume ledger.
+Exercise Set Type
+Proximity / Intensity Criteria
+Primary Muscle Set Value
+Synergist Muscle Set Value
+Rationale & Ledger Rule
+Warm-up Set
+$\text{RIR} > 5$ or Load $<30\% \text{ 1RM}$
+$0.00$
+$0.00$
+Potentiates neuromuscular system without contributing structural fatigue or hypertrophic stimulus.
+Standard Working Set
+$0\text{--}4 \text{ RIR}$, $5\text{--}30 \text{ reps}$
+$1.00$
+Fractional ($0.25\text{--}0.50$)
+Meets standard mechanical tension criteria for full working set credit.
+Set Taken to Failure
+$0 \text{ RIR}$ ($\text{RPE } 10$)
+$1.00$
+Fractional ($0.25\text{--}0.50$)
+Fully stimulative; generates higher fatigue but yields $1.00$ primary set credit.
+Unilateral Set
+Performed single-limb
+$1.00$ (per limb)
+Fractional (per limb)
+Logged per completed pair; single-side set counts as $1.00$ credit to target limb only.
+Drop Set (Initial + Drop)
+Initial $0\text{--}2 \text{ RIR}$ + extended drop
+$1.00$ (Initial) + $0.50$ (Drop)
+$0.00$ on Drop
+Extended fatigue stimulus; drop portion adds $+0.50$ fractional set to primary mover only.
+Rest-Pause / Myo-Reps
+Activation set + $3\text{--}4$ mini-sets
+$1.00$ (Activation) + $0.50$ (Aggregated)
+$0.00$ on Mini-sets
+Mini-sets aggregate into a single $+0.50$ fractional credit for primary mover.
+Lengthened Partials
+Extended sets performed in stretch
+$1.00$
+Fractional ($0.25\text{--}0.50$)
+Counted identically to standard sets if executed within $0\text{--}4 \text{ RIR}$ at long muscle lengths.
+
+Accounting for Intensity Techniques and Overlapping Slots
+When logging specialized intensity techniques, PlanKit enforces a maximum set credit cap per exercise entry to prevent arbitrary volume inflation. A single exercise slot utilizing rest-pause or drop sets cannot exceed $1.50$ total effective sets toward the primary target muscle.
+For multi-slot exercise configurations occurring within a single workout session (such as two distinct back pulling movements performed during a single Pull session), each completed working set credits the primary target muscle fully. However, to prevent acute intra-session fatigue from generating unproductive "junk volume," total primary set volume per muscle group is capped at $8.0\text{--}10.0$ effective sets per session. Any working set completed beyond $10.0$ effective sets for a single muscle group in one session yields a decayed stimulus credit of $0.50$ effective sets in the weekly ledger, reflecting intra-session diminishing returns.
+Muscle Contribution Model
+Fractional Set Accounting Framework
+Traditional binary set counting—assigning $1.0$ set to all involved muscles or $1.0$ set only to the primary muscle—introduces systemic programming errors. Binary counting either over-prescribes secondary isolation work or omits the substantial hypertrophic stimulus received by synergist muscles during heavy compound movements.
+PlanKit utilizes a fractional set mapping model supported by multi-level meta-regressions. Compound movements assign primary movers $1.00$ set credit, major synergists $0.50$ set credit, and minor stabilisers $0.25$ or $0.00$ set credit.
+$$\text{Effective Weekly Volume } (V_{\text{eff}, m}) = \sum S_{\text{direct}, m} + \sum \left( \omega_{i, m} \cdot S_{\text{indirect}, i} \right)$$
+In this equation, $S_{\text{direct}, m}$ represents the count of direct working sets for muscle group $m$, $S_{\text{indirect}, i}$ represents the count of working sets performed on compound exercise $i$, and $\omega_{i, m} \in \{0.50, 0.25\}$ defines the primary-to-synergist contribution coefficient.
+Movement Class / Pattern
+Sample Exercises
+Primary Muscle (1.00)
+Major Synergist (0.50)
+Minor Synergist (0.25)
+Horizontal Press
+Barbell/Dumbbell Bench Press
+Pectoralis Major
+Anterior Deltoid, Triceps Brachii
+—
+Incline Press
+Incline Dumbbell Press
+Upper Pectoralis
+Anterior Deltoid
+Triceps Brachii
+Vertical Press
+Standing/Seated Overhead Press
+Anterior Deltoid
+Triceps Brachii
+Upper Trapezius
+Horizontal Pull (Row)
+Barbell Row, Seated Cable Row
+Latissimus Dorsi, Rhomboids
+Biceps Brachii, Rear Deltoid
+Lower Trapezius
+Vertical Pull
+Lat Pulldown, Pull-Up
+Latissimus Dorsi
+Biceps Brachii
+Rear Deltoid
+Quads Compound
+Barbell Back Squat, Leg Press
+Quadriceps
+Gluteus Maximus
+Adductor Magnus
+Hinge Compound
+Conventional Deadlift, RDL
+Hamstrings, Gluteus Maximus
+Erector Spinae
+Trapezius
+Isolation Movements
+Biceps Curl, Triceps Extension, Flyes
+Target Muscle Only
+None ($0.00$)
+None ($0.00$)
+Synergist Caps and Target Protection Rules
+To prevent fractional volume from masking a complete lack of direct isolation stimulus (for example, performing 20 sets of heavy rows and accumulating $10.0$ fractional sets for biceps without executing a direct curl), PlanKit enforces two deterministic rules:
+Synergist Contribution Ceiling: Indirect fractional sets ($\sum \omega_{i, m} \cdot S_{\text{indirect}, i}$) can satisfy a maximum of $50\%$ of a muscle group's total weekly Target Volume ($V_{\text{target}}$). The remaining $50\%$ must be supplied by direct isolation or primary mover sets ($S_{\text{direct}} = 1.00$).
+Direct Floor Minimum: If a muscle group's weekly MEV target is $\ge 8.0$ sets, PlanKit mandates a hard minimum floor of at least $4.0$ direct sets ($S_{\text{direct}}$) per week allocated to dedicated primary pattern slots.
+Landmark Seed, Refinement, and Reseed Specification
+Base Volume Landmarks across Demographic Priors
+Volume landmarks—Minimum Effective Volume (MEV), Maximum Adaptive Volume (MAV), and Maximum Recoverable Volume (MRV)—vary based on muscle architecture, recovery capacity, and training experience. Global scalar multipliers (such as multiplying all muscle groups by $0.85$ for novices) introduce errors because smaller muscle groups and intermediate lifters exhibit non-linear volume tolerances.
+PlanKit establishes muscle-specific baseline volume landmarks (measured in total effective weekly sets) for intermediate lifters, applying demographic modifiers based on empirical recovery capacity.
+Muscle Group
+Baseline MEV
+Baseline MAV Range
+Baseline MRV
+Chest
+$8.0$
+$12.0\text{--}18.0$
+$22.0$
+Back (Lats / Rhomboids)
+$10.0$
+$14.0\text{--}22.0$
+$25.0$
+Anterior Deltoid
+$0.0$ (Covered by pressing)
+$6.0\text{--}12.0$
+$16.0$
+Side Deltoid
+$6.0$
+$12.0\text{--}20.0$
+$24.0$
+Rear Deltoid
+$6.0$
+$12.0\text{--}18.0$
+$22.0$
+Quadriceps
+$6.0$
+$12.0\text{--}18.0$
+$20.0$
+Hamstrings
+$4.0$
+$10.0\text{--}16.0$
+$18.0$
+Biceps
+$4.0$ (Direct)
+$10.0\text{--}14.0$
+$18.0$
+Triceps
+$4.0$ (Direct)
+$10.0\text{--}14.0$
+$18.0$
+Calves
+$6.0$
+$12.0\text{--}16.0$
+$20.0$
+Demographic Initialization Scalars
+The initial seeding of landmarks calculates baseline values multiplied by demographic scalars for experience, age, and biological sex, applied during mesocycle initialization:
+$$\text{MEV}_{\text{seeded}} = \text{MEV}_{\text{base}} \times \alpha_{\text{exp}} \times \alpha_{\text{age}} \times \alpha_{\text{sex}}$$
+$$\text{MRV}_{\text{seeded}} = \text{MRV}_{\text{base}} \times \alpha_{\text{exp}} \times \alpha_{\text{age}} \times \alpha_{\text{sex}}$$
+Variable
+Metric / Category
+Scalar (α)
+Rationale
+Experience Tier
+Novice ($<1$ yr consistent)
+$0.80$
+High neuromuscular sensitivity; low MEV threshold.
+
+Intermediate ($1\text{--}4$ yrs)
+$1.00$
+Standard empirical baseline.
+
+Advanced ($>4$ yrs)
+$1.10$
+Requires higher volume dose for continued adaptation.
+Age
+$<40$ years old
+$1.00$
+Baseline systemic recovery speed.
+
+$40\text{--}55$ years old
+$0.90$
+Moderate reduction in tissue repair rate and sleep architecture.
+
+$>55$ years old
+$0.80$
+Lower fatigue tolerance; reduced MRV ceiling.
+Biological Sex
+Male
+$1.00$
+Baseline benchmark values.
+
+Female
+$1.05$
+Superior fatigue resistance in high-rep ranges; faster intra-set recovery.
+
+Mid-Block Reseed Policy
+When a user modifies profile parameters (such as changing experience level or training template) mid-mesocycle, PlanKit executes a non-destructive landmark recalculation:
+Completed sets and historical week targets within the active mesocycle remain unchanged in the ledger to preserve historical tracking. Uncompleted weekly targets ($V_{\text{target}, w}$) for remaining weeks $w \in \{w_{\text{current}}, \dots, w_{\text{final}}\}$ are updated using the ratio of the new landmark ceiling to the old landmark ceiling:
+$$V_{\text{target}, w}^{\text{new}} = V_{\text{target}, w}^{\text{old}} \times \left( \frac{\text{MRV}^{\text{new}}}{\text{MRV}^{\text{old}}} \right)$$
+Rescaled weekly targets are clamped to fall within $[\text{MEV}^{\text{new}}, \text{MRV}^{\text{new}}]$.
+Autoregulated Landmark Refinement Engine
+Landmarks adjust dynamically based on logged biofeedback. PlanKit processes three weekly input vectors per muscle group: Average Logged RIR Delta ($\Delta \text{RIR}$, the difference between prescribed RIR and actual performed RIR), Perceived Soreness Score ($S$, an integer scale from $0$ to $4$ where $0 =$ None, $1 =$ Healed rapidly, $2 =$ Healed just in time, $3 =$ Sore upon entering session, $4 =$ Severe debilitating soreness), and Performance Trend ($\Delta \text{e1RM}$, the percentage change in estimated $1\text{RM}$ on key indicator lifts over a 2-week rolling window).
+Recovery & Biofeedback State
+Condition Criteria
+Landmark Adjustment Action
+Systemic Rate Limit / Safety Action
+High Recovery
+$S \le 1$ AND $\Delta \text{RIR} \le 0$ AND $\Delta \text{e1RM} \ge 0\%$
+$\text{MRV}_{\text{new}} = \text{MRV}_{\text{old}} + 1.0$, $V_{\text{target, next}} = V_{\text{target, current}} + 1.0$
+Rate limited to max $+1.0$ set/week increment.
+Optimal Adaptive
+$S = 2$ AND $-0.5 \le \Delta \text{RIR} \le 0.5$ AND $\Delta \text{e1RM} \ge 0\%$
+$\text{MRV}_{\text{new}} = \text{MRV}_{\text{old}}$, $V_{\text{target, next}} = V_{\text{target, current}} + 1.0$
+Standard volume ramp progression.
+Moderate Fatigue
+$S = 3$ OR $\Delta \text{RIR} > 1.0$
+$\text{MRV}_{\text{new}} = \text{MRV}_{\text{old}}$, $V_{\text{target, next}} = V_{\text{target, current}}$
+Holds weekly volume constant.
+Overreaching / Failure
+$S = 4$ OR $\Delta \text{e1RM} < -2.0\%$ (2 consecutive weeks)
+$\text{MRV}_{\text{new}} = \text{MRV}_{\text{old}} - 2.0$, $\text{MEV}_{\text{new}} = \text{MEV}_{\text{old}} - 1.0$, $V_{\text{target, next}} = V_{\text{target, current}} - 2.0$
+Triggers Early Deload Evaluator Flag.
+
+Safety Boundary Clamping: MEV is constrained to $[4.0, \text{MEV}_{\text{base}} + 2.0]$, while MRV is bounded by $[\text{MEV} + 2.0, \text{MRV}_{\text{base}} + 6.0]$.
+Weekly Target and Intra-Session Set Split Algorithm
+Weekly Volume Ramp Profile
+A mesocycle spans $4\text{--}6$ active training weeks followed by a $1$-week deload. PlanKit uses a linear-step progression from MEV to MRV across accumulating weeks $W_1 \dots W_N$:
+$$V_{\text{target}}(W_k) = \text{MEV} + \left( \frac{k - 1}{N - 1} \right) \times (\text{MRV} - \text{MEV})$$
+For a standard 5-week accumulation mesocycle ($N=5$) with $\text{MEV} = 10.0$ and $\text{MRV} = 18.0$:
+Week 1: $10.0$ sets ($\text{MEV}$)
+Week 2: $12.0$ sets
+Week 3: $14.0$ sets ($\text{MAV}$ mid-point)
+Week 4: $16.0$ sets
+Week 5: $18.0$ sets ($\text{MRV}$ functional overreach)
+Week 6 (Deload): $5.0$ sets ($50\%$ of $\text{MEV}$ / Maintenance Volume)
+Session Allocation and Set Splitting
+Given a weekly volume target $V_{\text{target}}$ for a muscle group, and $M$ planned session slots hitting that muscle group across the week (for example, $M=2$ for a Push/Pull/Legs split repeated twice weekly):
+The engine calculates the base session target via:
+$$V_{\text{session, base}} = \frac{V_{\text{target}}}{M}$$
+Within a single session containing $P$ primary compound slots and $I$ secondary isolation slots targeting muscle group $m$, primary compound slots are allocated a baseline of $2\text{--}4$ sets per slot. Secondary isolation slots are allocated remaining required sets to satisfy $V_{\text{session, base}}$.
+Every included exercise slot must be assigned $\ge 2.0$ sets. If assigned sets $< 2.0$, the engine drops the lowest priority isolation slot and reallocates sets to primary slots to eliminate ineffective 1-set slots. Furthermore, no single muscle group may exceed $8.0$ direct sets ($10.0$ total effective sets) in a single workout session. Excessive sets overflow into a newly synthesized session slot or increase frequency across the week.
+Time Budget Constraints and Multipliers
+Sessions are constrained by explicit time budgets ($45$, $60$, or $75$ minutes). PlanKit calculates total session time ($T_{\text{session}}$) deterministically:
+$$T_{\text{session}} = \sum_{j} \left( S_j \times t_{\text{rep}} + (S_j - 1) \times t_{\text{rest}, j} \right) + t_{\text{warmup}}$$
+In this calculation, $t_{\text{rep}} = 40 \text{ seconds}$ per set, $t_{\text{rest, compound}} = 180 \text{ seconds}$, $t_{\text{rest, isolation}} = 90 \text{ seconds}$, and $t_{\text{warmup}} = 300 \text{ seconds}$.
+Session Budget
+Maximum Hard Sets (Total / Session)
+Priority Allocation Rule
+45 Minutes
+$12\text{--}14$ Sets
+Restrict to 1 Primary Compound ($3\text{--}4$ sets) + 2 Isolation slots ($2\text{--}3$ sets). Strip secondary synergist slots.
+60 Minutes
+$16\text{--}20$ Sets
+Standard allocation: 2 Compound slots ($3\text{--}4$ sets) + 2 Isolation slots ($3$ sets).
+75 Minutes
+$22\text{--}26$ Sets
+Extended volume capacity: Multi-slot primary compound work + full isolation spectrum.
+Readiness Integration
+Readiness scoring acts as an inline scalar ($\beta_{\text{readiness}} \in [0.5, 1.1]$) multiplying the planned session set allocation:
+$$S_{\text{prescribed}} = \text{ROUND}\left( S_{\text{planned}} \times \beta_{\text{readiness}} \right)$$
+The unit multiplied by readiness is strictly the planned intra-session set count for that specific day's workout. It does not rewrite the weekly base landmark ledger ($V_{\text{target}}$).
+Progression Schemes by Lift Class and Experience
+Progression Engines by Lift Class
+Progression parameters must match the fatigue profile and mechanical constraints of different movement patterns.
+Movement Pattern Class
+Primary Progression Scheme
+Load Step Size
+Target Rep Range
+Target RIR Ramp (W1 → Peak)
+Squat / Hinge
+Load-First Double Progression
+$+2.5 \text{ kg} / 5 \text{ lbs}$
+$6\text{--}8 \text{ reps}$
+$3 \text{ RIR} \rightarrow 1 \text{ RIR}$
+Horizontal Press
+Standard Double Progression
+$+2.5 \text{ kg} / 5 \text{ lbs}$
+$8\text{--}10 \text{ reps}$
+$3 \text{ RIR} \rightarrow 0\text{--}1 \text{ RIR}$
+Vertical Press
+Standard Double Progression
+$+1.25 \text{ kg} / 2.5 \text{ lbs}$
+$8\text{--}12 \text{ reps}$
+$3 \text{ RIR} \rightarrow 0\text{--}1 \text{ RIR}$
+Pull (Vertical / Horizontal)
+Dynamic Rep-Range Progression
+$+2.5 \text{ kg} / 5 \text{ lbs}$
+$10\text{--}12 \text{ reps}$
+$2 \text{ RIR} \rightarrow 0 \text{ RIR}$
+Isolation Movements
+Rep-First Step Progression
+$+1.25 \text{ kg} / 2.5 \text{ lbs}$
+$12\text{--}15 \text{ reps}$
+$2 \text{ RIR} \rightarrow 0 \text{ RIR}$
+Execution Algorithms
+Standard Double Progression maintains load static ($W$) while expanding repetitions performed across working sets until reaching the upper boundary of the rep range ($R_{\text{max}}$) at target RIR. Once all prescribed sets hit $R_{\text{max}}$, the working load increments by Load Step Size ($\Delta W$) for the subsequent session, resetting reps to $R_{\text{min}}$.
+Rep-First Step Progression keeps load static ($W$) while adding reps set-by-set. When Set 1 reaches $R_{\text{max}}$, reps are added to Set 2 in subsequent sessions. Load increases only when every set achieves $R_{\text{max}}$ at or below prescribed RIR.
+Automated Stall Detection and Reset Logic
+A stall is registered when an exercise fails to progress in rep volume or load over consecutive exposure workouts at or above target effort ($\text{RIR} \le \text{Target RIR}$).
+Exposure Event
+Systemic State
+Prescribed Action
+Engine Adjustment
+Exposure 1
+Target Missed
+Log Warning Flag
+Maintain current load $W$ and rep target; re-evaluate next session.
+Exposure 2
+Consecutive Target Miss
+Confirm Stall & Execute Micro-Reset
+Reduce load $W_{\text{new}} = W_{\text{current}} \times 0.90$ ($10\%$ reset); hold sets static; set RIR = 3.
+Exposure 3
+Post-Reset Ramp
+Resume Progression
+Progress double progression algorithm from reset load $W_{\text{new}}$.
+Experience-Tier Dynamic Adjustments
+Experience level modifies progression parameters directly rather than relying solely on volume changes:
+Novices utilize a fixed weekly load increment (+2.5 kg on compounds weekly) with wide rep windows ($6\text{--}10$ reps), with stall detection set to 3 consecutive missed exposures. Intermediates employ standard double progression as specified above, with stall detection set to 2 consecutive exposures. Advanced lifters utilize micro-periodized wave loading (alternating high-load/low-rep and low-load/high-rep sessions across the week) with micro-scaled load increments ($+1.0 \text{ kg}$) and a stall threshold of 2 exposures.
+Estimated $1\text{RM}$ Initialization and Historical Time Decay
+When initializing working weights for a new exercise, PlanKit evaluates logged historical data using the Epley formula:
+$$\text{e1RM} = w \times \left(1 + \frac{r}{30}\right)$$
+In this equation, $w$ is weight lifted and $r$ is repetitions completed. To account for strength decay during layoffs or unperformed exercises, a time-decay factor ($\lambda = 0.005 \text{ day}^{-1}$) is applied to historical $\text{e1RM}$ logs older than 14 days:
+$$\text{e1RM}_{\text{adjusted}} = \text{e1RM}_{\text{logged}} \times e^{-\lambda \cdot (t - 14)}$$
+Here, $t$ represents days elapsed since the historic lift was logged. Initial working load ($W_{\text{init}}$) for a target rep count $R_{\text{target}}$ and target $RIR_{\text{target}}$ is calculated deterministically:
+$$W_{\text{init}} = \frac{\text{e1RM}_{\text{adjusted}}}{1 + \frac{R_{\text{target}} + RIR_{\text{target}}}{30}}$$
+Phase Interaction (Caloric State Knobs)
+Nutritional state (Cut, Maintain, Surplus) changes recovery capacity, systemic fatigue, and muscle building capability. PlanKit enforces adjustment scalars across the volume and progression layers depending on the user's active nutritional phase.
+Program Knob / Variable
+Fat Loss Phase (Caloric Deficit)
+Maintenance Phase (Eucaloric)
+Mass Gain Phase (Caloric Surplus)
+MEV Landmark Scalar
+$\times 1.15$ (Higher volume needed to retain muscle)
+$\times 1.00$
+$\times 0.85$ (Lower threshold needed to initiate growth)
+MRV Landmark Scalar
+$\times 0.80$ (Reduced recovery capacity)
+$\times 1.00$
+$\times 1.15$ (Enhanced recovery capacity)
+Progression Rate
+Maintenance-focused (Hold load static; maintain strength)
+Standard Double Progression
+Aggressive Load Progression
+Max Intra-Session Sets
+$6.0$ Sets per Muscle
+$8.0$ Sets per Muscle
+$10.0$ Sets per Muscle
+Deload Frequency
+Every $4\text{--}5$ Weeks
+Every $6$ Weeks
+Every $6\text{--}8$ Weeks
+
+Settings Knobs for Volume Layer
+Typed Engine Settings vs. Educational UI Layer
+User settings are typed within PlanKit to ensure deterministic execution. The conversational LLM coach cannot override typed engine boundaries, but presents educational explanations based on engine state.
+Typed Engine Setting Name
+Allowed Data Values
+Default Value
+Internal Engine Effect
+volume_aggressiveness
+CONSERVATIVE, MODERATE, AGGRESSIVE
+MODERATE
+Adjusts weekly MEV-to-MRV ramp step size ($\Delta V = +1, +2, \text{ or } +3 \text{ sets/wk}$).
+experience_tier
+NOVICE, INTERMEDIATE, ADVANCED
+INTERMEDIATE
+Sets progression schemes, initial landmark scalars, and stall detection rules.
+fractional_accounting_mode
+STRICT_FRACTIONAL, DIRECT_ONLY
+STRICT_FRACTIONAL
+Enables or disables synergist coefficient calculation ($0.5/0.25$).
+session_time_budget
+45_MIN, 60_MIN, 75_MIN
+60_MIN
+Enforces hard cap on total intra-session set allocations.
+progression_strategy
+DOUBLE_PROGRESSION, REP_FIRST, LOAD_FIRST
+Pattern Dependent
+Sets automated weight/rep advancement state machine per movement class.
+Required Engine Ledger Fields Schema
+For system auditability and user interface explanations ("Why these sets"), PlanKit maintains an immutable ledger record per muscle group per session.
+Ledger Schema Field
+Data Type
+Description
+Example Value
+muscle_group
+String (Enum)
+Target anatomical muscle group
+BICEPS_BRACHII
+week_number
+Integer
+Active mesocycle week index
+3
+weekly_target_effective_sets
+Float
+Calculated target volume for current week
+14.0
+accumulated_direct_sets
+Float
+Sum of direct working sets logged ($S_{\text{direct}} = 1.0$)
+6.0
+accumulated_fractional_sets
+Float
+Sum of synergist fractional sets logged ($\sum \omega \cdot S$)
+3.5
+remaining_effective_sets_required
+Float
+Net target remaining for uncompleted sessions
+4.5
+session_direct_allocation
+Float
+Sets allocated to current workout session
+3.0
+readiness_scalar_applied
+Float
+Inline daily readiness multiplier ($\beta_{\text{readiness}}$)
+0.90
+final_prescribed_sets
+Integer
+Final rounded integer set count prescribed
+3
+clamping_reasons
+Array (String)
+Audit log flags for boundary adjustments applied
+["SYNERGIST_CAP_SATISFIED", "TIME_BUDGET_60MIN_BOUND"]
+Migration from Current Helm Engine Rules
+The legacy Helm volume engine relied on global scalar multipliers applied at setup, lacked fractional set capabilities, and restricted dynamic adjustments to MRV. The table below specifies the direct migration path to the proposed PlanKit engine architecture.
+Legacy Helm Logic
+Proposed PlanKit Architecture
+Rationale & Architectural Improvement
+Global Experience Scalar ($0.85 / 1.0 / 1.1$) applied once to initial base seeds.
+Dynamic per-muscle demographic priors + age/sex scalars + mid-block reseed policy.
+Eliminates linear scaling errors; models non-linear volume tolerances across diverse muscle groups.
+Binary Set Counting (Underspecified compound muscle contribution).
+Deterministic fractional set matrix ($1.00 / 0.50 / 0.25$) with 50% synergist cap.
+Prevents secondary isolation starvation while accurately tracking synergist mechanical stimulus.
+Static MEV (MEV never moves; MRV adjusts via crude step adjustments: MRV-2 / MRV+1).
+Dual Autoregulated State Machine (MEV and MRV dynamically refine based on $S$, $\Delta \text{RIR}$, $\Delta \text{e1RM}$).
+Adjusts both volume floor and volume ceiling in response to recovery capacity and performance trends.
+Unconstrained Set Allocation ($\text{Remaining Sets} \div \text{Remaining Sessions}$).
+Time-budgeted session set allocation algorithm with intra-session cap ($8\text{--}10$ sets/muscle).
+Eliminates "junk volume" session spikes and respects practical training duration limits.
+Undifferentiated Progression (No lift-class specialization or stall detection rules).
+Movement-class progression engines (Load-First, Double Progression, Rep-First) + automated 2-exposure reset logic.
+Replaces generic weight incrementing with biomechanically tailored progression models.
+
+Evidence Appendix and Open Decisions
+Literature Synthesis
+The mechanics of the Volume Ruler engine are grounded in foundational exercise science literature:
+Volume dose-response research demonstrates that hypertrophy exhibits a graded relationship with training volume up to an upper recovery ceiling, beyond which diminishing returns occur. The $10\text{--}20$ set weekly range represents the optimal Maximum Adaptive Volume (MAV) window for most muscle groups.
+Multi-level meta-regressions confirm that fractional set counting (assigning $0.5$ credit to synergists) provides a superior statistical fit for muscle growth models compared to direct-only or binary set models.
+mechanical tension and motor unit recruitment require working sets to terminate within $0\text{--}4 \text{ RIR}$. Sets completed at $>4 \text{ RIR}$ fail to provide sufficient hypertrophic stimulus and are excluded from volume ledgers.
+Neuromuscular fatigue studies demonstrate severe diminishing returns when exceeding $6\text{--}10$ sets for a single muscle group in a single training session, supporting intra-session set allocation caps.
+Open Decisions with Recommended Helm Defaults
+Contested Issue / Design Choice
+Architectural Options Evaluated
+Recommended Helm Default
+Technical Justification
+Fractional Synergy Coefficients
+Option A: Binary (1.0 or 0.0)
+
+Option B: Variable continuum ($0.1\text{--}0.9$)
+
+Option C: Discrete tiered ($1.0, 0.5, 0.25$)
+Option C: Discrete Tiered ($1.0, 0.5, 0.25$)
+Option C provides mathematical determinism without introducing non-verifiable continuous variables.
+Synergist Target Fulfillment Cap
+Option A: Uncapped synergist volume
+
+Option B: Hard 50% cap on target
+
+Option C: 25% cap on target
+Option B: Hard 50% Cap
+Ensures compound movements contribute meaningful volume while forcing allocation of direct isolation work.
+Mid-Block Landmark Reseed
+Option A: Destructive full reset
+
+Option B: Ignore until next block
+
+Option C: Non-destructive remaining target rescale
+Option C: Non-Destructive Rescale
+Preserves historical ledger integrity while immediately adjusting future prescription targets.
+Stall Resolution Action
+Option A: Add sets (Volume approach)
+
+Option B: Increase load forcibly
+
+Option C: 10% load micro-reset after 2 exposures
+Option C: 10% Load Micro-Reset
+Prevents fatigue accumulation driven by pushing failed loads while shedding fatigue to re-sensitize muscle tissue.
+
+Acceptance Tests
+The operational integrity of the PlanKit Volume Ruler engine must be verified using the following automated, deterministic test specifications.
+Test ID
+Target System Invariant
+Test Inputs & Conditions
+Expected Deterministic Outcome
+TEST-101
+Weekly Hard-Set Boundary
+Active mesocycle week $W_k$ with evaluated $\text{MEV} = 10.0$ and $\text{MRV} = 18.0$.
+Calculated $V_{\text{target}}$ MUST satisfy $\text{MEV} \le V_{\text{target}} \le \text{MRV}$, and no single session prescription MAY breach the intra-session cap of $10.0$ sets.
+TEST-102
+Proximity to Failure Threshold Filter
+Logged session containing Set 1 ($70\% \text{ 1RM}$, $10 \text{ reps}$, $2 \text{ RIR}$), Set 2 ($70\% \text{ 1RM}$, $8 \text{ reps}$, $5 \text{ RIR}$), and Set 3 ($20\% \text{ 1RM}$, $25 \text{ reps}$, $1 \text{ RIR}$).
+Set 1 MUST credit $1.00$ effective set; Set 2 MUST credit $0.00$ effective sets; Set 3 MUST credit $0.00$ effective sets.
+TEST-103
+Fractional Synergy Cap Invariant
+User performs 20 direct sets of Barbell Rows (Synergist Biceps $= 0.50$). Biceps target $V_{\text{target}} = 12.0$ sets.
+Accumulated fractional volume $= 10.0$ sets ($20 \times 0.50$), BUT applied synergist credit MUST clamp to $6.0$ sets ($50\%$ of $12.0$). Engine MUST mandate $\ge 6.0$ direct sets of Biceps isolation work.
+TEST-104
+Stall Detection & Micro-Reset
+Incline Dumbbell Press target reps $[8\text{--}10]$. Session N logs $30\text{ kg} \times 7 \text{ reps}$ @ $1 \text{ RIR}$. Session N+1 logs $30\text{ kg} \times 7 \text{ reps}$ @ $1 \text{ RIR}$.
+PlanKit MUST register state STALL_CONFIRMED, prescribe Session N+2 working load $W_{\text{new}} = 27.0\text{ kg}$ ($10\%$ reset), and set target $\text{RIR} = 3$.
+TEST-105
+Non-Destructive Mid-Block Reseed
+Active mesocycle at Week 3 of 5. User updates Experience Tier from INTERMEDIATE to ADVANCED.
+Historical set logs for Weeks 1 and 2 MUST remain static. Remaining targets for Weeks 3, 4, and 5 MUST rescaled proportionally to the new MRV, clamped within $[\text{MEV}_{\text{new}}, \text{MRV}_{\text{new}}]$.
+

@@ -1,0 +1,214 @@
+{
+  "modules": [
+    {
+      "id": "strength",
+      "title": "Strength and Performance",
+      "description": "Deterministic progression engines, 1RM estimation, autoregulation, stall detection, and deload policy calibrated by movement class and experience tier.",
+      "topicIDs": [
+        "strength-rpe-rir",
+        "strength-progression-engines",
+        "strength-double-progression",
+        "strength-stall-detection",
+        "strength-1rm-estimation",
+        "strength-experience-tiers",
+        "strength-autoregulation"
+      ],
+      "evidenceIDs": [
+        "ev-strength-rpe-rir-definition",
+        "ev-strength-progression-matrix",
+        "ev-strength-double-progression-algo",
+        "ev-strength-rep-first-progression",
+        "ev-strength-load-first-progression",
+        "ev-strength-stall-detection",
+        "ev-strength-experience-progression",
+        "ev-strength-epley-1rm",
+        "ev-strength-1rm-time-decay",
+        "ev-strength-initial-load",
+        "ev-strength-rir-ramp",
+        "ev-strength-autoregulation",
+        "ev-strength-deload"
+      ],
+      "autoAssign": {
+        "phases": [
+          "gain"
+        ],
+        "goals": [
+          "strength",
+          "power",
+          "peaking"
+        ],
+        "always": false
+      },
+      "coachLenses": [
+        {
+          "question": "Is my E1RM progressing?",
+          "topicIDs": [
+            "strength-1rm-estimation",
+            "strength-stall-detection"
+          ],
+          "coachPrompt": "Track estimated 1RM on indicator lifts using the Epley formula. If e1RM stalls across two consecutive exposures at target RIR, trigger a 10% micro-reset to shed fatigue and re-sensitize."
+        },
+        {
+          "question": "Should I test my 1RM?",
+          "topicIDs": [
+            "strength-1rm-estimation"
+          ],
+          "coachPrompt": "Direct 1RM testing carries injury risk and disrupts progression. The Epley formula (w × (1 + r/30)) estimates 1RM from submaximal sets within 0-4 RIR. Only recommend a true 1RM attempt during peaking phases when the athlete has demonstrated consistent e1RM gains across a full mesocycle."
+        },
+        {
+          "question": "What RPE should this set feel like?",
+          "topicIDs": [
+            "strength-rpe-rir",
+            "strength-rir-ramp"
+          ],
+          "coachPrompt": "RPE follows an RIR ramp across the mesocycle. Week 1 starts at 3 RIR (RPE 7) to establish technique and build work capacity. RIR compresses to 0-1 RIR (RPE 9-10) by peak week. The exact ramp depends on movement class — squat/hinge ramps 3→1 RIR, isolation movements ramp 2→0 RIR."
+        }
+      ]
+    }
+  ],
+  "evidence": [
+    {
+      "id": "ev-strength-rpe-rir-definition",
+      "title": "Hard Set Definition and RPE/RIR Calibration",
+      "summary": "A hard set terminates at 0-4 RIR (RPE 6-10) within 30-85% 1RM across 5-30 reps. Sets at RIR > 4 or below 30% 1RM fail to recruit high-threshold motor units and contribute zero effective volume. RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR (failure).",
+      "source": "Docs/Research/2.txt §Hard-Set Definition"
+    },
+    {
+      "id": "ev-strength-progression-matrix",
+      "title": "Movement-Class Progression Matrix",
+      "summary": "Progression parameters are matched to movement biomechanics. Squat/Hinge uses Load-First Double Progression (load increments prioritized over rep expansion, +2.5 kg, 6-8 reps, RIR 3→1). Horizontal Press uses Standard Double Progression (+2.5 kg, 8-10 reps, RIR 3→0-1). Vertical Press uses Standard Double Progression with smaller steps (+1.25 kg, 8-12 reps, RIR 3→0-1). Pull movements use Dynamic Rep-Range Progression (+2.5 kg, 10-12 reps, RIR 2→0). Isolation movements use Rep-First Step Progression (+1.25 kg, 12-15 reps, RIR 2→0).",
+      "source": "Docs/Research/2.txt §Progression Schemes by Lift Class"
+    },
+    {
+      "id": "ev-strength-double-progression-algo",
+      "title": "Standard Double Progression Algorithm",
+      "summary": "Load (W) is held static while repetitions expand across working sets. Reps increase until all prescribed sets hit the upper boundary of the target rep range (R_max) at or below target RIR. Once achieved, load increments by the movement-class step size (ΔW), and reps reset to R_min for the next session. This ensures progressive overload is earned through demonstrated rep-volume expansion before load escalation.",
+      "source": "Docs/Research/2.txt §Execution Algorithms"
+    },
+    {
+      "id": "ev-strength-rep-first-progression",
+      "title": "Rep-First Step Progression",
+      "summary": "Used for isolation movements. Load is held static while reps are added set-by-set. When Set 1 reaches R_max at target RIR, reps are then added to Set 2 in subsequent sessions. Load increases only when every prescribed set achieves R_max at or below target RIR. This staggered approach protects smaller muscle groups from premature load jumps that degrade form and stimulus quality.",
+      "source": "Docs/Research/2.txt §Execution Algorithms"
+    },
+    {
+      "id": "ev-strength-load-first-progression",
+      "title": "Load-First Progression for Compound Lower Movements",
+      "summary": "Applied to Squat and Hinge patterns. Load increments (+2.5 kg) are prioritized before chasing rep-range expansion. This recognizes that heavy compound lower-body movements produce high systemic fatigue per set; inflating rep counts before adding load reduces the risk of form degradation under fatigue. The rep window (6-8) is narrower than other classes, reflecting the CNS demands of maximal-force production.",
+      "source": "Docs/Research/2.txt §Progression Schemes by Lift Class"
+    },
+    {
+      "id": "ev-strength-stall-detection",
+      "title": "Stall Detection: 2-Exposure Rule and 10% Micro-Reset",
+      "summary": "A stall is registered when an exercise fails to progress in rep volume or load across consecutive exposures at or above target RIR. Exposure 1: log a warning flag, maintain current load and rep target. Exposure 2 (consecutive miss): confirm stall, execute a 10% load reduction (W_new = W × 0.90), hold set count static, reset RIR to 3. The 10% reset sheds accumulated fatigue without abandoning the movement, allowing the athlete to re-sensitize and resume progression from the reset load. Volume-based stall solutions (adding sets) are explicitly rejected in favor of load resets to prevent fatigue compounding.",
+      "source": "Docs/Research/2.txt §Stall Detection; Open Decisions §Stall Resolution"
+    },
+    {
+      "id": "ev-strength-experience-progression",
+      "title": "Experience-Tier Progression Differences",
+      "summary": "Novices (<1 yr): fixed weekly load increments (+2.5 kg on compounds), wide rep windows (6-10 reps), stall detection at 3 consecutive missed exposures. Intermediates (1-4 yrs): standard double progression per movement class, stall at 2 consecutive exposures. Advanced (>4 yrs): micro-periodized wave loading alternating high-load/low-rep and low-load/high-rep sessions across the week, micro-scaled increments (+1.0 kg), stall threshold at 2 exposures. These differences reflect the transition from neural adaptation-driven gains (novice) to structural adaptation requiring periodized variation (advanced).",
+      "source": "Docs/Research/2.txt §Experience-Tier Dynamic Adjustments"
+    },
+    {
+      "id": "ev-strength-epley-1rm",
+      "title": "Epley Formula for 1RM Estimation",
+      "summary": "Estimated 1RM is calculated using the Epley formula: e1RM = w × (1 + r/30), where w is weight lifted and r is repetitions completed. This formula provides a submaximal estimation that avoids the injury risk and program disruption of true 1RM testing. It is most accurate for sets within 0-4 RIR and 5-10 reps. The engine uses e1RM to initialize working loads for new exercises and to track longitudinal strength trends on indicator lifts.",
+      "source": "Docs/Research/2.txt §Estimated 1RM Initialization"
+    },
+    {
+      "id": "ev-strength-1rm-time-decay",
+      "title": "Historical 1RM Time Decay",
+      "summary": "Strength data decays over time following exponential decay with λ = 0.005/day. Logs older than 14 days have their e1RM adjusted by: e1RM_adjusted = e1RM_logged × e^(-λ × (t - 14)), where t is days since the lift was logged. This models the neuromuscular and structural detraining that occurs during layoffs, ensuring that stale historical data does not produce inappropriately heavy initial working loads when reinstating an exercise after a training gap.",
+      "source": "Docs/Research/2.txt §Historical Time Decay"
+    },
+    {
+      "id": "ev-strength-initial-load",
+      "title": "Initial Working Load Calculation from e1RM",
+      "summary": "When initializing working weights for a new exercise, the target working load is derived from the time-decayed e1RM: W_init = e1RM_adjusted / (1 + (R_target + RIR_target) / 30). R_target is the prescribed rep target, RIR_target is the prescribed reps-in-reserve. This formula reverses the Epley equation to solve for the load that produces the desired rep count at the target proximity to failure, ensuring the first session of a new movement starts at an appropriate intensity.",
+      "source": "Docs/Research/2.txt §Estimated 1RM Initialization"
+    },
+    {
+      "id": "ev-strength-rir-ramp",
+      "title": "RIR Ramp Across Mesocycle Weeks",
+      "summary": "Proximity to failure follows a structured ramp from week 1 to peak week. Squat/Hinge 3→1 RIR, Horizontal Press 3→0-1 RIR, Vertical Press 3→0-1 RIR, Pull 2→0 RIR, Isolation 2→0 RIR. This progressive RIR compression mirrors the mesocycle volume ramp (MEV→MRV). Early weeks build work capacity and technique at higher RIR buffers; late weeks drive adaptation by approaching failure, culminating in functional overreach at peak week before the deload.",
+      "source": "Docs/Research/2.txt §Progression Schemes by Lift Class"
+    },
+    {
+      "id": "ev-strength-autoregulation",
+      "title": "Autoregulation: 5-Tier Precedence Order",
+      "summary": "When readiness (ARC) drops or acute fatigue manifests, session parameters adjust in strict priority order. Tier 1: Increase target RIR (2→3) at ARC 0.60-0.69 — reduces neural strain while preserving movement volume. Tier 2: Reduce load at target rep range — triggered by bar velocity drop or high RPE. Tier 3: Trim secondary isolation sets at ARC 0.45-0.59. Tier 4: Drop final pattern slot exercise at ARC 0.35-0.44. Tier 5: Truncate session to maintenance volume (2 sets/muscle) at ARC < 0.35. This hierarchy protects the highest-value compound work before sacrificing accessory volume.",
+      "source": "Docs/Research/0.txt §Autoregulation Precedence Order"
+    },
+    {
+      "id": "ev-strength-deload",
+      "title": "Deload Triggers and Execution",
+      "summary": "Deloads are governed by two mechanisms. Scheduled deloads occur every 4th-6th microcycle based on training age and recovery capacity. Reactive deloads trigger immediately when: e1RM drops >5% across primary movements over 2 consecutive sessions, soreness 4/4 persists >72h across 2+ muscle groups, or ARC remains <0.40 for 3 consecutive days. During deload, volume drops to ~50% of MEV (maintenance volume), RIR is held at ≥3, and load is maintained or slightly reduced to preserve neuromuscular patterns without accumulating fatigue.",
+      "source": "Docs/Research/0.txt §Deload Execution Triggers"
+    }
+  ],
+  "topics": [
+    {
+      "id": "strength-rpe-rir",
+      "title": "RPE and RIR Calibration",
+      "summary": "Rating of Perceived Exertion (RPE) maps directly to Reps in Reserve (RIR): RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR (failure). Only sets within 0-4 RIR (RPE 6-10) count as effective hard sets. Sets at RIR > 4 produce insufficient mechanical tension for hypertrophic or strength adaptation. Calibration improves with training experience; novices tend to underestimate RIR (leave more reps than perceived).",
+      "evidenceIDs": [
+        "ev-strength-rpe-rir-definition"
+      ]
+    },
+    {
+      "id": "strength-progression-engines",
+      "title": "Movement-Class Progression Engines",
+      "summary": "Three distinct progression engines match the biomechanical and fatigue profiles of different movement classes. Load-First (squat/hinge) prioritizes load before reps. Standard Double Progression (horizontal/vertical press) balances rep expansion and load increments. Rep-First (isolation) and Dynamic Rep-Range (pulls) prioritize rep accumulation before load jumps. Load step sizes vary: +2.5 kg for compounds, +1.25 kg for presses/isolation, reflecting the force-production ceiling of smaller muscle groups.",
+      "evidenceIDs": [
+        "ev-strength-progression-matrix",
+        "ev-strength-load-first-progression"
+      ]
+    },
+    {
+      "id": "strength-double-progression",
+      "title": "Double Progression Algorithm",
+      "summary": "The core progression algorithm: hold load static while expanding reps to R_max at target RIR across all prescribed sets. Once all sets achieve R_max, increment load by the movement-class step size and reset reps to R_min. Variations include Rep-First (staggered set-by-set rep expansion) and Load-First (load increment prioritized over rep expansion). This ensures every load increase is earned through demonstrated rep-volume expansion, preventing premature intensity escalation and form degradation.",
+      "evidenceIDs": [
+        "ev-strength-double-progression-algo",
+        "ev-strength-rep-first-progression"
+      ]
+    },
+    {
+      "id": "strength-stall-detection",
+      "title": "Stall Detection and Micro-Reset",
+      "summary": "Stall detection uses a 2-exposure rule for intermediate and advanced lifters. A stall is confirmed when an exercise fails to progress in reps or load across two consecutive sessions at or above target RIR. The prescribed action is a 10% load micro-reset (W_new = W × 0.90) with RIR reset to 3, followed by resumed progression from the new baseline. Volume-based stall solutions (adding sets) increase fatigue without addressing the underlying adaptive stall and are avoided. Novices use a 3-exposure threshold due to higher session-to-session variability.",
+      "evidenceIDs": [
+        "ev-strength-stall-detection",
+        "ev-strength-experience-progression"
+      ]
+    },
+    {
+      "id": "strength-1rm-estimation",
+      "title": "1RM Estimation and Strength Tracking",
+      "summary": "Estimated 1RM uses the Epley formula (w × (1 + r/30)) computed from submaximal sets within 0-4 RIR. Historical e1RM data decays at λ = 0.005/day after 14 days to model detraining during layoffs. Initial working loads for new exercises are derived from time-decayed e1RM by reversing the Epley equation. This submaximal approach avoids the injury risk and program disruption of direct 1RM testing while providing a reliable longitudinal strength metric for progression decisions.",
+      "evidenceIDs": [
+        "ev-strength-epley-1rm",
+        "ev-strength-1rm-time-decay",
+        "ev-strength-initial-load"
+      ]
+    },
+    {
+      "id": "strength-experience-tiers",
+      "title": "Experience-Tier Progression Architecture",
+      "summary": "Progression parameters differ by training age. Novices (<1 yr, high neural adaptation rate) use fixed weekly load increments with wide rep windows and a lenient 3-exposure stall threshold. Intermediates (1-4 yrs) use standard double progression per movement class with 2-exposure stall. Advanced lifters (>4 yrs, diminishing adaptation rate) require micro-periodized wave loading — alternating high-load/low-rep and low-load/high-rep sessions — with micro-scaled load jumps (+1.0 kg) and a 2-exposure stall threshold. These tiers are set during onboarding but only apply at mesocycle boundaries, never mid-block.",
+      "evidenceIDs": [
+        "ev-strength-experience-progression"
+      ]
+    },
+    {
+      "id": "strength-autoregulation",
+      "title": "Autoregulation, Readiness Gating, and Deload Policy",
+      "summary": "Session intensity and volume auto-adjust via a 5-tier precedence order based on ARC readiness: increase RIR → reduce load → trim isolation sets → drop pattern slots → truncate to maintenance volume. Deloads occur on schedule (every 4-6 weeks) or reactively (e1RM drop >5%, persistent soreness 4/4, or ARC < 0.40 for 3 days). RIR follows a structured ramp across the mesocycle (W1 3 RIR → Peak 0-1 RIR). MEV floor protection prevents readiness gating from depressing volume below MEV for 2+ consecutive weeks.",
+      "evidenceIDs": [
+        "ev-strength-autoregulation",
+        "ev-strength-deload",
+        "ev-strength-rir-ramp"
+      ]
+    }
+  ]
+}
