@@ -30,16 +30,36 @@ enum CoachContextBootstrap {
         let volumeStateSummary = try Self.volumeStateText(from: store, endingAt: endDay)
         let engineProfile = try Self.engineProfileText(from: store, endingAt: endDay)
 
+        let profile = try store.memoryProfile.load()
+        let (evidence, moduleSummaries) = Self.resolveModuleEvidence(profile: profile)
+
         return try await CoachContextAssembler.assemble(
             from: store,
             endingAt: endDay,
             lookbackDays: lookbackDays,
+            evidence: evidence,
             busyDayHints: busyDayHints,
             todayPrescription: todayPrescription,
             prescriptionLoadSummary: prescriptionLoadSummary,
             volumeStateSummary: volumeStateSummary,
-            engineProfile: engineProfile
+            engineProfile: engineProfile,
+            moduleSummaries: moduleSummaries
         )
+    }
+
+    private static func resolveModuleEvidence(profile: MemoryProfile) -> (evidence: [EvidenceRecord], moduleSummaries: String) {
+        guard let index = ResourceModuleIndex.shared else {
+            return (MethodologyEvidenceSupport.allRecords, "")
+        }
+        let moduleIDs: [String]
+        if !profile.activeModules.isEmpty {
+            moduleIDs = profile.activeModules
+        } else {
+            moduleIDs = index.defaultModuleIDs(for: profile.phaseGoal)
+        }
+        let evidence = index.filteredEvidence(moduleIDs: moduleIDs)
+        let summaries = index.moduleSummaries(moduleIDs: moduleIDs)
+        return (evidence, summaries)
     }
 
     private static func buildCoachBusyHints(

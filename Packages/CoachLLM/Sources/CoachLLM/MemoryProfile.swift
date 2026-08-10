@@ -9,6 +9,10 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
     public var preferences: String
     public var standingConstraints: String
     public var whatHasWorked: String
+    public var activeModules: [String]
+    public var injuryHistory: String
+    public var trainingResponses: String
+    public var nutritionPatterns: String
 
     public init(
         baselinesSummary: String = "",
@@ -16,7 +20,11 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
         phaseGoal: PhaseGoal? = nil,
         preferences: String = "",
         standingConstraints: String = "",
-        whatHasWorked: String = ""
+        whatHasWorked: String = "",
+        activeModules: [String] = [],
+        injuryHistory: String = "",
+        trainingResponses: String = "",
+        nutritionPatterns: String = ""
     ) {
         self.baselinesSummary = baselinesSummary
         self.mesocyclePosition = mesocyclePosition
@@ -24,6 +32,10 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
         self.preferences = preferences
         self.standingConstraints = standingConstraints
         self.whatHasWorked = whatHasWorked
+        self.activeModules = activeModules
+        self.injuryHistory = injuryHistory
+        self.trainingResponses = trainingResponses
+        self.nutritionPatterns = nutritionPatterns
     }
 
     public static let empty = MemoryProfile()
@@ -36,9 +48,36 @@ public struct MemoryProfile: Sendable, Hashable, Codable, Equatable {
             "## Phase\n\(Self.phaseStableLine(phaseGoal))",
             "## Preferences\n\(Self.normalized(preferences))",
             "## Standing Constraints\n\(Self.normalized(standingConstraints))",
-            "## What Has Worked\n\(Self.normalized(whatHasWorked))"
+            "## What Has Worked\n\(Self.normalized(whatHasWorked))",
+            activeModulesSection(),
+            injuryHistorySection(),
+            trainingResponsesSection(),
+            nutritionPatternsSection()
         ]
-        return sections.joined(separator: "\n\n")
+        return sections.filter { !$0.isEmpty }.joined(separator: "\n\n")
+    }
+
+    private func activeModulesSection() -> String {
+        guard !activeModules.isEmpty else { return "" }
+        return "## Active Modules\n\(activeModules.joined(separator: ", "))"
+    }
+
+    private func injuryHistorySection() -> String {
+        let text = Self.normalized(injuryHistory)
+        guard !text.isEmpty else { return "" }
+        return "## Injury History\n\(text)"
+    }
+
+    private func trainingResponsesSection() -> String {
+        let text = Self.normalized(trainingResponses)
+        guard !text.isEmpty else { return "" }
+        return "## Training Responses\n\(text)"
+    }
+
+    private func nutritionPatternsSection() -> String {
+        let text = Self.normalized(nutritionPatterns)
+        guard !text.isEmpty else { return "" }
+        return "## Nutrition Patterns\n\(text)"
     }
 
     /// One-line phase/goal for follow-up turns (token-cheap continuity).

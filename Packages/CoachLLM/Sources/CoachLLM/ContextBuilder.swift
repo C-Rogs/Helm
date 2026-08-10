@@ -56,6 +56,11 @@ public enum ContextBuilder {
             "# Memory Profile\n\(profile.stablePrefixText())"
         ]
 
+        let moduleSummaries = normalized(days.moduleSummaries)
+        if !moduleSummaries.isEmpty {
+            sections.append("# Active Resources\n\(moduleSummaries)")
+        }
+
         let baselines = normalized(days.readinessBaselines)
         if !baselines.isEmpty {
             sections.append("# Readiness Baselines\n\(baselines)")

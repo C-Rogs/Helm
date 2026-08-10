@@ -9,5 +9,6 @@ enum MethodologyBootstrap {
         let loaded = (try? MethodologyLibrary.bundled()) ?? .empty
         document = loaded
         MethodologyEvidenceSupport.configure(with: loaded)
+        ResourceModuleIndex.configure(with: loaded)
     }
 }

@@ -4,17 +4,20 @@ import Foundation
 public struct MethodologyDocument: Sendable, Hashable, Codable, Equatable {
     public let seedVersion: Int
     public let placeholder: Bool
+    public let modules: [ResourceModule]
     public let evidence: [EvidenceRecord]
     public let topics: [MethodologyTopic]
 
     public init(
         seedVersion: Int,
         placeholder: Bool,
+        modules: [ResourceModule] = [],
         evidence: [EvidenceRecord] = [],
         topics: [MethodologyTopic] = []
     ) {
         self.seedVersion = seedVersion
         self.placeholder = placeholder
+        self.modules = modules
         self.evidence = evidence
         self.topics = topics
     }

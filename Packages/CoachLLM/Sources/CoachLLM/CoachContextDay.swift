@@ -32,6 +32,8 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let volumeStateSummary: String
     /// Engine profile metadata: standing constraints, exercise selection inputs, active joints.
     public let engineProfile: String
+    /// Active resource module titles and descriptions for the coach prompt.
+    public let moduleSummaries: String
 
     public init(
         readinessBaselines: String = "",
@@ -44,7 +46,8 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         todayPrescription: String = "",
         prescriptionLoadSummary: String = "",
         volumeStateSummary: String = "",
-        engineProfile: String = ""
+        engineProfile: String = "",
+        moduleSummaries: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
@@ -57,6 +60,7 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         self.prescriptionLoadSummary = prescriptionLoadSummary
         self.volumeStateSummary = volumeStateSummary
         self.engineProfile = engineProfile
+        self.moduleSummaries = moduleSummaries
     }
 
     public static let empty = CoachContextDays()

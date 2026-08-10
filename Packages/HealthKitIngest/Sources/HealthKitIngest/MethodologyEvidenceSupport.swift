@@ -4,7 +4,7 @@ import Foundation
 
 public enum MethodologyEvidenceSupport: Sendable {
     nonisolated(unsafe) private(set) static var recordsByID: [String: EvidenceRecord] = [:]
-    nonisolated(unsafe) private(set) static var allRecords: [EvidenceRecord] = []
+    nonisolated(unsafe) public private(set) static var allRecords: [EvidenceRecord] = []
 
     public static func configure(with document: MethodologyDocument) {
         recordsByID = MethodologyLibrary.evidenceLookup(from: document)

@@ -20,7 +20,8 @@ public enum CoachContextAssembler {
         todayPrescription: String = "",
         prescriptionLoadSummary: String = "",
         volumeStateSummary: String = "",
-        engineProfile: String = ""
+        engineProfile: String = "",
+        moduleSummaries: String = ""
     ) async throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
@@ -122,7 +123,8 @@ public enum CoachContextAssembler {
             todayPrescription: todayPrescription,
             prescriptionLoadSummary: prescriptionLoadSummary,
             volumeStateSummary: volumeStateSummary,
-            engineProfile: engineProfile
+            engineProfile: engineProfile,
+            moduleSummaries: moduleSummaries
         )
     }
 
