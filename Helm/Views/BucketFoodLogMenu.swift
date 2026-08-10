@@ -3,6 +3,7 @@ import DesignSystem
 import SwiftUI
 
 enum BucketFoodLogAction {
+    case describe
     case search
     case barcode
     case photo
@@ -14,10 +15,16 @@ enum BucketFoodLogAction {
 struct BucketFoodLogMenu: View {
     let bucket: MealBucket
     let isPhotoAvailable: Bool
+    var isDescribeAvailable = true
     let onAction: (BucketFoodLogAction) -> Void
 
     var body: some View {
         Menu {
+            if isDescribeAvailable {
+                Button("Describe") {
+                    onAction(.describe)
+                }
+            }
             Button("Search") {
                 onAction(.search)
             }

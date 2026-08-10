@@ -26,6 +26,16 @@ struct SetRowView: View {
 
     private var isCompleted: Bool { setEntry.status == .completed }
 
+    /// One tap on the checkmark logs the row: controller falls back to previous
+    /// performance for any missing weight/reps, so the row is confirmable when
+    /// each is resolvable from stored input or history. RPE stays optional.
+    private var isConfirmable: Bool {
+        guard !isCompleted else { return false }
+        let weightResolvable = setEntry.mass != nil || previous?.mass != nil
+        let repsResolvable = setEntry.reps != nil || previous?.reps != nil
+        return weightResolvable && repsResolvable
+    }
+
     private var isRowFocused: Bool {
         activeField?.setID == setEntry.id
     }
@@ -58,6 +68,7 @@ struct SetRowView: View {
                 rpeState: fieldState(.rpe),
                 previousValue: previous.map(previousLabel),
                 isCompleted: isCompleted,
+                isConfirmable: isConfirmable,
                 activeField: activeSetRowField,
                 validationMessage: rowValidationMessage,
                 shakeToken: rowShakeToken,

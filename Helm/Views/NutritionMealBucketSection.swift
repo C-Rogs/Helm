@@ -7,6 +7,7 @@ struct NutritionMealBucketSection: View {
     let bucket: MealBucket
     let meals: [LoggedMealDisplay]
     var isPhotoAvailable = false
+    var isDescribeAvailable = true
     var onCopyEntry: (() -> Void)?
     var onSaveTemplate: (() -> Void)?
     var onMealTap: ((LoggedMealDisplay) -> Void)?
@@ -70,6 +71,7 @@ struct NutritionMealBucketSection: View {
                 BucketFoodLogMenu(
                     bucket: bucket,
                     isPhotoAvailable: isPhotoAvailable,
+                    isDescribeAvailable: isDescribeAvailable,
                     onAction: onAddFood
                 )
                 .padding(HelmSpacing.sm)

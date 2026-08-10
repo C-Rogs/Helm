@@ -16,6 +16,10 @@ public struct SetRow: View {
     public let rpeState: SetRowFieldValueState
     public let previousValue: String?
     public let isCompleted: Bool
+    /// True when one tap on the checkmark logs the set as shown (all values resolvable
+    /// from stored input, engine target, or previous performance). Renders the
+    /// checkmark in accent so the row reads "confirm", not "form to fill".
+    public let isConfirmable: Bool
     public let activeField: SetRowField?
     public let validationMessage: String?
     public let shakeToken: Int
@@ -37,6 +41,7 @@ public struct SetRow: View {
         rpeState: SetRowFieldValueState,
         previousValue: String? = nil,
         isCompleted: Bool,
+        isConfirmable: Bool = false,
         activeField: SetRowField? = nil,
         validationMessage: String? = nil,
         shakeToken: Int = 0,
@@ -55,6 +60,7 @@ public struct SetRow: View {
         self.rpeState = rpeState
         self.previousValue = previousValue
         self.isCompleted = isCompleted
+        self.isConfirmable = isConfirmable
         self.activeField = activeField
         self.validationMessage = validationMessage
         self.shakeToken = shakeToken
@@ -98,13 +104,13 @@ public struct SetRow: View {
 
             Button(action: onComplete) {
                 HelmIconView(isCompleted ? .checkmarkFilled : .circle, context: .inline)
-                    .foregroundStyle(isCompleted ? HelmColor.accent : HelmColor.fgMuted)
+                    .foregroundStyle(checkmarkColor)
                     // Visual glyph stays ~15pt; hit target is intentionally larger for mid-set taps.
                     .frame(width: 56, height: 56)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.helmPressable)
-            .accessibilityLabel(isCompleted ? "Mark set incomplete" : "Complete set")
+            .accessibilityLabel(checkmarkAccessibilityLabel)
         }
         .padding(.horizontal, HelmSpacing.xs)
         .padding(.vertical, HelmSpacing.xxs)
@@ -112,6 +118,19 @@ public struct SetRow: View {
         .overlay {
             RoundedRectangle(cornerRadius: HelmRadius.sm)
                 .strokeBorder(borderColor, lineWidth: activeField == nil && !isCompleted ? 1 : 1.5)
+        }
+        .overlay(alignment: .leading) {
+            // Completed reads "done", not "disabled": a solid accent tick on the
+            // leading edge separates it from merely inactive rows at a glance.
+            if isCompleted {
+                UnevenRoundedRectangle(
+                    topLeadingRadius: HelmRadius.sm,
+                    bottomLeadingRadius: HelmRadius.sm
+                )
+                .fill(HelmColor.accent.opacity(0.85))
+                .frame(width: 3)
+                .transition(.opacity)
+            }
         }
         .animation(HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion), value: isCompleted)
         .opacity(isCompleted ? 0.88 : 1)
@@ -121,6 +140,18 @@ public struct SetRow: View {
         if isCompleted { return HelmColor.accent.opacity(0.55) }
         if activeField != nil { return HelmColor.fg }
         return HelmColor.hairline
+    }
+
+    private var checkmarkColor: Color {
+        if isCompleted { return HelmColor.accent }
+        if isConfirmable { return HelmColor.accent.opacity(0.75) }
+        return HelmColor.fgMuted
+    }
+
+    private var checkmarkAccessibilityLabel: String {
+        if isCompleted { return "Mark set incomplete" }
+        if isConfirmable { return "Log set as shown" }
+        return "Complete set"
     }
 
     @ViewBuilder

@@ -126,22 +126,36 @@ struct TrainView: View {
                 if showRest,
                    let timer = controller.snapshot?.restTimer,
                    let endsAt = timer.endsAt {
-                    RestTimerBanner(
-                        endsAt: endsAt,
-                        totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                        onSkip: {
-                            Task { @MainActor in await controller.skipRest() }
-                        },
-                        onAdjust: { delta in
-                            Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
-                        },
-                        onRemainingSecondsChange: { remaining in
-                            handleRestTimerTick(remaining)
-                        },
-                        upNextName: controller.upNextExerciseName
-                    )
-                    .geometryGroup()
-                    .transition(.opacity)
+                    if showNumpad {
+                        // Rest must stay glanceable while pre-logging the next set;
+                        // the full banner would stack too tall over the pad.
+                        CompactRestPill(
+                            endsAt: endsAt,
+                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                            onRemainingSecondsChange: { remaining in
+                                handleRestTimerTick(remaining)
+                            }
+                        )
+                        .geometryGroup()
+                        .transition(.opacity)
+                    } else {
+                        RestTimerBanner(
+                            endsAt: endsAt,
+                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                            onSkip: {
+                                Task { @MainActor in await controller.skipRest() }
+                            },
+                            onAdjust: { delta in
+                                Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
+                            },
+                            onRemainingSecondsChange: { remaining in
+                                handleRestTimerTick(remaining)
+                            },
+                            upNextName: controller.upNextExerciseName
+                        )
+                        .geometryGroup()
+                        .transition(.opacity)
+                    }
                 }
 
                 if showCoach {
@@ -784,6 +798,10 @@ struct TrainView: View {
                 .padding(.horizontal, HelmSpacing.sm)
                 .padding(.bottom, HelmSpacing.sm)
             } else {
+                if controller.numpadTarget?.field == .weight {
+                    weightIncrementChips
+                }
+
                 HelmNumpad(
                     allowsDecimal: controller.numpadTarget?.field != .reps,
                     onDigit: { controller.appendNumpadDigit($0) },
@@ -794,6 +812,82 @@ struct TrainView: View {
         }
         .background(HelmColor.canvas)
         .transition(.move(edge: .bottom).combined(with: .opacity))
+    }
+
+    /// Plate-math shortcuts: smallest common gym increments so 80 -> 82.5 is one
+    /// tap instead of a four-digit retype.
+    private var weightIncrementChips: some View {
+        HStack(spacing: HelmSpacing.xs) {
+            ForEach([-2.5, -1.25, 1.25, 2.5], id: \.self) { delta in
+                Button {
+                    controller.adjustNumpadValue(by: delta)
+                } label: {
+                    Text(incrementLabel(delta))
+                        .helmType(.number, color: HelmColor.fg)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, HelmSpacing.xs)
+                        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("\(delta > 0 ? "Add" : "Subtract") \(incrementLabel(abs(delta))) kilograms")
+            }
+        }
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.bottom, HelmSpacing.xs)
+    }
+
+    private func incrementLabel(_ delta: Double) -> String {
+        let magnitude = abs(delta)
+        let formatted = magnitude.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", magnitude)
+            : String(format: "%.2f", magnitude).replacingOccurrences(of: "50", with: "5")
+        return delta < 0 ? "−\(formatted)" : "+\(formatted)"
+    }
+}
+
+/// Single-line rest countdown shown while the numpad owns the bottom chrome.
+/// Progress fill plus mm:ss only; full controls return when the pad dismisses.
+private struct CompactRestPill: View {
+    let endsAt: Date
+    let totalSeconds: Int
+    var onRemainingSecondsChange: ((Int) -> Void)?
+
+    @Environment(\.helmReduceMotion) private var reduceMotion
+
+    var body: some View {
+        TimelineView(.periodic(from: .now, by: 1)) { context in
+            let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.down)))
+            let elapsedFraction = totalSeconds > 0
+                ? 1 - (Double(remaining) / Double(totalSeconds))
+                : 1
+
+            HStack(spacing: HelmSpacing.sm) {
+                GeometryReader { geometry in
+                    ZStack(alignment: .leading) {
+                        Capsule()
+                            .fill(HelmColor.gaugeTrack.opacity(0.5))
+                        Capsule()
+                            .fill(HelmColor.accent)
+                            .frame(width: elapsedFraction > 0 ? max(6, geometry.size.width * elapsedFraction) : 0)
+                            .transaction(value: elapsedFraction) { transaction in
+                                transaction.animation = reduceMotion ? nil : .linear(duration: 1)
+                            }
+                    }
+                }
+                .frame(height: 4)
+
+                Text(RestTimerFormatting.mmss(remaining))
+                    .helmType(.number, color: HelmColor.fg)
+                    .helmNumericRoll(value: remaining)
+            }
+            .padding(.horizontal, HelmSpacing.sm)
+            .padding(.vertical, HelmSpacing.xxs)
+            .onChange(of: remaining) { _, newValue in
+                onRemainingSecondsChange?(newValue)
+            }
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel("Rest remaining \(RestTimerFormatting.mmss(remaining))")
+        }
     }
 }
 

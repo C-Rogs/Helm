@@ -39,6 +39,11 @@ struct NutritionView: View {
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
     @State private var selectedHelmDay: HelmDay?
+    @State private var describeBucket: MealBucket?
+    @State private var describeText = ""
+    // Gates confirm-sheet presentation and error alerts to turns started from
+    // this tab, so an unrelated chat conversation cannot surface here.
+    @State private var isDescribeFlowActive = false
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -137,6 +142,104 @@ struct NutritionView: View {
                 reloadMeals(from: nutritionService.state)
             }
         ))
+        .sheet(isPresented: Binding(
+            get: { describeBucket != nil },
+            set: { if !$0 { describeBucket = nil } }
+        )) {
+            if let bucket = describeBucket {
+                DescribeFoodSheet(
+                    bucket: bucket,
+                    text: $describeText,
+                    onSubmit: { text in
+                        describeBucket = nil
+                        sendDescribeFood(text, bucket: bucket)
+                    },
+                    onUseSearch: {
+                        describeBucket = nil
+                        manualFoodLogController.start(.search, bucket: bucket)
+                    }
+                )
+                .presentationDetents([.height(260)])
+            }
+        }
+        .sheet(isPresented: Binding(
+            get: { isDescribeFlowActive && chatController.pendingFoodMealConfirm != nil },
+            set: { if !$0 { chatController.dismissFoodMealConfirm() } }
+        )) {
+            if let state = chatController.pendingFoodMealConfirm {
+                CoachFoodMealConfirmSheet(
+                    state: state,
+                    isSaving: chatController.isApplyingChatAction,
+                    errorMessage: chatController.lastTurnError,
+                    onCancel: {
+                        chatController.dismissFoodMealConfirm()
+                        isDescribeFlowActive = false
+                    },
+                    onConfirm: { estimate, name, bucket in
+                        chatController.confirmFoodMeal(estimate: estimate, name: name, bucket: bucket)
+                    }
+                )
+            }
+        }
+        .onChange(of: chatController.pendingFoodMealConfirm == nil) { _, isCleared in
+            guard isCleared, isDescribeFlowActive, !chatController.isStreaming,
+                  !chatController.isPreparingFoodMealConfirm else { return }
+            isDescribeFlowActive = false
+            Task { await refreshSelectedDay() }
+        }
+        .alert(
+            "Couldn't estimate that meal",
+            isPresented: Binding(
+                get: {
+                    isDescribeFlowActive
+                        && chatController.pendingFoodMealConfirm == nil
+                        && !chatController.isStreaming
+                        && !chatController.isPreparingFoodMealConfirm
+                        && chatController.lastTurnError != nil
+                },
+                set: { if !$0 { isDescribeFlowActive = false } }
+            )
+        ) {
+            Button("Use Search") {
+                isDescribeFlowActive = false
+                manualFoodLogController.start(.search, bucket: manualFoodLogController.preferredBucket)
+            }
+            Button("OK", role: .cancel) {
+                isDescribeFlowActive = false
+            }
+        } message: {
+            Text(chatController.lastTurnError ?? "The coach needs a network connection to estimate meals. Search works offline.")
+        }
+        .overlay(alignment: .bottom) {
+            if isDescribeFlowActive,
+               chatController.isStreaming || chatController.isPreparingFoodMealConfirm {
+                describeProgressBanner
+            }
+        }
+    }
+
+    private func sendDescribeFood(_ text: String, bucket: MealBucket) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        var transcript = "\(trimmed) (log to \(bucket.displayName.lowercased()))"
+        if let day = selectedHelmDay, let today = todayHelmDay, day != today {
+            transcript += " for \(day.formatted)"
+        }
+        isDescribeFlowActive = true
+        chatController.sendFoodDictation(transcript)
+    }
+
+    private var describeProgressBanner: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            ProgressView()
+            Text("Estimating your meal…")
+                .helmType(.body, color: HelmColor.fgSecondary)
+        }
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.vertical, HelmSpacing.sm)
+        .background(.ultraThinMaterial, in: Capsule())
+        .padding(.bottom, HelmSpacing.lg)
+        .transition(.opacity)
     }
 
     @ToolbarContentBuilder
@@ -274,6 +377,7 @@ struct NutritionView: View {
                     bucket: bucket,
                     meals: mealsStore.mealsByBucket[bucket] ?? [],
                     isPhotoAvailable: photoMealController.isAvailable,
+                    isDescribeAvailable: chatController.isCoachAvailable,
                     onCopyEntry: {
                         guard let day = selectedHelmDay else { return }
                         mealActionsController.beginCopyEntry(sourceDay: day, sourceBucket: bucket)
@@ -297,6 +401,9 @@ struct NutritionView: View {
         manualFoodLogController.preferredBucket = bucket
         photoMealController.preferredBucket = bucket
         switch action {
+        case .describe:
+            describeText = ""
+            describeBucket = bucket
         case .search:
             manualFoodLogController.start(.search, bucket: bucket)
         case .barcode:

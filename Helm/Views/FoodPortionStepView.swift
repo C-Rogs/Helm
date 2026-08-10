@@ -3,6 +3,9 @@ import DesignSystem
 import HealthKitIngest
 import NutritionKit
 import SwiftUI
+import OSLog
+
+private let logger = Logger(subsystem: "com.cameronro.helm", category: "FoodPortionAccuracy")
 
 struct FoodPortionStepView: View {
     let product: ResolvedFoodProduct
@@ -141,6 +144,11 @@ struct FoodPortionStepView: View {
                 } else {
                     Button("Add") {
                         guard let grams else { return }
+                        if abs(grams - defaults.grams) > 5 {
+                            logger.debug("portion edited; delta=(grams - defaults.grams)g vs suggested (defaults.grams)g")
+                        } else {
+                            logger.debug("portion accepted as suggested")
+                        }
                         onLog(grams, resolvedServingLabel, bucket)
                     }
                     .disabled(!isValid)

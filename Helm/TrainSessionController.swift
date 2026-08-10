@@ -1498,6 +1498,19 @@ final class TrainSessionController {
         numpadWorkingText.removeLast()
     }
 
+    /// Plate-increment chips on the weight pad. Adjusts the working draft in
+    /// place; select-all seeds (stored or PREV) count as the base so +2.5 on a
+    /// highlighted 80 yields 82.5, not 2.5.
+    func adjustNumpadValue(by delta: Double) {
+        guard numpadTarget?.field == .weight else { return }
+        let base = Double(numpadWorkingText) ?? 0
+        let adjusted = max(0, base + delta)
+        numpadWorkingText = formatWeight(adjusted)
+        numpadSelectAll = false
+        numpadValidationError = nil
+        HapticEngine.shared.play(.selection)
+    }
+
     func fillFromPrevious(setID: String, sessionExerciseID: String) async {
         guard let set = findSet(setID: setID),
               let previous = previousFor(set: set, exerciseID: exerciseID(for: sessionExerciseID)) else { return }
