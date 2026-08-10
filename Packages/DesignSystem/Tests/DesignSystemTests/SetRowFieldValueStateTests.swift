@@ -70,7 +70,7 @@ struct SetRowFieldValueStateTests {
         #expect(state == .committed(display: "77.5"))
     }
 
-    @Test("resolver returns editing with caret for active prefilled field")
+    @Test("resolver returns editing with select-all for active prefilled field")
     func activePrefilledEditing() {
         let state = SetRowFieldValueStateResolver.resolve(
             hasStoredValue: false,
@@ -78,9 +78,10 @@ struct SetRowFieldValueStateTests {
             prefilledText: "77.5",
             isCompleted: false,
             isActive: true,
-            isSelectAll: false
+            isSelectAll: true
         )
-        #expect(state == .editing(display: "77.5", showsCaret: true, isSelectAll: false))
+        #expect(state == .editing(display: "77.5", showsCaret: false, isSelectAll: true))
+        #expect(SetRowFieldValueStateResolver.showsSelectionHighlight(for: state))
     }
 
     @Test("resolver returns editing with select-all for active committed field")

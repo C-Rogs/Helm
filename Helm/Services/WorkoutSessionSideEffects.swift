@@ -88,7 +88,9 @@ final class WorkoutSessionSideEffects {
         restRemainingSeconds: Int?,
         targetSummary: String? = nil,
         heartRateBPM: Int? = nil,
-        restTimerSoundEnabled: Bool = true
+        restTimerSoundEnabled: Bool = true,
+        elevatedRelevance: Bool = false,
+        forceStaleRefresh: Bool = false
     ) async {
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         let endsAt: Date? = {
@@ -101,7 +103,9 @@ final class WorkoutSessionSideEffects {
             targetSummary: targetSummary,
             restRemainingSeconds: restRemainingSeconds,
             restEndsAt: endsAt,
-            heartRateBPM: heartRateBPM
+            heartRateBPM: heartRateBPM,
+            elevatedRelevance: elevatedRelevance,
+            forceStaleRefresh: forceStaleRefresh
         )
         await syncRestEndNotification(
             snapshot: snapshot,
@@ -137,10 +141,45 @@ final class WorkoutSessionSideEffects {
         )
     }
 
-    func onEnterForeground(sessionID: String) async {
-        // Keep the rest-end notification armed while the timer is running.
-        // Foreground delivery is suppressed in HelmNotificationDelegate; cancelling here
-        // left users with no sound when the app was backgrounded again before rest ended.
+    func onEnterForeground(
+        snapshot: ActiveSessionSnapshot,
+        restRemainingSeconds: Int?,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil,
+        restTimerSoundEnabled: Bool = true
+    ) async {
+        let endsAt: Date? = {
+            guard let remaining = restRemainingSeconds, remaining > 0 else { return nil }
+            return snapshot.restTimer?.endsAt
+        }()
+        let shouldRestart = RestNotificationRecoveryPolicy.shouldRestartLiveActivity(
+            hasActiveSession: true,
+            hasTrackedLiveActivity: liveActivity.hasTrackedActivity
+        )
+        if shouldRestart {
+            await liveActivity.start(
+                session: snapshot.session,
+                currentExerciseName: currentExerciseName(in: snapshot),
+                targetSummary: targetSummary,
+                heartRateBPM: heartRateBPM,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: endsAt,
+                elevatedRelevance: true
+            )
+        } else {
+            await liveActivity.reconcile(
+                session: snapshot.session,
+                currentExerciseName: currentExerciseName(in: snapshot),
+                targetSummary: targetSummary,
+                heartRateBPM: heartRateBPM,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: endsAt
+            )
+        }
+        await syncRestEndNotification(
+            snapshot: snapshot,
+            restTimerSoundEnabled: restTimerSoundEnabled
+        )
     }
 
     func resumeFromRestNotification(

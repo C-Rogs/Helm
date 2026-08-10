@@ -40,7 +40,12 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("workout_query.v1"))
         #expect(prompt.contains("meal_query.v1"))
         #expect(prompt.contains("recovery_query.v1"))
+        #expect(prompt.contains("calendar_query.v1"))
+        #expect(prompt.contains("trends_query.v1"))
         #expect(prompt.contains("memory_adjustment.v1"))
+        #expect(prompt.contains("Prescription Load Rationale"))
+        #expect(prompt.contains("constraint_affected=true"))
+        #expect(prompt.contains("load_decision"))
     }
 
     @Test("in-session coach shares main chat voice")

@@ -4,15 +4,23 @@ import Foundation
 
 @MainActor
 final class WorkoutLiveActivityManager {
-    /// If the app stops updating (force quit, crash), the system can dismiss the Live Activity.
-    static let staleInterval: TimeInterval = 5 * 60
+    /// Advance staleDate on updates so locked workouts do not go stale mid-session.
+    static let staleInterval: TimeInterval = 20 * 60
+    static let baselineRelevance: Double = 75
+    static let elevatedRelevance: Double = 100
+    static let heartbeatInterval: TimeInterval = 90
 
     private var activityID: String?
     private var lastScheduledUpdateAt: Date?
     private var lastPushedFingerprint: String?
+    private var lastStaleRefreshAt: Date?
     private var isUpdateInFlight = false
     private var pendingUpdate: (id: String, content: ActivityContent<WorkoutActivityAttributes.ContentState>)?
+    private var activityStateTask: Task<Void, Never>?
     private let minUpdateInterval: TimeInterval = 0.5
+
+    /// Fired on main actor when the tracked activity ends or is dismissed while a session may still be active.
+    var onActivityLost: (() -> Void)?
 
     var hasTrackedActivity: Bool {
         guard let activityID else { return false }
@@ -23,13 +31,18 @@ final class WorkoutLiveActivityManager {
         ActivityAuthorizationInfo().areActivitiesEnabled
     }
 
+    static func relevanceScore(elevated: Bool) -> Double {
+        elevated ? elevatedRelevance : baselineRelevance
+    }
+
     func start(
         session: WorkoutSessionDraft,
         currentExerciseName: String?,
         targetSummary: String? = nil,
         heartRateBPM: Int? = nil,
         restRemainingSeconds: Int? = nil,
-        restEndsAt: Date? = nil
+        restEndsAt: Date? = nil,
+        elevatedRelevance: Bool = false
     ) async {
         await Self.reclaimMainThread()
         guard isSupported else { return }
@@ -44,7 +57,12 @@ final class WorkoutLiveActivityManager {
         )
 
         if let activity = currentActivity() {
-            scheduleUpdate(activityID: activity.id, state: state)
+            scheduleUpdate(
+                activityID: activity.id,
+                state: state,
+                elevatedRelevance: elevatedRelevance,
+                forceStaleRefresh: false
+            )
             return
         }
 
@@ -55,7 +73,8 @@ final class WorkoutLiveActivityManager {
                 targetSummary: targetSummary,
                 restRemainingSeconds: restRemainingSeconds,
                 restEndsAt: restEndsAt,
-                heartRateBPM: heartRateBPM
+                heartRateBPM: heartRateBPM,
+                elevatedRelevance: elevatedRelevance
             )
             return
         }
@@ -69,11 +88,19 @@ final class WorkoutLiveActivityManager {
             sessionTitle: session.title ?? "Workout",
             startedAt: session.startedAt
         )
-        let content = ActivityContent(state: state, staleDate: staleDate())
+        let content = ActivityContent(
+            state: state,
+            staleDate: staleDate(),
+            relevanceScore: Self.relevanceScore(elevated: elevatedRelevance)
+        )
         let newID = await Self.requestActivity(attributes: attributes, content: content)
         await Self.reclaimMainThread()
         activityID = newID
         lastPushedFingerprint = Self.fingerprint(state)
+        lastStaleRefreshAt = Date()
+        if let newID {
+            observeActivityState(activityID: newID)
+        }
     }
 
     func update(
@@ -82,10 +109,10 @@ final class WorkoutLiveActivityManager {
         targetSummary: String? = nil,
         restRemainingSeconds: Int?,
         restEndsAt: Date? = nil,
-        heartRateBPM: Int? = nil
+        heartRateBPM: Int? = nil,
+        elevatedRelevance: Bool = false,
+        forceStaleRefresh: Bool = false
     ) async {
-        // Do not await before throttle: concurrent update() calls were both passing
-        // the interval check after reclaimMainThread suspended MainActor.
         guard isSupported else { return }
         if currentActivity() == nil {
             _ = adoptSingleExistingActivity(matchingStartedAt: session.startedAt)
@@ -97,7 +124,8 @@ final class WorkoutLiveActivityManager {
                 targetSummary: targetSummary,
                 heartRateBPM: heartRateBPM,
                 restRemainingSeconds: restRemainingSeconds,
-                restEndsAt: restEndsAt
+                restEndsAt: restEndsAt,
+                elevatedRelevance: elevatedRelevance
             )
             return
         }
@@ -109,7 +137,45 @@ final class WorkoutLiveActivityManager {
             restEndsAt: restEndsAt,
             heartRateBPM: heartRateBPM
         )
-        scheduleUpdate(activityID: activity.id, state: state)
+        scheduleUpdate(
+            activityID: activity.id,
+            state: state,
+            elevatedRelevance: elevatedRelevance,
+            forceStaleRefresh: forceStaleRefresh
+        )
+    }
+
+    /// Foreground reclaim: re-request if lost, else bump relevance / staleDate.
+    func reconcile(
+        session: WorkoutSessionDraft,
+        currentExerciseName: String?,
+        targetSummary: String? = nil,
+        heartRateBPM: Int? = nil,
+        restRemainingSeconds: Int? = nil,
+        restEndsAt: Date? = nil
+    ) async {
+        if hasTrackedActivity {
+            await update(
+                session: session,
+                currentExerciseName: currentExerciseName,
+                targetSummary: targetSummary,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: restEndsAt,
+                heartRateBPM: heartRateBPM,
+                elevatedRelevance: true,
+                forceStaleRefresh: true
+            )
+        } else {
+            await start(
+                session: session,
+                currentExerciseName: currentExerciseName,
+                targetSummary: targetSummary,
+                heartRateBPM: heartRateBPM,
+                restRemainingSeconds: restRemainingSeconds,
+                restEndsAt: restEndsAt,
+                elevatedRelevance: true
+            )
+        }
     }
 
     func end() {
@@ -120,8 +186,11 @@ final class WorkoutLiveActivityManager {
 
     func endAll() async {
         await Self.reclaimMainThread()
+        activityStateTask?.cancel()
+        activityStateTask = nil
         activityID = nil
         lastPushedFingerprint = nil
+        lastStaleRefreshAt = nil
         let ids = Activity<WorkoutActivityAttributes>.activities.map(\.id)
         for id in ids {
             await Self.endActivity(id: id)
@@ -134,25 +203,31 @@ final class WorkoutLiveActivityManager {
         await endAll()
     }
 
-    /// Fire-and-forget on the real main queue. Coalesces overlapping callers into one in-flight update.
     private func scheduleUpdate(
         activityID: String,
-        state: WorkoutActivityAttributes.ContentState
+        state: WorkoutActivityAttributes.ContentState,
+        elevatedRelevance: Bool,
+        forceStaleRefresh: Bool
     ) {
         let fingerprint = Self.fingerprint(state)
-        if fingerprint == lastPushedFingerprint {
+        if !forceStaleRefresh, fingerprint == lastPushedFingerprint {
             return
         }
 
         let now = Date()
-        if let last = lastScheduledUpdateAt,
+        if !forceStaleRefresh,
+           let last = lastScheduledUpdateAt,
            now.timeIntervalSince(last) < minUpdateInterval,
            state.restRemainingSeconds != 0 {
             return
         }
         lastScheduledUpdateAt = now
 
-        let content = ActivityContent(state: state, staleDate: staleDate())
+        let content = ActivityContent(
+            state: state,
+            staleDate: staleDate(from: now),
+            relevanceScore: Self.relevanceScore(elevated: elevatedRelevance)
+        )
         pendingUpdate = (activityID, content)
         guard !isUpdateInFlight else { return }
         isUpdateInFlight = true
@@ -168,15 +243,46 @@ final class WorkoutLiveActivityManager {
                     let id = pending.id
                     let content = pending.content
                     guard let activity = Activity<WorkoutActivityAttributes>.activities.first(where: { $0.id == id }) else {
+                        if self.activityID == id {
+                            self.activityID = nil
+                            self.lastPushedFingerprint = nil
+                            self.onActivityLost?()
+                        }
                         continue
                     }
                     await activity.update(content)
                     self.lastPushedFingerprint = Self.fingerprint(content.state)
+                    self.lastStaleRefreshAt = Date()
                 }
                 self.isUpdateInFlight = false
                 if self.pendingUpdate != nil {
                     self.isUpdateInFlight = true
                     self.drainPendingUpdates()
+                }
+            }
+        }
+    }
+
+    private func observeActivityState(activityID: String) {
+        activityStateTask?.cancel()
+        activityStateTask = Task { @MainActor [weak self] in
+            guard let activity = Activity<WorkoutActivityAttributes>.activities.first(where: { $0.id == activityID }) else {
+                return
+            }
+            for await state in activity.activityStateUpdates {
+                guard let self else { return }
+                switch state {
+                case .ended, .dismissed:
+                    if self.activityID == activityID {
+                        self.activityID = nil
+                        self.lastPushedFingerprint = nil
+                        self.onActivityLost?()
+                    }
+                    return
+                case .active, .stale:
+                    break
+                @unknown default:
+                    break
                 }
             }
         }
@@ -230,8 +336,6 @@ final class WorkoutLiveActivityManager {
         }
     }
 
-    /// ActivityKit / CoreHaptics can leave a `@MainActor` task off the real main thread.
-    /// `DispatchQueue.main` forces a real thread hop (`MainActor.run` can no-op).
     nonisolated private static func reclaimMainThread() async {
         await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
             DispatchQueue.main.async {
@@ -291,6 +395,7 @@ final class WorkoutLiveActivityManager {
             return false
         }
         activityID = activity.id
+        observeActivityState(activityID: activity.id)
         return true
     }
 }

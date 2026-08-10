@@ -36,7 +36,7 @@ public enum CoachProposalFailure: Sendable, Equatable {
             let label = ExerciseDisplayFormatter.humanizeID(id)
             return "Couldn't apply that change: \(label) isn't in this session. Ask again using the exercise name from your plan."
         case .noDiff:
-            return "Couldn't apply that change: your plan is already at that target."
+            return "Couldn't apply that change: your plan is already at that target (or that equipment variant is already selected)."
         case .unresolvedExerciseIDs(let ids, let sessionLabels):
             let unmatched = ids.map { "\"\($0)\"" }.joined(separator: ", ")
             let available = sessionLabels.joined(separator: ", ")
@@ -82,6 +82,8 @@ public struct CoachSessionProposal: Sendable, Equatable {
     public let previewBanner: SessionAdjustmentBannerModel?
     public let status: CoachProposalStatus
     public let requestID: UUID?
+    /// Original athlete turn, used to re-normalize equipment phrases on confirm.
+    public let sourceUserMessage: String?
 
     public var requiresConfirmation: Bool {
         if case .confirmable = status { return true }
@@ -99,7 +101,8 @@ public struct CoachSessionProposal: Sendable, Equatable {
         recommendationID: String,
         previewBanner: SessionAdjustmentBannerModel?,
         status: CoachProposalStatus,
-        requestID: UUID? = nil
+        requestID: UUID? = nil,
+        sourceUserMessage: String? = nil
     ) {
         self.reply = reply
         self.payload = payload
@@ -107,6 +110,7 @@ public struct CoachSessionProposal: Sendable, Equatable {
         self.previewBanner = previewBanner
         self.status = status
         self.requestID = requestID
+        self.sourceUserMessage = sourceUserMessage
     }
 }
 
@@ -195,6 +199,7 @@ public struct InSessionCoachService: Sendable {
             payload: proposal.payload,
             snapshot: snapshot,
             excludedExerciseIDs: excludedExerciseIDs,
+            userMessage: proposal.sourceUserMessage,
             modelVersion: proposal.payload.schemaVersion,
             recommendationID: proposal.recommendationID,
             markActedOn: true
@@ -370,7 +375,8 @@ public struct InSessionCoachService: Sendable {
                 recommendationID: recommendation.id,
                 previewBanner: nil,
                 status: .advisory,
-                requestID: requestID
+                requestID: requestID,
+                sourceUserMessage: userMessage
             )
         }
 
@@ -388,7 +394,8 @@ public struct InSessionCoachService: Sendable {
                         ids: normalized.unresolvedExerciseIDs,
                         catalogLabels: normalized.catalogCandidates
                     )),
-                    requestID: requestID
+                    requestID: requestID,
+                    sourceUserMessage: userMessage
                 )
             }
 
@@ -409,7 +416,8 @@ public struct InSessionCoachService: Sendable {
                     ids: normalized.unresolvedExerciseIDs,
                     sessionLabels: sessionLabels
                 )),
-                requestID: requestID
+                requestID: requestID,
+                sourceUserMessage: userMessage
             )
         }
 
@@ -432,7 +440,8 @@ public struct InSessionCoachService: Sendable {
                 recommendationID: recommendation.id,
                 previewBanner: nil,
                 status: .failed(.clamp(reason)),
-                requestID: requestID
+                requestID: requestID,
+                sourceUserMessage: userMessage
             )
         case .applied(let adjusted):
             guard PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted) else {
@@ -442,7 +451,8 @@ public struct InSessionCoachService: Sendable {
                     recommendationID: recommendation.id,
                     previewBanner: nil,
                     status: .failed(.noDiff),
-                    requestID: requestID
+                    requestID: requestID,
+                    sourceUserMessage: userMessage
                 )
             }
 
@@ -463,7 +473,8 @@ public struct InSessionCoachService: Sendable {
                     recommendationID: recommendation.id
                 ),
                 status: .confirmable,
-                requestID: requestID
+                requestID: requestID,
+                sourceUserMessage: userMessage
             )
         }
     }

@@ -102,14 +102,26 @@ public enum ExerciseResolver {
             if let fuzzy = fuzzyCatalogMatch(rawPhrase, context: context, persistence: persistence) {
                 return catalogResult(exerciseID: fuzzy)
             }
-        } else if let archetypeID = CoachArchetypeSupport.archetypeID(for: rawPhrase),
-                  let exerciseID = pickExercise(
-                    for: archetypeID,
-                    context: context,
-                    persistence: persistence,
-                    phrase: context.phraseHint ?? rawPhrase
-                  ) {
-            return Result(exerciseID: exerciseID, archetypeID: archetypeID)
+        } else if let archetypeID = CoachArchetypeSupport.archetypeID(for: rawPhrase) {
+            if let exerciseID = pickExercise(
+                for: archetypeID,
+                context: context,
+                persistence: persistence,
+                phrase: context.phraseHint ?? rawPhrase
+            ) {
+                return Result(exerciseID: exerciseID, archetypeID: archetypeID)
+            }
+            // Session may hold a catalog ID that maps to the archetype but was not in
+            // the variants member list (or seed remap missed). Prefer any session hit.
+            if context.mustBeInSession {
+                for sessionID in context.sessionExerciseIDs {
+                    let mapped = CoachArchetypeSupport.archetype(for: sessionID)?.id
+                        ?? CoachArchetypeSupport.exerciseToArchetypeID[stripSeedPrefix(sessionID)]
+                    if mapped == archetypeID {
+                        return Result(exerciseID: sessionID, archetypeID: archetypeID)
+                    }
+                }
+            }
         }
 
         if context.mustBeInSession == false,
@@ -227,17 +239,21 @@ public enum ExerciseResolver {
         let preferred = preferredRaw.flatMap { catalogExerciseID($0, persistence: persistence) }
             .flatMap { accepts(exerciseID: $0, context: context) ? $0 : nil }
 
+        // Prefer phrase-ranked members even when a preferred default exists, so equipment
+        // wording (dumbbell vs rope) can beat the archetype default.
         let tokens = phraseTokens(phrase ?? "")
         if !tokens.isEmpty {
             let ranked = members.sorted { lhs, rhs in
-                let leftOverlap = tokenOverlap(tokens, in: lhs)
-                let rightOverlap = tokenOverlap(tokens, in: rhs)
+                let leftOverlap = tokenOverlap(tokens, in: lhs + " " + displayLabel(lhs, persistence: persistence))
+                let rightOverlap = tokenOverlap(tokens, in: rhs + " " + displayLabel(rhs, persistence: persistence))
                 if leftOverlap != rightOverlap { return leftOverlap > rightOverlap }
                 return score(exerciseID: lhs, context: context) > score(exerciseID: rhs, context: context)
             }
-            if let best = ranked.first {
-                let preferredOverlap = preferred.map { tokenOverlap(tokens, in: $0) } ?? 0
-                if tokenOverlap(tokens, in: best) > preferredOverlap {
+            if let best = ranked.first, tokenOverlap(tokens, in: best + " " + displayLabel(best, persistence: persistence)) > 0 {
+                let preferredOverlap = preferred.map {
+                    tokenOverlap(tokens, in: $0 + " " + displayLabel($0, persistence: persistence))
+                } ?? 0
+                if tokenOverlap(tokens, in: best + " " + displayLabel(best, persistence: persistence)) >= preferredOverlap {
                     return best
                 }
             }
@@ -248,6 +264,10 @@ public enum ExerciseResolver {
         }
 
         return members.sorted { score(exerciseID: $0, context: context) > score(exerciseID: $1, context: context) }.first
+    }
+
+    private static func displayLabel(_ exerciseID: String, persistence: PersistenceStore) -> String {
+        (try? persistence.exercises.fetchSummary(id: exerciseID)?.displayName) ?? exerciseID
     }
 
     private static func catalogExerciseID(_ rawID: String, persistence: PersistenceStore) -> String? {

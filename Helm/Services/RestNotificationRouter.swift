@@ -105,7 +105,10 @@ enum RestNotificationRouter {
 
         await TrainBootstrap.sessionController.reconcileExpiredRestTimer()
 
-        await TrainBootstrap.sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+        await TrainBootstrap.sideEffects.onEnterForeground(
+            snapshot: snapshot,
+            restRemainingSeconds: 0
+        )
         await TrainBootstrap.sideEffects.resumePersistedSession(
             snapshot,
             restRemainingSeconds: 0

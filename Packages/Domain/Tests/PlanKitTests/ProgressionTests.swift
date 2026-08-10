@@ -123,7 +123,64 @@ struct ProgressionTests {
 
         let progression = PlanKit.progression(for: "squat", history: history)
         #expect(progression.isStalledBackoff)
+        #expect(progression.loadDecision == .stallBackoff)
+        #expect(progression.lastSessionWeight?.kilograms == 100)
         #expect(progression.workingWeight!.kilograms == 90)
+    }
+
+    @Test("isolation stall backoff snaps 36kg toward 32kg")
+    func isolationStallBackoffFacePullStyle() {
+        let day: TimeInterval = 24 * 60 * 60
+        let minute: TimeInterval = 60
+        let history = [
+            set(exerciseID: "seed-cable-face-pull", kg: 36, reps: 12, rir: 1, at: 0),
+            set(exerciseID: "seed-cable-face-pull", kg: 36, reps: 11, rir: 1, at: 3 * minute),
+            set(exerciseID: "seed-cable-face-pull", kg: 36, reps: 12, rir: 1, at: day),
+            set(exerciseID: "seed-cable-face-pull", kg: 36, reps: 10, rir: 1, at: day + 3 * minute)
+        ]
+        // Single-direct muscle map forces isolation (2 kg dumbbell steps).
+        let map = ExerciseMuscleMap(
+            exerciseID: "seed-cable-face-pull",
+            contributions: [
+                ExerciseMuscleContribution(muscle: .shoulders, fraction: 1.0, tier: .primary)
+            ]
+        )
+
+        let progression = PlanKit.progression(
+            for: "seed-cable-face-pull",
+            history: history,
+            muscleMap: map
+        )
+        #expect(progression.loadDecision == .stallBackoff)
+        #expect(progression.lastSessionWeight?.kilograms == 36)
+        #expect(progression.workingWeight!.kilograms == 32)
+    }
+
+    @Test("prescription load rationale marks face pull unaffected by shoulder exclude")
+    func facePullNotConstraintAffected() {
+        let progression = LiftProgression(
+            exerciseID: "seed-cable-face-pull",
+            workingWeight: Mass(kilograms: 32),
+            loadDecision: .stallBackoff,
+            lastSessionWeight: Mass(kilograms: 36)
+        )
+        let text = PrescriptionLoadRationale.format(
+            exercises: [
+                .init(
+                    exerciseID: "seed-cable-face-pull",
+                    displayName: "Face Pull (Cable)",
+                    progression: progression,
+                    constraintAffected: PrescriptionLoadRationale.constraintAffected(
+                        exerciseID: "seed-cable-face-pull",
+                        excludedPatterns: [.verticalPress]
+                    )
+                )
+            ]
+        )
+        #expect(text.contains("load_decision=stall_backoff"))
+        #expect(text.contains("constraint_affected=false"))
+        #expect(text.contains("last_session_kg=36"))
+        #expect(text.contains("prescribed_kg=32"))
     }
 
     @Test("adding reps at the same load is progress, not a stall")

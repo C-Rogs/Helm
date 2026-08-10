@@ -321,6 +321,44 @@ struct ActiveSessionEngineTests {
         #expect(Set(sets.map(\.setIndex)).count == 3)
     }
 
+    @Test("adjustExerciseSetCount targets working sets when warmups exist")
+    func adjustSetCountIgnoresWarmupsInTarget() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(exerciseID: benchPressID, order: 0, targetSets: 3, warmupSets: 2)
+            ]
+        )
+        let started = try await engine.startFromPrescription(prescription)
+        let exercise = try #require(started.session.exercises.first)
+        #expect(exercise.sets.filter(\.setType.isWarmup).count == 2)
+        #expect(exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count == 3)
+        #expect(exercise.sets.count == 5)
+
+        // UI previously passed total.count-1 (=4), which grew working sets.
+        // Correct path: workingCount-1 (=2).
+        let afterRemove = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: exercise.id,
+            targetSetCount: 2
+        )
+        let afterRemoveExercise = try #require(afterRemove.session.exercises.first)
+        #expect(afterRemoveExercise.sets.filter(\.setType.isWarmup).count == 2)
+        #expect(afterRemoveExercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count == 2)
+        #expect(afterRemoveExercise.sets.count == 4)
+
+        let afterAdd = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: exercise.id,
+            targetSetCount: 3
+        )
+        let afterAddExercise = try #require(afterAdd.session.exercises.first)
+        #expect(afterAddExercise.sets.filter(\.setType.isWarmup).count == 2)
+        #expect(afterAddExercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count == 3)
+        #expect(afterAddExercise.sets.count == 5)
+    }
+
     @Test("update set type persists through snapshot")
     func updateSetTypePersists() async throws {
         let (persistence, engine, _) = try makeHarness()

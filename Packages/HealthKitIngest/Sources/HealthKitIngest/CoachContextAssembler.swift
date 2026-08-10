@@ -16,7 +16,11 @@ public enum CoachContextAssembler {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
         evidence: [EvidenceRecord] = bundledMethodologyEvidence(),
-        busyDayHints: [HelmDay: String] = [:]
+        busyDayHints: [HelmDay: String] = [:],
+        todayPrescription: String = "",
+        prescriptionLoadSummary: String = "",
+        volumeStateSummary: String = "",
+        engineProfile: String = ""
     ) async throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
@@ -114,7 +118,11 @@ public enum CoachContextAssembler {
             recentWorkouts: recentWorkouts,
             trainingPlanSnapshot: trainingPlanSnapshot,
             weekAheadSchedule: weekAheadSchedule,
-            nutritionDiary: nutritionDiary
+            nutritionDiary: nutritionDiary,
+            todayPrescription: todayPrescription,
+            prescriptionLoadSummary: prescriptionLoadSummary,
+            volumeStateSummary: volumeStateSummary,
+            engineProfile: engineProfile
         )
     }
 
@@ -210,7 +218,11 @@ public enum CoachContextAssembler {
                 experience: experience,
                 remainingSessionsThisWeek: SessionSplitPlanner.remainingSessionsThisWeek(
                     completedThisWeek: completedThisWeek
-                )
+                ),
+                pendingReactiveDeload: mesocycleState?.pendingReactiveDeload ?? false,
+                sessionDurationMinutes: settings.sessionDurationMinutes,
+                programTemplate: settings.programTemplateRaw,
+                allowedEquipment: MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences).preferences.allowedEquipment
             )
         )
     }
@@ -343,6 +355,24 @@ public enum CoachContextAssembler {
             if let hrvBand = readiness.hrvBand {
                 parts.append("hrv_band=\(hrvBand.rawValue)")
             }
+            if let raw = readiness.contributors?.rawScore {
+                parts.append("rawScore=\(format(raw))")
+            }
+            if let damped = readiness.contributors?.dampedScore {
+                parts.append("dampedScore=\(format(damped))")
+            }
+            if let zComposite = readiness.contributors?.zComposite {
+                parts.append("zComposite=\(formatSigned(zComposite))")
+            }
+            if let validNights = readiness.validNights {
+                parts.append("validNights=\(validNights)")
+            }
+            if let confidenceValue = readiness.confidenceValue {
+                parts.append("confidenceValue=\(format(confidenceValue))")
+            }
+            if let stabilityScore = readiness.stabilityScore {
+                parts.append("stabilityScore=\(format(stabilityScore))")
+            }
             if let hrv = readiness.effectiveHRVMilliseconds {
                 parts.append("hrv=\(format(hrv))ms")
                 if let chronic = chronicHRVMilliseconds {
@@ -462,6 +492,24 @@ public enum CoachContextAssembler {
         if let restingHR = state.restingHR {
             lines.append("restingHR=\(format(restingHR.mean))")
         }
+        if let sleepDuration = state.sleepDuration {
+            lines.append("sleepDurationBaselineMs=\(format(sleepDuration.mean))")
+        }
+        if let sleepEfficiency = state.sleepEfficiency {
+            lines.append("sleepEfficiencyBaseline=\(format(sleepEfficiency.mean * 100))%")
+        }
+        if let sleepDebt = state.sleepDebt {
+            lines.append("sleepDebtBaselineMs=\(format(sleepDebt.mean))")
+        }
+        if let resp = state.respiratoryRate {
+            lines.append("respRateBaseline=\(format(resp.mean))")
+        }
+        if let temp = state.wristTemperature {
+            lines.append("wristTempBaselineC=\(format(temp.mean))")
+        }
+        if let trimp = state.trimpP75 {
+            lines.append("trimpP75=\(format(trimp))")
+        }
         if state.seededNightCount > 0 {
             lines.append("seededNights=\(state.seededNightCount)")
         }
@@ -497,7 +545,10 @@ private struct ReadinessScoreSnippet: Decodable {
     let score: Int
     let band: ReadinessBand?
     let confidence: ReadinessConfidence?
+    let confidenceValue: Double?
     let hrvBand: HRVZBand?
+    let validNights: Int?
+    let stabilityScore: Double?
     let contributors: ReadinessContributorBreakdown?
     let effectiveHRVMilliseconds: Double?
     let restingHeartRate: Int?

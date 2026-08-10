@@ -78,12 +78,18 @@ enum SessionExerciseIDResolver {
                 unresolved: &unresolved,
                 catalogCandidates: &catalogCandidates
             )
+            // Exclude the current slot so same-archetype equipment swaps (rope -> DB)
+            // cannot collapse back onto the from ID when the user message still names it.
+            var toExcluded = excludedExerciseIDs
+            if let from {
+                toExcluded.insert(from)
+            }
             let to = resolve(
                 operation.toExerciseID,
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
-                excludedExerciseIDs: excludedExerciseIDs,
+                excludedExerciseIDs: toExcluded,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
                 phraseHint: phraseHint,
@@ -203,6 +209,11 @@ enum SessionExerciseIDResolver {
 
         unresolved.append(rawID)
         catalogCandidates.append(contentsOf: resolved.catalogCandidates)
+        // Do not pass unresolved archetype/phrase IDs into PlanKit for in-session ops -
+        // that surfaces as a misleading "not found in the catalogue" clamp.
+        if mustBeInSession {
+            return nil
+        }
         return rawID
     }
 }

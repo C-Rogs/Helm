@@ -86,6 +86,26 @@ public enum ContextBuilder {
             sections.append("# Nutrition Diary\n\(nutritionDiary)")
         }
 
+        let todayPrescription = normalized(days.todayPrescription)
+        if !todayPrescription.isEmpty {
+            sections.append("# Today's Prescription\n\(todayPrescription)")
+        }
+
+        let prescriptionLoad = normalized(days.prescriptionLoadSummary)
+        if !prescriptionLoad.isEmpty {
+            sections.append("# Prescription Load Rationale\n\(prescriptionLoad)")
+        }
+
+        let volumeStateSummary = normalized(days.volumeStateSummary)
+        if !volumeStateSummary.isEmpty {
+            sections.append("# Volume State\n\(volumeStateSummary)")
+        }
+
+        let engineProfile = normalized(days.engineProfile)
+        if !engineProfile.isEmpty {
+            sections.append("# Engine Profile\n\(engineProfile)")
+        }
+
         return sections.joined(separator: "\n\n")
     }
 
@@ -125,6 +145,22 @@ public enum ContextBuilder {
         let nutritionDiary = normalized(days.nutritionDiary)
         if !nutritionDiary.isEmpty {
             sections.append("# Nutrition Diary\n\(nutritionDiary)")
+        }
+        let todayPrescription = normalized(days.todayPrescription)
+        if !todayPrescription.isEmpty {
+            sections.append("# Today's Prescription\n\(todayPrescription)")
+        }
+        let prescriptionLoad = normalized(days.prescriptionLoadSummary)
+        if !prescriptionLoad.isEmpty {
+            sections.append("# Prescription Load Rationale\n\(prescriptionLoad)")
+        }
+        let volumeStateSummary = normalized(days.volumeStateSummary)
+        if !volumeStateSummary.isEmpty {
+            sections.append("# Volume State\n\(volumeStateSummary)")
+        }
+        let engineProfile = normalized(days.engineProfile)
+        if !engineProfile.isEmpty {
+            sections.append("# Engine Profile\n\(engineProfile)")
         }
         return sections.joined(separator: "\n\n")
     }

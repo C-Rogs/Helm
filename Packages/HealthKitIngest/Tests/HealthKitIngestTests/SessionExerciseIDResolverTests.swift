@@ -211,6 +211,139 @@ struct SessionExerciseIDResolverTests {
         #expect(result.payload.operations.first?.fromExerciseID == benchPressID)
         #expect(result.payload.operations.first?.toExerciseID == inclineID)
     }
+
+    @Test("lat_pulldown archetype resolves adjustWarmupSets to session catalog ID")
+    func latPulldownWarmupUsesSessionID() throws {
+        let store = try PersistenceStore.inMemory()
+        let latID = "seed-Wide-Grip_Lat_Pulldown"
+        try store.exercises.upsert(
+            id: latID,
+            canonicalName: "wide grip lat pulldown",
+            displayName: "Wide-Grip Lat Pulldown",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "lats"
+        )
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            generatedAt: "2026-08-10T00:00:00Z",
+            archetypes: [
+                CoachArchetype(
+                    id: "lat_pulldown",
+                    displayName: "Lat Pulldown",
+                    priority: "core",
+                    coachAliases: ["lat pulldown", "wide grip lat pulldown"]
+                )
+            ],
+            mapping: [
+                "Wide-Grip_Lat_Pulldown": "lat_pulldown",
+                "seed-Wide-Grip_Lat_Pulldown": "lat_pulldown",
+                "seed-lat-pulldown": "lat_pulldown"
+            ],
+            variants: [
+                "lat_pulldown": CoachArchetypeVariants(
+                    members: ["Wide-Grip_Lat_Pulldown", "seed-lat-pulldown"],
+                    preferredDefaultExerciseId: "seed-lat-pulldown"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Added warm-ups.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustWarmupSets,
+                    exerciseID: "lat_pulldown",
+                    setDelta: 2
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [latID],
+            exerciseDisplayNames: [latID: "Wide-Grip Lat Pulldown"],
+            persistence: store
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.payload.operations.first?.exerciseID == latID)
+    }
+
+    @Test("same-archetype swap excludes from so rope becomes dumbbell")
+    func hammerCurlRopeToDumbbellSwap() throws {
+        let store = try PersistenceStore.inMemory()
+        let ropeID = "seed-Cable_Hammer_Curls_-_Rope_Attachment"
+        let dbID = "seed-Hammer_Curls"
+        try store.exercises.upsert(
+            id: ropeID,
+            canonicalName: "cable hammer curls - rope attachment",
+            displayName: "Cable Hammer Curls - Rope Attachment",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+        try store.exercises.upsert(
+            id: dbID,
+            canonicalName: "hammer curls",
+            displayName: "Hammer Curls",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps"
+        )
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            generatedAt: "2026-08-10T00:00:00Z",
+            archetypes: [
+                CoachArchetype(
+                    id: "hammer_curl",
+                    displayName: "Hammer Curl",
+                    priority: "accessory",
+                    coachAliases: ["hammer curl", "rope hammer curl", "dumbbell hammer curl"]
+                )
+            ],
+            mapping: [
+                "Hammer_Curls": "hammer_curl",
+                "Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl",
+                "seed-Hammer_Curls": "hammer_curl",
+                "seed-Cable_Hammer_Curls_-_Rope_Attachment": "hammer_curl"
+            ],
+            variants: [
+                "hammer_curl": CoachArchetypeVariants(
+                    members: [
+                        "Cable_Hammer_Curls_-_Rope_Attachment",
+                        "Hammer_Curls"
+                    ],
+                    preferredDefaultExerciseId: "Hammer_Curls"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Swapping to dumbbells.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .swap,
+                    fromExerciseID: "hammer_curl",
+                    toExerciseID: "hammer_curl"
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [ropeID],
+            exerciseDisplayNames: [ropeID: "Cable Hammer Curls - Rope Attachment"],
+            persistence: store,
+            phraseHint: "Replace hammer curls rope attachment for hammer curls dumbbell"
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.payload.operations.first?.fromExerciseID == ropeID)
+        #expect(result.payload.operations.first?.toExerciseID == dbID)
+        #expect(result.payload.operations.first?.fromExerciseID != result.payload.operations.first?.toExerciseID)
+    }
 }
 
 @Suite("In-session coach proposal status")

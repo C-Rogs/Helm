@@ -1,6 +1,14 @@
 import Core
 import Foundation
 
+/// Why today's working weight was chosen relative to the last logged session.
+public enum LoadDecision: String, Sendable, Hashable, Codable {
+    case coldStart = "cold_start"
+    case hold = "hold"
+    case bump = "bump"
+    case stallBackoff = "stall_backoff"
+}
+
 /// Per-lift progression targets derived from logged history.
 public struct LiftProgression: Sendable, Hashable, Codable {
     public let exerciseID: String
@@ -9,6 +17,8 @@ public struct LiftProgression: Sendable, Hashable, Codable {
     public let targetRepMin: Int
     public let targetRepMax: Int
     public let isStalledBackoff: Bool
+    public let loadDecision: LoadDecision
+    public let lastSessionWeight: Mass?
 
     public init(
         exerciseID: String,
@@ -16,7 +26,9 @@ public struct LiftProgression: Sendable, Hashable, Codable {
         workingWeight: Mass? = nil,
         targetRepMin: Int = 8,
         targetRepMax: Int = 12,
-        isStalledBackoff: Bool = false
+        isStalledBackoff: Bool = false,
+        loadDecision: LoadDecision = .coldStart,
+        lastSessionWeight: Mass? = nil
     ) {
         self.exerciseID = exerciseID
         self.estimatedOneRepMax = estimatedOneRepMax
@@ -24,6 +36,8 @@ public struct LiftProgression: Sendable, Hashable, Codable {
         self.targetRepMin = targetRepMin
         self.targetRepMax = targetRepMax
         self.isStalledBackoff = isStalledBackoff
+        self.loadDecision = loadDecision
+        self.lastSessionWeight = lastSessionWeight
     }
 }
 
@@ -126,18 +140,22 @@ enum ProgressionEngine {
                 estimatedOneRepMax: e1rm,
                 workingWeight: nil,
                 targetRepMin: repMin,
-                targetRepMax: repMax
+                targetRepMax: repMax,
+                loadDecision: .coldStart,
+                lastSessionWeight: nil
             )
         }
 
         let currentWeight = latest.mass!
         let sessions = SessionGrouping.groupIntoSessions(workingSets)
         let latestSessionSets = sessions.last ?? []
+        let lastSessionWeight = sessionWorkingWeight(latestSessionSets) ?? currentWeight
 
         let stalled = isStalled(sessions: sessions, repMax: repMax)
 
         let nextWeight: Mass
         let isStalledBackoff: Bool
+        let loadDecision: LoadDecision
         if stalled {
             let reduced = Mass(kilograms: currentWeight.kilograms * (1.0 - stallBackoffFraction))
             nextWeight = LoadRounding.snapProgression(
@@ -146,6 +164,7 @@ enum ProgressionEngine {
                 increment: increment
             )
             isStalledBackoff = true
+            loadDecision = .stallBackoff
         } else {
             let hitTopOfRange = latestSessionSets.allSatisfy { set in
                 guard let reps = set.reps else { return false }
@@ -163,8 +182,10 @@ enum ProgressionEngine {
                     proposed: bumped,
                     increment: increment
                 )
+                loadDecision = .bump
             } else {
                 nextWeight = currentWeight
+                loadDecision = .hold
             }
             isStalledBackoff = false
         }
@@ -175,7 +196,9 @@ enum ProgressionEngine {
             workingWeight: nextWeight,
             targetRepMin: repMin,
             targetRepMax: repMax,
-            isStalledBackoff: isStalledBackoff
+            isStalledBackoff: isStalledBackoff,
+            loadDecision: loadDecision,
+            lastSessionWeight: lastSessionWeight
         )
     }
 

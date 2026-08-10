@@ -131,6 +131,8 @@ final class TrainSessionController {
     private var isSyncingSideEffects = false
     private var pendingSideEffects: (rest: Int?, force: Bool)?
     private var heartRateSampleTask: Task<Void, Never>?
+    private var liveActivityHeartbeatTask: Task<Void, Never>?
+    private var didWireLiveActivityLostHandler = false
     /// Phone-side live HR buffer during Train (best-effort chip / in-session coach).
     /// Finish summary chart uses HealthKit via `WorkoutHeartRateSeriesFetcher`, not this buffer.
     private var sessionHeartRateBuffer = SessionHeartRateBuffer()
@@ -164,6 +166,18 @@ final class TrainSessionController {
         self.providerPreferences = providerPreferences
         self.prescriptionAutoStartStore = prescriptionAutoStartStore
         self.trainPreferences = trainPreferences
+        wireLiveActivityLostHandlerIfNeeded()
+    }
+
+    private func wireLiveActivityLostHandlerIfNeeded() {
+        guard !didWireLiveActivityLostHandler else { return }
+        didWireLiveActivityLostHandler = true
+        sideEffects.liveActivity.onActivityLost = { [weak self] in
+            Task { @MainActor in
+                guard let self, self.store.snapshot != nil else { return }
+                await self.syncSideEffects(force: true)
+            }
+        }
     }
 
     var snapshot: ActiveSessionSnapshot? {
@@ -208,7 +222,6 @@ final class TrainSessionController {
         await recoverPersistedSession()
         await abandonUntouchedPrescriptionIfNeeded()
         if let snapshot = store.snapshot {
-            await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
             let rest = localRemainingRestSeconds()
             await sideEffects.resumePersistedSession(
                 snapshot,
@@ -644,10 +657,11 @@ final class TrainSessionController {
         guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
             return
         }
+        let workingCount = exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count
         do {
             try await store.adjustExerciseSetCount(
                 sessionExerciseID: sessionExerciseID,
-                targetSetCount: exercise.sets.count + 1
+                targetSetCount: workingCount + 1
             )
             await refreshMetadata()
             pushWatchCompanionState()
@@ -660,11 +674,12 @@ final class TrainSessionController {
         guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
             return
         }
-        guard exercise.sets.count > 1 else { return }
+        let workingCount = exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count
+        guard workingCount > 1 else { return }
         do {
             try await store.adjustExerciseSetCount(
                 sessionExerciseID: sessionExerciseID,
-                targetSetCount: exercise.sets.count - 1
+                targetSetCount: workingCount - 1
             )
             await refreshMetadata()
             pushWatchCompanionState()
@@ -994,7 +1009,19 @@ final class TrainSessionController {
             }
         case .active:
             if let snapshot = store.snapshot {
-                await sideEffects.onEnterForeground(sessionID: snapshot.session.id)
+                let rest = localRemainingRestSeconds()
+                let currentExercise = snapshot.session.exercises.first { exercise in
+                    exercise.sets.contains { $0.status != .completed }
+                } ?? snapshot.session.exercises.first
+                let target = currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+                await sideEffects.onEnterForeground(
+                    snapshot: snapshot,
+                    restRemainingSeconds: rest,
+                    targetSummary: target,
+                    heartRateBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay,
+                    restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
+                )
+                await syncSideEffects(force: true)
             }
             await reconcileExpiredRestTimer()
             let currentRemaining = localRemainingRestSeconds()
@@ -1005,6 +1032,7 @@ final class TrainSessionController {
             )
             wasRestRunningOnBackground = false
             previousRestRemaining = currentRemaining
+            startLiveActivityHeartbeat()
         case .inactive:
             if let snapshot = store.snapshot {
                 wasRestRunningOnBackground = snapshot.restTimer?.phase == .running
@@ -1091,7 +1119,9 @@ final class TrainSessionController {
             restRemainingSeconds: rest,
             targetSummary: target,
             heartRateBPM: bpm,
-            restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
+            restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled,
+            elevatedRelevance: force,
+            forceStaleRefresh: force
         )
         await Self.reclaimMainThread()
     }
@@ -1294,7 +1324,14 @@ final class TrainSessionController {
     ) async {
         let nextTarget = NumpadTarget(setID: setID, sessionExerciseID: sessionExerciseID, field: field)
         if numpadTarget == nextTarget {
-            if hasStoredValue(for: field, set: currentSet) {
+            // Stored and grey PREV both select-all so first digit replaces.
+            if hasStoredValue(for: field, set: currentSet)
+                || prefilledDisplayText(
+                    for: field,
+                    set: currentSet,
+                    exerciseID: exerciseID(for: sessionExerciseID)
+                ).map({ $0 != "-" }) == true
+            {
                 numpadSelectAll = true
             } else {
                 numpadSelectAll = false
@@ -1304,7 +1341,8 @@ final class TrainSessionController {
         }
 
         if numpadTarget != nil {
-            guard await applyNumpadInput() else { return }
+            // Empty draft must not clear the previous field when hopping.
+            guard await applyNumpadInput(persistEmptyClear: false) else { return }
         }
 
         let exerciseID = exerciseID(for: sessionExerciseID)
@@ -1326,10 +1364,12 @@ final class TrainSessionController {
             numpadSelectAll = false
             return
         }
-        guard await applyNumpadInput() else { return }
+        // Invalid draft must not trap the pad - discard and close.
+        _ = await applyNumpadInput(persistEmptyClear: false)
         withAnimation(chromeMotion) {
             numpadTarget = nil
         }
+        numpadValidationError = nil
         numpadSelectAll = false
     }
 
@@ -1349,7 +1389,7 @@ final class TrainSessionController {
     }
 
     @discardableResult
-    func applyNumpadInput() async -> Bool {
+    func applyNumpadInput(persistEmptyClear: Bool = true) async -> Bool {
         guard let target = numpadTarget,
               let set = findSet(setID: target.setID) else { return true }
 
@@ -1361,6 +1401,11 @@ final class TrainSessionController {
         }
 
         let normalized = SetLogValidation.normalizedNumpadText(text)
+        if normalized.isEmpty && !persistEmptyClear {
+            numpadValidationError = nil
+            return true
+        }
+
         let update = numpadUpdate(for: target.field, text: normalized, existing: set)
         do {
             try await store.logSet(setID: target.setID, update: update)
@@ -1507,7 +1552,7 @@ final class TrainSessionController {
                 coachTurnError = CoachActivityGate.shared.blockingMessage(for: .inSession)
                 return
             }
-        } else if prescriptionSummary == nil {
+        } else if prescriptionSummary == nil && prescriptionService.state.restDay == nil {
             coachTurnError = "No prescription available."
             return
         }
@@ -1835,6 +1880,7 @@ final class TrainSessionController {
 
     private func activateWatchCompanionAfterSessionStart() {
         startHeartRateSampling()
+        startLiveActivityHeartbeat()
         let coordinator = WatchReadinessBootstrap.coordinator
         coordinator.refreshPairingFlags()
         coordinator.clearLiveHeartRate()
@@ -1942,9 +1988,22 @@ final class TrainSessionController {
         }
     }
 
+    private func startLiveActivityHeartbeat() {
+        liveActivityHeartbeatTask?.cancel()
+        liveActivityHeartbeatTask = Task { [weak self] in
+            while !Task.isCancelled {
+                try? await Task.sleep(for: .seconds(WorkoutLiveActivityManager.heartbeatInterval))
+                guard let self, self.store.snapshot != nil else { return }
+                await self.syncSideEffects(force: true)
+            }
+        }
+    }
+
     private func stopHeartRateSampling(reset: Bool) {
         heartRateSampleTask?.cancel()
         heartRateSampleTask = nil
+        liveActivityHeartbeatTask?.cancel()
+        liveActivityHeartbeatTask = nil
         if reset {
             sessionHeartRateBuffer.reset()
         }
@@ -2050,7 +2109,7 @@ final class TrainSessionController {
         if let prefilled = prefilledDisplayText(for: field, set: set, exerciseID: exerciseID),
            prefilled != "-" {
             numpadWorkingText = prefilled
-            numpadSelectAll = false
+            numpadSelectAll = true
             return
         }
 

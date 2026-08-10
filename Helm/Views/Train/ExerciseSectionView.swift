@@ -36,8 +36,12 @@ struct ExerciseSectionView: View {
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    private var completedSetCount: Int {
-        exercise.sets.filter { $0.status == .completed }.count
+    private var prescribedWorkingSets: [SetEntryDraft] {
+        exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }
+    }
+
+    private var completedWorkingSetCount: Int {
+        prescribedWorkingSets.filter { $0.status == .completed }.count
     }
 
     private var setIdentity: [String] {
@@ -45,7 +49,7 @@ struct ExerciseSectionView: View {
     }
 
     private var canRemoveSet: Bool {
-        exercise.sets.count > max(completedSetCount, 1)
+        prescribedWorkingSets.count > max(completedWorkingSetCount, 1)
     }
 
     var body: some View {

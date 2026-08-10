@@ -88,11 +88,12 @@ public struct PreStartCoachService: Sendable {
             let labels = joints.map { JointRecoveryCatalog.normalize($0) }.joined(separator: ", ")
             let patterns = StandingConstraintPatternPolicy.excludedPatterns(forActiveJoints: signals.activeJoints)
             if patterns.isEmpty {
-                return "Standing Constraints show an active recovery window (\(labels)): encourage a thorough warm-up and stretch; ease related loading until the until-date passes."
+                return "Standing Constraints show an active recovery window (\(labels)): for the session intro only, encourage a thorough warm-up and stretch. Do not invent load reductions for lifts outside soft-paused patterns."
             }
-            return "Standing Constraints show an active recovery window (\(labels)): encourage a thorough warm-up and stretch, and note that mapped stressful patterns are soft-paused until the until-date passes."
+            let patternLabels = patterns.map(\.rawValue).sorted().joined(separator: ", ")
+            return "Standing Constraints show an active recovery window (\(labels)): soft-paused patterns are \(patternLabels). Mention those pattern pauses only. Do not invent load cuts for other lifts (e.g. face pulls when only vertical press is paused)."
         }
-        return "Standing Constraints suggest encouraging a thorough warm-up and stretch for today's session."
+        return "Standing Constraints suggest encouraging a thorough warm-up and stretch for today's session. Do not invent per-lift load stories from constraints alone."
     }
 
     public func proposeAdjustment(

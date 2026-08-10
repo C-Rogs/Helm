@@ -43,6 +43,8 @@ struct TrainView: View {
                 } else if !TrainBootstrap.hasCompletedLaunchRecovery {
                     await controller.recoverPersistedSession()
                 }
+                await AppTabRouter.shared.preferChromeOverContentLoad()
+                guard !Task.isCancelled else { return }
                 history.refresh()
                 muscleVolumeStore.refresh()
                 await weekAheadStore.refresh()
@@ -74,6 +76,16 @@ struct TrainView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                if controller.hasActiveSession, controller.numpadTarget != nil {
+                    Color.clear
+                        .contentShape(Rectangle())
+                        .ignoresSafeArea()
+                        .onTapGesture {
+                            Task { await controller.dismissNumpad() }
+                        }
+                        .accessibilityLabel("Dismiss keyboard")
+                }
 
                 if controller.hasActiveSession {
                     bottomSessionChrome
@@ -314,13 +326,7 @@ struct TrainView: View {
                 summary: rest.summary,
                 rationale: rest.rationale,
                 leadingChipTitle: "Discuss",
-                onLeadingChip: { controller.discussTodaysSession() },
-                onRegenerate: {
-                    Task {
-                        await controller.regenerateTodaysPrescription()
-                        await weekAheadStore.refresh()
-                    }
-                }
+                onLeadingChip: { controller.discussTodaysSession() }
             ) {
                 Text("Check week ahead for the next training day.")
                     .helmType(.body, color: HelmColor.fgSecondary)

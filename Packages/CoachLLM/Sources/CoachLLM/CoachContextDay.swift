@@ -24,6 +24,14 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let weekAheadSchedule: String
     /// Today's meal buckets, logged totals, and macro targets for nutrition Q&A.
     public let nutritionDiary: String
+    /// Today's engine prescription (exercises + targets) for chat negotiation.
+    public let todayPrescription: String
+    /// Per-lift load decisions (hold / bump / stall) for explaining prescribed weights.
+    public let prescriptionLoadSummary: String
+    /// Per-muscle volume state summary for coach awareness.
+    public let volumeStateSummary: String
+    /// Engine profile metadata: standing constraints, exercise selection inputs, active joints.
+    public let engineProfile: String
 
     public init(
         readinessBaselines: String = "",
@@ -32,7 +40,11 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         recentWorkouts: String = "",
         trainingPlanSnapshot: String = "",
         weekAheadSchedule: String = "",
-        nutritionDiary: String = ""
+        nutritionDiary: String = "",
+        todayPrescription: String = "",
+        prescriptionLoadSummary: String = "",
+        volumeStateSummary: String = "",
+        engineProfile: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
@@ -41,6 +53,10 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         self.trainingPlanSnapshot = trainingPlanSnapshot
         self.weekAheadSchedule = weekAheadSchedule
         self.nutritionDiary = nutritionDiary
+        self.todayPrescription = todayPrescription
+        self.prescriptionLoadSummary = prescriptionLoadSummary
+        self.volumeStateSummary = volumeStateSummary
+        self.engineProfile = engineProfile
     }
 
     public static let empty = CoachContextDays()
