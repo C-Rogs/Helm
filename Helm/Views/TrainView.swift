@@ -465,7 +465,6 @@ struct TrainView: View {
         }
         .sheet(isPresented: $isShowingSessionLog) {
             FocusSessionLogSheet(
-                exercises: controller.exercisesForDisplay(),
                 displayName: { controller.displayName(for: $0) },
                 onUndoSet: { sessionExerciseID, setID in
                     Task { @MainActor in
@@ -535,7 +534,6 @@ struct TrainView: View {
                 }
             } else {
                 FocusCardLoggingView(
-                    exercises: Array(controller.exercisesForDisplay().prefix(16)),
                     controller: controller,
                     isShowingSessionLog: $isShowingSessionLog
                 )

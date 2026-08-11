@@ -2,21 +2,29 @@ import Core
 import DesignSystem
 import SwiftUI
 
-/// Bottom sheet showing all completed sets across all exercises.
-/// Each completed set is tappable to undo. Current set is shown as pending.
+/// Bottom sheet showing all sets across all exercises.
+/// Each completed set is tappable to undo. Planned sets are shown as pending.
 struct FocusSessionLogSheet: View {
-    let exercises: [WorkoutSessionExerciseDraft]
     let displayName: (String) -> String
     let onUndoSet: (String, String) -> Void
 
     @Environment(\.dismiss) private var dismiss
 
+    /// Live exercises from the controller snapshot.
+    private var exercises: [WorkoutSessionExerciseDraft] {
+        TrainBootstrap.sessionController.exercisesForDisplay()
+    }
+
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                    ForEach(exercises) { exercise in
-                        exerciseSection(exercise)
+                    if exercises.isEmpty {
+                        emptyState
+                    } else {
+                        ForEach(exercises) { exercise in
+                            exerciseSection(exercise)
+                        }
                     }
                 }
                 .padding(HelmSpacing.md)
@@ -33,6 +41,23 @@ struct FocusSessionLogSheet: View {
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)
+    }
+
+    // MARK: - Empty state
+
+    private var emptyState: some View {
+        VStack(spacing: HelmSpacing.md) {
+            Spacer(minLength: 60)
+            Image(systemName: "list.clipboard")
+                .font(.largeTitle)
+                .foregroundStyle(HelmColor.fgMuted)
+            Text("No sets logged yet")
+                .helmType(.body, color: HelmColor.fgSecondary)
+            Text("Log a set in the card view to see it here.")
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+            Spacer()
+        }
+        .frame(maxWidth: .infinity)
     }
 
     // MARK: - Exercise section
@@ -73,6 +98,7 @@ struct FocusSessionLogSheet: View {
         return Button {
             if isCompleted {
                 onUndoSet(exerciseID, set.id)
+                dismiss()
             }
         } label: {
             HStack(spacing: HelmSpacing.sm) {
@@ -170,27 +196,6 @@ struct FocusSessionLogSheet: View {
 
 #Preview("Session log sheet") {
     FocusSessionLogSheet(
-        exercises: [
-            WorkoutSessionExerciseDraft(
-                exerciseID: "bench",
-                displayOrder: 0,
-                exerciseMode: .weightReps,
-                sets: [
-                    SetEntryDraft(setIndex: 0, status: .completed, mass: Mass(kilograms: 80), reps: 8, rpe: 7),
-                    SetEntryDraft(setIndex: 1, status: .completed, mass: Mass(kilograms: 82.5), reps: 8, rpe: 8),
-                    SetEntryDraft(setIndex: 2, status: .planned),
-                ]
-            ),
-            WorkoutSessionExerciseDraft(
-                exerciseID: "squat",
-                displayOrder: 1,
-                exerciseMode: .weightReps,
-                sets: [
-                    SetEntryDraft(setIndex: 0, status: .completed, mass: Mass(kilograms: 100), reps: 5, rpe: 8),
-                    SetEntryDraft(setIndex: 1, status: .planned),
-                ]
-            ),
-        ],
         displayName: { id in
             ["bench": "Bench Press (Barbell)", "squat": "Squat (Barbell)"][id] ?? id
         },

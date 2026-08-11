@@ -3,19 +3,23 @@ import DesignSystem
 import SwiftUI
 
 /// Card-based workout logging surface.
-/// Replaces the vertical table of ExerciseSectionView cards with a single focused card
-/// showing one exercise and one set at a time, plus a compact exercise strip and session log.
+/// Shows one exercise and one set at a time in a focused card,
+/// with a compact exercise strip and session log sheet.
 struct FocusCardLoggingView: View {
-    let exercises: [WorkoutSessionExerciseDraft]
     let controller: TrainSessionController
 
-    /// Bound to the parent's sheet state so the session log can be presented.
     @Binding var isShowingSessionLog: Bool
 
     @State private var currentExerciseIndex: Int = 0
     @State private var currentSetIndex: Int = 0
+    @State private var didInitialSync = false
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+
+    /// Live exercises from the controller snapshot.
+    private var exercises: [WorkoutSessionExerciseDraft] {
+        controller.snapshot?.session.exercises ?? []
+    }
 
     // MARK: - Body
 
@@ -28,12 +32,12 @@ struct FocusCardLoggingView: View {
         }
         .onAppear {
             syncIndicesToFirstIncomplete()
+            didInitialSync = true
         }
-        .onChange(of: exercises.map(\.sets.count)) { _, _ in
-            // Re-sync when exercises change (add/remove sets from controller)
-            syncIndicesToFirstIncomplete()
-        }
-        .onChange(of: controller.snapshot?.session.exercises.map { $0.id }) { _, _ in
+        .onChange(of: controller.snapshot?.session.exercises.map(\.sets.count)) { _, _ in
+            guard didInitialSync else { return }
+            // Skip sync when numpad is active (user is typing)
+            guard controller.numpadTarget == nil else { return }
             syncIndicesToFirstIncomplete()
         }
     }
@@ -41,15 +45,24 @@ struct FocusCardLoggingView: View {
     // MARK: - Exercise strip
 
     private var exerciseStrip: some View {
-        ScrollView(.horizontal, showsIndicators: false) {
-            HStack(spacing: HelmSpacing.xs) {
-                ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
-                    exercisePill(exercise, index: index)
+        ScrollViewReader { proxy in
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: HelmSpacing.xs) {
+                    ForEach(Array(exercises.enumerated()), id: \.element.id) { index, exercise in
+                        exercisePill(exercise, index: index)
+                            .id("pill-\(exercise.id)")
+                    }
+                }
+                .padding(.horizontal, HelmSpacing.md)
+            }
+            .padding(.vertical, HelmSpacing.sm)
+            .onChange(of: currentExerciseIndex) { _, _ in
+                guard let ex = exercises[safe: currentExerciseIndex] else { return }
+                withAnimation {
+                    proxy.scrollTo("pill-\(ex.id)", anchor: .center)
                 }
             }
-            .padding(.horizontal, HelmSpacing.md)
         }
-        .padding(.vertical, HelmSpacing.sm)
     }
 
     private func exercisePill(_ exercise: WorkoutSessionExerciseDraft, index: Int) -> some View {
@@ -59,9 +72,11 @@ struct FocusCardLoggingView: View {
         let total = exercise.sets.count
 
         return Button {
+            guard !exercises.isEmpty else { return }
+            let clamped = min(index, exercises.count - 1)
             withAnimation(HelmMotion.standardAnimation) {
-                currentExerciseIndex = index
-                currentSetIndex = firstIncompleteSetIndex(for: exercise) ?? 0
+                currentExerciseIndex = clamped
+                currentSetIndex = firstIncompleteSetIndex(for: exercises[clamped]) ?? 0
             }
         } label: {
             HStack(spacing: HelmSpacing.xxs) {
@@ -107,7 +122,7 @@ struct FocusCardLoggingView: View {
     // MARK: - Card area
 
     private var cardArea: some View {
-        Group {
+        VStack(spacing: 0) {
             if let currentExercise = exercises[safe: currentExerciseIndex] {
                 FocusExerciseCard(
                     exercise: currentExercise,
@@ -121,6 +136,8 @@ struct FocusCardLoggingView: View {
                     ),
                     activeField: controller.numpadTarget,
                     numpadSelectAll: controller.numpadSelectAll,
+                    showsPRCelebration: currentExercise.sets[safe: currentSetIndex].map { controller.showsPRCelebration(forSetID: $0.id) } ?? false,
+                    encouragementGlyph: currentExercise.sets[safe: currentSetIndex].flatMap { controller.encouragementGlyph(forSetID: $0.id) },
                     fieldDisplayText: { set, field in
                         controller.displayText(for: field, set: set, exerciseID: currentExercise.exerciseID)
                     },
@@ -157,7 +174,6 @@ struct FocusCardLoggingView: View {
                                 sessionExerciseID: currentExercise.id,
                                 setID: set.id
                             )
-                            // After completing, advance to next incomplete set
                             advanceToNextSet()
                         }
                     }
@@ -165,6 +181,18 @@ struct FocusCardLoggingView: View {
                 .padding(.horizontal, HelmSpacing.md)
                 .transition(.opacity)
                 .id("exercise-\(currentExercise.id)-set-\(currentSetIndex)")
+                .gesture(
+                    DragGesture(minimumDistance: 50)
+                        .onEnded { value in
+                            if value.translation.width < -60 {
+                                navigateToNextExercise()
+                            } else if value.translation.width > 60 {
+                                navigateToPreviousExercise()
+                            }
+                        }
+                )
+            } else {
+                emptyExercisesView
             }
         }
         .animation(
@@ -175,6 +203,21 @@ struct FocusCardLoggingView: View {
             HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
             value: currentSetIndex
         )
+    }
+
+    private var emptyExercisesView: some View {
+        VStack(spacing: HelmSpacing.md) {
+            Spacer()
+            Text("Add your first exercise to begin logging sets.")
+                .helmType(.body, color: HelmColor.fgSecondary)
+            Button {
+                controller.isShowingExercisePicker = true
+            } label: {
+                Label("Add exercise", helmIcon: .plus, context: .inline)
+            }
+            .buttonStyle(.helmSecondary)
+            Spacer()
+        }
     }
 
     // MARK: - Session log button
@@ -266,6 +309,24 @@ struct FocusCardLoggingView: View {
         currentSetIndex = max(0, currentExercise.sets.count - 1)
     }
 
+    private func navigateToNextExercise() {
+        guard currentExerciseIndex + 1 < exercises.count else { return }
+        let nextIdx = currentExerciseIndex + 1
+        withAnimation(HelmMotion.standardAnimation) {
+            currentExerciseIndex = nextIdx
+            currentSetIndex = firstIncompleteSetIndex(for: exercises[nextIdx]) ?? 0
+        }
+    }
+
+    private func navigateToPreviousExercise() {
+        guard currentExerciseIndex > 0 else { return }
+        let prevIdx = currentExerciseIndex - 1
+        withAnimation(HelmMotion.standardAnimation) {
+            currentExerciseIndex = prevIdx
+            currentSetIndex = firstIncompleteSetIndex(for: exercises[prevIdx]) ?? 0
+        }
+    }
+
     private func exerciseImageURL(for exerciseID: String) -> URL? {
         guard let summary = controller.exerciseSummaries[exerciseID],
               let gifURL = summary.gifURL else { return nil }
@@ -283,29 +344,6 @@ private extension Array {
 
 #Preview("Focus card logging") {
     FocusCardLoggingView(
-        exercises: [
-            WorkoutSessionExerciseDraft(
-                exerciseID: "bench",
-                displayOrder: 0,
-                exerciseMode: .weightReps,
-                targetRestSeconds: 90,
-                sets: [
-                    SetEntryDraft(setIndex: 0, status: .completed, mass: Mass(kilograms: 80), reps: 8, rpe: 7),
-                    SetEntryDraft(setIndex: 1, status: .completed, mass: Mass(kilograms: 82.5), reps: 8, rpe: 8),
-                    SetEntryDraft(setIndex: 2, status: .planned),
-                ]
-            ),
-            WorkoutSessionExerciseDraft(
-                exerciseID: "squat",
-                displayOrder: 1,
-                exerciseMode: .weightReps,
-                targetRestSeconds: 120,
-                sets: [
-                    SetEntryDraft(setIndex: 0, status: .completed, mass: Mass(kilograms: 100), reps: 5, rpe: 8),
-                    SetEntryDraft(setIndex: 1, status: .planned),
-                ]
-            ),
-        ],
         controller: TrainBootstrap.sessionController,
         isShowingSessionLog: .constant(false)
     )

@@ -14,6 +14,8 @@ struct FocusExerciseCard: View {
     let previous: PreviousPerformance?
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
+    let showsPRCelebration: Bool
+    let encouragementGlyph: EncouragementGlyph?
     let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
     let onOpenField: (NumpadFieldKind) -> Void
     let onFillPrevious: () -> Void
@@ -50,6 +52,20 @@ struct FocusExerciseCard: View {
             VStack(alignment: .leading, spacing: 0) {
                 imageSection
                 detailsSection
+            }
+        }
+        .overlay {
+            if showsPRCelebration {
+                RoundedRectangle(cornerRadius: HelmRadius.md)
+                    .strokeBorder(HelmColor.accent.opacity(0.8), lineWidth: 2)
+                    .scaleEffect(showsPRCelebration ? 1.02 : 1)
+                    .animation(
+                        HelmMotion.animation(
+                            HelmMotion.quickAnimation.repeatCount(2, autoreverses: true),
+                            reduceMotion: reduceMotion
+                        ),
+                        value: showsPRCelebration
+                    )
             }
         }
     }
@@ -261,27 +277,35 @@ struct FocusExerciseCard: View {
 
     private var logSetButton: some View {
         Button(action: onCompleteSet) {
-            Text(isCompleted ? "UNDO SET" : "LOG SET")
-                .helmFont(.label)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, HelmSpacing.md)
-                .background(
-                    isCompleted
-                        ? HelmColor.surfaceElevated
-                        : HelmColor.buttonPrimaryBackground,
-                    in: RoundedRectangle(cornerRadius: HelmRadius.md)
-                )
-                .foregroundStyle(
-                    isCompleted
-                        ? HelmColor.fgSecondary
-                        : HelmColor.buttonPrimaryForeground
-                )
-                .overlay {
-                    if !isCompleted {
-                        RoundedRectangle(cornerRadius: HelmRadius.md)
-                            .strokeBorder(HelmColor.accent.opacity(0.3), lineWidth: 1)
-                    }
+            ZStack {
+                if let encouragementGlyph {
+                    EncouragementGlyphView(glyph: encouragementGlyph)
+                        .offset(x: -8, y: -12)
+                        .allowsHitTesting(false)
                 }
+
+                Text(isCompleted ? "UNDO SET" : "LOG SET")
+                    .helmFont(.label)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, HelmSpacing.md)
+                    .background(
+                        isCompleted
+                            ? HelmColor.surfaceElevated
+                            : HelmColor.buttonPrimaryBackground,
+                        in: RoundedRectangle(cornerRadius: HelmRadius.md)
+                    )
+                    .foregroundStyle(
+                        isCompleted
+                            ? HelmColor.fgSecondary
+                            : HelmColor.buttonPrimaryForeground
+                    )
+                    .overlay {
+                        if !isCompleted {
+                            RoundedRectangle(cornerRadius: HelmRadius.md)
+                                .strokeBorder(HelmColor.accent.opacity(0.3), lineWidth: 1)
+                        }
+                    }
+            }
         }
         .buttonStyle(.helmPressable)
         .accessibilityLabel(isCompleted ? "Undo set" : "Log set")
@@ -325,6 +349,8 @@ struct FocusExerciseCard: View {
         ),
         activeField: nil,
         numpadSelectAll: false,
+        showsPRCelebration: false,
+        encouragementGlyph: nil,
         fieldDisplayText: { set, field in
             switch field {
             case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""
