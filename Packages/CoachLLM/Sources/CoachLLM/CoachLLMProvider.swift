@@ -11,7 +11,8 @@ public protocol CoachLLMProvider: Sendable {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String?
     ) async throws -> AsyncThrowingStream<String, Error>
     func resetThread() async
 }

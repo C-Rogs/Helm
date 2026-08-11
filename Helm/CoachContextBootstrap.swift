@@ -31,25 +31,112 @@ enum CoachContextBootstrap {
         let engineProfile = try Self.engineProfileText(from: store, endingAt: endDay)
 
         let profile = try store.memoryProfile.load()
-        let (evidence, moduleSummaries) = Self.resolveModuleEvidence(profile: profile)
+        let (evidence, groupedEvidence, moduleSummaries) = Self.resolveModuleEvidence(profile: profile)
+
+        var freshness = CoachContextFreshness(blocks: [
+            .init(key: .nutritionDiary, fetchedAt: .now),
+            .init(key: .todayPrescription, fetchedAt: .now),
+            .init(key: .recentWorkouts, fetchedAt: .now),
+            .init(key: .readinessBaselines, fetchedAt: .now),
+            .init(key: .weekAheadSchedule, fetchedAt: .now),
+            .init(key: .evidenceIndex, fetchedAt: .now),
+            .init(key: .trainingPlanSnapshot, fetchedAt: .now)
+        ])
+
+        // Build session outcome cards from recent completed workouts.
+        let recentSummaries = try store.workoutSessions.listSummaries(limit: 7)
+        let outcomes: [SessionOutcomeCard] = recentSummaries.compactMap { summary in
+            let day = HelmDay.day(for: summary.startedAt, cutoff: .default, calendar: .current)
+            var exercises: [SessionOutcomeCard.ExerciseOutcome] = []
+            var prescribedBy: SessionOutcomeCard.PrescriptionSource = .engine
+            var attributedMessageID: String?
+
+            if let session = try? store.workoutSessions.fetch(id: summary.id) {
+                let exerciseIDs = session.exercises.map(\.exerciseID)
+                let displayNames = (try? store.exercises.displayNames(for: exerciseIDs)) ?? [:]
+                let prescribed: [PrescribedExercise] = PrescriptionDayStore.load(for: day)?.exercises ?? []
+                let prescribedByID: [String: PrescribedExercise] = Dictionary(
+                    uniqueKeysWithValues: prescribed.map { ($0.exerciseID, $0) }
+                )
+
+                exercises = session.exercises.map { exercise in
+                    let name = displayNames[exercise.exerciseID] ?? exercise.exerciseID
+                    let completedSets = exercise.sets.filter {
+                        $0.status == .completed && !$0.setType.isWarmup
+                    }.count
+                    let rx = prescribedByID[exercise.exerciseID]
+                    let prescribedSets = rx?.targetSets ?? completedSets
+
+                    var deviations: [SessionOutcomeCard.ExerciseOutcome.Deviation] = []
+                    if prescribedSets > 0 || rx != nil {
+                        if completedSets < prescribedSets {
+                            deviations.append(.volumeSkipped)
+                        } else if completedSets > prescribedSets {
+                            deviations.append(.volumeExtra)
+                        } else {
+                            deviations.append(.matched)
+                        }
+                    } else {
+                        deviations.append(.matched)
+                    }
+
+                    return SessionOutcomeCard.ExerciseOutcome(
+                        name: name,
+                        prescribedSets: prescribedSets,
+                        completedSets: completedSets,
+                        deviations: deviations
+                    )
+                }
+
+                let adviceRecords = (try? store.coachAdviceRecords.fetch(
+                    helmDay: day.formatted,
+                    adviceType: .workoutStart
+                )) ?? []
+                attributedMessageID = adviceRecords.first(where: { $0.state == .actedOn })
+                    .map(\.messageID)
+                    ?? adviceRecords.first?.messageID
+
+                if adviceRecords.contains(where: { $0.state == .actedOn || $0.state == .pending }) {
+                    prescribedBy = .coachCustom
+                } else {
+                    prescribedBy = .engine
+                }
+            }
+
+            return SessionOutcomeCard(
+                helmDay: day.formatted,
+                sessionType: summary.title ?? "Workout",
+                durationMinutes: summary.endedAt.map {
+                    Int($0.timeIntervalSince(summary.startedAt) / 60)
+                } ?? 0,
+                estimatedTRIMP: 0,
+                completed: true,
+                exercises: exercises,
+                attributedMessageID: attributedMessageID,
+                prescribedBy: prescribedBy
+            )
+        }
 
         return try await CoachContextAssembler.assemble(
             from: store,
             endingAt: endDay,
             lookbackDays: lookbackDays,
             evidence: evidence,
+            groupedEvidence: groupedEvidence,
             busyDayHints: busyDayHints,
             todayPrescription: todayPrescription,
             prescriptionLoadSummary: prescriptionLoadSummary,
             volumeStateSummary: volumeStateSummary,
             engineProfile: engineProfile,
-            moduleSummaries: moduleSummaries
+            moduleSummaries: moduleSummaries,
+            recentSessionOutcomes: outcomes,
+            freshness: freshness
         )
     }
 
-    private static func resolveModuleEvidence(profile: MemoryProfile) -> (evidence: [EvidenceRecord], moduleSummaries: String) {
+    private static func resolveModuleEvidence(profile: MemoryProfile) -> (evidence: [EvidenceRecord], groupedEvidence: [String: [EvidenceRecord]], moduleSummaries: String) {
         guard let index = ResourceModuleIndex.shared else {
-            return (MethodologyEvidenceSupport.allRecords, "")
+            return (MethodologyEvidenceSupport.allRecords, [:], "")
         }
         let moduleIDs: [String]
         if !profile.activeModules.isEmpty {
@@ -58,8 +145,22 @@ enum CoachContextBootstrap {
             moduleIDs = index.defaultModuleIDs(for: profile.phaseGoal)
         }
         let evidence = index.filteredEvidence(moduleIDs: moduleIDs)
+
+        var grouped: [String: [EvidenceRecord]] = [:]
+        for ev in evidence {
+            let evModuleID = Self.moduleForEvidence(ev.id)
+            let title = index.moduleTitle(for: evModuleID) ?? evModuleID
+            grouped[title, default: []].append(ev)
+        }
+
         let summaries = index.moduleSummaries(moduleIDs: moduleIDs)
-        return (evidence, summaries)
+        return (evidence, grouped, summaries)
+    }
+
+    private static func moduleForEvidence(_ evidenceID: String) -> String {
+        let parts = evidenceID.split(separator: "-")
+        guard parts.count >= 3, parts[0] == "ev" else { return evidenceID }
+        return parts.dropFirst().prefix(while: { !$0.contains(where: { $0.isNumber }) }).joined(separator: "-")
     }
 
     private static func buildCoachBusyHints(

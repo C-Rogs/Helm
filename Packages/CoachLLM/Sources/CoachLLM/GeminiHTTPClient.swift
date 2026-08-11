@@ -47,6 +47,11 @@ public enum GeminiStreamAssembler {
                 do {
                     for try await chunk in stream {
                         for line in GeminiSSEParser.eventDataLines(from: chunk) {
+                            if let streamError = GeminiSSEParser.streamErrorMessage(from: line) {
+                                throw CoachProviderError.requestFailed(
+                                    "Gemini stream error: \(streamError)"
+                                )
+                            }
                             if let usage = GeminiSSEParser.usageMetadata(fromJSONString: line) {
                                 lastUsage = usage
                             }
@@ -111,7 +116,12 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
                         return
                     }
                     guard (200 ..< 300).contains(http.statusCode) else {
-                        continuation.finish(throwing: CoachProviderError.fromHTTPStatusCode(http.statusCode))
+                        let errorData = try await Self.collectErrorBody(from: bytes)
+                        let providerError = Self.providerError(statusCode: http.statusCode, data: errorData)
+                        coachLLMStreamLog.error(
+                            "Gemini stream HTTP \(http.statusCode, privacy: .public) requestID=\(request.requestID.uuidString, privacy: .public)"
+                        )
+                        continuation.finish(throwing: providerError)
                         return
                     }
                     var buffer = Data()
@@ -128,6 +138,9 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
                     }
                     continuation.finish()
                 } catch {
+                    coachLLMStreamLog.error(
+                        "Gemini stream transport failure requestID=\(request.requestID.uuidString, privacy: .public) \(String(describing: type(of: error)), privacy: .public)"
+                    )
                     continuation.finish(throwing: error)
                 }
             }
@@ -147,13 +160,46 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
             throw CoachProviderError.requestFailed("Invalid response")
         }
         guard (200 ..< 300).contains(http.statusCode) else {
-            throw CoachProviderError.requestFailed(Self.errorDetail(statusCode: http.statusCode, data: data))
+            coachLLMStreamLog.error(
+                "Gemini generate HTTP \(http.statusCode, privacy: .public) requestID=\(request.requestID.uuidString, privacy: .public)"
+            )
+            throw Self.providerError(statusCode: http.statusCode, data: data)
+        }
+        return data
+    }
+
+    private static func providerError(statusCode: Int, data: Data) -> CoachProviderError {
+        switch statusCode {
+        case 429:
+            return .rateLimited
+        case 408, 504:
+            return .timeout
+        default:
+            return .requestFailed(errorDetail(statusCode: statusCode, data: data))
+        }
+    }
+
+    private static func collectErrorBody(
+        from bytes: URLSession.AsyncBytes,
+        limit: Int = 4_096
+    ) async throws -> Data {
+        var data = Data()
+        data.reserveCapacity(min(limit, 1_024))
+        for try await byte in bytes {
+            data.append(byte)
+            if data.count >= limit { break }
         }
         return data
     }
 
     private static func errorDetail(statusCode: Int, data: Data) -> String {
         let bodySnippet = errorSnippet(from: data)
+        if statusCode == 401 || statusCode == 403 {
+            if bodySnippet.isEmpty {
+                return "Gemini rejected the API key (HTTP \(statusCode)). Check Settings → Coach."
+            }
+            return "Gemini rejected the API key (HTTP \(statusCode)): \(bodySnippet)"
+        }
         if bodySnippet.isEmpty {
             return "Gemini request failed with status \(statusCode)."
         }

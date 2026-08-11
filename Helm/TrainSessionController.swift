@@ -61,6 +61,7 @@ final class TrainSessionController {
     private(set) var sessionPRRecordsBySetID: [String: [DetectedPersonalRecord]] = [:]
     private(set) var encouragementGlyphBySetID: [String: EncouragementGlyph] = [:]
     private(set) var rirAdvisoryBySetID: [String: String] = [:]
+    private(set) var blockerShakeTokenBySetID: [String: Int] = [:]
     private(set) var historicalBestE1RM: [String: Mass] = [:]
     private(set) var prCelebrationSetID: String?
     private(set) var lastFinishSummary: WorkoutFinishSummary?
@@ -535,6 +536,10 @@ final class TrainSessionController {
                             store: persistence,
                             liveHeartRateFallback: liveFallback
                         )
+                        if let summary = lastFinishSummary {
+                            let outcomeCard = buildOutcomeCard(from: session)
+                            lastFinishSummary = summary.withComplianceCard(outcomeCard)
+                        }
                     } else {
                         lastFinishSummary = nil
                     }
@@ -548,6 +553,22 @@ final class TrainSessionController {
                     isShowingFinishSummary = lastFinishSummary != nil
                     if lastFinishSummary == nil {
                         presentPersonalRecordsIfNeeded(records)
+                    }
+
+                    // Mark any pending workoutStart advice as acted on.
+                    let today = HelmDay.day(for: .now, calendar: .current).formatted
+                    if let pendingRecords = try? persistence.coachAdviceRecords.fetch(
+                        helmDay: today,
+                        adviceType: .workoutStart,
+                        state: .pending
+                    ) {
+                        for record in pendingRecords {
+                            try? persistence.coachAdviceRecords.updateState(
+                                messageID: record.messageID,
+                                state: .actedOn,
+                                linkedSessionID: finishedID
+                            )
+                        }
                     }
                 } else {
                     WorkoutHapticCoordinator.playSessionFinished()
@@ -676,12 +697,31 @@ final class TrainSessionController {
         }
         let workingCount = exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count
         guard workingCount > 1 else { return }
+
+        let completedWorkingCount = exercise.sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet && $0.status == .completed
+        }.count
+
         do {
             try await store.adjustExerciseSetCount(
                 sessionExerciseID: sessionExerciseID,
                 targetSetCount: workingCount - 1
             )
             await refreshMetadata()
+
+            // When every working set is completed the engine clamps the floor;
+            // the remove was a no-op. Shake the blocker so the user sees why.
+            guard let refreshed = store.snapshot?.session.exercises
+                .first(where: { $0.id == sessionExerciseID }) else { return }
+            let newWorkingCount = refreshed.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count
+            if newWorkingCount == workingCount,
+               let blocker = refreshed.sets
+                .filter({ $0.setType.countsAsPrescribedWorkingSet && $0.status == .completed })
+                .max(by: { $0.setIndex < $1.setIndex }) {
+                blockerShakeTokenBySetID[blocker.id, default: 0] += 1
+                HapticEngine.shared.play(.clampRejected)
+            }
+
             pushWatchCompanionState()
         } catch {
             errorMessage = error.localizedDescription
@@ -826,6 +866,10 @@ final class TrainSessionController {
 
     func rirAdvisory(forSetID setID: String) -> String? {
         rirAdvisoryBySetID[setID]
+    }
+
+    func blockerShakeToken(forSetID setID: String) -> Int {
+        blockerShakeTokenBySetID[setID] ?? 0
     }
 
     func skipRest() async {
@@ -1549,6 +1593,32 @@ final class TrainSessionController {
     func dismissFinishSummary() {
         isShowingFinishSummary = false
         presentPersonalRecordsIfNeeded(lastFinishedPersonalRecords)
+    }
+
+    private func buildOutcomeCard(from session: WorkoutSessionDraft) -> SessionOutcomeCard {
+        let exerciseIDs = session.exercises.map(\.exerciseID)
+        let displayNames = (try? persistence.exercises.displayNames(for: exerciseIDs)) ?? [:]
+        let today = HelmDay.day(for: .now, calendar: .current)
+
+        let outcomes: [SessionOutcomeCard.ExerciseOutcome] = session.exercises.map { exercise in
+            let name = displayNames[exercise.exerciseID] ?? exercise.exerciseID
+            let completedSets = exercise.sets.filter { $0.status == .completed && !$0.setType.isWarmup }.count
+            return SessionOutcomeCard.ExerciseOutcome(
+                name: name,
+                prescribedSets: completedSets,
+                completedSets: completedSets,
+                deviations: [.matched]
+            )
+        }
+
+        return SessionOutcomeCard(
+            helmDay: today.formatted,
+            sessionType: session.title ?? "Workout",
+            durationMinutes: 0,
+            estimatedTRIMP: 0,
+            completed: true,
+            exercises: outcomes
+        )
     }
 
     private func presentPersonalRecordsIfNeeded(_ records: [DetectedPersonalRecord]) {
@@ -2462,6 +2532,7 @@ final class TrainSessionController {
         sessionPRRecordsBySetID = [:]
         encouragementGlyphBySetID = [:]
         rirAdvisoryBySetID = [:]
+        blockerShakeTokenBySetID = [:]
         historicalBestE1RM = [:]
         prCelebrationSetID = nil
         sessionPersonalRecordKeys = []

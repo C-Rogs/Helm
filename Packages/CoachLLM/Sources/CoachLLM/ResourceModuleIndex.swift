@@ -26,6 +26,16 @@ public enum ResourceModuleIndex: Sendable {
             evidenceByID = Dictionary(uniqueKeysWithValues: document.evidence.map { ($0.id, $0) })
         }
 
+        /// Returns the human-readable title for an evidence record, if known.
+        public func evidenceTitle(for id: String) -> String? {
+            evidenceByID[id]?.title
+        }
+
+        /// Returns the human-readable title for a topic, if known.
+        public func topicTitle(for id: String) -> String? {
+            topicsByID[id]?.title
+        }
+
         /// Union of non-placeholder evidence records for the given module IDs, sorted by ID for stable output.
         public func filteredEvidence(moduleIDs: [String]) -> [EvidenceRecord] {
             var ids = Set<String>()
@@ -36,6 +46,11 @@ public enum ResourceModuleIndex: Sendable {
             return ids.compactMap { evidenceByID[$0] }
                 .filter { !$0.placeholder }
                 .sorted { $0.id < $1.id }
+        }
+
+        /// Returns the human-readable title for a module ID, if known.
+        public func moduleTitle(for moduleID: String) -> String? {
+            modulesByID[moduleID]?.title
         }
 
         /// Union of topics for the given module IDs, sorted by ID.

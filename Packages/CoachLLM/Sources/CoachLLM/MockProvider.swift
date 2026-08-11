@@ -83,7 +83,8 @@ public final class MockProvider: CoachLLMProvider, @unchecked Sendable {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
         let snapshot = RequestSnapshot(
             systemInstructions: systemInstructions,

@@ -32,20 +32,17 @@ struct ManualRestTimerSheet: View {
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .helmScreenBackground()
-            .navigationTitle("Manual rest timer")
+            .navigationTitle("Rest Timer")
             .navigationBarTitleDisplayMode(.inline)
             .disabled(isMutating)
             .animation(HelmMotion.standardAnimation, value: isRunning)
             .animation(HelmMotion.quickAnimation, value: isCustomMode)
             .onAppear {
                 restoreSelection()
-                sheetDetent = .medium
-                if !isRunning {
-                    sheetDetent = .large
-                }
+                sheetDetent = .large
             }
-            .onChange(of: isRunning) { _, running in
-                sheetDetent = running ? .medium : .large
+            .onChange(of: isRunning) { _, _ in
+                sheetDetent = .large
             }
             .onChange(of: restTimer?.id) { _, _ in
                 syncFromRunningTimer()
@@ -54,7 +51,7 @@ struct ManualRestTimerSheet: View {
                 syncFromRunningTimer()
             }
         }
-        .presentationDetents(isRunning ? [.medium, .large] : [.large, .medium], selection: $sheetDetent)
+        .presentationDetents([.large, .medium], selection: $sheetDetent)
         .presentationDragIndicator(.visible)
     }
 
@@ -65,9 +62,7 @@ struct ManualRestTimerSheet: View {
                     remainingSeconds: selectedSeconds,
                     remainingFraction: 1
                 )
-                .frame(maxWidth: 260)
-                .padding(HelmSpacing.md)
-                .helmPanelChrome(.accentQuiet, cornerRadius: HelmRadius.lg)
+                .frame(maxWidth: 220)
                 .padding(.top, HelmSpacing.sm)
 
                 presetRow
@@ -103,9 +98,7 @@ struct ManualRestTimerSheet: View {
     }
 
     private var activeContent: some View {
-        VStack(spacing: HelmSpacing.lg) {
-            Spacer(minLength: HelmSpacing.sm)
-
+        VStack(spacing: HelmSpacing.md) {
             if let timer = restTimer {
                 let totalSeconds = controller.restTimerTotalSeconds(for: timer)
                 TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -120,9 +113,7 @@ struct ManualRestTimerSheet: View {
                         remainingSeconds: remaining,
                         remainingFraction: fraction
                     )
-                    .frame(maxWidth: 280)
-                    .padding(HelmSpacing.md)
-                    .helmPanelChrome(.accentQuiet, cornerRadius: HelmRadius.lg)
+                    .frame(maxWidth: 200)
                 }
             }
 
@@ -157,10 +148,9 @@ struct ManualRestTimerSheet: View {
             .buttonStyle(.helmPrimary)
             .disabled(isMutating)
             .accessibilityLabel("Stop timer")
-
-            Spacer(minLength: HelmSpacing.md)
         }
         .padding(HelmSpacing.md)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 
     private var presetRow: some View {

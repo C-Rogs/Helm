@@ -96,6 +96,7 @@ struct CloudBackupTests {
         let pushTime = Date(timeIntervalSince1970: 1_800_100_000)
         let push = try sourceService.push(
             includeHistory: false,
+            includeNutrition: false,
             onboardingCompleted: true,
             now: pushTime
         )
@@ -106,6 +107,7 @@ struct CloudBackupTests {
         let destService = CloudBackupService(store: destination, fileStore: fileStore)
         let result = try destService.pullIfNeeded(
             includeHistory: false,
+            includeNutrition: false,
             lastAppliedProfileUpdatedAt: nil,
             forceIfFreshInstall: true,
             applyOnboardingCompleted: { appliedOnboarding = $0 }
@@ -117,6 +119,7 @@ struct CloudBackupTests {
 
         let skipped = try destService.pullIfNeeded(
             includeHistory: false,
+            includeNutrition: false,
             lastAppliedProfileUpdatedAt: pushTime,
             forceIfFreshInstall: false,
             applyOnboardingCompleted: { _ in }
@@ -137,6 +140,7 @@ struct CloudBackupTests {
         let sourceService = CloudBackupService(store: source, fileStore: fileStore)
         _ = try sourceService.push(
             includeHistory: true,
+            includeNutrition: false,
             onboardingCompleted: false,
             now: started.addingTimeInterval(86_400)
         )
@@ -146,12 +150,14 @@ struct CloudBackupTests {
         let destService = CloudBackupService(store: destination, fileStore: fileStore)
         let first = try destService.pullForced(
             includeHistory: true,
+            includeNutrition: false,
             applyOnboardingCompleted: { _ in }
         )
         #expect(first.historyImport?.importedSessionCount == 1)
 
         let second = try destService.pullForced(
             includeHistory: true,
+            includeNutrition: false,
             applyOnboardingCompleted: { _ in }
         )
         #expect(second.historyImport?.importedSessionCount == 0)

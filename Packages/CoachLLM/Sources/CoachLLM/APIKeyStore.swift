@@ -1,9 +1,18 @@
 import Foundation
 import Security
 
-public enum APIKeyStoreError: Error, Sendable, Equatable {
+public enum APIKeyStoreError: Error, Sendable, Equatable, LocalizedError {
     case keychainError(OSStatus)
     case invalidData
+
+    public var errorDescription: String? {
+        switch self {
+        case .invalidData:
+            return "Gemini API key data is invalid."
+        case .keychainError(let status):
+            return "Keychain error \(status) while reading the Gemini API key."
+        }
+    }
 }
 
 public struct APIKeyStore: Sendable {

@@ -46,6 +46,12 @@ public actor DiagnosticsLog {
                 stackTrace: stackTrace
             )
         )
+
+        let logger = helmLogger(category: category)
+        let detail = context?.map { "\($0.key)=\($0.value)" }.sorted().joined(separator: " ") ?? ""
+        logger.error(
+            "\(resolvedMessage, privacy: .public) type=\(errorType, privacy: .public) \(detail, privacy: .public)"
+        )
     }
 
     public func entriesOldestFirst() -> [LogEntry] {

@@ -139,19 +139,20 @@ struct FoodPortionStepView: View {
                 Button("Cancel", action: onCancel)
             }
             ToolbarItem(placement: .confirmationAction) {
-                if isSaving {
-                    ProgressView()
-                } else {
-                    Button("Add") {
-                        guard let grams else { return }
-                        if abs(grams - defaults.grams) > 5 {
-                            logger.debug("portion edited; delta=(grams - defaults.grams)g vs suggested (defaults.grams)g")
-                        } else {
-                            logger.debug("portion accepted as suggested")
-                        }
-                        onLog(grams, resolvedServingLabel, bucket)
+                Button("Add") {
+                    guard let grams else { return }
+                    if abs(grams - defaults.grams) > 5 {
+                        logger.debug("portion edited; delta=(grams - defaults.grams)g vs suggested (defaults.grams)g")
+                    } else {
+                        logger.debug("portion accepted as suggested")
                     }
-                    .disabled(!isValid)
+                    onLog(grams, resolvedServingLabel, bucket)
+                }
+                .disabled(isSaving || !isValid)
+                .overlay {
+                    if isSaving {
+                        ProgressView()
+                    }
                 }
             }
         }

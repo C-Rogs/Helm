@@ -72,6 +72,14 @@ struct DataSafetyView: View {
         return "\(estimate.historyByteCountFormatted) if enabled · \(estimate.historySessionCount) sessions"
     }
 
+    private func nutritionSizeLabel(_ estimate: CloudBackupSizeEstimate) -> String {
+        let mealCount = estimate.nutritionMealCount ?? 0
+        if cloudPreferences.nutritionSyncEnabled {
+            return "\(estimate.nutritionByteCountFormatted) · \(mealCount) meals"
+        }
+        return "\(estimate.nutritionByteCountFormatted) if enabled · \(mealCount) meals"
+    }
+
     var body: some View {
         List {
             Section {
@@ -138,6 +146,10 @@ struct DataSafetyView: View {
                     .disabled(!cloudPreferences.profileSyncEnabled)
                     .helmListRowChrome()
 
+                Toggle("Include food log (30 days)", isOn: $cloudPreferences.nutritionSyncEnabled)
+                    .disabled(!cloudPreferences.profileSyncEnabled)
+                    .helmListRowChrome()
+
                 if let estimate = cloudCoordinator.sizeEstimate {
                     HelmStatusRow(
                         label: "Profile size",
@@ -147,6 +159,11 @@ struct DataSafetyView: View {
                     HelmStatusRow(
                         label: "History size",
                         value: historySizeLabel(estimate)
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "Nutrition size",
+                        value: nutritionSizeLabel(estimate)
                     )
                     .helmListRowChrome()
                 }
@@ -205,18 +222,8 @@ struct DataSafetyView: View {
             } header: {
                 Text("iCloud sync")
             } footer: {
-                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. Local SQLite stays excluded from device iCloud Backup; HealthKit re-backfills health rows.")
+                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. Optional 30-day food log includes recents, meal templates, and recent meals. HealthKit re-backfills health rows on reinstall.")
                     .helmType(.body, color: HelmColor.fgMuted)
-            }
-
-            Section {
-                HelmStatusRow(label: "Device backup", value: "Excluded")
-                    .helmListRowChrome()
-                Text("Application Support/Helm is excluded from iCloud device backup. Use iCloud sync above or manual export for wipe recovery.")
-                    .helmType(.body, color: HelmColor.fgMuted)
-                    .helmListRowChrome()
-            } header: {
-                Text("iCloud device backup")
             }
         }
         .helmSettingsListChrome()
@@ -231,6 +238,12 @@ struct DataSafetyView: View {
             }
         }
         .onChange(of: cloudPreferences.historySyncEnabled) { _, _ in
+            cloudCoordinator.refreshEstimate()
+            if cloudPreferences.profileSyncEnabled {
+                cloudCoordinator.schedulePush()
+            }
+        }
+        .onChange(of: cloudPreferences.nutritionSyncEnabled) { _, _ in
             cloudCoordinator.refreshEstimate()
             if cloudPreferences.profileSyncEnabled {
                 cloudCoordinator.schedulePush()

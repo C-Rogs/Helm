@@ -119,19 +119,6 @@ public struct SetRow: View {
             RoundedRectangle(cornerRadius: HelmRadius.sm)
                 .strokeBorder(borderColor, lineWidth: activeField == nil && !isCompleted ? 1 : 1.5)
         }
-        .overlay(alignment: .leading) {
-            // Completed reads "done", not "disabled": a solid accent tick on the
-            // leading edge separates it from merely inactive rows at a glance.
-            if isCompleted {
-                UnevenRoundedRectangle(
-                    topLeadingRadius: HelmRadius.sm,
-                    bottomLeadingRadius: HelmRadius.sm
-                )
-                .fill(HelmColor.accent.opacity(0.85))
-                .frame(width: 3)
-                .transition(.opacity)
-            }
-        }
         .animation(HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion), value: isCompleted)
         .opacity(isCompleted ? 0.88 : 1)
     }

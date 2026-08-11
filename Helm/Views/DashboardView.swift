@@ -555,6 +555,14 @@ struct DashboardView: View {
            gap > MacroGapCalculator.significanceThresholdKcal {
             NutritionAlcoholGapRow(gapKilocalories: gap)
         }
+
+        Button {
+            AppTabRouter.shared.openNutrition()
+        } label: {
+            Label("Log food", helmIcon: .plus, context: .inline)
+        }
+        .buttonStyle(.helmSecondary)
+        .padding(.top, HelmSpacing.xs)
     }
 
     private func nutritionMacroChip(_ label: String, actual: Double?, target: Int) -> some View {

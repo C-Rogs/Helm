@@ -1,6 +1,6 @@
 # Coach Brain: Deep Research Prompts
 
-Cameron runs each prompt below in a separate Gemini deep research session. The agent outputs valid JSON matching the `MethodologyDocument` schema. After all six sessions, merge outputs into one `methodology.json` and replace the placeholder bundle at `Helm/Resources/MethodologySeed/methodology.json`.
+Cameron runs each prompt below in a separate Gemini deep research session. The agent outputs valid JSON matching the `MethodologyDocument` schema. After all seven sessions, merge outputs into one `methodology.json` and replace the placeholder bundle at `Helm/Resources/MethodologySeed/methodology.json`.
 
 ## Prompt Template (shared prefix per module session)
 
@@ -111,17 +111,30 @@ Cover: Energy system overview (ATP-PC, glycolytic, oxidative), concurrent traini
 Coach lens: "Should I do cardio on rest days?", "Will running kill my gains?", "How much conditioning do I actually need?"
 ```
 
+### 7. Science-Based Lifting
+
+```
+Module: lifting / "Science-Based Lifting"
+autoAssign: always=true (every athlete lifts)
+
+Cover: Progressive overload principles in practice (load, reps, density, ROM), biomechanics of common patterns (squat, hinge, press, pull, carry), bracing and intra-abdominal pressure, stance and grip variants with tradeoffs, range of motion quality vs load, tempo and eccentric control evidence, mind-muscle connection (when it helps, when it does not), form cues that transfer vs folklore cues, exercise technique teaching progressions, common technique faults and fixes, equipment setup (bar path, bench angle, cable height), bilateral vs unilateral work, stability demands vs output, when to chase perfect form vs when to accept ugly-but-safe working sets.
+
+Do NOT rehash volume landmarks, mesocycle periodization, or RPE scales already covered by hypertrophy and strength modules. Focus on how the athlete executes lifts in the gym.
+
+Coach lens: "Is my squat depth good enough?", "Should I pause at the bottom?", "Are my elbows flaring a problem?", "How do I brace for a heavy set?", "Is this cue science or gym lore?"
+```
+
 ## Output Assembly
 
-After all six sessions complete, merge the JSON outputs into one `methodology.json`:
+After all seven sessions complete, merge the JSON outputs into one `methodology.json`:
 
 ```json
 {
   "seedVersion": 2,
   "placeholder": false,
-  "modules": [ /* union of all six module arrays */ ],
-  "evidence": [ /* union of all six evidence arrays */ ],
-  "topics": [ /* union of all six topic arrays */ ]
+  "modules": [ /* union of all seven module arrays */ ],
+  "evidence": [ /* union of all seven evidence arrays */ ],
+  "topics": [ /* union of all seven topic arrays */ ]
 }
 ```
 

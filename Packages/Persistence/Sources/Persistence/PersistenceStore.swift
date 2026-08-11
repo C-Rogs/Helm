@@ -23,6 +23,7 @@ public actor PersistenceStore {
     public nonisolated let coachRecommendations: CoachRecommendationRepository
     public nonisolated let nutritionLogStatus: NutritionLogStatusRepository
     public nonisolated let workoutMusicSamples: WorkoutMusicSampleRepository
+    public nonisolated let coachAdviceRecords: CoachAdviceRecordStore
 
     public let databaseURL: URL
     private let pool: DatabasePool
@@ -53,6 +54,7 @@ public actor PersistenceStore {
         coachRecommendations = CoachRecommendationRepository(pool: pool)
         nutritionLogStatus = NutritionLogStatusRepository(pool: pool)
         workoutMusicSamples = WorkoutMusicSampleRepository(pool: pool)
+        coachAdviceRecords = CoachAdviceRecordStore(pool: pool)
     }
 
     public static func openDefault() throws -> PersistenceStore {

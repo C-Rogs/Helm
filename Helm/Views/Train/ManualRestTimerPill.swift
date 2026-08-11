@@ -28,20 +28,23 @@ struct ManualRestTimerPill: View {
     @ViewBuilder
     private func pillLabel(seconds: Int?, emphasized: Bool) -> some View {
         HStack(spacing: HelmSpacing.xxs) {
+            Image(systemName: "timer")
+                .font(.body.weight(.semibold))
+                .foregroundStyle(emphasized ? HelmColor.accent : HelmColor.fg)
+
             if let seconds {
                 Text(RestTimerFormatting.mmss(seconds))
                     .helmType(.label, color: HelmColor.fg)
                     .helmNumericRoll(value: seconds)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.8)
             } else {
-                Image(systemName: "timer")
-                    .font(.body.weight(.semibold))
-                    .foregroundStyle(HelmColor.fg)
+                Text("Rest Timer")
+                    .helmType(.label, color: HelmColor.fg)
+                    .lineLimit(1)
             }
         }
-        .frame(minWidth: 52, minHeight: 44)
         .padding(.horizontal, HelmSpacing.sm)
+        .frame(minHeight: 44)
         .background(
             emphasized ? HelmColor.accent.opacity(0.12) : HelmColor.surfaceElevated,
             in: Capsule()

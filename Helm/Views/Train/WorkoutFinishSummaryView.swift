@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import DesignSystem
 import HealthKitIngest
@@ -34,6 +35,10 @@ struct WorkoutFinishSummaryView: View {
 
             if !summary.muscleMovements.isEmpty {
                 landmarkSection
+            }
+
+            if let complianceCard = summary.complianceCard {
+                complianceSection(complianceCard)
             }
 
             Text(summary.readinessTeaser)
@@ -134,6 +139,88 @@ struct WorkoutFinishSummaryView: View {
                 .modifier(LandmarkAppearModifier(index: index + 1, enabled: animatesEntrance))
             }
         }
+    }
+
+    // MARK: - Plan Compliance
+
+    private func complianceSection(_ card: SessionOutcomeCard) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HelmHairlineRule()
+            HelmSectionEyebrow("PLAN COMPLIANCE")
+
+            ForEach(card.exercises, id: \.name) { exercise in
+                complianceRow(exercise)
+            }
+
+            HStack(spacing: HelmSpacing.xxs) {
+                Text("Overall match")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                Text("\(matchPercentage(for: card))%")
+                    .helmType(.bigNumber)
+            }
+        }
+    }
+
+    private func complianceRow(_ exercise: SessionOutcomeCard.ExerciseOutcome) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.sm) {
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text(exercise.name)
+                    .helmType(.label)
+                HStack(spacing: HelmSpacing.sm) {
+                    Text("\(exercise.completedSets)/\(exercise.prescribedSets) sets")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    if let rx = exercise.prescribedKg, let actual = exercise.actualKg {
+                        let diff = actual - rx
+                        if abs(diff) > 0.5 {
+                            Text("\(String(format: "%.0f", actual)) vs \(String(format: "%.0f", rx)) kg")
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        } else {
+                            Text("\(String(format: "%.0f", actual)) kg (on plan)")
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+            deviationBadge(exercise.deviations)
+        }
+    }
+
+    private func deviationBadge(_ deviations: [SessionOutcomeCard.ExerciseOutcome.Deviation]) -> some View {
+        HStack(spacing: HelmSpacing.xxs) {
+            ForEach(uniqueVisibleDeviations(from: deviations), id: \.self) { dev in
+                Text(dev.displayLabel)
+                    .helmType(.monoTag, color: deviationColor(dev))
+                    .padding(.horizontal, 6)
+                    .padding(.vertical, 2)
+                    .background(deviationColor(dev).opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+            }
+        }
+    }
+
+    private func uniqueVisibleDeviations(from deviations: [SessionOutcomeCard.ExerciseOutcome.Deviation]) -> [SessionOutcomeCard.ExerciseOutcome.Deviation] {
+        let filtered = deviations.filter { $0 != .matched }
+        let seen = Array(NSOrderedSet(array: filtered)) as? [SessionOutcomeCard.ExerciseOutcome.Deviation] ?? filtered
+        return seen.isEmpty ? [.matched] : seen
+    }
+
+    private func deviationColor(_ dev: SessionOutcomeCard.ExerciseOutcome.Deviation) -> Color {
+        switch dev {
+        case .matched, .loadExceeded, .volumeExtra: return HelmColor.ready
+        case .loadDropped, .volumeSkipped, .exerciseSkipped: return HelmColor.warning
+        case .exerciseAdded: return HelmColor.fgMuted
+        }
+    }
+
+    private func matchPercentage(for card: SessionOutcomeCard) -> Int {
+        guard !card.exercises.isEmpty else { return 100 }
+        let matched = card.exercises.filter { ex in
+            let negatives: Set<SessionOutcomeCard.ExerciseOutcome.Deviation> = [
+                .loadDropped, .volumeSkipped, .exerciseSkipped
+            ]
+            return Set(ex.deviations).isDisjoint(with: negatives)
+        }
+        return Int((Double(matched.count) / Double(card.exercises.count)) * 100)
     }
 
     private func animateLandmarkMovement() {

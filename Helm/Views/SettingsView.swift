@@ -3,6 +3,7 @@ import Core
 import DesignSystem
 import Diagnostics
 import HealthKitIngest
+import Persistence
 import SwiftUI
 
 struct SettingsView: View {
@@ -14,6 +15,7 @@ struct SettingsView: View {
     @State private var notificationStatusLabel = "…"
     @State private var restNotificationNeedsPermission = false
     @State private var coachKeyStatusLabel = "…"
+    @State private var memoryStatusLabel = "…"
     @State private var calendarStatusLabel = "…"
     @State private var watchStatusLabel = "…"
     @State private var spotifyStatusLabel = "…"
@@ -61,34 +63,6 @@ struct SettingsView: View {
             .pickerStyle(.menu)
             .helmListRowChrome()
             .onChange(of: coordinator.skin) { _, _ in
-                HapticEngine.shared.play(.selection)
-            }
-
-            Picker(
-                "Accent",
-                selection: Binding(
-                    get: { coordinator.accentPreset },
-                    set: { coordinator.accentSource = .preset($0) }
-                )
-            ) {
-                ForEach(HelmAccentPreset.allCases) { preset in
-                    Label {
-                        Text(preset.label)
-                    } icon: {
-                        Circle()
-                            .fill(preset.swatchColor)
-                            .frame(width: 14, height: 14)
-                            .overlay {
-                                Circle()
-                                    .strokeBorder(HelmColor.hairline, lineWidth: 1)
-                            }
-                    }
-                    .tag(preset)
-                }
-            }
-            .pickerStyle(.menu)
-            .helmListRowChrome()
-            .onChange(of: coordinator.accentSource) { _, _ in
                 HapticEngine.shared.play(.selection)
             }
 
@@ -230,7 +204,7 @@ struct SettingsView: View {
             settingsLink("Coach settings", value: coachKeyStatusLabel) {
                 CoachSettingsView()
             }
-            settingsLink("Coach Memory", value: nil) {
+            settingsLink("Coach Memory", value: memoryStatusLabel) {
                 MemoryProfileEditorView()
             }
             settingsLink("Notifications", value: notificationStatusLabel) {
@@ -352,6 +326,17 @@ struct SettingsView: View {
         restNotificationNeedsPermission = notificationStatus == .denied || notificationStatus == .notDetermined
 
         coachKeyStatusLabel = APIKeyStore().hasKey(kind: .gemini) ? "Key saved" : "No key"
+
+        let memoryProfile = try? PersistenceBootstrap.persistenceStore.memoryProfile.load()
+        if let profile = memoryProfile {
+            let populated = [profile.baselinesSummary, profile.preferences, profile.standingConstraints,
+                             profile.whatHasWorked, profile.injuryHistory, profile.trainingResponses,
+                             profile.nutritionPatterns]
+                .filter { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+            memoryStatusLabel = populated.isEmpty ? "Not set" : "Configured"
+        } else {
+            memoryStatusLabel = "Not set"
+        }
 
         calendarStatusLabel = calendarSummary(CalendarHintBootstrap.service.currentStatus())
 

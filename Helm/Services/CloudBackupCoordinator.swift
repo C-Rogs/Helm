@@ -70,6 +70,7 @@ final class CloudBackupCoordinator {
         do {
             let result = try service.push(
                 includeHistory: preferences.historySyncEnabled,
+                includeNutrition: preferences.nutritionSyncEnabled,
                 onboardingCompleted: onboardingCompleted
             )
             preferences.recordPush(profileUpdatedAt: result.profileUpdatedAt)
@@ -80,6 +81,11 @@ final class CloudBackupCoordinator {
                let sessions = result.historySessionCount {
                 parts.append(
                     "history \(sessions) sessions (\(ByteCountFormatter.string(fromByteCount: Int64(historyBytes), countStyle: .file)))"
+                )
+            }
+            if let nutrition = result.nutrition {
+                parts.append(
+                    "nutrition \(nutrition.mealCount) meals (\(ByteCountFormatter.string(fromByteCount: Int64(nutrition.byteCount), countStyle: .file)))"
                 )
             }
             statusMessage = parts.joined(separator: " · ")
@@ -110,20 +116,25 @@ final class CloudBackupCoordinator {
         isBusy = true
         defer { isBusy = false }
         do {
-            // After delete, prefs are gone; try history file (no-op if missing).
+            // After delete, prefs are gone; try history + nutrition files (no-op if missing).
             let includeHistory = preferences.historySyncEnabled || !preferences.profileSyncEnabled
+            let includeNutrition = preferences.nutritionSyncEnabled || !preferences.profileSyncEnabled
             let result = try service.pullIfNeeded(
                 includeHistory: includeHistory,
+                includeNutrition: includeNutrition,
                 lastAppliedProfileUpdatedAt: preferences.lastAppliedProfileUpdatedAt,
                 forceIfFreshInstall: true,
                 applyOnboardingCompleted: applyOnboardingCompleted(_:)
             )
-            if result.didRestoreProfile || result.historyImport != nil {
+            if result.didRestoreProfile || result.historyImport != nil || result.nutritionImport != nil {
                 preferences.recordRestore(profileUpdatedAt: result.profileUpdatedAt)
                 if result.didRestoreProfile {
                     preferences.profileSyncEnabled = true
                     if result.historyImport != nil {
                         preferences.historySyncEnabled = true
+                    }
+                    if result.nutritionImport?.didImport == true {
+                        preferences.nutritionSyncEnabled = true
                     }
                 }
                 OnboardingStore.shared.syncFromDefaults()
@@ -146,8 +157,11 @@ final class CloudBackupCoordinator {
         do {
             let includeHistory = preferences.historySyncEnabled
                 || (try? service.peekCloudProfileUpdatedAt()) != nil
+            let includeNutrition = preferences.nutritionSyncEnabled
+                || (try? service.peekCloudProfileUpdatedAt()) != nil
             let result = try service.pullForced(
                 includeHistory: includeHistory,
+                includeNutrition: includeNutrition,
                 applyOnboardingCompleted: applyOnboardingCompleted(_:)
             )
             preferences.recordRestore(profileUpdatedAt: result.profileUpdatedAt)
@@ -179,6 +193,15 @@ final class CloudBackupCoordinator {
             parts.append(
                 "Imported \(history.importedSessionCount) sessions (\(history.importedSetCount) sets)"
             )
+        }
+        if let nutrition = result.nutritionImport, nutrition.didImport {
+            var nutritionParts: [String] = []
+            if nutrition.recentCount > 0 { nutritionParts.append("\(nutrition.recentCount) foods") }
+            if nutrition.templateCount > 0 { nutritionParts.append("\(nutrition.templateCount) templates") }
+            if nutrition.mealCount > 0 { nutritionParts.append("\(nutrition.mealCount) meals") }
+            if !nutritionParts.isEmpty {
+                parts.append("Nutrition: \(nutritionParts.joined(separator: ", "))")
+            }
         }
         if parts.isEmpty {
             return "iCloud backup already up to date"

@@ -13,8 +13,9 @@ struct ChatView: View {
     var body: some View {
         NavigationStack {
             VStack(spacing: 0) {
-                if let degradedState = controller.degradedState {
-                    offlineBanner(degradedState)
+                if let degradedState = controller.degradedState,
+                   controller.lastTurnError == nil {
+                    degradedBanner(degradedState)
                 }
 
                 if let message = activityGate.blockingMessage(for: .chat) {
@@ -64,6 +65,15 @@ struct ChatView: View {
                                 .id("chat-confirmation")
                             }
 
+                            if !controller.pendingMemoryRefinements.isEmpty {
+                                MemoryRefinementConfirmationCard(
+                                    refinements: controller.pendingMemoryRefinements,
+                                    onAcceptAll: { controller.acceptMemoryRefinements() },
+                                    onDismiss: { controller.dismissMemoryRefinements() }
+                                )
+                                .id("memory-refinements")
+                            }
+
                             if controller.isStreaming, let streamingText = controller.streamingText {
                                 if shouldShowStreamingBubble(streamingText) {
                                     assistantBubble(streamingText, isStreaming: true)
@@ -89,6 +99,9 @@ struct ChatView: View {
                     .onChange(of: controller.pendingChatAction?.id) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
+                    .onChange(of: controller.pendingMemoryRefinements.count) { _, _ in
+                        scrollToBottom(proxy: proxy)
+                    }
                     .onChange(of: controller.isPreparingFoodMealConfirm) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
@@ -112,6 +125,10 @@ struct ChatView: View {
                 }
 
                 composer
+
+                if controller.citationFailureCount > 0, !controller.messages.isEmpty {
+                    citationWarningPill
+                }
             }
             .helmScreenBackground()
             .navigationTitle("Chat")
@@ -177,9 +194,9 @@ struct ChatView: View {
         .padding(.top, HelmSpacing.xl)
     }
 
-    private func offlineBanner(_ state: CoachDegradedState) -> some View {
+    private func degradedBanner(_ state: CoachDegradedState) -> some View {
         HStack(spacing: HelmSpacing.sm) {
-            HelmIconView(.offline, context: .inline)
+            HelmIconView(bannerIcon(for: state.reason), context: .inline)
                 .foregroundStyle(HelmColor.fgSecondary)
             Text(state.userMessage)
                 .helmType(.body, color: HelmColor.fgSecondary)
@@ -188,6 +205,21 @@ struct ChatView: View {
         .padding(.horizontal, HelmSpacing.md)
         .padding(.vertical, HelmSpacing.sm)
         .background(HelmColor.surface)
+    }
+
+    private func bannerIcon(for reason: CoachDegradedReason) -> HelmIcon {
+        switch reason {
+        case .offline:
+            .offline
+        case .timeout, .rateLimited:
+            .refresh
+        case .providerUnavailable:
+            .settings
+        case .cancelled, .contextTooLarge:
+            .info
+        case .other:
+            .error
+        }
     }
 
     private func messageBubble(_ message: StoredChatMessage) -> some View {
@@ -276,6 +308,7 @@ struct ChatView: View {
     private func assistantBubble(_ text: String, isStreaming: Bool) -> some View {
         let display = CoachChatTextFormatter.userFacingText(from: text)
         let chart = isStreaming ? nil : ChartPayloadParser.parse(from: text)
+        let sourceTags = isStreaming ? [] : CoachChatTextFormatter.sourceTags(from: text)
         return HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 if !display.isEmpty {
@@ -290,8 +323,48 @@ struct ChatView: View {
                 if let chart {
                     CoachChatChartBubble(payload: chart)
                 }
+
+                if !sourceTags.isEmpty {
+                    sourceTagChips(sourceTags)
+                }
             }
             Spacer(minLength: 0)
+        }
+    }
+
+    private func chipIcon(for kind: CoachChatSourceTag.Kind) -> HelmIcon {
+        switch kind {
+        case .evidence: return .brain
+        case .topic: return .book
+        case .engine: return .flame
+        }
+    }
+
+    private func chipColor(for kind: CoachChatSourceTag.Kind) -> Color {
+        switch kind {
+        case .evidence: return HelmColor.surface
+        case .topic: return HelmColor.surface
+        case .engine: return Color(red: 0.2, green: 0.2, blue: 0.24)
+        }
+    }
+
+    private func sourceTagChips(_ tags: [CoachChatSourceTag]) -> some View {
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: HelmSpacing.sm) {
+                ForEach(tags) { tag in
+                    HStack(spacing: 4) {
+                        HelmIconView(chipIcon(for: tag.kind), context: .inline)
+                            .imageScale(.small)
+                        Text(tag.display)
+                            .lineLimit(1)
+                    }
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(chipColor(for: tag.kind), in: RoundedRectangle(cornerRadius: 6))
+                }
+            }
+            .padding(.horizontal, HelmSpacing.md)
         }
     }
 
@@ -303,6 +376,20 @@ struct ChatView: View {
                         .helmType(.monoTag, color: HelmColor.depleted)
                     Text(chatActionErrorCopy(message))
                         .helmType(.body, color: HelmColor.depleted)
+                    #if DEBUG
+                    if let detail = CoachDiagnosticsStore.shared.lastRejectReason,
+                       !detail.isEmpty,
+                       detail != message {
+                        Text(detail)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                            .textSelection(.enabled)
+                    }
+                    if let code = CoachDiagnosticsStore.shared.lastErrorCode {
+                        Text(code)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                            .textSelection(.enabled)
+                    }
+                    #endif
                 }
                 if controller.lastFailedUserMessage != nil {
                     Button("Try again") {
@@ -423,6 +510,23 @@ struct ChatView: View {
             && !controller.draftText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 
+    private var citationWarningPill: some View {
+        HStack(spacing: 6) {
+            HelmIconView(.error, context: .inline)
+                .imageScale(.small)
+                .foregroundStyle(HelmColor.warning)
+            Text("Coach cited \(controller.citationFailureCount) unverified source\(controller.citationFailureCount == 1 ? "" : "s") this session.")
+                .helmType(.monoTag, color: HelmColor.warning)
+                .lineLimit(2)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.vertical, HelmSpacing.xs)
+        .background(HelmColor.warning.opacity(0.08), in: RoundedRectangle(cornerRadius: 8))
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.bottom, HelmSpacing.xs)
+    }
+
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         let scroll = {
             if showsCoachProgress {
@@ -433,6 +537,8 @@ struct ChatView: View {
                 proxy.scrollTo("streaming", anchor: .bottom)
             } else if controller.pendingChatAction != nil {
                 proxy.scrollTo("chat-confirmation", anchor: .bottom)
+            } else if !controller.pendingMemoryRefinements.isEmpty {
+                proxy.scrollTo("memory-refinements", anchor: .bottom)
             } else if controller.lastTurnError != nil {
                 proxy.scrollTo("last-turn-error", anchor: .bottom)
             } else if let lastID = controller.messages.last?.id {
@@ -445,6 +551,124 @@ struct ChatView: View {
             scroll()
         }
     }
+}
+
+// MARK: - Memory Refinement Confirmation Card
+
+private struct MemoryRefinementConfirmationCard: View {
+    let refinements: [MemoryRefinementEntry]
+    let onAcceptAll: () -> Void
+    let onDismiss: () -> Void
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            HelmSectionEyebrow("COACH LEARNED")
+            Text("Coach learned from conversation")
+                .helmType(.label, color: HelmColor.fg)
+
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                ForEach(Array(refinements.enumerated()), id: \.offset) { _, refinement in
+                    refinementRow(refinement)
+                }
+            }
+
+            HStack(spacing: HelmSpacing.sm) {
+                Button("Accept all") { onAcceptAll() }
+                    .buttonStyle(.helmPrimary)
+                Button("Dismiss") { onDismiss() }
+                    .buttonStyle(.helmSecondary)
+            }
+        }
+        .padding(HelmSpacing.md)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .helmPanelChrome(.accentQuiet)
+    }
+
+    private func refinementRow(_ entry: MemoryRefinementEntry) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            HStack(spacing: HelmSpacing.xs) {
+                Text(fieldLabel(entry.field))
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                actionBadge(entry.action)
+                confidenceBadge(entry.confidence)
+            }
+            Text(String(entry.proposedValue.prefix(80)))
+                .helmType(.body, color: HelmColor.fgSecondary)
+                .lineLimit(2)
+        }
+        .padding(HelmSpacing.xs)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+    }
+
+    private func actionBadge(_ action: MemoryRefinementEntry.RefinementAction) -> some View {
+        Text(action.rawValue)
+            .helmType(.monoTag, color: actionColor(action))
+            .padding(.horizontal, 6)
+            .padding(.vertical, 2)
+            .background(actionColor(action).opacity(0.12), in: RoundedRectangle(cornerRadius: 4))
+    }
+
+    private func confidenceBadge(_ confidence: MemoryRefinementEntry.RefinementConfidence) -> some View {
+        HStack(spacing: 4) {
+            Circle().fill(confidenceColor(confidence)).frame(width: 6, height: 6)
+            Text(confidence.rawValue)
+                .helmType(.monoTag, color: confidenceColor(confidence))
+        }
+    }
+
+    private func fieldLabel(_ field: String) -> String {
+        switch field {
+        case "baselinesSummary": return "Baselines"
+        case "preferences": return "Preferences"
+        case "standingConstraints": return "Constraints"
+        case "whatHasWorked": return "What Worked"
+        case "injuryHistory": return "Injury History"
+        case "trainingResponses": return "Training Responses"
+        case "nutritionPatterns": return "Nutrition"
+        default: return field
+        }
+    }
+
+    private func actionColor(_ action: MemoryRefinementEntry.RefinementAction) -> Color {
+        switch action {
+        case .add: return HelmColor.ready
+        case .merge: return HelmColor.accent
+        case .replace: return HelmColor.compromised
+        case .remove: return HelmColor.depleted
+        }
+    }
+
+    private func confidenceColor(_ confidence: MemoryRefinementEntry.RefinementConfidence) -> Color {
+        switch confidence {
+        case .low: return HelmColor.fgMuted
+        case .medium: return HelmColor.compromised
+        case .high: return HelmColor.ready
+        }
+    }
+}
+
+#if DEBUG
+#Preview("Memory refinement card") {
+    VStack {
+        MemoryRefinementConfirmationCard(
+            refinements: [
+                MemoryRefinementEntry(
+                    field: "preferences",
+                    action: .add,
+                    proposedValue: "Prefers push exercises over pull. Likes high volume shoulder work on Tuesdays.",
+                    confidence: .high,
+                    evidence: [],
+                    rationale: "Athlete repeatedly chose push variations."
+                )
+            ],
+            onAcceptAll: {},
+            onDismiss: {}
+        )
+        .helmScreenPadding()
+        .padding()
+    }
+    .helmTheme()
 }
 
 #Preview("Chat instrument") {
@@ -490,3 +714,4 @@ struct ChatView: View {
     }
     .helmTheme()
 }
+#endif

@@ -73,6 +73,18 @@ public struct NutritionRepository: Sendable {
         }
     }
 
+    /// Fetch all meals within a helm day range (inclusive).
+    public func fetchMealsInRange(from startDay: HelmDay, through endDay: HelmDay) throws -> [MealRecord] {
+        try pool.read { db in
+            let rows = try MealRow
+                .filter(Column("helm_day") >= HelmDayColumn.encode(startDay))
+                .filter(Column("helm_day") <= HelmDayColumn.encode(endDay))
+                .order(Column("logged_at").desc)
+                .fetchAll(db)
+            return try rows.map { try $0.toValue() }
+        }
+    }
+
     public func fetchMeal(id: UUID) throws -> MealRecord? {
         try pool.read { db in
             guard let row = try MealRow.fetchOne(db, key: id.uuidString.lowercased()) else {

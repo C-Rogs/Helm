@@ -16,6 +16,8 @@ public struct CoachContextDay: Sendable, Hashable, Codable, Equatable {
 public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let readinessBaselines: String
     public let evidence: [EvidenceRecord]
+    /// Evidence records grouped by module title for human-readable context formatting.
+    public let groupedEvidence: [String: [EvidenceRecord]]
     public let recent: [CoachContextDay]
     public let recentWorkouts: String
     /// Engine snapshot + weekly volume ledger. Coach interprets free-form emphasis against this.
@@ -34,10 +36,15 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let engineProfile: String
     /// Active resource module titles and descriptions for the coach prompt.
     public let moduleSummaries: String
+    /// Session outcome cards from recent workouts for follow-through tracking.
+    public let recentSessionOutcomes: [SessionOutcomeCard]
+    /// Context block freshness metadata for staleness detection.
+    public let freshness: CoachContextFreshness
 
     public init(
         readinessBaselines: String = "",
         evidence: [EvidenceRecord] = [],
+        groupedEvidence: [String: [EvidenceRecord]] = [:],
         recent: [CoachContextDay] = [],
         recentWorkouts: String = "",
         trainingPlanSnapshot: String = "",
@@ -47,10 +54,13 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         prescriptionLoadSummary: String = "",
         volumeStateSummary: String = "",
         engineProfile: String = "",
-        moduleSummaries: String = ""
+        moduleSummaries: String = "",
+        recentSessionOutcomes: [SessionOutcomeCard] = [],
+        freshness: CoachContextFreshness = CoachContextFreshness()
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
+        self.groupedEvidence = groupedEvidence
         self.recent = recent
         self.recentWorkouts = recentWorkouts
         self.trainingPlanSnapshot = trainingPlanSnapshot
@@ -61,6 +71,8 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         self.volumeStateSummary = volumeStateSummary
         self.engineProfile = engineProfile
         self.moduleSummaries = moduleSummaries
+        self.recentSessionOutcomes = recentSessionOutcomes
+        self.freshness = freshness
     }
 
     public static let empty = CoachContextDays()

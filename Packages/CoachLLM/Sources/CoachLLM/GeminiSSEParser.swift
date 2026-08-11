@@ -26,6 +26,23 @@ enum GeminiSSEParser {
         return parts.compactMap { $0["text"] as? String }.joined()
     }
 
+    /// Gemini sometimes returns an error object as an SSE `data:` event instead of HTTP failure.
+    static func streamErrorMessage(from eventJSON: String) -> String? {
+        guard let data = eventJSON.data(using: .utf8),
+              let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let error = object["error"] as? [String: Any]
+        else {
+            return nil
+        }
+        if let message = error["message"] as? String, !message.isEmpty {
+            return String(message.prefix(240))
+        }
+        if let status = error["status"] as? String, !status.isEmpty {
+            return status
+        }
+        return "Gemini stream returned an error event."
+    }
+
     /// Best-effort parse of Gemini `usageMetadata` (prompt / cached / output tokens).
     static func usageMetadata(from jsonObject: [String: Any]) -> GeminiUsageMetadata? {
         guard let usage = jsonObject["usageMetadata"] as? [String: Any] else { return nil }

@@ -21,7 +21,8 @@ struct ReservedFoundationModelsProvider: CoachLLMProvider {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: CoachProviderError.unavailable("On-device coaching is not available yet."))
@@ -50,7 +51,8 @@ struct DisabledOpenRouterProvider: CoachLLMProvider {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: CoachProviderError.unavailable("OpenRouter is not enabled yet."))
@@ -79,7 +81,8 @@ struct GeminiPlaceholderProvider: CoachLLMProvider {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: CoachProviderError.unavailable("Add your Gemini API key in Settings."))

@@ -65,7 +65,8 @@ public struct PreStartCoachService: Sendable {
             systemInstructions: built.systemInstructions,
             contextBlock: built.contextBlock,
             userMessage: prompt,
-            thread: .empty
+            thread: .empty,
+            freshnessSuffix: built.freshnessSuffix
         )
 
         var assembled = ""

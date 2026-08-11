@@ -8,6 +8,7 @@ final class CloudBackupPreferences {
 
     static let profileSyncEnabledKey = "helm.cloudBackup.profileSyncEnabled"
     static let historySyncEnabledKey = "helm.cloudBackup.historySyncEnabled"
+    static let nutritionSyncEnabledKey = "helm.cloudBackup.nutritionSyncEnabled"
     static let lastPushedAtKey = "helm.cloudBackup.lastPushedAt"
     static let lastRestoredAtKey = "helm.cloudBackup.lastRestoredAt"
     static let lastAppliedProfileUpdatedAtKey = "helm.cloudBackup.lastAppliedProfileUpdatedAt"
@@ -18,6 +19,7 @@ final class CloudBackupPreferences {
             defaults.set(profileSyncEnabled, forKey: Self.profileSyncEnabledKey)
             if !profileSyncEnabled {
                 historySyncEnabled = false
+                nutritionSyncEnabled = false
             }
         }
     }
@@ -33,6 +35,17 @@ final class CloudBackupPreferences {
         }
     }
 
+    var nutritionSyncEnabled: Bool {
+        didSet {
+            guard !isHydrating else { return }
+            if nutritionSyncEnabled, !profileSyncEnabled {
+                nutritionSyncEnabled = false
+                return
+            }
+            defaults.set(nutritionSyncEnabled, forKey: Self.nutritionSyncEnabledKey)
+        }
+    }
+
     private(set) var lastPushedAt: Date?
     private(set) var lastRestoredAt: Date?
     private(set) var lastAppliedProfileUpdatedAt: Date?
@@ -44,6 +57,7 @@ final class CloudBackupPreferences {
         self.defaults = defaults
         profileSyncEnabled = defaults.bool(forKey: Self.profileSyncEnabledKey)
         historySyncEnabled = defaults.bool(forKey: Self.historySyncEnabledKey)
+        nutritionSyncEnabled = defaults.bool(forKey: Self.nutritionSyncEnabledKey)
         lastPushedAt = defaults.object(forKey: Self.lastPushedAtKey) as? Date
         lastRestoredAt = defaults.object(forKey: Self.lastRestoredAtKey) as? Date
         lastAppliedProfileUpdatedAt = defaults.object(forKey: Self.lastAppliedProfileUpdatedAtKey) as? Date

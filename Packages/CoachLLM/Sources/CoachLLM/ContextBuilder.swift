@@ -8,7 +8,10 @@ public enum ContextBuilder {
         budget: Int,
         turn: ContextTurn
     ) -> CoachPrompt {
-        let systemInstructions = CoachSystemPrompt.chatV1
+        var systemInstructions = CoachSystemPrompt.chatV1
+        if let style = profile.globalStyle ?? profile.trainingStyle {
+            systemInstructions += "\n\n" + style.promptDelta
+        }
         let stablePrefix = stablePrefixText(profile: profile, days: days)
 
         let sortedDays = days.recent.sorted { $0.helmDay < $1.helmDay }
@@ -42,12 +45,16 @@ public enum ContextBuilder {
             characterCount: systemInstructions.count + contextBlock.count
         )
 
+        let freshnessSuffix = days.freshness.stalenessSummary()
+        let suffix = freshnessSuffix.isEmpty ? nil : freshnessSuffix
+
         return CoachPrompt(
             systemInstructions: systemInstructions,
             contextBlock: contextBlock,
             estimatedTokens: estimatedTokens,
             includedDayCount: includedDays.count,
-            droppedDayCount: droppedDayCount
+            droppedDayCount: droppedDayCount,
+            freshnessSuffix: suffix
         )
     }
 
@@ -66,19 +73,39 @@ public enum ContextBuilder {
             sections.append("# Readiness Baselines\n\(baselines)")
         }
 
-        let evidence = EvidenceIndex.stableText(from: days.evidence)
+        let evidence = {
+            let grouped = EvidenceIndex.groupedText(from: days.groupedEvidence)
+            if !grouped.isEmpty { return grouped }
+            return EvidenceIndex.stableText(from: days.evidence)
+        }()
         if !evidence.isEmpty {
             sections.append("# Evidence Index\n\(evidence)")
         }
 
         let workouts = normalized(days.recentWorkouts)
-        if !workouts.isEmpty {
-            sections.append("# Recent Workouts\n\(workouts)")
+        let outcomes = days.recentSessionOutcomes
+        if !workouts.isEmpty || !outcomes.isEmpty {
+            var header = "# Recent Sessions"
+            if !outcomes.isEmpty {
+                let outcomesText = outcomes.map(\.llmText).joined(separator: "\n")
+                var lines = ["\(header)\n\(outcomesText)"]
+                if !workouts.isEmpty {
+                    lines.append("# Recent Workouts\n\(workouts)")
+                }
+                sections.append(lines.joined(separator: "\n\n"))
+            } else {
+                sections.append("\(header)\n\(workouts)")
+            }
         }
 
         let trainingPlan = normalized(days.trainingPlanSnapshot)
         if !trainingPlan.isEmpty {
-            sections.append("# Training Plan Snapshot\n\(trainingPlan)")
+            var planBlock = "# Training Plan Snapshot\n\(trainingPlan)"
+            let adherenceLine = SessionOutcomeCard.weeklyAdherenceLine(from: days.recentSessionOutcomes)
+            if !adherenceLine.isEmpty {
+                planBlock += "\n\(adherenceLine)"
+            }
+            sections.append(planBlock)
         }
 
         let weekAhead = normalized(days.weekAheadSchedule)
@@ -135,13 +162,37 @@ public enum ContextBuilder {
                 sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
             }
         }
+        let evidence = {
+            let grouped = EvidenceIndex.groupedText(from: days.groupedEvidence)
+            if !grouped.isEmpty { return grouped }
+            return EvidenceIndex.stableText(from: days.evidence)
+        }()
+        if !evidence.isEmpty {
+            sections.append("# Evidence Index\n\(evidence)")
+        }
         let workouts = normalized(days.recentWorkouts)
-        if !workouts.isEmpty {
-            sections.append("# Recent Workouts\n\(workouts)")
+        let outcomes = days.recentSessionOutcomes
+        if !workouts.isEmpty || !outcomes.isEmpty {
+            var header = "# Recent Sessions"
+            if !outcomes.isEmpty {
+                let outcomesText = outcomes.map(\.llmText).joined(separator: "\n")
+                var lines = ["\(header)\n\(outcomesText)"]
+                if !workouts.isEmpty {
+                    lines.append("# Recent Workouts\n\(workouts)")
+                }
+                sections.append(lines.joined(separator: "\n\n"))
+            } else {
+                sections.append("\(header)\n\(workouts)")
+            }
         }
         let trainingPlan = normalized(days.trainingPlanSnapshot)
         if !trainingPlan.isEmpty {
-            sections.append("# Training Plan Snapshot\n\(trainingPlan)")
+            var planBlock = "# Training Plan Snapshot\n\(trainingPlan)"
+            let adherenceLine = SessionOutcomeCard.weeklyAdherenceLine(from: days.recentSessionOutcomes)
+            if !adherenceLine.isEmpty {
+                planBlock += "\n\(adherenceLine)"
+            }
+            sections.append(planBlock)
         }
         let weekAhead = normalized(days.weekAheadSchedule)
         if !weekAhead.isEmpty {

@@ -15,6 +15,7 @@ struct ExerciseSectionView: View {
     let validationMessage: String?
     let advisoryMessage: (String) -> String?
     let shakeToken: Int
+    let blockerShakeToken: (String) -> Int
     let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
     let badgeText: (String) -> String?
     let encouragementGlyph: (String) -> EncouragementGlyph?
@@ -157,7 +158,7 @@ struct ExerciseSectionView: View {
                             numpadSelectAll: numpadSelectAll,
                             validationMessage: validationMessage,
                             advisoryMessage: advisoryMessage(set.id),
-                            shakeToken: shakeToken,
+                            shakeToken: shakeToken + blockerShakeToken(set.id),
                             badgeText: badgeText(set.id),
                             encouragementGlyph: encouragementGlyph(set.id),
                             showsPRCelebration: showsPRCelebration(set.id),
@@ -227,6 +228,7 @@ struct ExerciseSectionView: View {
         validationMessage: nil,
         advisoryMessage: { _ in nil },
         shakeToken: 0,
+        blockerShakeToken: { _ in 0 },
         fieldDisplayText: { set, field in
             switch field {
             case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""

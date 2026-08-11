@@ -34,10 +34,76 @@ public struct HelmCloudProfileBackup: Codable, Sendable, Hashable {
     }
 }
 
+/// Codable backup of recent foods, meal templates, and recent meals.
+public struct HelmCloudNutritionBackup: Codable, Sendable {
+    public static let currentSchemaVersion = 1
+
+    public let schemaVersion: Int
+    public let updatedAt: Date
+    public let recents: [FoodLogRecent]
+    public let mealTemplates: [MealTemplate]
+    public let recentMeals: [MealWithLineItems]
+
+    public init(
+        schemaVersion: Int = currentSchemaVersion,
+        updatedAt: Date = Date(),
+        recents: [FoodLogRecent],
+        mealTemplates: [MealTemplate],
+        recentMeals: [MealWithLineItems]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.updatedAt = updatedAt
+        self.recents = recents
+        self.mealTemplates = mealTemplates
+        self.recentMeals = recentMeals
+    }
+}
+
+/// A logged meal with its line items for backup purposes.
+public struct MealWithLineItems: Codable, Sendable, Hashable {
+    public let meal: MealRecord
+    public let lineItems: [MealLineItemRecord]
+
+    public init(meal: MealRecord, lineItems: [MealLineItemRecord]) {
+        self.meal = meal
+        self.lineItems = lineItems
+    }
+}
+
+public struct CloudBackupNutritionPushResult: Sendable, Hashable {
+    public let byteCount: Int
+    public let recentCount: Int
+    public let templateCount: Int
+    public let mealCount: Int
+
+    public init(byteCount: Int, recentCount: Int, templateCount: Int, mealCount: Int) {
+        self.byteCount = byteCount
+        self.recentCount = recentCount
+        self.templateCount = templateCount
+        self.mealCount = mealCount
+    }
+}
+
+public struct CloudBackupNutritionPullResult: Sendable, Hashable {
+    public let didImport: Bool
+    public let recentCount: Int
+    public let templateCount: Int
+    public let mealCount: Int
+
+    public init(didImport: Bool, recentCount: Int, templateCount: Int, mealCount: Int) {
+        self.didImport = didImport
+        self.recentCount = recentCount
+        self.templateCount = templateCount
+        self.mealCount = mealCount
+    }
+}
+
 public struct CloudBackupSizeEstimate: Sendable, Hashable {
     public let profileByteCount: Int
     public let historyByteCount: Int
     public let historySessionCount: Int
+    public let nutritionByteCount: Int?
+    public let nutritionMealCount: Int?
 
     public var profileByteCountFormatted: String {
         ByteCountFormatter.string(fromByteCount: Int64(profileByteCount), countStyle: .file)
@@ -47,10 +113,22 @@ public struct CloudBackupSizeEstimate: Sendable, Hashable {
         ByteCountFormatter.string(fromByteCount: Int64(historyByteCount), countStyle: .file)
     }
 
-    public init(profileByteCount: Int, historyByteCount: Int, historySessionCount: Int) {
+    public var nutritionByteCountFormatted: String {
+        ByteCountFormatter.string(fromByteCount: Int64(nutritionByteCount ?? 0), countStyle: .file)
+    }
+
+    public init(
+        profileByteCount: Int,
+        historyByteCount: Int,
+        historySessionCount: Int,
+        nutritionByteCount: Int? = nil,
+        nutritionMealCount: Int? = nil
+    ) {
         self.profileByteCount = profileByteCount
         self.historyByteCount = historyByteCount
         self.historySessionCount = historySessionCount
+        self.nutritionByteCount = nutritionByteCount
+        self.nutritionMealCount = nutritionMealCount
     }
 }
 
@@ -59,17 +137,20 @@ public struct CloudBackupPushResult: Sendable, Hashable {
     public let profileByteCount: Int
     public let historyByteCount: Int?
     public let historySessionCount: Int?
+    public let nutrition: CloudBackupNutritionPushResult?
 
     public init(
         profileUpdatedAt: Date,
         profileByteCount: Int,
         historyByteCount: Int?,
-        historySessionCount: Int?
+        historySessionCount: Int?,
+        nutrition: CloudBackupNutritionPushResult? = nil
     ) {
         self.profileUpdatedAt = profileUpdatedAt
         self.profileByteCount = profileByteCount
         self.historyByteCount = historyByteCount
         self.historySessionCount = historySessionCount
+        self.nutrition = nutrition
     }
 }
 
@@ -77,23 +158,29 @@ public struct CloudBackupPullResult: Sendable, Hashable {
     public let didRestoreProfile: Bool
     public let profileUpdatedAt: Date?
     public let historyImport: TrainingHistoryImportResult?
+    public let nutritionImport: CloudBackupNutritionPullResult?
 
     public init(
         didRestoreProfile: Bool,
         profileUpdatedAt: Date?,
-        historyImport: TrainingHistoryImportResult?
+        historyImport: TrainingHistoryImportResult?,
+        nutritionImport: CloudBackupNutritionPullResult? = nil
     ) {
         self.didRestoreProfile = didRestoreProfile
         self.profileUpdatedAt = profileUpdatedAt
         self.historyImport = historyImport
+        self.nutritionImport = nutritionImport
     }
 }
 
 public enum CloudBackupError: Error, Sendable, Equatable {
     case iCloudUnavailable
     case unsupportedProfileSchemaVersion(Int)
+    case unsupportedNutritionSchemaVersion(Int)
     case profileDecodingFailed
     case profileEncodingFailed
+    case nutritionDecodingFailed
+    case nutritionEncodingFailed
     case missingProfileBackup
     case writeFailed(String)
     case readFailed(String)
@@ -106,10 +193,16 @@ extension CloudBackupError: LocalizedError {
             return "iCloud Drive is not available. Sign in to iCloud and enable iCloud Drive."
         case let .unsupportedProfileSchemaVersion(version):
             return "Unsupported cloud profile backup schema version \(version)."
+        case let .unsupportedNutritionSchemaVersion(version):
+            return "Unsupported cloud nutrition backup schema version \(version)."
         case .profileDecodingFailed:
             return "Could not read the iCloud profile backup."
         case .profileEncodingFailed:
             return "Could not encode the profile backup."
+        case .nutritionDecodingFailed:
+            return "Could not read the iCloud nutrition backup."
+        case .nutritionEncodingFailed:
+            return "Could not encode the nutrition backup."
         case .missingProfileBackup:
             return "No profile backup found in iCloud."
         case let .writeFailed(message):

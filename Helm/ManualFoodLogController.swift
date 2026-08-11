@@ -132,6 +132,15 @@ final class ManualFoodLogController {
         return FoodPortionDefaultsResolver.defaults(for: product, storedPreference: storedPreference)
     }
 
+    /// Skip the portion step for packaged foods and simple weight-only items.
+    /// Cofid produce always has useful serving chips (1 small, 1 medium, etc.)
+    /// so it stays.
+    func shouldSkipPortion(for product: ResolvedFoodProduct) -> Bool {
+        let defaults = portionDefaults(for: product)
+        guard defaults.inputMode == .weight else { return false }
+        return product.ref.origin != .cofid
+    }
+
     func logFood(
         product: ResolvedFoodProduct,
         grams: Double,

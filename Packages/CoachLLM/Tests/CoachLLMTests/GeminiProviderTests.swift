@@ -139,7 +139,8 @@ struct GeminiProviderFixtureTests {
             systemInstructions: "system",
             contextBlock: "context",
             userMessage: "How is readiness?",
-            thread: .empty
+            thread: .empty,
+            freshnessSuffix: nil
         )
 
         let text = try await FixtureStreamHarness.reassemble(stream)

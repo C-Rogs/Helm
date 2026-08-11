@@ -16,12 +16,15 @@ public enum CoachContextAssembler {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default,
         evidence: [EvidenceRecord] = bundledMethodologyEvidence(),
+        groupedEvidence: [String: [EvidenceRecord]] = [:],
         busyDayHints: [HelmDay: String] = [:],
         todayPrescription: String = "",
         prescriptionLoadSummary: String = "",
         volumeStateSummary: String = "",
         engineProfile: String = "",
-        moduleSummaries: String = ""
+        moduleSummaries: String = "",
+        recentSessionOutcomes: [SessionOutcomeCard] = [],
+        freshness: CoachContextFreshness = CoachContextFreshness()
     ) async throws -> CoachContextDays {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
@@ -115,6 +118,7 @@ public enum CoachContextAssembler {
         return CoachContextDays(
             readinessBaselines: baselines,
             evidence: evidence,
+            groupedEvidence: groupedEvidence,
             recent: recent,
             recentWorkouts: recentWorkouts,
             trainingPlanSnapshot: trainingPlanSnapshot,
@@ -124,7 +128,9 @@ public enum CoachContextAssembler {
             prescriptionLoadSummary: prescriptionLoadSummary,
             volumeStateSummary: volumeStateSummary,
             engineProfile: engineProfile,
-            moduleSummaries: moduleSummaries
+            moduleSummaries: moduleSummaries,
+            recentSessionOutcomes: recentSessionOutcomes,
+            freshness: freshness
         )
     }
 

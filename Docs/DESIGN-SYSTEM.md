@@ -10,7 +10,7 @@ An instrument, not an app. Helm reads out the body the way a cockpit reads out a
 
 ## 1. Color
 
-Two profiles, selected automatically by the system appearance (the app follows Light/Dark, it does not offer its own switch). **Dark** is the primary: true black canvas for OLED, warm near-black surfaces (a trace of yellow, never blue-grey). **Light** is warm paper, never cold white. One brand accent in both; everything else is a semantic state ramp. Author every component against both token sets from the start; a component is not done until it reads correctly in both.
+Two profiles, selected automatically by the system appearance (the app follows Light/Dark, it does not offer its own switch). **Dark** is the primary: true black canvas for OLED, warm near-black surfaces (a trace of yellow, never blue-grey). **Light** uses system-neutral greys (`#F2F2F7` grouped background); surfaces are white, not warm paper. One brand accent in both; everything else is a semantic state ramp. Author every component against both token sets from the start; a component is not done until it reads correctly in both.
 
 Accent is selectable in Settings (`lime` default, `cyan` alternate). Tables below are the **lime** recipe. Cyan swaps the accent family only (`accent` / `accentFill` / `ready` / `primed` / chart derivatives); neutrals and depleted/compromised stay as listed. See §9 for `HelmAccentSource` (including reserved custom hex).
 
@@ -38,12 +38,12 @@ Accent is selectable in Settings (`lime` default, `cyan` alternate). Tables belo
 
 ### Light profile
 
-Warm paper, dark ink, the same accent darkened to hold AA against light. The state ramp shifts down in lightness so it stays legible on paper; hue stays constant so meaning is unchanged.
+System-neutral greys, white surfaces, dark ink, the same accent darkened to hold AA against light. The state ramp shifts down in lightness so it stays legible on light background; hue stays constant so meaning is unchanged.
 
 | Token | Hex | Use |
 |---|---|---|
-| `canvas` | `#F4F2EC` | app background, warm paper |
-| `surface` | `#E9E6DC` | cards, sheets |
+| `canvas` | `#F2F2F7` | app background, system grouped |
+| `surface` | `#FFFFFF` | cards, sheets |
 | `surfaceElevated` | `#FFFFFF` | rows, inputs |
 | `hairline` | `rgba(0,0,0,.14)` | borders, dividers |
 | `fg` | `#16150F` | primary text, active numerals |

@@ -56,7 +56,7 @@ struct AddFoodFlowView: View {
                             controller: controller,
                             isOnline: controller.isOnline,
                             onSelect: { product in
-                                selectedProduct = product
+                                handleProductSelection(product)
                             }
                         )
                     case .barcode:
@@ -161,12 +161,29 @@ struct AddFoodFlowView: View {
         }
     }
 
+    private func handleProductSelection(_ product: ResolvedFoodProduct) {
+        if controller.shouldSkipPortion(for: product) {
+            let defaults = controller.portionDefaults(for: product)
+            Task {
+                await controller.logFood(
+                    product: product,
+                    grams: defaults.grams,
+                    servingLabel: defaults.servingLabel,
+                    bucket: controller.preferredBucket,
+                    source: entryMode == .barcode ? .barcode : .manual
+                )
+            }
+        } else {
+            selectedProduct = product
+        }
+    }
+
     private func resolveBarcode(_ barcode: String) {
         barcodePhase = .resolving
         Task { @MainActor in
             do {
                 let product = try await controller.resolveBarcode(barcode)
-                selectedProduct = product
+                handleProductSelection(product)
                 barcodePhase = .scanning
             } catch FoodResolverError.offline {
                 pendingBarcode = barcode

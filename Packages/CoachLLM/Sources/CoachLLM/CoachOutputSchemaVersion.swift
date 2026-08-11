@@ -6,6 +6,8 @@ public enum CoachOutputSchemaVersion: String, Sendable, Codable, Equatable, Case
     case mealDecompositionV1 = "meal_decomposition.v1"
     case settingsAdjustmentV1 = "settings_adjustment.v1"
     case memoryAdjustmentV1 = "memory_adjustment.v1"
+    case memoryRefinementV1 = "memory_refinement.v1"
+    case contextRefreshV1 = "context_refresh.v1"
     case workoutStartV1 = "workout_start.v1"
     case workoutStartV2 = "workout_start.v2"
     case foodLogV1 = "food_log.v1"

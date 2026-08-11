@@ -52,4 +52,26 @@ struct MemoryProfileTests {
         #expect(prefix.contains("Line one\nLine two\nLine three"))
         #expect(!prefix.contains("\r"))
     }
+
+    @Test("decodes legacy JSON missing newer memory fields")
+    func decodesLegacyJSON() throws {
+        let json = """
+        {
+          "baselines_summary": "HRV ok",
+          "mesocycle_position": "Week 1",
+          "preferences": "Barbell",
+          "standing_constraints": "Shoulder",
+          "what_has_worked": "RIR 2"
+        }
+        """
+        let decoder = JSONDecoder()
+        decoder.keyDecodingStrategy = .convertFromSnakeCase
+        let profile = try decoder.decode(MemoryProfile.self, from: Data(json.utf8))
+        #expect(profile.baselinesSummary == "HRV ok")
+        #expect(profile.preferences == "Barbell")
+        #expect(profile.activeModules.isEmpty)
+        #expect(profile.injuryHistory.isEmpty)
+        #expect(profile.trainingResponses.isEmpty)
+        #expect(profile.nutritionPatterns.isEmpty)
+    }
 }

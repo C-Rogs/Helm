@@ -5,7 +5,8 @@ public enum CoachTranscriptBuilder {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) -> [[String: Any]] {
         var contents: [[String: Any]] = []
 
@@ -21,15 +22,30 @@ public enum CoachTranscriptBuilder {
         }
 
         // Avoid duplicating the current user turn when it was already appended to thread.
+        let contextMessages = thread.messagesForContext()
         let history = Self.historyExcludingTrailingDuplicate(
-            messages: thread.messages,
+            messages: contextMessages,
             userMessage: userMessage
         )
         for message in history {
-            let role = message.role == .assistant ? "model" : "user"
+            let role: String
+            switch message.role {
+            case .assistant: role = "model"
+            case .system: role = "user"  // Gemini doesn't support system role in turns
+            case .user: role = "user"
+            }
             contents.append([
                 "role": role,
                 "parts": [["text": message.text]]
+            ])
+        }
+
+        // Appended as trailing user message after history to preserve
+        // Gemini implicit caching on the context block prefix.
+        if let suffix = freshnessSuffix, !suffix.isEmpty {
+            contents.append([
+                "role": "user",
+                "parts": [["text": suffix]]
             ])
         }
 

@@ -41,10 +41,6 @@ public struct HelmRPEWheelPicker: View {
 
     public var body: some View {
         VStack(spacing: HelmSpacing.sm) {
-            HelmNumericText(HelmRPEWheelValues.formatted(value))
-                .helmType(.bigNumber)
-                .frame(maxWidth: .infinity)
-
             ScrollView(.vertical, showsIndicators: false) {
                 LazyVStack(spacing: 0) {
                     ForEach(values, id: \.self) { option in

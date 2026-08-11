@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import Foundation
 import PlanKit
@@ -37,6 +38,7 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
     public let setMarkers: [SessionSetMarker]
     public let exerciseMarkers: [SessionExerciseMarker]
     public let musicSegments: [SessionMusicSegment]
+    public let complianceCard: SessionOutcomeCard?
 
     public var hasHeartRateSeries: Bool { !heartRateSamples.isEmpty }
     public var hasMusicSegments: Bool { !musicSegments.isEmpty }
@@ -54,7 +56,8 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         heartRateSamples: [SessionHeartRateSample] = [],
         setMarkers: [SessionSetMarker] = [],
         exerciseMarkers: [SessionExerciseMarker] = [],
-        musicSegments: [SessionMusicSegment] = []
+        musicSegments: [SessionMusicSegment] = [],
+        complianceCard: SessionOutcomeCard? = nil
     ) {
         self.setCount = setCount
         self.totalVolumeKilograms = totalVolumeKilograms
@@ -66,6 +69,7 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         self.setMarkers = setMarkers
         self.exerciseMarkers = exerciseMarkers
         self.musicSegments = musicSegments
+        self.complianceCard = complianceCard
     }
 
     public func withSessionTimeline(
@@ -84,7 +88,8 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
             heartRateSamples: samples,
             setMarkers: setMarkers,
             exerciseMarkers: exerciseMarkers,
-            musicSegments: musicSegments
+            musicSegments: musicSegments,
+            complianceCard: complianceCard
         )
     }
 
@@ -93,6 +98,22 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         setMarkers: [SessionSetMarker]
     ) -> WorkoutFinishSummary {
         withSessionTimeline(samples: samples, setMarkers: setMarkers)
+    }
+
+    public func withComplianceCard(_ card: SessionOutcomeCard?) -> WorkoutFinishSummary {
+        WorkoutFinishSummary(
+            setCount: setCount,
+            totalVolumeKilograms: totalVolumeKilograms,
+            estimatedTRIMP: estimatedTRIMP,
+            durationMinutes: durationMinutes,
+            muscleMovements: muscleMovements,
+            readinessTeaser: readinessTeaser,
+            heartRateSamples: heartRateSamples,
+            setMarkers: setMarkers,
+            exerciseMarkers: exerciseMarkers,
+            musicSegments: musicSegments,
+            complianceCard: card
+        )
     }
 }
 

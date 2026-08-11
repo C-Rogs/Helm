@@ -83,8 +83,8 @@ public enum HelmPaletteAppearance: Sendable, Equatable {
             )
         case .light:
             NeutralTokenSet(
-                canvas: Color(hex: 0xF4F2EC),
-                surface: Color(hex: 0xE9E6DC),
+                canvas: Color(hex: 0xF2F2F7),
+                surface: Color(hex: 0xFFFFFF),
                 surfaceElevated: Color(hex: 0xFFFFFF),
                 hairline: Color.black.opacity(0.14),
                 fg: Color(hex: 0x16150F),
@@ -98,17 +98,15 @@ public enum HelmPaletteAppearance: Sendable, Equatable {
     }
 }
 
-/// Named accent recipes. Settings exposes these; custom hex is a future `HelmAccentSource` case.
+/// Named accent recipes. Reserved for future accent additions.
 public enum HelmAccentPreset: String, Sendable, CaseIterable, Identifiable {
     case lime
-    case cyan
 
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
         case .lime: "Lime"
-        case .cyan: "Cyan"
         }
     }
 
@@ -116,7 +114,6 @@ public enum HelmAccentPreset: String, Sendable, CaseIterable, Identifiable {
     public var swatchHex: UInt32 {
         switch self {
         case .lime: 0xC6F24E
-        case .cyan: 0x2EE6E0
         }
     }
 
@@ -226,27 +223,6 @@ private struct AccentTokenSet {
                 primed: Color(hex: 0x4F6B00),
                 chartLine: Color(hex: 0x4F6B00),
                 chartAreaFill: Color(hex: 0xC6F24E).opacity(0.35),
-                buttonPrimaryForeground: Color(hex: 0x16150F)
-            )
-        case (.cyan, .dark):
-            AccentTokenSet(
-                accent: Color(hex: 0x2EE6E0),
-                accentFill: nil,
-                ready: Color(hex: 0x5AE8D8),
-                primed: Color(hex: 0x2EE6E0),
-                chartLine: Color(hex: 0x2EE6E0),
-                chartAreaFill: Color(hex: 0x2EE6E0).opacity(0.18),
-                buttonPrimaryForeground: Color.black
-            )
-        case (.cyan, .light):
-            // Bright cyan is fill-only; text-weight accent is deep teal for AA on paper.
-            AccentTokenSet(
-                accent: Color(hex: 0x0A5F5C),
-                accentFill: Color(hex: 0x2EE6E0),
-                ready: Color(hex: 0x0E7370),
-                primed: Color(hex: 0x0A5F5C),
-                chartLine: Color(hex: 0x0A5F5C),
-                chartAreaFill: Color(hex: 0x2EE6E0).opacity(0.35),
                 buttonPrimaryForeground: Color(hex: 0x16150F)
             )
         }

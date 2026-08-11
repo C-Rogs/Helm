@@ -11,6 +11,22 @@ final class CoachDiagnosticsStore {
     private(set) var lastRejectReason: String?
     private(set) var lastSurface: String?
 
+    /// Accumulated citation-validation failures for the current turn.
+    private(set) var citationFailures: [CitationFailure] = []
+
+    struct CitationFailure: Sendable, Equatable {
+        let type: CitationFailureType
+        let rawTag: String
+        let timestamp: Date
+    }
+
+    enum CitationFailureType: String, Sendable {
+        case phantomEvidence
+        case unknownTopic
+        case unknownEngine
+        case malformedTag
+    }
+
     private init() {}
 
     func recordFailure(
@@ -20,9 +36,22 @@ final class CoachDiagnosticsStore {
         rejectReason: String? = nil
     ) {
         lastSurface = surface
-        lastErrorCode = String(describing: type(of: error))
+        lastErrorCode = Self.code(for: error)
         lastRequestID = requestID?.uuidString
-        lastRejectReason = rejectReason
+        lastRejectReason = rejectReason ?? Self.detail(for: error)
+    }
+
+    private static func code(for error: Error) -> String {
+        let nsError = error as NSError
+        if nsError.domain == NSURLErrorDomain {
+            return "URLError.\(nsError.code)"
+        }
+        return "\(nsError.domain):\(nsError.code)"
+    }
+
+    private static func detail(for error: Error) -> String {
+        let description = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        return description.isEmpty ? String(describing: error) : description
     }
 
     func clear() {
@@ -30,5 +59,18 @@ final class CoachDiagnosticsStore {
         lastRequestID = nil
         lastRejectReason = nil
         lastSurface = nil
+        citationFailures.removeAll()
+    }
+
+    func clearTurnState() {
+        lastErrorCode = nil
+        lastRequestID = nil
+        lastRejectReason = nil
+        lastSurface = nil
+        // Keep citationFailures accumulating.
+    }
+
+    func recordCitationFailure(type: CitationFailureType, rawTag: String) {
+        citationFailures.append(CitationFailure(type: type, rawTag: rawTag, timestamp: .now))
     }
 }

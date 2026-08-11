@@ -34,6 +34,9 @@ public enum HelmIcon: String, CaseIterable, Sendable {
     case coach = "bubble.left.and.bubble.right.fill"
     case flame = "flame.fill"
     case distance = "ruler"
+    case brain = "brain.head.profile"
+    case book = "book.pages"
+    case heart = "heart"
 }
 
 public enum HelmIconContext: Sendable {

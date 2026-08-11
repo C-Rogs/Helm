@@ -90,15 +90,20 @@ public struct CloudBackupService: Sendable {
             now: now
         )
         let historyData = try historyService.encode(history)
+        let nutrition = try buildNutritionBackup(now: now)
+        let nutritionData = try encodeNutrition(nutrition)
         return CloudBackupSizeEstimate(
             profileByteCount: profileData.count,
             historyByteCount: historyData.count,
-            historySessionCount: history.sessions.count
+            historySessionCount: history.sessions.count,
+            nutritionByteCount: nutritionData.count,
+            nutritionMealCount: nutrition.recentMeals.count
         )
     }
 
     public func push(
         includeHistory: Bool,
+        includeNutrition: Bool,
         onboardingCompleted: Bool,
         now: Date = Date()
     ) throws -> CloudBackupPushResult {
@@ -129,11 +134,30 @@ public struct CloudBackupService: Sendable {
             try fileStore.remove(fileName: UbiquityCloudBackupFileStore.historyFileName)
         }
 
+        var nutritionResult: CloudBackupNutritionPushResult?
+        if includeNutrition {
+            let nutrition = try buildNutritionBackup(now: now)
+            let nutritionData = try encodeNutrition(nutrition)
+            try fileStore.write(
+                data: nutritionData,
+                fileName: UbiquityCloudBackupFileStore.nutritionFileName
+            )
+            nutritionResult = CloudBackupNutritionPushResult(
+                byteCount: nutritionData.count,
+                recentCount: nutrition.recents.count,
+                templateCount: nutrition.mealTemplates.count,
+                mealCount: nutrition.recentMeals.count
+            )
+        } else {
+            try fileStore.remove(fileName: UbiquityCloudBackupFileStore.nutritionFileName)
+        }
+
         return CloudBackupPushResult(
             profileUpdatedAt: profile.updatedAt,
             profileByteCount: profileData.count,
             historyByteCount: historyByteCount,
-            historySessionCount: historySessionCount
+            historySessionCount: historySessionCount,
+            nutrition: nutritionResult
         )
     }
 
@@ -141,6 +165,7 @@ public struct CloudBackupService: Sendable {
     /// `lastAppliedProfileUpdatedAt`, or when `forceIfFreshInstall` and local has no sessions.
     public func pullIfNeeded(
         includeHistory: Bool,
+        includeNutrition: Bool,
         lastAppliedProfileUpdatedAt: Date?,
         forceIfFreshInstall: Bool,
         applyOnboardingCompleted: (Bool) -> Void
@@ -175,16 +200,27 @@ public struct CloudBackupService: Sendable {
             historyImport = try historyService.importHistory(export)
         }
 
+        var nutritionImport: CloudBackupNutritionPullResult?
+        if includeNutrition,
+           let nutritionData = try fileStore.read(
+               fileName: UbiquityCloudBackupFileStore.nutritionFileName
+           ) {
+            let backup = try decodeNutrition(nutritionData)
+            nutritionImport = try applyNutrition(backup)
+        }
+
         return CloudBackupPullResult(
             didRestoreProfile: shouldRestoreProfile,
             profileUpdatedAt: cloudProfile.updatedAt,
-            historyImport: historyImport
+            historyImport: historyImport,
+            nutritionImport: nutritionImport
         )
     }
 
     /// Force restore regardless of LWW (manual "Restore from iCloud").
     public func pullForced(
         includeHistory: Bool,
+        includeNutrition: Bool,
         applyOnboardingCompleted: (Bool) -> Void
     ) throws -> CloudBackupPullResult {
         guard fileStore.isAvailable else { throw CloudBackupError.iCloudUnavailable }
@@ -206,10 +242,20 @@ public struct CloudBackupService: Sendable {
             historyImport = try historyService.importHistory(export)
         }
 
+        var nutritionImport: CloudBackupNutritionPullResult?
+        if includeNutrition,
+           let nutritionData = try fileStore.read(
+               fileName: UbiquityCloudBackupFileStore.nutritionFileName
+           ) {
+            let backup = try decodeNutrition(nutritionData)
+            nutritionImport = try applyNutrition(backup)
+        }
+
         return CloudBackupPullResult(
             didRestoreProfile: true,
             profileUpdatedAt: cloudProfile.updatedAt,
-            historyImport: historyImport
+            historyImport: historyImport,
+            nutritionImport: nutritionImport
         )
     }
 
@@ -265,5 +311,88 @@ public struct CloudBackupService: Sendable {
         let memory = try store.memoryProfile.load()
         if memory != .empty { return false }
         return true
+    }
+
+    // MARK: - Nutrition backup
+
+    static let nutritionLookbackDays = 30
+
+    func buildNutritionBackup(now: Date = Date()) throws -> HelmCloudNutritionBackup {
+        let recents = try store.foodLog.fetchRecents(limit: 50)
+        let templates = try store.mealTemplates.fetchAll()
+        let calendar = Calendar.current
+        let lookback = calendar.date(byAdding: .day, value: -Self.nutritionLookbackDays, to: now)!
+        let startComponents = calendar.dateComponents([.year, .month, .day], from: lookback)
+        let endComponents = calendar.dateComponents([.year, .month, .day], from: now)
+        guard let startDay = HelmDay(components: startComponents),
+              let endDay = HelmDay(components: endComponents) else {
+            throw CloudBackupError.nutritionEncodingFailed
+        }
+        let meals = try store.nutrition.fetchMealsInRange(from: startDay, through: endDay)
+        let recentMeals = try meals.map { meal in
+            let lineItems = try store.foodLog.fetchLineItems(for: meal.id)
+            return MealWithLineItems(meal: meal, lineItems: lineItems)
+        }
+        return HelmCloudNutritionBackup(
+            updatedAt: now,
+            recents: recents,
+            mealTemplates: templates,
+            recentMeals: recentMeals
+        )
+    }
+
+    func encodeNutrition(_ backup: HelmCloudNutritionBackup) throws -> Data {
+        do {
+            return try fileEncoder.encode(backup)
+        } catch {
+            throw CloudBackupError.nutritionEncodingFailed
+        }
+    }
+
+    func decodeNutrition(_ data: Data) throws -> HelmCloudNutritionBackup {
+        do {
+            let backup = try fileDecoder.decode(HelmCloudNutritionBackup.self, from: data)
+            guard backup.schemaVersion == HelmCloudNutritionBackup.currentSchemaVersion else {
+                throw CloudBackupError.unsupportedNutritionSchemaVersion(backup.schemaVersion)
+            }
+            return backup
+        } catch let error as CloudBackupError {
+            throw error
+        } catch {
+            throw CloudBackupError.nutritionDecodingFailed
+        }
+    }
+
+    func applyNutrition(_ backup: HelmCloudNutritionBackup) throws -> CloudBackupNutritionPullResult {
+        let priorRecents = Set(try store.foodLog.fetchRecents(limit: 50).map { $0.ref })
+        var importedRecentCount = 0
+        for recent in backup.recents where !priorRecents.contains(recent.ref) {
+            try store.foodLog.upsertRecent(recent)
+            importedRecentCount += 1
+        }
+
+        let priorTemplates = try store.mealTemplates.fetchAll()
+        let priorTemplateIDs = Set(priorTemplates.map { $0.id })
+        var importedTemplateCount = 0
+        for template in backup.mealTemplates where !priorTemplateIDs.contains(template.id) {
+            try store.mealTemplates.save(template)
+            importedTemplateCount += 1
+        }
+
+        var importedMealCount = 0
+        for item in backup.recentMeals {
+            if try store.nutrition.fetchMeal(id: item.meal.id) == nil {
+                try store.nutrition.upsertMeal(item.meal)
+                try store.foodLog.upsertLineItems(item.lineItems)
+                importedMealCount += 1
+            }
+        }
+
+        return CloudBackupNutritionPullResult(
+            didImport: importedRecentCount > 0 || importedTemplateCount > 0 || importedMealCount > 0,
+            recentCount: importedRecentCount,
+            templateCount: importedTemplateCount,
+            mealCount: importedMealCount
+        )
     }
 }

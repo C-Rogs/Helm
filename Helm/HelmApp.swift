@@ -1,6 +1,7 @@
 import Diagnostics
 import DesignSystem
 import Persistence
+import CoachLLM
 import SwiftUI
 
 @main
@@ -10,6 +11,13 @@ struct HelmApp: App {
     init() {
         if ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
             UserDefaults.standard.set(true, forKey: OnboardingStore.completedDefaultsKey)
+        }
+        // Route CoachLLM citation diagnostics into the app-level diagnostics store.
+        CoachCitationDiagnostics.handler = { type, rawTag in
+            CoachDiagnosticsStore.shared.recordCitationFailure(
+                type: CoachDiagnosticsStore.CitationFailureType(rawValue: type) ?? .malformedTag,
+                rawTag: rawTag
+            )
         }
         HelmFontRegistration.registerFontsIfNeeded()
         Task { @MainActor in

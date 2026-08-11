@@ -72,6 +72,14 @@ public enum CoachFailurePolicy: Sendable {
             return degradedState(for: urlError)
         }
 
+        if let decodingError = error as? DecodingError {
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .other,
+                userMessage: decodingHint(for: decodingError)
+            )
+        }
+
         if error is CancellationError {
             return CoachDegradedState(
                 mode: .engineOnly,
@@ -81,15 +89,47 @@ public enum CoachFailurePolicy: Sendable {
         }
 
         let nsError = error as NSError
+        if nsError.domain == NSCocoaErrorDomain, nsError.code == 4865 {
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .other,
+                userMessage: "Coach memory data needs a refresh. Open Settings → Coach → Coach Memory, save once, then try again."
+            )
+        }
         if nsError.domain == NSURLErrorDomain {
             return degradedState(for: URLError(_nsError: nsError))
         }
 
+        if let localized = (error as? LocalizedError)?.errorDescription, !localized.isEmpty {
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .other,
+                userMessage: localized
+            )
+        }
+
+        let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+        let message = detail.isEmpty
+            ? "Coach request failed. Numbers and logging still work."
+            : "Coach request failed. Numbers and logging still work."
         return CoachDegradedState(
             mode: .engineOnly,
             reason: .other,
-            userMessage: "Coach is unavailable. Numbers and logging still work."
+            userMessage: message
         )
+    }
+
+    // MARK: - Helpers
+
+    private static func decodingHint(for error: DecodingError) -> String {
+        switch error {
+        case .keyNotFound(_, _):
+            return "Coach memory data needs a refresh. Open Settings → Coach → Coach Memory, save once, then try again."
+        case .dataCorrupted:
+            return "Coach data is corrupted. Open Settings → Coach → Coach Memory, save once, then try again."
+        default:
+            return "Coach couldn't parse a response. Try again."
+        }
     }
 
     public static func degradedState(for error: CoachProviderError) -> CoachDegradedState {
@@ -138,24 +178,41 @@ public enum CoachFailurePolicy: Sendable {
     public static func degradedState(for error: URLError) -> CoachDegradedState {
         switch error.code {
         case .notConnectedToInternet, .networkConnectionLost, .dataNotAllowed, .internationalRoamingOff:
-            .offline
-        case .timedOut, .cannotConnectToHost, .dnsLookupFailed:
-            CoachDegradedState(
+            return .offline
+        case .timedOut:
+            return CoachDegradedState(
                 mode: .engineOnly,
                 reason: .timeout,
                 userMessage: "Coach timed out. Numbers and logging still work."
             )
+        case .cannotConnectToHost, .dnsLookupFailed, .cannotFindHost:
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .timeout,
+                userMessage: "Coach couldn't reach Gemini. Check your connection and try again."
+            )
+        case .secureConnectionFailed, .serverCertificateUntrusted,
+             .clientCertificateRejected, .clientCertificateRequired:
+            return CoachDegradedState(
+                mode: .engineOnly,
+                reason: .other,
+                userMessage: "Coach couldn't reach Gemini securely. Try again."
+            )
         case .cancelled:
-            CoachDegradedState(
+            return CoachDegradedState(
                 mode: .engineOnly,
                 reason: .cancelled,
                 userMessage: "Coach response cancelled."
             )
         default:
-            CoachDegradedState(
+            let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
+            let message = detail.isEmpty
+                ? "Coach request failed. Numbers and logging still work."
+                : "Coach request failed (\(detail)). Numbers and logging still work."
+            return CoachDegradedState(
                 mode: .engineOnly,
                 reason: .other,
-                userMessage: "Coach is unavailable. Numbers and logging still work."
+                userMessage: message
             )
         }
     }

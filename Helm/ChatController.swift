@@ -17,6 +17,11 @@ final class ChatController {
     private(set) var degradedState: CoachDegradedState?
     private(set) var isCoachAvailable = true
     private(set) var lastTurnError: String?
+    var citationFailureCount: Int {
+        CoachDiagnosticsStore.shared.citationFailures.count
+    }
+    /// Citation validation map rebuilt each turn from the evidence index sent in context.
+    var citationValidation: CitationValidationMap?
     private(set) var lastFailedUserMessage: String?
     private(set) var pendingChatAction: CoachChatActionProposal?
     private(set) var pendingFoodMealConfirm: CoachFoodMealConfirmState?
@@ -28,6 +33,10 @@ final class ChatController {
     private(set) var chatProgressStep: String?
     private(set) var handoffGeneration = 0
     private(set) var pendingHandoffPrompt: String?
+    /// Memory refinements extracted from the most recent session, awaiting confirmation.
+    private(set) var pendingMemoryRefinements: [MemoryRefinementEntry] = []
+    /// Date of the last refinement extraction for debouncing.
+    private var lastRefinementExtractionDate: Date?
 
     private let persistence: PersistenceStore
     private let providerPreferences: ProviderPreferencesStore
@@ -77,7 +86,11 @@ final class ChatController {
             lastTurnError = nil
             lastFailedUserMessage = nil
             streamingText = nil
+            citationValidation = nil
+            pendingMemoryRefinements = []
+            lastRefinementExtractionDate = nil
             clearChatProgress()
+            CoachDiagnosticsStore.shared.clear()
             Task {
                 await ProviderRegistry.shared.resetAllThreads()
             }
@@ -190,6 +203,79 @@ final class ChatController {
     func dismissChatAction() {
         pendingChatAction = nil
         lastTurnError = nil
+    }
+
+    func acceptMemoryRefinements() {
+        guard !pendingMemoryRefinements.isEmpty else { return }
+        Task { @MainActor in
+            do {
+                var profile = try persistence.memoryProfile.load()
+                for entry in pendingMemoryRefinements {
+                    let isStringField: Bool = {
+                        switch entry.field {
+                        case "baselinesSummary", "preferences", "standingConstraints",
+                             "whatHasWorked", "injuryHistory", "trainingResponses",
+                             "nutritionPatterns":
+                            return true
+                        default:
+                            return false
+                        }
+                    }()
+                    guard isStringField else { continue }
+                    switch entry.action {
+                    case .add:
+                        let current = Self.currentValue(of: entry.field, in: profile)
+                        let separator = current.isEmpty ? "" : "\n"
+                        let newValue = current + separator + entry.proposedValue
+                        Self.setValue(of: entry.field, in: &profile, to: newValue)
+                    case .merge:
+                        let current = Self.currentValue(of: entry.field, in: profile)
+                        let separator = current.isEmpty ? "" : "\n"
+                        let newValue = current + separator + entry.proposedValue
+                        Self.setValue(of: entry.field, in: &profile, to: newValue)
+                    case .replace:
+                        Self.setValue(of: entry.field, in: &profile, to: entry.proposedValue)
+                    case .remove:
+                        Self.setValue(of: entry.field, in: &profile, to: "")
+                    }
+                }
+                try persistence.memoryProfile.save(profile)
+                pendingMemoryRefinements = []
+                CoachApplyMomentStore.shared.play()
+            } catch {
+                lastTurnError = error.localizedDescription
+            }
+        }
+    }
+
+    func dismissMemoryRefinements() {
+        pendingMemoryRefinements = []
+    }
+
+    private static func currentValue(of field: String, in profile: MemoryProfile) -> String {
+        switch field {
+        case "baselinesSummary": return profile.baselinesSummary
+        case "preferences": return profile.preferences
+        case "standingConstraints": return profile.standingConstraints
+        case "whatHasWorked": return profile.whatHasWorked
+        case "injuryHistory": return profile.injuryHistory
+        case "trainingResponses": return profile.trainingResponses
+        case "nutritionPatterns": return profile.nutritionPatterns
+        default: return ""
+        }
+    }
+
+    private static func setValue(of field: String, in profile: inout MemoryProfile, to value: String) {
+        switch field {
+        case "baselinesSummary": profile.baselinesSummary = value
+        case "preferences": profile.preferences = value
+        case "standingConstraints": profile.standingConstraints = value
+        case "whatHasWorked": profile.whatHasWorked = value
+        case "injuryHistory": profile.injuryHistory = value
+        case "trainingResponses": profile.trainingResponses = value
+        case "nutritionPatterns": profile.nutritionPatterns = value
+        default: break
+        }
     }
 
     func reportSurfaceError(_ message: String) {
@@ -309,6 +395,22 @@ final class ChatController {
                 let today = HelmDay.day(for: .now, calendar: .current)
                 try await applyWorkoutStart(payload, helmDay: today)
                 CoachApplyMomentStore.shared.play()
+
+                let messageID = messages.last(where: { $0.role == .assistant })?.id ?? UUID().uuidString
+                let payloadJSON = (try? JSONEncoder().encode(payload)).flatMap { String(data: $0, encoding: .utf8) } ?? ""
+                let record = CoachAdviceRecord(
+                    messageID: messageID,
+                    adviceType: .workoutStart,
+                    schemaVersion: payload.schemaVersion,
+                    prescribedPayload: payloadJSON,
+                    state: .pending,
+                    helmDay: today.formatted
+                )
+                try persistence.coachAdviceRecords.insert(record)
+                try persistence.coachAdviceRecords.supersedePending(
+                    type: .workoutStart,
+                    excluding: messageID
+                )
             case let .settingsAdjustment(payload):
                 applyProgressStep = "Updating plan…"
                 try CoachPlanSettingsAdjuster.apply(payload, persistence: persistence)
@@ -382,7 +484,11 @@ final class ChatController {
                     userMessage: helpText ?? label
                 )
             } else {
-                degradedState = CoachDegradedState.offline
+                degradedState = CoachDegradedState(
+                    mode: .engineOnly,
+                    reason: .providerUnavailable,
+                    userMessage: "Coach is unavailable. Numbers and logging still work."
+                )
             }
             return
         }
@@ -412,12 +518,36 @@ final class ChatController {
             )
             messages.append(userMessage)
 
-            let profile = try persistence.memoryProfile.load()
+            // Update coach style profile from this athlete message.
+            var profile = try persistence.memoryProfile.load()
+            CoachStyleDetector.update(
+                profile: &profile.globalStyle,
+                from: text, turnIndex: messages.count
+            )
+            try persistence.memoryProfile.save(profile)
+            
             let endDay = HelmDay.day(for: .now, calendar: .current)
             let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
-            let thread = CoachThreadState(
+            citationValidation = CitationValidationMap(
+                evidenceRecords: contextDays.evidence,
+                topics: ResourceModuleIndex.shared?.filteredTopics(
+                    moduleIDs: profile.activeModules
+                ) ?? []
+            )
+            var thread = CoachThreadState(
                 messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
-            ).windowed()
+            )
+
+            // Trigger compaction when thread exceeds 20 messages.
+            if thread.messages.count > 20 {
+                let track = thread.messages.count - (thread.summary?.compressedMessageCount ?? 0)
+                let minSinceCompact = thread.summary != nil ? 5 : 20
+                if track >= 5 {
+                    thread = try await compactThread(thread, provider: provider)
+                }
+            }
+
+            thread = thread.windowed()
             let turn: ContextTurn = thread.isFollowUp ? .followUp : .initial
             let reserved = TokenBudget.estimateTokens(
                 characterCount: thread.messages.reduce(0) { $0 + $1.text.count }
@@ -446,7 +576,8 @@ final class ChatController {
                 contextBlock: prompt.contextBlock,
                 userMessage: providerUserMessage,
                 thread: thread,
-                allowEmptyRetry: true
+                allowEmptyRetry: true,
+                freshnessSuffix: prompt.freshnessSuffix
             )
 
             if let mealQuery = MealQueryPayloadParser.parse(from: assembled) {
@@ -611,7 +742,9 @@ final class ChatController {
                 messages.append(assistantMessage)
             }
             lastFailedUserMessage = nil
-            CoachDiagnosticsStore.shared.clear()
+            CoachDiagnosticsStore.shared.clearTurnState()
+
+            maybeTriggerMemoryRefinementExtraction(profile: profile)
 
             if pendingAction == nil, FoodLogPayloadParser.hasMalformedBlock(in: assembled) {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
@@ -629,6 +762,7 @@ final class ChatController {
             isPreparingFoodMealConfirm = false
             isStreaming = false
             streamingText = nil
+            CoachDiagnosticsStore.shared.clearTurnState()
             degradedState = CoachFailurePolicy.degradedState(for: CancellationError())
             await logTurn(
                 status: "cancelled",
@@ -641,9 +775,21 @@ final class ChatController {
             isPreparingFoodMealConfirm = false
             isStreaming = false
             streamingText = nil
+            CoachDiagnosticsStore.shared.clearTurnState()
             degradedState = CoachFailurePolicy.degradedState(for: error)
             lastTurnError = degradedState?.userMessage
             CoachDiagnosticsStore.shared.recordFailure(surface: "chat", error: error)
+            let nsError = error as NSError
+            await DiagnosticsLog.shared.capture(
+                error: error,
+                category: .coachLLM,
+                message: "Chat turn failed",
+                context: [
+                    "domain": nsError.domain,
+                    "code": String(nsError.code),
+                    "detail": String(error.localizedDescription.prefix(240))
+                ]
+            )
             await logTurn(
                 status: "failed",
                 promptVersion: CoachPromptVersion.chatV1.rawValue,
@@ -659,7 +805,8 @@ final class ChatController {
         contextBlock: String,
         userMessage: String,
         thread: CoachThreadState,
-        allowEmptyRetry: Bool
+        allowEmptyRetry: Bool,
+        freshnessSuffix: String? = nil
     ) async throws -> String {
         for attempt in 0 ... (allowEmptyRetry ? 1 : 0) {
             isStreaming = true
@@ -668,7 +815,8 @@ final class ChatController {
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
                 userMessage: userMessage,
-                thread: thread
+                thread: thread,
+                freshnessSuffix: freshnessSuffix
             )
             var assembled = ""
             do {
@@ -982,6 +1130,144 @@ final class ChatController {
         isPreparingFoodMealConfirm = false
     }
 
+    /// Triggered when the thread exceeds 20 messages and at least 5 turns
+    /// have elapsed since the last compaction. Compresses old messages into
+    /// a ThreadContextSummary, preserving the last 10 verbatim.
+    private func compactThread(
+        _ thread: CoachThreadState,
+        provider: any CoachLLMProvider
+    ) async throws -> CoachThreadState {
+        let allMessages = thread.messages
+        let keepCount = 10
+        guard allMessages.count > keepCount else { return thread }
+
+        let oldMessages = Array(allMessages.prefix(allMessages.count - keepCount))
+        let recentMessages = Array(allMessages.suffix(keepCount))
+
+        // Build a compact conversation transcript for the summariser.
+        var transcriptLines: [String] = []
+        // Include the previous summary as context if it exists.
+        if let prevSummary = thread.summary, !prevSummary.isEmpty {
+            transcriptLines.append("[Previous Thread Context]")
+            transcriptLines.append(prevSummary.promptBlock)
+            transcriptLines.append("")
+        }
+        for msg in oldMessages {
+            let role = msg.role == .user ? "Athlete" : "Coach"
+            transcriptLines.append("\(role): \(msg.text)")
+        }
+        let conversationText = transcriptLines.joined(separator: "\n")
+
+        do {
+            var fullResponse = ""
+            let stream = try await provider.respond(
+                systemInstructions: ThreadContextSummary.summarisationPrompt,
+                contextBlock: "",
+                userMessage: conversationText,
+                thread: CoachThreadState.empty,
+                freshnessSuffix: nil
+            )
+            for try await chunk in stream {
+                fullResponse += chunk
+            }
+
+            let raw = fullResponse.trimmingCharacters(in: .whitespacesAndNewlines)
+            let summary = parseSummary(from: raw, compressedCount: oldMessages.count)
+
+            return CoachThreadState(messages: recentMessages, summary: summary)
+        } catch {
+            // If summarisation fails, keep the thread intact.
+            return thread
+        }
+    }
+
+    /// Parses summarisation output into a ThreadContextSummary.
+    private func parseSummary(from text: String, compressedCount: Int) -> ThreadContextSummary {
+        let summary = ThreadContextSummary(
+            decisions: extractSection("# Decisions Made", from: text),
+            openQuestions: extractSection("# Open Questions", from: text),
+            coachCommitments: extractSection("# Coach Commitments", from: text),
+            athleteState: extractSection("# Athlete State", from: text),
+            activeNegotiations: extractSection("# Active Negotiations", from: text),
+            nutritionContext: extractSection("# Nutrition Context", from: text),
+            compressedMessageCount: compressedCount
+        )
+        return summary
+    }
+
+    /// Extracts content between one section header and the next, or end of text.
+    private func extractSection(_ header: String, from text: String) -> String {
+        let allHeaders = [
+            "# Decisions Made", "# Open Questions", "# Coach Commitments",
+            "# Athlete State", "# Active Negotiations", "# Nutrition Context"
+        ]
+        guard let startRange = text.range(of: header) else { return "" }
+        let start = startRange.upperBound
+        let remainder = String(text[start...]).trimmingCharacters(in: .whitespacesAndNewlines)
+
+        var end = remainder.endIndex
+        for h in allHeaders where h != header {
+            if let r = remainder.range(of: h) {
+                end = remainder.index(r.lowerBound, offsetBy: 0)
+                break
+            }
+        }
+        return String(remainder[..<end])
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    /// if the session warrants it (>= 3 substantive user turns, >= 30 min since last).
+    private func maybeTriggerMemoryRefinementExtraction(profile: MemoryProfile) {
+        let substantiveTurns = messages.filter {
+            $0.role == .user && $0.text.count > 50
+        }
+        guard substantiveTurns.count >= 3 else { return }
+        guard lastRefinementExtractionDate == nil
+            || Date().timeIntervalSince(lastRefinementExtractionDate!) >= 30 * 60
+        else { return }
+
+        let recentMessages = messages.suffix(20)
+        let conversationText = recentMessages.map { msg in
+            "\(msg.role == .user ? "Athlete" : "Coach"): \(msg.text)"
+        }.joined(separator: "\n\n")
+        let profileContext = MemoryRefinementExtractor.profileContext(from: profile)
+
+        Task(priority: .background) { [weak self] in
+            guard let self else { return }
+            let provider = await ProviderRegistry.shared.provider(
+                for: self.providerPreferences.selectedProvider
+            )
+            do {
+                var fullResponse = ""
+                let stream = try await provider.respond(
+                    systemInstructions: MemoryRefinementExtractor.extractionPrompt,
+                    contextBlock: profileContext,
+                    userMessage: conversationText,
+                    thread: CoachThreadState.empty,
+                    freshnessSuffix: nil
+                )
+                for try await chunk in stream {
+                    fullResponse += chunk
+                }
+                guard let payload = MemoryRefinementExtractor.parse(fullResponse) else { return }
+                await MainActor.run { [weak self] in
+                    guard let self, !payload.refinements.isEmpty else { return }
+                    self.pendingMemoryRefinements = payload.refinements
+                    self.lastRefinementExtractionDate = .now
+                }
+            } catch {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .coachLLM,
+                    message: "Memory refinement extraction failed",
+                    context: ["detail": String(error.localizedDescription.prefix(240))]
+                )
+                await MainActor.run { [weak self] in
+                    self?.lastRefinementExtractionDate = .now
+                }
+            }
+        }
+    }
+
     private func logTurn(
         status: String,
         promptVersion: String,
@@ -998,7 +1284,9 @@ final class ChatController {
             context["schemaVersion"] = schemaVersion
         }
         if let error {
-            context["error"] = String(describing: type(of: error))
+            let nsError = error as NSError
+            context["error"] = "\(nsError.domain):\(nsError.code)"
+            context["errorDetail"] = String(error.localizedDescription.prefix(240))
         }
         await DiagnosticsLog.shared.record(
             category: .coachLLM,

@@ -48,7 +48,8 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
         let apiKey = try requireAPIKey()
         let requestID = UUID()
@@ -59,7 +60,8 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             systemInstructions: systemInstructions,
             contextBlock: contextBlock,
             userMessage: userMessage,
-            thread: thread
+            thread: thread,
+            freshnessSuffix: freshnessSuffix
         ).encoded()
 
         let request = GeminiStreamHTTPRequest(

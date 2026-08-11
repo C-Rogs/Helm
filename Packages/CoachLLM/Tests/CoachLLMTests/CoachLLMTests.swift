@@ -49,13 +49,24 @@ struct CoachFailurePolicyTests {
         }
     }
 
-    @Test("url errors map to offline or timeout")
+    @Test("url errors map to offline, timeout, or connection detail")
     func urlErrors() {
         let offline = CoachFailurePolicy.degradedState(for: URLError(.notConnectedToInternet))
         #expect(offline.reason == .offline)
+        #expect(offline.userMessage.contains("offline"))
 
         let timeout = CoachFailurePolicy.degradedState(for: URLError(.timedOut))
         #expect(timeout.reason == .timeout)
+        #expect(timeout.userMessage.contains("timed out"))
+
+        let unreachable = CoachFailurePolicy.degradedState(for: URLError(.cannotFindHost))
+        #expect(unreachable.reason == .timeout)
+        #expect(unreachable.userMessage.contains("couldn't reach Gemini"))
+
+        let tls = CoachFailurePolicy.degradedState(for: URLError(.secureConnectionFailed))
+        #expect(tls.reason == .other)
+        #expect(tls.userMessage.contains("securely"))
+        #expect(!tls.userMessage.lowercased().contains("unavailable"))
     }
 
     @Test("unknown errors still degrade to engine-only")
@@ -64,6 +75,9 @@ struct CoachFailurePolicyTests {
         let state = CoachFailurePolicy.degradedState(for: SampleFailure())
         #expect(state.mode == .engineOnly)
         #expect(state.reason == .other)
+        #expect(state.userMessage.contains("request failed"))
+        #expect(state.userMessage.contains("SampleFailure"))
+        #expect(!state.userMessage.lowercased().contains("unavailable"))
     }
 }
 
@@ -127,7 +141,8 @@ struct MockProviderTests {
             userMessage: "hello",
             thread: CoachThreadState(messages: [
                 CoachMessage(role: .user, text: "prior")
-            ])
+            ]),
+            freshnessSuffix: nil
         )
 
         let text = try await FixtureStreamHarness.reassemble(stream)
@@ -149,7 +164,8 @@ struct MockProviderTests {
             systemInstructions: "",
             contextBlock: "",
             userMessage: "ping",
-            thread: .empty
+            thread: .empty,
+            freshnessSuffix: nil
         )
 
         do {

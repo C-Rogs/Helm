@@ -15,6 +15,7 @@ public struct UbiquityCloudBackupFileStore: CloudBackupFileStore, Sendable {
     public static let backupFolderName = "HelmBackup"
     public static let profileFileName = "helm-profile.json"
     public static let historyFileName = "helm-training-history.json"
+    public static let nutritionFileName = "helm-nutrition.json"
 
     private let containerIdentifier: String
 

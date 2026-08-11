@@ -35,7 +35,8 @@ public enum GeminiRequestBuilder {
         systemInstructions: String,
         contextBlock: String,
         userMessage: String,
-        thread: CoachThreadState
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
     ) throws -> GeminiStreamRequestBody {
         GeminiStreamRequestBody(
             systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
@@ -43,7 +44,8 @@ public enum GeminiRequestBuilder {
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
                 userMessage: userMessage,
-                thread: thread
+                thread: thread,
+                freshnessSuffix: freshnessSuffix
             ),
             generationConfig: [
                 "temperature": 0.4,

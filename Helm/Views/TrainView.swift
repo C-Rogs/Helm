@@ -78,13 +78,9 @@ struct TrainView: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
 
                 if controller.hasActiveSession, controller.numpadTarget != nil {
-                    Color.clear
-                        .contentShape(Rectangle())
-                        .ignoresSafeArea()
-                        .onTapGesture {
-                            Task { await controller.dismissNumpad() }
-                        }
-                        .accessibilityLabel("Dismiss keyboard")
+                    // No full-screen overlay. Field hops (weight -> reps -> RPE)
+                    // must pass through to the session scroll below. Dismiss via
+                    // chevron or swipe-down on the pad itself.
                 }
 
                 if controller.hasActiveSession {
@@ -108,20 +104,6 @@ struct TrainView: View {
         let showNumpad = controller.numpadTarget != nil
 
         VStack(spacing: 0) {
-            if showRest || showCoach || showNumpad {
-                LinearGradient(
-                    colors: [
-                        HelmColor.canvas.opacity(0),
-                        HelmColor.canvas.opacity(0.85),
-                        HelmColor.canvas
-                    ],
-                    startPoint: .top,
-                    endPoint: .bottom
-                )
-                .frame(height: HelmLayout.trainBottomFogHeight)
-                .allowsHitTesting(false)
-            }
-
             VStack(spacing: HelmSpacing.xs) {
                 if showRest,
                    let timer = controller.snapshot?.restTimer,
@@ -137,7 +119,7 @@ struct TrainView: View {
                             }
                         )
                         .geometryGroup()
-                        .transition(.opacity)
+                        .transition(.move(edge: .bottom).combined(with: .opacity))
                     } else {
                         RestTimerBanner(
                             endsAt: endsAt,
@@ -167,7 +149,7 @@ struct TrainView: View {
                 }
             }
             .frame(maxWidth: .infinity)
-            .background(HelmColor.canvas)
+            .background(.regularMaterial, in: Rectangle())
             // Numpad chrome uses standard (not settle) so rest banner layout
             // lifts in lockstep with the pad. Settle left the dock behind.
             .animation(
@@ -204,10 +186,8 @@ struct TrainView: View {
             HelmScreenStack {
                 if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
                     prescriptionIdleCard(summary)
-                } else if let rest = PlanBootstrap.prescriptionService.state.restDay {
-                    restIdleCard(rest)
                 } else {
-                    manualIdleCard
+                    genericIdleCard(rest: PlanBootstrap.prescriptionService.state.restDay)
                 }
 
                 weekAheadSection
@@ -313,48 +293,45 @@ struct TrainView: View {
         }
     }
 
-    private var manualIdleCard: some View {
+    private func genericIdleCard(rest: RestDaySummary?) -> some View {
         VStack(spacing: HelmSpacing.lg) {
-            HelmEmptyState(
-                title: "No active session",
-                message: "Start a workout or paste a plan from your coach.",
-                icon: .train,
-                actionTitle: "Start workout"
-            ) {
-                Task { await controller.startWorkout() }
+            if let rest {
+                SessionDesignedCard(
+                    title: rest.title,
+                    summary: rest.summary,
+                    rationale: rest.rationale,
+                    leadingChipTitle: "Discuss",
+                    onLeadingChip: { controller.discussTodaysSession() }
+                ) {
+                    Text("Check week ahead for the next training day.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                }
+            } else {
+                HelmEmptyState(
+                    title: "No active session",
+                    message: "Start a workout or paste a plan from your coach.",
+                    icon: .train,
+                    actionTitle: "Start workout"
+                ) {
+                    Task { await controller.startWorkout() }
+                }
             }
 
-            Button("Paste workout plan") {
-                isShowingImport = true
-            }
-            .buttonStyle(.helmSecondary)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.top, HelmSpacing.md)
-    }
-
-    private func restIdleCard(_ rest: RestDaySummary) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-            SessionDesignedCard(
-                title: rest.title,
-                summary: rest.summary,
-                rationale: rest.rationale,
-                leadingChipTitle: "Discuss",
-                onLeadingChip: { controller.discussTodaysSession() }
-            ) {
-                Text("Check week ahead for the next training day.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-            }
-
-            Button("Empty workout") {
-                Task { await controller.startWorkout() }
+            Button(rest != nil ? "Empty workout" : "Paste workout plan") {
+                if rest != nil {
+                    Task { await controller.startWorkout() }
+                } else {
+                    isShowingImport = true
+                }
             }
             .buttonStyle(.helmSecondary)
 
-            Button("Paste workout plan") {
-                isShowingImport = true
+            if rest != nil {
+                Button("Paste workout plan") {
+                    isShowingImport = true
+                }
+                .buttonStyle(.helmSecondary)
             }
-            .buttonStyle(.helmSecondary)
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
@@ -408,6 +385,7 @@ struct TrainView: View {
             validationMessage: controller.numpadValidationError,
             advisoryMessage: { setID in controller.rirAdvisory(forSetID: setID) },
             shakeToken: controller.numpadShakeToken,
+            blockerShakeToken: { setID in controller.blockerShakeToken(forSetID: setID) },
             fieldDisplayText: { set, field in
                 controller.displayText(for: field, set: set, exerciseID: exercise.exerciseID)
             },
@@ -726,7 +704,7 @@ struct TrainView: View {
                     ) {
                         controller.openManualRestTimer(expanded: controller.isRestTimerRunning)
                     }
-                    .frame(minWidth: 88, maxWidth: 96)
+                    .fixedSize(horizontal: true, vertical: false)
                 }
                 .padding(.horizontal, HelmSpacing.screenGutter)
                 .padding(.bottom, HelmSpacing.xs)
