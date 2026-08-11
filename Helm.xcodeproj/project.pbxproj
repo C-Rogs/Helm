@@ -1,0 +1,2381 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		00045E9C351CA85A054A1CD1 /* FocusModePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */; };
+		0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */; };
+		023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */; };
+		0372714472429631A78F2B2B /* CoachKeyOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */; };
+		03A44EE5523957231B425BB5 /* SpotifyAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0537918F8ED3DBAE09E784 /* SpotifyAuthClient.swift */; };
+		04C0548C908F47918CB4872C /* PhaseGoalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */; };
+		06E1FF6417AE2A1165178FEC /* TrendsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AE07A1436E7283081C804B /* TrendsModels.swift */; };
+		073C227CB8D8FDDE004A2A86 /* TrendsDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E57A102A907E43806E3B287 /* TrendsDataBuilder.swift */; };
+		078F622103CD14A93571BA39 /* HevyCSVImportPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82DDA86B20D7A7E2293D87B5 /* HevyCSVImportPreviewView.swift */; };
+		0A16D6649145E9429E1B7858 /* ExerciseRestEditorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B6114A210BD03224646566E8 /* ExerciseRestEditorSheet.swift */; };
+		0CB22298F1B3604C64F47C15 /* CoachDiagnosticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F2CA1F21804E5C8A7EC7CBB4 /* CoachDiagnosticsStore.swift */; };
+		0EF59D35C4A7F55F86DD1AF0 /* CompleteLiveActivitySetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0907580020AECBE2A60C03 /* CompleteLiveActivitySetIntent.swift */; };
+		0F46FB1F2F952BEEC88B48EF /* BriefBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 370D843735CD1722D7D7B87D /* BriefBootstrap.swift */; };
+		0FA1C55AD9FB5D5BECD8E3D6 /* WorkoutStartCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 823521A478ECA1FC382C6F31 /* WorkoutStartCoordinator.swift */; };
+		11620AC21A77CCEF1F6D4EF3 /* HelmWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		11B467655485BDC248A9CEF0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9C352EF85CB40EE3730A712D /* Assets.xcassets */; };
+		12BBF9DF0BCDEC9F44983B96 /* DescribeFoodSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC90C1367E4D301748CCEB /* DescribeFoodSheet.swift */; };
+		13716B523E70BC77E960E955 /* CalendarHintStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */; };
+		14F7C9ABF48FC904F1152976 /* CompleteLiveActivitySetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0907580020AECBE2A60C03 /* CompleteLiveActivitySetIntent.swift */; };
+		157367B26A8654B73B1232EC /* MuscleVolumeBoardContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4957993AE0AB23C62288AC /* MuscleVolumeBoardContainer.swift */; };
+		1576D51D91D83168CCF7F8D0 /* boxing-bell.caf in Resources */ = {isa = PBXBuildFile; fileRef = 302A9D2609E20CCBA30BC073 /* boxing-bell.caf */; };
+		17473C3D44D255BE8694DB93 /* ProactiveNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 396132A97C9FB7480ECE819C /* ProactiveNotificationScheduler.swift */; };
+		17ED9B1E5DF5A2AF52717CFC /* SaveMealTemplateSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = F78F73BE82823EE26C6326F8 /* SaveMealTemplateSheet.swift */; };
+		1969F8C1BCE12A2B8A065486 /* GenerateBriefIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B39380396E36E6C50591424 /* GenerateBriefIntent.swift */; };
+		1A3FA228AC49CAA838E5FE27 /* WatchActivityPickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 574EA8DEFD54226307D6092D /* WatchActivityPickerView.swift */; };
+		1A6F7239B59AF60312D1D288 /* SpotifySessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1BFC35F4974EAC7B0B27A3D /* SpotifySessionStore.swift */; };
+		1A7912BB2CD5268DB0AB6089 /* FoodLogTipStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = B10704A6844A8E72BA3B1C78 /* FoodLogTipStore.swift */; };
+		1A87B0E6EFB1CD8758CBBC95 /* CalendarHistoryQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9B57DF668B8BC0BFEE46B85D /* CalendarHistoryQueryService.swift */; };
+		1CD86B255F49A56E0D4C2EED /* CoachActivityGate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9A7B62CE402057349ACD21B9 /* CoachActivityGate.swift */; };
+		1CFBA9DD22085B422E696AC6 /* DashboardTrendsSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 058D654D744C8C945D6A6E19 /* DashboardTrendsSection.swift */; };
+		1D6EBAE7089F7D260A7255D2 /* WorkoutImportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C652A1A8317458CA304E02E /* WorkoutImportView.swift */; };
+		1DDD00D7759A8C3E416C397F /* CoachDisplayNameStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = F020A02859EF72C2D6EE8A23 /* CoachDisplayNameStore.swift */; };
+		1E5649B6002547A8E303041E /* NutritionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 72CFF67885BA5C1B752C27F2 /* NutritionView.swift */; };
+		1EA23F22055C3D2C9EA764BE /* HelmWatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = B426D8758F266B7E04B1F08C /* HelmWatchApp.swift */; };
+		1F398D6FF41A4D1B9191A380 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = A311E705660C5C05DCD31CA5 /* Core */; };
+		1FAF40B7879E7108B4B4965D /* WatchReadinessBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9B69832027920890EDE745F /* WatchReadinessBootstrap.swift */; };
+		202F2F5C277BB51BD91A72C2 /* MuscleVolumeRecencyBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5B9ADFA7FCA08B89DF936EC9 /* MuscleVolumeRecencyBuilder.swift */; };
+		207556337A4D0B9AE5E2C006 /* FoodPortionStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CB2832408F087D8650F12D /* FoodPortionStepView.swift */; };
+		214F64CC8590745335136D32 /* SleepDiagnosticsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 952D2678FF8CD59C4A201895 /* SleepDiagnosticsView.swift */; };
+		2151DF63F306C16D64F26A98 /* OnboardingStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0EAA64930985A111BAEB5DFF /* OnboardingStore.swift */; };
+		215BA690EDC46E3C58A84978 /* WatchSessionCoordinator+WCSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */; };
+		219DA0137C5B7DDE9EF0460B /* ExplainableMetricMappers.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9461B78B1AE038AEA2C04D69 /* ExplainableMetricMappers.swift */; };
+		2431BF8A51FF01E5E086EED4 /* ThresholdInsightCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A594486378BD3499888DF38D /* ThresholdInsightCard.swift */; };
+		2504A110991480808F82A403 /* TrainingHistoryTransferController.swift in Sources */ = {isa = PBXBuildFile; fileRef = C94B1BFCF261C13C4B0670F5 /* TrainingHistoryTransferController.swift */; };
+		256F1D4C439D406AEEAC4920 /* BackfillOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */; };
+		2570C474DA5A6FCF513FA81F /* WorkoutTemplateDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 678A7E8B335952B6E5DC5D72 /* WorkoutTemplateDetailView.swift */; };
+		25C1E8B08F569A1D3E043AC3 /* CoachChatChartBubble.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC4725B3B45CA0A68D03E86A /* CoachChatChartBubble.swift */; };
+		263E686D3D8CFCE4F37C22E4 /* WeeklyRateCalculatorSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D66D7C3E9FB3AD0994273A /* WeeklyRateCalculatorSheet.swift */; };
+		26D57E4F48527FDC255BF963 /* TrainSessionController.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */; };
+		27DFBA1B54052097F7B14018 /* WorkoutSessionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF4D86D83D9261A215F844A0 /* WorkoutSessionDetailView.swift */; };
+		291FFFFB08A045B3022A8561 /* ReadinessRevealStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C681E1D393700046F9B58E82 /* ReadinessRevealStore.swift */; };
+		2B382D9A539D1151FC5144F5 /* ExerciseHistoryBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 12FE5422C66B570B02FFE4F4 /* ExerciseHistoryBuilder.swift */; };
+		2B8FFD64F783F98D90234F38 /* RestNotificationLaunchOptions.swift in Sources */ = {isa = PBXBuildFile; fileRef = 84FDF1C6F3B3B6FE2E70ADD3 /* RestNotificationLaunchOptions.swift */; };
+		2BEE40A64B6141A61A08B571 /* BriefIntentBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 61C402747732369E2B89A5F4 /* BriefIntentBootstrap.swift */; };
+		2C4B42C09C87B324823B069C /* SessionCoachNoteField.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1B7A655D0203AC7B91E0F38 /* SessionCoachNoteField.swift */; };
+		2C64F5F237B0A3B4BDB6CF71 /* CompositeSongTempoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E6A6E69A91E304B63CF361B /* CompositeSongTempoProvider.swift */; };
+		2FB23DFA4EF1E4378483F84B /* WatchSyncStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 95BFA7694930C9F929FCD15D /* WatchSyncStatusView.swift */; };
+		304F084087DE44CDE17167B9 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC085FFEC48EBA405C30F1B0 /* WorkoutActivityAttributes.swift */; };
+		305BC50ED12F35DAD3B31D45 /* MethodologyTopicDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50FACBBAFC84E813894234E8 /* MethodologyTopicDetailView.swift */; };
+		30AB200458A94E9D799586DF /* WorkoutImportPreviewView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CA95CABA5A4BAA4B02EBB6E2 /* WorkoutImportPreviewView.swift */; };
+		30F2D9F4C0B50CFE21A6FE63 /* CloudBackupCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F2DB630165D5D390902A892 /* CloudBackupCoordinator.swift */; };
+		310E72904BD269533DBA25A8 /* ReadinessBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9A4D15B91AF85A22B19FF9D /* ReadinessBootstrap.swift */; };
+		320116CB3456D35F3EE757D3 /* MealEditController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20018EF3589711177E54129C /* MealEditController.swift */; };
+		32C06890A9DE93C04288EF59 /* SpotifyiOS in Frameworks */ = {isa = PBXBuildFile; productRef = FA61E24E8271960684BD8099 /* SpotifyiOS */; };
+		36C05273FC5A79F8FED5D9DC /* FoodSearchView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B04F28C575E039C74C48B68 /* FoodSearchView.swift */; };
+		396B69570DF0CFAC1FE294EE /* RecoveryDetailContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01D4655437CCA89206868D9C /* RecoveryDetailContainer.swift */; };
+		3AF3D84F8B6D6837F7392CE2 /* DeezerSongTempoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = D4F6B84C8F55A7086F2EC757 /* DeezerSongTempoProvider.swift */; };
+		3AFB02917464C7175988655B /* RestDockChipStyle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76546B6C56318E025984DE23 /* RestDockChipStyle.swift */; };
+		3B3339C8620B56FD69642D2C /* Persistence in Frameworks */ = {isa = PBXBuildFile; productRef = 19C69AA5D49E0EA740A81683 /* Persistence */; };
+		3C3D0231C231A849B94F9050 /* RestTimerBackgroundAudio.swift in Sources */ = {isa = PBXBuildFile; fileRef = DE4B32529BACEC5826B3C5B9 /* RestTimerBackgroundAudio.swift */; };
+		3D97A9EBA74398585E05C0EE /* SleepAnalysisBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 689477C008337405AA0AB4C3 /* SleepAnalysisBuilder.swift */; };
+		3E609E15EBA98DCE533E723E /* PhotoLogOptionsSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BA61CF3E207A7E5FB94517F8 /* PhotoLogOptionsSheet.swift */; };
+		3ECE52579A49E058A2BD8320 /* WatchSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */; };
+		411FFC619B11CF0CE1E15B81 /* SongTempoCache.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6F4099C403CAEFCA3076FF9 /* SongTempoCache.swift */; };
+		416FD0F98F027ED264E6CA55 /* TrendsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = FC587134C8EB2C87F3B76479 /* TrendsView.swift */; };
+		41708E912A9BD730BF3FCA22 /* WatchWorkoutSessionStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 65F849E44289C6A228A7B2CA /* WatchWorkoutSessionStore.swift */; };
+		43379C767AE1DF5E9EEEAB77 /* OfflineBarcodeQueueSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF925652AAE23A274B8B09F6 /* OfflineBarcodeQueueSheet.swift */; };
+		4351B5F9060E5C0DF6E61385 /* CoachWorkoutStartAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2B8CEBCAF64D6176359C13A /* CoachWorkoutStartAdjuster.swift */; };
+		4701F085097E7C9689C0AA16 /* NutritionDayMealsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7415F93EDE764C20C590FC55 /* NutritionDayMealsStore.swift */; };
+		47C7B6ADDB6957DC457978A7 /* SleepAnalysisContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333AAB6C03ED25A61C1AF2C0 /* SleepAnalysisContainer.swift */; };
+		48BE721B79AC1E2FEA7A42BC /* WatchWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212938823FAC6CF3F5483359 /* WatchWorkoutView.swift */; };
+		4A3583E9391C52D48D9F6E5E /* WatchWorkoutSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85D6D155ADBDA484F612753 /* WatchWorkoutSessionManager.swift */; };
+		4B2221E4583B5F5BA14815FD /* BucketFoodLogMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CECB69DFC398C51E14B613 /* BucketFoodLogMenu.swift */; };
+		4D6D8E471D8269BB54E5FBC8 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8051ED48FCAD89C1565B9440 /* Core */; };
+		4F7FFC181E6F72B6CC999FB1 /* HealthKitStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B7961B190CE87BDBDB314C9B /* HealthKitStatusView.swift */; };
+		50DCBEB12ACBB13252FFCCE5 /* NotificationPermissionService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5966666B857671AC251ADB2C /* NotificationPermissionService.swift */; };
+		52C8FC31BEE967DF0EECDC94 /* ChatFoodDictationController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A04B9CABC681571A01F3122 /* ChatFoodDictationController.swift */; };
+		53299805E10084FA6A941C41 /* NutritionDiaryHeader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */; };
+		54BEFFAF5F79577CBB47F282 /* RestTimerNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2DFB1548031E98F7BAF191A2 /* RestTimerNotificationScheduler.swift */; };
+		55476DA42FA789C941E784C2 /* ProactiveCoachPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4120A46F396DDCFBF14FA586 /* ProactiveCoachPreferences.swift */; };
+		558C517FAB39C27DC439D033 /* SessionTimelineChartView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 88A669136FBF2DC90483B34E /* SessionTimelineChartView.swift */; };
+		571C9ADB8C81F0F4AD28A77D /* RecoveryDetailBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 76FAAA79AF75D03E9B03182C /* RecoveryDetailBuilder.swift */; };
+		57BC2178EF0742A15AE1C86C /* CoachLLM in Frameworks */ = {isa = PBXBuildFile; productRef = 77798C34CB0889BA57D99F33 /* CoachLLM */; };
+		57C0E46F1EF63CEC4395A15E /* WeekAheadScheduleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 276156A9C2905E234541F09E /* WeekAheadScheduleBuilder.swift */; };
+		57D2EBE94DD42A4530633322 /* ReccoBeatsSongTempoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5EC68FB1B8FD3686AFD4A3 /* ReccoBeatsSongTempoProvider.swift */; };
+		58F1A60E5F827FA8774613E9 /* MemoryProfileEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4E43BE3C8ABC6AACFEC82C /* MemoryProfileEditorView.swift */; };
+		5A933EEBF3392510EB21211B /* MirroredWorkoutSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */; };
+		5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */; };
+		5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */; };
+		5C2B69E21678550F1B29DC20 /* TrendWeightChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */; };
+		5D2989127D96B244FE8EFC55 /* HealthKitOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */; };
+		5D47496C9C7FB5D2BC47555B /* NutritionDayCompleteSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */; };
+		5EE09BE100418B1855BA4C37 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = 618BEB910286D2A493ECF63B /* Sounds */; };
+		5F6D9A04C7A0D642A58E0654 /* MuscleVolumeBarChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BDBC668878E04D57C83BC7 /* MuscleVolumeBarChartCard.swift */; };
+		5FAAA9F720237EB0A21D9CC2 /* FocusSessionLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D4126F927A7785C6BC39700 /* FocusSessionLogSheet.swift */; };
+		5FAEBACB5012754CA2E1EDDA /* OnboardingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21053A3537A7606568D37DEE /* OnboardingCoordinator.swift */; };
+		61490342EEFF814540F83166 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 4C5F122E8B8E8B8B15661C4E /* DesignSystem */; };
+		62005AF753453C719724E671 /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E24380021D00B17F56D26F7 /* WatchRootView.swift */; };
+		64C36565E67479B17CC357BA /* SetRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69855AA731BBEA8518DD3238 /* SetRowView.swift */; };
+		656594737BF32D17B1A92610 /* FocusExerciseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 45BD4EA654F2AE547AB1F482 /* FocusExerciseCard.swift */; };
+		695B49ABCADBF39EAA55BE2A /* PlanBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA4D2E1FECDAF8007A22DF9 /* PlanBootstrap.swift */; };
+		6982BBA1C89D352832C4F24C /* WatchActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BE8998732A4FFA25A8DFA3 /* WatchActiveWorkoutView.swift */; };
+		69B3C5C132B48F13C672F676 /* MethodologyBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 904B90DB1BFD065B4CA93390 /* MethodologyBootstrap.swift */; };
+		6B2005E3DCC4FE12EFA1464C /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4745B71BAE1F957B073546A /* WidgetKit.framework */; };
+		6CCD9174ABD2649A841D8553 /* RootTabView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C8AA843D1E6F3CF48565DDA2 /* RootTabView.swift */; };
+		6DD2D0799EB131231C481E3E /* DataBrowserView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 737F78DD4BAE1A8A75399E02 /* DataBrowserView.swift */; };
+		6E3D59FB27C2EC4AACF7FBB0 /* AppRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6CCF1A5A2061F3DF8905F18A /* AppRootView.swift */; };
+		6E8295BF16B73D7406828535 /* CoachContextBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 136E6CD25E2A9CBD074928E0 /* CoachContextBootstrap.swift */; };
+		6FBB8331D353C5DBCACDFF97 /* TrendsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3185A05C2BDEE41B579ED9 /* TrendsController.swift */; };
+		6FFEBEDBE63BF0A3444F2349 /* HelmApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8E910325AFE50F60C36C51 /* HelmApp.swift */; };
+		712779AC39F318604425AA99 /* SecretsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6033D7C64CF817B8F57FE7F /* SecretsBootstrap.swift */; };
+		746A0331702A40F292951666 /* HelmNotificationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9DA56E1D9F8982E7FCCEBF /* HelmNotificationDelegate.swift */; };
+		74A1EDC9556A3EF68768E775 /* RestTimerSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */; };
+		755DA63267A7F9A645B6D6D7 /* WorkoutSetMilestonePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DBD2A9326DB846203B4B55 /* WorkoutSetMilestonePolicy.swift */; };
+		772C2C026E839B960447B8E7 /* CopyMealEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F9E7A6B189532126DA2B /* CopyMealEntrySheet.swift */; };
+		7750DE096060DD95590DD340 /* MealDepthCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB878F4BA5B5A0E1FB8244E /* MealDepthCameraView.swift */; };
+		77F96344398E63ABA9288949 /* ChatBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */; };
+		7852DE6668EEADFAA522099C /* PhoneWorkoutSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */; };
+		7890C1F20FA5AA527FCDC0AF /* NutritionDaySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */; };
+		79321EC3187EAB4681EC7122 /* PersonalRecordsCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AE49C058C1BAA271BFB930 /* PersonalRecordsCelebrationView.swift */; };
+		79BA9E85D6186BDB4EFDCE43 /* ExercisePickerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C45F672E311D123D74D66BFB /* ExercisePickerView.swift */; };
+		7CBDA4ADC7264F72DAE91452 /* FocusCardLoggingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 475054EDDA9CE7FFD21E319B /* FocusCardLoggingView.swift */; };
+		7D1A587EF8AA88E46CD0FC5F /* MealLineItemEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9466BDAEA7FBBF340A244FC8 /* MealLineItemEditor.swift */; };
+		7D3460551DF6768F199902C0 /* E1RMProgressionChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93097CC5134C8A7014CAFB8F /* E1RMProgressionChartCard.swift */; };
+		7DD8463C0F852AB251B7D682 /* NotificationsSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9EB217544694F548D4AD4EBD /* NotificationsSettingsView.swift */; };
+		7F2D891C75EBD0D1741B74D2 /* WatchSessionCoordinator+WCSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */; };
+		7F2DA716D150440BB2C67837 /* ReadinessHistoryChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9486CCBB7963BC4373B4B2F2 /* ReadinessHistoryChartCard.swift */; };
+		7F6167BF7ACBA45EC1573122 /* MorningBriefAutomationGuideView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AC9102F5A201EC033CB767E0 /* MorningBriefAutomationGuideView.swift */; };
+		7F67E85A97D11E8395A21FED /* HelmTextShareSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = ABB873D18BBB4BC92A823BF0 /* HelmTextShareSheet.swift */; };
+		7F9576D4F2A7D95042B214B5 /* WorkoutActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = CC085FFEC48EBA405C30F1B0 /* WorkoutActivityAttributes.swift */; };
+		8195318B9E6077EC22A6F91B /* WelcomeOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BBF48AA231CAF609F9A593BB /* WelcomeOnboardingStepView.swift */; };
+		8242E02AAE6574F34A173153 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 56F23900FAB682F1116B3C5F /* Assets.xcassets */; };
+		8353133EC66D60D4D5D2FC04 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */; };
+		8568CA7D04FE949196110B6F /* CoachChatActionProposal.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21E05339095E3797BD0261BC /* CoachChatActionProposal.swift */; };
+		8575FD09B5696C82CB51CE71 /* TrendsChartShared.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E168617C8DCF2C77B9A649D /* TrendsChartShared.swift */; };
+		86C966AF6AC6A522557E2E26 /* HelmWatchAppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DFA170CBB0FAC92FEE9DD86 /* HelmWatchAppDelegate.swift */; };
+		87A935FD5497CD969B51C4FF /* BarcodeScannerView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6AE8BD221EACC772B2B9BB87 /* BarcodeScannerView.swift */; };
+		87BB1B4620B2C261B66C50F6 /* WatchSessionCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */; };
+		8884E8476FF347725C11DF96 /* WeekAheadScheduleSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */; };
+		891D1985DA38249DC795880E /* SpotifySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD28AA9269832D4A65D0247 /* SpotifySettingsView.swift */; };
+		8A6F2C85260E33610F3FD3E9 /* ManualRestTimerPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8D91C469EE391AE7E07CAE /* ManualRestTimerPill.swift */; };
+		900D525ED75F7B9F39BBDEBA /* TrainBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */; };
+		9175B3430045AFE9D8DA30D7 /* CloudBackupPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */; };
+		928C4DB95D1B1D6E4398E7BA /* TrendsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2498C194C2470C24926D8786 /* TrendsBootstrap.swift */; };
+		94B55AC71169CAD888BA4000 /* CoachFoodMealConfirmState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A010C72AFC68A26D6BE629 /* CoachFoodMealConfirmState.swift */; };
+		960F62D5F9A4B8DBF5F70481 /* RecoveryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20ED97094D22CD1B52E5E2FA /* RecoveryDetailView.swift */; };
+		966FFCB2A8A07E5A382DDF2B /* WeekAheadScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */; };
+		974E3DBA773688DE52DA1B8C /* ProgressionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */; };
+		98A21C60D95516C298BE5E03 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4545C1493CC90839AA3B3FA /* SwiftUI.framework */; };
+		991080364B26DC6915F8A836 /* SongTempoLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CEC371F95461BCD5CA03826 /* SongTempoLookupService.swift */; };
+		996DC6FB96C784C69A5A295D /* CoachSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */; };
+		9B99D16555C2E142CA6A5C3C /* SleepAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF798183AFFC925F57A9B3B /* SleepAnalysisView.swift */; };
+		9C43933ED172237747E00858 /* CoachPlanSettingsAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B4D79D160E61AF593D879 /* CoachPlanSettingsAdjuster.swift */; };
+		9CD491863ADA475909DE3204 /* CoachBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63468E7D96CE782EFC0B9DFE /* CoachBootstrap.swift */; };
+		9D1F3884BED544D78CDAE0CE /* DashboardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 718EAF186FDB48BD87B5F071 /* DashboardView.swift */; };
+		9D45DFC2B61AC77C85F60C91 /* Diagnostics in Frameworks */ = {isa = PBXBuildFile; productRef = 5C76961C98F189599391B607 /* Diagnostics */; };
+		9D83EEAD99A92D7D351D8862 /* SessionTimelineChartGeometry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7C130F98FF3FC996400A76B3 /* SessionTimelineChartGeometry.swift */; };
+		9EC599169A7765C4E5279A92 /* EnergyBalanceChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3467DC9D6D3F336D753B7A41 /* EnergyBalanceChartCard.swift */; };
+		9F415BB16F3B4364BEFF1F62 /* TrainSessionHeaderView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8A940BDCCD8036FC02F7263C /* TrainSessionHeaderView.swift */; };
+		A0306B6EF68BE7E8343EC7B4 /* AppIntents.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = CFD8642DBA0484B2FCE13B47 /* AppIntents.framework */; };
+		A0DF52A9BF410F7817A5BA67 /* AppLifecycleState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 77704FA7A9FE194CBFB943C7 /* AppLifecycleState.swift */; };
+		A168DD1F2A42FB64303EBCB3 /* PersistenceBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7FD55294B93A91A7E2D40898 /* PersistenceBootstrap.swift */; };
+		A445C0F2CC95CC9688AA7F0E /* WorkoutImportController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02F55C024C286B4F7FE4F093 /* WorkoutImportController.swift */; };
+		A4762E617E194C9638D81CDF /* BodyProfileSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CF69FDF17A9AAEF9F3D2CEF8 /* BodyProfileSettingsView.swift */; };
+		A4C3A5964BFA6C25269EEB94 /* CoachFoodMealConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8221A5D67850470079B83CE /* CoachFoodMealConfirmSheet.swift */; };
+		A70049987981B16E80788314 /* WatchCompanionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C227DC1389D1E3150D7A4B1 /* WatchCompanionView.swift */; };
+		A7C85693C659EA016C29501D /* PhotoMealConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */; };
+		AAAD78EFE1039A587E991A7F /* SpotifyAppRemoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F575612470963D7AE49C3B0 /* SpotifyAppRemoteService.swift */; };
+		AB97255CCFFA481F87CE420B /* HelmWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		ACF7EC588BCF81579B336F00 /* MealEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41276A961E6E89096F44D629 /* MealEditSheet.swift */; };
+		AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */; };
+		AF0EB822FFD384CB41C00D85 /* WorkoutFinishSummaryAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */; };
+		AF8793383B6926457DFAED50 /* ExerciseHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED9EC9330DD1E9532DF79E /* ExerciseHistorySheet.swift */; };
+		B10E4B608A6D2651FE49B0B0 /* HelmWatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D47C3A50F25620B3A3436C /* HelmWatchTheme.swift */; };
+		B1D6FC9A4FCF18BD644098AC /* HelmWatchWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = F26DFB1EE713608E968131D8 /* HelmWatchWidgetsBundle.swift */; };
+		B3178FF4A339A1224CD6B9CE /* AppTabRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F77FF965ADF1B2CF2D76A21 /* AppTabRouter.swift */; };
+		B327C39E182515FFF27DA38F /* CalendarHintService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1310286B64E84B4928656B04 /* CalendarHintService.swift */; };
+		B3757B75AEF1321F214C6BBB /* CalendarEventClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90D6A16496154D0C13C849D /* CalendarEventClassifierService.swift */; };
+		B46230415D97955B62FC1750 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 84E2E9FFF85336E0D45DB8DF /* Core */; };
+		B4A2C1CF16ECEDA3C1343465 /* ProgressionDetailBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E190D352AF84EAB945126A /* ProgressionDetailBuilder.swift */; };
+		B4DA8A5CE7E005CB7F2394FF /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42DA3A67300FE32878B3F069 /* ActivityKit.framework */; };
+		B4E872C5D3E7F6883825F190 /* SetLogValidation.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6F95B610357735E36A6E52E2 /* SetLogValidation.swift */; };
+		B54E22450D4008A59BF50395 /* ShareViewController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4D36CDE418F2E6C69D9092AB /* ShareViewController.swift */; };
+		B60D91037959EBF4E8D0F88E /* TrainingPlanOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */; };
+		B61BC607D7225F2E57D73EE8 /* InSessionCoachSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44613FD77AC6EFDFD15431F6 /* InSessionCoachSheet.swift */; };
+		B7D2CA5D2EC4558904A38C49 /* WorkoutTemplatesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32582A5A6C818C87A6475D72 /* WorkoutTemplatesListView.swift */; };
+		B89C937C327805027C4F7374 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA15866D39CB103E073703A /* OnboardingFlowView.swift */; };
+		BAEAE387BC5BB9E7E7E53AA9 /* HelmWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 053F9ED9C33440FD2497E414 /* HelmWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BBB9E492C3D8368E8DDD7759 /* ThresholdInsightService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB49012A36B68F7B6092200 /* ThresholdInsightService.swift */; };
+		BCBC45C74396DF515AAD2CDD /* NutritionMealBucketSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB8B6B91DA9F2AC1F59750B /* NutritionMealBucketSection.swift */; };
+		BD372E319EDC6347A3AB2C57 /* SessionSummaryPresentationBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 056C5976FC8A683654323650 /* SessionSummaryPresentationBuilder.swift */; };
+		BDC8EEE6DDF452F01E8EF962 /* LiveWorkoutBuilderTeardownTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 144C7FD182597E35BC239051 /* LiveWorkoutBuilderTeardownTracker.swift */; };
+		BDF45B9F1DB6E2F2F8F25015 /* TrainViewPresentationLayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = D0D9F4901EC4435E95CB6CA4 /* TrainViewPresentationLayer.swift */; };
+		BEC79F8A1F917DB95C661A27 /* HelmShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = ED1B211D964D5382DF275D95 /* HelmShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		BEEDA51FEE78BD078D3B3D5C /* WorkoutFinishSummaryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3344C8A09726B2C6A84C9472 /* WorkoutFinishSummaryView.swift */; };
+		C066F65F41D03E26046DA450 /* MuscleVolumeArcGridCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */; };
+		C0834A51CE77F1029BE18729 /* DashboardSleepCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 530637CAC89DF5D543631510 /* DashboardSleepCard.swift */; };
+		C13ABA345445DC524207F454 /* AlcoholLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5F91574F7DE571BC040C31BE /* AlcoholLogView.swift */; };
+		C1B0E86E4B1EC5FCEBD09F7F /* TrendsChartSupport.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB9D9F2E121FC36FF628D7F7 /* TrendsChartSupport.swift */; };
+		C275DBBCF5E138710631307F /* MuscleVolumeBoardStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2F495B29014960FD288EA0BE /* MuscleVolumeBoardStore.swift */; };
+		C2B1CBFAFDC0EC9B08F418B4 /* WatchWorkoutSessionLifecycleTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BD494E68B5D3D03BF91C3F /* WatchWorkoutSessionLifecycleTracker.swift */; };
+		C48F79B428283DD80D62EC52 /* WatchWorkoutLaunchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB49E94526778CBCD171A92 /* WatchWorkoutLaunchBridge.swift */; };
+		C5F842C14A456091C1B1EC87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88F44550306FA5A33BEFC537 /* Assets.xcassets */; };
+		C6ADF55A0E3B453E61CBE53A /* WorkoutSessionSideEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0109DD30A97AAF5DE7F2C /* WorkoutSessionSideEffects.swift */; };
+		C6C44BFF48DC039C035EA405 /* ExerciseSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1240B315B6B2120DDD331CA /* ExerciseSectionView.swift */; };
+		C8C1D9BEEC2E05D32436B5FF /* ReadinessKit in Frameworks */ = {isa = PBXBuildFile; productRef = 01A7B07FBB89476C095AAD39 /* ReadinessKit */; };
+		C8C6ED39EF4433B0067AEB6C /* MethodologySeed in Resources */ = {isa = PBXBuildFile; fileRef = 8151F07EF3F569F725808118 /* MethodologySeed */; };
+		CA8FE309D255BCC5104614CD /* DataSafetyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03C643CA6B30C2E3422578B1 /* DataSafetyView.swift */; };
+		CB85856C3F37FDF6B40966F3 /* NutritionBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8E952EA2C1BAC33BB667EACA /* NutritionBootstrap.swift */; };
+		CC9DCB16ADC40564F3C61C04 /* ChatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23010DE8390547294FF5455D /* ChatController.swift */; };
+		CD224F2C51E85F87182F92E9 /* RestNotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */; };
+		CE7F0B4C4D4A0585BDD25B52 /* MealBucketPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C7802E4F05D00F683B7B10C /* MealBucketPicker.swift */; };
+		CF59F55EDC2018BC7961579C /* ScreenshotTourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3895957E57D5268906F78B79 /* ScreenshotTourTests.swift */; };
+		D0562786AF970E8AF6E16B85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6040B8736850EE4E57B62015 /* SettingsView.swift */; };
+		D22B8CA993A1A711BB7EA1BD /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E383F9ECBDA0F1876BF4946 /* ChatView.swift */; };
+		D3452D5F39BADC69B085669D /* NotificationOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */; };
+		D5B3D7590F528C4E244A64C5 /* ProactiveCoachBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */; };
+		D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */; };
+		D5DFD49C2DE0A3F6418848C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */; };
+		D6934FE7C74E3E136CB25D73 /* ShortcutsOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */; };
+		D6F0E27D96165DB60CAEC6CE /* InSessionCoachDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E792D229847662F52C00583F /* InSessionCoachDebugView.swift */; };
+		D7901362865FCAFA02B63AE7 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04F1CC5687F480A0C72BDD40 /* HealthKit.framework */; };
+		D7DC3FFB702C92E0A0823F8E /* WatchBriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877BE2032AE31153B6E4A2CC /* WatchBriefView.swift */; };
+		D8D86AEE3B8E7ED884B3F21F /* WorkoutHistoryController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DCE82E32B7A51CFEAFAEDD21 /* WorkoutHistoryController.swift */; };
+		D8E3E6CB5A56242247E3B409 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */; };
+		D960048C5220E1D6B63356D7 /* BriefNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5DBFD91DDCD009B71D822EDE /* BriefNotificationScheduler.swift */; };
+		D9A0BF69B366C2632F74B100 /* PrescriptionAutoStartStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1273E2ECFD8816EFEABE1127 /* PrescriptionAutoStartStore.swift */; };
+		DA35BA59796FD1A81EC9B13B /* FoodLogMealGrounding.swift in Sources */ = {isa = PBXBuildFile; fileRef = 81D287D7E2845C05A558F48B /* FoodLogMealGrounding.swift */; };
+		DAD33F101B14D34C18CBD998 /* HelmWidgetsBundle.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C3D42005745CED123A3EF54 /* HelmWidgetsBundle.swift */; };
+		DB37C5E08791202C9811FF47 /* TrendChartFixtures.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F143BE76D9161B316CE8116 /* TrendChartFixtures.swift */; };
+		DBA1B55EC37AAFD9186986E7 /* CoachArchetypeBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44888E7954FF5364A3CAB7A1 /* CoachArchetypeBootstrap.swift */; };
+		DC8F00B879B027CBA72C783C /* boxing-bell-notification.caf in Resources */ = {isa = PBXBuildFile; fileRef = F38DA34461728AFF4E32AC14 /* boxing-bell-notification.caf */; };
+		DDD4F55CFE81BFF0CA284C1C /* TrainView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59423B745D49F066683F66BE /* TrainView.swift */; };
+		DE6A91248E45A90C0A712CF6 /* BodyProfileOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */; };
+		DE8B4D73DB64DCEA0DAAF5CE /* ExerciseImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D5A9D21783AB844536B2DE39 /* ExerciseImageView.swift */; };
+		DEBF2EC4962903769585BB8B /* WatchCompanionBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = A4F8E11E889F843F89506F06 /* WatchCompanionBootstrap.swift */; };
+		DF59F121763F13ABE6C924D2 /* OnboardingStepChrome.swift in Sources */ = {isa = PBXBuildFile; fileRef = 43D9DDE7033848C836DB049B /* OnboardingStepChrome.swift */; };
+		E14AF5E45DBFFE85CFFF27DB /* WorkoutHapticCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */; };
+		E15065BE42A6E83C28A8F740 /* WorkoutLiveActivityWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DA01118E23D90A111A73A50 /* WorkoutLiveActivityWidget.swift */; };
+		E19F4FECD9FC4631AC12C298 /* ExportEnvironmentFactory.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF70385AB40ED2CA66092D57 /* ExportEnvironmentFactory.swift */; };
+		E21776CEAEDC1F719FDF9AB5 /* NutritionKit in Frameworks */ = {isa = PBXBuildFile; productRef = 7C817B88A0C3EBE40B4D4D84 /* NutritionKit */; };
+		E23A6FFB7CF5274A75D0800E /* QuickAddFoodView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3CD452125F7E39BD60465FA6 /* QuickAddFoodView.swift */; };
+		E5B66F085B49E353D8BF0A11 /* SongTempoPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3E116AB09202F35B9F02B49 /* SongTempoPreferences.swift */; };
+		E5CE65EBA4D78A4941342A16 /* ExportKit in Frameworks */ = {isa = PBXBuildFile; productRef = 4948A476B7398F2AB68DD7E3 /* ExportKit */; };
+		E6480AAF91BCAE7CEBE4BC93 /* WorkoutLiveActivityManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6D664F330F28D4704C21F15A /* WorkoutLiveActivityManager.swift */; };
+		E69D21FF5DA148D792F58DDB /* NutritionMealActionsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 139C4D6F7BD4591C9CD1BD75 /* NutritionMealActionsController.swift */; };
+		E74A8D958F34F2A31EF3675A /* ProgressionDetailContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8FD7149F5257250C7F5D0427 /* ProgressionDetailContainer.swift */; };
+		E7D930A65EB05162ACC5A2BC /* HealthKitBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003EAD8C95AB124772A7DD7E /* HealthKitBootstrap.swift */; };
+		E9B6F62B77A12C5002A5DB57 /* WorkoutMusicCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83E8014B49C4ECDC9513500 /* WorkoutMusicCaptureService.swift */; };
+		EAF7BC88C4538D88011AEFD8 /* ExportKit in Frameworks */ = {isa = PBXBuildFile; productRef = 505EB967FB99F06CAD91E7D3 /* ExportKit */; };
+		EC06681EB0C067B01F8B950B /* ManualRestTimerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472C04C4FF83B33AA989EB20 /* ManualRestTimerSheet.swift */; };
+		ECDD7061104D9495C7911424 /* AddFoodFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */; };
+		EEFBB1F3F0D26D7B9EEC72F7 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */; };
+		EF7B2AB33C590E6571899402 /* WorkoutHistoryListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D97669BBC4C98614477CF4E /* WorkoutHistoryListView.swift */; };
+		EFA733E65AA404D7079B6E0F /* SourcesMethodologyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F91F2E3194632AA180E17439 /* SourcesMethodologyView.swift */; };
+		F1A1326C4A9A148D5631DE42 /* ManualFoodLogController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A615EA65AD0AC0D2E6284DB /* ManualFoodLogController.swift */; };
+		F1F94936DC54E422DA970A54 /* RestTimerBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2821CC293468F79E6F043338 /* RestTimerBanner.swift */; };
+		F23402EF56E75B9E4220BD47 /* OnboardingStep.swift in Sources */ = {isa = PBXBuildFile; fileRef = F91EE0EB0580AB7B66529E4C /* OnboardingStep.swift */; };
+		F23983F6988EB0263E049B17 /* ExerciseSeed in Resources */ = {isa = PBXBuildFile; fileRef = 042A3A10E4834C27909AE730 /* ExerciseSeed */; };
+		F26C0FADEE56C5AE9B8C0308 /* WorkoutSessionLifecycleTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEEF754F3E09C21EF17863B4 /* WorkoutSessionLifecycleTracker.swift */; };
+		F3C6B91B82AD6E0D8448222F /* ProactiveCoachRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D16E2E7A513E9CA6343E03B /* ProactiveCoachRouter.swift */; };
+		F5EF64E16A0FDE9394AD68BA /* NutritionSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */; };
+		F7D98FF2B5682898D25D4762 /* SchemaV2ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FF07947400503AACAFFEFE /* SchemaV2ExportView.swift */; };
+		FC429EBFF532646F68A1F1D3 /* HealthKitIngest in Frameworks */ = {isa = PBXBuildFile; productRef = 96FB402A98901B62B12BBC28 /* HealthKitIngest */; };
+		FEE21EB3F638CBC634233B02 /* MealTemplatesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ACFBF7FD0D8A51247C2F4C8 /* MealTemplatesSheet.swift */; };
+		FF14B014163D08D2262A401C /* ProactiveBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E2FFD4362A32778F2269486 /* ProactiveBootstrap.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		0E4602D7CA83DC215AC9869B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 99E4676A382CEA1F9A5AE6C1;
+			remoteInfo = Helm;
+		};
+		21E73D3CB88A0B6451C279EF /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = F3EA07921D7C19E2AAF76135;
+			remoteInfo = HelmWatch;
+		};
+		298EC9F88AF48BA34D3D5491 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = C0D6DA97A19AA02637C54AF3;
+			remoteInfo = HelmWatchWidgets;
+		};
+		2E9A07F13D168A63CF612888 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E159A873B86CCE50ABD86A4F;
+			remoteInfo = HelmShare;
+		};
+		82416DA0A7A509F2FB8AE8B1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 27BAF397EE45B4D52F75D6FD;
+			remoteInfo = HelmWidgets;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		1C1C7C2A32D06069C8CE1277 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				AB97255CCFFA481F87CE420B /* HelmWatchWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		50B5AA4E35CE4495CA57C220 /* Embed Watch Content */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(CONTENTS_FOLDER_PATH)/Watch";
+			dstSubfolderSpec = 16;
+			files = (
+				BAEAE387BC5BB9E7E7E53AA9 /* HelmWatch.app in Embed Watch Content */,
+			);
+			name = "Embed Watch Content";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6EBDE4828BF4A7EF271E84FE /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				11620AC21A77CCEF1F6D4EF3 /* HelmWidgets.appex in Embed Foundation Extensions */,
+				BEC79F8A1F917DB95C661A27 /* HelmShare.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
+/* Begin PBXFileReference section */
+		002F2C3FBD87665190A49FFD /* Diagnostics */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Diagnostics; path = Packages/Diagnostics; sourceTree = SOURCE_ROOT; };
+		003EAD8C95AB124772A7DD7E /* HealthKitBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitBootstrap.swift; sourceTree = "<group>"; };
+		01D4655437CCA89206868D9C /* RecoveryDetailContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailContainer.swift; sourceTree = "<group>"; };
+		02F55C024C286B4F7FE4F093 /* WorkoutImportController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportController.swift; sourceTree = "<group>"; };
+		03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendWeightChartCard.swift; sourceTree = "<group>"; };
+		03C643CA6B30C2E3422578B1 /* DataSafetyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSafetyView.swift; sourceTree = "<group>"; };
+		042A3A10E4834C27909AE730 /* ExerciseSeed */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ExerciseSeed; path = Helm/Resources/ExerciseSeed; sourceTree = SOURCE_ROOT; };
+		04567CF083B4C469EA782E32 /* HelmUITests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HelmUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		04F1CC5687F480A0C72BDD40 /* HealthKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = HealthKit.framework; path = System/Library/Frameworks/HealthKit.framework; sourceTree = SDKROOT; };
+		053F9ED9C33440FD2497E414 /* HelmWatch.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = HelmWatch.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		056C5976FC8A683654323650 /* SessionSummaryPresentationBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionSummaryPresentationBuilder.swift; sourceTree = "<group>"; };
+		058D654D744C8C945D6A6E19 /* DashboardTrendsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTrendsSection.swift; sourceTree = "<group>"; };
+		08E190D352AF84EAB945126A /* ProgressionDetailBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailBuilder.swift; sourceTree = "<group>"; };
+		0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealEstimatingView.swift; sourceTree = "<group>"; };
+		0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachKeyOnboardingStepView.swift; sourceTree = "<group>"; };
+		0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionCoordinator.swift; sourceTree = "<group>"; };
+		0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyProfileOnboardingStepView.swift; sourceTree = "<group>"; };
+		0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchSessionCoordinator+WCSession.swift"; sourceTree = "<group>"; };
+		0C227DC1389D1E3150D7A4B1 /* WatchCompanionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCompanionView.swift; sourceTree = "<group>"; };
+		0CEC371F95461BCD5CA03826 /* SongTempoLookupService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongTempoLookupService.swift; sourceTree = "<group>"; };
+		0E2FFD4362A32778F2269486 /* ProactiveBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveBootstrap.swift; sourceTree = "<group>"; };
+		0EAA64930985A111BAEB5DFF /* OnboardingStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStore.swift; sourceTree = "<group>"; };
+		1273E2ECFD8816EFEABE1127 /* PrescriptionAutoStartStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PrescriptionAutoStartStore.swift; sourceTree = "<group>"; };
+		12FE5422C66B570B02FFE4F4 /* ExerciseHistoryBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHistoryBuilder.swift; sourceTree = "<group>"; };
+		1310286B64E84B4928656B04 /* CalendarHintService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarHintService.swift; sourceTree = "<group>"; };
+		136E6CD25E2A9CBD074928E0 /* CoachContextBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachContextBootstrap.swift; sourceTree = "<group>"; };
+		139C4D6F7BD4591C9CD1BD75 /* NutritionMealActionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionMealActionsController.swift; sourceTree = "<group>"; };
+		144C7FD182597E35BC239051 /* LiveWorkoutBuilderTeardownTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWorkoutBuilderTeardownTracker.swift; sourceTree = "<group>"; };
+		1A04B9CABC681571A01F3122 /* ChatFoodDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFoodDictationController.swift; sourceTree = "<group>"; };
+		1A615EA65AD0AC0D2E6284DB /* ManualFoodLogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualFoodLogController.swift; sourceTree = "<group>"; };
+		1B3185A05C2BDEE41B579ED9 /* TrendsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsController.swift; sourceTree = "<group>"; };
+		1C7802E4F05D00F683B7B10C /* MealBucketPicker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealBucketPicker.swift; sourceTree = "<group>"; };
+		1CA15866D39CB103E073703A /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
+		1D97669BBC4C98614477CF4E /* WorkoutHistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryListView.swift; sourceTree = "<group>"; };
+		1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDiaryHeader.swift; sourceTree = "<group>"; };
+		1F143BE76D9161B316CE8116 /* TrendChartFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendChartFixtures.swift; sourceTree = "<group>"; };
+		20018EF3589711177E54129C /* MealEditController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditController.swift; sourceTree = "<group>"; };
+		20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingPlanOnboardingStepView.swift; sourceTree = "<group>"; };
+		20ED97094D22CD1B52E5E2FA /* RecoveryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailView.swift; sourceTree = "<group>"; };
+		21053A3537A7606568D37DEE /* OnboardingCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingCoordinator.swift; sourceTree = "<group>"; };
+		212938823FAC6CF3F5483359 /* WatchWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutView.swift; sourceTree = "<group>"; };
+		21E05339095E3797BD0261BC /* CoachChatActionProposal.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatActionProposal.swift; sourceTree = "<group>"; };
+		23010DE8390547294FF5455D /* ChatController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatController.swift; sourceTree = "<group>"; };
+		2498C194C2470C24926D8786 /* TrendsBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsBootstrap.swift; sourceTree = "<group>"; };
+		25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupPreferences.swift; sourceTree = "<group>"; };
+		2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WatchConnectivity.framework; path = System/Library/Frameworks/WatchConnectivity.framework; sourceTree = SDKROOT; };
+		26A010C72AFC68A26D6BE629 /* CoachFoodMealConfirmState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachFoodMealConfirmState.swift; sourceTree = "<group>"; };
+		276156A9C2905E234541F09E /* WeekAheadScheduleBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekAheadScheduleBuilder.swift; sourceTree = "<group>"; };
+		281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekAheadScheduleStore.swift; sourceTree = "<group>"; };
+		2821CC293468F79E6F043338 /* RestTimerBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerBanner.swift; sourceTree = "<group>"; };
+		29BDBC668878E04D57C83BC7 /* MuscleVolumeBarChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeBarChartCard.swift; sourceTree = "<group>"; };
+		2AB49012A36B68F7B6092200 /* ThresholdInsightService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThresholdInsightService.swift; sourceTree = "<group>"; };
+		2D16E2E7A513E9CA6343E03B /* ProactiveCoachRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveCoachRouter.swift; sourceTree = "<group>"; };
+		2D4126F927A7785C6BC39700 /* FocusSessionLogSheet.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusSessionLogSheet.swift; sourceTree = "<group>"; };
+		2DFB1548031E98F7BAF191A2 /* RestTimerNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerNotificationScheduler.swift; sourceTree = "<group>"; };
+		2E57A102A907E43806E3B287 /* TrendsDataBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsDataBuilder.swift; sourceTree = "<group>"; };
+		2F495B29014960FD288EA0BE /* MuscleVolumeBoardStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeBoardStore.swift; sourceTree = "<group>"; };
+		302A9D2609E20CCBA30BC073 /* boxing-bell.caf */ = {isa = PBXFileReference; path = "boxing-bell.caf"; sourceTree = "<group>"; };
+		32582A5A6C818C87A6475D72 /* WorkoutTemplatesListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplatesListView.swift; sourceTree = "<group>"; };
+		32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PendingImportNotificationScheduler.swift; sourceTree = "<group>"; };
+		333AAB6C03ED25A61C1AF2C0 /* SleepAnalysisContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAnalysisContainer.swift; sourceTree = "<group>"; };
+		3344C8A09726B2C6A84C9472 /* WorkoutFinishSummaryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFinishSummaryView.swift; sourceTree = "<group>"; };
+		338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsHistoryQueryService.swift; sourceTree = "<group>"; };
+		341063E0D43CBF5081A9AA7B /* HelmWatch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HelmWatch.entitlements; sourceTree = "<group>"; };
+		3467DC9D6D3F336D753B7A41 /* EnergyBalanceChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnergyBalanceChartCard.swift; sourceTree = "<group>"; };
+		34CB2832408F087D8650F12D /* FoodPortionStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodPortionStepView.swift; sourceTree = "<group>"; };
+		370D843735CD1722D7D7B87D /* BriefBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefBootstrap.swift; sourceTree = "<group>"; };
+		3895957E57D5268906F78B79 /* ScreenshotTourTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScreenshotTourTests.swift; sourceTree = "<group>"; };
+		38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = HelmWatchWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		396132A97C9FB7480ECE819C /* ProactiveNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveNotificationScheduler.swift; sourceTree = "<group>"; };
+		3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModePreferences.swift; sourceTree = "<group>"; };
+		3C3D42005745CED123A3EF54 /* HelmWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWidgetsBundle.swift; sourceTree = "<group>"; };
+		3CD452125F7E39BD60465FA6 /* QuickAddFoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddFoodView.swift; sourceTree = "<group>"; };
+		3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationOnboardingStepView.swift; sourceTree = "<group>"; };
+		409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestNotificationRouter.swift; sourceTree = "<group>"; };
+		4120A46F396DDCFBF14FA586 /* ProactiveCoachPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveCoachPreferences.swift; sourceTree = "<group>"; };
+		41276A961E6E89096F44D629 /* MealEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditSheet.swift; sourceTree = "<group>"; };
+		42DA3A67300FE32878B3F069 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
+		43D9DDE7033848C836DB049B /* OnboardingStepChrome.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStepChrome.swift; sourceTree = "<group>"; };
+		44613FD77AC6EFDFD15431F6 /* InSessionCoachSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InSessionCoachSheet.swift; sourceTree = "<group>"; };
+		44888E7954FF5364A3CAB7A1 /* CoachArchetypeBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachArchetypeBootstrap.swift; sourceTree = "<group>"; };
+		45BD4EA654F2AE547AB1F482 /* FocusExerciseCard.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusExerciseCard.swift; sourceTree = "<group>"; };
+		472C04C4FF83B33AA989EB20 /* ManualRestTimerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualRestTimerSheet.swift; sourceTree = "<group>"; };
+		475054EDDA9CE7FFD21E319B /* FocusCardLoggingView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = FocusCardLoggingView.swift; sourceTree = "<group>"; };
+		480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealConfirmSheet.swift; sourceTree = "<group>"; };
+		49AE07A1436E7283081C804B /* TrendsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsModels.swift; sourceTree = "<group>"; };
+		4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHapticCoordinator.swift; sourceTree = "<group>"; };
+		4D36CDE418F2E6C69D9092AB /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		4F4E43BE3C8ABC6AACFEC82C /* MemoryProfileEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryProfileEditorView.swift; sourceTree = "<group>"; };
+		50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDaySummaryCard.swift; sourceTree = "<group>"; };
+		50FACBBAFC84E813894234E8 /* MethodologyTopicDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MethodologyTopicDetailView.swift; sourceTree = "<group>"; };
+		530637CAC89DF5D543631510 /* DashboardSleepCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardSleepCard.swift; sourceTree = "<group>"; };
+		53B738B6092D28116BB8EB0D /* Helm.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Helm.entitlements; sourceTree = "<group>"; };
+		56F23900FAB682F1116B3C5F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		574EA8DEFD54226307D6092D /* WatchActivityPickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchActivityPickerView.swift; sourceTree = "<group>"; };
+		59423B745D49F066683F66BE /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainView.swift; sourceTree = "<group>"; };
+		5966666B857671AC251ADB2C /* NotificationPermissionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionService.swift; sourceTree = "<group>"; };
+		59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitOnboardingStepView.swift; sourceTree = "<group>"; };
+		5B39380396E36E6C50591424 /* GenerateBriefIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateBriefIntent.swift; sourceTree = "<group>"; };
+		5B9ADFA7FCA08B89DF936EC9 /* MuscleVolumeRecencyBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeRecencyBuilder.swift; sourceTree = "<group>"; };
+		5C5431C9025E5B20FFE07CAC /* HealthKitIngest */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HealthKitIngest; path = Packages/HealthKitIngest; sourceTree = SOURCE_ROOT; };
+		5DBFD91DDCD009B71D822EDE /* BriefNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefNotificationScheduler.swift; sourceTree = "<group>"; };
+		5E0537918F8ED3DBAE09E784 /* SpotifyAuthClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAuthClient.swift; sourceTree = "<group>"; };
+		5E24380021D00B17F56D26F7 /* WatchRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRootView.swift; sourceTree = "<group>"; };
+		5E383F9ECBDA0F1876BF4946 /* ChatView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatView.swift; sourceTree = "<group>"; };
+		5F91574F7DE571BC040C31BE /* AlcoholLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AlcoholLogView.swift; sourceTree = "<group>"; };
+		5FDC90C1367E4D301748CCEB /* DescribeFoodSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DescribeFoodSheet.swift; sourceTree = "<group>"; };
+		6040B8736850EE4E57B62015 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
+		618BEB910286D2A493ECF63B /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sounds; path = Helm/Resources/Sounds; sourceTree = SOURCE_ROOT; };
+		61C402747732369E2B89A5F4 /* BriefIntentBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefIntentBootstrap.swift; sourceTree = "<group>"; };
+		63468E7D96CE782EFC0B9DFE /* CoachBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachBootstrap.swift; sourceTree = "<group>"; };
+		63DBD2A9326DB846203B4B55 /* WorkoutSetMilestonePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSetMilestonePolicy.swift; sourceTree = "<group>"; };
+		65F849E44289C6A228A7B2CA /* WatchWorkoutSessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSessionStore.swift; sourceTree = "<group>"; };
+		66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BackfillOnboardingStepView.swift; sourceTree = "<group>"; };
+		678A7E8B335952B6E5DC5D72 /* WorkoutTemplateDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTemplateDetailView.swift; sourceTree = "<group>"; };
+		689477C008337405AA0AB4C3 /* SleepAnalysisBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAnalysisBuilder.swift; sourceTree = "<group>"; };
+		69855AA731BBEA8518DD3238 /* SetRowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetRowView.swift; sourceTree = "<group>"; };
+		6ACFBF7FD0D8A51247C2F4C8 /* MealTemplatesSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealTemplatesSheet.swift; sourceTree = "<group>"; };
+		6AE8BD221EACC772B2B9BB87 /* BarcodeScannerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BarcodeScannerView.swift; sourceTree = "<group>"; };
+		6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutFinishSummaryAssembler.swift; sourceTree = "<group>"; };
+		6C652A1A8317458CA304E02E /* WorkoutImportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportView.swift; sourceTree = "<group>"; };
+		6CCF1A5A2061F3DF8905F18A /* AppRootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppRootView.swift; sourceTree = "<group>"; };
+		6D664F330F28D4704C21F15A /* WorkoutLiveActivityManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityManager.swift; sourceTree = "<group>"; };
+		6F95B610357735E36A6E52E2 /* SetLogValidation.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SetLogValidation.swift; sourceTree = "<group>"; };
+		6FDB6BB61C2E6862BC90933A /* CoachLLM */ = {isa = PBXFileReference; lastKnownFileType = folder; name = CoachLLM; path = Packages/CoachLLM; sourceTree = SOURCE_ROOT; };
+		718EAF186FDB48BD87B5F071 /* DashboardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardView.swift; sourceTree = "<group>"; };
+		72CFF67885BA5C1B752C27F2 /* NutritionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionView.swift; sourceTree = "<group>"; };
+		737F78DD4BAE1A8A75399E02 /* DataBrowserView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataBrowserView.swift; sourceTree = "<group>"; };
+		7415F93EDE764C20C590FC55 /* NutritionDayMealsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDayMealsStore.swift; sourceTree = "<group>"; };
+		75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveCoachBanner.swift; sourceTree = "<group>"; };
+		76546B6C56318E025984DE23 /* RestDockChipStyle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestDockChipStyle.swift; sourceTree = "<group>"; };
+		76FAAA79AF75D03E9B03182C /* RecoveryDetailBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailBuilder.swift; sourceTree = "<group>"; };
+		77704FA7A9FE194CBFB943C7 /* AppLifecycleState.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppLifecycleState.swift; sourceTree = "<group>"; };
+		78ED9EC9330DD1E9532DF79E /* ExerciseHistorySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseHistorySheet.swift; sourceTree = "<group>"; };
+		7A1B4D79D160E61AF593D879 /* CoachPlanSettingsAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachPlanSettingsAdjuster.swift; sourceTree = "<group>"; };
+		7B04F28C575E039C74C48B68 /* FoodSearchView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodSearchView.swift; sourceTree = "<group>"; };
+		7B4957993AE0AB23C62288AC /* MuscleVolumeBoardContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeBoardContainer.swift; sourceTree = "<group>"; };
+		7C130F98FF3FC996400A76B3 /* SessionTimelineChartGeometry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineChartGeometry.swift; sourceTree = "<group>"; };
+		7F2DB630165D5D390902A892 /* CloudBackupCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudBackupCoordinator.swift; sourceTree = "<group>"; };
+		7F575612470963D7AE49C3B0 /* SpotifyAppRemoteService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifyAppRemoteService.swift; sourceTree = "<group>"; };
+		7FD55294B93A91A7E2D40898 /* PersistenceBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersistenceBootstrap.swift; sourceTree = "<group>"; };
+		8045F9E7A6B189532126DA2B /* CopyMealEntrySheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CopyMealEntrySheet.swift; sourceTree = "<group>"; };
+		8151F07EF3F569F725808118 /* MethodologySeed */ = {isa = PBXFileReference; lastKnownFileType = folder; name = MethodologySeed; path = Helm/Resources/MethodologySeed; sourceTree = SOURCE_ROOT; };
+		81D287D7E2845C05A558F48B /* FoodLogMealGrounding.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLogMealGrounding.swift; sourceTree = "<group>"; };
+		823521A478ECA1FC382C6F31 /* WorkoutStartCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutStartCoordinator.swift; sourceTree = "<group>"; };
+		8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeekAheadScheduleSection.swift; sourceTree = "<group>"; };
+		82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainPreferences.swift; sourceTree = "<group>"; };
+		82DDA86B20D7A7E2293D87B5 /* HevyCSVImportPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HevyCSVImportPreviewView.swift; sourceTree = "<group>"; };
+		84FDF1C6F3B3B6FE2E70ADD3 /* RestNotificationLaunchOptions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestNotificationLaunchOptions.swift; sourceTree = "<group>"; };
+		8507D9C93895D1D33AF1E3DD /* DesignSystem */ = {isa = PBXFileReference; lastKnownFileType = folder; name = DesignSystem; path = Packages/DesignSystem; sourceTree = SOURCE_ROOT; };
+		853549AE3B65F7A8533FBD00 /* Persistence */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Persistence; path = Packages/Persistence; sourceTree = SOURCE_ROOT; };
+		877BE2032AE31153B6E4A2CC /* WatchBriefView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchBriefView.swift; sourceTree = "<group>"; };
+		88A669136FBF2DC90483B34E /* SessionTimelineChartView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionTimelineChartView.swift; sourceTree = "<group>"; };
+		88F44550306FA5A33BEFC537 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		8A940BDCCD8036FC02F7263C /* TrainSessionHeaderView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainSessionHeaderView.swift; sourceTree = "<group>"; };
+		8D835BB050C165B2974D4A41 /* Helm.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = Helm.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		8DB8B6B91DA9F2AC1F59750B /* NutritionMealBucketSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionMealBucketSection.swift; sourceTree = "<group>"; };
+		8DFA170CBB0FAC92FEE9DD86 /* HelmWatchAppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchAppDelegate.swift; sourceTree = "<group>"; };
+		8E952EA2C1BAC33BB667EACA /* NutritionBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionBootstrap.swift; sourceTree = "<group>"; };
+		8FD7149F5257250C7F5D0427 /* ProgressionDetailContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailContainer.swift; sourceTree = "<group>"; };
+		904B90DB1BFD065B4CA93390 /* MethodologyBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MethodologyBootstrap.swift; sourceTree = "<group>"; };
+		91AE49C058C1BAA271BFB930 /* PersonalRecordsCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecordsCelebrationView.swift; sourceTree = "<group>"; };
+		92BE8998732A4FFA25A8DFA3 /* WatchActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchActiveWorkoutView.swift; sourceTree = "<group>"; };
+		93097CC5134C8A7014CAFB8F /* E1RMProgressionChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E1RMProgressionChartCard.swift; sourceTree = "<group>"; };
+		9461B78B1AE038AEA2C04D69 /* ExplainableMetricMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExplainableMetricMappers.swift; sourceTree = "<group>"; };
+		9466BDAEA7FBBF340A244FC8 /* MealLineItemEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealLineItemEditor.swift; sourceTree = "<group>"; };
+		9486CCBB7963BC4373B4B2F2 /* ReadinessHistoryChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessHistoryChartCard.swift; sourceTree = "<group>"; };
+		952D2678FF8CD59C4A201895 /* SleepDiagnosticsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepDiagnosticsView.swift; sourceTree = "<group>"; };
+		95BFA7694930C9F929FCD15D /* WatchSyncStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSyncStatusView.swift; sourceTree = "<group>"; };
+		9A7B62CE402057349ACD21B9 /* CoachActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachActivityGate.swift; sourceTree = "<group>"; };
+		9AF798183AFFC925F57A9B3B /* SleepAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAnalysisView.swift; sourceTree = "<group>"; };
+		9B57DF668B8BC0BFEE46B85D /* CalendarHistoryQueryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarHistoryQueryService.swift; sourceTree = "<group>"; };
+		9C352EF85CB40EE3730A712D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		9D8E910325AFE50F60C36C51 /* HelmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmApp.swift; sourceTree = "<group>"; };
+		9DA01118E23D90A111A73A50 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
+		9E168617C8DCF2C77B9A649D /* TrendsChartShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsChartShared.swift; sourceTree = "<group>"; };
+		9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneWorkoutSessionManager.swift; sourceTree = "<group>"; };
+		9E6A6E69A91E304B63CF361B /* CompositeSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeSongTempoProvider.swift; sourceTree = "<group>"; };
+		9EB217544694F548D4AD4EBD /* NotificationsSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationsSettingsView.swift; sourceTree = "<group>"; };
+		9F77FF965ADF1B2CF2D76A21 /* AppTabRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppTabRouter.swift; sourceTree = "<group>"; };
+		A1FF07947400503AACAFFEFE /* SchemaV2ExportView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SchemaV2ExportView.swift; sourceTree = "<group>"; };
+		A2B8CEBCAF64D6176359C13A /* CoachWorkoutStartAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachWorkoutStartAdjuster.swift; sourceTree = "<group>"; };
+		A4745B71BAE1F957B073546A /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		A4F8E11E889F843F89506F06 /* WatchCompanionBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchCompanionBootstrap.swift; sourceTree = "<group>"; };
+		A594486378BD3499888DF38D /* ThresholdInsightCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThresholdInsightCard.swift; sourceTree = "<group>"; };
+		A9B69832027920890EDE745F /* WatchReadinessBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchReadinessBootstrap.swift; sourceTree = "<group>"; };
+		A9E0109DD30A97AAF5DE7F2C /* WorkoutSessionSideEffects.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionSideEffects.swift; sourceTree = "<group>"; };
+		AA0907580020AECBE2A60C03 /* CompleteLiveActivitySetIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompleteLiveActivitySetIntent.swift; sourceTree = "<group>"; };
+		AB214CF83D872AB067390BF2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ABB873D18BBB4BC92A823BF0 /* HelmTextShareSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmTextShareSheet.swift; sourceTree = "<group>"; };
+		AC4725B3B45CA0A68D03E86A /* CoachChatChartBubble.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachChatChartBubble.swift; sourceTree = "<group>"; };
+		AC9102F5A201EC033CB767E0 /* MorningBriefAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningBriefAutomationGuideView.swift; sourceTree = "<group>"; };
+		AF5EC68FB1B8FD3686AFD4A3 /* ReccoBeatsSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReccoBeatsSongTempoProvider.swift; sourceTree = "<group>"; };
+		AFB878F4BA5B5A0E1FB8244E /* MealDepthCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealDepthCameraView.swift; sourceTree = "<group>"; };
+		B10704A6844A8E72BA3B1C78 /* FoodLogTipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLogTipStore.swift; sourceTree = "<group>"; };
+		B426D8758F266B7E04B1F08C /* HelmWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchApp.swift; sourceTree = "<group>"; };
+		B6114A210BD03224646566E8 /* ExerciseRestEditorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseRestEditorSheet.swift; sourceTree = "<group>"; };
+		B7961B190CE87BDBDB314C9B /* HealthKitStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitStatusView.swift; sourceTree = "<group>"; };
+		B8221A5D67850470079B83CE /* CoachFoodMealConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachFoodMealConfirmSheet.swift; sourceTree = "<group>"; };
+		B83E8014B49C4ECDC9513500 /* WorkoutMusicCaptureService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutMusicCaptureService.swift; sourceTree = "<group>"; };
+		B85D6D155ADBDA484F612753 /* WatchWorkoutSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSessionManager.swift; sourceTree = "<group>"; };
+		B93DD43B6741AEADB0F0CB31 /* Domain */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Domain; path = Packages/Domain; sourceTree = SOURCE_ROOT; };
+		B9F0E059FF578C2BA3C2584D /* ExportKit */ = {isa = PBXFileReference; lastKnownFileType = folder; name = ExportKit; path = Packages/ExportKit; sourceTree = SOURCE_ROOT; };
+		BA61CF3E207A7E5FB94517F8 /* PhotoLogOptionsSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoLogOptionsSheet.swift; sourceTree = "<group>"; };
+		BB8D91C469EE391AE7E07CAE /* ManualRestTimerPill.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualRestTimerPill.swift; sourceTree = "<group>"; };
+		BBF48AA231CAF609F9A593BB /* WelcomeOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WelcomeOnboardingStepView.swift; sourceTree = "<group>"; };
+		BF4D86D83D9261A215F844A0 /* WorkoutSessionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionDetailView.swift; sourceTree = "<group>"; };
+		BF925652AAE23A274B8B09F6 /* OfflineBarcodeQueueSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OfflineBarcodeQueueSheet.swift; sourceTree = "<group>"; };
+		C1B7A655D0203AC7B91E0F38 /* SessionCoachNoteField.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SessionCoachNoteField.swift; sourceTree = "<group>"; };
+		C1BFC35F4974EAC7B0B27A3D /* SpotifySessionStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifySessionStore.swift; sourceTree = "<group>"; };
+		C2CECB69DFC398C51E14B613 /* BucketFoodLogMenu.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BucketFoodLogMenu.swift; sourceTree = "<group>"; };
+		C2D47C3A50F25620B3A3436C /* HelmWatchTheme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchTheme.swift; sourceTree = "<group>"; };
+		C2D66D7C3E9FB3AD0994273A /* WeeklyRateCalculatorSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WeeklyRateCalculatorSheet.swift; sourceTree = "<group>"; };
+		C3E116AB09202F35B9F02B49 /* SongTempoPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongTempoPreferences.swift; sourceTree = "<group>"; };
+		C45F672E311D123D74D66BFB /* ExercisePickerView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExercisePickerView.swift; sourceTree = "<group>"; };
+		C6033D7C64CF817B8F57FE7F /* SecretsBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SecretsBootstrap.swift; sourceTree = "<group>"; };
+		C681E1D393700046F9B58E82 /* ReadinessRevealStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessRevealStore.swift; sourceTree = "<group>"; };
+		C6F4099C403CAEFCA3076FF9 /* SongTempoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongTempoCache.swift; sourceTree = "<group>"; };
+		C8AA843D1E6F3CF48565DDA2 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
+		C94B1BFCF261C13C4B0670F5 /* TrainingHistoryTransferController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingHistoryTransferController.swift; sourceTree = "<group>"; };
+		CA95CABA5A4BAA4B02EBB6E2 /* WorkoutImportPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportPreviewView.swift; sourceTree = "<group>"; };
+		CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachSettingsView.swift; sourceTree = "<group>"; };
+		CC085FFEC48EBA405C30F1B0 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
+		CCD28AA9269832D4A65D0247 /* SpotifySettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpotifySettingsView.swift; sourceTree = "<group>"; };
+		CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDayCompleteSection.swift; sourceTree = "<group>"; };
+		CEB49E94526778CBCD171A92 /* WatchWorkoutLaunchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutLaunchBridge.swift; sourceTree = "<group>"; };
+		CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealController.swift; sourceTree = "<group>"; };
+		CF69FDF17A9AAEF9F3D2CEF8 /* BodyProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyProfileSettingsView.swift; sourceTree = "<group>"; };
+		CFD8642DBA0484B2FCE13B47 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
+		D0D9F4901EC4435E95CB6CA4 /* TrainViewPresentationLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainViewPresentationLayer.swift; sourceTree = "<group>"; };
+		D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirroredWorkoutSessionBridge.swift; sourceTree = "<group>"; };
+		D1240B315B6B2120DDD331CA /* ExerciseSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSectionView.swift; sourceTree = "<group>"; };
+		D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D4F6B84C8F55A7086F2EC757 /* DeezerSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeezerSongTempoProvider.swift; sourceTree = "<group>"; };
+		D5A9D21783AB844536B2DE39 /* ExerciseImageView.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = ExerciseImageView.swift; sourceTree = "<group>"; };
+		D6BD494E68B5D3D03BF91C3F /* WatchWorkoutSessionLifecycleTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSessionLifecycleTracker.swift; sourceTree = "<group>"; };
+		D90D6A16496154D0C13C849D /* CalendarEventClassifierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventClassifierService.swift; sourceTree = "<group>"; };
+		D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachMemoryAdjuster.swift; sourceTree = "<group>"; };
+		D9A4D15B91AF85A22B19FF9D /* ReadinessBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessBootstrap.swift; sourceTree = "<group>"; };
+		DB9D9F2E121FC36FF628D7F7 /* TrendsChartSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsChartSupport.swift; sourceTree = "<group>"; };
+		DCE82E32B7A51CFEAFAEDD21 /* WorkoutHistoryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryController.swift; sourceTree = "<group>"; };
+		DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HelmWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		DD9DA56E1D9F8982E7FCCEBF /* HelmNotificationDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmNotificationDelegate.swift; sourceTree = "<group>"; };
+		DE4B32529BACEC5826B3C5B9 /* RestTimerBackgroundAudio.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerBackgroundAudio.swift; sourceTree = "<group>"; };
+		DEA4D2E1FECDAF8007A22DF9 /* PlanBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanBootstrap.swift; sourceTree = "<group>"; };
+		E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeArcGridCard.swift; sourceTree = "<group>"; };
+		E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailView.swift; sourceTree = "<group>"; };
+		E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsOnboardingStepView.swift; sourceTree = "<group>"; };
+		E2EC8FF604C9F6C1C11F6B46 /* HelmShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HelmShare.entitlements; sourceTree = "<group>"; };
+		E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodFlowView.swift; sourceTree = "<group>"; };
+		E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGoalSettingsView.swift; sourceTree = "<group>"; };
+		E792D229847662F52C00583F /* InSessionCoachDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InSessionCoachDebugView.swift; sourceTree = "<group>"; };
+		E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBootstrap.swift; sourceTree = "<group>"; };
+		EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerSoundPlayer.swift; sourceTree = "<group>"; };
+		ED1B211D964D5382DF275D95 /* HelmShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HelmShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		F020A02859EF72C2D6EE8A23 /* CoachDisplayNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDisplayNameStore.swift; sourceTree = "<group>"; };
+		F1A5D1378F044AB92050869C /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Packages/Core; sourceTree = SOURCE_ROOT; };
+		F26DFB1EE713608E968131D8 /* HelmWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchWidgetsBundle.swift; sourceTree = "<group>"; };
+		F2CA1F21804E5C8A7EC7CBB4 /* CoachDiagnosticsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDiagnosticsStore.swift; sourceTree = "<group>"; };
+		F38DA34461728AFF4E32AC14 /* boxing-bell-notification.caf */ = {isa = PBXFileReference; path = "boxing-bell-notification.caf"; sourceTree = "<group>"; };
+		F4545C1493CC90839AA3B3FA /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainBootstrap.swift; sourceTree = "<group>"; };
+		F78F73BE82823EE26C6326F8 /* SaveMealTemplateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveMealTemplateSheet.swift; sourceTree = "<group>"; };
+		F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionSettingsView.swift; sourceTree = "<group>"; };
+		F91EE0EB0580AB7B66529E4C /* OnboardingStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStep.swift; sourceTree = "<group>"; };
+		F91F2E3194632AA180E17439 /* SourcesMethodologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesMethodologyView.swift; sourceTree = "<group>"; };
+		F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarHintStatusView.swift; sourceTree = "<group>"; };
+		FC587134C8EB2C87F3B76479 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
+		FEEF754F3E09C21EF17863B4 /* WorkoutSessionLifecycleTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionLifecycleTracker.swift; sourceTree = "<group>"; };
+		FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainSessionController.swift; sourceTree = "<group>"; };
+		FF70385AB40ED2CA66092D57 /* ExportEnvironmentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportEnvironmentFactory.swift; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		14426D61CDCD21D9B49F1AAA /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				6B2005E3DCC4FE12EFA1464C /* WidgetKit.framework in Frameworks */,
+				98A21C60D95516C298BE5E03 /* SwiftUI.framework in Frameworks */,
+				A0306B6EF68BE7E8343EC7B4 /* AppIntents.framework in Frameworks */,
+				B4DA8A5CE7E005CB7F2394FF /* ActivityKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		17E1F66DD2267C2F4D5ED039 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B46230415D97955B62FC1750 /* Core in Frameworks */,
+				8353133EC66D60D4D5D2FC04 /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A116319CB3CBA415496F4A2F /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4D6D8E471D8269BB54E5FBC8 /* Core in Frameworks */,
+				D7901362865FCAFA02B63AE7 /* HealthKit.framework in Frameworks */,
+				EEFBB1F3F0D26D7B9EEC72F7 /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A90E2FACE226079785E869D2 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1F398D6FF41A4D1B9191A380 /* Core in Frameworks */,
+				9D45DFC2B61AC77C85F60C91 /* Diagnostics in Frameworks */,
+				61490342EEFF814540F83166 /* DesignSystem in Frameworks */,
+				3B3339C8620B56FD69642D2C /* Persistence in Frameworks */,
+				FC429EBFF532646F68A1F1D3 /* HealthKitIngest in Frameworks */,
+				57BC2178EF0742A15AE1C86C /* CoachLLM in Frameworks */,
+				E5CE65EBA4D78A4941342A16 /* ExportKit in Frameworks */,
+				C8C1D9BEEC2E05D32436B5FF /* ReadinessKit in Frameworks */,
+				E21776CEAEDC1F719FDF9AB5 /* NutritionKit in Frameworks */,
+				32C06890A9DE93C04288EF59 /* SpotifyiOS in Frameworks */,
+				D8E3E6CB5A56242247E3B409 /* WatchConnectivity.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		F0C29320EFA8E01B840132FE /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EAF7BC88C4538D88011AEFD8 /* ExportKit in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		016557A48A8DDD112F8D4159 /* Train */ = {
+			isa = PBXGroup;
+			children = (
+				78ED9EC9330DD1E9532DF79E /* ExerciseHistorySheet.swift */,
+				C45F672E311D123D74D66BFB /* ExercisePickerView.swift */,
+				B6114A210BD03224646566E8 /* ExerciseRestEditorSheet.swift */,
+				D1240B315B6B2120DDD331CA /* ExerciseSectionView.swift */,
+				44613FD77AC6EFDFD15431F6 /* InSessionCoachSheet.swift */,
+				BB8D91C469EE391AE7E07CAE /* ManualRestTimerPill.swift */,
+				472C04C4FF83B33AA989EB20 /* ManualRestTimerSheet.swift */,
+				91AE49C058C1BAA271BFB930 /* PersonalRecordsCelebrationView.swift */,
+				75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */,
+				76546B6C56318E025984DE23 /* RestDockChipStyle.swift */,
+				2821CC293468F79E6F043338 /* RestTimerBanner.swift */,
+				C1B7A655D0203AC7B91E0F38 /* SessionCoachNoteField.swift */,
+				7C130F98FF3FC996400A76B3 /* SessionTimelineChartGeometry.swift */,
+				88A669136FBF2DC90483B34E /* SessionTimelineChartView.swift */,
+				69855AA731BBEA8518DD3238 /* SetRowView.swift */,
+				8A940BDCCD8036FC02F7263C /* TrainSessionHeaderView.swift */,
+				8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */,
+				3344C8A09726B2C6A84C9472 /* WorkoutFinishSummaryView.swift */,
+				1D97669BBC4C98614477CF4E /* WorkoutHistoryListView.swift */,
+				CA95CABA5A4BAA4B02EBB6E2 /* WorkoutImportPreviewView.swift */,
+				6C652A1A8317458CA304E02E /* WorkoutImportView.swift */,
+				BF4D86D83D9261A215F844A0 /* WorkoutSessionDetailView.swift */,
+				678A7E8B335952B6E5DC5D72 /* WorkoutTemplateDetailView.swift */,
+				32582A5A6C818C87A6475D72 /* WorkoutTemplatesListView.swift */,
+				D5A9D21783AB844536B2DE39 /* ExerciseImageView.swift */,
+				45BD4EA654F2AE547AB1F482 /* FocusExerciseCard.swift */,
+				475054EDDA9CE7FFD21E319B /* FocusCardLoggingView.swift */,
+				2D4126F927A7785C6BC39700 /* FocusSessionLogSheet.swift */,
+			);
+			path = Train;
+			sourceTree = "<group>";
+		};
+		12AEC1E625340B7E3C0B2264 /* HelmWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */,
+				3C3D42005745CED123A3EF54 /* HelmWidgetsBundle.swift */,
+				9DA01118E23D90A111A73A50 /* WorkoutLiveActivityWidget.swift */,
+			);
+			path = HelmWidgets;
+			sourceTree = "<group>";
+		};
+		16B069CF592C517A7B7D6622 /* Packages */ = {
+			isa = PBXGroup;
+			children = (
+				6FDB6BB61C2E6862BC90933A /* CoachLLM */,
+				F1A5D1378F044AB92050869C /* Core */,
+				8507D9C93895D1D33AF1E3DD /* DesignSystem */,
+				002F2C3FBD87665190A49FFD /* Diagnostics */,
+				B93DD43B6741AEADB0F0CB31 /* Domain */,
+				B9F0E059FF578C2BA3C2584D /* ExportKit */,
+				5C5431C9025E5B20FFE07CAC /* HealthKitIngest */,
+				853549AE3B65F7A8533FBD00 /* Persistence */,
+			);
+			path = Packages;
+			sourceTree = "<group>";
+		};
+		22022B3320DB374656C7D279 /* Onboarding */ = {
+			isa = PBXGroup;
+			children = (
+				21053A3537A7606568D37DEE /* OnboardingCoordinator.swift */,
+				1CA15866D39CB103E073703A /* OnboardingFlowView.swift */,
+				F91EE0EB0580AB7B66529E4C /* OnboardingStep.swift */,
+				43D9DDE7033848C836DB049B /* OnboardingStepChrome.swift */,
+				0EAA64930985A111BAEB5DFF /* OnboardingStore.swift */,
+				E2315E4D9AFE4D0C9192C38D /* Steps */,
+			);
+			path = Onboarding;
+			sourceTree = "<group>";
+		};
+		2A6AA4042AAE4281839208F6 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				144C7FD182597E35BC239051 /* LiveWorkoutBuilderTeardownTracker.swift */,
+				D6BD494E68B5D3D03BF91C3F /* WatchWorkoutSessionLifecycleTracker.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		31707C54801739A6EF724BC2 /* Spotify */ = {
+			isa = PBXGroup;
+			children = (
+				7F575612470963D7AE49C3B0 /* SpotifyAppRemoteService.swift */,
+				5E0537918F8ED3DBAE09E784 /* SpotifyAuthClient.swift */,
+				C1BFC35F4974EAC7B0B27A3D /* SpotifySessionStore.swift */,
+			);
+			path = Spotify;
+			sourceTree = "<group>";
+		};
+		3EA2A539B25B898A86F92536 /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				737F78DD4BAE1A8A75399E02 /* DataBrowserView.swift */,
+				E792D229847662F52C00583F /* InSessionCoachDebugView.swift */,
+				952D2678FF8CD59C4A201895 /* SleepDiagnosticsView.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
+		4519BA9FC6E7EAFF14C36642 /* HelmWatch */ = {
+			isa = PBXGroup;
+			children = (
+				56F23900FAB682F1116B3C5F /* Assets.xcassets */,
+				341063E0D43CBF5081A9AA7B /* HelmWatch.entitlements */,
+				B426D8758F266B7E04B1F08C /* HelmWatchApp.swift */,
+				8DFA170CBB0FAC92FEE9DD86 /* HelmWatchAppDelegate.swift */,
+				C2D47C3A50F25620B3A3436C /* HelmWatchTheme.swift */,
+				A4F8E11E889F843F89506F06 /* WatchCompanionBootstrap.swift */,
+				5E24380021D00B17F56D26F7 /* WatchRootView.swift */,
+				CEB49E94526778CBCD171A92 /* WatchWorkoutLaunchBridge.swift */,
+				2A6AA4042AAE4281839208F6 /* Services */,
+				69474ADA03364E6876C8627D /* Views */,
+				F6FA3C0FB1C4A821B51E3A85 /* Workout */,
+			);
+			path = HelmWatch;
+			sourceTree = "<group>";
+		};
+		494352EE369BB11D85D6FD93 /* Helm */ = {
+			isa = PBXGroup;
+			children = (
+				6CCF1A5A2061F3DF8905F18A /* AppRootView.swift */,
+				9F77FF965ADF1B2CF2D76A21 /* AppTabRouter.swift */,
+				88F44550306FA5A33BEFC537 /* Assets.xcassets */,
+				370D843735CD1722D7D7B87D /* BriefBootstrap.swift */,
+				61C402747732369E2B89A5F4 /* BriefIntentBootstrap.swift */,
+				E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */,
+				23010DE8390547294FF5455D /* ChatController.swift */,
+				9A7B62CE402057349ACD21B9 /* CoachActivityGate.swift */,
+				44888E7954FF5364A3CAB7A1 /* CoachArchetypeBootstrap.swift */,
+				63468E7D96CE782EFC0B9DFE /* CoachBootstrap.swift */,
+				136E6CD25E2A9CBD074928E0 /* CoachContextBootstrap.swift */,
+				F2CA1F21804E5C8A7EC7CBB4 /* CoachDiagnosticsStore.swift */,
+				F020A02859EF72C2D6EE8A23 /* CoachDisplayNameStore.swift */,
+				12FE5422C66B570B02FFE4F4 /* ExerciseHistoryBuilder.swift */,
+				9461B78B1AE038AEA2C04D69 /* ExplainableMetricMappers.swift */,
+				FF70385AB40ED2CA66092D57 /* ExportEnvironmentFactory.swift */,
+				003EAD8C95AB124772A7DD7E /* HealthKitBootstrap.swift */,
+				53B738B6092D28116BB8EB0D /* Helm.entitlements */,
+				9D8E910325AFE50F60C36C51 /* HelmApp.swift */,
+				AB214CF83D872AB067390BF2 /* Info.plist */,
+				1A615EA65AD0AC0D2E6284DB /* ManualFoodLogController.swift */,
+				904B90DB1BFD065B4CA93390 /* MethodologyBootstrap.swift */,
+				8E952EA2C1BAC33BB667EACA /* NutritionBootstrap.swift */,
+				7FD55294B93A91A7E2D40898 /* PersistenceBootstrap.swift */,
+				CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */,
+				DEA4D2E1FECDAF8007A22DF9 /* PlanBootstrap.swift */,
+				0E2FFD4362A32778F2269486 /* ProactiveBootstrap.swift */,
+				08E190D352AF84EAB945126A /* ProgressionDetailBuilder.swift */,
+				D9A4D15B91AF85A22B19FF9D /* ReadinessBootstrap.swift */,
+				76FAAA79AF75D03E9B03182C /* RecoveryDetailBuilder.swift */,
+				C8AA843D1E6F3CF48565DDA2 /* RootTabView.swift */,
+				6F95B610357735E36A6E52E2 /* SetLogValidation.swift */,
+				689477C008337405AA0AB4C3 /* SleepAnalysisBuilder.swift */,
+				F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */,
+				FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */,
+				A9B69832027920890EDE745F /* WatchReadinessBootstrap.swift */,
+				276156A9C2905E234541F09E /* WeekAheadScheduleBuilder.swift */,
+				DCE82E32B7A51CFEAFAEDD21 /* WorkoutHistoryController.swift */,
+				02F55C024C286B4F7FE4F093 /* WorkoutImportController.swift */,
+				EAC1172E943F7E3DF027441A /* Debug */,
+				22022B3320DB374656C7D279 /* Onboarding */,
+				D67C4BD09DFFB603AA029402 /* Preferences */,
+				86ED87214AC200A9FDD5A1A6 /* Resources */,
+				DF0B1D16607A12DC7A720650 /* Services */,
+				A0BF464B2E0B9313D47DCC73 /* Trends */,
+				B7A0F28CB3C7B26CE29D052E /* Views */,
+			);
+			path = Helm;
+			sourceTree = "<group>";
+		};
+		4A30B047C7CB11554B5417DE /* HelmShare */ = {
+			isa = PBXGroup;
+			children = (
+				E2EC8FF604C9F6C1C11F6B46 /* HelmShare.entitlements */,
+				4D36CDE418F2E6C69D9092AB /* ShareViewController.swift */,
+			);
+			path = HelmShare;
+			sourceTree = "<group>";
+		};
+		57D6984B9979B93A8AB4C35F /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				42DA3A67300FE32878B3F069 /* ActivityKit.framework */,
+				CFD8642DBA0484B2FCE13B47 /* AppIntents.framework */,
+				04F1CC5687F480A0C72BDD40 /* HealthKit.framework */,
+				F4545C1493CC90839AA3B3FA /* SwiftUI.framework */,
+				2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */,
+				A4745B71BAE1F957B073546A /* WidgetKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		69474ADA03364E6876C8627D /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				92BE8998732A4FFA25A8DFA3 /* WatchActiveWorkoutView.swift */,
+				574EA8DEFD54226307D6092D /* WatchActivityPickerView.swift */,
+				877BE2032AE31153B6E4A2CC /* WatchBriefView.swift */,
+				0C227DC1389D1E3150D7A4B1 /* WatchCompanionView.swift */,
+				212938823FAC6CF3F5483359 /* WatchWorkoutView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		6A3FCD534693AA6AA491C581 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				CEE3DC554111B083A2614F1A /* WatchSync */,
+				D0918411F6DE11B6D21F4CAC /* WorkoutLiveActivity */,
+			);
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		6F4926D2E8424FCC3FD48E9B /* HelmUITests */ = {
+			isa = PBXGroup;
+			children = (
+				3895957E57D5268906F78B79 /* ScreenshotTourTests.swift */,
+			);
+			path = HelmUITests;
+			sourceTree = "<group>";
+		};
+		86ED87214AC200A9FDD5A1A6 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				F38DA34461728AFF4E32AC14 /* boxing-bell-notification.caf */,
+				302A9D2609E20CCBA30BC073 /* boxing-bell.caf */,
+				042A3A10E4834C27909AE730 /* ExerciseSeed */,
+				8151F07EF3F569F725808118 /* MethodologySeed */,
+				618BEB910286D2A493ECF63B /* Sounds */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		899977D38DEF0F21C1B95DFA /* HelmWatchWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				9C352EF85CB40EE3730A712D /* Assets.xcassets */,
+				F26DFB1EE713608E968131D8 /* HelmWatchWidgetsBundle.swift */,
+			);
+			path = HelmWatchWidgets;
+			sourceTree = "<group>";
+		};
+		8B6EFA6A622003CF4A34CB49 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				8D835BB050C165B2974D4A41 /* Helm.app */,
+				ED1B211D964D5382DF275D95 /* HelmShare.appex */,
+				04567CF083B4C469EA782E32 /* HelmUITests.xctest */,
+				053F9ED9C33440FD2497E414 /* HelmWatch.app */,
+				38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */,
+				DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		A0BF464B2E0B9313D47DCC73 /* Trends */ = {
+			isa = PBXGroup;
+			children = (
+				5B9ADFA7FCA08B89DF936EC9 /* MuscleVolumeRecencyBuilder.swift */,
+				1F143BE76D9161B316CE8116 /* TrendChartFixtures.swift */,
+				2498C194C2470C24926D8786 /* TrendsBootstrap.swift */,
+				DB9D9F2E121FC36FF628D7F7 /* TrendsChartSupport.swift */,
+				1B3185A05C2BDEE41B579ED9 /* TrendsController.swift */,
+				2E57A102A907E43806E3B287 /* TrendsDataBuilder.swift */,
+				49AE07A1436E7283081C804B /* TrendsModels.swift */,
+			);
+			path = Trends;
+			sourceTree = "<group>";
+		};
+		B7A0F28CB3C7B26CE29D052E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */,
+				5F91574F7DE571BC040C31BE /* AlcoholLogView.swift */,
+				6AE8BD221EACC772B2B9BB87 /* BarcodeScannerView.swift */,
+				CF69FDF17A9AAEF9F3D2CEF8 /* BodyProfileSettingsView.swift */,
+				C2CECB69DFC398C51E14B613 /* BucketFoodLogMenu.swift */,
+				F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */,
+				5E383F9ECBDA0F1876BF4946 /* ChatView.swift */,
+				CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */,
+				8045F9E7A6B189532126DA2B /* CopyMealEntrySheet.swift */,
+				530637CAC89DF5D543631510 /* DashboardSleepCard.swift */,
+				058D654D744C8C945D6A6E19 /* DashboardTrendsSection.swift */,
+				718EAF186FDB48BD87B5F071 /* DashboardView.swift */,
+				03C643CA6B30C2E3422578B1 /* DataSafetyView.swift */,
+				5FDC90C1367E4D301748CCEB /* DescribeFoodSheet.swift */,
+				34CB2832408F087D8650F12D /* FoodPortionStepView.swift */,
+				7B04F28C575E039C74C48B68 /* FoodSearchView.swift */,
+				B7961B190CE87BDBDB314C9B /* HealthKitStatusView.swift */,
+				82DDA86B20D7A7E2293D87B5 /* HevyCSVImportPreviewView.swift */,
+				1C7802E4F05D00F683B7B10C /* MealBucketPicker.swift */,
+				AFB878F4BA5B5A0E1FB8244E /* MealDepthCameraView.swift */,
+				41276A961E6E89096F44D629 /* MealEditSheet.swift */,
+				9466BDAEA7FBBF340A244FC8 /* MealLineItemEditor.swift */,
+				6ACFBF7FD0D8A51247C2F4C8 /* MealTemplatesSheet.swift */,
+				4F4E43BE3C8ABC6AACFEC82C /* MemoryProfileEditorView.swift */,
+				50FACBBAFC84E813894234E8 /* MethodologyTopicDetailView.swift */,
+				AC9102F5A201EC033CB767E0 /* MorningBriefAutomationGuideView.swift */,
+				7B4957993AE0AB23C62288AC /* MuscleVolumeBoardContainer.swift */,
+				9EB217544694F548D4AD4EBD /* NotificationsSettingsView.swift */,
+				CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */,
+				50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */,
+				1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */,
+				8DB8B6B91DA9F2AC1F59750B /* NutritionMealBucketSection.swift */,
+				F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */,
+				72CFF67885BA5C1B752C27F2 /* NutritionView.swift */,
+				BF925652AAE23A274B8B09F6 /* OfflineBarcodeQueueSheet.swift */,
+				E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */,
+				BA61CF3E207A7E5FB94517F8 /* PhotoLogOptionsSheet.swift */,
+				480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */,
+				0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */,
+				8FD7149F5257250C7F5D0427 /* ProgressionDetailContainer.swift */,
+				E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */,
+				3CD452125F7E39BD60465FA6 /* QuickAddFoodView.swift */,
+				01D4655437CCA89206868D9C /* RecoveryDetailContainer.swift */,
+				20ED97094D22CD1B52E5E2FA /* RecoveryDetailView.swift */,
+				F78F73BE82823EE26C6326F8 /* SaveMealTemplateSheet.swift */,
+				A1FF07947400503AACAFFEFE /* SchemaV2ExportView.swift */,
+				6040B8736850EE4E57B62015 /* SettingsView.swift */,
+				333AAB6C03ED25A61C1AF2C0 /* SleepAnalysisContainer.swift */,
+				9AF798183AFFC925F57A9B3B /* SleepAnalysisView.swift */,
+				F91F2E3194632AA180E17439 /* SourcesMethodologyView.swift */,
+				CCD28AA9269832D4A65D0247 /* SpotifySettingsView.swift */,
+				A594486378BD3499888DF38D /* ThresholdInsightCard.swift */,
+				59423B745D49F066683F66BE /* TrainView.swift */,
+				D0D9F4901EC4435E95CB6CA4 /* TrainViewPresentationLayer.swift */,
+				FC587134C8EB2C87F3B76479 /* TrendsView.swift */,
+				95BFA7694930C9F929FCD15D /* WatchSyncStatusView.swift */,
+				C2D66D7C3E9FB3AD0994273A /* WeeklyRateCalculatorSheet.swift */,
+				DCD054FB657C8E613B07F365 /* Chat */,
+				3EA2A539B25B898A86F92536 /* Debug */,
+				DE6DCB96149B915CE41BEE4D /* Share */,
+				016557A48A8DDD112F8D4159 /* Train */,
+				E0BA145465C13B7DA07A1FA2 /* Trends */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		BA8DFAEA682FBDE810EE6475 /* Music */ = {
+			isa = PBXGroup;
+			children = (
+				9E6A6E69A91E304B63CF361B /* CompositeSongTempoProvider.swift */,
+				D4F6B84C8F55A7086F2EC757 /* DeezerSongTempoProvider.swift */,
+				AF5EC68FB1B8FD3686AFD4A3 /* ReccoBeatsSongTempoProvider.swift */,
+				C6F4099C403CAEFCA3076FF9 /* SongTempoCache.swift */,
+				0CEC371F95461BCD5CA03826 /* SongTempoLookupService.swift */,
+			);
+			path = Music;
+			sourceTree = "<group>";
+		};
+		BDA4DACE326410DF3CFE0876 = {
+			isa = PBXGroup;
+			children = (
+				494352EE369BB11D85D6FD93 /* Helm */,
+				EB256D6CA3DC8F2B2389469E /* HelmIntents */,
+				4A30B047C7CB11554B5417DE /* HelmShare */,
+				6F4926D2E8424FCC3FD48E9B /* HelmUITests */,
+				4519BA9FC6E7EAFF14C36642 /* HelmWatch */,
+				899977D38DEF0F21C1B95DFA /* HelmWatchWidgets */,
+				12AEC1E625340B7E3C0B2264 /* HelmWidgets */,
+				16B069CF592C517A7B7D6622 /* Packages */,
+				6A3FCD534693AA6AA491C581 /* Shared */,
+				57D6984B9979B93A8AB4C35F /* Frameworks */,
+				8B6EFA6A622003CF4A34CB49 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		CEE3DC554111B083A2614F1A /* WatchSync */ = {
+			isa = PBXGroup;
+			children = (
+				0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */,
+				0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */,
+			);
+			name = WatchSync;
+			path = WatchSync;
+			sourceTree = "<group>";
+		};
+		D0918411F6DE11B6D21F4CAC /* WorkoutLiveActivity */ = {
+			isa = PBXGroup;
+			children = (
+				AA0907580020AECBE2A60C03 /* CompleteLiveActivitySetIntent.swift */,
+				CC085FFEC48EBA405C30F1B0 /* WorkoutActivityAttributes.swift */,
+			);
+			name = WorkoutLiveActivity;
+			path = WorkoutLiveActivity;
+			sourceTree = "<group>";
+		};
+		D67C4BD09DFFB603AA029402 /* Preferences */ = {
+			isa = PBXGroup;
+			children = (
+				25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */,
+				3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */,
+				C3E116AB09202F35B9F02B49 /* SongTempoPreferences.swift */,
+				82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */,
+			);
+			path = Preferences;
+			sourceTree = "<group>";
+		};
+		DCD054FB657C8E613B07F365 /* Chat */ = {
+			isa = PBXGroup;
+			children = (
+				AC4725B3B45CA0A68D03E86A /* CoachChatChartBubble.swift */,
+				B8221A5D67850470079B83CE /* CoachFoodMealConfirmSheet.swift */,
+			);
+			path = Chat;
+			sourceTree = "<group>";
+		};
+		DE6DCB96149B915CE41BEE4D /* Share */ = {
+			isa = PBXGroup;
+			children = (
+				ABB873D18BBB4BC92A823BF0 /* HelmTextShareSheet.swift */,
+			);
+			path = Share;
+			sourceTree = "<group>";
+		};
+		DF0B1D16607A12DC7A720650 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				77704FA7A9FE194CBFB943C7 /* AppLifecycleState.swift */,
+				5DBFD91DDCD009B71D822EDE /* BriefNotificationScheduler.swift */,
+				D90D6A16496154D0C13C849D /* CalendarEventClassifierService.swift */,
+				1310286B64E84B4928656B04 /* CalendarHintService.swift */,
+				9B57DF668B8BC0BFEE46B85D /* CalendarHistoryQueryService.swift */,
+				1A04B9CABC681571A01F3122 /* ChatFoodDictationController.swift */,
+				7F2DB630165D5D390902A892 /* CloudBackupCoordinator.swift */,
+				21E05339095E3797BD0261BC /* CoachChatActionProposal.swift */,
+				26A010C72AFC68A26D6BE629 /* CoachFoodMealConfirmState.swift */,
+				D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */,
+				7A1B4D79D160E61AF593D879 /* CoachPlanSettingsAdjuster.swift */,
+				A2B8CEBCAF64D6176359C13A /* CoachWorkoutStartAdjuster.swift */,
+				81D287D7E2845C05A558F48B /* FoodLogMealGrounding.swift */,
+				B10704A6844A8E72BA3B1C78 /* FoodLogTipStore.swift */,
+				DD9DA56E1D9F8982E7FCCEBF /* HelmNotificationDelegate.swift */,
+				20018EF3589711177E54129C /* MealEditController.swift */,
+				D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */,
+				2F495B29014960FD288EA0BE /* MuscleVolumeBoardStore.swift */,
+				5966666B857671AC251ADB2C /* NotificationPermissionService.swift */,
+				7415F93EDE764C20C590FC55 /* NutritionDayMealsStore.swift */,
+				139C4D6F7BD4591C9CD1BD75 /* NutritionMealActionsController.swift */,
+				32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */,
+				9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */,
+				1273E2ECFD8816EFEABE1127 /* PrescriptionAutoStartStore.swift */,
+				4120A46F396DDCFBF14FA586 /* ProactiveCoachPreferences.swift */,
+				2D16E2E7A513E9CA6343E03B /* ProactiveCoachRouter.swift */,
+				396132A97C9FB7480ECE819C /* ProactiveNotificationScheduler.swift */,
+				C681E1D393700046F9B58E82 /* ReadinessRevealStore.swift */,
+				84FDF1C6F3B3B6FE2E70ADD3 /* RestNotificationLaunchOptions.swift */,
+				409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */,
+				DE4B32529BACEC5826B3C5B9 /* RestTimerBackgroundAudio.swift */,
+				2DFB1548031E98F7BAF191A2 /* RestTimerNotificationScheduler.swift */,
+				EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */,
+				056C5976FC8A683654323650 /* SessionSummaryPresentationBuilder.swift */,
+				2AB49012A36B68F7B6092200 /* ThresholdInsightService.swift */,
+				C94B1BFCF261C13C4B0670F5 /* TrainingHistoryTransferController.swift */,
+				338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */,
+				281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */,
+				6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */,
+				4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */,
+				6D664F330F28D4704C21F15A /* WorkoutLiveActivityManager.swift */,
+				B83E8014B49C4ECDC9513500 /* WorkoutMusicCaptureService.swift */,
+				FEEF754F3E09C21EF17863B4 /* WorkoutSessionLifecycleTracker.swift */,
+				A9E0109DD30A97AAF5DE7F2C /* WorkoutSessionSideEffects.swift */,
+				63DBD2A9326DB846203B4B55 /* WorkoutSetMilestonePolicy.swift */,
+				823521A478ECA1FC382C6F31 /* WorkoutStartCoordinator.swift */,
+				BA8DFAEA682FBDE810EE6475 /* Music */,
+				31707C54801739A6EF724BC2 /* Spotify */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		E0BA145465C13B7DA07A1FA2 /* Trends */ = {
+			isa = PBXGroup;
+			children = (
+				93097CC5134C8A7014CAFB8F /* E1RMProgressionChartCard.swift */,
+				3467DC9D6D3F336D753B7A41 /* EnergyBalanceChartCard.swift */,
+				E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */,
+				29BDBC668878E04D57C83BC7 /* MuscleVolumeBarChartCard.swift */,
+				9486CCBB7963BC4373B4B2F2 /* ReadinessHistoryChartCard.swift */,
+				9E168617C8DCF2C77B9A649D /* TrendsChartShared.swift */,
+				03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */,
+			);
+			path = Trends;
+			sourceTree = "<group>";
+		};
+		E2315E4D9AFE4D0C9192C38D /* Steps */ = {
+			isa = PBXGroup;
+			children = (
+				66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */,
+				0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */,
+				0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */,
+				59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */,
+				3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */,
+				E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */,
+				20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */,
+				BBF48AA231CAF609F9A593BB /* WelcomeOnboardingStepView.swift */,
+			);
+			path = Steps;
+			sourceTree = "<group>";
+		};
+		EAC1172E943F7E3DF027441A /* Debug */ = {
+			isa = PBXGroup;
+			children = (
+				C6033D7C64CF817B8F57FE7F /* SecretsBootstrap.swift */,
+			);
+			path = Debug;
+			sourceTree = "<group>";
+		};
+		EB256D6CA3DC8F2B2389469E /* HelmIntents */ = {
+			isa = PBXGroup;
+			children = (
+				5B39380396E36E6C50591424 /* GenerateBriefIntent.swift */,
+			);
+			path = HelmIntents;
+			sourceTree = "<group>";
+		};
+		F6FA3C0FB1C4A821B51E3A85 /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+				B85D6D155ADBDA484F612753 /* WatchWorkoutSessionManager.swift */,
+				65F849E44289C6A228A7B2CA /* WatchWorkoutSessionStore.swift */,
+			);
+			path = Workout;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		22A80A6D6529E47F0243F0BE /* HelmUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 2856FE909638B8AD9777345D /* Build configuration list for PBXNativeTarget "HelmUITests" */;
+			buildPhases = (
+				A837AF1DB9FC75EC1A9950BA /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				954F8AD146932D72299EDA68 /* PBXTargetDependency */,
+			);
+			name = HelmUITests;
+			productName = HelmUITests;
+			productReference = 04567CF083B4C469EA782E32 /* HelmUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+		27BAF397EE45B4D52F75D6FD /* HelmWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 8B9EC655AFF743440917F064 /* Build configuration list for PBXNativeTarget "HelmWidgets" */;
+			buildPhases = (
+				CA59226646D8D5AE4091AFB3 /* Sources */,
+				98F3DFA4A28FD8C3C9F35AB8 /* Resources */,
+				14426D61CDCD21D9B49F1AAA /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HelmWidgets;
+			productName = HelmWidgets;
+			productReference = DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		99E4676A382CEA1F9A5AE6C1 /* Helm */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 90611137D8FBB59A950968FA /* Build configuration list for PBXNativeTarget "Helm" */;
+			buildPhases = (
+				97B6595F711DC4F8F753702F /* Sync Xcode Project */,
+				F9A584B783041C1620DBFC98 /* Verify bundled seed resources */,
+				2DCFD64DFDEB6372AE4DE00C /* Bundle Debug Secrets */,
+				444DAB170895784CF27DEA5D /* Sources */,
+				88A04A27B030E7AC82EA7871 /* Resources */,
+				A90E2FACE226079785E869D2 /* Frameworks */,
+				6EBDE4828BF4A7EF271E84FE /* Embed Foundation Extensions */,
+				50B5AA4E35CE4495CA57C220 /* Embed Watch Content */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				0B604F66E4D817F5065D0473 /* PBXTargetDependency */,
+				6B502BA2FBD267F4D5ABD51B /* PBXTargetDependency */,
+				0F65A18C5CC6213F6F9011B3 /* PBXTargetDependency */,
+			);
+			name = Helm;
+			packageProductDependencies = (
+				A311E705660C5C05DCD31CA5 /* Core */,
+				5C76961C98F189599391B607 /* Diagnostics */,
+				4C5F122E8B8E8B8B15661C4E /* DesignSystem */,
+				19C69AA5D49E0EA740A81683 /* Persistence */,
+				96FB402A98901B62B12BBC28 /* HealthKitIngest */,
+				77798C34CB0889BA57D99F33 /* CoachLLM */,
+				4948A476B7398F2AB68DD7E3 /* ExportKit */,
+				01A7B07FBB89476C095AAD39 /* ReadinessKit */,
+				7C817B88A0C3EBE40B4D4D84 /* NutritionKit */,
+				FA61E24E8271960684BD8099 /* SpotifyiOS */,
+			);
+			productName = Helm;
+			productReference = 8D835BB050C165B2974D4A41 /* Helm.app */;
+			productType = "com.apple.product-type.application";
+		};
+		C0D6DA97A19AA02637C54AF3 /* HelmWatchWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AEFF9852F82D15E67E62AB1C /* Build configuration list for PBXNativeTarget "HelmWatchWidgets" */;
+			buildPhases = (
+				2B065071482313F35E5D6A47 /* Sources */,
+				E9836617B9322F1E44514052 /* Resources */,
+				17E1F66DD2267C2F4D5ED039 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HelmWatchWidgets;
+			packageProductDependencies = (
+				84E2E9FFF85336E0D45DB8DF /* Core */,
+			);
+			productName = HelmWatchWidgets;
+			productReference = 38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		E159A873B86CCE50ABD86A4F /* HelmShare */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 5059A20288D759AF4CBD9EEC /* Build configuration list for PBXNativeTarget "HelmShare" */;
+			buildPhases = (
+				77DA6964D0625869E05ACF7A /* Sources */,
+				F0C29320EFA8E01B840132FE /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HelmShare;
+			packageProductDependencies = (
+				505EB967FB99F06CAD91E7D3 /* ExportKit */,
+			);
+			productName = HelmShare;
+			productReference = ED1B211D964D5382DF275D95 /* HelmShare.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
+		F3EA07921D7C19E2AAF76135 /* HelmWatch */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B5F05A961EBCB553F2EA6646 /* Build configuration list for PBXNativeTarget "HelmWatch" */;
+			buildPhases = (
+				2788D11901D909781FE0F99E /* Sources */,
+				39D15A588AD64C12FD40981A /* Resources */,
+				A116319CB3CBA415496F4A2F /* Frameworks */,
+				1C1C7C2A32D06069C8CE1277 /* Embed Foundation Extensions */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				DE68F0A59397540872044F2C /* PBXTargetDependency */,
+			);
+			name = HelmWatch;
+			packageProductDependencies = (
+				8051ED48FCAD89C1565B9440 /* Core */,
+			);
+			productName = HelmWatch;
+			productReference = 053F9ED9C33440FD2497E414 /* HelmWatch.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		E5945378979AE75AA69216F7 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					22A80A6D6529E47F0243F0BE = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+						TestTargetID = 99E4676A382CEA1F9A5AE6C1;
+					};
+					27BAF397EE45B4D52F75D6FD = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
+					99E4676A382CEA1F9A5AE6C1 = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
+					C0D6DA97A19AA02637C54AF3 = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
+					E159A873B86CCE50ABD86A4F = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
+					F3EA07921D7C19E2AAF76135 = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
+				};
+			};
+			buildConfigurationList = 7A052CCCA135773DE724008E /* Build configuration list for PBXProject "Helm" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = BDA4DACE326410DF3CFE0876;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				5611BEF2AB5A69A75D420C0F /* XCRemoteSwiftPackageReference "ios-sdk" */,
+				78B4F2077F871C7E0516307E /* XCLocalSwiftPackageReference "CoachLLM" */,
+				7675BB443EEA7D4AA2DFA8E3 /* XCLocalSwiftPackageReference "Core" */,
+				DA3214807D12D8A9111BC6FC /* XCLocalSwiftPackageReference "DesignSystem" */,
+				BC88E71FE6071D30E887C0B6 /* XCLocalSwiftPackageReference "Diagnostics" */,
+				CE18596BCB6665226E10C204 /* XCLocalSwiftPackageReference "Domain" */,
+				F966DB04360DF297692B194A /* XCLocalSwiftPackageReference "ExportKit" */,
+				96C0424F6C3FB97F4056A1B8 /* XCLocalSwiftPackageReference "HealthKitIngest" */,
+				CF5EF9C4C3007ADC05DC10E9 /* XCLocalSwiftPackageReference "Persistence" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 8B6EFA6A622003CF4A34CB49 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				99E4676A382CEA1F9A5AE6C1 /* Helm */,
+				E159A873B86CCE50ABD86A4F /* HelmShare */,
+				22A80A6D6529E47F0243F0BE /* HelmUITests */,
+				F3EA07921D7C19E2AAF76135 /* HelmWatch */,
+				C0D6DA97A19AA02637C54AF3 /* HelmWatchWidgets */,
+				27BAF397EE45B4D52F75D6FD /* HelmWidgets */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		39D15A588AD64C12FD40981A /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8242E02AAE6574F34A173153 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		88A04A27B030E7AC82EA7871 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5F842C14A456091C1B1EC87 /* Assets.xcassets in Resources */,
+				F23983F6988EB0263E049B17 /* ExerciseSeed in Resources */,
+				C8C6ED39EF4433B0067AEB6C /* MethodologySeed in Resources */,
+				5EE09BE100418B1855BA4C37 /* Sounds in Resources */,
+				DC8F00B879B027CBA72C783C /* boxing-bell-notification.caf in Resources */,
+				1576D51D91D83168CCF7F8D0 /* boxing-bell.caf in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		98F3DFA4A28FD8C3C9F35AB8 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D5DFD49C2DE0A3F6418848C7 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E9836617B9322F1E44514052 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				11B467655485BDC248A9CEF0 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2DCFD64DFDEB6372AE4DE00C /* Bundle Debug Secrets */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Bundle Debug Secrets";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"$CONFIGURATION\" != \"Debug\" ]; then exit 0; fi\nSECRETS_SRC=\"${SRCROOT}/Secrets\"\nSECRETS_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets\"\nif [ -d \"$SECRETS_SRC\" ]; then\n  mkdir -p \"$SECRETS_DST\"\n  ditto \"$SECRETS_SRC\" \"$SECRETS_DST\"\nfi\n";
+		};
+		97B6595F711DC4F8F753702F /* Sync Xcode Project */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Sync Xcode Project";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if ! command -v xcodegen >/dev/null 2>&1; then exit 0; fi\ncd \"$SRCROOT\"\nif [ ! -f Helm.xcodeproj/project.pbxproj ] || [ project.yml -nt Helm.xcodeproj/project.pbxproj ]; then\n  xcodegen generate\nfi\n";
+		};
+		F9A584B783041C1620DBFC98 /* Verify bundled seed resources */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Verify bundled seed resources";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -e\ncd \"$SRCROOT\"\nfor path in \\\n  Helm/Resources/ExerciseSeed/exercises.json \\\n  Helm/Resources/ExerciseSeed/free-exercise-db.json \\\n  Helm/Resources/MethodologySeed/methodology.json\ndo\n  if [ ! -f \"$path\" ]; then\n    echo \"error: Missing required resource: $path\"\n    exit 1\n  fi\ndone\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		2788D11901D909781FE0F99E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				1EA23F22055C3D2C9EA764BE /* HelmWatchApp.swift in Sources */,
+				86C966AF6AC6A522557E2E26 /* HelmWatchAppDelegate.swift in Sources */,
+				B10E4B608A6D2651FE49B0B0 /* HelmWatchTheme.swift in Sources */,
+				BDC8EEE6DDF452F01E8EF962 /* LiveWorkoutBuilderTeardownTracker.swift in Sources */,
+				6982BBA1C89D352832C4F24C /* WatchActiveWorkoutView.swift in Sources */,
+				1A3FA228AC49CAA838E5FE27 /* WatchActivityPickerView.swift in Sources */,
+				D7DC3FFB702C92E0A0823F8E /* WatchBriefView.swift in Sources */,
+				DEBF2EC4962903769585BB8B /* WatchCompanionBootstrap.swift in Sources */,
+				A70049987981B16E80788314 /* WatchCompanionView.swift in Sources */,
+				62005AF753453C719724E671 /* WatchRootView.swift in Sources */,
+				215BA690EDC46E3C58A84978 /* WatchSessionCoordinator+WCSession.swift in Sources */,
+				87BB1B4620B2C261B66C50F6 /* WatchSessionCoordinator.swift in Sources */,
+				C48F79B428283DD80D62EC52 /* WatchWorkoutLaunchBridge.swift in Sources */,
+				C2B1CBFAFDC0EC9B08F418B4 /* WatchWorkoutSessionLifecycleTracker.swift in Sources */,
+				4A3583E9391C52D48D9F6E5E /* WatchWorkoutSessionManager.swift in Sources */,
+				41708E912A9BD730BF3FCA22 /* WatchWorkoutSessionStore.swift in Sources */,
+				48BE721B79AC1E2FEA7A42BC /* WatchWorkoutView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		2B065071482313F35E5D6A47 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B1D6FC9A4FCF18BD644098AC /* HelmWatchWidgetsBundle.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		444DAB170895784CF27DEA5D /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECDD7061104D9495C7911424 /* AddFoodFlowView.swift in Sources */,
+				C13ABA345445DC524207F454 /* AlcoholLogView.swift in Sources */,
+				A0DF52A9BF410F7817A5BA67 /* AppLifecycleState.swift in Sources */,
+				6E3D59FB27C2EC4AACF7FBB0 /* AppRootView.swift in Sources */,
+				B3178FF4A339A1224CD6B9CE /* AppTabRouter.swift in Sources */,
+				256F1D4C439D406AEEAC4920 /* BackfillOnboardingStepView.swift in Sources */,
+				87A935FD5497CD969B51C4FF /* BarcodeScannerView.swift in Sources */,
+				DE6A91248E45A90C0A712CF6 /* BodyProfileOnboardingStepView.swift in Sources */,
+				A4762E617E194C9638D81CDF /* BodyProfileSettingsView.swift in Sources */,
+				0F46FB1F2F952BEEC88B48EF /* BriefBootstrap.swift in Sources */,
+				2BEE40A64B6141A61A08B571 /* BriefIntentBootstrap.swift in Sources */,
+				D960048C5220E1D6B63356D7 /* BriefNotificationScheduler.swift in Sources */,
+				4B2221E4583B5F5BA14815FD /* BucketFoodLogMenu.swift in Sources */,
+				B3757B75AEF1321F214C6BBB /* CalendarEventClassifierService.swift in Sources */,
+				B327C39E182515FFF27DA38F /* CalendarHintService.swift in Sources */,
+				13716B523E70BC77E960E955 /* CalendarHintStatusView.swift in Sources */,
+				1A87B0E6EFB1CD8758CBBC95 /* CalendarHistoryQueryService.swift in Sources */,
+				77F96344398E63ABA9288949 /* ChatBootstrap.swift in Sources */,
+				CC9DCB16ADC40564F3C61C04 /* ChatController.swift in Sources */,
+				52C8FC31BEE967DF0EECDC94 /* ChatFoodDictationController.swift in Sources */,
+				D22B8CA993A1A711BB7EA1BD /* ChatView.swift in Sources */,
+				30F2D9F4C0B50CFE21A6FE63 /* CloudBackupCoordinator.swift in Sources */,
+				9175B3430045AFE9D8DA30D7 /* CloudBackupPreferences.swift in Sources */,
+				1CD86B255F49A56E0D4C2EED /* CoachActivityGate.swift in Sources */,
+				DBA1B55EC37AAFD9186986E7 /* CoachArchetypeBootstrap.swift in Sources */,
+				9CD491863ADA475909DE3204 /* CoachBootstrap.swift in Sources */,
+				8568CA7D04FE949196110B6F /* CoachChatActionProposal.swift in Sources */,
+				25C1E8B08F569A1D3E043AC3 /* CoachChatChartBubble.swift in Sources */,
+				6E8295BF16B73D7406828535 /* CoachContextBootstrap.swift in Sources */,
+				0CB22298F1B3604C64F47C15 /* CoachDiagnosticsStore.swift in Sources */,
+				1DDD00D7759A8C3E416C397F /* CoachDisplayNameStore.swift in Sources */,
+				A4C3A5964BFA6C25269EEB94 /* CoachFoodMealConfirmSheet.swift in Sources */,
+				94B55AC71169CAD888BA4000 /* CoachFoodMealConfirmState.swift in Sources */,
+				0372714472429631A78F2B2B /* CoachKeyOnboardingStepView.swift in Sources */,
+				AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */,
+				9C43933ED172237747E00858 /* CoachPlanSettingsAdjuster.swift in Sources */,
+				996DC6FB96C784C69A5A295D /* CoachSettingsView.swift in Sources */,
+				4351B5F9060E5C0DF6E61385 /* CoachWorkoutStartAdjuster.swift in Sources */,
+				0EF59D35C4A7F55F86DD1AF0 /* CompleteLiveActivitySetIntent.swift in Sources */,
+				2C64F5F237B0A3B4BDB6CF71 /* CompositeSongTempoProvider.swift in Sources */,
+				772C2C026E839B960447B8E7 /* CopyMealEntrySheet.swift in Sources */,
+				C0834A51CE77F1029BE18729 /* DashboardSleepCard.swift in Sources */,
+				1CFBA9DD22085B422E696AC6 /* DashboardTrendsSection.swift in Sources */,
+				9D1F3884BED544D78CDAE0CE /* DashboardView.swift in Sources */,
+				6DD2D0799EB131231C481E3E /* DataBrowserView.swift in Sources */,
+				CA8FE309D255BCC5104614CD /* DataSafetyView.swift in Sources */,
+				3AF3D84F8B6D6837F7392CE2 /* DeezerSongTempoProvider.swift in Sources */,
+				12BBF9DF0BCDEC9F44983B96 /* DescribeFoodSheet.swift in Sources */,
+				7D3460551DF6768F199902C0 /* E1RMProgressionChartCard.swift in Sources */,
+				9EC599169A7765C4E5279A92 /* EnergyBalanceChartCard.swift in Sources */,
+				2B382D9A539D1151FC5144F5 /* ExerciseHistoryBuilder.swift in Sources */,
+				AF8793383B6926457DFAED50 /* ExerciseHistorySheet.swift in Sources */,
+				79BA9E85D6186BDB4EFDCE43 /* ExercisePickerView.swift in Sources */,
+				0A16D6649145E9429E1B7858 /* ExerciseRestEditorSheet.swift in Sources */,
+				C6C44BFF48DC039C035EA405 /* ExerciseSectionView.swift in Sources */,
+				219DA0137C5B7DDE9EF0460B /* ExplainableMetricMappers.swift in Sources */,
+				E19F4FECD9FC4631AC12C298 /* ExportEnvironmentFactory.swift in Sources */,
+				00045E9C351CA85A054A1CD1 /* FocusModePreferences.swift in Sources */,
+				DA35BA59796FD1A81EC9B13B /* FoodLogMealGrounding.swift in Sources */,
+				1A7912BB2CD5268DB0AB6089 /* FoodLogTipStore.swift in Sources */,
+				207556337A4D0B9AE5E2C006 /* FoodPortionStepView.swift in Sources */,
+				36C05273FC5A79F8FED5D9DC /* FoodSearchView.swift in Sources */,
+				1969F8C1BCE12A2B8A065486 /* GenerateBriefIntent.swift in Sources */,
+				E7D930A65EB05162ACC5A2BC /* HealthKitBootstrap.swift in Sources */,
+				5D2989127D96B244FE8EFC55 /* HealthKitOnboardingStepView.swift in Sources */,
+				4F7FFC181E6F72B6CC999FB1 /* HealthKitStatusView.swift in Sources */,
+				6FFEBEDBE63BF0A3444F2349 /* HelmApp.swift in Sources */,
+				746A0331702A40F292951666 /* HelmNotificationDelegate.swift in Sources */,
+				7F67E85A97D11E8395A21FED /* HelmTextShareSheet.swift in Sources */,
+				078F622103CD14A93571BA39 /* HevyCSVImportPreviewView.swift in Sources */,
+				D6F0E27D96165DB60CAEC6CE /* InSessionCoachDebugView.swift in Sources */,
+				B61BC607D7225F2E57D73EE8 /* InSessionCoachSheet.swift in Sources */,
+				F1A1326C4A9A148D5631DE42 /* ManualFoodLogController.swift in Sources */,
+				8A6F2C85260E33610F3FD3E9 /* ManualRestTimerPill.swift in Sources */,
+				EC06681EB0C067B01F8B950B /* ManualRestTimerSheet.swift in Sources */,
+				CE7F0B4C4D4A0585BDD25B52 /* MealBucketPicker.swift in Sources */,
+				7750DE096060DD95590DD340 /* MealDepthCameraView.swift in Sources */,
+				320116CB3456D35F3EE757D3 /* MealEditController.swift in Sources */,
+				ACF7EC588BCF81579B336F00 /* MealEditSheet.swift in Sources */,
+				7D1A587EF8AA88E46CD0FC5F /* MealLineItemEditor.swift in Sources */,
+				FEE21EB3F638CBC634233B02 /* MealTemplatesSheet.swift in Sources */,
+				58F1A60E5F827FA8774613E9 /* MemoryProfileEditorView.swift in Sources */,
+				69B3C5C132B48F13C672F676 /* MethodologyBootstrap.swift in Sources */,
+				305BC50ED12F35DAD3B31D45 /* MethodologyTopicDetailView.swift in Sources */,
+				5A933EEBF3392510EB21211B /* MirroredWorkoutSessionBridge.swift in Sources */,
+				7F6167BF7ACBA45EC1573122 /* MorningBriefAutomationGuideView.swift in Sources */,
+				C066F65F41D03E26046DA450 /* MuscleVolumeArcGridCard.swift in Sources */,
+				5F6D9A04C7A0D642A58E0654 /* MuscleVolumeBarChartCard.swift in Sources */,
+				157367B26A8654B73B1232EC /* MuscleVolumeBoardContainer.swift in Sources */,
+				C275DBBCF5E138710631307F /* MuscleVolumeBoardStore.swift in Sources */,
+				202F2F5C277BB51BD91A72C2 /* MuscleVolumeRecencyBuilder.swift in Sources */,
+				D3452D5F39BADC69B085669D /* NotificationOnboardingStepView.swift in Sources */,
+				50DCBEB12ACBB13252FFCCE5 /* NotificationPermissionService.swift in Sources */,
+				7DD8463C0F852AB251B7D682 /* NotificationsSettingsView.swift in Sources */,
+				CB85856C3F37FDF6B40966F3 /* NutritionBootstrap.swift in Sources */,
+				5D47496C9C7FB5D2BC47555B /* NutritionDayCompleteSection.swift in Sources */,
+				4701F085097E7C9689C0AA16 /* NutritionDayMealsStore.swift in Sources */,
+				7890C1F20FA5AA527FCDC0AF /* NutritionDaySummaryCard.swift in Sources */,
+				53299805E10084FA6A941C41 /* NutritionDiaryHeader.swift in Sources */,
+				E69D21FF5DA148D792F58DDB /* NutritionMealActionsController.swift in Sources */,
+				BCBC45C74396DF515AAD2CDD /* NutritionMealBucketSection.swift in Sources */,
+				F5EF64E16A0FDE9394AD68BA /* NutritionSettingsView.swift in Sources */,
+				1E5649B6002547A8E303041E /* NutritionView.swift in Sources */,
+				43379C767AE1DF5E9EEEAB77 /* OfflineBarcodeQueueSheet.swift in Sources */,
+				5FAEBACB5012754CA2E1EDDA /* OnboardingCoordinator.swift in Sources */,
+				B89C937C327805027C4F7374 /* OnboardingFlowView.swift in Sources */,
+				F23402EF56E75B9E4220BD47 /* OnboardingStep.swift in Sources */,
+				DF59F121763F13ABE6C924D2 /* OnboardingStepChrome.swift in Sources */,
+				2151DF63F306C16D64F26A98 /* OnboardingStore.swift in Sources */,
+				D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */,
+				A168DD1F2A42FB64303EBCB3 /* PersistenceBootstrap.swift in Sources */,
+				79321EC3187EAB4681EC7122 /* PersonalRecordsCelebrationView.swift in Sources */,
+				04C0548C908F47918CB4872C /* PhaseGoalSettingsView.swift in Sources */,
+				7852DE6668EEADFAA522099C /* PhoneWorkoutSessionManager.swift in Sources */,
+				3E609E15EBA98DCE533E723E /* PhotoLogOptionsSheet.swift in Sources */,
+				A7C85693C659EA016C29501D /* PhotoMealConfirmSheet.swift in Sources */,
+				0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */,
+				5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */,
+				695B49ABCADBF39EAA55BE2A /* PlanBootstrap.swift in Sources */,
+				D9A0BF69B366C2632F74B100 /* PrescriptionAutoStartStore.swift in Sources */,
+				FF14B014163D08D2262A401C /* ProactiveBootstrap.swift in Sources */,
+				D5B3D7590F528C4E244A64C5 /* ProactiveCoachBanner.swift in Sources */,
+				55476DA42FA789C941E784C2 /* ProactiveCoachPreferences.swift in Sources */,
+				F3C6B91B82AD6E0D8448222F /* ProactiveCoachRouter.swift in Sources */,
+				17473C3D44D255BE8694DB93 /* ProactiveNotificationScheduler.swift in Sources */,
+				B4A2C1CF16ECEDA3C1343465 /* ProgressionDetailBuilder.swift in Sources */,
+				E74A8D958F34F2A31EF3675A /* ProgressionDetailContainer.swift in Sources */,
+				974E3DBA773688DE52DA1B8C /* ProgressionDetailView.swift in Sources */,
+				E23A6FFB7CF5274A75D0800E /* QuickAddFoodView.swift in Sources */,
+				310E72904BD269533DBA25A8 /* ReadinessBootstrap.swift in Sources */,
+				7F2DA716D150440BB2C67837 /* ReadinessHistoryChartCard.swift in Sources */,
+				291FFFFB08A045B3022A8561 /* ReadinessRevealStore.swift in Sources */,
+				57D2EBE94DD42A4530633322 /* ReccoBeatsSongTempoProvider.swift in Sources */,
+				571C9ADB8C81F0F4AD28A77D /* RecoveryDetailBuilder.swift in Sources */,
+				396B69570DF0CFAC1FE294EE /* RecoveryDetailContainer.swift in Sources */,
+				960F62D5F9A4B8DBF5F70481 /* RecoveryDetailView.swift in Sources */,
+				3AFB02917464C7175988655B /* RestDockChipStyle.swift in Sources */,
+				2B8FFD64F783F98D90234F38 /* RestNotificationLaunchOptions.swift in Sources */,
+				CD224F2C51E85F87182F92E9 /* RestNotificationRouter.swift in Sources */,
+				3C3D0231C231A849B94F9050 /* RestTimerBackgroundAudio.swift in Sources */,
+				F1F94936DC54E422DA970A54 /* RestTimerBanner.swift in Sources */,
+				54BEFFAF5F79577CBB47F282 /* RestTimerNotificationScheduler.swift in Sources */,
+				74A1EDC9556A3EF68768E775 /* RestTimerSoundPlayer.swift in Sources */,
+				6CCD9174ABD2649A841D8553 /* RootTabView.swift in Sources */,
+				17ED9B1E5DF5A2AF52717CFC /* SaveMealTemplateSheet.swift in Sources */,
+				F7D98FF2B5682898D25D4762 /* SchemaV2ExportView.swift in Sources */,
+				712779AC39F318604425AA99 /* SecretsBootstrap.swift in Sources */,
+				2C4B42C09C87B324823B069C /* SessionCoachNoteField.swift in Sources */,
+				BD372E319EDC6347A3AB2C57 /* SessionSummaryPresentationBuilder.swift in Sources */,
+				9D83EEAD99A92D7D351D8862 /* SessionTimelineChartGeometry.swift in Sources */,
+				558C517FAB39C27DC439D033 /* SessionTimelineChartView.swift in Sources */,
+				B4E872C5D3E7F6883825F190 /* SetLogValidation.swift in Sources */,
+				64C36565E67479B17CC357BA /* SetRowView.swift in Sources */,
+				D0562786AF970E8AF6E16B85 /* SettingsView.swift in Sources */,
+				D6934FE7C74E3E136CB25D73 /* ShortcutsOnboardingStepView.swift in Sources */,
+				3D97A9EBA74398585E05C0EE /* SleepAnalysisBuilder.swift in Sources */,
+				47C7B6ADDB6957DC457978A7 /* SleepAnalysisContainer.swift in Sources */,
+				9B99D16555C2E142CA6A5C3C /* SleepAnalysisView.swift in Sources */,
+				214F64CC8590745335136D32 /* SleepDiagnosticsView.swift in Sources */,
+				411FFC619B11CF0CE1E15B81 /* SongTempoCache.swift in Sources */,
+				991080364B26DC6915F8A836 /* SongTempoLookupService.swift in Sources */,
+				E5B66F085B49E353D8BF0A11 /* SongTempoPreferences.swift in Sources */,
+				EFA733E65AA404D7079B6E0F /* SourcesMethodologyView.swift in Sources */,
+				AAAD78EFE1039A587E991A7F /* SpotifyAppRemoteService.swift in Sources */,
+				03A44EE5523957231B425BB5 /* SpotifyAuthClient.swift in Sources */,
+				1A6F7239B59AF60312D1D288 /* SpotifySessionStore.swift in Sources */,
+				891D1985DA38249DC795880E /* SpotifySettingsView.swift in Sources */,
+				2431BF8A51FF01E5E086EED4 /* ThresholdInsightCard.swift in Sources */,
+				BBB9E492C3D8368E8DDD7759 /* ThresholdInsightService.swift in Sources */,
+				900D525ED75F7B9F39BBDEBA /* TrainBootstrap.swift in Sources */,
+				5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */,
+				26D57E4F48527FDC255BF963 /* TrainSessionController.swift in Sources */,
+				9F415BB16F3B4364BEFF1F62 /* TrainSessionHeaderView.swift in Sources */,
+				DDD4F55CFE81BFF0CA284C1C /* TrainView.swift in Sources */,
+				BDF45B9F1DB6E2F2F8F25015 /* TrainViewPresentationLayer.swift in Sources */,
+				2504A110991480808F82A403 /* TrainingHistoryTransferController.swift in Sources */,
+				B60D91037959EBF4E8D0F88E /* TrainingPlanOnboardingStepView.swift in Sources */,
+				DB37C5E08791202C9811FF47 /* TrendChartFixtures.swift in Sources */,
+				5C2B69E21678550F1B29DC20 /* TrendWeightChartCard.swift in Sources */,
+				928C4DB95D1B1D6E4398E7BA /* TrendsBootstrap.swift in Sources */,
+				8575FD09B5696C82CB51CE71 /* TrendsChartShared.swift in Sources */,
+				C1B0E86E4B1EC5FCEBD09F7F /* TrendsChartSupport.swift in Sources */,
+				6FBB8331D353C5DBCACDFF97 /* TrendsController.swift in Sources */,
+				073C227CB8D8FDDE004A2A86 /* TrendsDataBuilder.swift in Sources */,
+				023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */,
+				06E1FF6417AE2A1165178FEC /* TrendsModels.swift in Sources */,
+				416FD0F98F027ED264E6CA55 /* TrendsView.swift in Sources */,
+				1FAF40B7879E7108B4B4965D /* WatchReadinessBootstrap.swift in Sources */,
+				7F2D891C75EBD0D1741B74D2 /* WatchSessionCoordinator+WCSession.swift in Sources */,
+				3ECE52579A49E058A2BD8320 /* WatchSessionCoordinator.swift in Sources */,
+				2FB23DFA4EF1E4378483F84B /* WatchSyncStatusView.swift in Sources */,
+				57C0E46F1EF63CEC4395A15E /* WeekAheadScheduleBuilder.swift in Sources */,
+				8884E8476FF347725C11DF96 /* WeekAheadScheduleSection.swift in Sources */,
+				966FFCB2A8A07E5A382DDF2B /* WeekAheadScheduleStore.swift in Sources */,
+				263E686D3D8CFCE4F37C22E4 /* WeeklyRateCalculatorSheet.swift in Sources */,
+				8195318B9E6077EC22A6F91B /* WelcomeOnboardingStepView.swift in Sources */,
+				7F9576D4F2A7D95042B214B5 /* WorkoutActivityAttributes.swift in Sources */,
+				AF0EB822FFD384CB41C00D85 /* WorkoutFinishSummaryAssembler.swift in Sources */,
+				BEEDA51FEE78BD078D3B3D5C /* WorkoutFinishSummaryView.swift in Sources */,
+				E14AF5E45DBFFE85CFFF27DB /* WorkoutHapticCoordinator.swift in Sources */,
+				D8D86AEE3B8E7ED884B3F21F /* WorkoutHistoryController.swift in Sources */,
+				EF7B2AB33C590E6571899402 /* WorkoutHistoryListView.swift in Sources */,
+				A445C0F2CC95CC9688AA7F0E /* WorkoutImportController.swift in Sources */,
+				30AB200458A94E9D799586DF /* WorkoutImportPreviewView.swift in Sources */,
+				1D6EBAE7089F7D260A7255D2 /* WorkoutImportView.swift in Sources */,
+				E6480AAF91BCAE7CEBE4BC93 /* WorkoutLiveActivityManager.swift in Sources */,
+				E9B6F62B77A12C5002A5DB57 /* WorkoutMusicCaptureService.swift in Sources */,
+				27DFBA1B54052097F7B14018 /* WorkoutSessionDetailView.swift in Sources */,
+				F26C0FADEE56C5AE9B8C0308 /* WorkoutSessionLifecycleTracker.swift in Sources */,
+				C6ADF55A0E3B453E61CBE53A /* WorkoutSessionSideEffects.swift in Sources */,
+				755DA63267A7F9A645B6D6D7 /* WorkoutSetMilestonePolicy.swift in Sources */,
+				0FA1C55AD9FB5D5BECD8E3D6 /* WorkoutStartCoordinator.swift in Sources */,
+				2570C474DA5A6FCF513FA81F /* WorkoutTemplateDetailView.swift in Sources */,
+				B7D2CA5D2EC4558904A38C49 /* WorkoutTemplatesListView.swift in Sources */,
+				DE8B4D73DB64DCEA0DAAF5CE /* ExerciseImageView.swift in Sources */,
+				656594737BF32D17B1A92610 /* FocusExerciseCard.swift in Sources */,
+				7CBDA4ADC7264F72DAE91452 /* FocusCardLoggingView.swift in Sources */,
+				5FAAA9F720237EB0A21D9CC2 /* FocusSessionLogSheet.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		77DA6964D0625869E05ACF7A /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				B54E22450D4008A59BF50395 /* ShareViewController.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A837AF1DB9FC75EC1A9950BA /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CF59F55EDC2018BC7961579C /* ScreenshotTourTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CA59226646D8D5AE4091AFB3 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				14F7C9ABF48FC904F1152976 /* CompleteLiveActivitySetIntent.swift in Sources */,
+				DAD33F101B14D34C18CBD998 /* HelmWidgetsBundle.swift in Sources */,
+				304F084087DE44CDE17167B9 /* WorkoutActivityAttributes.swift in Sources */,
+				E15065BE42A6E83C28A8F740 /* WorkoutLiveActivityWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		0B604F66E4D817F5065D0473 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = F3EA07921D7C19E2AAF76135 /* HelmWatch */;
+			targetProxy = 21E73D3CB88A0B6451C279EF /* PBXContainerItemProxy */;
+		};
+		0F65A18C5CC6213F6F9011B3 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E159A873B86CCE50ABD86A4F /* HelmShare */;
+			targetProxy = 2E9A07F13D168A63CF612888 /* PBXContainerItemProxy */;
+		};
+		6B502BA2FBD267F4D5ABD51B /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 27BAF397EE45B4D52F75D6FD /* HelmWidgets */;
+			targetProxy = 82416DA0A7A509F2FB8AE8B1 /* PBXContainerItemProxy */;
+		};
+		954F8AD146932D72299EDA68 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 99E4676A382CEA1F9A5AE6C1 /* Helm */;
+			targetProxy = 0E4602D7CA83DC215AC9869B /* PBXContainerItemProxy */;
+		};
+		DE68F0A59397540872044F2C /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = C0D6DA97A19AA02637C54AF3 /* HelmWatchWidgets */;
+			targetProxy = 298EC9F88AF48BA34D3D5491 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		0541A2A153D489C6172FC179 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Helm/Helm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Helm/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Signal;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Signal reads your calendar to flag busy days on your training schedule. Events are never written back.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Signal uses the camera to estimate meal macros from photos.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Signal reads your Apple Health data to compute readiness, training, and nutrition guidance.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Signal writes workouts and meals you log back to Apple Health.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Signal uses the microphone so you can dictate meals to the coach in chat.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Signal uses your photo library to estimate meal macros from meal photos.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Signal uses speech recognition to turn dictated meals into food logs via the coach.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		27FE985DE457A258418B9760 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Release;
+		};
+		28F4C1D93B688FA55DE0E791 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmWidgets/ExtensionInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		3A11968F2ABCD7F41B947E69 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmWidgets/ExtensionInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.widgets;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		44D04F34CFA5BB37B5BAE049 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Helm;
+			};
+			name = Release;
+		};
+		4AA9992970059197EDCAD2DB /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HelmWatch/HelmWatch.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Signal;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Signal reads heart rate during workouts to show live zones on your Watch.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Signal saves workouts you start on your Watch to Apple Health.";
+				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.cameronro.helm;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+		543D6AA0358D9EA5F10CE252 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = Helm/Helm.entitlements;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Helm/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = Signal;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.healthcare-fitness";
+				INFOPLIST_KEY_NSCalendarsUsageDescription = "Signal reads your calendar to flag busy days on your training schedule. Events are never written back.";
+				INFOPLIST_KEY_NSCameraUsageDescription = "Signal uses the camera to estimate meal macros from photos.";
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Signal reads your Apple Health data to compute readiness, training, and nutrition guidance.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Signal writes workouts and meals you log back to Apple Health.";
+				INFOPLIST_KEY_NSMicrophoneUsageDescription = "Signal uses the microphone so you can dictate meals to the coach in chat.";
+				INFOPLIST_KEY_NSPhotoLibraryUsageDescription = "Signal uses your photo library to estimate meal macros from meal photos.";
+				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "Signal uses speech recognition to turn dictated meals into food logs via the coach.";
+				INFOPLIST_KEY_NSSupportsLiveActivities = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		755F85759B1A7F3AC08AD018 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = HelmShare/HelmShare.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.share;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		7E2C4823703256F12F53D435 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HelmWatch/HelmWatch.entitlements;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Signal;
+				INFOPLIST_KEY_NSHealthShareUsageDescription = "Signal reads heart rate during workouts to show live zones on your Watch.";
+				INFOPLIST_KEY_NSHealthUpdateUsageDescription = "Signal saves workouts you start on your Watch to Apple Health.";
+				INFOPLIST_KEY_WKBackgroundModes = "workout-processing";
+				INFOPLIST_KEY_WKCompanionAppBundleIdentifier = com.cameronro.helm;
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.watchkitapp;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		7FD100F4BF5C5011F6807F99 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = SXWJBD2V3V;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 26.0;
+				MARKETING_VERSION = 1.0.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_STRICT_CONCURRENCY = complete;
+				SWIFT_VERSION = 6.0;
+				WATCHOS_DEPLOYMENT_TARGET = 26.0;
+			};
+			name = Debug;
+		};
+		82279356C8669F9E5F64278F /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = HelmShare/HelmShare.entitlements;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmShare/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.share;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		B18031536D15BF0C8D460D01 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmWatchWidgets/ExtensionInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Debug;
+		};
+		D861AEBE61D2BBC62365D4DD /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.uitests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_TARGET_NAME = Helm;
+			};
+			name = Debug;
+		};
+		F836C70F6021D38517FFB16B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = HelmWatchWidgets/ExtensionInfo.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.watchkitapp.widgets;
+				SDKROOT = watchos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = 4;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		2856FE909638B8AD9777345D /* Build configuration list for PBXNativeTarget "HelmUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				D861AEBE61D2BBC62365D4DD /* Debug */,
+				44D04F34CFA5BB37B5BAE049 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5059A20288D759AF4CBD9EEC /* Build configuration list for PBXNativeTarget "HelmShare" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				755F85759B1A7F3AC08AD018 /* Debug */,
+				82279356C8669F9E5F64278F /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		7A052CCCA135773DE724008E /* Build configuration list for PBXProject "Helm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7FD100F4BF5C5011F6807F99 /* Debug */,
+				27FE985DE457A258418B9760 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		8B9EC655AFF743440917F064 /* Build configuration list for PBXNativeTarget "HelmWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				28F4C1D93B688FA55DE0E791 /* Debug */,
+				3A11968F2ABCD7F41B947E69 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		90611137D8FBB59A950968FA /* Build configuration list for PBXNativeTarget "Helm" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				543D6AA0358D9EA5F10CE252 /* Debug */,
+				0541A2A153D489C6172FC179 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		AEFF9852F82D15E67E62AB1C /* Build configuration list for PBXNativeTarget "HelmWatchWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				B18031536D15BF0C8D460D01 /* Debug */,
+				F836C70F6021D38517FFB16B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B5F05A961EBCB553F2EA6646 /* Build configuration list for PBXNativeTarget "HelmWatch" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				7E2C4823703256F12F53D435 /* Debug */,
+				4AA9992970059197EDCAD2DB /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		7675BB443EEA7D4AA2DFA8E3 /* XCLocalSwiftPackageReference "Core" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Core;
+		};
+		78B4F2077F871C7E0516307E /* XCLocalSwiftPackageReference "CoachLLM" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/CoachLLM;
+		};
+		96C0424F6C3FB97F4056A1B8 /* XCLocalSwiftPackageReference "HealthKitIngest" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/HealthKitIngest;
+		};
+		BC88E71FE6071D30E887C0B6 /* XCLocalSwiftPackageReference "Diagnostics" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Diagnostics;
+		};
+		CE18596BCB6665226E10C204 /* XCLocalSwiftPackageReference "Domain" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Domain;
+		};
+		CF5EF9C4C3007ADC05DC10E9 /* XCLocalSwiftPackageReference "Persistence" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/Persistence;
+		};
+		DA3214807D12D8A9111BC6FC /* XCLocalSwiftPackageReference "DesignSystem" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/DesignSystem;
+		};
+		F966DB04360DF297692B194A /* XCLocalSwiftPackageReference "ExportKit" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = Packages/ExportKit;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCRemoteSwiftPackageReference section */
+		5611BEF2AB5A69A75D420C0F /* XCRemoteSwiftPackageReference "ios-sdk" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/spotify/ios-sdk";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 5.0.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		01A7B07FBB89476C095AAD39 /* ReadinessKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ReadinessKit;
+		};
+		19C69AA5D49E0EA740A81683 /* Persistence */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Persistence;
+		};
+		4948A476B7398F2AB68DD7E3 /* ExportKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ExportKit;
+		};
+		4C5F122E8B8E8B8B15661C4E /* DesignSystem */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = DesignSystem;
+		};
+		505EB967FB99F06CAD91E7D3 /* ExportKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = ExportKit;
+		};
+		5C76961C98F189599391B607 /* Diagnostics */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Diagnostics;
+		};
+		77798C34CB0889BA57D99F33 /* CoachLLM */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = CoachLLM;
+		};
+		7C817B88A0C3EBE40B4D4D84 /* NutritionKit */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = NutritionKit;
+		};
+		8051ED48FCAD89C1565B9440 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
+		};
+		84E2E9FFF85336E0D45DB8DF /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
+		};
+		96FB402A98901B62B12BBC28 /* HealthKitIngest */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = HealthKitIngest;
+		};
+		A311E705660C5C05DCD31CA5 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
+		};
+		FA61E24E8271960684BD8099 /* SpotifyiOS */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 5611BEF2AB5A69A75D420C0F /* XCRemoteSwiftPackageReference "ios-sdk" */;
+			productName = SpotifyiOS;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = E5945378979AE75AA69216F7 /* Project object */;
+}

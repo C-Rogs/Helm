@@ -67,6 +67,13 @@ final class TrainPreferences {
         }
     }
 
+    var cardLoggingModeEnabled: Bool {
+        didSet {
+            guard !isHydrating else { return }
+            persist()
+        }
+    }
+
     private let defaults: UserDefaults
     private var isHydrating = true
 
@@ -114,6 +121,11 @@ final class TrainPreferences {
         )
         manualRestTimerDurationSeconds =
             TrainPreferencePersistence.ManualRestTimerDuration.snapped(storedDuration)
+        cardLoggingModeEnabled = TrainPreferencePersistence.loadBool(
+            key: TrainPreferencePersistence.cardLoggingModeEnabledKey,
+            defaults: defaults,
+            defaultValue: false
+        )
         isHydrating = false
     }
 
@@ -146,6 +158,11 @@ final class TrainPreferences {
         TrainPreferencePersistence.saveInt(
             manualRestTimerDurationSeconds,
             key: Self.manualRestTimerDurationSecondsKey,
+            defaults: defaults
+        )
+        TrainPreferencePersistence.saveBool(
+            cardLoggingModeEnabled,
+            key: TrainPreferencePersistence.cardLoggingModeEnabledKey,
             defaults: defaults
         )
     }

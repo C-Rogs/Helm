@@ -24,6 +24,7 @@ struct TrainView: View {
     @State private var measuredChromeHeight: CGFloat = 0
     @State private var viewportHeight: CGFloat = 0
     @State private var suppressChromeAnimations = false
+    @State private var isShowingSessionLog = false
 
     var body: some View {
         navigationRoot
@@ -453,145 +454,267 @@ struct TrainView: View {
     private func activeSessionView(_ snapshot: ActiveSessionSnapshot) -> some View {
         ZStack {
             VStack(spacing: 0) {
-                ScrollViewReader { proxy in
-                    ScrollView {
-                        VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                            TrainSessionHeaderView(
-                                startedAt: snapshot.session.startedAt,
-                                progress: TrainSessionProgress.from(snapshot: snapshot),
-                                watchLinkStatus: WatchCompanionLinkStatus.resolve(
-                                    canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                                    phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
-                                    liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-                                )
-                            )
-
-                            if spotify.isAuthorized, !spotify.isConnected {
-                                Button {
-                                    spotify.wakeSpotifyAndConnect()
-                                } label: {
-                                    HStack(spacing: HelmSpacing.xxs) {
-                                        Image(systemName: "music.note")
-                                            .font(.caption)
-                                        Text("Open Spotify")
-                                            .helmType(.monoTag, color: HelmColor.fgSecondary)
-                                    }
-                                    .padding(.horizontal, HelmSpacing.xs)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel("Open Spotify")
-                                .accessibilityHint("Switches to Spotify so Helm can read now playing")
-                            }
-
-                            if let notice = controller.watchCompanionNotice {
-                                Button {
-                                    if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
-                                        controller.retryWatchCompanionLaunch()
-                                    } else {
-                                        controller.dismissWatchCompanionNotice()
-                                    }
-                                } label: {
-                                    Text(notice)
-                                        .helmType(.body, color: HelmColor.fgSecondary)
-                                        .padding(.horizontal, HelmSpacing.xs)
-                                        .frame(maxWidth: .infinity, alignment: .leading)
-                                }
-                                .buttonStyle(.plain)
-                                .accessibilityLabel(notice)
-                            }
-
-                            if let banner = controller.adjustmentBanner {
-                                AdjustmentBanner(
-                                    fromLabel: banner.fromLabel,
-                                    toLabel: banner.toLabel,
-                                    reason: banner.reason
-                                ) {
-                                    Task { await controller.undoLastAdjustment() }
-                                }
-                                .transition(
-                                    .asymmetric(
-                                        insertion: .move(edge: .top).combined(with: .opacity),
-                                        removal: .opacity
-                                    )
-                                )
-                            }
-
-                            if snapshot.session.exercises.isEmpty {
-                                Text("Add your first exercise to begin logging sets.")
-                                    .helmType(.body, color: HelmColor.fgSecondary)
-                                    .padding(.horizontal, HelmSpacing.xs)
-                            }
-
-                            ForEach(controller.exercisesForDisplay()) { exercise in
-                                exerciseSection(for: exercise)
-                            }
-                            .animation(
-                                HelmMotion.animation(
-                                    HelmMotion.settleAnimation,
-                                    reduceMotion: reduceMotion
-                                ),
-                                value: controller.reorderDraftIDs
-                            )
-
-                            if !controller.isReorderMode {
-                                Button {
-                                    controller.isShowingExercisePicker = true
-                                } label: {
-                                    Label("Add exercise", helmIcon: .plus, context: .inline)
-                                }
-                                .buttonStyle(.helmSecondary)
-                            }
-
-                            if controller.numpadTarget == nil, !controller.isReorderMode {
-                                sessionActionBar
-                            }
-
-                            if controller.isReorderMode {
-                                reorderActionBar
-                            }
-
-                            Spacer(minLength: bottomContentInset)
-                        }
-                        .padding(HelmSpacing.screenGutter)
-                        .padding(.bottom, HelmSpacing.md)
-                        .frame(maxWidth: .infinity)
-                    }
-                    .background {
-                        GeometryReader { geometry in
-                            Color.clear.preference(
-                                key: TrainViewportHeightKey.self,
-                                value: geometry.size.height
-                            )
-                        }
-                    }
-                    .onPreferenceChange(TrainViewportHeightKey.self) { height in
-                        viewportHeight = height
-                    }
-                    .animation(
-                        HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                        value: controller.adjustmentBanner
-                    )
-                    .onChange(of: controller.numpadTarget) { _, target in
-                        guard let setID = target?.setID else { return }
-                        scheduleScrollToFocusedSet(
-                            proxy: proxy,
-                            setID: setID,
-                            viewportHeight: viewportHeight
-                        )
-                    }
-                    .onChange(of: measuredChromeHeight) { _, _ in
-                        guard let setID = controller.numpadTarget?.setID else { return }
-                        scheduleScrollToFocusedSet(
-                            proxy: proxy,
-                            setID: setID,
-                            viewportHeight: viewportHeight
-                        )
-                    }
+                if trainPreferences.cardLoggingModeEnabled {
+                    cardLoggingContent(snapshot)
+                } else {
+                    tableLoggingContent(snapshot)
                 }
             }
 
             // Coach apply wave mounts at AppRootView for app-wide AI applies.
+        }
+        .sheet(isPresented: $isShowingSessionLog) {
+            FocusSessionLogSheet(
+                exercises: controller.exercisesForDisplay(),
+                displayName: { controller.displayName(for: $0) },
+                onUndoSet: { sessionExerciseID, setID in
+                    Task { @MainActor in
+                        await controller.completeSet(
+                            sessionExerciseID: sessionExerciseID,
+                            setID: setID
+                        )
+                    }
+                }
+            )
+        }
+    }
+
+    private func cardLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {
+        VStack(spacing: 0) {
+            // Header with mode toggle
+            HStack {
+                TrainSessionHeaderView(
+                    startedAt: snapshot.session.startedAt,
+                    progress: TrainSessionProgress.from(snapshot: snapshot),
+                    watchLinkStatus: WatchCompanionLinkStatus.resolve(
+                        canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+                        phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
+                        liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                    )
+                )
+
+                Spacer()
+
+                Button {
+                    trainPreferences.cardLoggingModeEnabled = false
+                } label: {
+                    Image(systemName: "tablecells")
+                        .font(.body)
+                        .foregroundStyle(HelmColor.fgSecondary)
+                        .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Switch to table view")
+            }
+            .padding(.horizontal, HelmSpacing.md)
+
+            if let banner = controller.adjustmentBanner {
+                AdjustmentBanner(
+                    fromLabel: banner.fromLabel,
+                    toLabel: banner.toLabel,
+                    reason: banner.reason
+                ) {
+                    Task { await controller.undoLastAdjustment() }
+                }
+                .padding(.horizontal, HelmSpacing.md)
+            }
+
+            if snapshot.session.exercises.isEmpty {
+                VStack {
+                    Spacer()
+                    Text("Add your first exercise to begin logging sets.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                    Button {
+                        controller.isShowingExercisePicker = true
+                    } label: {
+                        Label("Add exercise", helmIcon: .plus, context: .inline)
+                    }
+                    .buttonStyle(.helmSecondary)
+                    Spacer()
+                }
+            } else {
+                FocusCardLoggingView(
+                    exercises: Array(controller.exercisesForDisplay().prefix(16)),
+                    controller: controller,
+                    isShowingSessionLog: $isShowingSessionLog
+                )
+
+                if !controller.isReorderMode {
+                    HStack(spacing: HelmSpacing.sm) {
+                        Button {
+                            controller.isShowingExercisePicker = true
+                        } label: {
+                            Label("Add exercise", helmIcon: .plus, context: .inline)
+                        }
+                        .buttonStyle(.helmSecondary)
+
+                        Spacer()
+
+                        sessionActionBar
+                    }
+                    .padding(.horizontal, HelmSpacing.md)
+                    .padding(.top, HelmSpacing.sm)
+                }
+            }
+
+            Spacer(minLength: bottomContentInset)
+        }
+    }
+
+    private func tableLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {
+        ScrollViewReader { proxy in
+            ScrollView {
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    HStack {
+                        TrainSessionHeaderView(
+                            startedAt: snapshot.session.startedAt,
+                            progress: TrainSessionProgress.from(snapshot: snapshot),
+                            watchLinkStatus: WatchCompanionLinkStatus.resolve(
+                                canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+                                phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
+                                liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                            )
+                        )
+
+                        Spacer()
+
+                        Button {
+                            trainPreferences.cardLoggingModeEnabled = true
+                        } label: {
+                            Image(systemName: "rectangle.grid.1x2")
+                                .font(.body)
+                                .foregroundStyle(HelmColor.fgSecondary)
+                                .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                                .contentShape(Rectangle())
+                        }
+                        .buttonStyle(.helmPressable)
+                        .accessibilityLabel("Switch to card view")
+                    }
+                    .padding(.horizontal, HelmSpacing.xs)
+
+                    if spotify.isAuthorized, !spotify.isConnected {
+                        Button {
+                            spotify.wakeSpotifyAndConnect()
+                        } label: {
+                            HStack(spacing: HelmSpacing.xxs) {
+                                Image(systemName: "music.note")
+                                    .font(.caption)
+                                Text("Open Spotify")
+                                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                            }
+                            .padding(.horizontal, HelmSpacing.xs)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel("Open Spotify")
+                        .accessibilityHint("Switches to Spotify so Helm can read now playing")
+                    }
+
+                    if let notice = controller.watchCompanionNotice {
+                        Button {
+                            if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
+                                controller.retryWatchCompanionLaunch()
+                            } else {
+                                controller.dismissWatchCompanionNotice()
+                            }
+                        } label: {
+                            Text(notice)
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .padding(.horizontal, HelmSpacing.xs)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityLabel(notice)
+                    }
+
+                    if let banner = controller.adjustmentBanner {
+                        AdjustmentBanner(
+                            fromLabel: banner.fromLabel,
+                            toLabel: banner.toLabel,
+                            reason: banner.reason
+                        ) {
+                            Task { await controller.undoLastAdjustment() }
+                        }
+                        .transition(
+                            .asymmetric(
+                                insertion: .move(edge: .top).combined(with: .opacity),
+                                removal: .opacity
+                            )
+                        )
+                    }
+
+                    if snapshot.session.exercises.isEmpty {
+                        Text("Add your first exercise to begin logging sets.")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                            .padding(.horizontal, HelmSpacing.xs)
+                    }
+
+                    ForEach(controller.exercisesForDisplay()) { exercise in
+                        exerciseSection(for: exercise)
+                    }
+                    .animation(
+                        HelmMotion.animation(
+                            HelmMotion.settleAnimation,
+                            reduceMotion: reduceMotion
+                        ),
+                        value: controller.reorderDraftIDs
+                    )
+
+                    if !controller.isReorderMode {
+                        Button {
+                            controller.isShowingExercisePicker = true
+                        } label: {
+                            Label("Add exercise", helmIcon: .plus, context: .inline)
+                        }
+                        .buttonStyle(.helmSecondary)
+                    }
+
+                    if controller.numpadTarget == nil, !controller.isReorderMode {
+                        sessionActionBar
+                    }
+
+                    if controller.isReorderMode {
+                        reorderActionBar
+                    }
+
+                    Spacer(minLength: bottomContentInset)
+                }
+                .padding(HelmSpacing.screenGutter)
+                .padding(.bottom, HelmSpacing.md)
+                .frame(maxWidth: .infinity)
+            }
+            .background {
+                GeometryReader { geometry in
+                    Color.clear.preference(
+                        key: TrainViewportHeightKey.self,
+                        value: geometry.size.height
+                    )
+                }
+            }
+            .onPreferenceChange(TrainViewportHeightKey.self) { height in
+                viewportHeight = height
+            }
+            .animation(
+                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                value: controller.adjustmentBanner
+            )
+            .onChange(of: controller.numpadTarget) { _, target in
+                guard let setID = target?.setID else { return }
+                scheduleScrollToFocusedSet(
+                    proxy: proxy,
+                    setID: setID,
+                    viewportHeight: viewportHeight
+                )
+            }
+            .onChange(of: measuredChromeHeight) { _, _ in
+                guard let setID = controller.numpadTarget?.setID else { return }
+                scheduleScrollToFocusedSet(
+                    proxy: proxy,
+                    setID: setID,
+                    viewportHeight: viewportHeight
+                )
+            }
         }
     }
 
