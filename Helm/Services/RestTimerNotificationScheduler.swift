@@ -6,6 +6,7 @@ import UserNotifications
 protocol NotificationScheduling: Sendable {
     func add(_ request: UNNotificationRequest) async throws
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) async
+    func removeAllPendingNotificationRequests() async
     func removeDeliveredNotifications(withIdentifiers identifiers: [String]) async
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
 }
@@ -17,6 +18,10 @@ struct LiveNotificationCenter: NotificationScheduling {
 
     func removePendingNotificationRequests(withIdentifiers identifiers: [String]) async {
         UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
+    }
+
+    func removeAllPendingNotificationRequests() async {
+        UNUserNotificationCenter.current().removeAllPendingNotificationRequests()
     }
 
     func removeDeliveredNotifications(withIdentifiers identifiers: [String]) async {

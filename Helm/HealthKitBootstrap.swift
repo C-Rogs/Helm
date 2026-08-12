@@ -29,6 +29,16 @@ enum HealthKitBootstrap {
     static var healthKitIngest: HealthKitIngest { ingest }
     static var backfillService: BackfillService { backfill }
 
+    /// Toggles HealthKit observer queries on or off.
+    /// Festival mode calls this to stop/start background delivery wakes.
+    static func setHealthKitObserving(_ enabled: Bool) async {
+        if enabled {
+            await ingest.startObserving()
+        } else {
+            await ingest.stopObserving()
+        }
+    }
+
     static func start() {
         Task(priority: .utility) {
             await bootstrapIfNeeded()

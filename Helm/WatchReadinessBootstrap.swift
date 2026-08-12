@@ -56,7 +56,7 @@ enum WatchReadinessBootstrap {
 
     @MainActor
     static func pushCurrentReadiness(force: Bool = false) async {
-        await ReadinessBootstrap.readinessService.refresh()
+        guard !FestivalModePreferences.shared.isFestivalModeEnabled else { return }
 
         guard case let .scored(score) = ReadinessBootstrap.readinessService.state else {
             return

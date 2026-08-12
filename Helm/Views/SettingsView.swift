@@ -10,6 +10,7 @@ struct SettingsView: View {
     @Bindable private var coordinator = HelmThemeCoordinator.shared
     @Bindable private var trainPreferences = TrainPreferences.shared
     @Bindable private var focusModePreferences = FocusModePreferences.shared
+    @Bindable private var festivalModePreferences = FestivalModePreferences.shared
 
     @State private var healthStatusLabel = "…"
     @State private var notificationStatusLabel = "…"
@@ -24,6 +25,7 @@ struct SettingsView: View {
         NavigationStack {
             List {
                 appearanceSection
+                batterySection
                 feedbackSection
                 trainSoundsSection
                 trainingSection
@@ -96,6 +98,29 @@ struct SettingsView: View {
             Text("Dims inactive set and meal rows while you log, so the active entry stays front and center.")
                 .helmType(.body, color: HelmColor.fgMuted)
                 .helmListRowChrome()
+        }
+    }
+
+    private var batterySection: some View {
+        Section {
+            Toggle("Festival mode", isOn: $festivalModePreferences.isFestivalModeEnabled)
+                .helmListRowChrome()
+                .onChange(of: festivalModePreferences.isFestivalModeEnabled) { _, newValue in
+                    HapticEngine.shared.play(.selection)
+                    Task {
+                        await HealthKitBootstrap.setHealthKitObserving(!newValue)
+                    }
+                    if newValue {
+                        Task { await ProactiveBootstrap.cancelAllScheduled() }
+                    } else {
+                        Task { await ProactiveBootstrap.refreshScheduling() }
+                    }
+                }
+        } header: {
+            Text("Battery")
+        } footer: {
+            Text("Festival mode pauses HealthKit background observers, Watch readiness pushes, and proactive notifications so Helm draws near-zero idle power. Leave it on when you don't need workout or health tracking — nutrition logging still works from the Nutrition tab.")
+                .helmType(.body, color: HelmColor.fgMuted)
         }
     }
 

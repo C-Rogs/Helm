@@ -29,6 +29,7 @@ final class ProactiveNotificationScheduler {
         now: Date = .now,
         calendar: Calendar = .current
     ) async {
+        guard !FestivalModePreferences.shared.isFestivalModeEnabled else { return }
         let day = HelmDay.day(for: now, calendar: calendar)
 
         guard let summary else {
@@ -85,10 +86,15 @@ final class ProactiveNotificationScheduler {
         await center.removePendingNotificationRequests(withIdentifiers: [identifier])
     }
 
+    func cancelAllScheduled() async {
+        await center.removeAllPendingNotificationRequests()
+    }
+
     func postPostWorkoutSummary(
         session: WorkoutSessionDraft,
         personalRecords: [DetectedPersonalRecord]
     ) async {
+        guard !FestivalModePreferences.shared.isFestivalModeEnabled else { return }
         await requestPermissionIfNeeded()
 
         let summary = PostWorkoutSummaryBuilder.build(

@@ -21,12 +21,18 @@ enum ProactiveBootstrap {
 
     @MainActor
     static func refreshScheduling() async {
+        guard !FestivalModePreferences.shared.isFestivalModeEnabled else { return }
         let readiness = ReadinessBootstrap.readinessService.state.score?.score
         let summary = PlanBootstrap.prescriptionService.state.summary
         await notificationScheduler.schedulePreWorkoutPrimeIfNeeded(
             summary: summary,
             readinessScore: readiness
         )
+    }
+
+    @MainActor
+    static func cancelAllScheduled() async {
+        await notificationScheduler.cancelAllScheduled()
     }
 
     @MainActor

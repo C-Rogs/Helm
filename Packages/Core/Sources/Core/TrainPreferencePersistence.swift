@@ -11,6 +11,7 @@ public enum TrainPreferencePersistence {
     public static let manualRestTimerDurationSecondsKey = "helm.train.manualRestTimerDurationSeconds"
     public static let focusModeEnabledKey = "helm.ui.focusModeEnabled"
     public static let cardLoggingModeEnabledKey = "helm.train.cardLoggingModeEnabled"
+    public static let festivalModeEnabledKey = "helm.festivalMode.enabled"
 
     /// Duration policy for the manual rest timer (5s steps, 15s-10m).
     public enum ManualRestTimerDuration {
