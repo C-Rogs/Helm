@@ -73,22 +73,33 @@ struct FocusExerciseCard: View {
     // MARK: - Image
 
     private var imageSection: some View {
-        ExerciseImageView(
-            url: imageURL,
-            fallbackLabel: displayName
-        )
-        .frame(height: imageHeight)
-        .clipped()
+        Group {
+            if imageURL != nil {
+                ExerciseImageView(
+                    url: imageURL,
+                    fallbackLabel: displayName
+                )
+                .frame(height: imageHeight)
+                .clipped()
+            }
+            // No image: show nothing here; exercise name lives in setInfoRow instead
+        }
     }
 
     private var imageHeight: CGFloat {
-        UIScreen.main.bounds.height * 0.28
+        UIScreen.main.bounds.height * 0.26
     }
 
     // MARK: - Details
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            // Only show name here when there's no image (image has its own fallback label)
+            if imageURL == nil {
+                Text(displayName)
+                    .helmType(.title)
+                    .lineLimit(2)
+            }
             setInfoRow
             cueAndPrevious
             fieldRow
@@ -104,17 +115,19 @@ struct FocusExerciseCard: View {
             Text("Set \(setNumber) of \(totalSets)")
                 .helmType(.label)
 
-            Text("·")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+            if let setType = currentSet?.setType, setType != .normal {
+                Text("·")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
 
-            Button(action: onCycleSetType) {
-                Text(setTypeLabel)
-                    .helmType(.monoTag, color: setTypeColor)
-                    .padding(.horizontal, HelmSpacing.xs)
-                    .padding(.vertical, 2)
-                    .background(setTypeColor.opacity(0.12), in: Capsule())
+                Button(action: onCycleSetType) {
+                    Text(setTypeLabel)
+                        .helmType(.monoTag, color: setTypeColor)
+                        .padding(.horizontal, HelmSpacing.xs)
+                        .padding(.vertical, 2)
+                        .background(setTypeColor.opacity(0.12), in: Capsule())
+                }
+                .buttonStyle(.helmPressable)
             }
-            .buttonStyle(.helmPressable)
 
             Spacer()
 
@@ -123,6 +136,15 @@ struct FocusExerciseCard: View {
                     .foregroundStyle(HelmColor.accent)
                     .font(.title3)
                     .accessibilityLabel("Set completed")
+            } else {
+                // Tap anywhere on the row to cycle set type when it's a normal working set
+                Button(action: onCycleSetType) {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.body)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Change set type")
             }
         }
     }

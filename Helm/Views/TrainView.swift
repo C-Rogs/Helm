@@ -537,23 +537,6 @@ struct TrainView: View {
                     controller: controller,
                     isShowingSessionLog: $isShowingSessionLog
                 )
-
-                if !controller.isReorderMode {
-                    HStack(spacing: HelmSpacing.sm) {
-                        Button {
-                            controller.isShowingExercisePicker = true
-                        } label: {
-                            Label("Add exercise", helmIcon: .plus, context: .inline)
-                        }
-                        .buttonStyle(.helmSecondary)
-
-                        Spacer()
-
-                        sessionActionBar
-                    }
-                    .padding(.horizontal, HelmSpacing.md)
-                    .padding(.top, HelmSpacing.sm)
-                }
             }
 
             Spacer(minLength: bottomContentInset)

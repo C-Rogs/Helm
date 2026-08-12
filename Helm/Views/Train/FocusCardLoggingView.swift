@@ -28,6 +28,7 @@ struct FocusCardLoggingView: View {
             exerciseStrip
             cardArea
             sessionLogButton
+            sessionFooter
             Spacer(minLength: 0)
         }
         .onAppear {
@@ -230,25 +231,63 @@ struct FocusCardLoggingView: View {
             isShowingSessionLog = true
         } label: {
             HStack(spacing: HelmSpacing.xs) {
-                Image(systemName: "list.clipboard")
-                    .font(.caption)
+                Image(systemName: "checklist")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundStyle(HelmColor.fgSecondary)
+
                 Text("Session Log")
-                    .helmType(.label)
-                Text("\(allCompleted)/\(allTotal) completed")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .helmType(.label, color: HelmColor.textPrimary)
+
                 Spacer()
+
+                Text("\(allCompleted) of \(allTotal)")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+
                 Image(systemName: "chevron.up")
-                    .font(.caption)
+                    .font(.caption2.weight(.semibold))
                     .foregroundStyle(HelmColor.fgMuted)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            .background(HelmColor.surfaceElevated)
+            .overlay(alignment: .top) {
+                Divider().overlay(HelmColor.hairline)
+            }
         }
-        .buttonStyle(.helmPressable)
-        .padding(.horizontal, HelmSpacing.md)
+        .buttonStyle(.plain)
         .padding(.top, HelmSpacing.xs)
         .accessibilityLabel("Session log, \(allCompleted) of \(allTotal) sets completed")
+    }
+
+    // MARK: - Session footer
+
+    private var sessionFooter: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            Button {
+                controller.isShowingExercisePicker = true
+            } label: {
+                Label("Add", helmIcon: .plus, context: .inline)
+            }
+            .buttonStyle(.helmSecondary)
+
+            Spacer()
+
+            Button("Discard") {
+                controller.isShowingDiscardConfirmation = true
+            }
+            .buttonStyle(.helmSecondary)
+            .disabled(controller.isFinishingWorkout)
+
+            HelmActionButton(
+                "Finish",
+                phase: controller.isFinishingWorkout ? .loading : .idle,
+                successTitle: "Done"
+            ) {
+                controller.isShowingFinishConfirmation = true
+            }
+        }
+        .padding(.horizontal, HelmSpacing.md)
+        .padding(.top, HelmSpacing.sm)
     }
 
     // MARK: - Helpers
