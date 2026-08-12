@@ -70,6 +70,8 @@ struct FocusSessionLogSheet: View {
             HStack {
                 Text(displayName(exercise.exerciseID))
                     .helmType(.label)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
                 Spacer()
                 Text("\(completed)/\(total)")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
@@ -131,6 +133,8 @@ struct FocusSessionLogSheet: View {
                 if let abbreviation = set.setType.loggerAbbreviation {
                     Text(abbreviation)
                         .helmType(.monoTag, color: HelmColor.fgSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
                         .padding(.horizontal, HelmSpacing.xxs)
                         .padding(.vertical, 1)
                         .background(HelmColor.surfaceElevated, in: Capsule())
@@ -142,6 +146,8 @@ struct FocusSessionLogSheet: View {
                 if isCompleted {
                     Text(performanceLabel(for: set))
                         .helmType(.monoTag, color: HelmColor.fgSecondary)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
                 } else {
                     Text("--")
                         .helmType(.monoTag, color: HelmColor.fgMuted)

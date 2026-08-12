@@ -272,8 +272,12 @@ struct FocusCardLoggingView: View {
 
             Spacer()
 
-            Button("Discard") {
+            Button {
                 controller.isShowingDiscardConfirmation = true
+            } label: {
+                Text("Discard")
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
             }
             .buttonStyle(.helmSecondary)
             .disabled(controller.isFinishingWorkout)

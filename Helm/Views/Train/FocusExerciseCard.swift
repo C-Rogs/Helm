@@ -114,6 +114,8 @@ struct FocusExerciseCard: View {
         HStack(spacing: HelmSpacing.xs) {
             Text("Set \(setNumber) of \(totalSets)")
                 .helmType(.label)
+                .lineLimit(1)
+                .minimumScaleFactor(0.9)
 
             if let setType = currentSet?.setType, setType != .normal {
                 Text("·")
@@ -182,6 +184,8 @@ struct FocusExerciseCard: View {
                     .helmType(.monoTag, color: HelmColor.fgMuted)
                 Text(previousLabel(previous))
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.9)
                 Text("Tap to fill")
                     .helmType(.monoTag, color: HelmColor.accent)
             }
@@ -242,6 +246,8 @@ struct FocusExerciseCard: View {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(display)
                         .helmType(.body, color: SetRowFieldValueStateResolver.textColor(for: state))
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.9)
                     if !unit.isEmpty {
                         Text(unit)
                             .helmType(.monoTag, color: HelmColor.fgMuted)
