@@ -126,6 +126,28 @@ public actor ReadinessEngine {
         log = helmLogger(category: .readinessKit)
     }
 
+    /// One-time conversion of legacy per-sample TRIMP sums to duration-weighted scale.
+    /// Pre-epoch values counted one full zone weight per HR sample (1 Hz ≈ 60x the
+    /// minutes-integral). Scaling stored history and clearing the seeded P75 keeps
+    /// strain z-scores coherent while the new baseline EWMA settles in.
+    public func migrateTRIMPEpochIfNeeded() throws {
+        guard try persistence.appMetadata.value(forKey: Self.trimpEpochMigrationFlag) == nil else { return }
+
+        let scaledDays = try persistence.dailyMetrics.scaleAllPriorDayTRIMP(by: 1.0 / 60.0)
+
+        if let json = try persistence.readiness.fetchBaselineJSON(),
+           var baseline = try? decode(ReadinessBaselineState.self, from: json) {
+            baseline.trimpP75 = nil
+            let payload = try encode(baseline)
+            try persistence.readiness.upsertBaseline(stateJSON: payload)
+        }
+
+        try persistence.appMetadata.setValue("1", forKey: Self.trimpEpochMigrationFlag)
+        log.info("TRIMP epoch migration applied: \(scaledDays) days rescaled, seeded P75 reset")
+    }
+
+    private static let trimpEpochMigrationFlag = "trimpEpoch2MigrationApplied"
+
     /// Last persisted score for `day`, or most recent prior day (stale paint only).
     /// Does not rebuild history or recompute.
     public func cachedDashboardState(for day: HelmDay) throws -> ReadinessDashboardState? {
