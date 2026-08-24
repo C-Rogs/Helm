@@ -19,10 +19,12 @@ struct PlanBuilderFlowView: View {
     @State private var maintenanceText = ""
     @State private var selectedDays: Set<String> = ["3"]
     @State private var selectedDuration: Set<String> = ["60"]
+    @State private var selectedExperience: Set<String> = ["intermediate"]
     @State private var selectedGoal: Set<String> = [PlanBuilderInterview.ProgressionGoal.hypertrophy.rawValue]
     @State private var emphasisText = ""
     @State private var options: [PlanBuilderOption] = []
     @State private var notice: String?
+    @State private var showCommittedConfirmation = false
 
     private let service = PlanBuilderService(
         persistence: PersistenceBootstrap.persistenceStore,
@@ -40,19 +42,31 @@ struct PlanBuilderFlowView: View {
                 case .cards:
                     PlanOptionCardsView(options: options) { option in
                         HapticEngine.shared.play(.coachAdjust)
-                        stage = .refine(option)
+                        withAnimation {
+                            stage = .refine(option)
+                        }
+                    }
+                    .safeAreaInset(edge: .bottom) {
+                        Button("Back to questions") {
+                            stage = .interview
+                        }
+                        .buttonStyle(.helmSecondary)
+                        .padding(.horizontal, HelmSpacing.screenGutter)
+                        .padding(.bottom, HelmSpacing.sm)
                     }
                 case .refine(let option):
                     PlanRefinementView(
                         option: option,
-                        interview: interview,
+                        interview: syncedInterview(),
                         service: service,
                         onCommitted: {
+                            HapticEngine.shared.play(.sessionFinished)
                             PlanBootstrap.refreshPrescription()
                             NutritionBootstrap.refreshNutrition()
                             CloudBackupCoordinator.shared.schedulePush()
-                            stage = .interview
+                            showCommittedConfirmation = true
                             options = []
+                            stage = .interview
                         },
                         onBack: { stage = .cards }
                     )
@@ -60,6 +74,15 @@ struct PlanBuilderFlowView: View {
             }
             .navigationTitle("Plan Builder")
             .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                if !isInterviewStage {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Cancel") {
+                            stage = .interview
+                        }
+                    }
+                }
+            }
             .helmScreenBackground()
         }
         .task {
@@ -69,12 +92,29 @@ struct PlanBuilderFlowView: View {
                 applyInterview(service.makePrefilledInterview())
             }
         }
+        .alert("Plan locked in", isPresented: $showCommittedConfirmation) {
+            Button("Done", role: .cancel) {}
+        } message: {
+            Text("Your training plan was updated and today's session re-prescribed. Your coach chat can see the new plan too.")
+        }
+    }
+
+    /// Interview state assembled from the current answer pickers.
+    private func syncedInterview() -> PlanBuilderInterview {
+        syncInterview()
+        return interview
+    }
+
+    private var isInterviewStage: Bool {
+        if case .interview = stage { return true }
+        return false
     }
 
     private func applyInterview(_ value: PlanBuilderInterview) {
         interview = value
         selectedDays = [String(value.daysPerWeek)]
         selectedDuration = [String(value.sessionDurationMinutes)]
+        selectedExperience = [value.experienceRaw]
         selectedGoal = [value.progressionGoal.rawValue]
         emphasisText = value.emphasis ?? ""
         if let kcal = value.confirmedMaintenanceKcal {
@@ -111,6 +151,16 @@ struct PlanBuilderFlowView: View {
                         MCQOption(id: "75", label: "75+ minutes")
                     ],
                     selection: $selectedDuration
+                )
+
+                MultipleChoiceQuestionView(
+                    question: "Years of consistent lifting?",
+                    options: [
+                        MCQOption(id: "novice", label: "Under 1 year", detail: "Landmarks seed conservatively."),
+                        MCQOption(id: "intermediate", label: "1 to 3 years", detail: "Standard landmark scaling."),
+                        MCQOption(id: "advanced", label: "Over 3 years", detail: "Higher volume tolerance assumed.")
+                    ],
+                    selection: $selectedExperience
                 )
 
                 MultipleChoiceQuestionView(
@@ -157,12 +207,13 @@ struct PlanBuilderFlowView: View {
     }
 
     private var isInterviewValid: Bool {
-        !selectedDays.isEmpty && !selectedDuration.isEmpty && !selectedGoal.isEmpty
+        !selectedDays.isEmpty && !selectedDuration.isEmpty && !selectedGoal.isEmpty && !selectedExperience.isEmpty
     }
 
     private func syncInterview() {
         interview.daysPerWeek = Int(selectedDays.first ?? "") ?? 3
         interview.sessionDurationMinutes = Int(selectedDuration.first ?? "") ?? 60
+        interview.experienceRaw = selectedExperience.first ?? "intermediate"
         interview.progressionGoal = PlanBuilderInterview.ProgressionGoal(rawValue: selectedGoal.first ?? "")
             ?? .hypertrophy
         let trimmedKcal = maintenanceText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -201,11 +252,15 @@ struct PlanBuilderFlowView: View {
                     "Confirmed metrics and preferences",
                     "Computed candidate volumes from engine landmarks"
                 ],
-                currentStep: "Cross-referencing against training research…",
+                currentStep: "Writing outcome copy for each option…",
                 footnote: "Candidates come from Helm's planning engine. The coach adds outcome copy grounded in current evidence.",
                 isImpactful: true
             )
             Spacer()
+            Button("Cancel") {
+                stage = .interview
+            }
+            .buttonStyle(.helmSecondary)
         }
         .padding(HelmSpacing.screenGutter)
     }

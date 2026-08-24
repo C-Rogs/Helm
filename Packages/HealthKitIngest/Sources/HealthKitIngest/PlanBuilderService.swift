@@ -41,6 +41,7 @@ public final class PlanBuilderService {
         if let settings = try? persistence.trainingPlan.load() {
             interview.sessionDurationMinutes = settings.sessionDurationMinutes
             interview.daysPerWeek = settings.daysPerWeek
+            interview.experienceRaw = settings.experienceRaw
             interview.emphasis = settings.phaseGoal.emphasis
         }
         if let profile = BodyProfileStore(metadata: persistence.appMetadata).load(),
@@ -69,12 +70,9 @@ public final class PlanBuilderService {
         isGenerating = true
         defer { isGenerating = false }
 
-        let experienceRaw = (try? persistence.trainingPlan.load())?.experienceRaw
-        let experience = experienceRaw.flatMap(TrainingExperience.init(rawValue:)) ?? .intermediate
-
         let candidates = CandidatePlanGenerator.generate(
             interview: interview,
-            experience: experience
+            experience: CandidatePlanGenerator.experience(of: interview)
         )
 
         var copies: [String: PlanOptionCardCopy] = [:]
@@ -111,19 +109,49 @@ public final class PlanBuilderService {
         next.programTemplateRaw = option.candidate.programTemplateRaw
         next.daysPerWeek = option.candidate.daysPerWeek
         next.sessionDurationMinutes = interview.sessionDurationMinutes
-        if let kcal = interview.confirmedMaintenanceKcal {
-            // Maintenance confirmation is recorded as an emphasis note;
-            // nutrition targets stay owned by NutritionKit adaptive TDEE.
-            let note = "maintenance ~\(Int(kcal)) kcal/day"
-            next.phaseGoal = PhaseGoal(
-                phase: next.phaseGoal.phase,
-                weeklyRateKg: next.phaseGoal.weeklyRateKg,
-                targetMass: next.phaseGoal.targetMass,
-                emphasis: [next.phaseGoal.emphasis, note].compactMap(\.self).joined(separator: ", ")
-            )
-        }
+        next.experienceRaw = interview.experienceRaw
+        // Interview emphasis replaces any prior value; the maintenance note is
+        // refreshed (not appended) so repeated commits never duplicate it.
+        let notes = [interview.emphasis, Self.maintenanceNote(interview.confirmedMaintenanceKcal)]
+            .compactMap(\.self)
+            .joined(separator: ", ")
+        next.phaseGoal = PhaseGoal(
+            phase: next.phaseGoal.phase,
+            weeklyRateKg: next.phaseGoal.weeklyRateKg,
+            targetMass: next.phaseGoal.targetMass,
+            emphasis: notes.isEmpty ? nil : notes
+        )
+        syncProgressionGoal(interview.progressionGoal, into: &next)
         return next
     }
+
+    static func maintenanceNote(_ kcal: Double?) -> String? {
+        guard let kcal else { return nil }
+        return "maintenance ~\(Int(kcal)) kcal/day"
+    }
+
+    /// Stores the progression goal as a structured preference line in MemoryProfile
+    /// so coach chat and future plan builds can read it back.
+    private func syncProgressionGoal(
+        _ goal: PlanBuilderInterview.ProgressionGoal,
+        into settings: inout StoredTrainingPlanSettings
+    ) {
+        do {
+            var profile = try persistence.memoryProfile.load()
+            let parsed = MethodologyPreferences.parse(from: profile.preferences)
+            var lines = parsed.freeform
+                .split(separator: "\n", omittingEmptySubsequences: false)
+                .map(String.init)
+                .filter { !$0.hasPrefix("\(Self.goalKey)=") }
+            lines.append("\(Self.goalKey)=\(goal.rawValue)")
+            profile.preferences = lines.joined(separator: "\n")
+            try persistence.memoryProfile.save(profile)
+        } catch {
+            // Goal persistence is best-effort; the plan itself still commits.
+        }
+    }
+
+    static let goalKey = "progressionGoal"
 
     public func clearSession() {
         try? persistence.planBuilderSession.clear()
@@ -166,8 +194,10 @@ public final class PlanBuilderService {
         }.joined(separator: ",\n")
 
         let userMessage = """
-        Athlete goal: \(interview.progressionGoal.rawValue). \
-        Available days: \(interview.daysPerWeek)/week. Session length: \(interview.sessionDurationMinutes) minutes.
+        Athlete goal: \(interview.progressionGoal.rawValue) (\(interview.progressionGoal.label)). \
+        Experience: \(interview.experienceRaw). \
+        Available days: \(interview.daysPerWeek)/week. Session length: \(interview.sessionDurationMinutes) minutes.\
+        \(interview.emphasis.map { " Stated emphasis: \($0)." } ?? "")
         Candidates:
         [
         \(facts)

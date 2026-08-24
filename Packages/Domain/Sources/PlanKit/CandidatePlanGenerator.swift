@@ -55,6 +55,11 @@ public enum CandidatePlanGenerator {
     /// Matches the engine's default mesocycle block length (deload cadence).
     public static let defaultBlockLengthWeeks = 5
 
+    /// Typed view of the interview's experience raw value for landmark seeding.
+    public static func experience(of interview: PlanBuilderInterview) -> TrainingExperience {
+        TrainingExperience(rawValue: interview.experienceRaw) ?? .intermediate
+    }
+
     /// Levers per availability bucket. PPL slots are live for all templates;
     /// upper/full candidates reuse PPL day mapping via `hasDedicatedSlotTables`.
     static func candidateBlueprints(daysPerWeek: Int) -> [CandidateBlueprint] {

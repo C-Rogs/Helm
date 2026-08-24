@@ -9,6 +9,10 @@ struct PlanOptionCardsView: View {
     let options: [PlanBuilderOption]
     let onSelect: (PlanBuilderOption) -> Void
 
+    private var bestFitID: String? {
+        options.max(by: { $0.candidate.availabilityFitScore < $1.candidate.availabilityFitScore })?.id
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
@@ -24,12 +28,20 @@ struct PlanOptionCardsView: View {
     }
 
     private func card(_ option: PlanBuilderOption) -> some View {
-        Button {
+        let isBestFit = option.id == bestFitID && option.candidate.availabilityFitScore >= 0.95
+        return Button {
             onSelect(option)
         } label: {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                Text(option.candidate.headline)
-                    .helmType(.title, color: HelmColor.fg)
+                HStack(alignment: .firstTextBaseline) {
+                    Text(option.candidate.headline)
+                        .helmType(.title, color: HelmColor.fg)
+                    Spacer()
+                    if isBestFit {
+                        Text("Best fit")
+                            .helmType(.monoTag, color: HelmColor.positive)
+                    }
+                }
 
                 Text(option.copy.outcome)
                     .helmType(.body, color: HelmColor.fg)
@@ -59,7 +71,10 @@ struct PlanOptionCardsView: View {
             .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.card))
             .overlay {
                 RoundedRectangle(cornerRadius: HelmRadius.card)
-                    .strokeBorder(HelmColor.hairline, lineWidth: 1)
+                    .strokeBorder(
+                        isBestFit ? HelmColor.positive : HelmColor.hairline,
+                        lineWidth: isBestFit ? 1.5 : 1
+                    )
             }
         }
         .buttonStyle(.helmPressableCard)

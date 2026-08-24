@@ -59,6 +59,12 @@ struct PlanRefinementView: View {
 
                 dials
 
+                if dialsChanged {
+                    Text("Adjusted from the drafted option. Volume below reflects your changes; coach notes still describe the original.")
+                        .font(HelmTypography.caption)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+
                 volumePreview
 
                 if !option.copy.benefits.isEmpty || !option.copy.challenges.isEmpty {
@@ -147,6 +153,12 @@ struct PlanRefinementView: View {
                         .frame(width: 70, alignment: .trailing)
                 }
             }
+
+            if interview.experienceRaw == "novice" {
+                Text("Loads start conservative and calibrate from your first logged sessions. No separate strength testing needed before starting.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
+            }
         }
         .padding(HelmSpacing.md)
         .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
@@ -172,6 +184,11 @@ struct PlanRefinementView: View {
         .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
     }
 
+    private var dialsChanged: Bool {
+        daysPerWeek != option.candidate.daysPerWeek
+            || sessionMinutes != option.candidate.sessionDurationMinutes
+    }
+
     private var volumeRows: [VolumeRow] {
         refined.weeklyPeakSetsByMuscle
             .sorted { $0.value > $1.value }
@@ -187,18 +204,12 @@ struct PlanRefinementView: View {
         adjustedInterview.sessionDurationMinutes = sessionMinutes
         let adjustedCandidates = CandidatePlanGenerator.generate(
             interview: adjustedInterview,
-            experience: currentExperience()
+            experience: CandidatePlanGenerator.experience(of: adjustedInterview)
         )
         // Keep the same blueprint family when available; else closest fit.
         let sameFamily = adjustedCandidates.first { $0.id == option.candidate.id }
         let bestFit = adjustedCandidates.max { $0.availabilityFitScore < $1.availabilityFitScore }
         refined = sameFamily ?? bestFit ?? option.candidate
-    }
-
-    /// Refine-stage regeneration has no history context; intermediate seeding is the
-    /// neutral default and live landmarks take over when the engine re-plans for real.
-    private func currentExperience() -> TrainingExperience {
-        .intermediate
     }
 
     private func commit() async {

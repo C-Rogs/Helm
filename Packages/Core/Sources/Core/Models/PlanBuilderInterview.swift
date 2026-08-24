@@ -40,6 +40,8 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
     public var daysPerWeek: Int
     /// Session time budget in minutes (30 / 45 / 60 / 75).
     public var sessionDurationMinutes: Int
+    /// Training history used for landmark seeding (`TrainingExperience` raw value).
+    public var experienceRaw: String
     public var progressionGoal: ProgressionGoal
     /// Free-form emphasis such as "arms" or "v-taper"; optional.
     public var emphasis: String?
@@ -49,6 +51,7 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
         usesComputedEstimate: Bool = true,
         daysPerWeek: Int = 3,
         sessionDurationMinutes: Int = 60,
+        experienceRaw: String = "intermediate",
         progressionGoal: ProgressionGoal = .hypertrophy,
         emphasis: String? = nil
     ) {
@@ -56,6 +59,7 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
         self.usesComputedEstimate = usesComputedEstimate
         self.daysPerWeek = min(max(daysPerWeek, 2), 6)
         self.sessionDurationMinutes = sessionDurationMinutes
+        self.experienceRaw = experienceRaw
         self.progressionGoal = progressionGoal
         self.emphasis = emphasis
     }
