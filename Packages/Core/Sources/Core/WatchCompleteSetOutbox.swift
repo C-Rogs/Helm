@@ -1,4 +1,5 @@
 import Foundation
+import OSLog
 
 /// Durable Watch-side queue for set-completion events before WCSession delivery.
 public struct WatchCompleteSetOutboxEntry: Codable, Sendable, Equatable, Identifiable {
@@ -134,15 +135,26 @@ public final class WatchCompleteSetOutbox: @unchecked Sendable {
         Self.save(entries, to: fileURL)
     }
 
+    private static let logger = Logger(subsystem: "com.cameronro.helm", category: "Watch")
+
     private static func load(from url: URL) -> [WatchCompleteSetOutboxEntry] {
         guard let data = try? Data(contentsOf: url) else { return [] }
-        return (try? JSONDecoder().decode([WatchCompleteSetOutboxEntry].self, from: data)) ?? []
+        do {
+            return try JSONDecoder().decode([WatchCompleteSetOutboxEntry].self, from: data)
+        } catch {
+            logger.error("Outbox load failed, starting empty: \(error.localizedDescription, privacy: .public)")
+            return []
+        }
     }
 
     private static func save(_ entries: [WatchCompleteSetOutboxEntry], to url: URL) {
-        let directory = url.deletingLastPathComponent()
-        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
-        guard let data = try? JSONEncoder().encode(entries) else { return }
-        try? data.write(to: url, options: [.atomic])
+        do {
+            let directory = url.deletingLastPathComponent()
+            try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+            let data = try JSONEncoder().encode(entries)
+            try data.write(to: url, options: [.atomic])
+        } catch {
+            logger.error("Outbox save failed (\(entries.count) entries): \(error.localizedDescription, privacy: .public)")
+        }
     }
 }

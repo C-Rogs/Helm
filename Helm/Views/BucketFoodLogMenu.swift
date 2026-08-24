@@ -51,6 +51,7 @@ struct BucketFoodLogMenu: View {
                 .foregroundStyle(HelmColor.buttonPrimaryForeground)
                 .frame(width: 36, height: 36)
                 .background(HelmColor.buttonPrimaryBackground, in: Circle())
+                .contentShape(Circle().inset(by: -4))
                 .shadow(color: .black.opacity(0.2), radius: 4, y: 2)
         }
         .buttonStyle(.helmPressable)

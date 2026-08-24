@@ -101,14 +101,9 @@ enum PrescriptionEngine {
             )
             let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
 
-            let bounds = SessionSetAllocator.roleBounds(
-                role: slot.role,
-                thinSession: thinSession || isDeload
-            )
             var sets = allocation.sets
-            if phaseMultiplier < 1.0, !gating.usesOrderedVolumeTrim {
-                sets = max(bounds.min > 2 ? bounds.min - 1 : bounds.min, Int((Double(sets) * phaseMultiplier).rounded()))
-            }
+            // Phase multiplier is already applied to the allocator's session budget;
+            // applying it here too would double-scale cut-phase volume.
             sets = PrescriptionBounds.clampSets(sets)
 
             exercises.append(PrescribedExercise(

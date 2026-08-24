@@ -50,6 +50,7 @@ struct NutritionMealBucketSection: View {
                                 .font(.system(size: 14, weight: .semibold))
                                 .foregroundStyle(HelmColor.fgMuted)
                                 .frame(width: 32, height: 32)
+                                .contentShape(Rectangle())
                         }
                         .buttonStyle(.helmPressable)
                         .accessibilityLabel("\(bucket.displayName) actions")

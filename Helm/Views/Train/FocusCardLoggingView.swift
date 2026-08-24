@@ -67,6 +67,7 @@ struct FocusCardLoggingView: View {
                             .foregroundStyle(HelmColor.fgSecondary)
                             .frame(width: 32, height: 32)
                             .background(HelmColor.surfaceElevated, in: Capsule())
+                            .contentShape(Rectangle())
                             .overlay(
                                 Capsule()
                                     .stroke(HelmColor.hairline, lineWidth: 1)

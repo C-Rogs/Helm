@@ -24,6 +24,7 @@ final class CloudBackupCoordinator {
     private(set) var statusMessage: String?
     private(set) var errorMessage: String?
     private(set) var isBusy = false
+    private var isEstimating = false
 
     var isAvailable: Bool { service.isAvailable }
 
@@ -43,13 +44,23 @@ final class CloudBackupCoordinator {
     }
 
     func refreshEstimate() {
-        do {
-            sizeEstimate = try service.estimateSizes(
-                onboardingCompleted: onboardingCompleted
-            )
-            errorMessage = nil
-        } catch {
-            errorMessage = error.localizedDescription
+        guard !isEstimating else { return }
+        isEstimating = true
+        let service = service
+        let onboardingCompleted = onboardingCompleted
+        Task { [weak self] in
+            let estimate = await Result<CloudBackupSizeEstimate, Error> {
+                try service.estimateSizes(onboardingCompleted: onboardingCompleted)
+            }
+            guard let self else { return }
+            switch estimate {
+            case .success(let value):
+                sizeEstimate = value
+                errorMessage = nil
+            case .failure(let error):
+                errorMessage = error.localizedDescription
+            }
+            isEstimating = false
         }
     }
 

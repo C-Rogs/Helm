@@ -139,12 +139,23 @@ public actor HealthKitIngest {
         log.info("HealthKit observers started for \(HealthKitSampleKind.allCases.count) sample types")
     }
 
-    public func stopObserving() {
-        for (_, query) in observerQueries {
+    public func stopObserving() async {
+        for (kind, query) in observerQueries {
             store.stop(query)
+            do {
+                try await store.disableBackgroundDelivery(for: kind.sampleType)
+            } catch {
+                await diagnosticsLog.capture(
+                    error: error,
+                    category: .healthKitIngest,
+                    message: "Disable background delivery failed",
+                    context: ["sampleType": kind.rawValue]
+                )
+            }
         }
         observerQueries.removeAll()
         isObserving = false
+        log.info("HealthKit observers stopped, background delivery disabled")
     }
 
     public func syncNow() async -> HealthKitIngestOutcome {
@@ -185,6 +196,7 @@ public actor HealthKitIngest {
     }
 
     private func scheduleSync(for kind: HealthKitSampleKind) {
+        guard isObserving else { return }
         pendingKinds.insert(kind)
         guard syncTask == nil else { return }
 

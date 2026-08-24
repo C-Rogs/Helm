@@ -1,12 +1,14 @@
 import Core
 import Foundation
+import os
 
 /// Indexes the bundled methodology document for module-aware evidence and topic retrieval.
 public enum ResourceModuleIndex: Sendable {
-    nonisolated(unsafe) public private(set) static var shared: Index?
+    private static let lock = OSAllocatedUnfairLock<Index?>(initialState: nil)
+    public static var shared: Index? { lock.withLock { $0 } }
 
     public static func configure(with document: MethodologyDocument) {
-        shared = Index(document: document)
+        lock.withLock { $0 = Index(document: document) }
     }
 
     /// Callers that already have a document (e.g. tests) can build directly.

@@ -29,6 +29,7 @@ public protocol HealthKitStoreClient: Sendable {
         for sampleType: HKSampleType,
         frequency: HKUpdateFrequency
     ) async throws
+    func disableBackgroundDelivery(for sampleType: HKSampleType) async throws
     func startObserver(
         for sampleType: HKSampleType,
         handler: @escaping @Sendable () -> Void
@@ -119,6 +120,22 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
     ) async throws {
         try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
             store.enableBackgroundDelivery(for: sampleType, frequency: frequency) { success, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                } else if success {
+                    continuation.resume()
+                } else {
+                    continuation.resume(
+                        throwing: HealthKitIngestError.backgroundDeliveryFailed(sampleType.identifier)
+                    )
+                }
+            }
+        }
+    }
+
+    public func disableBackgroundDelivery(for sampleType: HKSampleType) async throws {
+        try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+            store.disableBackgroundDelivery(for: sampleType) { success, error in
                 if let error {
                     continuation.resume(throwing: error)
                 } else if success {

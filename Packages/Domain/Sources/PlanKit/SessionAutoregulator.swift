@@ -110,7 +110,8 @@ enum SessionAutoregulator {
             let leftRole = context.exerciseRoles[exercises[lhs].exerciseID] ?? .secondary
             let rightRole = context.exerciseRoles[exercises[rhs].exerciseID] ?? .secondary
             if leftRole != rightRole {
-                return roleRank(leftRole) > roleRank(rightRole)
+                // Trim isolation first, primary last (RECONCILE: compounds protected at MEV floor).
+                return roleRank(leftRole) < roleRank(rightRole)
             }
             return exercises[lhs].order > exercises[rhs].order
         }

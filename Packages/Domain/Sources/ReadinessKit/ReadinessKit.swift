@@ -66,7 +66,7 @@ public enum ReadinessKit {
       sleepDebt: BaselineTracker.ewmaBaseline(values: debtHistory),
       respiratoryRate: BaselineTracker.ewmaBaseline(values: sorted.compactMap(\.respiratoryRate)),
       wristTemperature: BaselineTracker.ewmaBaseline(values: sorted.compactMap(\.wristTemperatureDeltaCelsius)),
-      trimpP75: trimpPercentile75(trimpHistory),
+      trimpP75: StrainCalculator.percentile75(trimpHistory),
       seededNightCount: nightlyHRV.count
     )
   }
@@ -257,12 +257,5 @@ public enum ReadinessKit {
   public static func stageQuality(_ input: ReadinessDayInput) -> Double? {
     guard let deep = input.deepSleepMinutes, let rem = input.remSleepMinutes else { return nil }
     return deep + rem
-  }
-
-  private static func trimpPercentile75(_ values: [Double]) -> Double? {
-    guard !values.isEmpty else { return nil }
-    let sorted = values.sorted()
-    let index = Int((Double(sorted.count - 1) * 0.75).rounded())
-    return sorted[max(0, min(sorted.count - 1, index))]
   }
 }

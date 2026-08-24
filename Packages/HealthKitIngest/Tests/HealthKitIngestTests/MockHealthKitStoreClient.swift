@@ -74,6 +74,12 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
         }
     }
 
+    private(set) var disabledBackgroundDeliveryTypes: [String] = []
+
+    func disableBackgroundDelivery(for sampleType: HKSampleType) async throws {
+        lock.withLock { disabledBackgroundDeliveryTypes.append(sampleType.identifier) }
+    }
+
     func startObserver(
         for sampleType: HKSampleType,
         handler: @escaping @Sendable () -> Void

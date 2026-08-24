@@ -264,6 +264,7 @@ struct ExercisePickerView: View {
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundStyle(HelmColor.accent)
                 }
+                .contentShape(Rectangle())
 
                 Text(category.title)
                     .helmFont(.body)

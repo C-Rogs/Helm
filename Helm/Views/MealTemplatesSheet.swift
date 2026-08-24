@@ -28,7 +28,7 @@ struct MealTemplatesSheet: View {
                             .buttonStyle(.plain)
                             .contentShape(Rectangle())
                             .listRowBackground(HelmColor.surface)
-                            .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                            .swipeActions(edge: .trailing, allowsFullSwipe: false) {
                                 Button(role: .destructive) {
                                     onDelete(template)
                                 } label: {
