@@ -64,6 +64,9 @@ struct AppMigrator {
         if version >= 17 {
             HealthKitWorkoutSchemaMigration.register(on: &migrator)
         }
+        if version >= 18 {
+            PlanBuilderSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

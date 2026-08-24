@@ -158,6 +158,59 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func planOptionCardsBody(
+        systemInstructions: String,
+        userMessage: String
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: [
+                [
+                    "role": "user",
+                    "parts": [["text": userMessage]]
+                ]
+            ],
+            generationConfig: [
+                "temperature": 0.3,
+                "responseMimeType": "application/json",
+                "responseSchema": planOptionCardsSchema()
+            ]
+        )
+    }
+
+    public static func planOptionCardsSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.planOptionCardsV1.rawValue),
+                "cards": [
+                    "type": "array",
+                    "items": [
+                        "type": "object",
+                        "properties": [
+                            "candidateID": ["type": "string"],
+                            "outcome": ["type": "string"],
+                            "benefits": [
+                                "type": "array",
+                                "items": ["type": "string"]
+                            ],
+                            "challenges": [
+                                "type": "array",
+                                "items": ["type": "string"]
+                            ],
+                            "sources": [
+                                "type": "array",
+                                "items": ["type": "string"]
+                            ]
+                        ],
+                        "required": ["candidateID", "outcome", "benefits", "challenges"]
+                    ]
+                ]
+            ],
+            "required": ["schemaVersion", "cards"]
+        ]
+    }
+
     public static func calendarEventClassifySchema() -> [String: Any] {
         [
             "type": "object",

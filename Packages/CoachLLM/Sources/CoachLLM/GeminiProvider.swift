@@ -279,6 +279,26 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         }.payload
     }
 
+    public func generatePlanOptionCards(
+        systemInstructions: String,
+        userMessage: String
+    ) async throws -> PlanOptionCardsPayload {
+        try await generateStructured(
+            PlanOptionCardsPayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: "",
+            userMessage: "",
+            thread: .empty,
+            expectedSchema: .planOptionCardsV1,
+            promptVersion: .planOptionCardsV1
+        ) {
+            try GeminiRequestBuilder.planOptionCardsBody(
+                systemInstructions: systemInstructions,
+                userMessage: userMessage
+            )
+        }.payload
+    }
+
     private func requireAPIKey() throws -> String {
         guard let key = try apiKeyStore.load(kind: .gemini), !key.isEmpty else {
             throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
