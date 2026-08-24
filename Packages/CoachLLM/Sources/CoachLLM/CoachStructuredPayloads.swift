@@ -428,6 +428,49 @@ public enum ChartPayloadParser: Sendable {
     }
 }
 
+/// Shared decoding surface for the `*_query.v1` payload coding-key enums.
+private protocol CoachQueryPayloadCodingKeys: CodingKey {
+    static var schemaVersionKey: Self { get }
+    static var queryTypeKey: Self { get }
+    static var lookbackDaysKey: Self { get }
+}
+
+private extension KeyedDecodingContainer where Key: CoachQueryPayloadCodingKeys {
+    func decodeSchemaVersion() throws -> String {
+        try decode(String.self, forKey: .schemaVersionKey)
+    }
+
+    func decodeFlexibleQueryType<T: Decodable>(
+        flexible: (String) -> T?,
+        context: String,
+        allowedValues: String
+    ) throws -> T {
+        if let decoded = try? decode(T.self, forKey: .queryTypeKey) {
+            return decoded
+        }
+        if let raw = try decodeIfPresent(String.self, forKey: .queryTypeKey),
+           let result = flexible(raw) {
+            return result
+        }
+        throw DecodingError.dataCorruptedError(
+            forKey: .queryTypeKey,
+            in: self,
+            debugDescription: "\(context) queryType must be \(allowedValues)"
+        )
+    }
+
+    func decodeLenientLookbackDays() -> Int? {
+        if let intValue = try? decodeIfPresent(Int.self, forKey: .lookbackDaysKey) {
+            return intValue
+        }
+        if let raw = try? decodeIfPresent(String.self, forKey: .lookbackDaysKey),
+           let intValue = Int(raw) {
+            return intValue
+        }
+        return nil
+    }
+}
+
 public struct MealQueryPayload: Codable, Sendable, Equatable {
     public enum QueryType: String, Codable, Sendable, Equatable {
         case bucketOnDay
@@ -470,33 +513,27 @@ public struct MealQueryPayload: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
-        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
-            queryType = decoded
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
-                  let flexible = QueryType(rawFlexible: raw) {
-            queryType = flexible
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .queryType,
-                in: container,
-                debugDescription: "meal_query.v1 queryType must be bucketOnDay, usualForBucket, or daySummary"
-            )
-        }
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "meal_query.v1",
+            allowedValues: "bucketOnDay, usualForBucket, or daySummary"
+        )
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
         bucket = try container.decodeIfPresent(String.self, forKey: .bucket)
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
-            lookbackDays = intValue
-        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
-                  let intValue = Int(raw) {
-            lookbackDays = intValue
-        } else {
-            lookbackDays = nil
-        }
+        lookbackDays = container.decodeLenientLookbackDays()
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, queryType, helmDay, bucket, lookbackDays
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case helmDay
+        case bucket
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
     }
 }
 
@@ -590,32 +627,25 @@ public struct WorkoutQueryPayload: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
-        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
-            queryType = decoded
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
-                  let flexible = QueryType(rawFlexible: raw) {
-            queryType = flexible
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .queryType,
-                in: container,
-                debugDescription: "workout_query.v1 queryType must be latestCompleted, onDay, or includingCardio"
-            )
-        }
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "workout_query.v1",
+            allowedValues: "latestCompleted, onDay, or includingCardio"
+        )
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
-            lookbackDays = intValue
-        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
-                  let intValue = Int(raw) {
-            lookbackDays = intValue
-        } else {
-            lookbackDays = nil
-        }
+        lookbackDays = container.decodeLenientLookbackDays()
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, queryType, helmDay, lookbackDays
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case helmDay
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
     }
 }
 
@@ -674,32 +704,25 @@ public struct RecoveryQueryPayload: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
-        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
-            queryType = decoded
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
-                  let flexible = QueryType(rawFlexible: raw) {
-            queryType = flexible
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .queryType,
-                in: container,
-                debugDescription: "recovery_query.v1 queryType must be today, day, range, or sleepDetail"
-            )
-        }
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "recovery_query.v1",
+            allowedValues: "today, day, range, or sleepDetail"
+        )
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
-            lookbackDays = intValue
-        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
-                  let intValue = Int(raw) {
-            lookbackDays = intValue
-        } else {
-            lookbackDays = nil
-        }
+        lookbackDays = container.decodeLenientLookbackDays()
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, queryType, helmDay, lookbackDays
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case helmDay
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
     }
 }
 
@@ -758,32 +781,25 @@ public struct CalendarQueryPayload: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
-        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
-            queryType = decoded
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
-                  let flexible = QueryType(rawFlexible: raw) {
-            queryType = flexible
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .queryType,
-                in: container,
-                debugDescription: "calendar_query.v1 queryType must be today, day, range, or weekAhead"
-            )
-        }
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "calendar_query.v1",
+            allowedValues: "today, day, range, or weekAhead"
+        )
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
-            lookbackDays = intValue
-        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
-                  let intValue = Int(raw) {
-            lookbackDays = intValue
-        } else {
-            lookbackDays = nil
-        }
+        lookbackDays = container.decodeLenientLookbackDays()
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, queryType, helmDay, lookbackDays
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case helmDay
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
     }
 }
 
@@ -848,32 +864,25 @@ public struct TrendsQueryPayload: Codable, Sendable, Equatable {
 
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
-        if let decoded = try? container.decode(QueryType.self, forKey: .queryType) {
-            queryType = decoded
-        } else if let raw = try container.decodeIfPresent(String.self, forKey: .queryType),
-                  let flexible = QueryType(rawFlexible: raw) {
-            queryType = flexible
-        } else {
-            throw DecodingError.dataCorruptedError(
-                forKey: .queryType,
-                in: container,
-                debugDescription: "trends_query.v1 queryType must be trimp, weight, e1rm, energyBalance, readiness, or all"
-            )
-        }
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "trends_query.v1",
+            allowedValues: "trimp, weight, e1rm, energyBalance, readiness, or all"
+        )
         exerciseName = try container.decodeIfPresent(String.self, forKey: .exerciseName)
-        if let intValue = try? container.decodeIfPresent(Int.self, forKey: .lookbackDays) {
-            lookbackDays = intValue
-        } else if let raw = try? container.decodeIfPresent(String.self, forKey: .lookbackDays),
-                  let intValue = Int(raw) {
-            lookbackDays = intValue
-        } else {
-            lookbackDays = nil
-        }
+        lookbackDays = container.decodeLenientLookbackDays()
     }
 
-    private enum CodingKeys: String, CodingKey {
-        case schemaVersion, queryType, exerciseName, lookbackDays
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case exerciseName
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
     }
 }
 

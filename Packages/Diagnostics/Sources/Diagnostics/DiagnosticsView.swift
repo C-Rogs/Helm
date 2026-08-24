@@ -147,21 +147,6 @@ private struct LogEntryRow: View {
     }
 }
 
-private struct ExportShareItem: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-private struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-
 #Preview {
     NavigationStack {
         DiagnosticsView(

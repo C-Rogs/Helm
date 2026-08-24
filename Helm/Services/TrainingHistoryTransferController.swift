@@ -19,6 +19,7 @@ final class TrainingHistoryTransferController {
     private(set) var lastTrainingImportResult: TrainingHistoryImportResult?
     private(set) var pendingTrainingImport: TrainingHistoryExport?
     private(set) var isParsingHevyCSV = false
+    private(set) var isImportingHevy = false
 
     var isShowingHevyPreview = false
     var isShowingTrainingImportPreview = false
@@ -123,31 +124,30 @@ final class TrainingHistoryTransferController {
     func confirmHevyImport() {
         errorMessage = nil
         statusMessage = nil
-        guard let hevyParseResult else { return }
+        guard let hevyParseResult, !isImportingHevy else { return }
         guard canConfirmHevyImport else {
             errorMessage = "Map every exercise before importing."
             return
         }
+        isImportingHevy = true
 
-        var mappings: [String: String] = hevyManualMappings
-        for resolution in hevyResolutions {
-            if let exerciseID = resolution.exerciseID {
-                mappings[resolution.importedTitle] = exerciseID
+        let importService = hevyImportService
+        let sessions = hevyParseResult.sessions
+        let mappings = Self.resolvedHevyMappings(manual: hevyManualMappings, resolutions: hevyResolutions)
+        Task { @MainActor in
+            do {
+                let result = try await Task.detached(priority: .userInitiated) {
+                    try importService.importHevySessions(sessions, mappings: mappings)
+                }.value
+                lastHevyImportResult = result
+                statusMessage =
+                    "Imported \(result.importedSessionCount) sessions (\(result.importedSetCount) sets). Skipped \(result.skippedDuplicateCount) duplicates."
+                isShowingHevyPreview = false
+                PlanBootstrap.refreshPrescription()
+            } catch {
+                errorMessage = error.localizedDescription
             }
-        }
-
-        do {
-            let result = try hevyImportService.importHevySessions(
-                hevyParseResult.sessions,
-                mappings: mappings
-            )
-            lastHevyImportResult = result
-            statusMessage =
-                "Imported \(result.importedSessionCount) sessions (\(result.importedSetCount) sets). Skipped \(result.skippedDuplicateCount) duplicates."
-            isShowingHevyPreview = false
-            PlanBootstrap.refreshPrescription()
-        } catch {
-            errorMessage = error.localizedDescription
+            isImportingHevy = false
         }
     }
 
@@ -226,5 +226,18 @@ final class TrainingHistoryTransferController {
 
     func fetchMuscleGroups() throws -> [String] {
         try persistence.exercises.listMuscleGroups(forPickerDefaults: true)
+    }
+
+    nonisolated private static func resolvedHevyMappings(
+        manual: [String: String],
+        resolutions: [WorkoutImportExerciseResolution]
+    ) -> [String: String] {
+        var mappings = manual
+        for resolution in resolutions {
+            if let exerciseID = resolution.exerciseID {
+                mappings[resolution.importedTitle] = exerciseID
+            }
+        }
+        return mappings
     }
 }

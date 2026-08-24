@@ -17,6 +17,7 @@ final class TrendsController {
     private var historyOffset = 0
     private var canLoadMore = true
     private var selectedExerciseID: String?
+    private var reloadTask: Task<Void, Never>?
 
     init(persistence: PersistenceStore, calendar: Calendar = .current) {
         self.persistence = persistence
@@ -26,8 +27,7 @@ final class TrendsController {
     func refresh() {
         historyOffset = 0
         canLoadMore = true
-        reload()
-        coverSelectedWindowIfNeeded()
+        scheduleReload(mode: .replace, coverWindow: true)
     }
 
     func setHistoryWindow(_ window: TrendsHistoryWindow) {
@@ -42,13 +42,12 @@ final class TrendsController {
     func loadMoreHistoryIfNeeded() {
         guard canLoadMore else { return }
         historyOffset += TrendsDataBuilder.pageSize
-        reload(appendHistory: true)
+        scheduleReload(mode: .append, coverWindow: false)
     }
 
     func selectExercise(id: String) {
         selectedExerciseID = id
-        reload()
-        coverSelectedWindowIfNeeded()
+        scheduleReload(mode: .replace, coverWindow: true)
     }
 
     var displayedBodyWeight: [TrendWeightPoint] {
@@ -81,150 +80,237 @@ final class TrendsController {
         )
     }
 
+    private enum ReloadMode {
+        case replace
+        case append
+        case none
+    }
+
     /// Page in older samples until the selected window is covered (or history ends).
     private func coverSelectedWindowIfNeeded() {
-        guard let start = TrendsChartSupport.windowStart(
+        guard TrendsChartSupport.windowStart(
             for: historyWindow,
             today: HelmDay.day(for: .now, calendar: calendar),
             calendar: calendar
-        ) else {
+        ) != nil else {
             return
         }
+        scheduleReload(mode: .none, coverWindow: true)
+    }
 
-        var guardRails = 0
-        while canLoadMore, guardRails < 20 {
-            guardRails += 1
-            let oldestWeight = snapshot.trendWeight.first?.helmDay
-            let oldestE1RM = snapshot.e1RMHistory.first?.helmDay
-            let oldest = [oldestWeight, oldestE1RM].compactMap { $0 }.min()
+    private func scheduleReload(mode: ReloadMode, coverWindow: Bool) {
+        let persistence = self.persistence
+        let calendar = self.calendar
+        let preferredExerciseID = selectedExerciseID
+        let startOffset = historyOffset
+        let previousSnapshot = snapshot
+        let window = coverWindow ? historyWindow : nil
 
-            if let oldest, oldest <= start {
-                break
-            }
-            if oldest == nil, !canLoadMore {
-                break
-            }
-
-            historyOffset += TrendsDataBuilder.pageSize
-            reload(appendHistory: true)
+        reloadTask?.cancel()
+        reloadTask = Task(priority: .userInitiated) { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                Self.computeReload(
+                    persistence: persistence,
+                    calendar: calendar,
+                    preferredExerciseID: preferredExerciseID,
+                    startOffset: startOffset,
+                    mode: mode,
+                    previousSnapshot: previousSnapshot,
+                    coverWindow: window
+                )
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            apply(result)
         }
     }
 
-    private func reload(appendHistory: Bool = false) {
+    private func apply(_ result: ReloadResult) {
+        selectedExerciseID = result.selectedExerciseID
+        if let snapshot = result.snapshot {
+            self.snapshot = snapshot
+            historyOffset = result.finalOffset
+            canLoadMore = snapshot.canLoadMoreHistory
+        }
+        errorMessage = result.errorDescription
+    }
+
+    private struct ReloadResult: Sendable {
+        var snapshot: TrendsSnapshot?
+        var selectedExerciseID: String
+        var finalOffset: Int
+        var errorDescription: String?
+    }
+
+    private nonisolated static func computeReload(
+        persistence: PersistenceStore,
+        calendar: Calendar,
+        preferredExerciseID: String?,
+        startOffset: Int,
+        mode: ReloadMode,
+        previousSnapshot: TrendsSnapshot,
+        coverWindow: TrendsHistoryWindow?
+    ) -> ReloadResult {
         do {
+            let exercise = try TrendsDataBuilder.resolveExercise(
+                store: persistence,
+                preferredID: preferredExerciseID
+            )
             let today = HelmDay.day(for: .now, calendar: calendar)
             let settings = try persistence.trainingPlan.load()
             let targetKg = settings.phaseGoal.targetMass?.kilograms
-            let exercise = try TrendsDataBuilder.resolveExercise(
-                store: persistence,
-                preferredID: selectedExerciseID
-            )
-            selectedExerciseID = exercise.id
-
-            let weightPage = try TrendsDataBuilder.buildTrendWeightPage(
-                store: persistence,
-                endingAt: today,
-                offset: appendHistory ? historyOffset : 0,
-                targetWeightKg: targetKg,
-                calendar: calendar
-            )
-            let readinessPage = try TrendsDataBuilder.buildReadinessPage(
-                store: persistence,
-                endingAt: today,
-                offset: appendHistory ? historyOffset : 0
-            )
             let muscleVolume = try TrendsDataBuilder.buildMuscleVolume(
                 store: persistence,
                 weekContaining: today,
                 calendar: calendar
             )
-            let e1RMPage = try TrendsDataBuilder.buildE1RMPage(
-                store: persistence,
-                exerciseID: exercise.id,
-                offset: appendHistory ? historyOffset : 0,
-                calendar: calendar
-            )
-            let energyPage = try TrendsDataBuilder.buildEnergyBalancePage(
-                store: persistence,
-                endingAt: today,
-                offset: appendHistory ? historyOffset : 0,
-                calendar: calendar
-            )
 
-            if appendHistory {
-                snapshot = TrendsSnapshot(
-                    bodyWeight: mergeTrendWeight(snapshot.bodyWeight, weightPage.bodyWeight),
-                    trendWeight: mergeTrendWeight(snapshot.trendWeight, weightPage.trendWeight),
+            func fetchPage(at offset: Int) throws -> (
+                bodyWeight: [TrendWeightPoint],
+                trendWeight: [TrendWeightPoint],
+                readiness: [ReadinessHistoryPoint],
+                e1RM: [E1RMProgressionPoint],
+                energy: [EnergyBalanceGauge],
+                canLoadMore: Bool
+            ) {
+                let weightPage = try TrendsDataBuilder.buildTrendWeightPage(
+                    store: persistence,
+                    endingAt: today,
+                    offset: offset,
                     targetWeightKg: targetKg,
-                    readinessHistory: mergeReadiness(snapshot.readinessHistory, readinessPage.points),
-                    muscleVolume: muscleVolume,
-                    e1RMHistory: mergeE1RM(snapshot.e1RMHistory, e1RMPage.points),
-                    selectedExerciseID: exercise.id,
-                    selectedExerciseName: exercise.name,
-                    energyBalance: mergeEnergy(snapshot.energyBalance, energyPage.gauges),
-                    canLoadMoreHistory: weightPage.canLoadMore
-                        || readinessPage.canLoadMore
-                        || e1RMPage.canLoadMore
-                        || energyPage.canLoadMore
+                    calendar: calendar
                 )
-            } else {
-                snapshot = TrendsSnapshot(
-                    bodyWeight: weightPage.bodyWeight,
-                    trendWeight: weightPage.trendWeight,
-                    targetWeightKg: targetKg,
-                    readinessHistory: readinessPage.points,
-                    muscleVolume: muscleVolume,
-                    e1RMHistory: e1RMPage.points,
-                    selectedExerciseID: exercise.id,
-                    selectedExerciseName: exercise.name,
-                    energyBalance: energyPage.gauges,
-                    canLoadMoreHistory: weightPage.canLoadMore
+                let readinessPage = try TrendsDataBuilder.buildReadinessPage(
+                    store: persistence,
+                    endingAt: today,
+                    offset: offset
+                )
+                let e1RMPage = try TrendsDataBuilder.buildE1RMPage(
+                    store: persistence,
+                    exerciseID: exercise.id,
+                    offset: offset,
+                    calendar: calendar
+                )
+                let energyPage = try TrendsDataBuilder.buildEnergyBalancePage(
+                    store: persistence,
+                    endingAt: today,
+                    offset: offset,
+                    calendar: calendar
+                )
+                return (
+                    weightPage.bodyWeight,
+                    weightPage.trendWeight,
+                    readinessPage.points,
+                    e1RMPage.points,
+                    energyPage.gauges,
+                    weightPage.canLoadMore
                         || readinessPage.canLoadMore
                         || e1RMPage.canLoadMore
                         || energyPage.canLoadMore
                 )
             }
 
-            canLoadMore = snapshot.canLoadMoreHistory
-            errorMessage = nil
+            var current: TrendsSnapshot
+            var offset = startOffset
+
+            switch mode {
+            case .replace:
+                let page = try fetchPage(at: 0)
+                current = TrendsSnapshot(
+                    bodyWeight: page.bodyWeight,
+                    trendWeight: page.trendWeight,
+                    targetWeightKg: targetKg,
+                    readinessHistory: page.readiness,
+                    muscleVolume: muscleVolume,
+                    e1RMHistory: page.e1RM,
+                    selectedExerciseID: exercise.id,
+                    selectedExerciseName: exercise.name,
+                    energyBalance: page.energy,
+                    canLoadMoreHistory: page.canLoadMore
+                )
+            case .append:
+                let page = try fetchPage(at: offset)
+                current = TrendsSnapshot(
+                    bodyWeight: mergeByID(previousSnapshot.bodyWeight, page.bodyWeight) { $0.helmDay },
+                    trendWeight: mergeByID(previousSnapshot.trendWeight, page.trendWeight) { $0.helmDay },
+                    targetWeightKg: targetKg,
+                    readinessHistory: mergeByID(previousSnapshot.readinessHistory, page.readiness) { $0.helmDay },
+                    muscleVolume: muscleVolume,
+                    e1RMHistory: mergeByID(previousSnapshot.e1RMHistory, page.e1RM) { $0.achievedAt },
+                    selectedExerciseID: exercise.id,
+                    selectedExerciseName: exercise.name,
+                    energyBalance: mergeByID(previousSnapshot.energyBalance, page.energy) { $0.helmDay },
+                    canLoadMoreHistory: page.canLoadMore
+                )
+            case .none:
+                current = previousSnapshot
+            }
+
+            if let window = coverWindow,
+               let start = TrendsChartSupport.windowStart(
+                   for: window,
+                   today: today,
+                   calendar: calendar
+               )
+            {
+                var guardRails = 0
+                while current.canLoadMoreHistory, guardRails < 20 {
+                    guardRails += 1
+                    try Task.checkCancellation()
+
+                    let oldestWeight = current.trendWeight.first?.helmDay
+                    let oldestE1RM = current.e1RMHistory.first?.helmDay
+                    let oldest = [oldestWeight, oldestE1RM].compactMap { $0 }.min()
+
+                    if let oldest, oldest <= start {
+                        break
+                    }
+                    if oldest == nil, !current.canLoadMoreHistory {
+                        break
+                    }
+
+                    offset += TrendsDataBuilder.pageSize
+                    let page = try fetchPage(at: offset)
+                    current = TrendsSnapshot(
+                        bodyWeight: mergeByID(current.bodyWeight, page.bodyWeight) { $0.helmDay },
+                        trendWeight: mergeByID(current.trendWeight, page.trendWeight) { $0.helmDay },
+                        targetWeightKg: targetKg,
+                        readinessHistory: mergeByID(current.readinessHistory, page.readiness) { $0.helmDay },
+                        muscleVolume: muscleVolume,
+                        e1RMHistory: mergeByID(current.e1RMHistory, page.e1RM) { $0.achievedAt },
+                        selectedExerciseID: exercise.id,
+                        selectedExerciseName: exercise.name,
+                        energyBalance: mergeByID(current.energyBalance, page.energy) { $0.helmDay },
+                        canLoadMoreHistory: page.canLoadMore
+                    )
+                }
+            }
+
+            return ReloadResult(
+                snapshot: current,
+                selectedExerciseID: exercise.id,
+                finalOffset: offset,
+                errorDescription: nil
+            )
         } catch {
-            errorMessage = error.localizedDescription
+            return ReloadResult(
+                snapshot: nil,
+                selectedExerciseID: preferredExerciseID ?? "",
+                finalOffset: startOffset,
+                errorDescription: error.localizedDescription
+            )
         }
     }
 
-    private func mergeTrendWeight(_ existing: [TrendWeightPoint], _ incoming: [TrendWeightPoint]) -> [TrendWeightPoint] {
+    private nonisolated static func mergeByID<Element>(
+        _ existing: [Element],
+        _ incoming: [Element],
+        sortKey: (Element) -> some Comparable
+    ) -> [Element] where Element: Identifiable {
         var seen = Set(existing.map(\.id))
         var merged = existing
         for item in incoming where seen.insert(item.id).inserted {
             merged.append(item)
         }
-        return merged.sorted { $0.helmDay < $1.helmDay }
-    }
-
-    private func mergeReadiness(_ existing: [ReadinessHistoryPoint], _ incoming: [ReadinessHistoryPoint]) -> [ReadinessHistoryPoint] {
-        var seen = Set(existing.map(\.id))
-        var merged = existing
-        for item in incoming where seen.insert(item.id).inserted {
-            merged.append(item)
-        }
-        return merged.sorted { $0.helmDay < $1.helmDay }
-    }
-
-    private func mergeE1RM(_ existing: [E1RMProgressionPoint], _ incoming: [E1RMProgressionPoint]) -> [E1RMProgressionPoint] {
-        var seen = Set(existing.map(\.id))
-        var merged = existing
-        for item in incoming where seen.insert(item.id).inserted {
-            merged.append(item)
-        }
-        return merged.sorted { $0.achievedAt < $1.achievedAt }
-    }
-
-    private func mergeEnergy(_ existing: [EnergyBalanceGauge], _ incoming: [EnergyBalanceGauge]) -> [EnergyBalanceGauge] {
-        var seen = Set(existing.map(\.id))
-        var merged = existing
-        for item in incoming where seen.insert(item.id).inserted {
-            merged.append(item)
-        }
-        return merged.sorted { $0.helmDay < $1.helmDay }
+        return merged.sorted { sortKey($0) < sortKey($1) }
     }
 }

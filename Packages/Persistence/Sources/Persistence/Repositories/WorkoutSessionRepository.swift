@@ -382,7 +382,7 @@ public struct WorkoutSessionRepository: Sendable {
             let headers = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT id
+                    SELECT id, title, started_at, ended_at, status, source
                     FROM workout_session
                     WHERE status = 'completed'
                       AND deleted_at IS NULL
@@ -391,10 +391,85 @@ public struct WorkoutSessionRepository: Sendable {
                     """,
                 arguments: [startString]
             )
+            guard !headers.isEmpty else { return [] }
 
-            return try headers.compactMap { row -> WorkoutSessionDraft? in
-                let sessionID: String = row["id"]
-                return try Self.fetchDraft(db: db, sessionID: sessionID, includeDeleted: false)
+            let sessionIDs = headers.compactMap { $0["id"] as String? }
+            let exerciseRows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT id, workout_session_id, exercise_id, display_order, exercise_mode
+                    FROM workout_session_exercise
+                    WHERE workout_session_id IN \(sessionIDs) AND deleted_at IS NULL
+                    ORDER BY display_order ASC
+                    """
+            )
+
+            var setsByExercise: [String: [Row]] = [:]
+            let exerciseIDs = exerciseRows.compactMap { $0["id"] as String? }
+            if !exerciseIDs.isEmpty {
+                let setRows = try Row.fetchAll(
+                    db,
+                    sql: """
+                        SELECT id, workout_session_exercise_id, set_index, set_type, status,
+                               weight_kg, reps, distance_km, duration_seconds, rpe, rir, completed_at
+                        FROM set_entry
+                        WHERE workout_session_exercise_id IN \(exerciseIDs) AND deleted_at IS NULL
+                        ORDER BY set_index ASC
+                        """
+                )
+                setsByExercise = Dictionary(grouping: setRows) { $0["workout_session_exercise_id"] as String }
+            }
+
+            let exercisesBySession = Dictionary(grouping: exerciseRows) { $0["workout_session_id"] as String }
+
+            return try headers.map { header -> WorkoutSessionDraft in
+                let sessionID: String = header["id"]
+                let exercises = try (exercisesBySession[sessionID] ?? []).map { exerciseRow throws -> WorkoutSessionExerciseDraft in
+                    let exerciseRowID: String = exerciseRow["id"]
+                    let sets = try (setsByExercise[exerciseRowID] ?? []).map { setRow throws -> SetEntryDraft in
+                        let completedAt: Date?
+                        if let completedString: String = setRow["completed_at"] {
+                            completedAt = try ISO8601Coding.date(from: completedString)
+                        } else {
+                            completedAt = nil
+                        }
+                        return SetEntryDraft(
+                            id: setRow["id"],
+                            setIndex: setRow["set_index"],
+                            setType: SetType(rawValue: setRow["set_type"] as String) ?? .normal,
+                            status: SetStatus(rawValue: setRow["status"] as String) ?? .planned,
+                            mass: (setRow["weight_kg"] as Double?).map { Mass(kilograms: $0) },
+                            reps: setRow["reps"],
+                            distanceKilometers: setRow["distance_km"],
+                            durationSeconds: setRow["duration_seconds"],
+                            rpe: setRow["rpe"],
+                            rir: setRow["rir"],
+                            completedAt: completedAt
+                        )
+                    }
+
+                    return WorkoutSessionExerciseDraft(
+                        id: exerciseRowID,
+                        exerciseID: exerciseRow["exercise_id"],
+                        displayOrder: exerciseRow["display_order"],
+                        exerciseMode: ExerciseMode(rawValue: exerciseRow["exercise_mode"] as String) ?? .weightReps,
+                        targetRestSeconds: exerciseRow["target_rest_seconds"],
+                        sets: sets
+                    )
+                }
+
+                let status = WorkoutSessionStatus(rawValue: header["status"] as String) ?? .completed
+                let source = WorkoutSessionSource(rawValue: header["source"] as String) ?? .manual
+
+                return WorkoutSessionDraft(
+                    id: sessionID,
+                    title: header["title"],
+                    startedAt: try ISO8601Coding.date(from: header["started_at"] as String),
+                    endedAt: (header["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
+                    status: status,
+                    source: source,
+                    exercises: exercises
+                )
             }
         }
     }

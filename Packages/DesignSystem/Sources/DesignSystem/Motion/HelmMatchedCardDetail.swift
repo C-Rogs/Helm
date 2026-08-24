@@ -19,6 +19,36 @@ public extension View {
     }
 }
 
+public struct HelmMatchedCardModifier: ViewModifier {
+    let id: String
+    let namespace: Namespace.ID?
+    let isSource: Bool
+
+    public init(id: String, namespace: Namespace.ID?, isSource: Bool = false) {
+        self.id = id
+        self.namespace = namespace
+        self.isSource = isSource
+    }
+
+    public func body(content: Content) -> some View {
+        if let namespace {
+            content.helmMatchedCardDetail(id: id, in: namespace, isSource: isSource)
+        } else {
+            content
+        }
+    }
+}
+
+public extension View {
+    func helmMatchedCard(
+        id: String,
+        namespace: Namespace.ID?,
+        isSource: Bool = false
+    ) -> some View {
+        modifier(HelmMatchedCardModifier(id: id, namespace: namespace, isSource: isSource))
+    }
+}
+
 #if DEBUG
 #Preview("Matched card detail") {
     struct PreviewHarness: View {

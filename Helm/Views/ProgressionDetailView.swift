@@ -34,7 +34,7 @@ struct ProgressionDetailView: View {
                             .background(HelmColor.ready.opacity(0.12), in: Capsule())
                     }
                 }
-                .modifier(MatchedCardModifier(id: "plan-progression", namespace: matchedCardNamespace))
+                .helmMatchedCard(id: "plan-progression", namespace: matchedCardNamespace)
 
                 Text(model.phaseLabel).helmType(.title)
 
@@ -170,15 +170,6 @@ struct ProgressionDetailView: View {
     }
 }
 
-private struct MatchedCardModifier: ViewModifier {
-    let id: String
-    let namespace: Namespace.ID?
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.helmMatchedCardDetail(id: id, in: namespace, isSource: false)
-        } else { content }
-    }
-}
 
 #if DEBUG
 #Preview("Progression mid-meso") {

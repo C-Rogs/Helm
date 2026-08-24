@@ -82,7 +82,7 @@ struct RecoveryDetailView: View {
             }
         }
         .skinAccentStripe(HelmColor.color(for: model.helmState))
-        .modifier(MatchedCardModifier(id: "arc-readiness", namespace: matchedCardNamespace))
+        .helmMatchedCard(id: "arc-readiness", namespace: matchedCardNamespace)
     }
 
     private var contributorsCard: some View {
@@ -114,18 +114,6 @@ struct RecoveryDetailView: View {
     }
 }
 
-private struct MatchedCardModifier: ViewModifier {
-    let id: String
-    let namespace: Namespace.ID?
-
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.helmMatchedCardDetail(id: id, in: namespace, isSource: false)
-        } else {
-            content
-        }
-    }
-}
 
 #if DEBUG
 #Preview("Recovery good") {

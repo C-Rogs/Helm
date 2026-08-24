@@ -20,7 +20,7 @@ struct MuscleVolumeBoardContainer: View {
                     Card {
                         MuscleVolumeBoardView(model: model, showsHeader: true)
                     }
-                    .modifier(MatchedCardModifier(id: "muscle-volume", namespace: matchedCardNamespace))
+                    .helmMatchedCard(id: "muscle-volume", namespace: matchedCardNamespace)
                     .helmScreenPadding()
                 }
                 .helmScreenBackground()
@@ -42,19 +42,6 @@ struct MuscleVolumeBoardContainer: View {
         }
         .task {
             boardStore.refresh()
-        }
-    }
-}
-
-private struct MatchedCardModifier: ViewModifier {
-    let id: String
-    let namespace: Namespace.ID?
-
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.helmMatchedCardDetail(id: id, in: namespace, isSource: false)
-        } else {
-            content
         }
     }
 }

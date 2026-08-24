@@ -342,7 +342,7 @@ struct WorkoutSessionDetailView: View {
             // Compact card stays the matched-geometry destination until the full
             // finish summary is ready (avoids ghosting + chart height jump).
             sessionSummaryCard(for: draft)
-                .modifier(MatchedCardModifier(sessionID: sessionID, namespace: matchedCardNamespace))
+                .helmMatchedCard(id: sessionID, namespace: matchedCardNamespace)
         }
     }
 
@@ -526,19 +526,6 @@ struct WorkoutSessionDetailView: View {
             }
         )
         self.draft = draft
-    }
-}
-
-private struct MatchedCardModifier: ViewModifier {
-    let sessionID: String
-    let namespace: Namespace.ID?
-
-    func body(content: Content) -> some View {
-        if let namespace {
-            content.helmMatchedCardDetail(id: sessionID, in: namespace, isSource: false)
-        } else {
-            content
-        }
     }
 }
 

@@ -1,4 +1,5 @@
 import DesignSystem
+import Diagnostics
 import ExportKit
 import HealthKitIngest
 import SwiftUI
@@ -80,7 +81,7 @@ struct SchemaV2ExportView: View {
             Text(errorMessage ?? "")
         }
         .sheet(item: $shareItem) { item in
-            ShareSheetView(activityItems: [item.url])
+            ShareSheet(items: [item.url])
         }
         .task {
             await refreshImportedSummary()
@@ -140,21 +141,6 @@ struct SchemaV2ExportView: View {
             importedDayCount = payload.logs.count
         }
     }
-}
-
-private struct ExportShareItem: Identifiable {
-    let id = UUID()
-    let url: URL
-}
-
-private struct ShareSheetView: UIViewControllerRepresentable {
-    let activityItems: [Any]
-
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: activityItems, applicationActivities: nil)
-    }
-
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
 }
 
 #Preview {

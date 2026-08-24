@@ -33,6 +33,8 @@ final class ChatController {
     private(set) var chatProgressStep: String?
     private(set) var handoffGeneration = 0
     private(set) var pendingHandoffPrompt: String?
+    /// Set when the user's message is a plan-builder request; ChatView presents the flow.
+    private(set) var pendingPlanBuilderLaunch = false
     /// Memory refinements extracted from the most recent session, awaiting confirmation.
     private(set) var pendingMemoryRefinements: [MemoryRefinementEntry] = []
     /// Date of the last refinement extraction for debouncing.
@@ -68,7 +70,7 @@ final class ChatController {
 
     func loadHistory() {
         do {
-            messages = try persistence.chat.fetchAll()
+            messages = try persistence.chat.fetchRecent(limit: 100)
         } catch {
             degradedState = CoachFailurePolicy.degradedState(for: error)
         }
@@ -120,6 +122,11 @@ final class ChatController {
         if CoachChatIntent.looksLikeClearChat(trimmed) {
             draftText = ""
             clearConversation()
+            return
+        }
+        if CoachChatIntent.looksLikePlanBuilderRequest(trimmed) {
+            draftText = ""
+            pendingPlanBuilderLaunch = true
             return
         }
         if CoachActivityGate.shared.isBlocked(for: .chat) {
@@ -207,6 +214,10 @@ final class ChatController {
     func dismissChatAction() {
         pendingChatAction = nil
         lastTurnError = nil
+    }
+
+    func dismissPlanBuilderLaunch() {
+        pendingPlanBuilderLaunch = false
     }
 
     func acceptMemoryRefinements() {

@@ -15,6 +15,22 @@ public struct DailyMetricsRepository: Sendable {
         }
     }
 
+    /// Scales every stored prior-day TRIMP by `factor` (one-time epoch migration).
+    /// Returns the number of rows updated.
+    public func scaleAllPriorDayTRIMP(by factor: Double) throws -> Int {
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE daily_metrics
+                    SET prior_day_trimp = prior_day_trimp * ?, updated_at = ?
+                    WHERE prior_day_trimp IS NOT NULL
+                    """,
+                arguments: [factor, ISO8601Coding.string(from: Date())]
+            )
+            return db.changesCount
+        }
+    }
+
     public func fetch(helmDay: HelmDay) throws -> DailyMetrics? {
         try pool.read { db in
             guard let record = try DailyMetricsRecord.fetchOne(db, key: HelmDayColumn.encode(helmDay)) else {

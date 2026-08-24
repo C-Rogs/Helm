@@ -1,3 +1,4 @@
+import Core
 import Diagnostics
 import Foundation
 import HealthKit
@@ -259,6 +260,7 @@ public actor BackfillService {
         )
 
         var sampleCount = 0
+        var trimpByTargetDay: [HelmDay: Double] = [:]
 
         for kind in HealthKitSampleKind.allCases {
             if Task.isCancelled { return sampleCount }
@@ -269,12 +271,31 @@ public actor BackfillService {
                 limit: BackfillChunkPlanner.maximumSamplesPerQuery
             )
 
-            let delta = IngestSampleMapper.delta(
+            var delta = IngestSampleMapper.delta(
                 kind: kind,
                 addedSamples: samples,
                 deletedObjectIDs: [],
                 ownBundleID: ownBundleID
             )
+
+            if kind == .workout, !delta.addedWorkouts.isEmpty {
+                // Live ingest computes TRIMP per workout; backfill must too, otherwise
+                // historical days keep priorDayTRIMP = nil and strain baselines skew.
+                let ingester = WorkoutTRIMPIngester(
+                    store: store,
+                    persistence: persistence,
+                    calendar: calendar
+                )
+                trimpByTargetDay = try await ingester.trimpByTargetDay(for: delta.addedWorkouts)
+                delta = IngestDelta(
+                    kind: delta.kind,
+                    addedQuantitySamples: delta.addedQuantitySamples,
+                    addedSleepSamples: delta.addedSleepSamples,
+                    addedWorkouts: delta.addedWorkouts,
+                    deletedSampleIDs: delta.deletedSampleIDs,
+                    trimpByTargetDay: trimpByTargetDay
+                )
+            }
 
             sampleCount += delta.addedQuantitySamples.count
                 + delta.addedSleepSamples.count

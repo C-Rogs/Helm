@@ -13,6 +13,9 @@ enum ReadinessBootstrap {
     @MainActor
     static func start() {
         Task(priority: .userInitiated) { @MainActor in
+            // Convert legacy per-sample TRIMP history before any recompute reads it.
+            try? await engine.migrateTRIMPEpochIfNeeded()
+
             // Persisted score first so ARC paints before 180-day recompute.
             await readinessService.hydrateFromCache()
             await readinessService.refresh()

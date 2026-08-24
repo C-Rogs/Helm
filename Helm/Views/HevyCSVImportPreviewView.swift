@@ -51,13 +51,13 @@ struct HevyCSVImportPreviewView: View {
                             .foregroundStyle(HelmColor.destructive)
                     }
 
-                    Button(isImporting ? "Importing…" : "Import history") {
+                    Button(isImporting || controller.isImportingHevy ? "Importing…" : "Import history") {
                         isImporting = true
                         defer { isImporting = false }
                         controller.confirmHevyImport()
                     }
                     .buttonStyle(.helmPrimary)
-                    .disabled(!controller.canConfirmHevyImport || isImporting)
+                    .disabled(!controller.canConfirmHevyImport || isImporting || controller.isImportingHevy)
                 }
                 .helmScreenPadding()
             }

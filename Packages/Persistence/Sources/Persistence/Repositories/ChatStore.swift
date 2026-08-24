@@ -65,6 +65,18 @@ public struct ChatStore: Sendable {
         }
     }
 
+    /// Loads the most recent messages, oldest first.
+    public func fetchRecent(limit: Int) throws -> [StoredChatMessage] {
+        let cappedLimit = max(1, limit)
+        return try pool.read { db in
+            let records = try ChatMessageRecord
+                .order(Column("sort_index").desc)
+                .limit(cappedLimit)
+                .fetchAll(db)
+            return try records.reversed().map { try $0.toValue() }
+        }
+    }
+
     public func append(_ message: ChatMessageInsert, createdAt: Date = Date()) throws -> StoredChatMessage {
         try pool.write { db in
             let nextSortIndex = try Int.fetchOne(
