@@ -394,28 +394,33 @@ public struct WorkoutSessionRepository: Sendable {
             guard !headers.isEmpty else { return [] }
 
             let sessionIDs = headers.compactMap { $0["id"] as String? }
+            guard !sessionIDs.isEmpty else { return [] }
+            let sessionPlaceholders = Array(repeating: "?", count: sessionIDs.count).joined(separator: ", ")
             let exerciseRows = try Row.fetchAll(
                 db,
                 sql: """
                     SELECT id, workout_session_id, exercise_id, display_order, exercise_mode
                     FROM workout_session_exercise
-                    WHERE workout_session_id IN \(sessionIDs) AND deleted_at IS NULL
+                    WHERE workout_session_id IN (\(sessionPlaceholders)) AND deleted_at IS NULL
                     ORDER BY display_order ASC
-                    """
+                    """,
+                arguments: StatementArguments(sessionIDs)
             )
 
             var setsByExercise: [String: [Row]] = [:]
             let exerciseIDs = exerciseRows.compactMap { $0["id"] as String? }
             if !exerciseIDs.isEmpty {
+                let exercisePlaceholders = Array(repeating: "?", count: exerciseIDs.count).joined(separator: ", ")
                 let setRows = try Row.fetchAll(
                     db,
                     sql: """
                         SELECT id, workout_session_exercise_id, set_index, set_type, status,
                                weight_kg, reps, distance_km, duration_seconds, rpe, rir, completed_at
                         FROM set_entry
-                        WHERE workout_session_exercise_id IN \(exerciseIDs) AND deleted_at IS NULL
+                        WHERE workout_session_exercise_id IN (\(exercisePlaceholders)) AND deleted_at IS NULL
                         ORDER BY set_index ASC
-                        """
+                        """,
+                    arguments: StatementArguments(exerciseIDs)
                 )
                 setsByExercise = Dictionary(grouping: setRows) { $0["workout_session_exercise_id"] as String }
             }
