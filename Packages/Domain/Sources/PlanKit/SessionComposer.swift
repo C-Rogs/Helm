@@ -153,6 +153,12 @@ public enum SessionComposer {
                 PatternSlot(pattern: .verticalPress, primaryMuscle: .shoulders, role: .isolation),
                 PatternSlot(pattern: .elbowFlexion, primaryMuscle: .biceps, role: .isolation, required: false)
             ]
+        case .arms:
+            [
+                PatternSlot(pattern: .elbowFlexion, primaryMuscle: .biceps, role: .primary),
+                PatternSlot(pattern: .tricepsIsolation, primaryMuscle: .triceps, role: .primary),
+                PatternSlot(pattern: .lateralRaise, primaryMuscle: .shoulders, role: .isolation)
+            ]
         }
     }
 }

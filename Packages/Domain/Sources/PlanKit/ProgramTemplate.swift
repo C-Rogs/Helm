@@ -92,6 +92,7 @@ public enum TrainingDayKind: String, Sendable, Hashable, Codable, CaseIterable {
     case upper
     case lower
     case full
+    case arms
 
     public var label: String {
         rawValue.capitalized
