@@ -1,0 +1,190 @@
+{
+  "id": "fatigue_compensated",
+  "title": "Compensated Fatigue (Low Sleep, Normal HRV)",
+  "category": "fatigue",
+  "contextDays": {
+    "readinessBaselines": "HRV chronic baseline: 61ms. HRV 7-day rolling: 60ms. RHR chronic baseline: 53bpm. RHR 7-day rolling: 54bpm.",
+    "evidence": [
+      {
+        "id": "ev_low_sleep",
+        "title": "Low Sleep Duration",
+        "summary": "Sleep duration 4.5h last night. Below 7h target. Sleep debt accumulating.",
+        "citation": "sleepDuration: 4.5h, sleepDebt: 1.8h",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_hrv_normal",
+        "title": "HRV Normal",
+        "summary": "HRV 60ms, within normal range (-1ms vs baseline). Autonomic system appears compensated despite poor sleep.",
+        "citation": "hrvVsChronic: -1ms",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_readiness",
+        "title": "Readiness Score",
+        "summary": "Readiness 50/100. Borderline, sleep drags score down but HRV compensates.",
+        "citation": "readiness: 50",
+        "url": null,
+        "placeholder": false
+      }
+    ],
+    "groupedEvidence": {
+      "recovery": [
+        {
+          "id": "ev_low_sleep",
+          "title": "Low Sleep Duration",
+          "summary": "Sleep duration 4.5h last night. Below 7h target. Sleep debt accumulating.",
+          "citation": "sleepDuration: 4.5h, sleepDebt: 1.8h",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_hrv_normal",
+          "title": "HRV Normal",
+          "summary": "HRV 60ms, within normal range (-1ms vs baseline). Autonomic system appears compensated despite poor sleep.",
+          "citation": "hrvVsChronic: -1ms",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_readiness",
+          "title": "Readiness Score",
+          "summary": "Readiness 50/100. Borderline, sleep drags score down but HRV compensates.",
+          "citation": "readiness: 50",
+          "url": null,
+          "placeholder": false
+        }
+      ]
+    },
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Today. Readiness 50. HRV 60ms (normal). Sleep 4.5h. RHR 54bpm. Compensated state."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Rest day. HRV 61ms. Readiness 72. Sleep 7.2h."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 8
+        },
+        "text": "Upper Push session. 14 sets, RPE 7. HRV 60ms. Readiness 68."
+      }
+    ],
+    "recentWorkouts": "Aug 8: Upper Push (14 sets, RPE 7). Aug 6: Lower Pull (16 sets, RPE 7). Aug 4: Full Body (12 sets, RPE 6).",
+    "trainingPlanSnapshot": "Mesocycle: Hypertrophy Phase 2, Week 2. Accumulation. Target RPE 7-8.",
+    "weekAheadSchedule": "Mon: Upper Push. Tue: Lower Pull. Wed: Rest. Thu: Upper Pull. Fri: Lower Push. Sat: Rest. Sun: Rest.",
+    "nutritionDiary": "Yesterday: 2500 kcal, 160g protein. Target: 2600 kcal, 170g protein.",
+    "todayPrescription": "Lower Pull session. Deadlift 3x6 @ 120kg. RDL 3x8 @ 90kg. Pull-ups 3x8 @ BW. Barbell Row 3x8 @ 70kg. Face Pulls 3x12.",
+    "prescriptionLoadSummary": "Prescribed: 5 exercises, 15 sets, estimated tonnage 5800kg.",
+    "volumeStateSummary": "Weekly volume: 30 sets (2 sessions). Mesocycle average: 45 sets/week. On track.",
+    "engineProfile": "profile: hypertrophy. trainingAge: intermediate. phase: accumulation. deloadIndicator: none.",
+    "moduleSummaries": "Recovery: borderline (sleep 4.5h, HRV normal). Readiness: 50 (borderline). Load: moderate accumulation.",
+    "recentSessionOutcomes": [
+      {
+        "helmDay": "2026-08-08",
+        "sessionType": "Upper Push",
+        "id": "DBE94B4F-2EF4-4612-818D-03700AEDA14C",
+        "durationMinutes": 52,
+        "estimatedTRIMP": 48,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Exercise 1",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 2",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 3",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 4",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          }
+        ],
+        "prescribedBy": "engine",
+        "atypicalFlags": [],
+        "sessionRPE": null
+      }
+    ],
+    "freshness": {
+      "generatedAt": "2026-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        },
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        },
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "How should I train today?",
+  "expectedBounds": {
+    "mustNotContainKind": [
+      "adjustLoad"
+    ]
+  },
+  "expectedCitations": [
+    "sleepDuration",
+    "hrvVsChronic",
+    "readiness"
+  ],
+  "mustNotIncrease": true,
+  "mustSwapExercise": false
+}

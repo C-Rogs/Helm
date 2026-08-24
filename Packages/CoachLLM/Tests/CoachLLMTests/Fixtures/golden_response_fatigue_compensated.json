@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "Interesting situation — your sleep was short at 4.5 hours, but your HRV is holding steady at 60ms (normal range). Your autonomic system seems to be compensating well despite the sleep deficit. I'd recommend proceeding with today's Lower Pull but at a reduced volume: 2 sets per exercise instead of 3. Keep loads at prescription — no increases. Monitor how you feel during warm-ups. If anything feels off, call it early.",
+  "rationale": "Sleep 4.5h (low) but HRV -1ms (normal). Readiness 50 borderline. Compensated fatigue state. Advise caution — no load increases, reduce volume slightly. mustNotContainKind: adjustLoad enforced. Quality session with monitoring.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Deadlift",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "RDL",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Pull-ups",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Barbell Row",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Face Pulls",
+      "setDelta": -1
+    }
+  ]
+}

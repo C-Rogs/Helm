@@ -6,19 +6,22 @@ public struct ExerciseSummary: Sendable, Hashable, Codable, Identifiable {
     public let exerciseMode: ExerciseMode
     public let isCustom: Bool
     public let primaryMuscleGroup: String?
+    public let gifURL: String?
 
     public init(
         id: String,
         displayName: String,
         exerciseMode: ExerciseMode,
         isCustom: Bool,
-        primaryMuscleGroup: String? = nil
+        primaryMuscleGroup: String? = nil,
+        gifURL: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
         self.exerciseMode = exerciseMode
         self.isCustom = isCustom
         self.primaryMuscleGroup = primaryMuscleGroup
+        self.gifURL = gifURL
     }
 }
 

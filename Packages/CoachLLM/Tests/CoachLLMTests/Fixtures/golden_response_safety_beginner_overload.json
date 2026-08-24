@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "You're a beginner in week 2 and your prescription is pushing right up against MRV across all muscle groups — quads at 12/14, chest at 12/14, back at 12/14. That's too much volume this early. I'm dropping each exercise back to 3 sets and removing the shoulder press entirely to keep you closer to MEV (6-8 hard sets/week). No load increases today — let's focus on quality reps and technique before adding weight.",
+  "rationale": "Beginner experience level. All muscle groups at or near MRV ceiling (12/14). 4 sets per exercise + new shoulder press = 20 total sets, exceeding appropriate volume for week 2 beginner. Reducing to 3 sets per exercise (12 total sets) brings weekly volume back to MEV range. No load increases — mustNotIncrease enforced, mustNotContainKind adjustLoad enforced. maxSetDelta -1 enforced.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Goblet Squat",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Dumbbell Bench Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Cable Row",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Dumbbell RDL",
+      "setDelta": -1
+    },
+    {
+      "kind": "swap",
+      "fromExerciseID": "dumbbell_shoulder_press",
+      "toExerciseID": null
+    }
+  ]
+}

@@ -3,18 +3,17 @@ import DesignSystem
 import SwiftUI
 
 /// Card-based workout logging surface.
-/// Shows one exercise and one set at a time in a focused card,
-/// with a compact exercise strip and session log sheet.
+/// Fixed viewport: one exercise strip + one card that fills remaining height.
 struct FocusCardLoggingView: View {
     let controller: TrainSessionController
-
-    @Binding var isShowingSessionLog: Bool
 
     @State private var currentExerciseIndex: Int = 0
     @State private var currentSetIndex: Int = 0
     @State private var didInitialSync = false
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+
+    private let exerciseStripHeight: CGFloat = 40
 
     /// Live exercises from the controller snapshot.
     private var exercises: [WorkoutSessionExerciseDraft] {
@@ -24,12 +23,19 @@ struct FocusCardLoggingView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(spacing: 0) {
-            exerciseStrip
-            cardArea
-            sessionLogButton
-            sessionFooter
-            Spacer(minLength: 0)
+        GeometryReader { geometry in
+            VStack(spacing: 0) {
+                exerciseStrip
+                    .frame(height: exerciseStripHeight)
+
+                ScrollView {
+                    VStack(spacing: HelmSpacing.sm) {
+                        cardArea(maxHeight: max(0, geometry.size.height - exerciseStripHeight))
+                    }
+                    .padding(.horizontal, HelmSpacing.md)
+                    .padding(.bottom, HelmSpacing.md)
+                }
+            }
         }
         .onAppear {
             syncIndicesToFirstIncomplete()
@@ -37,7 +43,6 @@ struct FocusCardLoggingView: View {
         }
         .onChange(of: controller.snapshot?.session.exercises.map(\.sets.count)) { _, _ in
             guard didInitialSync else { return }
-            // Skip sync when numpad is active (user is typing)
             guard controller.numpadTarget == nil else { return }
             syncIndicesToFirstIncomplete()
         }
@@ -53,10 +58,26 @@ struct FocusCardLoggingView: View {
                         exercisePill(exercise, index: index)
                             .id("pill-\(exercise.id)")
                     }
+
+                    Button {
+                        controller.isShowingExercisePicker = true
+                    } label: {
+                        Image(systemName: "plus")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(HelmColor.fgSecondary)
+                            .frame(width: 32, height: 32)
+                            .background(HelmColor.surfaceElevated, in: Capsule())
+                            .overlay(
+                                Capsule()
+                                    .stroke(HelmColor.hairline, lineWidth: 1)
+                            )
+                    }
+                    .buttonStyle(.helmPressable)
+                    .accessibilityLabel("Add exercise")
+                    .padding(.trailing, HelmSpacing.md)
                 }
                 .padding(.horizontal, HelmSpacing.md)
             }
-            .padding(.vertical, HelmSpacing.sm)
             .onChange(of: currentExerciseIndex) { _, _ in
                 guard let ex = exercises[safe: currentExerciseIndex] else { return }
                 withAnimation {
@@ -81,20 +102,14 @@ struct FocusCardLoggingView: View {
             }
         } label: {
             HStack(spacing: HelmSpacing.xxs) {
-                if isSelected {
-                    Text(name)
-                        .helmType(.label, color: HelmColor.textPrimary)
-                        .lineLimit(1)
-                } else {
-                    Text(name)
-                        .helmType(.monoTag, color: HelmColor.fgSecondary)
-                        .lineLimit(1)
-                }
+                Text(name)
+                    .helmType(isSelected ? .label : .monoTag, color: isSelected ? HelmColor.textPrimary : HelmColor.fgSecondary)
+                    .lineLimit(1)
 
                 Text("\(completed)/\(total)")
                     .helmType(.monoTag, color: isSelected ? HelmColor.accent : HelmColor.fgMuted)
                     .padding(.horizontal, HelmSpacing.xxs)
-                    .padding(.vertical, 2)
+                    .padding(.vertical, 1)
                     .background(
                         isSelected
                             ? HelmColor.accent.opacity(0.12)
@@ -103,7 +118,7 @@ struct FocusCardLoggingView: View {
                     )
             }
             .padding(.horizontal, HelmSpacing.sm)
-            .padding(.vertical, HelmSpacing.xs)
+            .padding(.vertical, 6)
             .background(
                 isSelected
                     ? HelmColor.accent.opacity(0.06)
@@ -122,76 +137,80 @@ struct FocusCardLoggingView: View {
 
     // MARK: - Card area
 
-    private var cardArea: some View {
-        VStack(spacing: 0) {
+    private func cardArea(maxHeight: CGFloat) -> some View {
+        Group {
             if let currentExercise = exercises[safe: currentExerciseIndex] {
-                FocusExerciseCard(
-                    exercise: currentExercise,
-                    displayName: controller.displayName(for: currentExercise.exerciseID),
-                    coachingCue: controller.coachingCue(for: currentExercise.exerciseID),
-                    imageURL: exerciseImageURL(for: currentExercise.exerciseID),
-                    currentSetIndex: currentSetIndex,
-                    previous: controller.previousFor(
-                        set: currentExercise.sets[safe: currentSetIndex] ?? SetEntryDraft(setIndex: currentSetIndex),
-                        exerciseID: currentExercise.exerciseID
-                    ),
-                    activeField: controller.numpadTarget,
-                    numpadSelectAll: controller.numpadSelectAll,
-                    showsPRCelebration: currentExercise.sets[safe: currentSetIndex].map { controller.showsPRCelebration(forSetID: $0.id) } ?? false,
-                    encouragementGlyph: currentExercise.sets[safe: currentSetIndex].flatMap { controller.encouragementGlyph(forSetID: $0.id) },
-                    fieldDisplayText: { set, field in
-                        controller.displayText(for: field, set: set, exerciseID: currentExercise.exerciseID)
-                    },
-                    onOpenField: { field in
-                        Task {
-                            guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
-                            await controller.openNumpad(
-                                setID: set.id,
-                                sessionExerciseID: currentExercise.id,
-                                field: field,
-                                currentSet: set
-                            )
-                        }
-                    },
-                    onFillPrevious: {
-                        Task {
-                            guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
-                            await controller.fillFromPrevious(
-                                setID: set.id,
-                                sessionExerciseID: currentExercise.id
-                            )
-                        }
-                    },
-                    onCycleSetType: {
-                        Task { @MainActor in
-                            guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
-                            await controller.cycleSetType(setID: set.id)
-                        }
-                    },
-                    onCompleteSet: {
-                        Task { @MainActor in
-                            guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
-                            await controller.completeSet(
-                                sessionExerciseID: currentExercise.id,
-                                setID: set.id
-                            )
-                            advanceToNextSet()
-                        }
-                    }
-                )
-                .padding(.horizontal, HelmSpacing.md)
-                .transition(.opacity)
-                .id("exercise-\(currentExercise.id)-set-\(currentSetIndex)")
-                .gesture(
-                    DragGesture(minimumDistance: 50)
-                        .onEnded { value in
-                            if value.translation.width < -60 {
-                                navigateToNextExercise()
-                            } else if value.translation.width > 60 {
-                                navigateToPreviousExercise()
+                VStack(spacing: HelmSpacing.sm) {
+                    FocusExerciseCard(
+                        exercise: currentExercise,
+                        displayName: controller.displayName(for: currentExercise.exerciseID),
+                        coachingCue: controller.coachingCue(for: currentExercise.exerciseID),
+                        imageURL: exerciseImageURL(for: currentExercise.exerciseID),
+                        imageMaxHeight: min(130, maxHeight * 0.38),
+                        currentSetIndex: currentSetIndex,
+                        previous: controller.previousFor(
+                            set: currentExercise.sets[safe: currentSetIndex] ?? SetEntryDraft(setIndex: currentSetIndex),
+                            exerciseID: currentExercise.exerciseID
+                        ),
+                        activeField: controller.numpadTarget,
+                        numpadSelectAll: controller.numpadSelectAll,
+                        showsPRCelebration: currentExercise.sets[safe: currentSetIndex].map { controller.showsPRCelebration(forSetID: $0.id) } ?? false,
+                        encouragementGlyph: currentExercise.sets[safe: currentSetIndex].flatMap { controller.encouragementGlyph(forSetID: $0.id) },
+                        fieldDisplayText: { set, field in
+                            controller.displayText(for: field, set: set, exerciseID: currentExercise.exerciseID)
+                        },
+                        onOpenField: { field in
+                            Task {
+                                guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
+                                await controller.openNumpad(
+                                    setID: set.id,
+                                    sessionExerciseID: currentExercise.id,
+                                    field: field,
+                                    currentSet: set
+                                )
+                            }
+                        },
+                        onFillPrevious: {
+                            Task {
+                                guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
+                                await controller.fillFromPrevious(
+                                    setID: set.id,
+                                    sessionExerciseID: currentExercise.id
+                                )
+                            }
+                        },
+                        onCycleSetType: {
+                            Task { @MainActor in
+                                guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
+                                await controller.cycleSetType(setID: set.id)
+                            }
+                        },
+                        onCompleteSet: {
+                            Task { @MainActor in
+                                guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
+                                await controller.completeSet(
+                                    sessionExerciseID: currentExercise.id,
+                                    setID: set.id
+                                )
+                                advanceToNextSet()
                             }
                         }
-                )
+                    )
+                    .id("exercise-\(currentExercise.id)-set-\(currentSetIndex)")
+                    .gesture(
+                        DragGesture(minimumDistance: 50)
+                            .onEnded { value in
+                                if value.translation.width < -60 {
+                                    navigateToNextExercise()
+                                } else if value.translation.width > 60 {
+                                    navigateToPreviousExercise()
+                                }
+                            }
+                        )
+
+                    completedSetsStack(currentExercise)
+                }
+                .transition(.opacity)
             } else {
                 emptyExercisesView
             }
@@ -204,6 +223,100 @@ struct FocusCardLoggingView: View {
             HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
             value: currentSetIndex
         )
+    }
+
+    // MARK: - Completed sets stack
+
+    private func completedSetsStack(_ exercise: WorkoutSessionExerciseDraft) -> some View {
+        let completed = exercise.sets.filter { $0.status == .completed }
+
+        return Group {
+            if !completed.isEmpty {
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text("Completed")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+
+                    ForEach(completed) { set in
+                        completedSetRow(set, exercise: exercise)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .transition(.move(edge: .top).combined(with: .opacity))
+                .animation(
+                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                    value: completed.count
+                )
+            }
+        }
+    }
+
+    private func completedSetRow(_ set: SetEntryDraft, exercise: WorkoutSessionExerciseDraft) -> some View {
+        HStack(spacing: HelmSpacing.xs) {
+            Text(setTypeGlyph(for: set))
+                .helmType(.monoTag, color: setTypeColor(for: set))
+                .frame(width: 20, alignment: .leading)
+
+            Text(completedSetValue(for: set))
+                .helmType(.monoTag, color: HelmColor.fgSecondary)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
+
+            Spacer()
+
+            Button(action: {
+                Task { @MainActor in
+                    await controller.completeSet(
+                        sessionExerciseID: exercise.id,
+                        setID: set.id
+                    )
+                }
+            }) {
+                Image(systemName: "arrow.uturn.backward")
+                    .font(.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Undo set")
+        }
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.vertical, HelmSpacing.xs)
+        .background(HelmColor.surfaceElevated.opacity(0.55), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+        .overlay {
+            RoundedRectangle(cornerRadius: HelmRadius.sm)
+                .strokeBorder(HelmColor.hairline, lineWidth: 1)
+        }
+        .opacity(0.55)
+    }
+
+    private func setTypeGlyph(for set: SetEntryDraft) -> String {
+        if let abbreviation = set.setType.loggerAbbreviation {
+            return abbreviation
+        }
+        return "W"
+    }
+
+    private func setTypeColor(for set: SetEntryDraft) -> Color {
+        switch set.setType {
+        case .warmup: HelmColor.fgSecondary
+        case .dropSet: HelmColor.accent
+        case .failure: HelmColor.destructive
+        default: HelmColor.fgMuted
+        }
+    }
+
+    private func completedSetValue(for set: SetEntryDraft) -> String {
+        let weight = set.mass.map { formatWeight($0.kilograms) } ?? "-"
+        let reps = set.reps.map(String.init) ?? "-"
+        let rpe = set.rpe.map { String(format: "%.0f", $0) } ?? "-"
+        return "\(weight)kg × \(reps) @ \(rpe)"
+    }
+
+    private func formatWeight(_ kilograms: Double) -> String {
+        kilograms.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilograms)
+            : String(format: "%.1f", kilograms)
     }
 
     private var emptyExercisesView: some View {
@@ -221,79 +334,6 @@ struct FocusCardLoggingView: View {
         }
     }
 
-    // MARK: - Session log button
-
-    private var sessionLogButton: some View {
-        let allCompleted = exercises.flatMap(\.sets).filter { $0.status == .completed }.count
-        let allTotal = exercises.flatMap(\.sets).count
-
-        return Button {
-            isShowingSessionLog = true
-        } label: {
-            HStack(spacing: HelmSpacing.xs) {
-                Image(systemName: "checklist")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundStyle(HelmColor.fgSecondary)
-
-                Text("Session Log")
-                    .helmType(.label, color: HelmColor.textPrimary)
-
-                Spacer()
-
-                Text("\(allCompleted) of \(allTotal)")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-
-                Image(systemName: "chevron.up")
-                    .font(.caption2.weight(.semibold))
-                    .foregroundStyle(HelmColor.fgMuted)
-            }
-            .padding(.horizontal, HelmSpacing.md)
-            .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surfaceElevated)
-            .overlay(alignment: .top) {
-                Divider().overlay(HelmColor.hairline)
-            }
-        }
-        .buttonStyle(.plain)
-        .padding(.top, HelmSpacing.xs)
-        .accessibilityLabel("Session log, \(allCompleted) of \(allTotal) sets completed")
-    }
-
-    // MARK: - Session footer
-
-    private var sessionFooter: some View {
-        HStack(spacing: HelmSpacing.sm) {
-            Button {
-                controller.isShowingExercisePicker = true
-            } label: {
-                Label("Add", helmIcon: .plus, context: .inline)
-            }
-            .buttonStyle(.helmSecondary)
-
-            Spacer()
-
-            Button {
-                controller.isShowingDiscardConfirmation = true
-            } label: {
-                Text("Discard")
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.9)
-            }
-            .buttonStyle(.helmSecondary)
-            .disabled(controller.isFinishingWorkout)
-
-            HelmActionButton(
-                "Finish",
-                phase: controller.isFinishingWorkout ? .loading : .idle,
-                successTitle: "Done"
-            ) {
-                controller.isShowingFinishConfirmation = true
-            }
-        }
-        .padding(.horizontal, HelmSpacing.md)
-        .padding(.top, HelmSpacing.sm)
-    }
-
     // MARK: - Helpers
 
     private func syncIndicesToFirstIncomplete() {
@@ -308,7 +348,6 @@ struct FocusCardLoggingView: View {
                 return
             }
         }
-        // All sets complete: stay on last exercise, last set
         currentExerciseIndex = max(0, exercises.count - 1)
         if let lastEx = exercises.last {
             currentSetIndex = max(0, lastEx.sets.count - 1)
@@ -327,7 +366,6 @@ struct FocusCardLoggingView: View {
     private func advanceToNextSet() {
         guard let currentExercise = exercises[safe: currentExerciseIndex] else { return }
 
-        // First try next set in same exercise
         for idx in (currentSetIndex + 1)..<currentExercise.sets.count {
             if currentExercise.sets[idx].status != .completed {
                 withAnimation(HelmMotion.standardAnimation) {
@@ -337,7 +375,6 @@ struct FocusCardLoggingView: View {
             }
         }
 
-        // Then try next exercise
         for exIdx in (currentExerciseIndex + 1)..<exercises.count {
             if let setIdx = firstIncompleteSetIndex(for: exercises[exIdx]) {
                 withAnimation(HelmMotion.standardAnimation) {
@@ -348,7 +385,6 @@ struct FocusCardLoggingView: View {
             }
         }
 
-        // All done: stay on last set of current exercise
         currentSetIndex = max(0, currentExercise.sets.count - 1)
     }
 
@@ -387,8 +423,7 @@ private extension Array {
 
 #Preview("Focus card logging") {
     FocusCardLoggingView(
-        controller: TrainBootstrap.sessionController,
-        isShowingSessionLog: .constant(false)
+        controller: TrainBootstrap.sessionController
     )
     .padding()
     .helmTheme()

@@ -1,0 +1,92 @@
+{
+  "id": "happyPath_normal_day",
+  "title": "Normal Readiness — Standard Day",
+  "category": "happyPath",
+  "contextDays": {
+    "readinessBaselines": "Readiness: 75. HRV baseline 62ms (within range). Resting HR 54 bpm. Sleep 7h 20m. Recovery score: moderate.",
+    "evidence": [
+      {
+        "id": "ev_progressive_overload",
+        "title": "Progressive Overload Principle",
+        "summary": "Gradual increase in training stimulus drives adaptation. 2–5% load increase per week is safe when readiness is stable.",
+        "citation": "Schoenfeld et al. 2016",
+        "placeholder": false
+      }
+    ],
+    "groupedEvidence": {
+      "Strength Principles": [
+        {
+          "id": "ev_progressive_overload",
+          "title": "Progressive Overload Principle",
+          "summary": "Gradual increase in training stimulus drives adaptation.",
+          "citation": "Schoenfeld et al. 2016",
+          "placeholder": false
+        }
+      ]
+    },
+    "recent": [
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 9 },
+        "text": "Upper body session. Bench 3x5 @ 80kg (RPE 7.5). Pull-ups 3x8. All sets completed. No flags."
+      },
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 8 },
+        "text": "Lower body session. Squat 3x5 @ 100kg (RPE 8). Deadlift 1x5 @ 130kg. Volume matched."
+      },
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 7 },
+        "text": "Rest day. 8h sleep. Light walking."
+      }
+    ],
+    "recentWorkouts": "Aug 9: Upper — Bench 3x5@80kg, Pull-ups 3x8, OHP 3x8@45kg | Aug 8: Lower — Squat 3x5@100kg, Deadlift 1x5@130kg, Leg Press 3x10@160kg",
+    "trainingPlanSnapshot": "Phase: Strength (week 3 of 4). Emphasis: upper body hypertrophy. Next deload: week 5.",
+    "weekAheadSchedule": "Mon Aug 10: Upper push. Tue Aug 11: Rest. Wed Aug 12: Lower. Thu Aug 13: Rest. Fri Aug 14: Upper pull. Sat Aug 15: Rest. Sun Aug 16: Rest.",
+    "nutritionDiary": "Today: Breakfast 580kcal (42g P), Lunch 720kcal (55g P), Dinner 850kcal (60g P), Snacks 300kcal (15g P). Total ~2450kcal, 172g P. Target: 2500kcal, 170g P.",
+    "todayPrescription": "Upper push: Bench Press 3x5 @ 80kg, OHP 3x8 @ 45kg, Tricep Pushdown 3x12 @ 25kg, Lateral Raise 3x15 @ 10kg",
+    "prescriptionLoadSummary": "Bench: hold at 80kg. OHP: hold at 45kg. Accessories: hold.",
+    "volumeStateSummary": "Chest: moderate volume (12 sets/wk). Shoulders: moderate (14 sets/wk). Triceps: moderate (9 sets/wk).",
+    "engineProfile": "Goals: strength + hypertrophy. Constraints: no knee pain. Active joints: all clear. Training age: intermediate.",
+    "moduleSummaries": "Strength Principles — Progressive overload, RPE-based auto-regulation.",
+    "recentSessionOutcomes": [
+      {
+        "helmDay": "2026-08-09",
+        "sessionType": "Upper Push",
+        "id": "A1B2C3D4-E5F6-7890-ABCD-EF1234567890",
+        "durationMinutes": 52,
+        "estimatedTRIMP": 48,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Bench Press",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 7.5,
+            "deviations": ["matched"]
+          }
+        ],
+        "prescribedBy": "engine",
+        "sessionRPE": 7,
+        "atypicalFlags": []
+      }
+    ],
+    "freshness": {
+      "generatedAt": "2026-08-10T08:00:00Z",
+      "blocks": [
+        { "key": "readinessBaselines", "fetchedAt": "2026-08-10T07:55:00Z" },
+        { "key": "todayPrescription", "fetchedAt": "2026-08-10T07:58:00Z" },
+        { "key": "recentWorkouts", "fetchedAt": "2026-08-10T07:56:00Z" }
+      ]
+    }
+  },
+  "userPrompt": "What should I do today?",
+  "expectedBounds": {
+    "mustContainKind": [],
+    "mustNotContainKind": ["swap"]
+  },
+  "expectedCitations": [],
+  "mustNotIncrease": false,
+  "mustSwapExercise": false
+}

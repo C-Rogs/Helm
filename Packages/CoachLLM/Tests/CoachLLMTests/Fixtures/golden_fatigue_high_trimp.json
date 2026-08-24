@@ -1,0 +1,211 @@
+{
+  "id": "fatigue_high_trimp",
+  "title": "High TRIMP After Overreach",
+  "category": "fatigue",
+  "contextDays": {
+    "readinessBaselines": "HRV chronic baseline: 60ms. HRV 7-day rolling: 55ms. RHR chronic baseline: 54bpm. RHR 7-day rolling: 56bpm.",
+    "evidence": [
+      {
+        "id": "ev_trimp_spike",
+        "title": "TRIMP Spike",
+        "summary": "Yesterday TRIMP 142, 2.3x baseline TRIMP of 62. Indicates significant overload.",
+        "citation": "trimp: 142, trimpBaseline: 62, trimpRatio: 2.3",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_readiness",
+        "title": "Readiness Score",
+        "summary": "Readiness score 35/100. Below normal training threshold.",
+        "citation": "readiness: 35",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_hrv_dip",
+        "title": "HRV Dip",
+        "summary": "HRV 55ms, slightly below baseline (-5ms). Consistent with post-overload recovery.",
+        "citation": "hrvVsChronic: -5ms",
+        "url": null,
+        "placeholder": false
+      }
+    ],
+    "groupedEvidence": {
+      "recovery": [
+        {
+          "id": "ev_trimp_spike",
+          "title": "TRIMP Spike",
+          "summary": "Yesterday TRIMP 142, 2.3x baseline TRIMP of 62. Indicates significant overload.",
+          "citation": "trimp: 142, trimpBaseline: 62, trimpRatio: 2.3",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_readiness",
+          "title": "Readiness Score",
+          "summary": "Readiness score 35/100. Below normal training threshold.",
+          "citation": "readiness: 35",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_hrv_dip",
+          "title": "HRV Dip",
+          "summary": "HRV 55ms, slightly below baseline (-5ms). Consistent with post-overload recovery.",
+          "citation": "hrvVsChronic: -5ms",
+          "url": null,
+          "placeholder": false
+        }
+      ]
+    },
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Today. Readiness 35. HRV 55ms. TRIMP forecast: moderate."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Yesterday. Lower Pull session. 22 sets, RPE 9. TRIMP 142. High volume leg day."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 8
+        },
+        "text": "Rest day. HRV 58ms. Readiness 65."
+      }
+    ],
+    "recentWorkouts": "Aug 9: Lower Pull (22 sets, RPE 9, TRIMP 142). Aug 7: Upper Pull (16 sets, RPE 7). Aug 5: Lower Push (14 sets, RPE 7).",
+    "trainingPlanSnapshot": "Mesocycle: Strength Phase 1, Week 2. Accumulation. Target RPE 7-8.",
+    "weekAheadSchedule": "Mon: Upper Push. Tue: Lower Pull. Wed: Rest. Thu: Upper Pull. Fri: Lower Push. Sat: Active Recovery. Sun: Rest.",
+    "nutritionDiary": "Yesterday: 2400 kcal, 155g protein. Target: 2600 kcal, 170g protein.",
+    "todayPrescription": "Upper Push session. Bench Press 4x6 @ 85kg. OHP 4x6 @ 55kg. Incline DB Press 3x8 @ 30kg. Dips 3x10 @ BW. Tricep Pushdown 3x10.",
+    "prescriptionLoadSummary": "Prescribed: 5 exercises, 17 sets, estimated tonnage 4800kg.",
+    "volumeStateSummary": "Weekly volume: 38 sets (2 sessions). Yesterday TRIMP 2.3x baseline. Volume load high.",
+    "engineProfile": "profile: strength. trainingAge: intermediate. phase: accumulation. deloadIndicator: none.",
+    "moduleSummaries": "Recovery: moderate (TRIMP 2.3x baseline). Readiness: 35 (below threshold). Load: high recent overload.",
+    "recentSessionOutcomes": [
+      {
+        "helmDay": "2026-08-09",
+        "sessionType": "Lower Pull",
+        "id": "E5CBEF5B-36C1-4713-B72F-A4869F1051D8",
+        "durationMinutes": 52,
+        "estimatedTRIMP": 48,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Exercise 1",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 2",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 3",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 4",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 5",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 6",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          }
+        ],
+        "prescribedBy": "engine",
+        "atypicalFlags": [],
+        "sessionRPE": null
+      }
+    ],
+    "freshness": {
+      "generatedAt": "2026-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        },
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "What should I change today?",
+  "expectedBounds": {
+    "mustNotContainKind": [
+      "adjustLoad"
+    ],
+    "maxSetDelta": 2
+  },
+  "expectedCitations": [
+    "trimp",
+    "trimpRatio",
+    "readiness"
+  ],
+  "mustNotIncrease": true,
+  "mustSwapExercise": false
+}

@@ -1,0 +1,289 @@
+{
+  "id": "fatigue_accumulated_week",
+  "title": "Accumulated Week Fatigue",
+  "category": "fatigue",
+  "contextDays": {
+    "readinessBaselines": "HRV chronic baseline: 64ms. HRV 7-day rolling: 54ms. RHR chronic baseline: 50bpm. RHR 7-day rolling: 55bpm.",
+    "evidence": [
+      {
+        "id": "ev_consecutive_days",
+        "title": "Consecutive Training Days",
+        "summary": "4 consecutive training days (Aug 6-9). No rest day in 4 days. Fatigue accumulation likely.",
+        "citation": "consecutiveTrainingDays: 4",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_hrv_trending_down",
+        "title": "HRV Trending Down",
+        "summary": "HRV trending down over 4 days: 62 -> 58 -> 55 -> 52ms. Steady decline indicates accumulating fatigue.",
+        "citation": "hrvTrend: -10ms over 4 days",
+        "url": null,
+        "placeholder": false
+      },
+      {
+        "id": "ev_readiness",
+        "title": "Readiness Score",
+        "summary": "Readiness 30/100. Approaching critical threshold.",
+        "citation": "readiness: 30",
+        "url": null,
+        "placeholder": false
+      }
+    ],
+    "groupedEvidence": {
+      "recovery": [
+        {
+          "id": "ev_consecutive_days",
+          "title": "Consecutive Training Days",
+          "summary": "4 consecutive training days (Aug 6-9). No rest day in 4 days. Fatigue accumulation likely.",
+          "citation": "consecutiveTrainingDays: 4",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_hrv_trending_down",
+          "title": "HRV Trending Down",
+          "summary": "HRV trending down over 4 days: 62 -> 58 -> 55 -> 52ms. Steady decline indicates accumulating fatigue.",
+          "citation": "hrvTrend: -10ms over 4 days",
+          "url": null,
+          "placeholder": false
+        },
+        {
+          "id": "ev_readiness",
+          "title": "Readiness Score",
+          "summary": "Readiness 30/100. Approaching critical threshold.",
+          "citation": "readiness: 30",
+          "url": null,
+          "placeholder": false
+        }
+      ]
+    },
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Today. Readiness 30. HRV 52ms. 4th consecutive training day approaching."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Upper Push session. 16 sets, RPE 8. HRV 55ms. Readiness 45."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 8
+        },
+        "text": "Lower Pull session. 18 sets, RPE 8. HRV 58ms. Readiness 55."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 7
+        },
+        "text": "Upper Pull session. 14 sets, RPE 7. HRV 60ms. Readiness 65."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 6
+        },
+        "text": "Lower Push session. 16 sets, RPE 7. HRV 62ms. Readiness 70."
+      }
+    ],
+    "recentWorkouts": "Aug 9: Upper Push (16 sets, RPE 8). Aug 8: Lower Pull (18 sets, RPE 8). Aug 7: Upper Pull (14 sets, RPE 7). Aug 6: Lower Push (16 sets, RPE 7).",
+    "trainingPlanSnapshot": "Mesocycle: Hypertrophy Phase 2, Week 4. Accumulation week. Target RPE 7-8.",
+    "weekAheadSchedule": "Mon: Upper Push. Tue: Lower Pull. Wed: Upper Pull. Thu: Lower Push. Fri: Full Body. Sat: Rest. Sun: Rest.",
+    "nutritionDiary": "Yesterday: 2300 kcal, 145g protein. Target: 2600 kcal, 170g protein.",
+    "todayPrescription": "Full Body session. Squat 3x8 @ 90kg. Bench Press 3x8 @ 80kg. RDL 3x10 @ 85kg. Pull-ups 3x8 @ BW. OHP 3x8 @ 50kg.",
+    "prescriptionLoadSummary": "Prescribed: 5 exercises, 15 sets, estimated tonnage 5200kg.",
+    "volumeStateSummary": "Weekly volume: 64 sets (4 sessions). Mesocycle average: 52 sets/week. This week above average.",
+    "engineProfile": "profile: hypertrophy. trainingAge: intermediate. phase: accumulation. deloadIndicator: none.",
+    "moduleSummaries": "Recovery: poor (HRV trending down, 4 consecutive days). Readiness: 30 (approaching critical). Load: above weekly average.",
+    "recentSessionOutcomes": [
+      {
+        "helmDay": "2026-08-09",
+        "sessionType": "Upper Push",
+        "id": "B43111B4-7AC6-4172-9A10-B45EE025B70C",
+        "durationMinutes": 52,
+        "estimatedTRIMP": 48,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Exercise 1",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 2",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 3",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 4",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 5",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          }
+        ],
+        "prescribedBy": "engine",
+        "atypicalFlags": [],
+        "sessionRPE": null
+      },
+      {
+        "helmDay": "2026-08-08",
+        "sessionType": "Lower Pull",
+        "id": "3A88B8A8-8ABC-4F39-9463-73D0E43BDC45",
+        "durationMinutes": 52,
+        "estimatedTRIMP": 48,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Exercise 1",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 2",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 3",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 4",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          },
+          {
+            "name": "Exercise 5",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": [
+              "matched"
+            ]
+          }
+        ],
+        "prescribedBy": "engine",
+        "atypicalFlags": [],
+        "sessionRPE": null
+      }
+    ],
+    "freshness": {
+      "generatedAt": "2026-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        },
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        },
+        {
+          "key": "readinessBaselines",
+          "fetchedAt": "2026-08-10T07:55:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "Should I push through today?",
+  "expectedBounds": {
+    "phaseConstraint": "deload"
+  },
+  "expectedCitations": [
+    "consecutiveTrainingDays",
+    "hrvTrend",
+    "readiness"
+  ],
+  "mustNotIncrease": true,
+  "mustSwapExercise": false
+}

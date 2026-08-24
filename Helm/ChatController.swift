@@ -136,7 +136,11 @@ final class ChatController {
 
     func sendFoodDictation(_ transcript: String) {
         let trimmed = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isStreaming else { return }
+        guard !trimmed.isEmpty else { return }
+        guard !isStreaming else {
+            lastTurnError = "Coach is still responding. Wait a moment and try again."
+            return
+        }
         if CoachActivityGate.shared.isBlocked(for: .chat) {
             lastTurnError = CoachActivityGate.shared.blockingMessage(for: .chat)
             return
@@ -475,6 +479,7 @@ final class ChatController {
         let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
         let availability = await provider.availability()
         guard availability.isAvailable else {
+            let wasFoodDictation = isFoodDictationTurn
             isFoodDictationTurn = false
             isCoachAvailable = false
             if case .unavailable(let label, let helpText) = availability {
@@ -489,6 +494,11 @@ final class ChatController {
                     reason: .providerUnavailable,
                     userMessage: "Coach is unavailable. Numbers and logging still work."
                 )
+            }
+            // Nutrition describe sheet only watches lastTurnError - surface key/provider gaps there.
+            if wasFoodDictation {
+                lastTurnError = degradedState?.userMessage
+                    ?? "Coach is unavailable. Try Search or add your Gemini API key in Settings."
             }
             return
         }
@@ -580,22 +590,25 @@ final class ChatController {
                 freshnessSuffix: prompt.freshnessSuffix
             )
 
-            if let mealQuery = MealQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runMealQueryFollowUp(
-                    query: mealQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembled
-                )
-            } else if let inferred = CoachChatIntent.inferredMealQuery(from: text) {
-                assembled = try await runMealQueryFollowUp(
-                    query: inferred,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembled
-                )
+            // Food dictation must stay on food_log.v1 - do not hijack into diary query follow-ups.
+            if !isFoodDictationTurn {
+                if let mealQuery = MealQueryPayloadParser.parse(from: assembled) {
+                    assembled = try await runMealQueryFollowUp(
+                        query: mealQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembled
+                    )
+                } else if let inferred = CoachChatIntent.inferredMealQuery(from: text) {
+                    assembled = try await runMealQueryFollowUp(
+                        query: inferred,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembled
+                    )
+                }
             }
 
             if let recoveryQuery = RecoveryQueryPayloadParser.parse(from: assembled) {
@@ -685,8 +698,9 @@ final class ChatController {
                 )
             }
 
+            let wasFoodDictation = isFoodDictationTurn
             let pendingAction: CoachChatActionProposal?
-            if isFoodDictationTurn,
+            if wasFoodDictation,
                let foodPayload = FoodLogPayloadParser.parse(from: assembled),
                foodPayload.action == .log {
                 isFoodDictationTurn = false
@@ -748,6 +762,9 @@ final class ChatController {
 
             if pendingAction == nil, FoodLogPayloadParser.hasMalformedBlock(in: assembled) {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
+            } else if wasFoodDictation, pendingFoodMealConfirm == nil, lastTurnError == nil {
+                // Nutrition describe has no chat transcript UI - prose-only replies looked like a hang.
+                lastTurnError = "Couldn't estimate that meal. Try again with clearer portions, or use Search."
             }
 
             await logTurn(

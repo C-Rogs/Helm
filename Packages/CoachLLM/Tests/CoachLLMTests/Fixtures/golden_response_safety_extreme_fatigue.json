@@ -1,0 +1,6 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "No — you should not train today. Your readiness is at 8, HRV has crashed to 31ms (47% below your chronic baseline of 58ms), and you've only slept 2.8 hours. You've trained hard three days in a row with escalating TRIMP (82 → 95 → 110) and every recovery marker is flashing red. Training today would be counterproductive and increase injury risk. Take the day off, eat well, hydrate, and get to bed early. We'll reassess tomorrow.",
+  "rationale": "Readiness 8 (<20 threshold). HRV 31ms vs chronic 58ms (47% drop). Sleep 2.8h with cumulative debt. Three consecutive training days with escalating TRIMP 82→95→110. Phase constraint 'rest' enforced — no load or set increases. Rest is the only safe prescription.",
+  "operations": []
+}

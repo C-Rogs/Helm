@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "Your shoulder is flagged as an active joint constraint, so I'm swapping out the overhead press for a chest-supported front raise that spares the shoulder. Everything else stays the same — your volume is in a good range across all groups.",
+  "rationale": "Active joint constraint [shoulder]. Overhead Press loads the shoulder directly at end-range; swapped to chest-supported front raise to maintain front delt stimulus without overhead loading. Bench, lateral raises, and tricep pushdowns are shoulder-safe and kept.",
+  "operations": [
+    {
+      "kind": "swap",
+      "fromExerciseID": "overhead_press",
+      "toExerciseID": "chest_supported_front_raise"
+    }
+  ]
+}

@@ -1,0 +1,32 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "You crushed yesterday's Lower Pull session — TRIMP was 2.3x your baseline. That's a significant overload. For today's Upper Push, I'm keeping the same exercises but cutting volume. Each exercise drops to 2 working sets instead of 3-4, and we're holding load steady. No increases today. Focus on quality reps and recovery between sets.",
+  "rationale": "TRIMP 142 vs baseline 62 (2.3x). Readiness 35 confirms fatigue. Must reduce volume without increasing load. maxSetDelta 0 enforced — no set increases. Quality over quantity to manage accumulated fatigue.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Bench Press",
+      "setDelta": -2
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "OHP",
+      "setDelta": -2
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Incline DB Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Dips",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Tricep Pushdown",
+      "setDelta": -1
+    }
+  ]
+}

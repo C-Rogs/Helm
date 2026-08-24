@@ -1,0 +1,30 @@
+---
+description: Helm Linear inbox - phone notes in CamLab/Helm, pull via Linear MCP when working issues
+alwaysApply: true
+---
+
+# Linear inbox (Helm)
+
+Notes live in Linear workspace **CamLab**, project **Helm**, team **CamLab** (issue prefix `CAM-`).
+
+## Status flow
+
+| Status | Meaning |
+|---|---|
+| Backlog | Phone dump / raw note |
+| Todo | Ready for Cursor |
+| In Progress | Actively building |
+| In Review | PR / device check |
+| Done / Canceled | Closed |
+
+## Labels
+
+`Note` (raw), `Bug`, `Feature`, `Improvement`, `Chore`.
+
+## Agent behavior
+
+- When Cameron asks to work inbox / Linear / a `CAM-*` id: use Linear MCP (`list_issues`, `get_issue`, `save_issue`, `save_comment`). Prefer **Todo** then **Backlog**.
+- Default: brief plan first; build only when he says build.
+- After plan or ship: comment on the issue; update status when appropriate.
+- Do not set up Cursor Automations or TestFlight for this loop unless he asks.
+- Guide doc: Linear project Helm → document "How to use this inbox".

@@ -800,6 +800,10 @@ final class TrainSessionController {
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
             numpadTarget = nil
+
+            let completedSetForCarry = findSet(setID: setID) ?? refreshedSet
+            await autoCarryNextSet(sessionExerciseID: sessionExerciseID, completedSet: completedSetForCarry)
+
             await refreshMetadata()
 
             let exerciseID = exerciseID(for: sessionExerciseID)
@@ -828,6 +832,35 @@ final class TrainSessionController {
             evaluateSessionMilestoneAfterSetComplete(previousCompleted: completedBefore)
         } catch {
             errorMessage = error.localizedDescription
+        }
+    }
+
+    private func autoCarryNextSet(sessionExerciseID: String, completedSet: SetEntryDraft) async {
+        guard let snapshot = store.snapshot,
+              let exercise = snapshot.session.exercises.first(where: { $0.id == sessionExerciseID }) else { return }
+
+        let remaining = exercise.sets
+            .filter { $0.setIndex > completedSet.setIndex && $0.status != .completed }
+        guard let nextSet = remaining.min(by: { $0.setIndex < $1.setIndex }) else { return }
+
+        let massToCarry = nextSet.mass ?? completedSet.mass
+        let repsToCarry = nextSet.reps ?? completedSet.reps
+        let rpeToCarry = nextSet.rpe ?? completedSet.rpe
+
+        guard massToCarry != nextSet.mass || repsToCarry != nextSet.reps || rpeToCarry != nextSet.rpe else { return }
+
+        do {
+            try await store.logSet(
+                setID: nextSet.id,
+                update: SetLogUpdate(
+                    mass: massToCarry,
+                    reps: repsToCarry,
+                    rpe: rpeToCarry,
+                    rir: rpeToCarry.map { PlanKit.rirFromRPE($0) }
+                )
+            )
+        } catch {
+            // Non-critical; silently drop.
         }
     }
 
@@ -1949,8 +1982,8 @@ final class TrainSessionController {
         try persistence.exercises.listForPicker(search: search, muscleGroup: muscleGroup)
     }
 
-    func fetchRecentExercises() throws -> [ExerciseSummary] {
-        try persistence.exercises.listRecentlyUsed()
+    func fetchRecentExercises(limit: Int = 12) throws -> [ExerciseSummary] {
+        try persistence.exercises.listRecentlyUsed(limit: limit)
     }
 
     func fetchMuscleGroups() throws -> [String] {

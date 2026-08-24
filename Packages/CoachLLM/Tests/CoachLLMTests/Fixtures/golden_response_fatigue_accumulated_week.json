@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "You've trained 4 days straight and your HRV has been trending down each day — from 62ms to 52ms. Readiness is at 30. This is a clear fatigue accumulation pattern. I'm recommending a deload today. Drop all loads to 60-65% of prescription, cut sets to 2 per exercise, and prioritize movement quality. Pushing through would risk overtraining. Use this as a technique and recovery session.",
+  "rationale": "4 consecutive training days. HRV trend -10ms across 4 days (62->58->55->52ms). Readiness 30 approaching critical. Phase constraint: deload. Must reduce both volume and load significantly. No increases permitted.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Squat",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Squat",
+      "massDeltaKg": -36.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Bench Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Bench Press",
+      "massDeltaKg": -32.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "RDL",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "RDL",
+      "massDeltaKg": -34.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Pull-ups",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "OHP",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "OHP",
+      "massDeltaKg": -20.0
+    }
+  ]
+}

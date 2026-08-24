@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "The training engine has flagged a pending reactive deload — your accumulated fatigue has crossed the threshold. HRV is 9ms below baseline, RHR is elevated 5bpm, and readiness is at 28. This is exactly when a deload is indicated. I'm switching today's Upper Push to a deload session: 50% load reduction, 2 sets per exercise. Treat this as active recovery. You've earned the break.",
+  "rationale": "pendingReactiveDeload: true. Readiness 28 (critical). HRV -9ms, RHR +5bpm. Phase constraint: deload. Engine-driven deload recommendation. Must reduce load significantly (~50%) and cut volume. Session serves as active recovery.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Bench Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Bench Press",
+      "massDeltaKg": -41.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "OHP",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "OHP",
+      "massDeltaKg": -26.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Incline DB Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Incline DB Press",
+      "massDeltaKg": -15.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Lateral Raises",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Lateral Raises",
+      "massDeltaKg": -6.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Tricep Pushdown",
+      "setDelta": -1
+    }
+  ]
+}

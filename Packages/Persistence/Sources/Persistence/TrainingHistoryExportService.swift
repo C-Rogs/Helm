@@ -264,7 +264,7 @@ public struct TrainingHistoryExportService: Sendable {
         decoder.dateDecodingStrategy = .iso8601
         do {
             let export = try decoder.decode(TrainingHistoryExport.self, from: data)
-            guard export.schemaVersion == TrainingHistoryExport.currentSchemaVersion else {
+            guard export.schemaVersion <= TrainingHistoryExport.currentSchemaVersion else {
                 throw TrainingHistoryExportError.unsupportedSchemaVersion(export.schemaVersion)
             }
             return export
@@ -276,9 +276,9 @@ public struct TrainingHistoryExportService: Sendable {
     }
 
     public func importHistory(_ export: TrainingHistoryExport) throws -> TrainingHistoryImportResult {
-        guard export.schemaVersion == TrainingHistoryExport.currentSchemaVersion else {
-            throw TrainingHistoryExportError.unsupportedSchemaVersion(export.schemaVersion)
-        }
+guard export.schemaVersion <= TrainingHistoryExport.currentSchemaVersion else {
+                throw TrainingHistoryExportError.unsupportedSchemaVersion(export.schemaVersion)
+            }
 
         var upsertedCustom = 0
         for custom in export.customExercises {

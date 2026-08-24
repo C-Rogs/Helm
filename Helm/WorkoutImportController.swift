@@ -120,8 +120,8 @@ final class WorkoutImportController {
         try persistence.exercises.listForPicker(search: search, muscleGroup: muscleGroup)
     }
 
-    func fetchRecentExercises() throws -> [ExerciseSummary] {
-        try persistence.exercises.listRecentlyUsed()
+    func fetchRecentExercises(limit: Int = 12) throws -> [ExerciseSummary] {
+        try persistence.exercises.listRecentlyUsed(limit: limit)
     }
 
     func fetchMuscleGroups() throws -> [String] {

@@ -50,11 +50,12 @@ public final class MealVisionPreferencesStore: @unchecked Sendable {
     }
 
     public var geminiModelCandidates: [GeminiModel] {
+        // gemini-2.5-flash 404s for new AI Studio keys - keep 3.5 Flash + Flash-Lite only.
         switch qualityPreference {
         case .accurate:
-            [.flash35, .flash, .flashLite]
+            [.flash35, .flashLite]
         case .fast:
-            [.flash35, .flashLite, .flash]
+            [.flashLite, .flash35]
         }
     }
 }

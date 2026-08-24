@@ -1,0 +1,52 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "Your recovery metrics are showing significant strain today — HRV is 15ms below baseline and you only got 4.8 hours of sleep. I'm recommending a deload session instead of the prescribed Upper Push workout. We'll reduce volume by 40% and drop load to 70% of prescription across all exercises. This keeps movement patterns intact while giving your body the recovery it needs.",
+  "rationale": "Readiness 25 (critical). HRV vs chronic -15ms indicates high autonomic stress. Sleep 4.8h well below 7h target. Must reduce load to avoid deepening fatigue. Deload preserves skill maintenance without additional stress.",
+  "operations": [
+    {
+      "kind": "adjustSets",
+      "exercise": "Bench Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Bench Press",
+      "massDeltaKg": -24.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "OHP",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "OHP",
+      "massDeltaKg": -15.0
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Incline DB Press",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Incline DB Press",
+      "massDeltaKg": -8.4
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Lateral Raises",
+      "setDelta": -1
+    },
+    {
+      "kind": "adjustLoad",
+      "exercise": "Lateral Raises",
+      "massDeltaKg": -3.6
+    },
+    {
+      "kind": "adjustSets",
+      "exercise": "Tricep Pushdown",
+      "setDelta": -1
+    }
+  ]
+}

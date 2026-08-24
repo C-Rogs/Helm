@@ -1,0 +1,57 @@
+{
+  "id": "nutrition_protein_ok",
+  "title": "Post-workout shake log with macros on track",
+  "category": "nutrition",
+  "contextDays": {
+    "readinessBaselines": "RHR: 56 bpm. HRV: 55 ms. Sleep: 7h 30m. Readiness: 88.",
+    "evidence": [],
+    "groupedEvidence": {},
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Rest day. Recovery good. Active energy: 2400 kcal. Protein: 172g. All macros within targets."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Morning weight: 80.2 kg. Upper body session completed. Bench 3x5 @ 85kg PR. OHP 3x5 @ 52kg. Rows 3x8 @ 72kg. Session RPE 7. Nutrition so far: Breakfast (oats, whey, banana): 550 kcal, 45g P. Lunch (chicken rice bowl): 650 kcal, 50g P. Total so far: 1200 kcal, 95g P. Target: 3500 kcal, 180g P. On track."
+      }
+    ],
+    "recentWorkouts": "Bench press 3x5 @ 85kg PR (2026-08-10). OHP 3x5 @ 52kg. Rows 3x8 @ 72kg.",
+    "trainingPlanSnapshot": "Phase: bulk. Weekly rate: +0.3 kg/wk. Split: Upper/Lower 4x. Currently in week 5.",
+    "weekAheadSchedule": "Mon: Upper. Tue: Lower. Wed: Rest. Thu: Upper. Fri: Lower. Sat: Rest. Sun: Rest.",
+    "nutritionDiary": "2026-08-10 (today): Breakfast: oats, whey, banana (550 kcal, 45g P). Lunch: chicken rice bowl (650 kcal, 50g P). Logged so far: 1200 kcal, 95g protein. Target: 3500 kcal, 180g protein. Remaining: 2300 kcal, 85g protein. On track for a balanced bulk day.",
+    "todayPrescription": "",
+    "prescriptionLoadSummary": "",
+    "volumeStateSummary": "",
+    "engineProfile": "Phase: bulk. TDEE: 3200 kcal. Target intake: 3500 kcal. Protein target: 180g (2.2 g/kg). Fat: 80g. Carbs: 400g. Weekly rate: +0.3 kg/wk. Body weight: 80.2 kg.",
+    "moduleSummaries": "",
+    "recentSessionOutcomes": [],
+    "freshness": {
+      "generatedAt": "1995-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "nutritionDiary",
+          "fetchedAt": "1995-08-10T08:00:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "Log my post-workout shake: 2 scoops whey, 400ml milk, banana",
+  "expectedBounds": {
+    "minCaloriesKcal": 300,
+    "maxCaloriesKcal": 700,
+    "minProteinG": 40,
+    "maxProteinG": 70
+  },
+  "expectedCitations": [],
+  "mustNotIncrease": false,
+  "mustSwapExercise": false
+}

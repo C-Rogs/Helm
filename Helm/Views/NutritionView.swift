@@ -124,10 +124,11 @@ struct NutritionView: View {
             }
         }
         .onChange(of: photoMealController.pickerItem) { _, newValue in
+            // Dismiss options first; estimate starts in sheet onDismiss so fullScreenCover
+            // is not cancelled by the options sheet teardown race.
             if newValue != nil {
                 showsPhotoOptions = false
             }
-            Task { await photoMealController.handlePickerItemChange() }
         }
         .modifier(NutritionLoggingSheets(
             photoMealController: photoMealController,
@@ -497,7 +498,9 @@ private struct NutritionLoggingSheets: ViewModifier {
                     .ignoresSafeArea()
                 }
             }
-            .sheet(isPresented: $showsPhotoOptions) {
+            .sheet(isPresented: $showsPhotoOptions, onDismiss: {
+                Task { await photoMealController.handlePickerItemChange() }
+            }) {
                 PhotoLogOptionsSheet(
                     pickerItem: Binding(
                         get: { photoMealController.pickerItem },

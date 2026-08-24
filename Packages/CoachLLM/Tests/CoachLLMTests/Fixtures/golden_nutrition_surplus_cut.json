@@ -1,0 +1,57 @@
+{
+  "id": "nutrition_surplus_cut",
+  "title": "Large surplus meal logged during cut phase",
+  "category": "nutrition",
+  "contextDays": {
+    "readinessBaselines": "RHR: 60 bpm. HRV: 48 ms. Sleep: 6h 45m. Readiness: 72.",
+    "evidence": [],
+    "groupedEvidence": {},
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Lower body session. Squat 3x5 @ 110kg. Deadlift 1x5 @ 140kg. Leg press 3x10 @ 160kg. Session RPE 8. Felt heavy."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Morning weight: 83.1 kg. Active energy yesterday: 3200 kcal. Protein: 145g. Rest day. Cut phase, target 2200 kcal. Already logged 3500 kcal today after a big lunch and snacks. Surplus: +1300 kcal above target."
+      }
+    ],
+    "recentWorkouts": "Squat 3x5 @ 110kg (2026-08-09). Deadlift 1x5 @ 140kg. Leg press 3x10 @ 160kg.",
+    "trainingPlanSnapshot": "Phase: cut. Weekly rate: -0.5 kg/wk. Split: Upper/Lower 4x. Currently in week 3.",
+    "weekAheadSchedule": "Mon: Upper. Tue: Lower. Wed: Rest. Thu: Upper. Fri: Lower. Sat: Rest. Sun: Rest.",
+    "nutritionDiary": "2026-08-10 (today): Breakfast: bacon sandwich, OJ (720 kcal, 30g P). Lunch: burger, fries, milkshake (1450 kcal, 55g P). Snack: donuts, latte (800 kcal, 12g P). Already logged: 3500 kcal, 97g protein. Target: 2200 kcal, 160g protein. Surplus: +1300 kcal. Protein deficit: 63g short.",
+    "todayPrescription": "",
+    "prescriptionLoadSummary": "",
+    "volumeStateSummary": "",
+    "engineProfile": "Phase: cut. TDEE: 2800 kcal. Target intake: 2200 kcal. Protein target: 160g (2.0 g/kg). Fat: 60g. Carbs: 250g. Weekly rate: -0.5 kg/wk. Body weight: 83.1 kg.",
+    "moduleSummaries": "",
+    "recentSessionOutcomes": [],
+    "freshness": {
+      "generatedAt": "1995-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "nutritionDiary",
+          "fetchedAt": "1995-08-10T08:00:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "Log: large pizza, garlic bread, soda",
+  "expectedBounds": {
+    "minCaloriesKcal": 800,
+    "maxCaloriesKcal": 2000,
+    "minProteinG": 20,
+    "maxProteinG": 80
+  },
+  "expectedCitations": [],
+  "mustNotIncrease": false,
+  "mustSwapExercise": false
+}

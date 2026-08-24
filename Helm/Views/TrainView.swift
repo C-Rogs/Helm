@@ -101,7 +101,9 @@ struct TrainView: View {
     private var bottomSessionChrome: some View {
         let showRest = controller.isRestTimerRunning
             && controller.snapshot?.restTimer?.endsAt != nil
-        let showCoach = controller.numpadTarget == nil && !controller.isReorderMode
+        let showCoach = controller.numpadTarget == nil
+            && !controller.isReorderMode
+            && !trainPreferences.cardLoggingModeEnabled
         let showNumpad = controller.numpadTarget != nil
 
         VStack(spacing: 0) {
@@ -460,6 +462,7 @@ struct TrainView: View {
                     tableLoggingContent(snapshot)
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
 
             // Coach apply wave mounts at AppRootView for app-wide AI applies.
         }
@@ -480,44 +483,7 @@ struct TrainView: View {
 
     private func cardLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {
         VStack(spacing: 0) {
-            // Header with mode toggle
-            HStack {
-                TrainSessionHeaderView(
-                    startedAt: snapshot.session.startedAt,
-                    progress: TrainSessionProgress.from(snapshot: snapshot),
-                    watchLinkStatus: WatchCompanionLinkStatus.resolve(
-                        canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                        phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
-                        liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-                    )
-                )
-
-                Spacer()
-
-                Button {
-                    trainPreferences.cardLoggingModeEnabled = false
-                } label: {
-                    Image(systemName: "tablecells")
-                        .font(.body)
-                        .foregroundStyle(HelmColor.fgSecondary)
-                        .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
-                        .contentShape(Rectangle())
-                }
-                .buttonStyle(.helmPressable)
-                .accessibilityLabel("Switch to table view")
-            }
-            .padding(.horizontal, HelmSpacing.md)
-
-            if let banner = controller.adjustmentBanner {
-                AdjustmentBanner(
-                    fromLabel: banner.fromLabel,
-                    toLabel: banner.toLabel,
-                    reason: banner.reason
-                ) {
-                    Task { await controller.undoLastAdjustment() }
-                }
-                .padding(.horizontal, HelmSpacing.md)
-            }
+            cardModeHeader(snapshot)
 
             if snapshot.session.exercises.isEmpty {
                 VStack {
@@ -534,13 +500,118 @@ struct TrainView: View {
                 }
             } else {
                 FocusCardLoggingView(
-                    controller: controller,
-                    isShowingSessionLog: $isShowingSessionLog
+                    controller: controller
                 )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .padding(.bottom, cardModeBottomInset)
+    }
+
+    private func cardModeHeader(_ snapshot: ActiveSessionSnapshot) -> some View {
+        VStack(spacing: HelmSpacing.xs) {
+            HStack(spacing: HelmSpacing.sm) {
+                TrainSessionHeaderView(
+                    startedAt: snapshot.session.startedAt,
+                    progress: TrainSessionProgress.from(snapshot: snapshot),
+                    watchLinkStatus: WatchCompanionLinkStatus.resolve(
+                        canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+                        phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
+                        liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                    )
+                )
+
+                Spacer(minLength: 0)
+
+                cardModeToolbar
             }
 
-            Spacer(minLength: bottomContentInset)
+            if let banner = controller.adjustmentBanner {
+                AdjustmentBanner(
+                    fromLabel: banner.fromLabel,
+                    toLabel: banner.toLabel,
+                    reason: banner.reason
+                ) {
+                    Task { await controller.undoLastAdjustment() }
+                }
+            }
         }
+        .padding(.horizontal, HelmSpacing.md)
+    }
+
+    private var cardModeToolbar: some View {
+        HStack(spacing: 0) {
+            Button {
+                isShowingSessionLog = true
+            } label: {
+                Image(systemName: "checklist")
+                    .font(.body)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Session log")
+
+            Button {
+                controller.isShowingCoachPrompt = true
+            } label: {
+                Group {
+                    if controller.isCoachThinking {
+                        ProgressView()
+                            .controlSize(.small)
+                    } else {
+                        Image(systemName: "bubble.left")
+                            .font(.body)
+                            .foregroundStyle(HelmColor.accent)
+                    }
+                }
+                .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel(controller.isCoachThinking ? "Coach thinking" : "Ask coach")
+
+            Menu {
+                Button("Discard workout", role: .destructive) {
+                    controller.isShowingDiscardConfirmation = true
+                }
+                .disabled(controller.isFinishingWorkout)
+
+                Button("Finish workout") {
+                    controller.isShowingFinishConfirmation = true
+                }
+                .disabled(controller.isFinishingWorkout)
+            } label: {
+                Image(systemName: "ellipsis.circle")
+                    .font(.body)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .accessibilityLabel("Workout actions")
+
+            Button {
+                trainPreferences.cardLoggingModeEnabled = false
+            } label: {
+                Image(systemName: "tablecells")
+                    .font(.body)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Switch to table view")
+        }
+    }
+
+    /// Card mode is a fixed viewport: only pad for the floating bottom chrome, not scroll inset.
+    private var cardModeBottomInset: CGFloat {
+        if measuredChromeHeight > 0 {
+            return measuredChromeHeight
+        }
+        return HelmSpacing.lg * 2
     }
 
     private func tableLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {

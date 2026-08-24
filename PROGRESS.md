@@ -90,8 +90,8 @@ Run by Cameron, not build agents. See "Device Test Gates" in PLAN.md for the ful
 | DT5 (after M11.1): nutrition, analytics, full regression | done | 2026-07-28 | Photo meals, HK dedup, trends, export regression, F-DT5.1–5.11 verified on device. |
 | DT6 (after M12.5 and M0.8): the polish gate | done | 2026-07-28 | Haptics, skins, states, DeviationBand, volume board verified; F-DT6.1–6.3 landed. |
 | DT7 (after M14.9): native food logging (MFP deleted 7 days) | done | 2026-07-30 | 7-day Helm-only food soak complete; native logging verified. F-DT7.4–7.9 landed during soak. |
-| DT9 (after F-DT9.14): post-DT7 improvement wave | not started | | | Hevy numpad, rest/LA/Watch, coach confirm, nutrition, charts. See PLAN.md DT9 gate. |
-| DT10 (after F-DT10.#): Watch companion reliability | not started | | | Cold wake, wrist Done, best-available training load. See PLAN.md DT10 gate. |
+| DT9 (after F-DT9.14): post-DT7 improvement wave | done | 2026-08-24 | F-DT9.1–9.27 landed; Hevy numpad, rest/LA/Watch, coach confirm, nutrition, charts verified. |
+| DT10 (after F-DT10.#): Watch companion reliability | done | 2026-08-24 | F-DT10.1–10.3 landed; cold wake, wrist Done, best-available training load verified. |
 
 ## Fix sections
 

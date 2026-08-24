@@ -10,6 +10,7 @@ struct FocusExerciseCard: View {
     let displayName: String
     let coachingCue: String?
     let imageURL: URL?
+    let imageMaxHeight: CGFloat
     let currentSetIndex: Int
     let previous: PreviousPerformance?
     let activeField: NumpadTarget?
@@ -39,12 +40,6 @@ struct FocusExerciseCard: View {
 
     private var setNumber: Int {
         currentSetIndex + 1
-    }
-
-    private var setTypeLabel: String {
-        currentSet?.setType.loggerAbbreviation
-            ?? currentSet?.setType.rawValue.replacingOccurrences(of: "_", with: " ")
-            ?? "Working"
     }
 
     var body: some View {
@@ -79,33 +74,30 @@ struct FocusExerciseCard: View {
                     url: imageURL,
                     fallbackLabel: displayName
                 )
-                .frame(height: imageHeight)
+                .frame(maxHeight: imageMaxHeight)
+                .aspectRatio(contentMode: .fit)
                 .clipped()
             }
-            // No image: show nothing here; exercise name lives in setInfoRow instead
         }
-    }
-
-    private var imageHeight: CGFloat {
-        UIScreen.main.bounds.height * 0.26
     }
 
     // MARK: - Details
 
     private var detailsSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            // Only show name here when there's no image (image has its own fallback label)
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             if imageURL == nil {
                 Text(displayName)
                     .helmType(.title)
-                    .lineLimit(2)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             setInfoRow
             cueAndPrevious
             fieldRow
             logSetButton
         }
-        .padding(HelmSpacing.md)
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.vertical, HelmSpacing.sm)
     }
 
     // MARK: - Set info row
@@ -117,38 +109,41 @@ struct FocusExerciseCard: View {
                 .lineLimit(1)
                 .minimumScaleFactor(0.9)
 
-            if let setType = currentSet?.setType, setType != .normal {
-                Text("·")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-
-                Button(action: onCycleSetType) {
-                    Text(setTypeLabel)
-                        .helmType(.monoTag, color: setTypeColor)
-                        .padding(.horizontal, HelmSpacing.xs)
-                        .padding(.vertical, 2)
-                        .background(setTypeColor.opacity(0.12), in: Capsule())
-                }
-                .buttonStyle(.helmPressable)
-            }
-
             Spacer()
+
+            Button(action: onCycleSetType) {
+                Text(setTypeGlyph)
+                    .helmType(.monoTag, color: isNormalSet ? HelmColor.fgMuted : setTypeColor)
+                    .frame(minWidth: 24)
+                    .padding(.horizontal, HelmSpacing.xs)
+                    .padding(.vertical, 2)
+                    .background(
+                        (isNormalSet ? HelmColor.fgMuted : setTypeColor).opacity(0.12),
+                        in: Capsule()
+                    )
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Set type \(setTypeGlyph). Tap to change.")
 
             if isCompleted {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(HelmColor.accent)
                     .font(.title3)
                     .accessibilityLabel("Set completed")
-            } else {
-                // Tap anywhere on the row to cycle set type when it's a normal working set
-                Button(action: onCycleSetType) {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.body)
-                        .foregroundStyle(HelmColor.fgMuted)
-                }
-                .buttonStyle(.helmPressable)
-                .accessibilityLabel("Change set type")
             }
         }
+    }
+
+    private var isNormalSet: Bool {
+        currentSet?.setType == .normal || currentSet?.setType == nil
+    }
+
+    private var setTypeGlyph: String {
+        guard let type = currentSet?.setType else { return "W" }
+        if let abbreviation = type.loggerAbbreviation {
+            return abbreviation
+        }
+        return "W"
     }
 
     private var setTypeColor: Color {
@@ -166,9 +161,9 @@ struct FocusExerciseCard: View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             if let coachingCue, !coachingCue.isEmpty {
                 Text(coachingCue)
-                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
-                    .lineLimit(3)
             }
 
             if let previous {
@@ -220,7 +215,7 @@ struct FocusExerciseCard: View {
                 fieldValueText(kind, unit: unit)
             }
             .frame(maxWidth: .infinity)
-            .padding(.vertical, HelmSpacing.sm)
+            .padding(.vertical, HelmSpacing.xs)
             .background(
                 RoundedRectangle(cornerRadius: HelmRadius.sm)
                     .fill(fieldBackground(kind))
@@ -301,44 +296,47 @@ struct FocusExerciseCard: View {
         currentSet.flatMap { fieldDisplayText($0, kind) } ?? "empty"
     }
 
-    // MARK: - Log Set button
+    // MARK: - Done / Undo button
 
+    @ViewBuilder
     private var logSetButton: some View {
-        Button(action: onCompleteSet) {
-            ZStack {
-                if let encouragementGlyph {
-                    EncouragementGlyphView(glyph: encouragementGlyph)
-                        .offset(x: -8, y: -12)
-                        .allowsHitTesting(false)
-                }
+        if isCompleted {
+            Button(action: onCompleteSet) {
+                Text("Undo")
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .underline()
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Undo set")
+            .accessibilityHint("Marks this set as not completed")
+        } else {
+            Button(action: onCompleteSet) {
+                ZStack {
+                    if let encouragementGlyph {
+                        EncouragementGlyphView(glyph: encouragementGlyph)
+                            .offset(x: -8, y: -12)
+                            .allowsHitTesting(false)
+                    }
 
-                Text(isCompleted ? "UNDO SET" : "LOG SET")
-                    .helmFont(.label)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, HelmSpacing.md)
-                    .background(
-                        isCompleted
-                            ? HelmColor.surfaceElevated
-                            : HelmColor.buttonPrimaryBackground,
-                        in: RoundedRectangle(cornerRadius: HelmRadius.md)
-                    )
-                    .foregroundStyle(
-                        isCompleted
-                            ? HelmColor.fgSecondary
-                            : HelmColor.buttonPrimaryForeground
-                    )
-                    .overlay {
-                        if !isCompleted {
+                    Text("DONE")
+                        .helmFont(.label)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, HelmSpacing.sm)
+                        .background(
+                            HelmColor.buttonPrimaryBackground,
+                            in: RoundedRectangle(cornerRadius: HelmRadius.md)
+                        )
+                        .foregroundStyle(HelmColor.buttonPrimaryForeground)
+                        .overlay {
                             RoundedRectangle(cornerRadius: HelmRadius.md)
                                 .strokeBorder(HelmColor.accent.opacity(0.3), lineWidth: 1)
                         }
-                    }
+                }
             }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Done")
+            .accessibilityHint("Records this set as completed")
         }
-        .buttonStyle(.helmPressable)
-        .accessibilityLabel(isCompleted ? "Undo set" : "Log set")
-        .accessibilityHint(isCompleted ? "Marks this set as not completed" : "Records this set as completed")
-        .padding(.top, HelmSpacing.xs)
     }
 
     // MARK: - Helpers
@@ -366,6 +364,7 @@ struct FocusExerciseCard: View {
         displayName: "Bench Press (Barbell)",
         coachingCue: "Drive through your heels and keep your chest proud.",
         imageURL: nil,
+        imageMaxHeight: 130,
         currentSetIndex: 2,
         previous: PreviousPerformance(
             exerciseID: "bench",

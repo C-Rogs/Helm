@@ -194,8 +194,8 @@ final class TrainingHistoryTransferController {
         (try? persistence.exercises.fetchSummary(id: exerciseID))?.displayName ?? exerciseID
     }
 
-    func fetchRecentExercises() throws -> [ExerciseSummary] {
-        try persistence.exercises.listRecentlyUsed()
+    func fetchRecentExercises(limit: Int = 12) throws -> [ExerciseSummary] {
+        try persistence.exercises.listRecentlyUsed(limit: limit)
     }
 
     func fetchPickerExercises(search: String, muscleGroup: String? = nil) throws -> [ExerciseSummary] {

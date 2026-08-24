@@ -1,0 +1,13 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "You're primed for a bump today. Readiness is 88, you crushed last bench at RPE 6.5 when it was prescribed at RPE 8, and sleep and nutrition are both in surplus. I'm increasing your bench press to 82.5 kg — that's a conservative 2.5 kg bump. The rest of the session stays as prescribed. Let's see how that feels.",
+  "rationale": "Readiness 88 (high), HRV above baseline, resting HR low at 50 bpm. Last bench session was completed at RPE 6.5 — well below the prescribed RPE 8, indicating the load was too light. Progressive overload phase, week 3 of 4. Engine load summary says 'ready for bump if RPE < 7.5'. Nutrition in surplus supports recovery. Conservative 2.5 kg increase aligns with Schoenfeld progressive overload guidelines.",
+  "operations": [
+    {
+      "kind": "adjustLoad",
+      "exerciseID": "bench_press",
+      "massDeltaKg": 2.5,
+      "loadAdjustmentIntent": "coachSuggested"
+    }
+  ]
+}

@@ -6,6 +6,8 @@ import Foundation
 public struct CloudBackupService: Sendable {
     public static let bodyProfileMetadataKey = "body_profile"
     public static let defaultLookbackDays = TrainingHistoryExportService.defaultLookbackDays
+    /// Wait for large history files to download from iCloud on fresh installs.
+    public static let iCloudDownloadTimeout: TimeInterval = 45
 
     private let store: PersistenceStore
     private let fileStore: any CloudBackupFileStore
@@ -68,7 +70,7 @@ public struct CloudBackupService: Sendable {
     public func decodeProfile(_ data: Data) throws -> HelmCloudProfileBackup {
         do {
             let backup = try fileDecoder.decode(HelmCloudProfileBackup.self, from: data)
-            guard backup.schemaVersion == HelmCloudProfileBackup.currentSchemaVersion else {
+            guard backup.schemaVersion <= HelmCloudProfileBackup.currentSchemaVersion else {
                 throw CloudBackupError.unsupportedProfileSchemaVersion(backup.schemaVersion)
             }
             return backup
@@ -130,9 +132,9 @@ public struct CloudBackupService: Sendable {
             )
             historyByteCount = historyData.count
             historySessionCount = history.sessions.count
-        } else {
-            try fileStore.remove(fileName: UbiquityCloudBackupFileStore.historyFileName)
         }
+        // When toggled off, keep the stale file -- do not delete.
+        // Deletion is irreversible and silent. User can delete manually via Files if needed.
 
         var nutritionResult: CloudBackupNutritionPushResult?
         if includeNutrition {
@@ -148,9 +150,8 @@ public struct CloudBackupService: Sendable {
                 templateCount: nutrition.mealTemplates.count,
                 mealCount: nutrition.recentMeals.count
             )
-        } else {
-            try fileStore.remove(fileName: UbiquityCloudBackupFileStore.nutritionFileName)
         }
+        // When toggled off, keep the stale file -- do not delete.
 
         return CloudBackupPushResult(
             profileUpdatedAt: profile.updatedAt,
@@ -168,12 +169,14 @@ public struct CloudBackupService: Sendable {
         includeNutrition: Bool,
         lastAppliedProfileUpdatedAt: Date?,
         forceIfFreshInstall: Bool,
-        applyOnboardingCompleted: (Bool) -> Void
+        applyOnboardingCompleted: (Bool) -> Void,
+        downloadTimeout: TimeInterval = iCloudDownloadTimeout
     ) throws -> CloudBackupPullResult {
         guard fileStore.isAvailable else { throw CloudBackupError.iCloudUnavailable }
 
         guard let profileData = try fileStore.read(
-            fileName: UbiquityCloudBackupFileStore.profileFileName
+            fileName: UbiquityCloudBackupFileStore.profileFileName,
+            downloadTimeout: downloadTimeout
         ) else {
             throw CloudBackupError.missingProfileBackup
         }
@@ -191,19 +194,16 @@ public struct CloudBackupService: Sendable {
             try applyProfile(cloudProfile, applyOnboardingCompleted: applyOnboardingCompleted)
         }
 
-        var historyImport: TrainingHistoryImportResult?
-        if includeHistory,
-           let historyData = try fileStore.read(
-               fileName: UbiquityCloudBackupFileStore.historyFileName
-           ) {
-            let export = try historyService.decode(historyData)
-            historyImport = try historyService.importHistory(export)
-        }
+        let historyResult = try importHistoryIfRequested(
+            includeHistory: includeHistory,
+            downloadTimeout: downloadTimeout
+        )
 
         var nutritionImport: CloudBackupNutritionPullResult?
         if includeNutrition,
            let nutritionData = try fileStore.read(
-               fileName: UbiquityCloudBackupFileStore.nutritionFileName
+               fileName: UbiquityCloudBackupFileStore.nutritionFileName,
+               downloadTimeout: downloadTimeout
            ) {
             let backup = try decodeNutrition(nutritionData)
             nutritionImport = try applyNutrition(backup)
@@ -212,7 +212,9 @@ public struct CloudBackupService: Sendable {
         return CloudBackupPullResult(
             didRestoreProfile: shouldRestoreProfile,
             profileUpdatedAt: cloudProfile.updatedAt,
-            historyImport: historyImport,
+            historyRequested: historyResult.requested,
+            historyFileFound: historyResult.fileFound,
+            historyImport: historyResult.importResult,
             nutritionImport: nutritionImport
         )
     }
@@ -221,31 +223,30 @@ public struct CloudBackupService: Sendable {
     public func pullForced(
         includeHistory: Bool,
         includeNutrition: Bool,
-        applyOnboardingCompleted: (Bool) -> Void
+        applyOnboardingCompleted: (Bool) -> Void,
+        downloadTimeout: TimeInterval = iCloudDownloadTimeout
     ) throws -> CloudBackupPullResult {
         guard fileStore.isAvailable else { throw CloudBackupError.iCloudUnavailable }
 
         guard let profileData = try fileStore.read(
-            fileName: UbiquityCloudBackupFileStore.profileFileName
+            fileName: UbiquityCloudBackupFileStore.profileFileName,
+            downloadTimeout: downloadTimeout
         ) else {
             throw CloudBackupError.missingProfileBackup
         }
         let cloudProfile = try decodeProfile(profileData)
         try applyProfile(cloudProfile, applyOnboardingCompleted: applyOnboardingCompleted)
 
-        var historyImport: TrainingHistoryImportResult?
-        if includeHistory,
-           let historyData = try fileStore.read(
-               fileName: UbiquityCloudBackupFileStore.historyFileName
-           ) {
-            let export = try historyService.decode(historyData)
-            historyImport = try historyService.importHistory(export)
-        }
+        let historyResult = try importHistoryIfRequested(
+            includeHistory: includeHistory,
+            downloadTimeout: downloadTimeout
+        )
 
         var nutritionImport: CloudBackupNutritionPullResult?
         if includeNutrition,
            let nutritionData = try fileStore.read(
-               fileName: UbiquityCloudBackupFileStore.nutritionFileName
+               fileName: UbiquityCloudBackupFileStore.nutritionFileName,
+               downloadTimeout: downloadTimeout
            ) {
             let backup = try decodeNutrition(nutritionData)
             nutritionImport = try applyNutrition(backup)
@@ -254,8 +255,27 @@ public struct CloudBackupService: Sendable {
         return CloudBackupPullResult(
             didRestoreProfile: true,
             profileUpdatedAt: cloudProfile.updatedAt,
-            historyImport: historyImport,
+            historyRequested: historyResult.requested,
+            historyFileFound: historyResult.fileFound,
+            historyImport: historyResult.importResult,
             nutritionImport: nutritionImport
+        )
+    }
+
+    public func peekCloudHistorySummary(
+        downloadTimeout: TimeInterval = iCloudDownloadTimeout
+    ) throws -> CloudBackupCloudHistorySummary? {
+        guard fileStore.isAvailable else { return nil }
+        guard let historyData = try fileStore.read(
+            fileName: UbiquityCloudBackupFileStore.historyFileName,
+            downloadTimeout: downloadTimeout
+        ) else {
+            return nil
+        }
+        let export = try historyService.decode(historyData)
+        return CloudBackupCloudHistorySummary(
+            sessionCount: export.sessions.count,
+            byteCount: historyData.count
         )
     }
 
@@ -270,6 +290,30 @@ public struct CloudBackupService: Sendable {
     }
 
     // MARK: - Private
+
+    private struct HistoryImportAttempt: Sendable {
+        let requested: Bool
+        let fileFound: Bool
+        let importResult: TrainingHistoryImportResult?
+    }
+
+    private func importHistoryIfRequested(
+        includeHistory: Bool,
+        downloadTimeout: TimeInterval
+    ) throws -> HistoryImportAttempt {
+        guard includeHistory else {
+            return HistoryImportAttempt(requested: false, fileFound: false, importResult: nil)
+        }
+        guard let historyData = try fileStore.read(
+            fileName: UbiquityCloudBackupFileStore.historyFileName,
+            downloadTimeout: downloadTimeout
+        ) else {
+            return HistoryImportAttempt(requested: true, fileFound: false, importResult: nil)
+        }
+        let export = try historyService.decode(historyData)
+        let importResult = try historyService.importHistory(export)
+        return HistoryImportAttempt(requested: true, fileFound: true, importResult: importResult)
+    }
 
     private func loadBodyProfile() throws -> BodyProfile? {
         guard let json = try store.appMetadata.value(forKey: Self.bodyProfileMetadataKey) else {
@@ -307,10 +351,7 @@ public struct CloudBackupService: Sendable {
     private func isFreshInstall() throws -> Bool {
         let since = Date().addingTimeInterval(-Double(Self.defaultLookbackDays) * 86_400)
         let sessions = try store.workoutSessions.fetchCompletedSessions(since: since)
-        if !sessions.isEmpty { return false }
-        let memory = try store.memoryProfile.load()
-        if memory != .empty { return false }
-        return true
+        return sessions.isEmpty
     }
 
     // MARK: - Nutrition backup
@@ -352,7 +393,7 @@ public struct CloudBackupService: Sendable {
     func decodeNutrition(_ data: Data) throws -> HelmCloudNutritionBackup {
         do {
             let backup = try fileDecoder.decode(HelmCloudNutritionBackup.self, from: data)
-            guard backup.schemaVersion == HelmCloudNutritionBackup.currentSchemaVersion else {
+            guard backup.schemaVersion <= HelmCloudNutritionBackup.currentSchemaVersion else {
                 throw CloudBackupError.unsupportedNutritionSchemaVersion(backup.schemaVersion)
             }
             return backup

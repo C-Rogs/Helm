@@ -1,0 +1,57 @@
+{
+  "id": "nutrition_deficit",
+  "title": "Dinner log with protein deficit in cut phase",
+  "category": "nutrition",
+  "contextDays": {
+    "readinessBaselines": "RHR: 58 bpm. HRV: 52 ms. Sleep: 7h 12m. Readiness: 85.",
+    "evidence": [],
+    "groupedEvidence": {},
+    "recent": [
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 9
+        },
+        "text": "Upper body session. Bench press 3x5 @ 80kg. OHP 3x5 @ 50kg. Rows 3x8 @ 70kg. Session RPE 7. Feels strong."
+      },
+      {
+        "helmDay": {
+          "year": 2026,
+          "month": 8,
+          "day": 10
+        },
+        "text": "Morning weight: 82.4 kg. Rest day. Active energy 2800 kcal yesterday. Protein intake yesterday: 80g (target 160g). Currently in cut phase."
+      }
+    ],
+    "recentWorkouts": "Bench press 3x5 @ 80kg (2026-08-08). OHP 3x5 @ 50kg. Rows 3x8 @ 70kg.",
+    "trainingPlanSnapshot": "Phase: cut. Weekly rate: -0.5 kg/wk. Split: Upper/Lower 4x.",
+    "weekAheadSchedule": "Mon: Upper. Tue: Lower. Wed: Rest. Thu: Upper. Fri: Lower. Sat: Rest. Sun: Rest.",
+    "nutritionDiary": "2026-08-10 (today): Breakfast: 3 eggs, toast (420 kcal, 25g P). Lunch: chicken salad wrap (480 kcal, 35g P). Snack: apple, almonds (200 kcal, 5g P). Dinner: pending. Logged so far: 1100 kcal, 65g protein. Target: 2100 kcal, 160g protein. Deficit: 1000 kcal remaining, 95g protein remaining.",
+    "todayPrescription": "",
+    "prescriptionLoadSummary": "",
+    "volumeStateSummary": "",
+    "engineProfile": "Phase: cut. TDEE: 2800 kcal. Target intake: 2100 kcal. Protein target: 160g (2.0 g/kg). Fat: 60g. Carbs: 230g. Weekly rate: -0.5 kg/wk. Body weight: 82.4 kg.",
+    "moduleSummaries": "",
+    "recentSessionOutcomes": [],
+    "freshness": {
+      "generatedAt": "1995-08-10T08:00:00Z",
+      "blocks": [
+        {
+          "key": "nutritionDiary",
+          "fetchedAt": "1995-08-10T08:00:00Z"
+        }
+      ]
+    }
+  },
+  "userPrompt": "Log my dinner: 200g chicken breast, 300g rice, broccoli",
+  "expectedBounds": {
+    "minCaloriesKcal": 400,
+    "maxCaloriesKcal": 900,
+    "minProteinG": 35,
+    "maxProteinG": 80
+  },
+  "expectedCitations": [],
+  "mustNotIncrease": false,
+  "mustSwapExercise": false
+}

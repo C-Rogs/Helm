@@ -1,8 +1,8 @@
 {
-  "seedVersion": 5,
+  "seedVersion": 6,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
-  "pickerCuration": "explicit",
+  "pickerCuration": "algorithmic",
   "exercises": [
     {
       "id": "seed-horizontal-leg-press",

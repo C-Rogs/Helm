@@ -1,0 +1,92 @@
+{
+  "id": "happyPath_maintenance",
+  "title": "Maintenance Phase — Hold Weights",
+  "category": "happyPath",
+  "contextDays": {
+    "readinessBaselines": "Readiness: 65. HRV baseline 58ms (low-normal). Resting HR 56 bpm. Sleep 6h 50m. Recovery score: moderate-low.",
+    "evidence": [
+      {
+        "id": "ev_maintenance_phase",
+        "title": "Maintenance Phase Guidelines",
+        "summary": "During maintenance phases, hold current loads and focus on technique and volume consistency rather than progression.",
+        "citation": "Helms et al. 2019",
+        "placeholder": false
+      }
+    ],
+    "groupedEvidence": {
+      "Periodization": [
+        {
+          "id": "ev_maintenance_phase",
+          "title": "Maintenance Phase Guidelines",
+          "summary": "During maintenance phases, hold current loads and focus on technique and volume consistency.",
+          "citation": "Helms et al. 2019",
+          "placeholder": false
+        }
+      ]
+    },
+    "recent": [
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 9 },
+        "text": "Upper body session. Bench 3x5 @ 80kg (RPE 8). Last rep grinder. Moderate fatigue."
+      },
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 8 },
+        "text": "Lower body session. Squat 3x5 @ 100kg (RPE 8.5). Deadlift 1x5 @ 130kg (RPE 9)."
+      },
+      {
+        "helmDay": { "year": 2026, "month": 8, "day": 7 },
+        "text": "Rest day. 7h sleep. Mild DOMS."
+      }
+    ],
+    "recentWorkouts": "Aug 9: Upper — Bench 3x5@80kg (RPE 8), Pull-ups 3x8, OHP 3x8@45kg | Aug 8: Lower — Squat 3x5@100kg (RPE 8.5), Deadlift 1x5@130kg (RPE 9)",
+    "trainingPlanSnapshot": "Phase: Maintenance (week 2 of 2). Emphasis: technique, volume consistency. Hold all loads. No increases.",
+    "weekAheadSchedule": "Mon Aug 10: Upper push. Tue Aug 11: Rest. Wed Aug 12: Lower. Thu Aug 13: Rest. Fri Aug 14: Upper pull. Sat Aug 15: Rest. Sun Aug 16: Rest.",
+    "nutritionDiary": "Today: Breakfast 480kcal (35g P), Lunch 650kcal (45g P), Dinner 780kcal (55g P), Snacks 220kcal (10g P). Total ~2130kcal, 145g P. Target: 2500kcal, 170g P. Slightly under.",
+    "todayPrescription": "Upper push: Bench Press 3x5 @ 80kg, OHP 3x8 @ 45kg, Tricep Pushdown 3x12 @ 25kg, Lateral Raise 3x15 @ 10kg",
+    "prescriptionLoadSummary": "Bench: hold at 80kg. OHP: hold at 45kg. Maintenance — no increases.",
+    "volumeStateSummary": "Chest: moderate volume (12 sets/wk). Shoulders: moderate (14 sets/wk). Fatigue accumulation: mild.",
+    "engineProfile": "Goals: maintenance. Constraints: none. Active joints: all clear. Phase: maintenance, hold all loads.",
+    "moduleSummaries": "Periodization — Maintenance phase guidelines, RPE-based load management.",
+    "recentSessionOutcomes": [
+      {
+        "helmDay": "2026-08-09",
+        "sessionType": "Upper Push",
+        "id": "D4E5F6A7-B8C9-0123-DEF0-123456789012",
+        "durationMinutes": 55,
+        "estimatedTRIMP": 52,
+        "completed": true,
+        "exercises": [
+          {
+            "name": "Bench Press",
+            "prescribedSets": 3,
+            "completedSets": 3,
+            "prescribedKg": 80,
+            "actualKg": 80,
+            "prescribedRPE": 8,
+            "actualRPE": 8,
+            "deviations": ["matched"]
+          }
+        ],
+        "prescribedBy": "engine",
+        "sessionRPE": 7.5,
+        "atypicalFlags": []
+      }
+    ],
+    "freshness": {
+      "generatedAt": "2026-08-10T08:00:00Z",
+      "blocks": [
+        { "key": "readinessBaselines", "fetchedAt": "2026-08-10T07:55:00Z" },
+        { "key": "todayPrescription", "fetchedAt": "2026-08-10T07:58:00Z" },
+        { "key": "recentWorkouts", "fetchedAt": "2026-08-10T07:56:00Z" }
+      ]
+    }
+  },
+  "userPrompt": "Adjust my session",
+  "expectedBounds": {
+    "mustContainKind": [],
+    "mustNotContainKind": ["adjustLoad"]
+  },
+  "expectedCitations": [],
+  "mustNotIncrease": false,
+  "mustSwapExercise": false
+}

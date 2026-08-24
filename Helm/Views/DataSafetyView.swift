@@ -66,10 +66,7 @@ struct DataSafetyView: View {
     }
 
     private func historySizeLabel(_ estimate: CloudBackupSizeEstimate) -> String {
-        if cloudPreferences.historySyncEnabled {
-            return "\(estimate.historyByteCountFormatted) · \(estimate.historySessionCount) sessions"
-        }
-        return "\(estimate.historyByteCountFormatted) if enabled · \(estimate.historySessionCount) sessions"
+        "\(estimate.historyByteCountFormatted) · \(estimate.historySessionCount) sessions on this device"
     }
 
     private func nutritionSizeLabel(_ estimate: CloudBackupSizeEstimate) -> String {
@@ -157,8 +154,13 @@ struct DataSafetyView: View {
                     )
                     .helmListRowChrome()
                     HelmStatusRow(
-                        label: "History size",
+                        label: "History on device",
                         value: historySizeLabel(estimate)
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "History in iCloud",
+                        value: cloudCoordinator.cloudHistoryStatusMessage ?? "Checking…"
                     )
                     .helmListRowChrome()
                     HelmStatusRow(
@@ -199,6 +201,16 @@ struct DataSafetyView: View {
                 .disabled(cloudCoordinator.isBusy || !cloudPreferences.profileSyncEnabled)
                 .helmListRowChrome()
 
+                if cloudCoordinator.isBusy {
+                    HStack {
+                        ProgressView()
+                            .padding(.trailing, 8)
+                        Text("Working...")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                    }
+                    .helmListRowChrome()
+                }
+
                 Button("Restore from iCloud") {
                     Task {
                         let ok = await cloudCoordinator.restoreForced()
@@ -222,7 +234,7 @@ struct DataSafetyView: View {
             } header: {
                 Text("iCloud sync")
             } footer: {
-                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. Optional 30-day food log includes recents, meal templates, and recent meals. HealthKit re-backfills health rows on reinstall.")
+                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. History on device includes HealthKit cardio; iCloud history is Helm-logged workouts only. Optional 30-day food log includes recents, meal templates, and recent meals. HealthKit re-backfills health rows on reinstall.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         }
@@ -230,6 +242,7 @@ struct DataSafetyView: View {
         .navigationTitle("Data & Backup")
         .task {
             cloudCoordinator.refreshEstimate()
+            await cloudCoordinator.refreshCloudStatus()
         }
         .onChange(of: cloudPreferences.profileSyncEnabled) { _, enabled in
             cloudCoordinator.refreshEstimate()

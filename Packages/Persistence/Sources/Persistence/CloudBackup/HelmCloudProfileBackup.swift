@@ -154,20 +154,40 @@ public struct CloudBackupPushResult: Sendable, Hashable {
     }
 }
 
+public struct CloudBackupCloudHistorySummary: Sendable, Hashable {
+    public let sessionCount: Int
+    public let byteCount: Int
+
+    public var byteCountFormatted: String {
+        ByteCountFormatter.string(fromByteCount: Int64(byteCount), countStyle: .file)
+    }
+
+    public init(sessionCount: Int, byteCount: Int) {
+        self.sessionCount = sessionCount
+        self.byteCount = byteCount
+    }
+}
+
 public struct CloudBackupPullResult: Sendable, Hashable {
     public let didRestoreProfile: Bool
     public let profileUpdatedAt: Date?
+    public let historyRequested: Bool
+    public let historyFileFound: Bool
     public let historyImport: TrainingHistoryImportResult?
     public let nutritionImport: CloudBackupNutritionPullResult?
 
     public init(
         didRestoreProfile: Bool,
         profileUpdatedAt: Date?,
+        historyRequested: Bool = false,
+        historyFileFound: Bool = false,
         historyImport: TrainingHistoryImportResult?,
         nutritionImport: CloudBackupNutritionPullResult? = nil
     ) {
         self.didRestoreProfile = didRestoreProfile
         self.profileUpdatedAt = profileUpdatedAt
+        self.historyRequested = historyRequested
+        self.historyFileFound = historyFileFound
         self.historyImport = historyImport
         self.nutritionImport = nutritionImport
     }
@@ -184,6 +204,7 @@ public enum CloudBackupError: Error, Sendable, Equatable {
     case missingProfileBackup
     case writeFailed(String)
     case readFailed(String)
+    case downloadTimedOut(String)
 }
 
 extension CloudBackupError: LocalizedError {
@@ -209,6 +230,8 @@ extension CloudBackupError: LocalizedError {
             return "Failed to write iCloud backup: \(message)"
         case let .readFailed(message):
             return "Failed to read iCloud backup: \(message)"
+        case let .downloadTimedOut(fileName):
+            return "Timed out waiting for \(fileName) to download from iCloud. Stay on Wi‑Fi and try Restore again."
         }
     }
 }

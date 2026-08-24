@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "session_adjustment.v2",
+  "reply": "Your knee is flagged as an active constraint, so I'm swapping the squat and lunges for knee-friendly alternatives. Barbell squat becomes a wide-stance leg press for a more stable knee path, and walking lunges become hip thrusts to hit glutes and hams without knee shear. RDL stays — it's hip-dominant and knee-safe. Volume stays the same across the board.",
+  "rationale": "Active joint constraint [knee]. Barbell Squat and Walking Lunges are knee-dominant exercises with deep flexion; swapped to wide-stance Leg Press (controlled knee path) and Hip Thrust (hip-dominant, zero knee shear). RDL is hip-hinge dominant and safe. Leg Press already in prescription — swapped to wide stance variant.",
+  "operations": [
+    {
+      "kind": "swap",
+      "fromExerciseID": "barbell_squat",
+      "toExerciseID": "leg_press_wide"
+    },
+    {
+      "kind": "swap",
+      "fromExerciseID": "walking_lunge",
+      "toExerciseID": "hip_thrust"
+    }
+  ]
+}

@@ -74,8 +74,7 @@ struct HevyCSVImportPreviewView: View {
             .sheet(isPresented: mappingSheetPresented) {
                 if let title = mappingExerciseTitle {
                     ExercisePickerView(
-                        fetchRecent: { try controller.fetchRecentExercises() },
-                        fetchMuscleGroups: { try controller.fetchMuscleGroups() },
+                        fetchRecent: { try controller.fetchRecentExercises(limit: 500) },
                         fetchExercises: controller.fetchPickerExercises(search:muscleGroup:),
                         onSelect: { exerciseID in
                             controller.mapHevyExercise(importedTitle: title, to: exerciseID)

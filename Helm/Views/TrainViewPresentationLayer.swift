@@ -24,8 +24,7 @@ extension View {
       set: { controller.isShowingExercisePicker = $0 }
     )) {
       ExercisePickerView(
-        fetchRecent: { try controller.fetchRecentExercises() },
-        fetchMuscleGroups: { try controller.fetchMuscleGroups() },
+        fetchRecent: { try controller.fetchRecentExercises(limit: 500) },
         fetchExercises: controller.fetchPickerExercises(search:muscleGroup:),
         onSelect: { exerciseID in
           Task { await controller.addExercise(exerciseID: exerciseID) }
