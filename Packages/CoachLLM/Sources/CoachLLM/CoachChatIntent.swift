@@ -119,6 +119,31 @@ public enum CoachChatIntent: Sendable {
         ].contains(trimmed)
     }
 
+    /// True when the user asks coach to build/draft a new training plan,
+    /// which should open the plan-builder flow instead of a chat answer.
+    public static func looksLikePlanBuilderRequest(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let planNeedles = [
+            "build me a plan",
+            "build a plan",
+            "build a new plan",
+            "make me a plan",
+            "make a new plan",
+            "draft a plan",
+            "draft a new plan",
+            "design a plan",
+            "design a new plan",
+            "new training plan",
+            "rebuild my plan",
+            "new program",
+            "start a new block",
+            "plan builder"
+        ]
+        guard planNeedles.contains(where: { lower.contains($0) }) else { return false }
+        // Single-workout proposals are handled by the workout flow, not the builder.
+        return !looksLikeWorkoutProposal(text) && !looksLikeWorkoutStart(text)
+    }
+
     public static func inferredMealQuery(from text: String) -> MealQueryPayload? {
         guard looksLikePastMealLookup(text) else { return nil }
         let lower = text.lowercased()

@@ -2,35 +2,48 @@ import Core
 import Foundation
 import GRDB
 
-/// Persisted plan-builder flow state: interview answers plus generated candidates
+/// One restorable plan option: candidate stats plus its card copy.
+public struct StoredPlanBuilderOption: Sendable, Hashable, Codable {
+    /// Serialized `CandidatePlan`.
+    public var encodedCandidate: String
+    /// Serialized `PlanOptionCardCopy`.
+    public var encodedCopy: String
+
+    public init(encodedCandidate: String, encodedCopy: String) {
+        self.encodedCandidate = encodedCandidate
+        self.encodedCopy = encodedCopy
+    }
+}
+
+/// Persisted plan-builder flow state: interview answers plus generated options
 /// and the selection, so the flow survives app restarts mid-way.
 public struct StoredPlanBuilderSession: Sendable, Hashable, Codable {
     public var interview: PlanBuilderInterview
     public var selectedCandidateIndex: Int?
-    /// Serialized candidate summaries, reserved for resume-with-copy support.
-    public var candidateSummariesJSON: [String]
+    /// Generated options captured after a successful generation pass.
+    public var options: [StoredPlanBuilderOption]
 
     public init(
         interview: PlanBuilderInterview,
         selectedCandidateIndex: Int? = nil,
-        candidateSummariesJSON: [String] = []
+        options: [StoredPlanBuilderOption] = []
     ) {
         self.interview = interview
         self.selectedCandidateIndex = selectedCandidateIndex
-        self.candidateSummariesJSON = candidateSummariesJSON
+        self.options = options
     }
 
     enum CodingKeys: String, CodingKey {
         case interview
         case selectedCandidateIndex
-        case candidateSummariesJSON
+        case options
     }
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         interview = try container.decode(PlanBuilderInterview.self, forKey: .interview)
         selectedCandidateIndex = try container.decodeIfPresent(Int.self, forKey: .selectedCandidateIndex)
-        candidateSummariesJSON = try container.decodeIfPresent([String].self, forKey: .candidateSummariesJSON) ?? []
+        options = try container.decodeIfPresent([StoredPlanBuilderOption].self, forKey: .options) ?? []
     }
 }
 

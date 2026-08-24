@@ -88,6 +88,11 @@ struct PlanBuilderFlowView: View {
         .task {
             if let resumable = service.loadResumableSession() {
                 applyInterview(resumable.interview)
+                // A completed generation pass resumes straight at the cards.
+                if let restoredOptions = service.restoredOptions() {
+                    options = restoredOptions
+                    stage = .cards
+                }
             } else {
                 applyInterview(service.makePrefilledInterview())
             }
@@ -235,7 +240,7 @@ struct PlanBuilderFlowView: View {
             stage = .interview
         } else {
             HapticEngine.shared.play(.thresholdInsight)
-            service.saveSession(StoredPlanBuilderSession(interview: interview))
+            service.saveResumableState(interview: interview, options: options)
             stage = .cards
         }
     }

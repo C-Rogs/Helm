@@ -158,6 +158,14 @@ struct ChatView: View {
                 controller.onDisappear()
             }
             .sheet(isPresented: Binding(
+                get: { controller.pendingPlanBuilderLaunch },
+                set: { if !$0 { controller.dismissPlanBuilderLaunch() } }
+            )) {
+                NavigationStack {
+                    PlanBuilderFlowView()
+                }
+            }
+            .sheet(isPresented: Binding(
                 get: { controller.pendingFoodMealConfirm != nil },
                 set: { if !$0 { controller.dismissFoodMealConfirm() } }
             )) {

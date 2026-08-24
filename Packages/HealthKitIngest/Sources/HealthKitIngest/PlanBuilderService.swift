@@ -56,12 +56,56 @@ public final class PlanBuilderService {
         try? persistence.planBuilderSession.load()
     }
 
+    /// Encodes generated options for session persistence.
+    public static func encodeOptions(_ options: [PlanBuilderOption]) throws -> [StoredPlanBuilderOption] {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        return try options.map { option in
+            StoredPlanBuilderOption(
+                encodedCandidate: String(data: try encoder.encode(option.candidate), encoding: .utf8) ?? "",
+                encodedCopy: String(data: try encoder.encode(option.copy), encoding: .utf8) ?? ""
+            )
+        }
+    }
+
+    /// Decodes persisted options back into presentation-ready form. Malformed
+    /// entries are skipped rather than failing the whole restore.
+    public static func decodeOptions(_ stored: [StoredPlanBuilderOption]) -> [PlanBuilderOption] {
+        let decoder = JSONDecoder()
+        return stored.compactMap { entry in
+            guard let candidateData = entry.encodedCandidate.data(using: .utf8),
+                  let copyData = entry.encodedCopy.data(using: .utf8),
+                  let candidate = try? decoder.decode(CandidatePlan.self, from: candidateData),
+                  let copy = try? decoder.decode(PlanOptionCardCopy.self, from: copyData)
+            else { return nil }
+            return PlanBuilderOption(candidate: candidate, copy: copy)
+        }
+    }
+
     public func saveSession(_ session: StoredPlanBuilderSession) {
         do {
             try persistence.planBuilderSession.save(session)
         } catch {
             generationMessage = error.localizedDescription
         }
+    }
+
+    /// Persists interview answers plus generated options so a relaunch resumes at the cards.
+    public func saveResumableState(interview: PlanBuilderInterview, options: [PlanBuilderOption]) {
+        guard let encoded = try? Self.encodeOptions(options) else { return }
+        saveSession(
+            StoredPlanBuilderSession(
+                interview: interview,
+                options: encoded
+            )
+        )
+    }
+
+    /// Restores a previous generation pass if one exists.
+    public func restoredOptions() -> [PlanBuilderOption]? {
+        guard let session = loadResumableSession(), !session.options.isEmpty else { return nil }
+        let decoded = Self.decodeOptions(session.options)
+        return decoded.isEmpty ? nil : decoded
     }
 
     /// Generates candidates deterministically, then asks Gemini for grounded

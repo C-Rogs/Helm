@@ -5,7 +5,7 @@ import Testing
 
 @Suite("Plan builder session store")
 struct PlanBuilderSessionStoreTests {
-    @Test("round trip interview and selection")
+    @Test("round trip interview, selection, and options")
     func roundTrip() throws {
         let store = try PersistenceStore.inMemory()
         let session = StoredPlanBuilderSession(
@@ -17,13 +17,31 @@ struct PlanBuilderSessionStoreTests {
                 progressionGoal: .strength,
                 emphasis: "arms"
             ),
-            selectedCandidateIndex: 1
+            selectedCandidateIndex: 1,
+            options: [
+                StoredPlanBuilderOption(encodedCandidate: #"{"id":"balanced"}"#, encodedCopy: #"{"candidateID":"balanced","schemaVersion":"plan_option_cards.v1"}"#)
+            ]
         )
 
         try store.planBuilderSession.save(session)
         let loaded = try store.planBuilderSession.load()
 
         #expect(loaded == session)
+    }
+
+    @Test("legacy JSON without options decodes with empty options")
+    func legacyDecode() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.planBuilderSession.save(StoredPlanBuilderSession(interview: PlanBuilderInterview()))
+        // Rewrite the row to a legacy shape lacking the options key.
+        try store.poolForTesting.write { db in
+            try db.execute(
+                sql: "UPDATE plan_builder_session SET session_json = ? WHERE id = ?",
+                arguments: [#"{"interview":{"confirmed_maintenance_kcal":null,"days_per_week":3,"emphasis":null,"experience_raw":"intermediate","progression_goal":"hypertrophy","session_duration_minutes":60,"uses_computed_estimate":true},"selected_candidate_index":null}"#, 1]
+            )
+        }
+        let loaded = try store.planBuilderSession.load()
+        #expect(loaded?.options.isEmpty == true)
     }
 
     @Test("load returns nil when empty and clear removes row")
