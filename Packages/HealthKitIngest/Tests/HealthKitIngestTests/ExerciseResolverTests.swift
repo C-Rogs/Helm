@@ -127,8 +127,7 @@ struct ExerciseResolverTests {
     }
 
     @Test("FreeExerciseDB archetype member remaps to seed- catalog ID")
-    func archetypeMemberSeedRemap() throws {
-        let store = try PersistenceStore.inMemory()
+    func archetypeMemberSeedRemap() throws {        let store = try PersistenceStore.inMemory()
         try store.exercises.upsert(
             id: "seed-Hammer_Curls",
             canonicalName: "hammer curls",
@@ -198,5 +197,108 @@ struct ExerciseResolverTests {
             persistence: store
         )
         #expect(phraseResult.exerciseID == "seed-Cable_Hammer_Curls_-_Rope_Attachment")
+    }
+
+    @Test("equipment mismatch returns candidates instead of silent collapse")
+    func equipmentMismatchSurfacesCandidates() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-hip-thrust",
+            canonicalName: "hip thrust (barbell)",
+            displayName: "Hip Thrust (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "glutes"
+        )
+
+        let context = ExerciseResolver.Context(
+            sessionExerciseIDs: [],
+            familiarExerciseIDs: ["seed-hip-thrust"],
+            recentExerciseIDs: ["seed-hip-thrust"],
+            mustBeInSession: false
+        )
+        let result = ExerciseResolver.resolve("hip thrust machine", context: context, persistence: store)
+
+        #expect(result.exerciseID == nil)
+        #expect(!result.catalogCandidates.isEmpty)
+    }
+
+    @Test("equipment wording picks matching variant when one exists")
+    func equipmentWordingPicksVariant() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-hip-thrust",
+            canonicalName: "hip thrust (barbell)",
+            displayName: "Hip Thrust (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "glutes"
+        )
+        try store.exercises.upsert(
+            id: "seed-cam-hip-thrust-machine",
+            canonicalName: "hip thrust machine",
+            displayName: "Hip Thrust (Machine)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "glutes"
+        )
+        try store.exercises.addAlias(id: "alias-htm", exerciseID: "seed-cam-hip-thrust-machine", alias: "hip thrust machine")
+
+        let catalog = CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            generatedAt: nil,
+            archetypes: [
+                CoachArchetype(
+                    id: "hip_thrust",
+                    displayName: "Hip Thrust",
+                    priority: "core",
+                    coachAliases: ["hip thrust", "machine hip thrust"]
+                )
+            ],
+            mapping: [
+                "seed-hip-thrust": "hip_thrust",
+                "seed-cam-hip-thrust-machine": "hip_thrust"
+            ],
+            variants: [
+                "hip_thrust": CoachArchetypeVariants(
+                    members: ["seed-cam-hip-thrust-machine", "seed-hip-thrust"],
+                    preferredDefaultExerciseId: "seed-hip-thrust"
+                )
+            ]
+        )
+        CoachArchetypeSupport.configure(with: catalog)
+
+        let result = ExerciseResolver.resolve(
+            "machine hip thrust",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+
+        #expect(result.exerciseID == "seed-cam-hip-thrust-machine")
+    }
+
+    @Test("plain phrase resolves via exact alias before fuzzy variants")
+    func plainPushUpResolvesExactly() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-cam-push-up",
+            canonicalName: "push up",
+            displayName: "Push Up",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "chest"
+        )
+        try store.exercises.upsert(
+            id: "seed-Suspended_Push-Up",
+            canonicalName: "suspended push-up",
+            displayName: "Suspended Push-Up",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "chest"
+        )
+        try store.exercises.addAlias(id: "alias-pushup", exerciseID: "seed-cam-push-up", alias: "push up")
+
+        let result = ExerciseResolver.resolve(
+            "push up",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+
+        #expect(result.exerciseID == "seed-cam-push-up")
     }
 }

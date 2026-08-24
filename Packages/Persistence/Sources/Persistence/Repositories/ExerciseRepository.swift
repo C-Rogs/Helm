@@ -328,6 +328,51 @@ public struct ExerciseRepository: Sendable {
         }
     }
 
+    /// True when any non-deleted session references the exercise.
+    public func isExerciseInUse(_ exerciseID: String) throws -> Bool {
+        try pool.read { db in
+            let count = try Int.fetchOne(
+                db,
+                sql: """
+                    SELECT COUNT(*)
+                    FROM workout_session_exercise wse
+                    INNER JOIN workout_session ws ON ws.id = wse.workout_session_id
+                    WHERE wse.exercise_id = ?
+                      AND wse.deleted_at IS NULL
+                      AND ws.deleted_at IS NULL
+                    """,
+                arguments: [exerciseID]
+            ) ?? 0
+            return count > 0
+        }
+    }
+
+    public func softDelete(id: String) throws {
+        let now = ISO8601Coding.string(from: Date())
+        try pool.write { db in
+            try db.execute(
+                sql: "UPDATE exercise SET deleted_at = ?, updated_at = ? WHERE id = ? AND is_custom = 1",
+                arguments: [now, now, id]
+            )
+        }
+    }
+
+    public func renameCustom(id: String, displayName: String) throws {
+        let trimmed = displayName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let now = ISO8601Coding.string(from: Date())
+        try pool.write { db in
+            try db.execute(
+                sql: """
+                    UPDATE exercise
+                    SET display_name = ?, canonical_name = lower(?), sort_name = lower(?), updated_at = ?
+                    WHERE id = ? AND is_custom = 1
+                    """,
+                arguments: [trimmed, trimmed, trimmed, now, id]
+            )
+        }
+    }
+
     public func fetchAliases(forExerciseIDs exerciseIDs: Set<String>? = nil) throws -> [ExerciseAlias] {
         try pool.read { db in
             let rows: [Row]

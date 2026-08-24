@@ -48,11 +48,31 @@ public struct ExerciseSeedImporter: Sendable {
             pickerCuration: resolved.pickerCuration,
             explicitPickerIDs: resolved.explicitPickerIDs
         )
+        if let hiddenIDs = manifest.hiddenIDs, !hiddenIDs.isEmpty {
+            try hideExercises(ids: hiddenIDs)
+        }
         return ExerciseSeedImportResult(
             appliedSeedVersion: manifest.seedVersion,
             importedCount: importedCount,
             skippedBecauseUpToDate: false
         )
+    }
+
+    /// Soft-deletes catalogue rows (never custom ones) so history foreign keys survive.
+    public func hideExercises(ids: [String]) throws {
+        let now = ISO8601Coding.string(from: Date())
+        try pool.write { db in
+            for id in ids {
+                try db.execute(
+                    sql: """
+                        UPDATE exercise
+                        SET deleted_at = ?, is_picker_default = 0, updated_at = ?
+                        WHERE id = ? AND is_custom = 0 AND deleted_at IS NULL
+                        """,
+                    arguments: [now, now, id]
+                )
+            }
+        }
     }
 
     @discardableResult

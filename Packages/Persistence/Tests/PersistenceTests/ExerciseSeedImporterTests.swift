@@ -229,6 +229,43 @@ struct ExerciseSeedImporterTests {
         #expect(resolved?.exerciseID == "seed-horizontal-leg-press")
     }
 
+    @Test("hiddenIDs soft-deletes catalogue rows but keeps custom rows")
+    func hiddenIDSoftDeletes() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+
+        let manifest = """
+        {
+          "seedVersion": 7,
+          "placeholder": false,
+          "hiddenIDs": ["seed-bench-press"],
+          "exercises": [
+            {
+              "id": "seed-bench-press",
+              "canonicalName": "bench press (barbell)",
+              "displayName": "Bench Press (Barbell)",
+              "aliases": ["Bench Press"],
+              "exerciseMode": "weight_reps",
+              "equipment": "barbell",
+              "primaryMuscleGroup": "chest",
+              "secondaryMuscleGroups": [],
+              "isPickerDefault": true,
+              "isHevyLibrary": true
+            }
+          ]
+        }
+        """
+        let data = Data(manifest.utf8)
+        let url = FileManager.default.temporaryDirectory
+            .appendingPathComponent("exercise_seed_hidden_test.json")
+        try data.write(to: url)
+
+        _ = try importer.importIfNeeded(manifestURL: url, manifestData: data)
+
+        #expect(try store.exercises.fetchSummary(id: "seed-bench-press") == nil)
+        #expect(try !store.exercises.listForPicker(search: "Bench Press").contains { $0.id == "seed-bench-press" })
+    }
+
     @Test("free-exercise-db catalog maps loggy-style entries")
     func freeExerciseDBMapping() throws {
         let record = FreeExerciseDBRecord(

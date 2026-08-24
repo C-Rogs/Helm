@@ -51,6 +51,29 @@ public enum ExerciseResolver {
         }
     }
 
+    private static let equipmentTokens: Set<String> = [
+        "machine", "cable", "dumbbell", "db", "barbell", "bb", "rope", "smith", "band", "kettlebell", "kb",
+    ]
+
+    private static func equipmentTokens(in phrase: String) -> Set<String> {
+        Set(phraseTokens(phrase).intersection(equipmentTokens))
+    }
+
+    private static func candidateMentionsEquipment(
+        _ exerciseID: String,
+        displayName: String,
+        requested: Set<String>
+    ) -> Bool {
+        guard !requested.isEmpty else { return true }
+        let haystack = phraseTokens(exerciseID + " " + displayName)
+        for token in requested {
+            if haystack.contains(where: { tokensMatch($0, token) }) {
+                return true
+            }
+        }
+        return false
+    }
+
     public static func resolve(
         _ rawPhrase: String?,
         context: Context,
@@ -87,6 +110,10 @@ public enum ExerciseResolver {
                    ) {
                     return Result(exerciseID: exerciseID, archetypeID: archetypeID)
                 }
+            }
+
+            if let exact = exactAliasMatch(rawPhrase, context: context, persistence: persistence) {
+                return catalogResult(exerciseID: exact)
             }
 
             if let archetypeID = CoachArchetypeSupport.archetypeID(for: rawPhrase),
@@ -166,7 +193,31 @@ public enum ExerciseResolver {
         // Require meaningful token overlap so archetype IDs like "hammer_curl" do not
         // latch onto an arbitrary picker hit before seed-remapped archetype members run.
         guard best.overlap >= 2 || best.overlap == phraseTokens(rawPhrase).count else { return nil }
+        let requested = equipmentTokens(in: rawPhrase)
+        if !candidateMentionsEquipment(
+            best.id,
+            displayName: displayLabel(best.id, persistence: persistence),
+            requested: requested
+        ) {
+            // Phrase names an equipment the candidate lacks (e.g. "hip thrust machine" vs
+            // barbell row): refuse silent collapse so the caller surfaces candidates instead.
+            return nil
+        }
         return best.id
+    }
+
+    private static func exactAliasMatch(
+        _ rawPhrase: String,
+        context: Context,
+        persistence: PersistenceStore
+    ) -> String? {
+        for candidate in ExerciseSearchNormalizer.searchCandidates(for: rawPhrase) {
+            guard let exerciseID = try? persistence.exercises.resolveExerciseID(normalizedAlias: candidate),
+                  accepts(exerciseID: exerciseID, context: context)
+            else { continue }
+            return exerciseID
+        }
+        return nil
     }
 
     private static func rankedCatalogMatches(
@@ -235,13 +286,32 @@ public enum ExerciseResolver {
 
         guard !members.isEmpty else { return nil }
 
+        let effectivePhrase = phrase ?? ""
+        let tokens = phraseTokens(effectivePhrase)
+
+        // Dead-alias guard: if the phrase carries equipment wording that no member shares
+        // (e.g. "machine hip thrust" with a barbell-only archetype), the alias would silently
+        // collapse to the default variant. Skip so resolution falls through to fuzzy/candidates.
+        let requestedEquipment = equipmentTokens(in: effectivePhrase)
+        if !requestedEquipment.isEmpty {
+            let anyMemberMentions = members.contains { member in
+                candidateMentionsEquipment(
+                    member,
+                    displayName: displayLabel(member, persistence: persistence),
+                    requested: requestedEquipment
+                )
+            }
+            if !anyMemberMentions {
+                return nil
+            }
+        }
+
         let preferredRaw = CoachArchetypeSupport.preferredExerciseID(for: archetypeID)
         let preferred = preferredRaw.flatMap { catalogExerciseID($0, persistence: persistence) }
             .flatMap { accepts(exerciseID: $0, context: context) ? $0 : nil }
 
         // Prefer phrase-ranked members even when a preferred default exists, so equipment
         // wording (dumbbell vs rope) can beat the archetype default.
-        let tokens = phraseTokens(phrase ?? "")
         if !tokens.isEmpty {
             let ranked = members.sorted { lhs, rhs in
                 let leftOverlap = tokenOverlap(tokens, in: lhs + " " + displayLabel(lhs, persistence: persistence))

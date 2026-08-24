@@ -212,11 +212,17 @@ struct SettingsView: View {
             settingsLink("Body Profile", value: nil) {
                 BodyProfileSettingsView()
             }
+            settingsLink("Plan Builder", value: "Coach-drafted plan options") {
+                PlanBuilderFlowView()
+            }
             settingsLink("Training Plan", value: nil) {
                 PhaseGoalSettingsView()
             }
             settingsLink("Nutrition", value: nil) {
                 NutritionSettingsView()
+            }
+            settingsLink("Custom Exercises", value: nil) {
+                SettingsCustomExercisesView()
             }
             settingsLink("Sources & Methodology", value: nil) {
                 SourcesMethodologyView()

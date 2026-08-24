@@ -30,6 +30,9 @@ public struct ExerciseSeedDocument: Codable, Sendable, Equatable {
     /// When set, exercises are loaded from a bundled free-exercise-db JSON array in the same directory.
     public let catalogResource: String?
     public let pickerCuration: ExercisePickerCuration?
+    /// Catalogue exercise refs (overlay ids or `seed-<DatasetId>`) to soft-delete on import.
+    /// Session history keeps its foreign keys; rows only disappear from picker/search.
+    public let hiddenIDs: [String]?
     public let exercises: [ExerciseSeedEntry]
 
     public init(
@@ -37,12 +40,14 @@ public struct ExerciseSeedDocument: Codable, Sendable, Equatable {
         placeholder: Bool,
         catalogResource: String? = nil,
         pickerCuration: ExercisePickerCuration? = nil,
+        hiddenIDs: [String]? = nil,
         exercises: [ExerciseSeedEntry] = []
     ) {
         self.seedVersion = seedVersion
         self.placeholder = placeholder
         self.catalogResource = catalogResource
         self.pickerCuration = pickerCuration
+        self.hiddenIDs = hiddenIDs
         self.exercises = exercises
     }
 }
