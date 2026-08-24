@@ -1,7 +1,6 @@
 import Core
 import Foundation
 import ReadinessKit
-import ReadinessKit
 
 /// Edwards TRIMP from an observed workout and its heart-rate samples.
 public enum WorkoutTRIMPCalculator: Sendable {
@@ -19,18 +18,22 @@ public enum WorkoutTRIMPCalculator: Sendable {
 
     public static func trimp(
         for workout: IngestWorkoutSample,
-        heartRateSamples: [Double],
+        heartRateReadings: [(date: Date, bpm: Double)],
         restingHeartRate: Double,
+        athleteAgeYears: Int?,
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) -> Result? {
-        guard !heartRateSamples.isEmpty else { return nil }
+        guard !heartRateReadings.isEmpty else { return nil }
 
         let workoutDay = HelmDay.day(for: workout.end, cutoff: cutoff, calendar: calendar)
         let targetDay = workoutDay.adding(days: 1, calendar: calendar)
-        let hrMax = StrainCalculator.hrMax(observedHRSamples: heartRateSamples, age: nil)
+        let bpms = heartRateReadings.map(\.bpm)
+        let hrMax = StrainCalculator.hrMax(observedHRSamples: bpms, age: athleteAgeYears)
         let trimp = StrainCalculator.edwardsTRIMP(
-            heartRateSamples: heartRateSamples,
+            datedHeartRateReadings: heartRateReadings,
+            workoutStart: workout.start,
+            workoutEnd: workout.end,
             restingHR: restingHeartRate,
             hrMax: hrMax
         )

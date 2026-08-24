@@ -172,4 +172,35 @@ public extension HelmDay {
         let shiftedComponents = calendar.dateComponents([.year, .month, .day], from: shifted)
         return HelmDay(components: shiftedComponents) ?? self
     }
+
+    /// Short weekday name ("Mon") using the current calendar. Cached formatter.
+    @MainActor
+    public var shortWeekday: String {
+        guard let date = Calendar.current.date(from: dateComponents()) else { return "?" }
+        return HelmDayFormatters.weekday.string(from: date)
+    }
+
+    /// Compact display label ("Mon 4 Aug") using the current calendar. Cached formatter.
+    @MainActor
+    public var formattedLabel: String {
+        guard let date = Calendar.current.date(from: dateComponents()) else { return formatted }
+        return HelmDayFormatters.dayMonth.string(from: date)
+    }
+}
+
+/// Cached `DateFormatter`s for `HelmDay` display labels. DateFormatter is not Sendable;
+/// access is confined to the main actor where all label rendering happens.
+@MainActor
+enum HelmDayFormatters {
+    static let weekday: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE"
+        return formatter
+    }()
+
+    static let dayMonth: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "EEE d MMM"
+        return formatter
+    }()
 }

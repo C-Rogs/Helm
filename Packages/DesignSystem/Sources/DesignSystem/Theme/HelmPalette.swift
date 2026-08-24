@@ -5,6 +5,8 @@ public struct HelmPalette: Sendable, Equatable {
     public let surface: Color
     public let surfaceElevated: Color
     public let hairline: Color
+    public let surfaceEngineTag: Color
+    public let scrim: Color
     public let fg: Color
     public let fgSecondary: Color
     public let fgMuted: Color
@@ -45,6 +47,8 @@ public struct HelmPalette: Sendable, Equatable {
             surface: neutrals.surface,
             surfaceElevated: neutrals.surfaceElevated,
             hairline: neutrals.hairline,
+            surfaceEngineTag: neutrals.surfaceEngineTag,
+            scrim: neutrals.scrim,
             fg: neutrals.fg,
             fgSecondary: neutrals.fgSecondary,
             fgMuted: neutrals.fgMuted,
@@ -74,6 +78,8 @@ public enum HelmPaletteAppearance: Sendable, Equatable {
                 surface: Color(hex: 0x111112),
                 surfaceElevated: Color(hex: 0x1C1C19),
                 hairline: Color.white.opacity(0.09),
+                surfaceEngineTag: Color(hex: 0x33333D),
+                scrim: Color.black.opacity(0.2),
                 fg: Color(hex: 0xF4F3EE),
                 fgSecondary: Color(hex: 0xA8A7A0),
                 fgMuted: Color(hex: 0x6B6A63),
@@ -87,6 +93,8 @@ public enum HelmPaletteAppearance: Sendable, Equatable {
                 surface: Color(hex: 0xFFFFFF),
                 surfaceElevated: Color(hex: 0xFFFFFF),
                 hairline: Color.black.opacity(0.14),
+                surfaceEngineTag: Color(hex: 0xE8E8EE),
+                scrim: Color.black.opacity(0.2),
                 fg: Color(hex: 0x16150F),
                 fgSecondary: Color(hex: 0x57564D),
                 fgMuted: Color(hex: 0x8A887E),
@@ -174,6 +182,8 @@ private struct NeutralTokenSet {
     let surface: Color
     let surfaceElevated: Color
     let hairline: Color
+    let surfaceEngineTag: Color
+    let scrim: Color
     let fg: Color
     let fgSecondary: Color
     let fgMuted: Color

@@ -232,9 +232,9 @@ public actor HealthKitIngest {
             lastSyncFinishedAt = Date()
             lastSyncSampleCount = totalIngested
             lastSyncDeletedCount = totalDeleted
-            try? persistMetadata()
             publishSnapshots(for: affectedFamilies)
         }
+        try? persistMetadata()
     }
 
     private func syncKind(_ kind: HealthKitSampleKind) async -> HealthKitIngestOutcome {

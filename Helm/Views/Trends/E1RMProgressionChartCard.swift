@@ -73,7 +73,7 @@ struct E1RMProgressionChartCard: View {
 
             if let selectedSession {
                 RuleMark(x: .value("Selected", selectedSession))
-                    .foregroundStyle(HelmColor.fgMuted.opacity(0.35))
+                    .foregroundStyle(HelmColor.fgMuted)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
         }

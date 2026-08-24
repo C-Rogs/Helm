@@ -107,7 +107,7 @@ struct WorkoutFinishSummaryView: View {
                 HelmNumericText(value)
                     .helmType(.bigNumber)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.55)
+                    .minimumScaleFactor(0.8)
                 if let unit {
                     Text(unit)
                         .helmType(.monoTag, color: HelmColor.fgMuted)

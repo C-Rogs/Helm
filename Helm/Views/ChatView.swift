@@ -344,7 +344,7 @@ struct ChatView: View {
         switch kind {
         case .evidence: return HelmColor.surface
         case .topic: return HelmColor.surface
-        case .engine: return Color(red: 0.2, green: 0.2, blue: 0.24)
+        case .engine: return HelmColor.surfaceEngineTag
         }
     }
 

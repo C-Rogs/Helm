@@ -233,13 +233,13 @@ struct SessionTimelineChartView: View {
 
             ForEach(setMarkers) { marker in
                 RuleMark(x: .value("Set", marker.offsetSeconds))
-                    .foregroundStyle(HelmColor.fgMuted.opacity(0.35))
+                    .foregroundStyle(HelmColor.fgMuted)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
 
             ForEach(exerciseMarkers) { marker in
                 RuleMark(x: .value("Exercise", marker.offsetSeconds))
-                    .foregroundStyle(HelmColor.fgSecondary.opacity(0.55))
+                    .foregroundStyle(HelmColor.fgSecondary)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [2, 4]))
             }
 

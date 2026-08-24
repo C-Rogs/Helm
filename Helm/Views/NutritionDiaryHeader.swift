@@ -92,6 +92,7 @@ struct NutritionDiaryHeader: View {
         let isSelected = day == selectedDay
         let isToday = day == today
         return Button {
+            HapticEngine.shared.play(.selection)
             onSelectDay(day)
         } label: {
             VStack(spacing: HelmSpacing.xxs) {
@@ -115,18 +116,6 @@ struct NutritionDiaryHeader: View {
         }
         .buttonStyle(.helmPressable)
         .disabled(day > today)
-    }
-}
-
-private extension HelmDay {
-    var shortWeekday: String {
-        let calendar = Calendar(identifier: .gregorian)
-        guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
-            return "?"
-        }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE"
-        return formatter.string(from: date)
     }
 }
 

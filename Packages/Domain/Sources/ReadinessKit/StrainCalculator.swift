@@ -2,13 +2,19 @@ import Foundation
 
 public enum StrainCalculator {
   /// Edwards TRIMP from heart-rate samples during a workout.
+  ///
+  /// Canonical Edwards TRIMP integrates zone weight over *time*. `secondsBetweenSamples`
+  /// converts a per-sample weight sum into a minutes-based integral; when unknown, callers
+  /// that only have uniform-rate samples may pass the expected sampling interval.
   public static func edwardsTRIMP(
     heartRateSamples: [Double],
     restingHR: Double,
-    hrMax: Double
+    hrMax: Double,
+    secondsBetweenSamples: Double? = nil
   ) -> Double {
     guard !heartRateSamples.isEmpty, hrMax > restingHR else { return 0 }
 
+    let sampleWeightMinutes = (secondsBetweenSamples ?? 60) / 60
     var trimp = 0.0
     for bpm in heartRateSamples {
       let hrr = (bpm - restingHR) / (hrMax - restingHR) * 100
@@ -20,7 +26,48 @@ public enum StrainCalculator {
       case ..<100: weight = 4
       default: weight = 5
       }
-      trimp += weight
+      trimp += weight * sampleWeightMinutes
+    }
+    return trimp
+  }
+
+  /// Edwards TRIMP from timestamped readings, integrating each reading's zone weight over
+  /// its actual duration (time since the previous reading, clamped). Robust to variable
+  /// sample rates and gaps.
+  public static func edwardsTRIMP(
+    datedHeartRateReadings: [(date: Date, bpm: Double)],
+    workoutStart: Date,
+    workoutEnd: Date,
+    restingHR: Double,
+    hrMax: Double
+  ) -> Double {
+    guard !datedHeartRateReadings.isEmpty, hrMax > restingHR else { return 0 }
+
+    let sorted = datedHeartRateReadings.sorted { $0.date < $1.date }
+    var trimp = 0.0
+
+    for (index, reading) in sorted.enumerated() {
+      guard reading.bpm > 0 else { continue }
+      let segmentStart = max(reading.date, workoutStart)
+      let segmentEnd: Date
+      if index + 1 < sorted.count {
+        segmentEnd = min(sorted[index + 1].date, workoutEnd)
+      } else {
+        segmentEnd = workoutEnd
+      }
+      let minutes = segmentEnd.timeIntervalSince(segmentStart) / 60
+      guard minutes > 0 else { continue }
+
+      let hrr = (reading.bpm - restingHR) / (hrMax - restingHR) * 100
+      let weight: Double
+      switch hrr {
+      case ..<70: weight = 1
+      case ..<80: weight = 2
+      case ..<90: weight = 3
+      case ..<100: weight = 4
+      default: weight = 5
+      }
+      trimp += weight * minutes
     }
     return trimp
   }

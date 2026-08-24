@@ -183,6 +183,7 @@ public actor ReadinessEngine {
 
     private func computeAndPersist(for day: HelmDay, history: [ReadinessDayInput]) throws -> ReadinessScore? {
         let baseline = try loadBaselineState()
+        let previousBand = loadPreviousBand(before: day)
 
         let signpostID = signpost.makeSignpostID()
         signpost.begin(id: signpostID)
@@ -190,6 +191,7 @@ public actor ReadinessEngine {
             for: day,
             history: history,
             baselineState: baseline,
+            previousBand: previousBand,
             calendar: calendar,
             cutoff: cutoff
         )
@@ -215,6 +217,24 @@ public actor ReadinessEngine {
             return nil
         }
         return try decode(ReadinessBaselineState.self, from: json)
+    }
+
+    /// Yesterday's persisted band feeds the ±3 hysteresis deadband so scores hovering
+    /// near 34/67 stop flipping bands day to day.
+    private func loadPreviousBand(before day: HelmDay) -> ReadinessBand? {
+        let priorDay = day.adding(days: -1, calendar: calendar)
+        do {
+            if let json = try persistence.readiness.fetchScoreJSON(helmDay: priorDay) {
+                return try decode(ReadinessScore.self, from: json).band
+            }
+            let recent = try persistence.readiness.fetchScores(endingAt: priorDay, limit: 1)
+            if let (_, json) = recent.first {
+                return try decode(ReadinessScore.self, from: json).band
+            }
+        } catch {
+            log.warning("Previous readiness band unavailable for hysteresis: \(error.localizedDescription)")
+        }
+        return nil
     }
 
     private func encode<T: Encodable>(_ value: T) throws -> String {

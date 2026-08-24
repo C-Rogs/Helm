@@ -29,7 +29,11 @@ struct HelmComplicationProvider: TimelineProvider {
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<HelmComplicationEntry>) -> Void) {
         let entry = currentEntry()
-        let refresh = Date().addingTimeInterval(WatchSyncPayload.readinessPushThrottleInterval)
+        var dayComponents = Calendar.current.dateComponents([.era, .year, .month, .day], from: Date())
+        dayComponents.day? += 1
+        dayComponents.hour = 6
+        dayComponents.minute = 0
+        let refresh = Calendar.current.date(from: dayComponents) ?? Date().addingTimeInterval(86400)
         completion(Timeline(entries: [entry], policy: .after(refresh)))
     }
 

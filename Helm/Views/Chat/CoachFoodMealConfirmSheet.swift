@@ -108,7 +108,7 @@ struct CoachFoodMealConfirmSheet: View {
                 }
 
                 if isSaving {
-                    Color.black.opacity(0.2)
+                    HelmColor.scrim
                         .ignoresSafeArea()
                     CoachAIProgressCard(
                         eyebrow: "COACH",

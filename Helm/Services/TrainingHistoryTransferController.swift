@@ -18,6 +18,7 @@ final class TrainingHistoryTransferController {
     private(set) var lastHevyImportResult: HevyBulkImportResult?
     private(set) var lastTrainingImportResult: TrainingHistoryImportResult?
     private(set) var pendingTrainingImport: TrainingHistoryExport?
+    private(set) var isParsingHevyCSV = false
 
     var isShowingHevyPreview = false
     var isShowingTrainingImportPreview = false
@@ -44,22 +45,24 @@ final class TrainingHistoryTransferController {
     }
 
     func loadHevyCSV(from url: URL) {
-        do {
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing { url.stopAccessingSecurityScopedResource() }
+        Task { @MainActor in
+            do {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing { url.stopAccessingSecurityScopedResource() }
+                }
+                let data = try Data(contentsOf: url)
+                guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
+                    errorMessage = "Could not read that file as text. Export the Hevy CSV again and retry."
+                    return
+                }
+                await applyParsedHevyCSV(text: text)
+            } catch {
+                errorMessage = error.localizedDescription
+                hevyParseResult = nil
+                hevyResolutions = []
+                isShowingHevyPreview = false
             }
-            let data = try Data(contentsOf: url)
-            guard let text = String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) else {
-                errorMessage = "Could not read that file as text. Export the Hevy CSV again and retry."
-                return
-            }
-            loadHevyCSV(text: text)
-        } catch {
-            errorMessage = error.localizedDescription
-            hevyParseResult = nil
-            hevyResolutions = []
-            isShowingHevyPreview = false
         }
     }
 
@@ -75,12 +78,25 @@ final class TrainingHistoryTransferController {
         errorMessage = nil
         statusMessage = nil
         lastHevyImportResult = nil
+        isParsingHevyCSV = true
+
+        Task { @MainActor in
+            await applyParsedHevyCSV(text: text)
+        }
+    }
+
+    private func applyParsedHevyCSV(text: String) async {
+        let parseTask = Task.detached(priority: .userInitiated) {
+            try HevyCSVParser.parse(csvText: text)
+        }
 
         do {
-            let parsed = try HevyCSVParser.parse(csvText: text)
+            let parsed = try await parseTask.value
             hevyParseResult = parsed
             hevyManualMappings = [:]
-            hevyResolutions = try hevyResolver.resolve(titles: parsed.uniqueExerciseTitles)
+            hevyResolutions = try await Task.detached(priority: .userInitiated) {
+                try self.hevyResolver.resolve(titles: parsed.uniqueExerciseTitles)
+            }.value
             isShowingHevyPreview = true
         } catch {
             errorMessage = error.localizedDescription
@@ -88,6 +104,7 @@ final class TrainingHistoryTransferController {
             hevyResolutions = []
             isShowingHevyPreview = false
         }
+        isParsingHevyCSV = false
     }
 
     func mapHevyExercise(importedTitle: String, to exerciseID: String) {
@@ -145,17 +162,22 @@ final class TrainingHistoryTransferController {
         pendingTrainingImport = nil
         isShowingTrainingImportPreview = false
 
-        do {
-            let accessing = url.startAccessingSecurityScopedResource()
-            defer {
-                if accessing { url.stopAccessingSecurityScopedResource() }
+        Task { @MainActor in
+            do {
+                let accessing = url.startAccessingSecurityScopedResource()
+                defer {
+                    if accessing { url.stopAccessingSecurityScopedResource() }
+                }
+                let data = try Data(contentsOf: url)
+                let decodeTask = Task.detached(priority: .userInitiated) {
+                    try self.trainingHistoryService.decode(data)
+                }
+                let payload = try await decodeTask.value
+                pendingTrainingImport = payload
+                isShowingTrainingImportPreview = true
+            } catch {
+                errorMessage = error.localizedDescription
             }
-            let data = try Data(contentsOf: url)
-            let payload = try trainingHistoryService.decode(data)
-            pendingTrainingImport = payload
-            isShowingTrainingImportPreview = true
-        } catch {
-            errorMessage = error.localizedDescription
         }
     }
 

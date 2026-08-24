@@ -76,6 +76,7 @@ public enum ReadinessKit {
     for day: HelmDay,
     history: [ReadinessDayInput],
     baselineState: ReadinessBaselineState? = nil,
+    previousBand: ReadinessBand? = nil,
     calendar: Calendar = .current,
     cutoff: DayCutoff = .default
   ) -> ReadinessScore? {
@@ -155,7 +156,7 @@ public enum ReadinessKit {
     let rounded = Int(dampedScore.rounded())
     return ReadinessScore(
       score: rounded,
-      band: ReadinessBand.classify(score: rounded),
+      band: ReadinessBand.classify(score: rounded, previous: previousBand),
       confidence: confidenceLabel(for: confidenceValue),
       confidenceValue: confidenceValue,
       hrvBand: hrvBalance.zBand,

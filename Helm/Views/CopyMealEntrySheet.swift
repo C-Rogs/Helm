@@ -48,6 +48,7 @@ struct CopyMealEntrySheet: View {
 
                         HStack {
                             Button {
+                                HapticEngine.shared.play(.selection)
                                 targetDay = targetDay.adding(days: -1)
                             } label: {
                                 Image(systemName: "chevron.left")
@@ -64,6 +65,7 @@ struct CopyMealEntrySheet: View {
 
                             Button {
                                 guard targetDay < today else { return }
+                                HapticEngine.shared.play(.selection)
                                 targetDay = targetDay.adding(days: 1)
                             } label: {
                                 Image(systemName: "chevron.right")
@@ -108,18 +110,6 @@ struct CopyMealEntrySheet: View {
                 }
             }
         }
-    }
-}
-
-private extension HelmDay {
-    var formattedLabel: String {
-        let calendar = Calendar(identifier: .gregorian)
-        guard let date = calendar.date(from: DateComponents(year: year, month: month, day: day)) else {
-            return formatted
-        }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE d MMM"
-        return formatter.string(from: date)
     }
 }
 

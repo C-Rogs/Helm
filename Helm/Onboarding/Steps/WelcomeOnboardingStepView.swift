@@ -27,7 +27,7 @@ struct WelcomeOnboardingStepView: View {
                         Text("Signal")
                             .helmType(.heroNumber)
                             .lineLimit(1)
-                            .minimumScaleFactor(0.4)
+                            .minimumScaleFactor(0.8)
                         Text("ARC")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
                             .lineLimit(1)

@@ -10,6 +10,8 @@ public enum HelmColor {
     public static var surfaceElevated: Color { palette.surfaceElevated }
     public static var hairline: Color { palette.hairline }
     public static var border: Color { palette.hairline }
+    public static var surfaceEngineTag: Color { palette.surfaceEngineTag }
+    public static var scrim: Color { palette.scrim }
 
     public static var fg: Color { palette.fg }
     public static var textPrimary: Color { palette.fg }

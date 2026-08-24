@@ -98,7 +98,7 @@ struct ReadinessHistoryChartCard: View {
 
             if let selectedDay {
                 RuleMark(x: .value("Selected", selectedDay))
-                    .foregroundStyle(HelmColor.fgMuted.opacity(0.35))
+                    .foregroundStyle(HelmColor.fgMuted)
                     .lineStyle(StrokeStyle(lineWidth: 1, dash: [3, 3]))
             }
         }

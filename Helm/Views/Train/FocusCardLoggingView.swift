@@ -288,7 +288,6 @@ struct FocusCardLoggingView: View {
             RoundedRectangle(cornerRadius: HelmRadius.sm)
                 .strokeBorder(HelmColor.hairline, lineWidth: 1)
         }
-        .opacity(0.55)
     }
 
     private func setTypeGlyph(for set: SetEntryDraft) -> String {

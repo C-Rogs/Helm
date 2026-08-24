@@ -18,8 +18,8 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
 
     /// App Remote only connects while the Spotify app is running and playing, so a workout that
     /// starts before the music does keeps retrying rather than silently capturing nothing.
-    private static let maxConnectAttempts = 40
-    private static let connectRetryDelay: Duration = .seconds(15)
+    private static let maxConnectAttempts = 4
+    private static let connectRetryDelays: [Duration] = [.seconds(5), .seconds(15), .seconds(45)]
 
     static let spotifyIdleMessage = "Open Spotify and start playing. Helm connects once music is running."
 
@@ -278,8 +278,9 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     private func scheduleReconnect() {
         guard workoutCaptureActive, isAuthorized else { return }
         guard connectAttempts < Self.maxConnectAttempts else { return }
+        let delay = Self.connectRetryDelays[min(connectAttempts - 1, Self.connectRetryDelays.count - 1)]
         Task {
-            try? await Task.sleep(for: Self.connectRetryDelay)
+            try? await Task.sleep(for: delay)
             guard workoutCaptureActive, !isConnected else { return }
             await connectUsingFreshToken()
         }

@@ -85,11 +85,15 @@ struct WorkoutTRIMPIngestTests {
             end: workoutEnd,
             sourceBundleID: "watch"
         )
+        let readings: [(date: Date, bpm: Double)] = (0..<3).map { index in
+            (workoutStart.addingTimeInterval(Double(index) * 1_200), 140)
+        }
 
         let result = WorkoutTRIMPCalculator.trimp(
             for: workout,
-            heartRateSamples: [130, 140, 150],
+            heartRateReadings: readings,
             restingHeartRate: 55,
+            athleteAgeYears: nil,
             calendar: calendar
         )
 

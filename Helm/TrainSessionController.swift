@@ -2110,7 +2110,7 @@ final class TrainSessionController {
             while !Task.isCancelled {
                 try? await Task.sleep(for: .seconds(WorkoutLiveActivityManager.heartbeatInterval))
                 guard let self, self.store.snapshot != nil else { return }
-                await self.syncSideEffects(force: true)
+                await self.syncSideEffects(force: false)
             }
         }
     }

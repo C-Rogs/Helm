@@ -261,17 +261,7 @@ struct NutritionDaySummaryCard: View {
         if snapshot.helmDay == today {
             return "Today"
         }
-        let calendar = Calendar(identifier: .gregorian)
-        guard let date = calendar.date(from: DateComponents(
-            year: snapshot.helmDay.year,
-            month: snapshot.helmDay.month,
-            day: snapshot.helmDay.day
-        )) else {
-            return snapshot.helmDay.formatted
-        }
-        let formatter = DateFormatter()
-        formatter.dateFormat = "EEE d MMM"
-        return formatter.string(from: date)
+        return snapshot.helmDay.formattedLabel
     }
 
     private var targetCaption: String {

@@ -33,7 +33,11 @@ public enum ContextBuilder {
         let contextBlock: String
         switch turn {
         case .followUp:
-            contextBlock = followUpContextBlock(from: days, profile: profile)
+            contextBlock = trimFollowUpBlockToBudget(
+                sections: followUpSections(from: days, profile: profile),
+                systemInstructions: systemInstructions,
+                budget: budget
+            )
         case .initial:
             contextBlock = assembleContextBlock(
                 stablePrefix: stablePrefix,
@@ -141,7 +145,7 @@ public enum ContextBuilder {
         return sections.joined(separator: "\n\n")
     }
 
-    private static func followUpContextBlock(from days: CoachContextDays, profile: MemoryProfile) -> String {
+    private static func followUpSections(from days: CoachContextDays, profile: MemoryProfile) -> [String] {
         var sections: [String] = []
         let slim = normalized(profile.slimPhaseLine())
         if !slim.isEmpty {
@@ -161,14 +165,6 @@ public enum ContextBuilder {
             if !todayText.isEmpty {
                 sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
             }
-        }
-        let evidence = {
-            let grouped = EvidenceIndex.groupedText(from: days.groupedEvidence)
-            if !grouped.isEmpty { return grouped }
-            return EvidenceIndex.stableText(from: days.evidence)
-        }()
-        if !evidence.isEmpty {
-            sections.append("# Evidence Index\n\(evidence)")
         }
         let workouts = normalized(days.recentWorkouts)
         let outcomes = days.recentSessionOutcomes
@@ -214,11 +210,46 @@ public enum ContextBuilder {
         if !volumeStateSummary.isEmpty {
             sections.append("# Volume State\n\(volumeStateSummary)")
         }
+        let evidence = {
+            let grouped = EvidenceIndex.groupedText(from: days.groupedEvidence)
+            if !grouped.isEmpty { return grouped }
+            return EvidenceIndex.stableText(from: days.evidence)
+        }()
+        if !evidence.isEmpty {
+            sections.append("# Evidence Index\n\(evidence)")
+        }
         let engineProfile = normalized(days.engineProfile)
         if !engineProfile.isEmpty {
             sections.append("# Engine Profile\n\(engineProfile)")
         }
-        return sections.joined(separator: "\n\n")
+        return sections
+    }
+
+    /// Follow-up turns previously shipped the full block with no budget check. Sections are
+    /// listed lowest-priority last; drop from the end until the assembled prompt fits.
+    private static func trimFollowUpBlockToBudget(
+        sections: [String],
+        systemInstructions: String,
+        budget: Int
+    ) -> String {
+        guard budget > 0, !sections.isEmpty else { return sections.joined(separator: "\n\n") }
+
+        var kept = sections
+        while !kept.isEmpty {
+            let candidate = kept.joined(separator: "\n\n")
+            let estimated = TokenBudget.estimateTokens(
+                characterCount: systemInstructions.count + candidate.count
+            )
+            if estimated <= budget { return candidate }
+            kept.removeLast()
+        }
+
+        // Even the highest-priority section overflows; ship it alone rather than nothing.
+        return sections[0]
+    }
+
+    private static func followUpContextBlock(from days: CoachContextDays, profile: MemoryProfile) -> String {
+        followUpSections(from: days, profile: profile).joined(separator: "\n\n")
     }
 
     private static func assembleContextBlock(

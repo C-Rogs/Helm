@@ -128,10 +128,12 @@ struct ExercisePickerView: View {
         NavigationStack {
             Group {
                 if let loadError {
-                    Text(loadError)
-                        .helmFont(.body)
-                        .foregroundStyle(HelmColor.destructive)
-                        .padding()
+                    HelmErrorState(
+                        title: "Exercises unavailable",
+                        message: loadError,
+                        onRetry: { reloadAll() }
+                    )
+                    .padding()
                 } else {
                     content
                 }
