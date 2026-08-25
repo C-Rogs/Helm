@@ -36,12 +36,16 @@ enum IngestSampleMapper {
             .count().unitDivided(by: .minute())
         case .wristTemperature:
             .degreeCelsius()
-        case .activeEnergy, .dietaryEnergy:
+        case .activeEnergy, .dietaryEnergy, .basalEnergy:
             .kilocalorie()
         case .dietaryProtein, .dietaryCarbohydrate, .dietaryFat:
             .gram()
         case .bodyMass:
             .gramUnit(with: .kilo)
+        case .bodyFatPercentage:
+            .percent()
+        case .stepCount:
+            .count()
         case .sleep, .workout:
             .count()
         }
@@ -147,7 +151,8 @@ enum IngestSampleMapper {
                 deletedSampleIDs: deletedObjectIDs
             )
         case .bodyMass, .hrvSDNN, .restingHeartRate, .respiratoryRate, .wristTemperature,
-             .activeEnergy, .dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat:
+             .activeEnergy, .dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat,
+             .bodyFatPercentage, .stepCount, .basalEnergy:
             IngestDelta(
                 kind: kind,
                 addedQuantitySamples: quantitySamples(from: addedSamples, kind: kind, ownBundleID: ownBundleID),

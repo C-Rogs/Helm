@@ -189,6 +189,305 @@ def main():
         entry = {k: v for k, v in entry.items() if v is not None}
         kept_overlay_entries.append(entry)
 
+    # --- Manual corrections from Cameron's mapping review ---
+    # Plain-name entries that must exist and must not be shadowed by qualified variants.
+    MANUAL_ENTRIES = [
+        {
+            "id": "seed-cam-running",
+            "canonicalName": "running",
+            "displayName": "Running",
+            "aliases": ["Running", "Treadmill", "Running, Treadmill", "Running Treadmill"],
+            "exerciseMode": "distanceDuration",
+            "primaryMuscleGroup": "legs",
+            "secondaryMuscleGroups": [],
+            "movementPattern": "cardio",
+            "coachingCues": [
+                "Land under your hips with a quick cadence.",
+                "Relax shoulders; keep an easy breathing rhythm.",
+            ],
+        },
+        {
+            "id": "seed-cam-walking",
+            "canonicalName": "walking",
+            "displayName": "Walking",
+            "aliases": ["Walking", "Walking, Treadmill", "Walking Treadmill"],
+            "exerciseMode": "distanceDuration",
+            "primaryMuscleGroup": "legs",
+            "secondaryMuscleGroups": [],
+            "movementPattern": "cardio",
+            "coachingCues": [
+                "Stand tall; swing the arms naturally.",
+                "Brisk pace keeps it useful as active recovery.",
+            ],
+        },
+        {
+            "id": "seed-cam-hammer-curl-dumbbell",
+            "canonicalName": "hammer curl dumbbell",
+            "displayName": "Hammer Curl (Dumbbell)",
+            "aliases": ["Hammer Curl (Dumbbell)", "Dumbbell Hammer Curl"],
+            "equipment": "dumbbell",
+            "primaryMuscleGroup": "biceps",
+            "secondaryMuscleGroups": ["forearms"],
+            "movementPattern": "isolation",
+            "coachingCues": [
+                "Keep palms facing each other the whole way up.",
+                "Elbows pinned to your sides; no swinging.",
+                "Curl to shoulder height and lower slowly.",
+            ],
+        },
+        {
+            "id": "seed-cam-preacher-curl-dumbbell",
+            "canonicalName": "preacher curl dumbbell",
+            "displayName": "Preacher Curl (Dumbbell)",
+            "aliases": ["Preacher Curl (Dumbbell)", "Dumbbell Preacher Curl", "Preacher Curl"],
+            "equipment": "dumbbell",
+            "primaryMuscleGroup": "biceps",
+            "secondaryMuscleGroups": ["forearms"],
+            "movementPattern": "isolation",
+            "coachingCues": [
+                "Arms flat on the pad; elbows stay planted.",
+                "Curl up and squeeze at the top.",
+                "Lower slowly to a full stretch without hyperextending.",
+            ],
+        },
+        {
+            "id": "seed-cam-triceps-extension-dumbbell",
+            "canonicalName": "triceps extension dumbbell",
+            "displayName": "Triceps Extension (Dumbbell)",
+            "aliases": ["Triceps Extension (Dumbbell)", "Dumbbell Triceps Extension", "Lying Triceps Extension (Dumbbell)"],
+            "equipment": "dumbbell",
+            "primaryMuscleGroup": "triceps",
+            "secondaryMuscleGroups": [],
+            "movementPattern": "isolation",
+            "coachingCues": [
+                "Upper arms stay vertical; only the forearms move.",
+                "Lower until you feel a deep triceps stretch.",
+                "Extend fully without locking out hard.",
+            ],
+        },
+        {
+            "id": "seed-cam-triceps-extension-cable-bar",
+            "canonicalName": "triceps extension cable bar",
+            "displayName": "Triceps Extension (Cable Bar)",
+            "aliases": ["Triceps Extension (Cable Bar)", "Cable Bar Triceps Extension", "Straight Bar Triceps Extension"],
+            "equipment": "cable",
+            "primaryMuscleGroup": "triceps",
+            "secondaryMuscleGroups": [],
+            "movementPattern": "isolation",
+            "coachingCues": [
+                "Elbows glued to your ribs; push the bar down and around.",
+                "Split the hands slightly at lockout for full contraction.",
+                "Control the return; keep tension on the triceps.",
+            ],
+        },
+    ]
+    existing_ids = {e["id"] for e in kept_overlay_entries}
+    for m in MANUAL_ENTRIES:
+        if m["id"] not in existing_ids:
+            kept_overlay_entries.append(m)
+            existing_ids.add(m["id"])
+
+    # DB-only rows that need display-name corrections (no overlay entry exists,
+    # so the raw free-exercise-db name shows and matches).
+    MANUAL_DB_RENAMES = {
+        "seed-Cable_Seated_Lateral_Raise": {
+            "displayName": "Cable Lateral Raise",
+            "aliases": [
+                "Cable Lateral Raise",
+                "Standing Cable Lateral Raise",
+                "Cable Seated Lateral Raise",
+                # Hevy title kept verbatim so import resolution hits this entry first.
+                "Lateral Raise (Cable)",
+            ],
+        },
+        "seed-Low_Cable_Triceps_Extension": {
+            "displayName": "Triceps Extension (Cable Bar)",
+            "aliases": [
+                "Triceps Extension (Cable Bar)",
+                "Triceps Extension (Cable)",
+                "Low Cable Triceps Extension",
+                "Cable Bar Triceps Extension",
+            ],
+        },
+    }
+    by_id = {e["id"]: e for e in kept_overlay_entries}
+    for ref, fix in MANUAL_DB_RENAMES.items():
+        entry = by_id.get(ref)
+        if entry is None:
+            ds_id = ref.removeprefix("seed-")
+            db_row = db_by_id.get(ds_id)
+            if not db_row:
+                continue
+            muscles = db_row.get("primaryMuscles") or []
+            secondary = [m for m in (db_row.get("secondaryMuscles") or [])]
+            entry = {
+                "id": ref,
+                "canonicalName": norm(fix["displayName"]),
+                "displayName": fix["displayName"],
+                "aliases": list(fix["aliases"]),
+                "exerciseMode": used_mode,
+                "equipment": (db_row.get("equipment") or "").strip().lower() or None,
+                "primaryMuscleGroup": muscles[0] if muscles else None,
+                "secondaryMuscleGroups": secondary,
+                "movementPattern": "isolation",
+                "isPickerDefault": True,
+                "isHevyLibrary": False,
+            }
+            entry = {k: v for k, v in entry.items() if v is not None}
+            kept_overlay_entries.append(entry)
+        else:
+            entry = dict(entry)
+            entry["displayName"] = fix["displayName"]
+            entry["aliases"] = sorted({*entry.get("aliases", []), *fix["aliases"]})
+            kept_overlay_entries[:] = [
+                m if m["id"] != ref else entry for m in kept_overlay_entries
+            ]
+
+    # Preacher Hammer Dumbbell Curl: hammer-agnostic alias must not capture plain hammer curls.
+    for e in kept_overlay_entries:
+        if e["id"] == "seed-Preacher_Hammer_Dumbbell_Curl":
+            e.setdefault("aliases", [])
+            e["aliases"] = [a for a in e["aliases"] if norm(a) != "hammer curl dumbbell"]
+            if "Preacher Hammer Dumbbell Curl" not in e["aliases"]:
+                e["aliases"].append("Preacher Hammer Dumbbell Curl")
+        # Cable Seated Lateral Raise: Cameron does these standing; make standing the
+        # primary name so plain cable lateral raises resolve here, seated stays as variant name.
+        if e["id"] == "seed-Cable_Seated_Lateral_Raise":
+            e["displayName"] = "Cable Lateral Raise"
+            aliases = list({*e.get("aliases", []), "Cable Lateral Raise", "Standing Cable Lateral Raise"})
+            e["aliases"] = sorted(aliases)
+        # Standing Dumbbell Triceps Extension: drop the standing qualifier from the
+        # plain-name space; the neutral dumbbell triceps extension entry owns it now.
+        if e["id"] == "seed-Standing_Dumbbell_Triceps_Extension":
+            e.setdefault("aliases", [])
+            e["aliases"] = [a for a in e["aliases"] if norm(a) != "triceps extension dumbbell"]
+
+    # --- Link overlay rows to their free-exercise-db twins ---
+    # The merger only attaches images/instructions when sourceDatasetID is set;
+    # without it the row inserts as a new record and shows the generic fallback icon.
+    def db_canon(name: str) -> str:
+        return norm(name)
+
+    db_by_canonical: dict[str, dict] = {}
+    for r in db:
+        db_by_canonical.setdefault(db_canon(r["name"]), r)
+
+    # Hand-mapped twins for rows whose wording differs from any DB name.
+    # Curated: wrong pictures are worse than no picture, so only confident pairs.
+    MANUAL_TWIN_IDS = {
+        "seed-bench-press": "Barbell_Bench_Press_-_Medium_Grip",
+        "seed-squat": "Barbell_Squat",
+        "seed-lat-pulldown": "Close-Grip_Front_Lat_Pulldown",
+        "seed-dumbbell-lateral-raise": "Side_Lateral_Raise",
+        "seed-overhead-press": "Standing_Barbell_Press_Behind_Neck",
+        "seed-pull-up": "Weighted_Pull_Ups",
+        "seed-cam-push-up": "Pushups",
+        "seed-cam-bench-press-dumbbell": "Dumbbell_Bench_Press",
+        "seed-cam-incline-bench-press-dumbbell": "Incline_Dumbbell_Press",
+        "seed-cam-incline-chest-fly-dumbbell": "Incline_Dumbbell_Flyes",
+        "seed-cam-chest-fly-dumbbell": "Dumbbell_Flyes",
+        "seed-cam-skullcrusher-barbell": "EZ-Bar_Skullcrusher",
+        "seed-cam-skullcrusher-dumbbell": "Decline_Dumbbell_Triceps_Extension",
+        "seed-cam-triceps-dip": "Dips_-_Triceps_Version",
+        "seed-cam-chest-dip": "Dips_-_Chest_Version",
+        "seed-cam-bench-dip": "Bench_Dips",
+        "seed-cam-push-up-close-grip": "Pushups_Close_and_Wide_Hand_Positions",
+        "seed-cam-nordic-hamstrings-curls": "Hyperextensions_Back_Extensions",
+        "seed-cam-decline-crunch-weighted": "Decline_Crunch",
+        "seed-cam-jm-press-barbell": "JM_Press",
+        "seed-cam-behind-the-back-curl-cable": "Cable_Hammer_Curls_-_Rope_Attachment",
+        "seed-cam-reverse-grip-tricep-pushdown": "Reverse_Grip_Triceps_Pushdown",
+        "seed-cam-triceps-kickback-cable": "Tricep_Dumbbell_Kickback",
+        "seed-cam-single-arm-triceps-pushdown-cable": "Triceps_Pushdown",
+        "seed-cam-straight-arm-lat-pulldown-cable": "Straight-Arm_Pulldown",
+        "seed-cam-low-cable-fly-crossovers": "Cable_Crossover",
+        "seed-cam-cable-fly-crossovers": "Cable_Crossover",
+        "seed-single-arm-cable-lateral-raise": "Cable_Seated_Lateral_Raise",
+        "seed-Cable_Seated_Lateral_Raise": "Cable_Shrugs",
+        "seed-cam-seated-row-machine": "Seated_Cable_Rows",
+        "seed-cam-seated-cable-row-v-grip-cable": "Seated_Cable_Rows",
+        "seed-seated-cable-row": "Seated_Cable_Rows",
+        "seed-cam-seated-shoulder-press-machine": "Cable_Shoulder_Press",
+        "seed-cam-shoulder-press-machine-plates": "Cable_Shoulder_Press",
+        "seed-cam-lateral-raise-machine": "Lateral_Raise_-_With_Bands",
+        "seed-cam-chest-fly-machine": "Butterfly",
+        "seed-cam-butterfly-pec-deck": "Butterfly",
+        "seed-cam-chest-press-machine": "Leverage_Chest_Press",
+        "seed-machine-chest-press": "Leverage_Chest_Press",
+        "seed-cam-incline-chest-press-machine": "Leverage_Incline_Chest_Press",
+        "seed-cam-seated-dip-machine": "Dip_Machine",
+        "seed-cam-hack-squat-machine": "Hack_Squat",
+        "seed-cam-preacher-curl-barbell": "Barbell_Curl",
+        "seed-cam-preacher-curl-machine": "Machine_Preacher_Curls",
+        "seed-ez-bar-curl": "EZ-Bar_Curl",
+        "seed-romanian-deadlift": "Romanian_Deadlift",
+        "seed-cam-shrug-cable": "Cable_Shrugs",
+        "seed-cable-face-pull": "Face_Pull",
+        "seed-triceps-rope-pushdown": "Triceps_Pushdown_-_Rope_Attachment",
+        "seed-horizontal-leg-press": "Leg_Press",
+        "seed-lying-leg-curl": "Lying_Leg_Curls",
+        "seed-seated-leg-curl": "Seated_Leg_Curl",
+        "seed-leg-extension": "Leg_Extensions",
+        "seed-calf-extension": "Seated_Calf_Raise",
+        "seed-machine-crunch": "Ab_Crunch_Machine",
+        "seed-chest-supported-row": "Leverage_Iso_Row",
+        "seed-cam-back-extension-weighted-hyperextension": "Hyperextensions_Back_Extensions",
+        "seed-cam-hip-adduction-machine": "Cable_Hip_Adduction",
+        "seed-hip-thrust": "Barbell_Hip_Thrust",
+        "seed-cam-hip-thrust-machine": "Barbell_Hip_Thrust",
+        "seed-barbell-row": "Bent_Over_Barbell_Row",
+        "seed-single-arm-dumbbell-row": "One-Arm_Dumbbell_Row",
+        "seed-standing-calf-raise": "Standing_Calf_Raises",
+        "seed-cam-standing-calf-raise-dumbbell": "Rocking_Standing_Calf_Raise",
+        "seed-cam-single-leg-standing-calf-raise-machine": "Standing_Calf_Raises",
+        "seed-cam-seated-dumbbell-shoulder-press": "Seated_Dumbbell_Press",
+        "seed-cam-seated-overhead-press-dumbbell": "Seated_Dumbbell_Press",
+        "seed-dumbbell-curl": "Dumbbell_Bicep_Curl",
+        "seed-cam-bicep-curl-barbell": "Barbell_Curl",
+        "seed-cam-bicep-curl-cable": "Cable_Hammer_Curls_-_Rope_Attachment",
+        "seed-cam-hammer-curl-cable": "Cable_Hammer_Curls_-_Rope_Attachment",
+        "seed-cam-hammer-curl-dumbbell": "Alternate_Hammer_Curl",
+        "seed-cam-preacher-curl-dumbbell": "Zottman_Curl",
+        "seed-cam-seated-incline-curl-dumbbell": "Incline_Dumbbell_Curl",
+        "seed-tricep-pushdown": "Triceps_Pushdown",
+        "seed-cam-rear-delt-reverse-fly-machine": "Butterfly",
+        "seed-cam-rear-delt-reverse-fly-cable": "Cable_Rear_Delt_Fly",
+        "seed-cam-rear-delt-reverse-fly-dumbbell": "Reverse_Flyes",
+        "seed-cam-reverse-fly-single-arm-cable": "Cable_Rear_Delt_Fly",
+        "seed-cam-chest-supported-y-raise-dumbbell": "Alternating_Deltoid_Raise",
+        "seed-cam-single-arm-tricep-extension-dumbbell": "Cable_One_Arm_Tricep_Extension",
+        "seed-cam-triceps-extension-dumbbell": "Lying_Dumbbell_Tricep_Extension",
+        "seed-cam-single-leg-romanian-deadlift-dumbbell": "Romanian_Deadlift",
+        "seed-cam-romanian-deadlift-dumbbell": "Romanian_Deadlift",
+        "seed-cam-lat-pulldown-machine": "Close-Grip_Front_Lat_Pulldown",
+        "seed-cam-lat-pulldown-close-grip-cable": "One_Arm_Lat_Pulldown",
+        "seed-cam-bulgarian-split-squat": "Split_Squat_with_Dumbbells",
+        "seed-cam-side-plank": "Plank",
+        "seed-cam-cycling": "Bicycling",
+        "seed-cam-diamond-push-up": "Pushups_Close_and_Wide_Hand_Positions",
+        "seed-seated-dumbbell-shoulder-press": "Seated_Dumbbell_Press",
+        "seed-cam-triceps-extension-cable-bar": "Triceps_Pushdown",
+        "seed-Low_Cable_Triceps_Extension": "Cable_Incline_Pushdown",
+    }
+
+    linked = 0
+    for e in kept_overlay_entries:
+        if e.get("sourceDatasetID"):
+            continue
+        ds_id = MANUAL_TWIN_IDS.get(e["id"])
+        if not ds_id or ds_id not in db_by_id:
+            twin = db_by_canonical.get(db_canon(e["canonicalName"]))
+            ds_id = twin["id"] if twin else None
+        if ds_id and ds_id in db_by_id:
+            e["sourceDatasetID"] = ds_id
+            linked += 1
+
+    # --- Unhide rows Cameron's wording needs but the audit hid ---
+    # "Dumbbell Row" fuzzy-matched to Standing Dumbbell Upright Row because the
+    # one-arm row was hidden; restore it so the natural match wins.
+    unhide_ids = {"One-Arm_Dumbbell_Row"}
+    hide_ids -= {f"seed-{i}" for i in unhide_ids}
+
     overlay_doc = {
         "seedVersion": NEW_SEED_VERSION,
         "placeholder": False,
@@ -218,6 +517,18 @@ def main():
         arch_id = (row.get("archetype") or "").strip()
         if arch_id:
             mapping[f"seed-cam-{norm(row['proposed_canonical']).replace(' ', '-')}"] = arch_id
+
+    # Manual correction entries map to fixed archetypes.
+    MANUAL_ARCHETYPES = {
+        "seed-cam-hammer-curl-dumbbell": "hammer_curl",
+        "seed-cam-preacher-curl-dumbbell": "preacher_curl",
+        "seed-cam-triceps-extension-dumbbell": "overhead_triceps_extension",
+        "seed-cam-triceps-extension-cable-bar": "triceps_pushdown",
+        "seed-cam-running": "running",
+        "seed-cam-walking": "running",
+    }
+    for ref, arch_id in MANUAL_ARCHETYPES.items():
+        mapping[ref] = arch_id
 
     variants = {}
     for ref, arch_id in mapping.items():

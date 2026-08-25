@@ -13,17 +13,20 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
     case dietaryCarbohydrate
     case dietaryFat
     case bodyMass
+    case bodyFatPercentage
+    case stepCount
+    case basalEnergy
     case workout
 
     public var metricFamily: HealthKitMetricFamily {
         switch self {
         case .hrvSDNN, .restingHeartRate, .respiratoryRate, .wristTemperature:
             .vitals
-        case .activeEnergy:
+        case .activeEnergy, .stepCount, .basalEnergy:
             .activity
         case .dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat:
             .nutrition
-        case .bodyMass:
+        case .bodyMass, .bodyFatPercentage:
             .bodyComposition
         case .sleep:
             .sleep
@@ -69,6 +72,12 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
             HKQuantityType(.dietaryFatTotal)
         case .bodyMass:
             HKQuantityType(.bodyMass)
+        case .bodyFatPercentage:
+            HKQuantityType(.bodyFatPercentage)
+        case .stepCount:
+            HKQuantityType(.stepCount)
+        case .basalEnergy:
+            HKQuantityType(.basalEnergyBurned)
         case .workout:
             HKWorkoutType.workoutType()
         }

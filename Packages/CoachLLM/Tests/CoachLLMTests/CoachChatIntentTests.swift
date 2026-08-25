@@ -40,6 +40,61 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.looksLikeClearChat("clear chat"))
         #expect(!CoachChatIntent.looksLikeClearChat("clear my plate"))
     }
+
+    // MARK: - Nutrition lookup
+
+    @Test("looksLikeNutritionLookup detects nutrition-related phrases")
+    func detectsNutritionLookup() {
+        // Positive cases.
+        #expect(CoachChatIntent.looksLikeNutritionLookup("What's my TDEE"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("what is my tdee"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("What should my macros be"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("macro target today"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("show me my weekly budget"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("calorie target"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("how many calories today"))
+        #expect(CoachChatIntent.looksLikeNutritionLookup("what can i eat today"))
+    }
+
+    @Test("looksLikeNutritionLookup does not match unrelated phrases")
+    func doesNotDetectNonNutritionPhrases() {
+        // Negative cases.
+        #expect(!CoachChatIntent.looksLikeNutritionLookup("log 300g of chicken"))
+        #expect(!CoachChatIntent.looksLikeNutritionLookup("What should I do for my workout today"))
+        #expect(!CoachChatIntent.looksLikeNutritionLookup("How was my sleep last night"))
+        #expect(!CoachChatIntent.looksLikeNutritionLookup("add breakfast"))
+        #expect(!CoachChatIntent.looksLikeNutritionLookup("yesterday I had 2000 calories"))
+    }
+
+    @Test("inferredNutritionQuery returns weeklyBudget for budget keywords and today otherwise")
+    func infersNutritionQuery() {
+        let budget = CoachChatIntent.inferredNutritionQuery(from: "Show me my weekly budget")
+        #expect(budget?.queryType == .weeklyBudget)
+
+        let week = CoachChatIntent.inferredNutritionQuery(from: "What's my nutrition budget")
+        #expect(week?.queryType == .weeklyBudget)
+
+        let weekAhead = CoachChatIntent.inferredNutritionQuery(from: "Plan my week ahead nutrition")
+        #expect(weekAhead?.queryType == .weeklyBudget)
+
+        let today = CoachChatIntent.inferredNutritionQuery(from: "What's my TDEE")
+        #expect(today?.queryType == .today)
+
+        let macros = CoachChatIntent.inferredNutritionQuery(from: "What should my macros be")
+        #expect(macros?.queryType == .today)
+
+        let history = CoachChatIntent.inferredNutritionQuery(from: "calorie history")
+        #expect(history?.queryType == .range)
+
+        let weeklyHistory = CoachChatIntent.inferredNutritionQuery(from: "weekly calorie history")
+        #expect(weeklyHistory?.queryType == .range)
+
+        let pastIntake = CoachChatIntent.inferredNutritionQuery(from: "past intake")
+        #expect(pastIntake?.queryType == .range)
+
+        let nilQuery = CoachChatIntent.inferredNutritionQuery(from: "log breakfast")
+        #expect(nilQuery == nil)
+    }
 }
 
 @Suite("CoachThreadState")

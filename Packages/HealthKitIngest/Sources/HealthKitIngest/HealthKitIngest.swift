@@ -195,6 +195,11 @@ public actor HealthKitIngest {
         log.info("HealthKit ingest anchors reset")
     }
 
+    public func resetAnchor(for kind: HealthKitSampleKind) async throws {
+        try await anchorStore.resetAnchor(for: kind)
+        log.info("HealthKit anchor reset for \(kind.rawValue, privacy: .public)")
+    }
+
     private func scheduleSync(for kind: HealthKitSampleKind) {
         guard isObserving else { return }
         pendingKinds.insert(kind)

@@ -20,3 +20,8 @@ Screenshots/
 
 # SwiftLint cache
 .swiftlint-cache
+
+# Local/script junk
+**/__pycache__/
+*.pyc
+scripts/catalog-prep/catalog_audit_canvas.json

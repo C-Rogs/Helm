@@ -151,14 +151,15 @@ struct NutritionServiceTests {
         #expect(snapshot.energyBalance.adjustedTargetKcal == nil)
     }
 
-    @Test("fresh active burn adjusts energy balance target")
-    func freshBurnAdjustsTarget() {
+    @Test("active burn remains context without adjusting calorie target")
+    func activeBurnDoesNotAdjustTarget() {
         let balance = EnergyBalanceSummary.build(
             intakeKcal: 1_800,
             baseTargetKcal: 2_400,
             activeEnergy: .fresh(kilocalories: 420)
         )
-        #expect(balance.adjustedTargetKcal == 2_820)
+        #expect(balance.adjustedTargetKcal == nil)
+        #expect(balance.activeEnergy == .fresh(kilocalories: 420))
 
         let staleBalance = EnergyBalanceSummary.build(
             intakeKcal: 1_800,

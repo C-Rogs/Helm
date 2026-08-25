@@ -47,6 +47,11 @@ public actor HealthKitAnchorStore {
         try persist()
     }
 
+    public func resetAnchor(for kind: HealthKitSampleKind) throws {
+        anchors.removeValue(forKey: kind.anchorKey)
+        try persist()
+    }
+
     public func resetAll() throws {
         anchors.removeAll()
         try persist()

@@ -48,7 +48,8 @@ struct MigrationTests {
                 "pending_food_import",
                 "food_log_recent",
                 "nutrition_day_log_status",
-                "workout_music_samples"
+                "workout_music_samples",
+                "nutrition_day_demand_override"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

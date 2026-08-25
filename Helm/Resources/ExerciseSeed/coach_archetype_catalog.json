@@ -480,23 +480,6 @@
       ]
     },
     {
-      "id": "reverse_wrist_curl",
-      "displayName": "Reverse Wrist Curl",
-      "priority": "extended",
-      "coachAliases": [
-        "reverse wrist curl",
-        "palms down wrist curl",
-        "overhand wrist curl",
-        "extensor wrist curl",
-        "reverse wrist curls",
-        "dumbbell reverse wrist curl",
-        "barbell reverse wrist curl",
-        "forearm extension curl",
-        "reverse forearm curl",
-        "seated reverse wrist curl"
-      ]
-    },
-    {
       "id": "triceps_pushdown",
       "displayName": "Triceps Pushdown",
       "priority": "core",
@@ -999,17 +982,14 @@
     "seed-Lying_T-Bar_Row": "chest_supported_row",
     "seed-Machine_Bicep_Curl": "biceps_curl",
     "seed-Machine_Triceps_Extension": "triceps_pushdown",
-    "seed-One_Arm_Dumbbell_Bench_Press": "bench_press",
     "seed-Plank": "plank",
     "seed-Preacher_Hammer_Dumbbell_Curl": "preacher_curl",
     "seed-Reverse_Barbell_Curl": "reverse_curl",
     "seed-Running_Treadmill": "running",
     "seed-Seated_Calf_Raise": "seated_calf_raise",
     "seed-Seated_Leg_Curl": "seated_leg_curl",
-    "seed-Seated_One-Arm_Dumbbell_Palms-Down_Wrist_Curl": "reverse_wrist_curl",
     "seed-Single-Arm_Cable_Crossover": "chest_fly",
     "seed-Smith_Machine_Bench_Press": "bench_press",
-    "seed-Smith_Machine_One-Arm_Upright_Row": "upright_row",
     "seed-Smith_Machine_Squat": "squat",
     "seed-Standing_Dumbbell_Triceps_Extension": "overhead_triceps_extension",
     "seed-Standing_Dumbbell_Upright_Row": "upright_row",
@@ -1037,6 +1017,7 @@
     "seed-cam-decline-crunch-weighted": "crunch",
     "seed-cam-hack-squat-machine": "hack_squat",
     "seed-cam-hammer-curl-cable": "hammer_curl",
+    "seed-cam-hammer-curl-dumbbell": "hammer_curl",
     "seed-cam-hip-abduction-machine": "hip_abduction",
     "seed-cam-hip-adduction-machine": "hip_adduction",
     "seed-cam-hip-thrust-machine": "hip_thrust",
@@ -1048,11 +1029,13 @@
     "seed-cam-lat-pulldown-machine": "lat_pulldown",
     "seed-cam-lateral-raise-machine": "lateral_raise",
     "seed-cam-preacher-curl-barbell": "preacher_curl",
+    "seed-cam-preacher-curl-dumbbell": "preacher_curl",
     "seed-cam-preacher-curl-machine": "preacher_curl",
     "seed-cam-push-up": "push_up",
     "seed-cam-rear-delt-reverse-fly-cable": "rear_delt_fly",
     "seed-cam-rear-delt-reverse-fly-dumbbell": "rear_delt_fly",
     "seed-cam-romanian-deadlift-dumbbell": "romanian_deadlift",
+    "seed-cam-running": "running",
     "seed-cam-seated-cable-row-v-grip-cable": "seated_row",
     "seed-cam-seated-incline-curl-dumbbell": "incline_biceps_curl",
     "seed-cam-seated-overhead-press-dumbbell": "shoulder_press",
@@ -1070,7 +1053,10 @@
     "seed-cam-standing-calf-raise-dumbbell": "standing_calf_raise",
     "seed-cam-straight-arm-lat-pulldown-cable": "straight_arm_pulldown",
     "seed-cam-triceps-dip": "triceps_dip",
+    "seed-cam-triceps-extension-cable-bar": "triceps_pushdown",
+    "seed-cam-triceps-extension-dumbbell": "overhead_triceps_extension",
     "seed-cam-triceps-kickback-cable": "triceps_kickback",
+    "seed-cam-walking": "running",
     "seed-chest-supported-row": "chest_supported_row",
     "seed-dumbbell-curl": "biceps_curl",
     "seed-dumbbell-lateral-raise": "lateral_raise",
@@ -1106,7 +1092,6 @@
     },
     "bench_press": {
       "members": [
-        "seed-One_Arm_Dumbbell_Bench_Press",
         "seed-Smith_Machine_Bench_Press",
         "seed-bench-press",
         "seed-cam-bench-press-dumbbell",
@@ -1200,7 +1185,8 @@
     "hammer_curl": {
       "members": [
         "seed-Cross_Body_Hammer_Curl",
-        "seed-cam-hammer-curl-cable"
+        "seed-cam-hammer-curl-cable",
+        "seed-cam-hammer-curl-dumbbell"
       ],
       "preferredDefaultExerciseId": "seed-cam-hammer-curl-cable"
     },
@@ -1298,7 +1284,8 @@
         "seed-Standing_Dumbbell_Triceps_Extension",
         "seed-Standing_One-Arm_Dumbbell_Triceps_Extension",
         "seed-Standing_Overhead_Barbell_Triceps_Extension",
-        "seed-cam-single-arm-tricep-extension-dumbbell"
+        "seed-cam-single-arm-tricep-extension-dumbbell",
+        "seed-cam-triceps-extension-dumbbell"
       ],
       "preferredDefaultExerciseId": "seed-cam-single-arm-tricep-extension-dumbbell"
     },
@@ -1312,6 +1299,7 @@
       "members": [
         "seed-Preacher_Hammer_Dumbbell_Curl",
         "seed-cam-preacher-curl-barbell",
+        "seed-cam-preacher-curl-dumbbell",
         "seed-cam-preacher-curl-machine"
       ],
       "preferredDefaultExerciseId": "seed-cam-preacher-curl-barbell"
@@ -1343,12 +1331,6 @@
       ],
       "preferredDefaultExerciseId": "seed-Reverse_Barbell_Curl"
     },
-    "reverse_wrist_curl": {
-      "members": [
-        "seed-Seated_One-Arm_Dumbbell_Palms-Down_Wrist_Curl"
-      ],
-      "preferredDefaultExerciseId": "seed-Seated_One-Arm_Dumbbell_Palms-Down_Wrist_Curl"
-    },
     "romanian_deadlift": {
       "members": [
         "seed-cam-romanian-deadlift-dumbbell",
@@ -1360,7 +1342,9 @@
       "members": [
         "seed-Jogging_Treadmill",
         "seed-Running_Treadmill",
-        "seed-Walking_Treadmill"
+        "seed-Walking_Treadmill",
+        "seed-cam-running",
+        "seed-cam-walking"
       ],
       "preferredDefaultExerciseId": "seed-Jogging_Treadmill"
     },
@@ -1475,6 +1459,7 @@
       "members": [
         "seed-Machine_Triceps_Extension",
         "seed-cam-single-arm-triceps-pushdown-cable",
+        "seed-cam-triceps-extension-cable-bar",
         "seed-tricep-pushdown",
         "seed-triceps-rope-pushdown"
       ],
@@ -1482,12 +1467,11 @@
     },
     "upright_row": {
       "members": [
-        "seed-Smith_Machine_One-Arm_Upright_Row",
         "seed-Standing_Dumbbell_Upright_Row",
         "seed-Upright_Barbell_Row",
         "seed-Upright_Cable_Row"
       ],
-      "preferredDefaultExerciseId": "seed-Smith_Machine_One-Arm_Upright_Row"
+      "preferredDefaultExerciseId": "seed-Standing_Dumbbell_Upright_Row"
     },
     "y_raise": {
       "members": [

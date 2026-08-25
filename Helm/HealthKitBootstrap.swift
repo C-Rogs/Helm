@@ -64,6 +64,9 @@ enum HealthKitBootstrap {
         let shouldStart = await ingest.shouldBootstrapOnLaunch(backfillComplete: backfillComplete)
         guard shouldStart else { return }
 
+        try? await resetV19AnchorsIfNeeded()
+
+        try? await ingest.requestAuthorization()
         await ingest.startObserving()
         let outcome = await ingest.syncNow()
         await ReadinessBootstrap.readinessService.recomputeAfterIngest(
@@ -88,5 +91,15 @@ enum HealthKitBootstrap {
             for await _ in await backfill.run(window: window) {}
             await ReadinessBootstrap.readinessService.refresh()
         }
+    }
+
+    private static let didResetV19AnchorsDefaultsKey = "did-reset-v19-healthkit-anchors"
+
+    private static func resetV19AnchorsIfNeeded() async {
+        guard !UserDefaults.standard.bool(forKey: didResetV19AnchorsDefaultsKey) else { return }
+        try? await ingest.resetAnchor(for: .bodyFatPercentage)
+        try? await ingest.resetAnchor(for: .stepCount)
+        try? await ingest.resetAnchor(for: .basalEnergy)
+        UserDefaults.standard.set(true, forKey: didResetV19AnchorsDefaultsKey)
     }
 }

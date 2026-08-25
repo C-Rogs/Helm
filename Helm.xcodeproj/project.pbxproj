@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		F87ABFCC99832312784150B9 /* NutritionWeeklyBudgetCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 890377652F6443F345063508 /* NutritionWeeklyBudgetCard.swift */; };
 		00045E9C351CA85A054A1CD1 /* FocusModePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */; };
 		0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */; };
 		023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */; };
@@ -405,6 +406,7 @@
 		1CA15866D39CB103E073703A /* OnboardingFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingFlowView.swift; sourceTree = "<group>"; };
 		1D97669BBC4C98614477CF4E /* WorkoutHistoryListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryListView.swift; sourceTree = "<group>"; };
 		1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDiaryHeader.swift; sourceTree = "<group>"; };
+		890377652F6443F345063508 /* NutritionWeeklyBudgetCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionWeeklyBudgetCard.swift; sourceTree = "<group>"; };
 		1DCF8954E5359D5E52159A37 /* FocusCardLoggingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCardLoggingView.swift; sourceTree = "<group>"; };
 		1F143BE76D9161B316CE8116 /* TrendChartFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendChartFixtures.swift; sourceTree = "<group>"; };
 		20018EF3589711177E54129C /* MealEditController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditController.swift; sourceTree = "<group>"; };
@@ -1023,6 +1025,7 @@
 				50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */,
 				1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */,
 				8DB8B6B91DA9F2AC1F59750B /* NutritionMealBucketSection.swift */,
+				890377652F6443F345063508 /* NutritionWeeklyBudgetCard.swift */,
 				F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */,
 				72CFF67885BA5C1B752C27F2 /* NutritionView.swift */,
 				BF925652AAE23A274B8B09F6 /* OfflineBarcodeQueueSheet.swift */,
@@ -1698,6 +1701,7 @@
 				4701F085097E7C9689C0AA16 /* NutritionDayMealsStore.swift in Sources */,
 				7890C1F20FA5AA527FCDC0AF /* NutritionDaySummaryCard.swift in Sources */,
 				53299805E10084FA6A941C41 /* NutritionDiaryHeader.swift in Sources */,
+				F87ABFCC99832312784150B9 /* NutritionWeeklyBudgetCard.swift in Sources */,
 				E69D21FF5DA148D792F58DDB /* NutritionMealActionsController.swift in Sources */,
 				BCBC45C74396DF515AAD2CDD /* NutritionMealBucketSection.swift in Sources */,
 				F5EF64E16A0FDE9394AD68BA /* NutritionSettingsView.swift in Sources */,

@@ -1,6 +1,7 @@
 import Core
 import DesignSystem
 import HealthKitIngest
+import NutritionKit
 import PhotosUI
 import SwiftUI
 
@@ -34,6 +35,7 @@ struct NutritionView: View {
         }
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
+    @State private var weeklyBudget: WeeklyNutritionBudget?
     @State private var isRefreshing = false
     @State private var isDayCompleteSaving = false
     @State private var showsPhotoOptions = false
@@ -73,6 +75,16 @@ struct NutritionView: View {
                             ),
                             onAskCoach: chatController.requestCoachHandoff(prompt:)
                         )
+
+                        if let budget = weeklyBudget {
+                            NutritionWeeklyBudgetCard(
+                                budget: budget,
+                                today: todayHelmDay ?? snapshot.helmDay,
+                                onSetDemand: { day, demand in
+                                    Task { await setDayDemand(demand, for: day) }
+                                }
+                            )
+                        }
 
                         if foodLogTipStore.isVisible {
                             foodLogTipCard
@@ -309,7 +321,42 @@ struct NutritionView: View {
         guard let day = selectedHelmDay else { return }
         NutritionBootstrap.lastViewedHelmDay = day
         await nutritionService.refresh(for: day, prescriptionSummary: prescriptionSummary)
+        await refreshWeeklyBudget(day: day, prescriptionSummary: prescriptionSummary)
         reloadMeals(from: nutritionService.state)
+    }
+
+    @MainActor
+    private func refreshWeeklyBudget(
+        day: HelmDay,
+        prescriptionSummary: PrescribedSessionSummary?
+    ) async {
+        do {
+            weeklyBudget = try await nutritionService.weeklyBudget(
+                for: day,
+                prescriptionSummary: prescriptionSummary
+            )
+        } catch {
+            weeklyBudget = nil
+        }
+    }
+
+    @MainActor
+    private func setDayDemand(_ demand: NutritionDayDemand?, for day: HelmDay) async {
+        let service = NutritionDayDemandService(persistence: PersistenceBootstrap.persistenceStore)
+        do {
+            if let demand {
+                try service.setExplicitOverride(demand, for: day)
+            } else {
+                try service.clearExplicitOverride(for: day)
+            }
+            HapticEngine.shared.play(.mealConfirmed)
+            await refreshWeeklyBudget(
+                day: selectedHelmDay ?? day,
+                prescriptionSummary: PlanBootstrap.prescriptionService.state.summary
+            )
+        } catch {
+            // Non-fatal; next refresh shows current state.
+        }
     }
 
     @MainActor
@@ -366,6 +413,12 @@ struct NutritionView: View {
         }
         let day = selectedHelmDay ?? snapshot.helmDay
         mealsStore.reload(for: day)
+        Task {
+            await refreshWeeklyBudget(
+                day: day,
+                prescriptionSummary: PlanBootstrap.prescriptionService.state.summary
+            )
+        }
     }
 
     @ViewBuilder

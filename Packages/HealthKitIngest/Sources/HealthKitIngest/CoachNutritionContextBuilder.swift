@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 import Persistence
 import PlanKit
 
@@ -88,5 +89,38 @@ public enum CoachNutritionContextBuilder {
             return String(format: "%.0f", value)
         }
         return String(format: "%.1f", value)
+    }
+
+    /// Weekly nutrition budget block for coach context. Provides the engine's
+    /// exact Monday-Sunday plan, consumed/remaining totals, per-day allocations
+    /// and demand reasons. Coach must quote these numbers, not recalculate.
+    public static func weeklyBudgetBlock(
+        from store: PersistenceStore,
+        for helmDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) async -> String? {
+        let engine = NutritionEngine(persistence: store, calendar: calendar, cutoff: cutoff)
+        guard let budget = try? await engine.weeklyBudget(for: helmDay, prescriptionSummary: nil) else { return nil }
+
+        var lines: [String] = [
+            "week_start=\(budget.weekStart.formatted)",
+            "weekly_tgt_kcal=\(budget.targetCaloriesKcal)",
+            "consumed_kcal=\(budget.consumedCaloriesKcal)",
+            "remaining_kcal=\(budget.remainingCaloriesKcal)"
+        ]
+        if budget.excessCaloriesKcal > 0 {
+            lines.append("excess_kcal=\(budget.excessCaloriesKcal)")
+        }
+
+        for day in budget.days {
+            let stateTag = day.isProvisional ? " [provisional]" : ""
+            let reasonTag = day.reason == .consumed ? "" : " (\(day.reason.rawValue))"
+            lines.append(
+                "\(day.day.formatted) | \(day.demand.rawValue) | \(day.caloriesKcal)kcal | P\(day.proteinGrams)g C\(day.carbohydrateGrams)g F\(day.fatGrams)g\(stateTag)\(reasonTag)"
+            )
+        }
+
+        return lines.joined(separator: "\n")
     }
 }

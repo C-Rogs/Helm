@@ -55,6 +55,22 @@ struct MacroTargetTests {
         #expect(aggressiveCut.caloriesKcal < defaultCut.caloriesKcal)
     }
 
+    @Test("invalid weekly rates use deterministic defaults")
+    func invalidWeeklyRates() {
+        let defaultCut = targets(phase: .cut, trendTDEE: 3_000)
+        #expect(targets(phase: .cut, weeklyRateKg: -0.5, trendTDEE: 3_000) == defaultCut)
+        #expect(targets(phase: .cut, weeklyRateKg: .infinity, trendTDEE: 3_000) == defaultCut)
+    }
+
+    @Test("fat floor is retained and macro calories reconcile")
+    func fatFloorAndRounding() {
+        let result = targets(phase: .cut, weeklyRateKg: 1, bodyMassKg: 100, trendTDEE: 2_000)
+        let macroCalories = result.proteinGrams * 4 + result.carbohydrateGrams * 4 + result.fatGrams * 9
+
+        #expect(result.fatGrams >= 60)
+        #expect(result.caloriesKcal == macroCalories)
+    }
+
     @Test("profile seeds macro targets from Mifflin-St Jeor maintenance")
     func profileSeedTargets() throws {
         let calendar = Calendar(identifier: .gregorian)

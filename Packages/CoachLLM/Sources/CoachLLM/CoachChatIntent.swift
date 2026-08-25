@@ -320,4 +320,46 @@ public enum CoachChatIntent: Sendable {
         }
         return TrendsQueryPayload(queryType: .all)
     }
+
+    // MARK: - Nutrition Query Inference
+
+    public static func looksLikeNutritionLookup(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "how many calories should i eat",
+            "what should my macros be",
+            "what are my targets",
+            "what's my tdee",
+            "what is my tdee",
+            "trend weight",
+            "nutrition history",
+            "calorie history",
+            "past intake",
+            "how much should i eat",
+            "macro target",
+            "calorie target",
+            "weekly budget",
+            "week budget",
+            "my nutrition budget",
+            "nutrition plan",
+            "what can i eat today",
+            "how many calories today"
+        ]
+        return needles.contains(where: lower.contains)
+    }
+
+    public static func inferredNutritionQuery(from text: String) -> NutritionQueryPayload? {
+        guard looksLikeNutritionLookup(text) else { return nil }
+        let lower = text.lowercased()
+        // History before weekly so "weekly calorie history" → range, not budget.
+        if lower.contains("history") || lower.contains("past intake") || lower.contains("lookback") {
+            return NutritionQueryPayload(queryType: .range)
+        }
+        if lower.contains("budget") || lower.contains("week ahead")
+            || lower.contains("weekly budget") || lower.contains("week budget")
+        {
+            return NutritionQueryPayload(queryType: .weeklyBudget)
+        }
+        return NutritionQueryPayload(queryType: .today)
+    }
 }

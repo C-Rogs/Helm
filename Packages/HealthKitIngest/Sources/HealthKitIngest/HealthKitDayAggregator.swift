@@ -44,7 +44,11 @@ public enum HealthKitDayAggregator {
                 patch.dietaryCarbohydrateGrams = sumGrams(daySamples)
             case .dietaryFat:
                 patch.dietaryFatGrams = sumGrams(daySamples)
-            case .bodyMass, .sleep, .workout:
+            case .stepCount:
+                patch.stepCount = Int(daySamples.reduce(0) { $0 + $1.value })
+            case .basalEnergy:
+                patch.restingEnergyKcal = sumKilocalories(daySamples)
+            case .bodyMass, .bodyFatPercentage, .sleep, .workout:
                 break
             }
             return patch
@@ -226,7 +230,7 @@ public enum HealthKitDayAggregator {
         }
     }
 
-    private static func kilograms(from sample: IngestQuantitySample) -> Double {
+    static func kilograms(from sample: IngestQuantitySample) -> Double {
         switch sample.unitSymbol {
         case "kg":
             sample.value

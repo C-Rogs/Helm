@@ -97,6 +97,8 @@ public struct AggregatedDailyPatch: Sendable, Equatable {
     public var dietaryProteinGrams: Double?
     public var dietaryCarbohydrateGrams: Double?
     public var dietaryFatGrams: Double?
+    public var stepCount: Int?
+    public var restingEnergyKcal: Double?
 
     public init(helmDay: HelmDay) {
         self.helmDay = helmDay

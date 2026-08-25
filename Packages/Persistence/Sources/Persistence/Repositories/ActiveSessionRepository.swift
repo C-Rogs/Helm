@@ -1622,7 +1622,7 @@ extension ActiveSessionRepository {
                 sql: """
                     SELECT COALESCE(MAX(set_index), -1)
                     FROM set_entry
-                    WHERE workout_session_exercise_id = ?
+                    WHERE workout_session_exercise_id = ? AND deleted_at IS NULL
                     """,
                 arguments: [sessionExerciseID]
             ) ?? -1

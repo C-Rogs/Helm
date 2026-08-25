@@ -15,7 +15,9 @@ public enum DailyMetricsMerge {
             dietaryProteinGrams: patch.dietaryProteinGrams ?? existing?.dietaryProteinGrams,
             dietaryCarbohydrateGrams: patch.dietaryCarbohydrateGrams ?? existing?.dietaryCarbohydrateGrams,
             dietaryFatGrams: patch.dietaryFatGrams ?? existing?.dietaryFatGrams,
-            priorDayTRIMP: existing?.priorDayTRIMP
+            priorDayTRIMP: existing?.priorDayTRIMP,
+            stepCount: patch.stepCount ?? existing?.stepCount,
+            restingEnergyKcal: patch.restingEnergyKcal ?? existing?.restingEnergyKcal
         )
     }
 }
@@ -45,7 +47,8 @@ public struct IngestPersistenceWriter: Sendable {
 
         switch delta.kind {
         case .hrvSDNN, .restingHeartRate, .respiratoryRate, .wristTemperature,
-             .activeEnergy, .dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat:
+             .activeEnergy, .dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat,
+             .stepCount, .basalEnergy:
             try applyQuantityDelta(delta)
             families.insert(delta.kind.metricFamily)
         case .sleep:
@@ -53,6 +56,9 @@ public struct IngestPersistenceWriter: Sendable {
             families.insert(.sleep)
         case .bodyMass:
             try applyBodyMassDelta(delta)
+            families.insert(.bodyComposition)
+        case .bodyFatPercentage:
+            try applyBodyFatDelta(delta)
             families.insert(.bodyComposition)
         case .workout:
             if !delta.trimpByTargetDay.isEmpty {
@@ -133,13 +139,28 @@ public struct IngestPersistenceWriter: Sendable {
     }
 
     private func applyBodyMassDelta(_ delta: IngestDelta) throws {
-        let records = HealthKitDayAggregator.bodyCompositionRecords(
-            from: delta.addedQuantitySamples,
-            calendar: calendar,
-            cutoff: cutoff
-        )
-        for record in records {
-            try store.bodyComposition.upsert(record)
+        for sample in delta.addedQuantitySamples {
+            let kilograms = HealthKitDayAggregator.kilograms(from: sample)
+            guard kilograms > 1 else { continue }
+            let helmDay = HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
+            try store.bodyComposition.mergeBodyMass(
+                helmDay: helmDay,
+                massKg: kilograms,
+                measuredAt: sample.start,
+                sampleID: sample.id
+            )
+        }
+    }
+
+    private func applyBodyFatDelta(_ delta: IngestDelta) throws {
+        for sample in delta.addedQuantitySamples {
+            guard sample.value > 0, sample.value <= 0.6 else { continue }
+            let helmDay = HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
+            try store.bodyComposition.mergeBodyFat(
+                helmDay: helmDay,
+                bodyFatPercentage: sample.value * 100,
+                measuredAt: sample.start
+            )
         }
     }
 
@@ -158,7 +179,9 @@ public struct IngestPersistenceWriter: Sendable {
                 dietaryProteinGrams: existing?.dietaryProteinGrams,
                 dietaryCarbohydrateGrams: existing?.dietaryCarbohydrateGrams,
                 dietaryFatGrams: existing?.dietaryFatGrams,
-                priorDayTRIMP: mergedTRIMP
+                priorDayTRIMP: mergedTRIMP,
+                stepCount: existing?.stepCount,
+                restingEnergyKcal: existing?.restingEnergyKcal
             )
             try store.dailyMetrics.upsert(merged)
         }

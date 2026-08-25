@@ -1051,3 +1051,82 @@ public struct CalendarEventClassifyPayload: Codable, Sendable, Equatable {
         self.classifications = classifications
     }
 }
+
+// MARK: - nutrition_query.v1
+
+public struct NutritionQueryPayload: Codable, Sendable, Equatable {
+    public enum QueryType: String, Codable, Sendable, Equatable {
+        case today
+        case day
+        case range
+        case weeklyBudget
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "today", "now", "current":
+                self = .today
+            case "day", "onday", "on_day":
+                self = .day
+            case "range", "history", "trend", "lookback":
+                self = .range
+            case "weeklybudget", "weekly_budget", "budget", "week", "week_ahead":
+                self = .weeklyBudget
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let queryType: QueryType
+    public let helmDay: String?
+    public let lookbackDays: Int?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.nutritionQueryV1.rawValue,
+        queryType: QueryType,
+        helmDay: String? = nil,
+        lookbackDays: Int? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.queryType = queryType
+        self.helmDay = helmDay
+        self.lookbackDays = lookbackDays
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeSchemaVersion()
+        queryType = try container.decodeFlexibleQueryType(
+            flexible: QueryType.init(rawFlexible:),
+            context: "nutrition_query.v1",
+            allowedValues: "today, day, range, or weeklyBudget"
+        )
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        lookbackDays = container.decodeLenientLookbackDays()
+    }
+
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case queryType
+        case helmDay
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .queryType }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
+    }
+}
+
+public enum NutritionQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> NutritionQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .nutritionQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(NutritionQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.nutritionQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}

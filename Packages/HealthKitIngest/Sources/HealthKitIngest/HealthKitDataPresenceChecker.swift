@@ -64,6 +64,9 @@ public extension HealthKitSampleKind {
         case .dietaryCarbohydrate: "Carbohydrates"
         case .dietaryFat: "Fat"
         case .bodyMass: "Body mass"
+        case .bodyFatPercentage: "Body fat percentage"
+        case .stepCount: "Step count"
+        case .basalEnergy: "Resting energy"
         case .workout: "Workouts"
         }
     }

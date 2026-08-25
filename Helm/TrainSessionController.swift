@@ -131,6 +131,8 @@ final class TrainSessionController {
     private var isReconcilingRest = false
     private var isSyncingSideEffects = false
     private var pendingSideEffects: (rest: Int?, force: Bool)?
+    /// In-flight set toggle; guards against double-tap completing then uncompleting.
+    private var inFlightSetToggleIDs = Set<String>()
     private var heartRateSampleTask: Task<Void, Never>?
     private var liveActivityHeartbeatTask: Task<Void, Never>?
     private var didWireLiveActivityLostHandler = false
@@ -730,6 +732,10 @@ final class TrainSessionController {
 
     /// In-app Train toggle: complete ↔ uncomplete.
     func completeSet(sessionExerciseID: String, setID: String) async {
+        guard !inFlightSetToggleIDs.contains(setID) else { return }
+        inFlightSetToggleIDs.insert(setID)
+        defer { inFlightSetToggleIDs.remove(setID) }
+
         do {
             guard let existingSet = findSet(setID: setID) else { return }
 

@@ -694,6 +694,24 @@ final class ChatController {
                 )
             }
 
+            if let nutritionQuery = NutritionQueryPayloadParser.parse(from: assembled) {
+                assembled = try await runNutritionQueryFollowUp(
+                    query: nutritionQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            } else if let inferred = CoachChatIntent.inferredNutritionQuery(from: text) {
+                assembled = try await runNutritionQueryFollowUp(
+                    query: inferred,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembled
+                )
+            }
+
             if CoachChatIntent.looksLikeWorkoutStart(text),
                !CoachChatIntent.looksLikeWorkoutReview(text),
                needsStructuredWorkoutStart(assembled: assembled, userText: text),
@@ -1073,6 +1091,48 @@ final class ChatController {
 
         isStreaming = true
         streamingText = "Looking up trends…"
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantText(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true
+        )
+    }
+
+    private func runNutritionQueryFollowUp(
+        query: NutritionQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> String {
+        let service = NutritionQueryService(store: persistence)
+        let results = try await service.run(query)
+        let toolMessage = """
+        # Nutrition query results
+        \(results)
+
+        Answer the athlete from these exact engine numbers. These are authoritative. Never recompute TDEE, trend weight, targets, or budget. Quote them directly. If the weekly budget is present, explain how the remaining calories are distributed across the week and which days are heavier or lighter. Never invent data.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up nutrition…"
 
         let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(

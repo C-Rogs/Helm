@@ -56,8 +56,9 @@ public enum CoachContextAssembler {
 
         var bodyCompositionByDay: [HelmDay: BodyComposition] = [:]
         for helmDay in try store.bodyComposition.listDays() where helmDay >= startDay && helmDay <= endDay {
-            if let latest = try store.bodyComposition.fetch(for: helmDay).last {
-                bodyCompositionByDay[helmDay] = latest
+            let records = try store.bodyComposition.fetch(for: helmDay)
+            if let merged = Self.mergeBodyComposition(records) {
+                bodyCompositionByDay[helmDay] = merged
                 days.insert(helmDay)
             }
         }
@@ -114,6 +115,16 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
+        let weeklyBudget = await CoachNutritionContextBuilder.weeklyBudgetBlock(
+            from: store,
+            for: endDay,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        var nutritionWithWeekly = nutritionDiary
+        if let budget = weeklyBudget, !budget.isEmpty {
+            nutritionWithWeekly = nutritionDiary + "\n\n# Weekly Budget\n" + budget
+        }
 
         return CoachContextDays(
             readinessBaselines: baselines,
@@ -123,7 +134,7 @@ public enum CoachContextAssembler {
             recentWorkouts: recentWorkouts,
             trainingPlanSnapshot: trainingPlanSnapshot,
             weekAheadSchedule: weekAheadSchedule,
-            nutritionDiary: nutritionDiary,
+            nutritionDiary: nutritionWithWeekly,
             todayPrescription: todayPrescription,
             prescriptionLoadSummary: prescriptionLoadSummary,
             volumeStateSummary: volumeStateSummary,
@@ -326,13 +337,25 @@ public enum CoachContextAssembler {
         var lines: [String] = []
 
         if let today = try store.bodyComposition.fetch(for: endDay).last {
-            lines.append("\(endDay.formatted) weight=\(format(today.mass.kilograms))kg")
+            var line = "\(endDay.formatted) weight=\(format(today.mass.kilograms))kg"
+            if let bf = today.bodyFatPercentage {
+                line += " bodyfat=\(format(bf))%"
+            }
+            lines.append(line)
         }
         if let prior = try store.bodyComposition.fetch(for: yesterday).last {
-            lines.append("\(yesterday.formatted) weight=\(format(prior.mass.kilograms))kg")
+            var line = "\(yesterday.formatted) weight=\(format(prior.mass.kilograms))kg"
+            if let bf = prior.bodyFatPercentage {
+                line += " bodyfat=\(format(bf))%"
+            }
+            lines.append(line)
         } else if lines.isEmpty,
                   let latest = try store.bodyComposition.fetchLatest(onOrBefore: endDay, limit: 1).first {
-            lines.append("latest weight=\(format(latest.mass.kilograms))kg on \(latest.helmDay.formatted)")
+            var line = "latest weight=\(format(latest.mass.kilograms))kg on \(latest.helmDay.formatted)"
+            if let bf = latest.bodyFatPercentage {
+                line += " bodyfat=\(format(bf))%"
+            }
+            lines.append(line)
         }
 
         guard !lines.isEmpty else { return "" }
@@ -423,6 +446,13 @@ public enum CoachContextAssembler {
             parts.append("tempDeltaC=\(format(temp))")
         }
 
+        if let steps = metrics?.stepCount {
+            parts.append("steps=\(steps)")
+        }
+        if let restingKcal = metrics?.restingEnergyKcal {
+            parts.append("resting_energy_kcal=\(format(restingKcal))")
+        }
+
         if let nutrition {
             parts.append("intake_logging_complete=\(loggingComplete)")
             if !loggingComplete {
@@ -488,6 +518,23 @@ public enum CoachContextAssembler {
         if let z = contributors.zRespiratory { parts.append("zResp=\(formatSigned(z))") }
         if let z = contributors.zTemperature { parts.append("zTemp=\(formatSigned(z))") }
         if let z = contributors.zStrain { parts.append("zStrain=\(formatSigned(z))") }
+    }
+
+    /// Merge multiple body composition records for the same day into one.
+    /// Mass is taken from a record with non-zero mass; bodyFat from any record that has it.
+    private static func mergeBodyComposition(_ records: [BodyComposition]) -> BodyComposition? {
+        guard !records.isEmpty else { return nil }
+        let mass = records.first(where: { $0.mass.kilograms > 0 })?.mass ?? records.first!.mass
+        let fat = records.first(where: { $0.bodyFatPercentage != nil })?.bodyFatPercentage
+        let latestMeasured = records.map(\.measuredAt).max() ?? records.first!.measuredAt
+        let first = records.first!
+        return BodyComposition(
+            id: first.id,
+            helmDay: first.helmDay,
+            mass: mass,
+            bodyFatPercentage: fat,
+            measuredAt: latestMeasured
+        )
     }
 
     private static func baselinesText(from state: ReadinessBaselineState?) -> String {

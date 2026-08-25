@@ -67,6 +67,12 @@ struct AppMigrator {
         if version >= 18 {
             PlanBuilderSchemaMigration.register(on: &migrator)
         }
+        if version >= 19 {
+            DailyMetricsV19SchemaMigration.register(on: &migrator)
+        }
+        if version >= 20 {
+            NutritionDayDemandSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

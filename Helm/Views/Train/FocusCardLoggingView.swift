@@ -14,7 +14,6 @@ struct FocusCardLoggingView: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
 
     private let exerciseStripHeight: CGFloat = 40
-
     /// Live exercises from the controller snapshot.
     private var exercises: [WorkoutSessionExerciseDraft] {
         controller.snapshot?.session.exercises ?? []
@@ -41,10 +40,10 @@ struct FocusCardLoggingView: View {
             syncIndicesToFirstIncomplete()
             didInitialSync = true
         }
-        .onChange(of: controller.snapshot?.session.exercises.map(\.sets.count)) { _, _ in
+        .onChange(of: controller.snapshot?.session.exercises.map { $0.sets.map { "\($0.id):\($0.status.rawValue)" } }) { _, _ in
             guard didInitialSync else { return }
             guard controller.numpadTarget == nil else { return }
-            syncIndicesToFirstIncomplete()
+            reconcileIndices()
         }
     }
 
@@ -210,6 +209,10 @@ struct FocusCardLoggingView: View {
                         )
 
                     completedSetsStack(currentExercise)
+
+                    if currentExercise.sets.contains(where: { $0.setType.countsAsPrescribedWorkingSet }) {
+                        setManagementControls(currentExercise)
+                    }
                 }
                 .transition(.opacity)
             } else {
@@ -229,7 +232,10 @@ struct FocusCardLoggingView: View {
     // MARK: - Completed sets stack
 
     private func completedSetsStack(_ exercise: WorkoutSessionExerciseDraft) -> some View {
-        let completed = exercise.sets.filter { $0.status == .completed }
+        let completed = exercise.sets
+            .filter { $0.status == .completed }
+            .sorted { ($0.completedAt ?? .distantPast) < ($1.completedAt ?? .distantPast) }
+        let completedIDs = completed.map(\.id)
 
         return Group {
             if !completed.isEmpty {
@@ -245,7 +251,7 @@ struct FocusCardLoggingView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
                 .animation(
                     HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                    value: completed.count
+                    value: completedIDs
                 )
             }
         }
@@ -309,8 +315,14 @@ struct FocusCardLoggingView: View {
     private func completedSetValue(for set: SetEntryDraft) -> String {
         let weight = set.mass.map { formatWeight($0.kilograms) } ?? "-"
         let reps = set.reps.map(String.init) ?? "-"
-        let rpe = set.rpe.map { String(format: "%.0f", $0) } ?? "-"
+        let rpe = set.rpe.map { formattedRPE($0) } ?? "-"
         return "\(weight)kg × \(reps) @ \(rpe)"
+    }
+
+    private func formattedRPE(_ rpe: Double) -> String {
+        rpe.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", rpe)
+            : String(format: "%.1f", rpe)
     }
 
     private func formatWeight(_ kilograms: Double) -> String {
@@ -334,10 +346,39 @@ struct FocusCardLoggingView: View {
         }
     }
 
+    // MARK: - Set management
+
+    private func setManagementControls(_ exercise: WorkoutSessionExerciseDraft) -> some View {
+        let workingCount = exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count
+        let completedWorkingCount = exercise.sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet && $0.status == .completed
+        }.count
+        let canRemove = workingCount > max(completedWorkingCount, 1)
+
+        return HStack(spacing: HelmSpacing.sm) {
+            Button {
+                Task { @MainActor in await controller.removeSet(sessionExerciseID: exercise.id) }
+            } label: {
+                Label("Remove set", systemImage: "minus.circle")
+            }
+            .buttonStyle(.helmSecondary)
+            .disabled(!canRemove)
+
+            Button {
+                Task { @MainActor in await controller.addSet(sessionExerciseID: exercise.id) }
+            } label: {
+                Label("Add set", systemImage: "plus.circle")
+            }
+            .buttonStyle(.helmSecondary)
+        }
+        .font(.caption)
+    }
+
     // MARK: - Helpers
 
     private func syncIndicesToFirstIncomplete() {
         guard !exercises.isEmpty else { return }
+        currentExerciseIndex = min(currentExerciseIndex, exercises.count - 1)
 
         for (exIdx, exercise) in exercises.enumerated() {
             if let setIdx = firstIncompleteSetIndex(for: exercise) {
@@ -351,6 +392,38 @@ struct FocusCardLoggingView: View {
         currentExerciseIndex = max(0, exercises.count - 1)
         if let lastEx = exercises.last {
             currentSetIndex = max(0, lastEx.sets.count - 1)
+        }
+    }
+
+    /// Keeps the card pointing at a real set without yanking the user off their
+    /// current exercise: clamp indices first; jump to next incomplete only when
+    /// the current exercise is fully done or the pointed-at set disappeared.
+    private func reconcileIndices() {
+        guard !exercises.isEmpty else { return }
+
+        guard exercises.indices.contains(currentExerciseIndex) else {
+            syncIndicesToFirstIncomplete()
+            return
+        }
+
+        let exercise = exercises[currentExerciseIndex]
+
+        if !exercise.sets.indices.contains(currentSetIndex) {
+            // Set was removed: prefer the first incomplete in this exercise.
+            if let setIdx = firstIncompleteSetIndex(for: exercise) {
+                currentSetIndex = setIdx
+            } else if exercise.sets.isEmpty {
+                syncIndicesToFirstIncomplete()
+            } else {
+                currentSetIndex = max(0, exercise.sets.count - 1)
+            }
+            return
+        }
+
+        if exercise.sets[currentSetIndex].status == .completed,
+           let setIdx = firstIncompleteSetIndex(for: exercise),
+           setIdx != currentSetIndex {
+            currentSetIndex = setIdx
         }
     }
 

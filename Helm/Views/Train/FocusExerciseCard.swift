@@ -90,6 +90,11 @@ struct FocusExerciseCard: View {
                     .helmType(.title)
                     .lineLimit(1)
                     .minimumScaleFactor(0.85)
+            } else {
+                Text(displayName)
+                    .helmType(.label)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
             }
             setInfoRow
             cueAndPrevious

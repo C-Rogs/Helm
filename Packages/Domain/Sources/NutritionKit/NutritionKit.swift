@@ -7,7 +7,41 @@ public enum NutritionConstants {
 
 /// Adaptive TDEE and macro targets (pure engine).
 public enum NutritionKit {
-    private static let minimumIntakeDaysForColdStart = 5
+    private static let minimumIntakeDaysForUpdate = 10
+    private static let updateCadenceDays = 7
+
+    /// Weekly calorie target from TDEE and phase goal, for weekly-budget calculation.
+    public static func weeklyCalorieTarget(
+        tdee: Double,
+        phase: PhaseGoal,
+        bodyMassKg: Double
+    ) -> Int {
+        let base = Int((tdee - MacroTargetCalculator.phaseCalorieAdjustment(for: phase)).rounded())
+        let proteinKcal = Int((bodyMassKg * MacroTargetCalculator.proteinGramsPerKg).rounded()) * 4
+        let minimumFatCalories = Int((bodyMassKg * 0.6).rounded(.up)) * 9
+        let floored = max(
+            base,
+            proteinKcal + minimumFatCalories,
+            Int(NutritionMass.minimumTDEEKcal.rounded())
+        )
+        return floored * 7
+    }
+
+    /// Daily protein grams used in weekly-budget calculations.
+    public static func dailyProteinGrams(bodyMassKg: Double) -> Int {
+        Int((bodyMassKg * MacroTargetCalculator.proteinGramsPerKg).rounded())
+    }
+
+    /// Best available TDEE for weekly-budget calculations.
+    public static func bestAvailableTDEE(
+        trend: NutritionTrendState,
+        bodyMassKg: Double,
+        profileSeed: Double?
+    ) -> Double {
+        trend.estimatedTDEEKcal
+            ?? profileSeed
+            ?? TDEECalculator.seedTDEE(bodyMassKg: bodyMassKg)
+    }
 
     /// Reconcile weekly intake and trend weight into an updated TDEE estimate.
     @discardableResult
@@ -20,6 +54,12 @@ public enum NutritionKit {
         guard !weekDays.isEmpty else { return state }
 
         let sorted = weekDays.sorted { $0.helmDay < $1.helmDay }
+        guard let evidenceEnd = sorted.last?.helmDay else { return state }
+        if let lastUpdate = state.lastWeeklyUpdate,
+           lastUpdate.days(to: evidenceEnd) < updateCadenceDays {
+            return state
+        }
+
         let weights = sorted.compactMap(\.bodyMassKg).filter { $0 > 1 }
         if !weights.isEmpty {
             state.smoothedTrendWeightKg = TrendWeightSmoother.robustEwma(weights)
@@ -39,7 +79,7 @@ public enum NutritionKit {
         var estimate = state.estimatedTDEEKcal ?? profileSeed
 
         if
-            intakes.count >= minimumIntakeDaysForColdStart,
+            intakes.count >= minimumIntakeDaysForUpdate,
             let currentTrend = state.smoothedTrendWeightKg,
             let priorTrend = state.priorWeekTrendWeightKg,
             currentTrend > 1,
@@ -59,7 +99,7 @@ public enum NutritionKit {
 
         state.estimatedTDEEKcal = NutritionMass.flooredTDEE(estimate, profileSeedTDEE: profileSeed)
         state.priorWeekTrendWeightKg = state.smoothedTrendWeightKg
-        state.lastWeeklyUpdate = sorted.last?.helmDay
+        state.lastWeeklyUpdate = evidenceEnd
         return state
     }
 

@@ -182,8 +182,47 @@ public struct InSessionCoachService: Sendable {
             requestID: artefact.requestID
         )
 
-        await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
-        return proposal
+        // Ambiguous catalog lookup (e.g. "hip thrust"): one inference retry where
+        // the model sees its failed phrase plus the resolver's closest matches and
+        // must either commit to an exact catalogue display name or drop the op.
+        guard case .failed(.unresolvedCatalogExerciseIDs(let ids, let candidates)) = proposal.status,
+              !candidates.isEmpty else {
+            await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
+            return proposal
+        }
+
+        helmLogger(category: .coachLLM).info(
+            "coach lookup retry: \(ids.joined(separator: ", "), privacy: .public) -> \(candidates.count) candidates"
+        )
+
+        let retryUserMessage = """
+        Your previous reply referenced exercise\(ids.count == 1 ? "" : "s") \(ids.map { "\"\($0)\"" }.joined(separator: ", ")) \
+        that could not be matched to exactly one catalogue exercise. Closest catalogue matches: \
+        \(candidates.joined(separator: "; ")). Re-issue the operations using the exact catalogue display name \
+        for the exercise the athlete means, or omit the operation if none of the matches is right. \
+        Athlete request was: \(userMessage)
+        """
+        let retryArtefact = try await gemini.generateSessionAdjustment(
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: retryUserMessage,
+            thread: thread
+        )
+        let retryProposal = try buildProposal(
+            payload: retryArtefact.payload,
+            userMessage: userMessage,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs,
+            modelVersion: retryArtefact.schemaVersion.rawValue,
+            requestID: retryArtefact.requestID
+        )
+        // Keep whichever attempt got further; the retry wins only if it resolved cleanly.
+        if case .failed(.unresolvedCatalogExerciseIDs) = retryProposal.status {
+            await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
+            return proposal
+        }
+        await logProposalDiagnostics(proposal: retryProposal, sessionID: snapshot.session.id)
+        return retryProposal
     }
 
     public func applyProposal(

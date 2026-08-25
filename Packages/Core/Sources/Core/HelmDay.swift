@@ -173,6 +173,18 @@ public extension HelmDay {
         return HelmDay(components: shiftedComponents) ?? self
     }
 
+    /// The Monday that starts the calendar week containing this day.
+    func mondayOfSameWeek(calendar: Calendar = Calendar(identifier: .gregorian)) -> HelmDay {
+        guard let date = calendar.date(from: dateComponents()) else { return self }
+        let weekday = calendar.component(.weekday, from: date)
+        let offset: Int
+        switch weekday {
+        case 1: offset = -6   // Sunday -> previous Monday
+        default: offset = 2 - weekday  // Mon=0, Tue=-1, ..., Sat=-5
+        }
+        return adding(days: offset, calendar: calendar)
+    }
+
     /// Short weekday name ("Mon") using the current calendar. Cached formatter.
     @MainActor
     public var shortWeekday: String {

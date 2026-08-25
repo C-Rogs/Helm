@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import NutritionKit
 import Observation
 import ReadinessKit
 
@@ -46,6 +47,13 @@ public final class NutritionService {
         } catch {
             // Trend refresh failure is non-fatal; dashboard refresh will retry.
         }
+    }
+
+    public func weeklyBudget(
+        for helmDay: HelmDay,
+        prescriptionSummary: PrescribedSessionSummary?
+    ) async throws -> WeeklyNutritionBudget {
+        try await engine.weeklyBudget(for: helmDay, prescriptionSummary: prescriptionSummary)
     }
 
     private func today(calendar: Calendar = .current, cutoff: DayCutoff = .default) -> HelmDay {

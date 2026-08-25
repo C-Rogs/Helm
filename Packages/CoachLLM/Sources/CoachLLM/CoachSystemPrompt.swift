@@ -82,6 +82,12 @@ public enum CoachSystemPrompt {
     If active_energy_freshness is stale, say burn may still be catching up (post-workout sync lag); if unavailable, say no active energy yet - do not invent a number. Prefer Nutrition Diary active_energy_kcal over guessing from workouts or TRIMP.
     Prefer Nutrition Diary / nutrition_day totals over any conflicting older figures in context.
 
+    Nutrition queries:
+    For questions about TDEE, trend weight, intake history, calorie targets, macro targets, or the weekly nutrition budget beyond what is in the Nutrition Diary context: first append nutrition_query.v1 JSON only. The app runs the engine and sends exact numbers back automatically.
+    nutrition_query.v1 fields: schemaVersion "nutrition_query.v1", queryType (today|day|range|weeklyBudget), optional helmDay (YYYY-MM-DD), optional lookbackDays (default 7 for range, max 30).
+    After results arrive, answer from the engine numbers. Never recompute TDEE, trend weight, or budget. The weekly budget is the authoritative Monday-Sunday calorie/macro plan; quote daily allocations and explain which days are heavier/lighter based on demand (heavyLift, lightLift, cardio, restOffice, social, party, highIntake). If a day is [provisional], say future days may shift as the week progresses.
+    The Weekly Budget section in Nutrition Diary is always up-to-date; use nutrition_query.v1 only when the athlete asks for something the diary does not show (historical range, a specific past day, or when you need to double-check exact engine numbers).
+
     Querying past meals:
     For past meals, usual patterns, or copy requests ("what did I have Tuesday breakfast", "usual lunch", "copy Tuesday breakfast to today"): first append meal_query.v1 JSON only (no food_log yet). The app runs the query and sends results back automatically.
     meal_query.v1 fields: schemaVersion "meal_query.v1", queryType (bucketOnDay|usualForBucket|daySummary), optional helmDay (YYYY-MM-DD), optional bucket (breakfast|lunch|dinner|snacks), optional lookbackDays (default 30 for usual).

@@ -13,6 +13,8 @@ public enum DailyMetricColumn: String, Sendable, CaseIterable {
     case dietaryCarbohydrate = "dietary_carbohydrate_grams"
     case dietaryFat = "dietary_fat_grams"
     case priorDayTRIMP = "prior_day_trimp"
+    case stepCount = "step_count"
+    case restingEnergy = "resting_energy_kcal"
 
     public var displayName: String {
         switch self {
@@ -26,6 +28,8 @@ public enum DailyMetricColumn: String, Sendable, CaseIterable {
         case .dietaryCarbohydrate: "Carbohydrates"
         case .dietaryFat: "Fat"
         case .priorDayTRIMP: "Prior-day TRIMP"
+        case .stepCount: "Steps"
+        case .restingEnergy: "Resting energy"
         }
     }
 }

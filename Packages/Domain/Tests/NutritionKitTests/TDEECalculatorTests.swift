@@ -43,6 +43,7 @@ struct TDEECalculatorTests {
 
         for week in 0 ..< 8 {
             let days = weekDays(starting: week * 7, massKg: mass, intakeKcal: maintenanceIntake)
+                + weekDays(starting: week * 7 - 7, massKg: mass, intakeKcal: maintenanceIntake)
             NutritionKit.updateTrend(
                 state: &state,
                 weekDays: days,
@@ -64,7 +65,8 @@ struct TDEECalculatorTests {
             priorWeekTrendWeightKg: 80.5
         )
 
-        let days = weekDays(starting: 0, massKg: 80.0, intakeKcal: 2_000)
+        let days = weekDays(starting: -7, massKg: 80.5, intakeKcal: 2_000)
+            + weekDays(starting: 0, massKg: 80.0, intakeKcal: 2_000)
         NutritionKit.updateTrend(
             state: &state,
             weekDays: days,
@@ -84,6 +86,7 @@ struct TDEECalculatorTests {
 
         for week in 0 ..< 4 {
             let days = weekDays(starting: week * 7, massKg: 73.1, intakeKcal: 1_850)
+                + weekDays(starting: week * 7 - 7, massKg: 73.1, intakeKcal: 1_850)
             NutritionKit.updateTrend(
                 state: &state,
                 weekDays: days,
@@ -94,4 +97,28 @@ struct TDEECalculatorTests {
         let estimate = try #require(state.estimatedTDEEKcal)
         #expect(estimate >= profileSeed * 0.85)
     }
+    @Test("same evidence is idempotent and updates only after cadence")
+    func cadenceAndIdempotence() throws {
+        let days = weekDays(starting: 0, massKg: 80, intakeKcal: 2_800)
+            + weekDays(starting: 7, massKg: 80, intakeKcal: 2_800)
+        var state = NutritionTrendState(estimatedTDEEKcal: 2_200, priorWeekTrendWeightKg: 80)
+
+        NutritionKit.updateTrend(state: &state, weekDays: days, profileSeedTDEEKcal: 2_200)
+        let first = state
+        NutritionKit.updateTrend(state: &state, weekDays: days, profileSeedTDEEKcal: 2_200)
+
+        #expect(state == first)
+        #expect(state.lastWeeklyUpdate == days.last?.helmDay)
+    }
+
+    @Test("insufficient evidence does not adapt estimate")
+    func requiresLongerEvidenceWindow() {
+        let days = weekDays(starting: 0, massKg: 80, intakeKcal: 3_000)
+        var state = NutritionTrendState(estimatedTDEEKcal: 2_200, priorWeekTrendWeightKg: 80)
+
+        NutritionKit.updateTrend(state: &state, weekDays: days, profileSeedTDEEKcal: 2_200)
+
+        #expect(state.estimatedTDEEKcal == 2_200)
+    }
+
 }

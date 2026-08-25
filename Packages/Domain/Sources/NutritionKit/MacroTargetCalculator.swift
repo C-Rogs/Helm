@@ -45,14 +45,19 @@ enum MacroTargetCalculator {
         let kcalPerDayPerKgWeek = TDEECalculator.kcalPerKgBodyMassChange / 7.0
         switch phase.phase {
         case .cut:
-            let rate = min(phase.weeklyRateKg ?? 0.5, 1.0)
+            let rate = validatedWeeklyRate(phase.weeklyRateKg, default: 0.5)
             return rate * kcalPerDayPerKgWeek
         case .gain:
-            let rate = min(phase.weeklyRateKg ?? 0.25, 1.0)
+            let rate = validatedWeeklyRate(phase.weeklyRateKg, default: 0.25)
             return -rate * kcalPerDayPerKgWeek
         case .maintain:
             return 0
         }
+    }
+
+    private static func validatedWeeklyRate(_ rate: Double?, default defaultRate: Double) -> Double {
+        guard let rate, rate.isFinite, rate > 0 else { return defaultRate }
+        return min(rate, 1.0)
     }
 
     static func resolvedTDEE(
@@ -92,23 +97,30 @@ enum MacroTargetCalculator {
         let tdee = resolvedTDEE(trend: trend, profileSeedTDEE: profileSeed, bodyMassKg: mass)
         let proteinGrams = Int((mass * proteinGramsPerKg).rounded())
         let proteinKcal = proteinGrams * 4
+        let desiredCalories = Int((tdee - phaseCalorieAdjustment(for: phase)).rounded())
+        let minimumFatGrams = Int((mass * 0.6).rounded(.up))
         let targetCalories = max(
-            Int((tdee - phaseCalorieAdjustment(for: phase)).rounded()),
-            proteinKcal,
+            desiredCalories,
+            proteinKcal + minimumFatGrams * 9,
             Int(NutritionMass.minimumTDEEKcal.rounded())
         )
 
         let remainingKcal = max(targetCalories - proteinKcal, 0)
-
         let carbShare = carbShare(for: context.dayType)
-        let carbKcal = Int((Double(remainingKcal) * carbShare).rounded())
-        let fatKcal = max(remainingKcal - carbKcal, 0)
+        let desiredCarbKcal = Int((Double(remainingKcal) * carbShare).rounded())
+        let fatGrams = min(
+            max(Int((Double(remainingKcal - desiredCarbKcal) / 9.0).rounded()), minimumFatGrams),
+            remainingKcal / 9
+        )
+        let carbohydrateGrams = max(Int((Double(remainingKcal - fatGrams * 9) / 4.0).rounded()), 0)
+        let macroCalories = proteinKcal + carbohydrateGrams * 4 + fatGrams * 9
+        let reconciledCalories = abs(macroCalories - targetCalories) <= 4 ? targetCalories : macroCalories
 
         return MacroTargets(
-            caloriesKcal: targetCalories,
+            caloriesKcal: reconciledCalories,
             proteinGrams: proteinGrams,
-            carbohydrateGrams: carbKcal / 4,
-            fatGrams: fatKcal / 9,
+            carbohydrateGrams: carbohydrateGrams,
+            fatGrams: fatGrams,
             dayType: context.dayType,
             estimatedTDEEKcal: Int(tdee.rounded()),
             macroGapKilocalories: context.loggedDay.flatMap(MacroGapCalculator.macroGap(for:))

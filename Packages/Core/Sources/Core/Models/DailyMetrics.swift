@@ -13,6 +13,8 @@ public struct DailyMetrics: Sendable, Hashable, Codable, Identifiable {
     public let dietaryCarbohydrateGrams: Double?
     public let dietaryFatGrams: Double?
     public let priorDayTRIMP: Double?
+    public let stepCount: Int?
+    public let restingEnergyKcal: Double?
 
     public var id: HelmDay { helmDay }
 
@@ -27,7 +29,9 @@ public struct DailyMetrics: Sendable, Hashable, Codable, Identifiable {
         dietaryProteinGrams: Double? = nil,
         dietaryCarbohydrateGrams: Double? = nil,
         dietaryFatGrams: Double? = nil,
-        priorDayTRIMP: Double? = nil
+        priorDayTRIMP: Double? = nil,
+        stepCount: Int? = nil,
+        restingEnergyKcal: Double? = nil
     ) {
         self.helmDay = helmDay
         self.hrvSDNN = hrvSDNN
@@ -40,5 +44,7 @@ public struct DailyMetrics: Sendable, Hashable, Codable, Identifiable {
         self.dietaryCarbohydrateGrams = dietaryCarbohydrateGrams
         self.dietaryFatGrams = dietaryFatGrams
         self.priorDayTRIMP = priorDayTRIMP
+        self.stepCount = stepCount
+        self.restingEnergyKcal = restingEnergyKcal
     }
 }

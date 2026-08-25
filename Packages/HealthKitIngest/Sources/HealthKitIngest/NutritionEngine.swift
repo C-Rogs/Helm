@@ -128,14 +128,9 @@ public struct EnergyBalanceSummary: Sendable, Equatable {
         baseTargetKcal: Int,
         activeEnergy: ActiveEnergyFreshness
     ) -> EnergyBalanceSummary {
-        let adjustedTargetKcal: Int?
-        if activeEnergy.isTrustworthyForTargetAdjustment,
-           case let .fresh(burned) = activeEnergy,
-           baseTargetKcal > 0 {
-            adjustedTargetKcal = baseTargetKcal + burned
-        } else {
-            adjustedTargetKcal = nil
-        }
+        // Active energy remains available as context, but adaptive TDEE already
+        // captures habitual expenditure. Adding it here would double-count burn.
+        let adjustedTargetKcal: Int? = nil
 
         return EnergyBalanceSummary(
             intakeKcal: intakeKcal,
@@ -206,6 +201,157 @@ public actor NutritionEngine {
         trendStore = NutritionTrendStore(metadata: persistence.appMetadata)
         self.calendar = calendar
         self.cutoff = cutoff
+    }
+
+    public func weeklyBudget(
+        for day: HelmDay,
+        prescriptionSummary: PrescribedSessionSummary?,
+        now: Date = Date()
+    ) throws -> WeeklyNutritionBudget {
+        let settings = (try? persistence.trainingPlan.load()) ?? .default
+        guard let bodyProfile = resolvedBodyProfile(for: day) else {
+            throw NutritionServiceError.incompleteBodyProfile
+        }
+
+        var trend = trendStore.loadSafely()
+        NutritionKit.healTrendState(&trend, bodyProfile: bodyProfile)
+        let mass = NutritionKit.resolvedBodyMassKg(bodyProfile.bodyMassKg)
+        let profileSeed = BodyProfileTDEE.seedTDEEKcal(profile: bodyProfile)
+        let tdee = NutritionKit.bestAvailableTDEE(
+            trend: trend,
+            bodyMassKg: mass,
+            profileSeed: profileSeed
+        )
+        let weeklyTarget = NutritionKit.weeklyCalorieTarget(
+            tdee: tdee,
+            phase: settings.phaseGoal,
+            bodyMassKg: mass
+        )
+        let protein = NutritionKit.dailyProteinGrams(bodyMassKg: mass)
+        let minimumFatGrams = Int((mass * 0.6).rounded(.up))
+        let mesocycleState = loadMesocycleState()
+
+        let demandService = NutritionDayDemandService(persistence: persistence)
+        let monday = day.mondayOfSameWeek(calendar: calendar)
+        let weekEnd = monday.adding(days: 6)
+        let sessionDays = completedSessionDemandDays(from: monday, through: weekEnd)
+
+        let inputs: [WeeklyNutritionBudgetDayInput] = try (0 ..< 7).map { offset in
+            let d = monday.adding(days: offset)
+            let resolved = try demandService.resolve(
+                for: d,
+                plannedCardioDays: sessionDays.cardio
+            )
+            var demand = resolved.demand.weeklyDemand
+            if resolved.source != .explicitOverride, sessionDays.training.contains(d), resolved.demand == .ordinary || resolved.demand == .office {
+                demand = weeklyTrainingDemand(
+                    for: d,
+                    asOf: day,
+                    prescriptionSummary: prescriptionSummary,
+                    emphasis: settings.phaseGoal.emphasis,
+                    mesocycleState: mesocycleState
+                )
+            } else if resolved.demand == .training {
+                demand = weeklyTrainingDemand(
+                    for: d,
+                    asOf: day,
+                    prescriptionSummary: prescriptionSummary,
+                    emphasis: settings.phaseGoal.emphasis,
+                    mesocycleState: mesocycleState
+                )
+            }
+            let consumed: Int?
+            if d <= day {
+                let storedDay = try? persistence.nutrition.fetchDay(helmDay: d)
+                let dailyMetrics = try? persistence.dailyMetrics.fetch(helmDay: d)
+                let meals = try? persistence.nutrition.fetchMeals(for: d)
+                let actual = NutritionActualResolver.resolve(
+                    helmDay: d,
+                    storedDay: storedDay,
+                    dailyMetrics: dailyMetrics,
+                    meals: meals
+                )
+                let logged = actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
+                let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: d)) ?? false
+                if let logged, logged > 0 {
+                    consumed = logged
+                } else if loggingComplete {
+                    consumed = logged ?? 0
+                } else {
+                    consumed = nil
+                }
+            } else {
+                consumed = nil
+            }
+            return WeeklyNutritionBudgetDayInput(day: d, demand: demand, consumedCaloriesKcal: consumed)
+        }
+
+        return WeeklyNutritionBudgetCalculator.calculate(
+            weekStart: monday,
+            weeklyCaloriesKcal: weeklyTarget,
+            proteinGramsPerDay: protein,
+            days: inputs,
+            asOf: day,
+            constraints: WeeklyNutritionBudgetCalculator.Constraints(minimumFatGrams: minimumFatGrams)
+        )
+    }
+
+    /// Maps planned training days to heavyLift, or lightLift when the day is in deload.
+    private func weeklyTrainingDemand(
+        for day: HelmDay,
+        asOf: HelmDay,
+        prescriptionSummary: PrescribedSessionSummary?,
+        emphasis: String?,
+        mesocycleState: MesocycleState?
+    ) -> WeeklyNutritionDemand {
+        let muscles = targetMuscles(for: day, emphasis: emphasis)
+        if day == asOf {
+            let dayType = NutritionDayTypeResolver.resolve(
+                prescriptionSummary: prescriptionSummary,
+                targetMuscles: muscles,
+                mesocycleState: mesocycleState
+            )
+            if dayType == .deload { return .lightLift }
+            return .heavyLift
+        }
+        if let mesocycleState,
+           muscles.contains(where: { mesocycleState.muscles[$0]?.phase == .deload })
+        {
+            return .lightLift
+        }
+        return .heavyLift
+    }
+
+    /// Completed sessions this week fill demand when the rolling 7-day plan table
+    /// no longer holds earlier days (replacePlannedWorkouts starts at today).
+    private func completedSessionDemandDays(
+        from start: HelmDay,
+        through end: HelmDay
+    ) -> (training: Set<HelmDay>, cardio: Set<HelmDay>) {
+        guard let summaries = try? persistence.workoutSessions.listSummaries(limit: 40) else {
+            return ([], [])
+        }
+        var training: Set<HelmDay> = []
+        var cardio: Set<HelmDay> = []
+        for summary in summaries {
+            let sessionDay = HelmDay.day(for: summary.startedAt, cutoff: cutoff, calendar: calendar)
+            guard sessionDay >= start, sessionDay <= end else { continue }
+            if Self.looksLikeCardio(summary) {
+                cardio.insert(sessionDay)
+            } else {
+                training.insert(sessionDay)
+            }
+        }
+        return (training, cardio)
+    }
+
+    private static func looksLikeCardio(_ summary: WorkoutSessionSummary) -> Bool {
+        if summary.exerciseCount > 0, summary.totalSetCount > 0 { return false }
+        let activity = (summary.hkActivityType ?? summary.title ?? "").lowercased()
+        let cardioNeedles = ["run", "cycle", "ride", "swim", "walk", "hike", "row", "cardio", "elliptical"]
+        if cardioNeedles.contains(where: activity.contains) { return true }
+        if summary.source == .healthKit, (summary.hkTotalDistanceMeters ?? 0) > 500 { return true }
+        return summary.source == .healthKit && summary.exerciseCount == 0
     }
 
     public func snapshot(
@@ -357,4 +503,5 @@ public actor NutritionEngine {
 public enum NutritionServiceError: Error, Sendable {
     case encodingFailed
     case decodingFailed
+    case incompleteBodyProfile
 }

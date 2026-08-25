@@ -4,12 +4,12 @@ import NutritionKit
 import Persistence
 
 enum NutritionTrendBuilder {
-    static let weekLength = 7
+    static let evidenceWindowDays = 14
 
     static func weekInputs(
         from store: PersistenceStore,
         endingAt endDay: HelmDay,
-        lookbackDays: Int = weekLength,
+        lookbackDays: Int = evidenceWindowDays,
         calendar: Calendar = .current
     ) throws -> [NutritionTrendDayInput] {
         let startDay = endDay.adding(days: -(lookbackDays - 1), calendar: calendar)

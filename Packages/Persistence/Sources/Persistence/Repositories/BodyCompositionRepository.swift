@@ -61,6 +61,49 @@ public struct BodyCompositionRepository: Sendable {
         }
     }
 
+    public func mergeBodyFat(helmDay: HelmDay, bodyFatPercentage: Double, measuredAt: Date) throws {
+        try pool.write { db in
+            if var existing = try BodyCompositionRecord
+                .filter(Column("helm_day") == HelmDayColumn.encode(helmDay))
+                .order(Column("measured_at").desc)
+                .fetchOne(db)
+            {
+                existing.bodyFatPercentage = bodyFatPercentage
+                try existing.save(db)
+            } else {
+                let composition = BodyComposition(
+                    helmDay: helmDay,
+                    mass: Mass(kilograms: 0),
+                    bodyFatPercentage: bodyFatPercentage,
+                    measuredAt: measuredAt
+                )
+                try BodyCompositionRecord(composition: composition).save(db)
+            }
+        }
+    }
+
+    public func mergeBodyMass(helmDay: HelmDay, massKg: Double, measuredAt: Date, sampleID: UUID) throws {
+        try pool.write { db in
+            if var existing = try BodyCompositionRecord
+                .filter(Column("helm_day") == HelmDayColumn.encode(helmDay))
+                .order(Column("measured_at").desc)
+                .fetchOne(db)
+            {
+                existing.massKg = massKg
+                existing.id = sampleID.uuidString.lowercased()
+                try existing.save(db)
+            } else {
+                let composition = BodyComposition(
+                    id: sampleID,
+                    helmDay: helmDay,
+                    mass: Mass(kilograms: massKg),
+                    measuredAt: measuredAt
+                )
+                try BodyCompositionRecord(composition: composition).save(db)
+            }
+        }
+    }
+
     /// Latest body-mass sample per day, newest days first.
     public func fetchDailyWeights(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [(HelmDay, Double)] {
         try pool.read { db in

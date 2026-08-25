@@ -17,6 +17,8 @@ struct DailyMetricsRecord: Codable, FetchableRecord, PersistableRecord {
         case dietaryCarbohydrateGrams = "dietary_carbohydrate_grams"
         case dietaryFatGrams = "dietary_fat_grams"
         case priorDayTRIMP = "prior_day_trimp"
+        case stepCount = "step_count"
+        case restingEnergyKcal = "resting_energy_kcal"
         case updatedAt = "updated_at"
     }
 
@@ -31,6 +33,8 @@ struct DailyMetricsRecord: Codable, FetchableRecord, PersistableRecord {
     var dietaryCarbohydrateGrams: Double?
     var dietaryFatGrams: Double?
     var priorDayTRIMP: Double?
+    var stepCount: Int?
+    var restingEnergyKcal: Double?
     var updatedAt: String
 
     init(metrics: DailyMetrics, timestamp: Date = Date()) {
@@ -45,6 +49,8 @@ struct DailyMetricsRecord: Codable, FetchableRecord, PersistableRecord {
         dietaryCarbohydrateGrams = metrics.dietaryCarbohydrateGrams
         dietaryFatGrams = metrics.dietaryFatGrams
         priorDayTRIMP = metrics.priorDayTRIMP
+        stepCount = metrics.stepCount
+        restingEnergyKcal = metrics.restingEnergyKcal
         updatedAt = ISO8601Coding.string(from: timestamp)
     }
 
@@ -60,7 +66,9 @@ struct DailyMetricsRecord: Codable, FetchableRecord, PersistableRecord {
             dietaryProteinGrams: dietaryProteinGrams,
             dietaryCarbohydrateGrams: dietaryCarbohydrateGrams,
             dietaryFatGrams: dietaryFatGrams,
-            priorDayTRIMP: priorDayTRIMP
+            priorDayTRIMP: priorDayTRIMP,
+            stepCount: stepCount,
+            restingEnergyKcal: restingEnergyKcal
         )
     }
 }
