@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WatchRootView: View {
     @Environment(\.scenePhase) private var scenePhase
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     private var coordinator: WatchSessionCoordinator { WatchCompanionBootstrap.coordinator }
     private var workoutStore: WatchWorkoutSessionStore { WatchCompanionBootstrap.workoutStore }
     @State private var selectedTab = 0
@@ -62,48 +63,102 @@ struct WatchRootView: View {
             }
         }
         .opacity(scenePhase == .active ? 1 : 0.4)
-        .animation(.easeInOut(duration: 0.25), value: scenePhase)
+        .animation(
+            WatchMotion.animation(WatchMotion.standardAnimation, reduceMotion: reduceMotion),
+            value: scenePhase
+        )
     }
 
     private var syncStatusTab: some View {
         List {
-            Section("Signal") {
-                Text("Watch companion")
-                    .font(WatchType.title.font)
-                    .foregroundStyle(WatchPalette.fg)
-                if let received = coordinator.lastReceived {
-                    LabeledContent("Phone day", value: received.helmDay)
-                    if let score = received.readinessScore {
-                        LabeledContent("ARC", value: "\(score)")
-                    }
-                    LabeledContent("Sequence", value: "#\(received.sequence)")
-                } else {
-                    Text("Waiting for phone context")
-                        .font(WatchType.body.font)
-                        .foregroundStyle(WatchPalette.fgSecondary)
-                }
+            Section {
+                helmContextRows
+            } header: {
+                Text("Helm")
+                    .watchType(.monoTag, color: WatchPalette.fgMuted)
             }
             .listRowBackground(WatchPalette.surface)
 
-            Section("Sync") {
-                LabeledContent("Activation", value: activationLabel)
-                LabeledContent("Reachable", value: coordinator.isReachable ? "Yes" : "No")
-                LabeledContent("Link", value: coordinator.isReachable ? "Live" : "Reconnect")
-                if let bpm = coordinator.latestLiveHeartRateBPM {
-                    LabeledContent("Last HR sent", value: "\(bpm)")
-                }
-                LabeledContent("Round-trip", value: coordinator.roundTripComplete ? "Complete" : "Pending")
-                if let sent = coordinator.lastSent {
-                    LabeledContent("Last reply", value: "#\(sent.sequence)")
-                }
-                if let error = coordinator.lastError {
-                    Text(error)
-                        .foregroundStyle(WatchPalette.depleted)
-                }
+            Section {
+                syncRows
+            } header: {
+                Text("Sync")
+                    .watchType(.monoTag, color: WatchPalette.fgMuted)
             }
             .listRowBackground(WatchPalette.surface)
         }
         .helmWatchScreenBackground()
+    }
+
+    @ViewBuilder
+    private var helmContextRows: some View {
+        Text("Watch companion")
+            .watchType(.title)
+
+        if let received = coordinator.lastReceived {
+            syncReadout("Phone day", value: received.helmDay, numeric: false)
+            if let score = received.readinessScore {
+                syncReadout(
+                    "ARC",
+                    value: "\(score)",
+                    numeric: true,
+                    color: WatchState.readiness(score: score).color
+                )
+            }
+            syncReadout("Sequence", value: "#\(received.sequence)", numeric: true)
+        } else if let error = coordinator.lastError {
+            WatchErrorState(title: "No phone context", message: error, retryTitle: nil)
+        } else if coordinator.activationState != .activated {
+            WatchLoadingState(message: "Connecting")
+        } else {
+            WatchEmptyState(
+                title: "Waiting for phone",
+                message: "Open Helm on iPhone to sync today's ARC."
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var syncRows: some View {
+        syncReadout("Activation", value: activationLabel, numeric: false)
+        syncReadout("Reachable", value: coordinator.isReachable ? "Yes" : "No", numeric: false)
+        syncReadout(
+            "Link",
+            value: coordinator.isReachable ? "Live" : "Reconnect",
+            numeric: false,
+            color: coordinator.isReachable ? WatchPalette.accent : WatchPalette.compromised
+        )
+        if let bpm = coordinator.latestLiveHeartRateBPM {
+            syncReadout("Last HR sent", value: "\(bpm)", numeric: true)
+        }
+        syncReadout(
+            "Round-trip",
+            value: coordinator.roundTripComplete ? "Complete" : "Pending",
+            numeric: false
+        )
+        if let sent = coordinator.lastSent {
+            syncReadout("Last reply", value: "#\(sent.sequence)", numeric: true)
+        }
+        if let error = coordinator.lastError, coordinator.lastReceived != nil {
+            WatchErrorState(title: "Sync error", message: error, retryTitle: nil)
+        }
+    }
+
+    private func syncReadout(
+        _ label: String,
+        value: String,
+        numeric: Bool,
+        color: Color = WatchPalette.fg
+    ) -> some View {
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .watchType(.body, color: WatchPalette.fgSecondary)
+            Spacer(minLength: 8)
+            Text(value)
+                .font(numeric ? WatchType.number.font : WatchType.body.font)
+                .foregroundStyle(color)
+                .multilineTextAlignment(.trailing)
+        }
     }
 
     private var activationLabel: String {

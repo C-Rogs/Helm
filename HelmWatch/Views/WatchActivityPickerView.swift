@@ -11,8 +11,7 @@ struct WatchActivityPickerView: View {
             } label: {
                 HStack {
                     Text(activity.displayName)
-                        .font(WatchType.label.font)
-                        .foregroundStyle(WatchPalette.fg)
+                        .watchType(.label)
                     Spacer()
                     if store.selectedActivity == activity {
                         Image(systemName: "checkmark")

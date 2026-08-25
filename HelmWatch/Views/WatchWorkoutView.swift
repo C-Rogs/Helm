@@ -15,16 +15,16 @@ struct WatchWorkoutView: View {
                 case .idle, .ended:
                     idleView
                 case .preparing:
-                    ProgressView("Starting...")
-                        .tint(WatchPalette.accent)
+                    WatchLoadingState(message: "Starting")
                 case .active, .paused:
                     WatchActiveWorkoutView(store: store)
                 case .ending:
-                    ProgressView("Saving...")
-                        .tint(WatchPalette.accent)
+                    WatchLoadingState(message: "Saving")
                 }
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(WatchPalette.canvas)
         .task {
             await store.prepareHealthKit()
         }
@@ -34,30 +34,25 @@ struct WatchWorkoutView: View {
         VStack(spacing: 8) {
             Spacer(minLength: 0)
 
-            Text("Start a workout on your iPhone to track heart rate here.")
-                .font(WatchType.body.font)
-                .foregroundStyle(WatchPalette.fgSecondary)
-                .multilineTextAlignment(.center)
-                .padding(.horizontal, 8)
+            if let error = store.lastError {
+                WatchErrorState(message: error, retryTitle: nil)
+            } else {
+                WatchEmptyState(
+                    title: "No session",
+                    message: "Start a workout on iPhone to track heart rate here."
+                )
+            }
 
             NavigationLink {
                 WatchActivityPickerView(store: store)
             } label: {
                 Text("Manual workout")
-                    .font(WatchType.label.font)
-                    .foregroundStyle(WatchPalette.accent)
-            }
-
-            if let error = store.lastError {
-                Text(error)
-                    .font(WatchType.monoTag.font)
-                    .foregroundStyle(WatchPalette.depleted)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 8)
+                    .watchType(.label, color: WatchPalette.accent)
             }
 
             Spacer(minLength: 0)
         }
+        .padding(.horizontal, 8)
         .frame(maxHeight: .infinity)
     }
 }
