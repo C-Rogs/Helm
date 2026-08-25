@@ -1,6 +1,6 @@
 import Foundation
 
-/// Top-level program shape. PPL is live; other templates reserved for later slot tables.
+/// Top-level program shape. PPL, Upper/Lower, and Full Body each have dedicated composer tables.
 public enum ProgramTemplate: String, Sendable, Hashable, Codable, CaseIterable, Identifiable {
     case ppl
     case upperLower = "upper_lower"
@@ -19,14 +19,17 @@ public enum ProgramTemplate: String, Sendable, Hashable, Codable, CaseIterable, 
     public var detail: String {
         switch self {
         case .ppl: "Default. Clear push vs pull patterns."
-        case .upperLower: "Coming next. Uses PPL slots until tables ship."
-        case .fullBody: "Coming next. Uses PPL slots until tables ship."
+        case .upperLower: "Upper days mix press and pull. Lower days keep squat and hinge."
+        case .fullBody: "Each session covers lower, press, and pull patterns."
         }
     }
 
-    /// Templates with dedicated composer tables. Others fall back to PPL day mapping.
+    /// Templates with dedicated composer tables.
     public var hasDedicatedSlotTables: Bool {
-        self == .ppl
+        switch self {
+        case .ppl, .upperLower, .fullBody:
+            true
+        }
     }
 }
 
