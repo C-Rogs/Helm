@@ -12,6 +12,21 @@ struct HelmComplicationEntry: TimelineEntry {
         guard let score else { return "--" }
         return "\(score)"
     }
+
+    var scoreColor: Color {
+        guard let score else { return WidgetPalette.fgMuted }
+        return WidgetPalette.color(forReadinessScore: score)
+    }
+
+    var stateLabel: String? {
+        guard let score else { return nil }
+        return WidgetReadinessState.from(score: score).label
+    }
+
+    var arcProgress: Double {
+        guard let score else { return 0 }
+        return min(max(Double(score) / 100, 0), 1)
+    }
 }
 
 struct HelmComplicationProvider: TimelineProvider {
@@ -57,18 +72,91 @@ struct HelmComplicationProvider: TimelineProvider {
 
 struct HelmComplicationView: View {
     let entry: HelmComplicationEntry
+    @Environment(\.widgetFamily) private var family
 
     var body: some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            VStack(spacing: 2) {
-                Text("ARC")
-                    .font(.caption2)
-                Text(entry.displayScore)
-                    .font(.title3.weight(.semibold).monospacedDigit())
+        Group {
+            switch family {
+            case .accessoryCircular:
+                circular
+            case .accessoryCorner:
+                corner
+            case .accessoryRectangular:
+                rectangular
+            case .accessoryInline:
+                inline
+            default:
+                circular
             }
         }
         .widgetURL(URL(string: WatchSyncPayload.briefDeepLink))
+        .accessibilityLabel(accessibilityScoreLabel)
+    }
+
+    private var circular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            WidgetArc(progress: entry.arcProgress, color: entry.scoreColor)
+                .padding(2)
+            VStack(spacing: 0) {
+                Text(entry.displayScore)
+                    .font(WidgetType.circularScore)
+                    .foregroundStyle(entry.scoreColor)
+                Text(entry.stateLabel ?? "ARC")
+                    .font(WidgetType.monoTag)
+                    .tracking(WidgetType.monoTagTracking)
+                    .foregroundStyle(WidgetPalette.fgMuted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
+            }
+        }
+    }
+
+    private var corner: some View {
+        Text(entry.displayScore)
+            .font(WidgetType.cornerScore)
+            .foregroundStyle(entry.scoreColor)
+            .widgetLabel {
+                Text("ARC")
+                    .font(WidgetType.monoTag)
+                    .tracking(WidgetType.monoTagTracking)
+                    .foregroundStyle(WidgetPalette.fgMuted)
+            }
+    }
+
+    private var rectangular: some View {
+        HStack(spacing: 8) {
+            WidgetArc(progress: entry.arcProgress, color: entry.scoreColor)
+                .frame(width: 36, height: 36)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("ARC")
+                    .font(WidgetType.monoTag)
+                    .tracking(WidgetType.monoTagTracking)
+                    .foregroundStyle(WidgetPalette.fgMuted)
+                Text(entry.displayScore)
+                    .font(WidgetType.rectangularScore)
+                    .foregroundStyle(entry.scoreColor)
+                Text(entry.stateLabel ?? "Waiting for Helm")
+                    .font(WidgetType.monoTag)
+                    .tracking(WidgetType.monoTagTracking)
+                    .foregroundStyle(WidgetPalette.fgMuted)
+                    .lineLimit(1)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var inline: some View {
+        Text("ARC \(entry.displayScore)")
+            .font(WidgetType.inline)
+            .foregroundStyle(entry.scoreColor)
+    }
+
+    private var accessibilityScoreLabel: String {
+        if let score = entry.score, let stateLabel = entry.stateLabel {
+            return "ARC \(score), \(stateLabel.lowercased())"
+        }
+        return "ARC unavailable. Open Helm for your brief."
     }
 }
 
@@ -79,7 +167,7 @@ struct HelmComplication: Widget {
         StaticConfiguration(kind: kind, provider: HelmComplicationProvider()) { entry in
             HelmComplicationView(entry: entry)
         }
-        .configurationDisplayName("Signal")
+        .configurationDisplayName("Helm")
         .description("Today's ARC readiness. Tap for your morning brief.")
         .supportedFamilies([
             .accessoryCircular,
@@ -94,5 +182,81 @@ struct HelmComplication: Widget {
 struct HelmWatchWidgetsBundle: WidgetBundle {
     var body: some Widget {
         HelmComplication()
+    }
+}
+
+enum WidgetPalette {
+    static let fgMuted = Color(red: 107 / 255, green: 106 / 255, blue: 99 / 255)
+    static let hairline = Color.white.opacity(0.09)
+    static let depleted = Color(red: 1, green: 106 / 255, blue: 77 / 255)
+    static let compromised = Color(red: 1, green: 182 / 255, blue: 72 / 255)
+    static let ready = Color(red: 215 / 255, green: 232 / 255, blue: 90 / 255)
+    static let primed = Color(red: 198 / 255, green: 242 / 255, blue: 78 / 255)
+
+    static func color(forReadinessScore score: Int) -> Color {
+        WidgetReadinessState.from(score: score).color
+    }
+}
+
+enum WidgetReadinessState: String {
+    case depleted
+    case compromised
+    case ready
+    case primed
+
+    static func from(score: Int) -> WidgetReadinessState {
+        switch score {
+        case ..<40: .depleted
+        case 40 ..< 55: .compromised
+        case 55 ..< 75: .ready
+        default: .primed
+        }
+    }
+
+    var label: String { rawValue.uppercased() }
+
+    var color: Color {
+        switch self {
+        case .depleted: WidgetPalette.depleted
+        case .compromised: WidgetPalette.compromised
+        case .ready: WidgetPalette.ready
+        case .primed: WidgetPalette.primed
+        }
+    }
+}
+
+enum WidgetType {
+    static let circularScore: Font = .system(size: 18, weight: .bold, design: .monospaced).monospacedDigit()
+    static let rectangularScore: Font = .system(size: 22, weight: .bold, design: .monospaced).monospacedDigit()
+    static let cornerScore: Font = .system(size: 20, weight: .bold, design: .monospaced).monospacedDigit()
+    static let inline: Font = .system(size: 14, weight: .semibold, design: .monospaced).monospacedDigit()
+    static let monoTag: Font = .system(size: 9, weight: .medium, design: .monospaced)
+    static let monoTagTracking: CGFloat = 1.2
+}
+
+struct WidgetArc: View {
+    var progress: Double
+    var color: Color
+    var track: Color = WidgetPalette.hairline
+    var lineWidth: CGFloat? = nil
+
+    var body: some View {
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height)
+            let stroke = lineWidth ?? min(side * 0.12, 3.5)
+            ZStack {
+                Circle()
+                    .trim(from: 0, to: 0.75)
+                    .stroke(track, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+                Circle()
+                    .trim(from: 0, to: 0.75 * max(0, min(1, progress)))
+                    .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+            }
+            .rotationEffect(.degrees(135))
+            .frame(width: side - stroke, height: side - stroke)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityHidden(true)
     }
 }

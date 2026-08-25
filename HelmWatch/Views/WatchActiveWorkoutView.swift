@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WatchActiveWorkoutView: View {
     @Bindable var store: WatchWorkoutSessionStore
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         VStack(spacing: 6) {
@@ -11,8 +12,8 @@ struct WatchActiveWorkoutView: View {
                 .foregroundStyle(WatchPalette.fgMuted)
 
             Text(elapsedLabel)
-                .font(WatchType.bigNumber.font)
-                .foregroundStyle(WatchPalette.fg)
+                .watchType(.bigNumber)
+                .accessibilityLabel("Elapsed \(elapsedLabel)")
 
             heartRateSection
 
@@ -41,30 +42,42 @@ struct WatchActiveWorkoutView: View {
     @ViewBuilder
     private var heartRateSection: some View {
         if store.phase == .active || store.phase == .paused {
-            VStack(spacing: 2) {
-                if let bpm = store.heartRateBPM {
-                    Text("\(Int(bpm.rounded()))")
-                        .font(WatchType.heroNumber.font)
-                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
-                    if let zone = store.heartRateZone {
-                        Text(zone.displayName)
-                            .font(WatchType.monoTag.font)
-                            .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
+            let zone = store.heartRateZone
+            let state = zone.map(WatchState.heartRateZone) ?? .ready
+            let bpm = store.heartRateBPM.map { Int($0.rounded()) }
+
+            WatchArcGauge(
+                value: WatchZoneColor.progress(for: zone),
+                state: state
+            ) {
+                VStack(spacing: 1) {
+                    if let bpm {
+                        Text("\(bpm)")
+                            .watchType(.heroNumber, color: WatchZoneColor.color(for: zone))
+                    } else {
+                        Text("--")
+                            .watchType(.heroNumber, color: WatchPalette.fgSecondary)
                     }
-                } else {
-                    Text("--")
-                        .font(WatchType.heroNumber.font)
-                        .foregroundStyle(WatchPalette.fgSecondary)
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 10))
-                        .foregroundStyle(WatchPalette.fgMuted)
+                    Text(zone?.displayName ?? "HR")
+                        .watchType(.monoTag, color: WatchPalette.fgMuted)
                 }
             }
-            .frame(maxWidth: .infinity)
+            .frame(height: 96)
+            .animation(
+                WatchMotion.animation(WatchMotion.standardAnimation, reduceMotion: reduceMotion),
+                value: zone
+            )
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(hrAccessibilityLabel(bpm: bpm, zone: zone))
         }
+    }
+
+    private func hrAccessibilityLabel(bpm: Int?, zone: HeartRateZone?) -> String {
+        let rate = bpm.map { "\($0) BPM" } ?? "No heart rate"
+        if let zone {
+            return "\(rate), \(zone.displayName)"
+        }
+        return rate
     }
 
     private var elapsedLabel: String {

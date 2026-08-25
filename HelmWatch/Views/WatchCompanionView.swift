@@ -13,8 +13,7 @@ struct WatchCompanionView: View {
 
             if let name = coordinator.companionExerciseName {
                 Text(name)
-                    .font(WatchType.title.font)
-                    .foregroundStyle(WatchPalette.fg)
+                    .watchType(.title)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
@@ -23,13 +22,12 @@ struct WatchCompanionView: View {
             if let setNumber = coordinator.companionSetNumber,
                let setCount = coordinator.companionSetCount {
                 Text("Set \(setNumber) of \(setCount)")
-                    .font(WatchType.monoTag.font)
-                    .foregroundStyle(WatchPalette.fgSecondary)
+                    .watchType(.monoTag, color: WatchPalette.fgSecondary)
             }
 
             if let target = coordinator.companionTargetSummary, !target.isEmpty {
                 Text(target)
-                    .font(WatchType.body.font)
+                    .font(WatchType.number.font)
                     .foregroundStyle(WatchPalette.fgSecondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
@@ -55,13 +53,11 @@ struct WatchCompanionView: View {
                 .fill(linkColor)
                 .frame(width: 6, height: 6)
             Text(linkLabel)
-                .font(WatchType.monoTag.font)
-                .foregroundStyle(WatchPalette.fgMuted)
+                .watchType(.monoTag, color: WatchPalette.fgMuted)
             Spacer(minLength: 0)
             if store.phase == .active || store.phase == .paused {
                 Text(elapsedLabel)
-                    .font(WatchType.monoTag.font)
-                    .foregroundStyle(WatchPalette.fgMuted)
+                    .watchType(.number, color: WatchPalette.fgMuted)
             }
         }
     }
@@ -78,37 +74,26 @@ struct WatchCompanionView: View {
     private var companionMetrics: some View {
         switch store.phase {
         case .active, .paused:
+            let zone = store.heartRateZone
             HStack(alignment: .firstTextBaseline, spacing: 4) {
                 if let bpm = store.heartRateBPM {
                     Text("\(Int(bpm.rounded()))")
-                        .font(WatchType.bigNumber.font)
-                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
-                    if let zone = store.heartRateZone {
-                        Text(zone.displayName)
-                            .font(WatchType.monoTag.font)
-                            .foregroundStyle(WatchZoneColor.color(for: store.heartRateZone))
-                    }
+                        .watchType(.bigNumber, color: WatchZoneColor.color(for: zone))
+                    Text(zone?.displayName ?? "BPM")
+                        .watchType(.monoTag, color: WatchZoneColor.color(for: zone))
                 } else {
                     Text("--")
-                        .font(WatchType.bigNumber.font)
-                        .foregroundStyle(WatchPalette.fgSecondary)
-                    Image(systemName: "heart.fill")
-                        .font(.system(size: 9))
-                        .foregroundStyle(WatchPalette.fgMuted)
+                        .watchType(.bigNumber, color: WatchPalette.fgSecondary)
+                    Text("HR")
+                        .watchType(.monoTag, color: WatchPalette.fgMuted)
                 }
             }
             .padding(.vertical, 2)
+            .accessibilityElement(children: .combine)
         case .preparing:
-            ProgressView("Starting HR...")
-                .controlSize(.mini)
-                .tint(WatchPalette.accent)
+            WatchLoadingState(message: "Starting HR")
         case .ending:
-            ProgressView("Ending...")
-                .controlSize(.mini)
-                .tint(WatchPalette.accent)
+            WatchLoadingState(message: "Ending")
         case .idle, .ended:
             idleOrFailedBody
         }
@@ -147,13 +132,11 @@ struct WatchCompanionView: View {
         if let setID = coordinator.companionSetID,
            coordinator.pendingCompleteSetIDs.contains(setID) {
             Text(coordinator.isReachable ? "Sending..." : "Queued for phone")
-                .font(WatchType.monoTag.font)
-                .foregroundStyle(WatchPalette.fgMuted)
+                .watchType(.monoTag, color: WatchPalette.fgMuted)
                 .multilineTextAlignment(.center)
         } else if !coordinator.isReachable {
             Text("Reconnect phone to complete set")
-                .font(WatchType.monoTag.font)
-                .foregroundStyle(WatchPalette.fgSecondary)
+                .watchType(.monoTag, color: WatchPalette.fgSecondary)
                 .multilineTextAlignment(.center)
         }
     }
@@ -161,31 +144,22 @@ struct WatchCompanionView: View {
     @ViewBuilder
     private var idleOrFailedBody: some View {
         if !store.isHealthKitAuthorized {
-            Text("HealthKit access required")
-                .font(WatchType.body.font)
-                .foregroundStyle(WatchPalette.fgSecondary)
+            WatchErrorState(
+                title: "HealthKit required",
+                message: "Allow heart rate on this Watch.",
+                retryTitle: nil
+            )
         } else if let error = store.lastError {
-            VStack(spacing: 4) {
-                Text(error)
-                    .font(WatchType.body.font)
-                    .foregroundStyle(WatchPalette.depleted)
-                    .multilineTextAlignment(.center)
-                    .lineLimit(3)
-                Button("Retry") {
-                    onRetryStart?()
-                }
-                .font(WatchType.label.font)
-                .tint(WatchPalette.accent)
+            WatchErrorState(message: error) {
+                onRetryStart?()
             }
         } else if store.phase == .ended {
-            Text("Ended. Keep phone workout open.")
-                .font(WatchType.body.font)
-                .foregroundStyle(WatchPalette.fgSecondary)
-                .multilineTextAlignment(.center)
+            WatchEmptyState(
+                title: "Ended",
+                message: "Keep the phone workout open."
+            )
         } else {
-            ProgressView("Starting HR...")
-                .controlSize(.mini)
-                .tint(WatchPalette.accent)
+            WatchLoadingState(message: "Starting HR")
         }
     }
 
