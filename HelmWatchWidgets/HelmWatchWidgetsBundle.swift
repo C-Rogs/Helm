@@ -3,6 +3,88 @@ import SwiftUI
 import WatchConnectivity
 import WidgetKit
 
+/// Dark-profile instrument tokens. Mirrors DESIGN-SYSTEM.md; this target cannot import HelmWatch or DesignSystem.
+private enum WidgetPalette {
+    static let fg = Color(hex: 0xF4F3EE)
+    static let fgMuted = Color(hex: 0x6B6A63)
+    static let hairline = Color.white.opacity(0.09)
+    static let depleted = Color(hex: 0xFF6A4D)
+    static let compromised = Color(hex: 0xFFB648)
+    static let ready = Color(hex: 0xD7E85A)
+    static let primed = Color(hex: 0xC6F24E)
+}
+
+private enum WidgetReadinessState {
+    case depleted
+    case compromised
+    case ready
+    case primed
+
+    static func from(score: Int) -> WidgetReadinessState {
+        switch score {
+        case ..<40: .depleted
+        case 40 ..< 55: .compromised
+        case 55 ..< 75: .ready
+        default: .primed
+        }
+    }
+
+    var label: String {
+        switch self {
+        case .depleted: "DEPLETED"
+        case .compromised: "COMPROMISED"
+        case .ready: "READY"
+        case .primed: "PRIMED"
+        }
+    }
+
+    var color: Color {
+        switch self {
+        case .depleted: WidgetPalette.depleted
+        case .compromised: WidgetPalette.compromised
+        case .ready: WidgetPalette.ready
+        case .primed: WidgetPalette.primed
+        }
+    }
+}
+
+private enum WidgetType {
+    static let circularScore: Font = .system(size: 18, weight: .bold, design: .monospaced).monospacedDigit()
+    static let rectangularScore: Font = .system(size: 22, weight: .bold, design: .monospaced).monospacedDigit()
+    static let cornerScore: Font = .system(size: 20, weight: .bold, design: .monospaced).monospacedDigit()
+    static let inline: Font = .system(size: 14, weight: .semibold, design: .monospaced).monospacedDigit()
+    static let monoTag: Font = .system(size: 9, weight: .medium, design: .monospaced)
+    static let monoTagTracking: CGFloat = 1.2
+}
+
+/// 270-degree Arc marque (DESIGN-SYSTEM §3). Stroke `radius * 0.12`, capped for the complication.
+private struct WidgetArc: View {
+    var progress: Double
+    var color: Color
+    var track: Color = WidgetPalette.hairline
+    var lineWidth: CGFloat? = nil
+
+    var body: some View {
+        GeometryReader { geometry in
+            let side = min(geometry.size.width, geometry.size.height)
+            let stroke = lineWidth ?? min(side * 0.12, 3.5)
+            ZStack {
+                Circle()
+                    .trim(from: 0, to: 0.75)
+                    .stroke(track, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+                Circle()
+                    .trim(from: 0, to: 0.75 * max(0, min(1, progress)))
+                    .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
+            }
+            .rotationEffect(.degrees(135))
+            .frame(width: side - stroke, height: side - stroke)
+            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
+        }
+        .aspectRatio(1, contentMode: .fit)
+        .accessibilityHidden(true)
+    }
+}
+
 struct HelmComplicationEntry: TimelineEntry {
     let date: Date
     let score: Int?
@@ -15,12 +97,11 @@ struct HelmComplicationEntry: TimelineEntry {
 
     var scoreColor: Color {
         guard let score else { return WidgetPalette.fgMuted }
-        return WidgetPalette.color(forReadinessScore: score)
+        return WidgetReadinessState.from(score: score).color
     }
 
     var stateLabel: String? {
-        guard let score else { return nil }
-        return WidgetReadinessState.from(score: score).label
+        score.map { WidgetReadinessState.from(score: $0).label }
     }
 
     var arcProgress: Double {
@@ -101,7 +182,7 @@ struct HelmComplicationView: View {
             VStack(spacing: 0) {
                 Text(entry.displayScore)
                     .font(WidgetType.circularScore)
-                    .foregroundStyle(entry.scoreColor)
+                    .foregroundStyle(entry.score == nil ? WidgetPalette.fgMuted : entry.scoreColor)
                 Text(entry.stateLabel ?? "ARC")
                     .font(WidgetType.monoTag)
                     .tracking(WidgetType.monoTagTracking)
@@ -135,7 +216,7 @@ struct HelmComplicationView: View {
                     .foregroundStyle(WidgetPalette.fgMuted)
                 Text(entry.displayScore)
                     .font(WidgetType.rectangularScore)
-                    .foregroundStyle(entry.scoreColor)
+                    .foregroundStyle(entry.score == nil ? WidgetPalette.fgMuted : WidgetPalette.fg)
                 Text(entry.stateLabel ?? "Waiting for Helm")
                     .font(WidgetType.monoTag)
                     .tracking(WidgetType.monoTagTracking)
@@ -185,78 +266,31 @@ struct HelmWatchWidgetsBundle: WidgetBundle {
     }
 }
 
-enum WidgetPalette {
-    static let fgMuted = Color(red: 107 / 255, green: 106 / 255, blue: 99 / 255)
-    static let hairline = Color.white.opacity(0.09)
-    static let depleted = Color(red: 1, green: 106 / 255, blue: 77 / 255)
-    static let compromised = Color(red: 1, green: 182 / 255, blue: 72 / 255)
-    static let ready = Color(red: 215 / 255, green: 232 / 255, blue: 90 / 255)
-    static let primed = Color(red: 198 / 255, green: 242 / 255, blue: 78 / 255)
-
-    static func color(forReadinessScore score: Int) -> Color {
-        WidgetReadinessState.from(score: score).color
+private extension Color {
+    init(hex: UInt32, alpha: Double = 1) {
+        let red = Double((hex >> 16) & 0xFF) / 255
+        let green = Double((hex >> 8) & 0xFF) / 255
+        let blue = Double(hex & 0xFF) / 255
+        self.init(.sRGB, red: red, green: green, blue: blue, opacity: alpha)
     }
 }
 
-enum WidgetReadinessState: String {
-    case depleted
-    case compromised
-    case ready
-    case primed
-
-    static func from(score: Int) -> WidgetReadinessState {
-        switch score {
-        case ..<40: .depleted
-        case 40 ..< 55: .compromised
-        case 55 ..< 75: .ready
-        default: .primed
-        }
-    }
-
-    var label: String { rawValue.uppercased() }
-
-    var color: Color {
-        switch self {
-        case .depleted: WidgetPalette.depleted
-        case .compromised: WidgetPalette.compromised
-        case .ready: WidgetPalette.ready
-        case .primed: WidgetPalette.primed
-        }
-    }
+#if DEBUG
+#Preview("Circular ready", as: .accessoryCircular) {
+    HelmComplication()
+} timeline: {
+    HelmComplicationEntry(date: .now, score: 64, band: "balanced")
 }
 
-enum WidgetType {
-    static let circularScore: Font = .system(size: 18, weight: .bold, design: .monospaced).monospacedDigit()
-    static let rectangularScore: Font = .system(size: 22, weight: .bold, design: .monospaced).monospacedDigit()
-    static let cornerScore: Font = .system(size: 20, weight: .bold, design: .monospaced).monospacedDigit()
-    static let inline: Font = .system(size: 14, weight: .semibold, design: .monospaced).monospacedDigit()
-    static let monoTag: Font = .system(size: 9, weight: .medium, design: .monospaced)
-    static let monoTagTracking: CGFloat = 1.2
+#Preview("Circular empty", as: .accessoryCircular) {
+    HelmComplication()
+} timeline: {
+    HelmComplicationEntry(date: .now, score: nil, band: nil)
 }
 
-struct WidgetArc: View {
-    var progress: Double
-    var color: Color
-    var track: Color = WidgetPalette.hairline
-    var lineWidth: CGFloat? = nil
-
-    var body: some View {
-        GeometryReader { geometry in
-            let side = min(geometry.size.width, geometry.size.height)
-            let stroke = lineWidth ?? min(side * 0.12, 3.5)
-            ZStack {
-                Circle()
-                    .trim(from: 0, to: 0.75)
-                    .stroke(track, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
-                Circle()
-                    .trim(from: 0, to: 0.75 * max(0, min(1, progress)))
-                    .stroke(color, style: StrokeStyle(lineWidth: stroke, lineCap: .round))
-            }
-            .rotationEffect(.degrees(135))
-            .frame(width: side - stroke, height: side - stroke)
-            .position(x: geometry.size.width / 2, y: geometry.size.height / 2)
-        }
-        .aspectRatio(1, contentMode: .fit)
-        .accessibilityHidden(true)
-    }
+#Preview("Rectangular primed", as: .accessoryRectangular) {
+    HelmComplication()
+} timeline: {
+    HelmComplicationEntry(date: .now, score: 82, band: "primed")
 }
+#endif
