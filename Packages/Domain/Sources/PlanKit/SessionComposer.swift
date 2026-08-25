@@ -74,7 +74,8 @@ public enum SessionComposer {
         readinessBand: ReadinessBand? = nil,
         isDeload: Bool = false
     ) -> [PatternSlot] {
-        // Non-PPL templates fall back to PPL day kinds until dedicated tables ship.
+        // Catalogs are keyed by day kind. `template` stays on the API so callers
+        // pass program settings; UL/FB tables are dedicated (see hasDedicatedSlotTables).
         _ = template
         let thin = allowsThinSession(budget: budget, readinessBand: readinessBand, isDeload: isDeload)
         let catalog = indexed(baseSlots(for: dayKind))
@@ -140,18 +141,33 @@ public enum SessionComposer {
                 PatternSlot(pattern: .core, primaryMuscle: .abs, role: .isolation, required: false)
             ]
         case .upper:
-            // Temporary: push-like until Upper/Lower tables ship.
-            baseSlots(for: .push)
+            [
+                PatternSlot(pattern: .horizontalPress, primaryMuscle: .chest, role: .primary),
+                PatternSlot(pattern: .verticalPull, primaryMuscle: .back, role: .primary),
+                PatternSlot(pattern: .verticalPress, primaryMuscle: .shoulders, role: .secondary),
+                PatternSlot(pattern: .horizontalPull, primaryMuscle: .back, role: .secondary),
+                PatternSlot(pattern: .lateralRaise, primaryMuscle: .shoulders, role: .isolation),
+                PatternSlot(pattern: .elbowFlexion, primaryMuscle: .biceps, role: .isolation, required: false),
+                PatternSlot(pattern: .tricepsIsolation, primaryMuscle: .triceps, role: .isolation, required: false)
+            ]
         case .lower:
-            baseSlots(for: .legs)
+            [
+                PatternSlot(pattern: .kneeExtensionCompound, primaryMuscle: .quads, role: .primary),
+                PatternSlot(pattern: .hipHinge, primaryMuscle: .hamstrings, role: .primary),
+                PatternSlot(pattern: .unilateralKnee, primaryMuscle: .quads, role: .secondary),
+                PatternSlot(pattern: .kneeFlexion, primaryMuscle: .hamstrings, role: .isolation),
+                PatternSlot(pattern: .calf, primaryMuscle: .calves, role: .isolation),
+                PatternSlot(pattern: .core, primaryMuscle: .abs, role: .isolation, required: false)
+            ]
         case .full:
             [
                 PatternSlot(pattern: .kneeExtensionCompound, primaryMuscle: .quads, role: .primary),
                 PatternSlot(pattern: .horizontalPress, primaryMuscle: .chest, role: .primary),
-                PatternSlot(pattern: .horizontalPull, primaryMuscle: .back, role: .primary),
+                PatternSlot(pattern: .verticalPull, primaryMuscle: .back, role: .secondary),
                 PatternSlot(pattern: .hipHinge, primaryMuscle: .hamstrings, role: .secondary),
-                PatternSlot(pattern: .verticalPress, primaryMuscle: .shoulders, role: .isolation),
-                PatternSlot(pattern: .elbowFlexion, primaryMuscle: .biceps, role: .isolation, required: false)
+                PatternSlot(pattern: .elbowFlexion, primaryMuscle: .biceps, role: .isolation),
+                PatternSlot(pattern: .tricepsIsolation, primaryMuscle: .triceps, role: .isolation, required: false),
+                PatternSlot(pattern: .core, primaryMuscle: .abs, role: .isolation, required: false)
             ]
         case .arms:
             [

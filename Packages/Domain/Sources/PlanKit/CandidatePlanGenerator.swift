@@ -60,8 +60,8 @@ public enum CandidatePlanGenerator {
         TrainingExperience(rawValue: interview.experienceRaw) ?? .intermediate
     }
 
-    /// Levers per availability bucket. PPL slots are live for all templates;
-    /// upper/full candidates reuse PPL day mapping via `hasDedicatedSlotTables`.
+    /// Levers per availability bucket. Dedicated PPL / UL / FB slot tables are live;
+    /// hybrid rotations keep the PPL template while still using day-kind catalogs.
     static func candidateBlueprints(daysPerWeek: Int) -> [CandidateBlueprint] {
         switch daysPerWeek {
         case ...2:
@@ -69,14 +69,14 @@ public enum CandidatePlanGenerator {
                 CandidateBlueprint(
                     id: "fullbody_2day",
                     headline: "Two full-body sessions",
-                    templateRaw: "ppl",
+                    templateRaw: "full_body",
                     dayKindRotation: [.full, .full],
                     fitScore: 1.0
                 ),
                 CandidateBlueprint(
                     id: "upperlower_2day",
                     headline: "Upper / lower split",
-                    templateRaw: "ppl",
+                    templateRaw: "upper_lower",
                     dayKindRotation: [.upper, .lower],
                     fitScore: 0.9
                 )
@@ -93,7 +93,7 @@ public enum CandidatePlanGenerator {
                 CandidateBlueprint(
                     id: "fullbody_3day",
                     headline: "Three full-body sessions",
-                    templateRaw: "ppl",
+                    templateRaw: "full_body",
                     dayKindRotation: [.full, .full, .full],
                     fitScore: 0.85
                 ),
@@ -110,7 +110,7 @@ public enum CandidatePlanGenerator {
                 CandidateBlueprint(
                     id: "upperlower_4day",
                     headline: "Four-day upper / lower",
-                    templateRaw: "ppl",
+                    templateRaw: "upper_lower",
                     dayKindRotation: [.upper, .lower, .upper, .lower],
                     fitScore: 1.0
                 ),
@@ -141,7 +141,7 @@ public enum CandidatePlanGenerator {
                 CandidateBlueprint(
                     id: "upperlower_5day",
                     headline: "Upper / lower plus arms",
-                    templateRaw: "ppl",
+                    templateRaw: "upper_lower",
                     dayKindRotation: [.upper, .lower, .upper, .lower, .arms],
                     fitScore: 0.85
                 ),

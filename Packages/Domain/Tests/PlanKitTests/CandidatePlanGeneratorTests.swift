@@ -58,4 +58,27 @@ struct CandidatePlanGeneratorTests {
         let advancedChest = advanced[0].weeklyPeakSetsByMuscle[.chest] ?? 0
         #expect(advancedChest >= noviceChest)
     }
+
+    @Test("upper/lower and full-body blueprints persist matching templates")
+    func dedicatedTemplateRaw() {
+        let twoDay = CandidatePlanGenerator.generate(
+            interview: PlanBuilderInterview(daysPerWeek: 2, sessionDurationMinutes: 60),
+            experience: .intermediate
+        )
+        #expect(twoDay.first { $0.id == "fullbody_2day" }?.programTemplateRaw == "full_body")
+        #expect(twoDay.first { $0.id == "upperlower_2day" }?.programTemplateRaw == "upper_lower")
+
+        let threeDay = CandidatePlanGenerator.generate(
+            interview: PlanBuilderInterview(daysPerWeek: 3, sessionDurationMinutes: 60),
+            experience: .intermediate
+        )
+        #expect(threeDay.first { $0.id == "ppl_3day" }?.programTemplateRaw == "ppl")
+        #expect(threeDay.first { $0.id == "fullbody_3day" }?.programTemplateRaw == "full_body")
+
+        let fourDay = CandidatePlanGenerator.generate(
+            interview: PlanBuilderInterview(daysPerWeek: 4, sessionDurationMinutes: 60),
+            experience: .intermediate
+        )
+        #expect(fourDay.first { $0.id == "upperlower_4day" }?.programTemplateRaw == "upper_lower")
+    }
 }
