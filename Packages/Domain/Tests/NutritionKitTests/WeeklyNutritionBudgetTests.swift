@@ -172,4 +172,54 @@ struct WeeklyNutritionBudgetTests {
         #expect(budget.consumedCaloriesKcal == 2_400)
         #expect(budget.days[0].caloriesKcal > budget.days[1].caloriesKcal)
     }
+
+    @Test("planned calories are the no-reflow demand share")
+    func plannedIsFairShare() {
+        let clean = WeeklyNutritionBudgetCalculator.calculate(
+            weekStart: monday,
+            weeklyCaloriesKcal: 17_500,
+            proteinGramsPerDay: 160,
+            days: inputs()
+        )
+        let reflowed = WeeklyNutritionBudgetCalculator.calculate(
+            weekStart: monday,
+            weeklyCaloriesKcal: 17_500,
+            proteinGramsPerDay: 160,
+            days: inputs(consumed: [0: 3_000, 1: 2_000]),
+            asOf: monday.adding(days: 2)
+        )
+        #expect(clean.days.map(\.plannedCaloriesKcal) == reflowed.days.map(\.plannedCaloriesKcal))
+        #expect(reflowed.days[0].eatToCaloriesKcal == reflowed.days[0].plannedCaloriesKcal)
+        #expect(reflowed.days[2].eatToCaloriesKcal != reflowed.days[2].plannedCaloriesKcal)
+        #expect(reflowed.days[2].isReflowed)
+        #expect(reflowed.days[2].caloriesKcal == reflowed.days[2].eatToCaloriesKcal)
+    }
+
+    @Test("in-progress logging does not lock eat-to")
+    func inProgressLoggingDoesNotLock() {
+        let mondayInput = WeeklyNutritionBudgetDayInput(
+            day: monday,
+            demand: .heavyLift,
+            consumedCaloriesKcal: nil,
+            loggedCaloriesKcal: 600
+        )
+        let rest = (1 ..< 7).map { offset in
+            WeeklyNutritionBudgetDayInput(day: monday.adding(days: offset), demand: demands[offset])
+        }
+        let budget = WeeklyNutritionBudgetCalculator.calculate(
+            weekStart: monday,
+            weeklyCaloriesKcal: 17_500,
+            proteinGramsPerDay: 160,
+            days: [mondayInput] + rest,
+            asOf: monday
+        )
+        #expect(budget.days[0].state == .remaining)
+        #expect(budget.days[0].consumedCaloriesKcal == nil)
+        #expect(budget.days[0].loggedCaloriesKcal == 600)
+        #expect(budget.days[0].eatToCaloriesKcal > 1_500)
+        #expect(budget.days[0].remainingCaloriesKcal == budget.days[0].eatToCaloriesKcal - 600)
+        #expect(budget.consumedCaloriesKcal == 600)
+        #expect(budget.remainingCaloriesKcal == 16_900)
+        #expect(!budget.days[1].isReflowed)
+    }
 }

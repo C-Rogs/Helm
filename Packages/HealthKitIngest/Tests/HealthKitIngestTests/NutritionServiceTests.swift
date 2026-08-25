@@ -216,4 +216,52 @@ struct NutritionServiceTests {
 
         #expect(freshness == .unavailable)
     }
+
+    @Test("snapshot calorie target matches weekly-budget eat-to")
+    func snapshotUsesWeeklyBudgetEatTo() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
+
+        let day = HelmDay(year: 2026, month: 8, day: 25)
+        let engine = NutritionEngine(persistence: store)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil)
+
+        let budgetDay = try #require(snapshot.budgetDay)
+        #expect(snapshot.targets.caloriesKcal == budgetDay.eatToCaloriesKcal)
+        #expect(snapshot.targets.proteinGrams == budgetDay.proteinGrams)
+        #expect(snapshot.targets.carbohydrateGrams == budgetDay.carbohydrateGrams)
+        #expect(snapshot.targets.fatGrams == budgetDay.fatGrams)
+        #expect(snapshot.eatToKcal == budgetDay.eatToCaloriesKcal)
+        #expect(snapshot.plannedKcal == budgetDay.plannedCaloriesKcal)
+    }
+
+    @Test("in-progress logging does not collapse today's eat-to")
+    func inProgressLogDoesNotCollapseEatTo() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
+
+        let day = HelmDay(year: 2026, month: 8, day: 25)
+        try store.nutrition.upsertDay(
+            NutritionDay(
+                helmDay: day,
+                totalEnergy: Energy(kilocalories: 600),
+                totalProteinGrams: 40,
+                totalCarbohydrateGrams: 50,
+                totalFatGrams: 20
+            )
+        )
+
+        let engine = NutritionEngine(persistence: store)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: nil)
+        let budgetDay = try #require(snapshot.budgetDay)
+
+        #expect(snapshot.loggedKcal == 600)
+        #expect(budgetDay.state == .remaining)
+        #expect(budgetDay.consumedCaloriesKcal == nil)
+        #expect(snapshot.eatToKcal > 1_200)
+        #expect(snapshot.eatToKcal != 600)
+        #expect(snapshot.remainingKcal == snapshot.eatToKcal - 600)
+    }
 }

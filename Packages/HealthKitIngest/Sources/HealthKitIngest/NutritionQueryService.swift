@@ -173,7 +173,7 @@ public struct NutritionQueryService: Sendable {
             let stateTag = day.isProvisional ? " [provisional]" : ""
             let consumedNote = day.consumedCaloriesKcal.map { " (consumed \($0))" } ?? ""
             lines.append(
-                "\(day.day.formatted) | \(day.demand.rawValue) | \(day.caloriesKcal)kcal | P\(day.proteinGrams)g C\(day.carbohydrateGrams)g F\(day.fatGrams)g\(stateTag)\(consumedNote)"
+                "\(day.day.formatted) | \(day.demand.rawValue) | eat_to=\(day.eatToCaloriesKcal)kcal planned=\(day.plannedCaloriesKcal)kcal | P\(day.proteinGrams)g C\(day.carbohydrateGrams)g F\(day.fatGrams)g\(stateTag)\(consumedNote)"
             )
         }
 

@@ -20,10 +20,20 @@ public enum CoachNutritionContextBuilder {
 
         var lines: [String] = [
             "day=\(helmDay.formatted)",
+            "calorie_authority=weekly_budget",
+            "eat_to_kcal=\(snapshot.eatToKcal)",
+            "planned_kcal=\(snapshot.plannedKcal)",
             "targets_kcal=\(snapshot.targets.caloriesKcal) protein_g=\(snapshot.targets.proteinGrams) carbs_g=\(snapshot.targets.carbohydrateGrams) fat_g=\(snapshot.targets.fatGrams)",
             "day_type=\(snapshot.dayType.rawValue)",
             "logging_complete=\(snapshot.loggingComplete)"
         ]
+        if let demand = snapshot.budgetDay?.demand {
+            lines.append("demand=\(demand.rawValue)")
+        }
+        if let budget = snapshot.weeklyBudget {
+            lines.append("weekly_tgt_kcal=\(budget.targetCaloriesKcal)")
+            lines.append("weekly_remaining_kcal=\(budget.remainingCaloriesKcal)")
+        }
 
         if let tdee = snapshot.trend.estimatedTDEEKcal {
             lines.append("estimated_tdee=\(format(tdee))kcal")
@@ -117,7 +127,7 @@ public enum CoachNutritionContextBuilder {
             let stateTag = day.isProvisional ? " [provisional]" : ""
             let reasonTag = day.reason == .consumed ? "" : " (\(day.reason.rawValue))"
             lines.append(
-                "\(day.day.formatted) | \(day.demand.rawValue) | \(day.caloriesKcal)kcal | P\(day.proteinGrams)g C\(day.carbohydrateGrams)g F\(day.fatGrams)g\(stateTag)\(reasonTag)"
+                "\(day.day.formatted) | \(day.demand.rawValue) | eat_to=\(day.eatToCaloriesKcal)kcal planned=\(day.plannedCaloriesKcal)kcal | P\(day.proteinGrams)g C\(day.carbohydrateGrams)g F\(day.fatGrams)g\(stateTag)\(reasonTag)"
             )
         }
 

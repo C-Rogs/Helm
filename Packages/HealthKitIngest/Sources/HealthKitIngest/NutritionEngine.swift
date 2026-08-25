@@ -153,6 +153,26 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let activeEnergyFreshness: ActiveEnergyFreshness
     public let energyBalance: EnergyBalanceSummary
     public let loggingComplete: Bool
+    public let weeklyBudget: WeeklyNutritionBudget?
+
+    public var budgetDay: WeeklyNutritionBudgetDay? {
+        weeklyBudget?.day(for: helmDay)
+    }
+
+    public var eatToKcal: Int { targets.caloriesKcal }
+
+    public var plannedKcal: Int {
+        budgetDay?.plannedCaloriesKcal ?? targets.caloriesKcal
+    }
+
+    public var loggedKcal: Int? {
+        actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
+    }
+
+    /// Eat-to minus logged. Negative means over the day's allocation.
+    public var remainingKcal: Int {
+        eatToKcal - (loggedKcal ?? 0)
+    }
 
     public init(
         helmDay: HelmDay,
@@ -165,7 +185,8 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         activeEnergyKcal: Int? = nil,
         activeEnergyFreshness: ActiveEnergyFreshness = .unavailable,
         energyBalance: EnergyBalanceSummary? = nil,
-        loggingComplete: Bool = false
+        loggingComplete: Bool = false,
+        weeklyBudget: WeeklyNutritionBudget? = nil
     ) {
         self.helmDay = helmDay
         self.targets = targets
@@ -182,6 +203,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
             activeEnergy: activeEnergyFreshness
         )
         self.loggingComplete = loggingComplete
+        self.weeklyBudget = weeklyBudget
     }
 }
 
@@ -260,7 +282,8 @@ public actor NutritionEngine {
                     mesocycleState: mesocycleState
                 )
             }
-            let consumed: Int?
+            var lock: Int?
+            var logged: Int?
             if d <= day {
                 let storedDay = try? persistence.nutrition.fetchDay(helmDay: d)
                 let dailyMetrics = try? persistence.dailyMetrics.fetch(helmDay: d)
@@ -271,19 +294,24 @@ public actor NutritionEngine {
                     dailyMetrics: dailyMetrics,
                     meals: meals
                 )
-                let logged = actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
+                logged = actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
                 let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: d)) ?? false
-                if let logged, logged > 0 {
-                    consumed = logged
+                if d == day {
+                    if loggingComplete {
+                        lock = logged ?? 0
+                    }
+                } else if let logged, logged > 0 {
+                    lock = logged
                 } else if loggingComplete {
-                    consumed = logged ?? 0
-                } else {
-                    consumed = nil
+                    lock = logged ?? 0
                 }
-            } else {
-                consumed = nil
             }
-            return WeeklyNutritionBudgetDayInput(day: d, demand: demand, consumedCaloriesKcal: consumed)
+            return WeeklyNutritionBudgetDayInput(
+                day: d,
+                demand: demand,
+                consumedCaloriesKcal: lock,
+                loggedCaloriesKcal: logged
+            )
         }
 
         return WeeklyNutritionBudgetCalculator.calculate(
@@ -397,11 +425,13 @@ public actor NutritionEngine {
         NutritionKit.healTrendState(&trend, bodyProfile: bodyProfile)
         try? trendStore.save(trend)
 
-        let targets = NutritionKit.targets(
+        let seedTargets = NutritionKit.targets(
             for: NutritionTargetContext(bodyProfile: bodyProfile, dayType: dayType, loggedDay: actual),
             phase: settings.phaseGoal,
             trend: trend
         )
+        let resolvedWeeklyBudget = try? weeklyBudget(for: day, prescriptionSummary: prescriptionSummary, now: now)
+        let targets = Self.alignedTargets(seed: seedTargets, budgetDay: resolvedWeeklyBudget?.day(for: day))
         let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: day)) ?? false
         let activeEnergyKcal = dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }
         let today = HelmDay.day(for: now, cutoff: cutoff, calendar: calendar)
@@ -433,7 +463,21 @@ public actor NutritionEngine {
             activeEnergyKcal: activeEnergyKcal,
             activeEnergyFreshness: activeEnergyFreshness,
             energyBalance: energyBalance,
-            loggingComplete: loggingComplete
+            loggingComplete: loggingComplete,
+            weeklyBudget: resolvedWeeklyBudget
+        )
+    }
+
+    static func alignedTargets(seed: MacroTargets, budgetDay: WeeklyNutritionBudgetDay?) -> MacroTargets {
+        guard let budgetDay, seed.caloriesKcal > 0 else { return seed }
+        return MacroTargets(
+            caloriesKcal: budgetDay.eatToCaloriesKcal,
+            proteinGrams: budgetDay.proteinGrams,
+            carbohydrateGrams: budgetDay.carbohydrateGrams,
+            fatGrams: budgetDay.fatGrams,
+            dayType: seed.dayType,
+            estimatedTDEEKcal: seed.estimatedTDEEKcal,
+            macroGapKilocalories: seed.macroGapKilocalories
         )
     }
 

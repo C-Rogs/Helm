@@ -44,7 +44,7 @@ struct NutritionSettingsView: View {
                 } header: {
                     Text("Energy estimates")
                 } footer: {
-                    Text("Static estimates used to derive daily targets. Logged intake stays on the Nutrition tab.")
+                    Text("Weekly pool from adaptive TDEE and phase. Eat-to on the Nutrition tab is this pool allocated by day demand.")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
             }

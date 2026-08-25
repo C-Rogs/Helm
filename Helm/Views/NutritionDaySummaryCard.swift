@@ -114,35 +114,32 @@ struct NutritionDaySummaryCard: View {
                 header
 
                 if hasCalculatedTargets {
-                    NutritionEnergyBalanceSection(balance: snapshot.energyBalance)
+                    remainingHero
+                    eatToRow
+                    cascadeCaption
+                    NutritionMacroProgressRow(
+                        label: "Protein",
+                        actual: actualProtein,
+                        target: targets.proteinGrams,
+                        unit: "g"
+                    )
+                    NutritionMacroProgressRow(
+                        label: "Carbohydrates",
+                        actual: actualCarbs,
+                        target: targets.carbohydrateGrams,
+                        unit: "g"
+                    )
+                    NutritionMacroProgressRow(
+                        label: "Fat",
+                        actual: actualFat,
+                        target: targets.fatGrams,
+                        unit: "g"
+                    )
+                    activeEnergyContext
+                } else {
+                    Text("Complete body profile in onboarding or Settings to calculate calorie targets.")
+                        .helmType(.body, color: HelmColor.depleted)
                 }
-
-                calorieRow
-
-                if hasCalculatedTargets {
-                    energyBalanceCaption
-                }
-
-                NutritionMacroProgressRow(
-                    label: "Protein",
-                    actual: actualProtein,
-                    target: targets.proteinGrams,
-                    unit: "g"
-                )
-
-                NutritionMacroProgressRow(
-                    label: "Carbohydrates",
-                    actual: actualCarbs,
-                    target: targets.carbohydrateGrams,
-                    unit: "g"
-                )
-
-                NutritionMacroProgressRow(
-                    label: "Fat",
-                    actual: actualFat,
-                    target: targets.fatGrams,
-                    unit: "g"
-                )
 
                 if let gap = targets.macroGapKilocalories,
                    gap > MacroGapCalculator.significanceThresholdKcal {
@@ -168,90 +165,140 @@ struct NutritionDaySummaryCard: View {
         }
     }
 
-    private var calorieRow: some View {
-        NutritionMacroProgressRow(
-            label: "Calories",
-            actual: actualCalories,
-            target: effectiveCalorieTarget,
-            unit: "kcal"
+    private var remainingHero: some View {
+        let eatTo = max(snapshot.eatToKcal, 1)
+        let logged = Double(snapshot.loggedKcal ?? 0)
+        let remaining = snapshot.remainingKcal
+        let over = remaining < 0
+        let state = HelmState.energyBalance(intakeKcal: logged, targetKcal: Double(eatTo))
+
+        return ArcGauge(
+            value: min(logged, Double(eatTo)),
+            range: 0 ... Double(eatTo),
+            state: over ? .depleted : state
+        ) {
+            VStack(spacing: HelmSpacing.xxs) {
+                HelmNumericText(abs(remaining))
+                    .helmType(.heroNumber, color: HelmColor.color(for: over ? .depleted : state))
+                Text(over ? "kcal over" : "kcal left")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
+        }
+        .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
+        .frame(maxWidth: .infinity)
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(
+            over
+                ? "\(-remaining) kilocalories over eat-to"
+                : "\(remaining) kilocalories remaining"
         )
     }
 
-    private var effectiveCalorieTarget: Int {
-        snapshot.energyBalance.adjustedTargetKcal ?? targets.caloriesKcal
+    private var eatToRow: some View {
+        HStack(alignment: .firstTextBaseline) {
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text("Eat-to")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                    HelmNumericText(snapshot.eatToKcal)
+                        .helmType(.bigNumber)
+                    Text("kcal")
+                        .helmType(.body, color: HelmColor.fgMuted)
+                }
+            }
+            Spacer()
+            VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
+                Text("Logged")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                if let logged = snapshot.loggedKcal {
+                    HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                        HelmNumericText(logged)
+                            .helmType(.bigNumber)
+                        Text("kcal")
+                            .helmType(.body, color: HelmColor.fgMuted)
+                    }
+                } else {
+                    Text("None")
+                        .helmType(.bigNumber, color: HelmColor.fgMuted)
+                }
+            }
+        }
     }
 
     @ViewBuilder
-    private var energyBalanceCaption: some View {
-        switch snapshot.activeEnergyFreshness {
-        case let .fresh(burned):
-            if let adjusted = snapshot.energyBalance.adjustedTargetKcal {
-                Text("\(targets.caloriesKcal) base · \(adjusted) with +\(burned) burned")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            } else {
-                Text(targetCaption)
-                    .helmType(.body, color: HelmColor.fgMuted)
+    private var cascadeCaption: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(cascadeText)
+                .helmType(.body, color: HelmColor.fgMuted)
+                .fixedSize(horizontal: false, vertical: true)
+            if let budgetDay = snapshot.budgetDay, budgetDay.isReflowed {
+                Text("Reflowed from a \(budgetDay.plannedCaloriesKcal) kcal planned share after locked days.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+        }
+    }
+
+    private var cascadeText: String {
+        var parts: [String] = []
+        if snapshot.targets.estimatedTDEEKcal > 0 {
+            parts.append("TDEE \(snapshot.targets.estimatedTDEEKcal)")
+        }
+        parts.append(snapshot.phase.label)
+        if let demand = snapshot.budgetDay?.demand {
+            parts.append(demand.displayLabel)
+        }
+        if let budget = snapshot.weeklyBudget {
+            parts.append("week \(budget.remainingCaloriesKcal) left")
+        }
+        if let weight = snapshot.trend.smoothedTrendWeightKg {
+            parts.append(String(format: "%.1f kg trend", weight))
+        }
+        return parts.joined(separator: " · ")
+    }
+
+    @ViewBuilder
+    private var activeEnergyContext: some View {
+        switch snapshot.activeEnergyFreshness {
+        case .unavailable:
+            EmptyView()
         case let .stale(partial):
             if let partial, partial > 0 {
-                Text("\(targets.caloriesKcal) base · +\(partial) kcal syncing from Apple Health")
+                Text("Active \(partial) kcal syncing from Apple Health. Not added to eat-to.")
                     .helmType(.body, color: HelmColor.fgMuted)
             } else {
                 Text(ActiveEnergyDisplayCopy.stalePending)
                     .helmType(.body, color: HelmColor.depleted)
             }
-        case .unavailable:
-            Text(targetCaption)
+        case let .fresh(burned):
+            Text("Active \(burned) kcal from Apple Health. Context only; TDEE already includes habitual burn.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(dayTitle)
-                    .helmType(.label)
-                Spacer()
+        HStack(alignment: .firstTextBaseline) {
+            Text(dayTitle)
+                .helmType(.label)
+            Spacer()
+            if let demand = snapshot.budgetDay?.demand {
+                Text(demand.displayLabel)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            } else {
                 Text(snapshot.dayType.rawValue.capitalized)
                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                if explainMetric != nil, onAskCoach != nil {
-                    Button {
-                        isShowingTargetExplain = true
-                    } label: {
-                        HelmIconView(.info, context: .inline)
-                            .foregroundStyle(HelmColor.fgMuted)
-                    }
-                    .buttonStyle(.helmPressable)
-                    .accessibilityLabel("Show how targets are calculated")
-                }
             }
-
-            HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
-                if hasCalculatedTargets {
-                    HelmNumericText(targets.caloriesKcal)
-                        .helmType(.bigNumber)
-                    Text("kcal target")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                } else {
-                    Text("Pending")
-                        .helmType(.bigNumber, color: HelmColor.fgMuted)
-                    Text("kcal target pending")
-                        .helmType(.body, color: HelmColor.fgMuted)
+            Text(snapshot.phase.label)
+                .helmType(.monoTag, color: HelmColor.accent)
+            if explainMetric != nil, onAskCoach != nil {
+                Button {
+                    isShowingTargetExplain = true
+                } label: {
+                    HelmIconView(.info, context: .inline)
+                        .foregroundStyle(HelmColor.fgMuted)
                 }
-                Spacer()
-                Text(snapshot.phase.label)
-                    .helmType(.monoTag, color: HelmColor.accent)
-            }
-
-            if hasCalculatedTargets {
-                Text(targetCaption)
-                    .helmType(.body, color: HelmColor.fgMuted)
-            } else if !hasCalculatedTargets {
-                Text("Complete body profile in onboarding or Settings to calculate calorie targets.")
-                    .helmType(.body, color: HelmColor.depleted)
-            } else if snapshot.targets.caloriesKcal <= 0 {
-                Text("Recovered default targets. Tap Refresh if numbers look wrong.")
-                    .helmType(.body, color: HelmColor.depleted)
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Show how eat-to is calculated")
             }
         }
     }
@@ -262,17 +309,6 @@ struct NutritionDaySummaryCard: View {
             return "Today"
         }
         return snapshot.helmDay.formattedLabel
-    }
-
-    private var targetCaption: String {
-        switch snapshot.phase {
-        case .maintain:
-            return "Daily calorie target matches estimated maintenance."
-        case .cut:
-            return "Daily calorie target is below maintenance for your cut phase."
-        case .gain:
-            return "Daily calorie target is above maintenance for your gain phase."
-        }
     }
 
     @ViewBuilder
@@ -288,10 +324,6 @@ struct NutritionDaySummaryCard: View {
                 hasCalculatedTargets: hasCalculatedTargets
             )
         }
-    }
-
-    private var actualCalories: Int? {
-        snapshot.actual?.totalEnergy.map { Int($0.kilocalories.rounded()) }
     }
 
     private var actualProtein: Int? {

@@ -35,7 +35,6 @@ struct NutritionView: View {
         }
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
-    @State private var weeklyBudget: WeeklyNutritionBudget?
     @State private var isRefreshing = false
     @State private var isDayCompleteSaving = false
     @State private var showsPhotoOptions = false
@@ -60,8 +59,12 @@ struct NutritionView: View {
                             NutritionDiaryHeader(
                                 selectedDay: selectedHelmDay,
                                 today: todayHelmDay,
+                                budget: snapshot.weeklyBudget,
                                 onSelectDay: { day in
                                     Task { await selectDay(day) }
+                                },
+                                onSetDemand: { day, demand in
+                                    Task { await setDayDemand(demand, for: day) }
                                 }
                             )
                         }
@@ -76,13 +79,10 @@ struct NutritionView: View {
                             onAskCoach: chatController.requestCoachHandoff(prompt:)
                         )
 
-                        if let budget = weeklyBudget {
+                        if let budget = snapshot.weeklyBudget {
                             NutritionWeeklyBudgetCard(
                                 budget: budget,
-                                today: todayHelmDay ?? snapshot.helmDay,
-                                onSetDemand: { day, demand in
-                                    Task { await setDayDemand(demand, for: day) }
-                                }
+                                today: todayHelmDay ?? snapshot.helmDay
                             )
                         }
 
@@ -107,6 +107,9 @@ struct NutritionView: View {
                 .helmScreenPadding()
             }
             .helmScreenBackground()
+            .refreshable {
+                await refreshTargets()
+            }
             .navigationTitle("Nutrition")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { nutritionToolbar }
@@ -259,14 +262,6 @@ struct NutritionView: View {
     private var nutritionToolbar: some ToolbarContent {
         ToolbarItem(placement: .topBarTrailing) {
             Button {
-                openTemplates()
-            } label: {
-                Image(systemName: "square.stack")
-            }
-            .accessibilityLabel("Saved meals")
-        }
-        ToolbarItem(placement: .topBarTrailing) {
-            Button {
                 Task { await refreshTargets() }
             } label: {
                 if isRefreshing {
@@ -321,23 +316,7 @@ struct NutritionView: View {
         guard let day = selectedHelmDay else { return }
         NutritionBootstrap.lastViewedHelmDay = day
         await nutritionService.refresh(for: day, prescriptionSummary: prescriptionSummary)
-        await refreshWeeklyBudget(day: day, prescriptionSummary: prescriptionSummary)
         reloadMeals(from: nutritionService.state)
-    }
-
-    @MainActor
-    private func refreshWeeklyBudget(
-        day: HelmDay,
-        prescriptionSummary: PrescribedSessionSummary?
-    ) async {
-        do {
-            weeklyBudget = try await nutritionService.weeklyBudget(
-                for: day,
-                prescriptionSummary: prescriptionSummary
-            )
-        } catch {
-            weeklyBudget = nil
-        }
     }
 
     @MainActor
@@ -350,10 +329,7 @@ struct NutritionView: View {
                 try service.clearExplicitOverride(for: day)
             }
             HapticEngine.shared.play(.mealConfirmed)
-            await refreshWeeklyBudget(
-                day: selectedHelmDay ?? day,
-                prescriptionSummary: PlanBootstrap.prescriptionService.state.summary
-            )
+            await refreshSelectedDay()
         } catch {
             // Non-fatal; next refresh shows current state.
         }
@@ -413,12 +389,6 @@ struct NutritionView: View {
         }
         let day = selectedHelmDay ?? snapshot.helmDay
         mealsStore.reload(for: day)
-        Task {
-            await refreshWeeklyBudget(
-                day: day,
-                prescriptionSummary: PlanBootstrap.prescriptionService.state.summary
-            )
-        }
     }
 
     @ViewBuilder

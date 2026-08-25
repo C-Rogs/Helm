@@ -525,18 +525,39 @@ struct DashboardView: View {
     @ViewBuilder
     private func compactNutritionContent(snapshot: NutritionDaySnapshot) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xs) {
-            HelmNumericText(snapshot.targets.caloriesKcal)
-                .helmType(.bigNumber)
-            Text("kcal target")
-                .helmType(.body, color: HelmColor.fgMuted)
+            if snapshot.eatToKcal > 0 {
+                HelmNumericText(abs(snapshot.remainingKcal))
+                    .helmType(.bigNumber)
+                Text(snapshot.remainingKcal < 0 ? "kcal over" : "kcal left")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            } else {
+                Text("Pending")
+                    .helmType(.bigNumber, color: HelmColor.fgMuted)
+                Text("eat-to pending")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
             Spacer()
-            Text(snapshot.dayType.rawValue.capitalized)
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+            if let demand = snapshot.budgetDay?.demand {
+                Text(demand.displayLabel)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            } else {
+                Text(snapshot.dayType.rawValue.capitalized)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            }
         }
 
-        if let actualCalories = snapshot.actual?.totalEnergy.map({ Int($0.kilocalories.rounded()) }) {
+        if snapshot.eatToKcal > 0 {
             HStack(spacing: HelmSpacing.xxs) {
-                HelmNumericText(actualCalories)
+                HelmNumericText(snapshot.loggedKcal ?? 0)
+                Text("of")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                HelmNumericText(snapshot.eatToKcal)
+                Text("kcal eat-to")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+            }
+        } else if snapshot.loggedKcal != nil {
+            HStack(spacing: HelmSpacing.xxs) {
+                HelmNumericText(snapshot.loggedKcal ?? 0)
                 Text("kcal logged")
                     .helmType(.body, color: HelmColor.fgSecondary)
             }

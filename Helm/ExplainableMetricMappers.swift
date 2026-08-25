@@ -118,6 +118,8 @@ enum ExplainableMetricMappers {
             ? formattedInteger(targets.caloriesKcal)
             : "Pending"
         let floorApplied = targets.caloriesKcal > 0 && targets.caloriesKcal <= 1_200
+        let budget = snapshot.weeklyBudget
+        let budgetDay = snapshot.budgetDay
 
         var contributors: [ExplainContributor] = []
 
@@ -127,39 +129,50 @@ enum ExplainableMetricMappers {
                     id: "profile-maintenance",
                     label: "Profile maintenance",
                     value: "\(profileMaintenance) kcal",
-                    detail: "Starting estimate from body profile"
+                    detail: "Mifflin-St Jeor seed from body profile"
                 )
             )
         }
 
         if targets.estimatedTDEEKcal > 0 {
-            let tdeeDetail: String
-            if let adaptive = snapshot.trend.estimatedTDEEKcal,
-               adaptive > 0,
-               let profileMaintenance = snapshot.profileMaintenanceKcal,
-               abs(Int(adaptive.rounded()) - profileMaintenance) > 25 {
-                tdeeDetail = "Refined from recent food logs and weight trend"
-            } else if snapshot.trend.estimatedTDEEKcal != nil {
-                tdeeDetail = "Refined from recent food logs and weight trend"
-            } else {
-                tdeeDetail = "Using profile maintenance until enough weight and intake data"
-            }
             contributors.append(
                 ExplainContributor(
                     id: "tdee",
-                    label: "Current TDEE estimate",
+                    label: "Adaptive TDEE",
                     value: "\(targets.estimatedTDEEKcal) kcal",
-                    detail: tdeeDetail
+                    detail: tdeeDetail(snapshot)
                 )
             )
         } else {
             contributors.append(
                 ExplainContributor(
                     id: "tdee",
-                    label: "Current TDEE estimate",
+                    label: "Adaptive TDEE",
                     value: "Pending",
                     detail: "Complete body profile in Settings",
                     state: .compromised
+                )
+            )
+        }
+
+        if let budget {
+            let dailyPool = budget.targetCaloriesKcal / 7
+            let tdee = targets.estimatedTDEEKcal
+            let adj = tdee > 0 ? dailyPool - tdee : 0
+            contributors.append(
+                ExplainContributor(
+                    id: "weekly-pool",
+                    label: "Weekly pool",
+                    value: "\(budget.targetCaloriesKcal) kcal",
+                    detail: phasePoolDetail(phase: snapshot.phase, dailyPool: dailyPool, tdee: tdee, adj: adj)
+                )
+            )
+            contributors.append(
+                ExplainContributor(
+                    id: "week-remaining",
+                    label: "Week remaining",
+                    value: "\(budget.remainingCaloriesKcal) kcal",
+                    detail: "\(budget.consumedCaloriesKcal) logged of \(budget.targetCaloriesKcal)"
                 )
             )
         }
@@ -175,26 +188,75 @@ enum ExplainableMetricMappers {
             )
         }
 
-        contributors.append(contentsOf: [
+        if let weight = snapshot.trend.smoothedTrendWeightKg {
+            contributors.append(
+                ExplainContributor(
+                    id: "trend-weight",
+                    label: "Trend weight",
+                    value: String(format: "%.1f kg", weight),
+                    detail: "EWMA of recent morning weigh-ins"
+                )
+            )
+        }
+
+        if let budgetDay {
+            contributors.append(
+                ExplainContributor(
+                    id: "demand",
+                    label: "Day demand",
+                    value: budgetDay.demand.displayLabel,
+                    detail: "Weights this day's share of the weekly pool and the carb/fat split"
+                )
+            )
+            contributors.append(
+                ExplainContributor(
+                    id: "planned",
+                    label: "Planned share",
+                    value: "\(budgetDay.plannedCaloriesKcal) kcal",
+                    detail: "Demand-weighted share before logging reflow"
+                )
+            )
+            if budgetDay.isReflowed {
+                let delta = budgetDay.eatToCaloriesKcal - budgetDay.plannedCaloriesKcal
+                let sign = delta >= 0 ? "+" : ""
+                contributors.append(
+                    ExplainContributor(
+                        id: "reflow",
+                        label: "Reflow",
+                        value: "\(sign)\(delta) kcal",
+                        detail: "Unlocked days absorb leftover after locked intake",
+                        state: delta < 0 ? .compromised : .ready
+                    )
+                )
+            }
+        } else {
+            contributors.append(
+                ExplainContributor(
+                    id: "demand",
+                    label: "Day type",
+                    value: snapshot.dayType.rawValue.capitalized,
+                    detail: "Weekly budget unavailable; showing seed macros"
+                )
+            )
+        }
+
+        contributors.append(
             ExplainContributor(
-                id: "phase",
-                label: "Phase adjustment",
-                value: phaseAdjustmentLabel(for: snapshot.phase),
-                detail: phaseAdjustmentDetail(for: snapshot.phase)
-            ),
+                id: "eat-to",
+                label: "Eat-to",
+                value: targets.caloriesKcal > 0 ? "\(targets.caloriesKcal) kcal" : "Pending",
+                detail: "Authoritative calorie target for this day"
+            )
+        )
+
+        contributors.append(
             ExplainContributor(
                 id: "protein",
-                label: "Protein floor",
+                label: "Protein",
                 value: targets.proteinGrams > 0 ? "\(targets.proteinGrams) g" : "Pending",
-                detail: "2.0 g/kg minimum"
-            ),
-            ExplainContributor(
-                id: "daytype",
-                label: "Day type",
-                value: snapshot.dayType.rawValue.capitalized,
-                detail: "Affects carb/fat split only, not calories"
-            ),
-        ])
+                detail: "2.0 g/kg, held constant across the week"
+            )
+        )
 
         if floorApplied {
             contributors.append(
@@ -213,25 +275,52 @@ enum ExplainableMetricMappers {
                 id: "carbs",
                 label: "Carbohydrates",
                 value: "\(targets.carbohydrateGrams) g",
-                detail: dayTypeDetail(snapshot.dayType)
+                detail: budgetDay.map { "\($0.demand.displayLabel) share of remaining energy" }
+                    ?? dayTypeDetail(snapshot.dayType)
             ),
             ExplainContributor(
                 id: "fat",
                 label: "Fat",
                 value: "\(targets.fatGrams) g",
-                detail: "Remaining calories"
+                detail: "Fills remaining energy after protein and carbs"
             ),
         ])
 
-        if let actual = snapshot.actual?.totalEnergy {
+        if let logged = snapshot.loggedKcal {
             contributors.append(
                 ExplainContributor(
                     id: "logged",
                     label: "Logged intake",
-                    value: "\(Int(actual.kilocalories.rounded())) kcal",
-                    detail: "HealthKit actuals"
+                    value: "\(logged) kcal",
+                    detail: snapshot.remainingKcal >= 0
+                        ? "\(snapshot.remainingKcal) kcal remaining"
+                        : "\(-snapshot.remainingKcal) kcal over eat-to"
                 )
             )
+        }
+
+        switch snapshot.activeEnergyFreshness {
+        case let .fresh(burned):
+            contributors.append(
+                ExplainContributor(
+                    id: "active",
+                    label: "Active energy",
+                    value: "\(burned) kcal",
+                    detail: "Context only. Not added to eat-to; TDEE already includes habitual burn."
+                )
+            )
+        case let .stale(partial):
+            contributors.append(
+                ExplainContributor(
+                    id: "active",
+                    label: "Active energy",
+                    value: partial.map { "\($0) kcal" } ?? "Syncing",
+                    detail: "HealthKit still catching up. Not added to eat-to.",
+                    state: .compromised
+                )
+            )
+        case .unavailable:
+            break
         }
 
         if let gap = targets.macroGapKilocalories,
@@ -241,7 +330,7 @@ enum ExplainableMetricMappers {
                     id: "gap",
                     label: "Untracked energy",
                     value: "+\(Int(gap.rounded())) kcal",
-                    detail: "Alcohol or untracked macros",
+                    detail: "Alcohol or quick-add without full macros",
                     state: .depleted
                 )
             )
@@ -249,26 +338,59 @@ enum ExplainableMetricMappers {
 
         let summary: String
         if floorApplied {
-            summary = "Calorie target is at the 1,200 kcal safety floor. Adjust phase or body mass in Training Plan settings."
-        } else if let gap = targets.macroGapKilocalories,
-           gap > MacroGapCalculator.significanceThresholdKcal {
-            summary = "\(snapshot.phase.label) phase \(snapshot.dayType.rawValue) day. Untracked energy is shown separately from macro targets."
+            summary = "Eat-to is at the 1,200 kcal safety floor. Adjust phase or body mass in Training Plan settings."
+        } else if let budgetDay {
+            let demand = budgetDay.demand.displayLabel
+            if budgetDay.isReflowed {
+                summary = "Eat-to is the weekly pool after locked days, weighted for \(demand). Planned share was \(budgetDay.plannedCaloriesKcal) kcal."
+            } else {
+                summary = "Eat-to is this \(demand) day's share of the weekly calorie pool. Active burn does not change it."
+            }
         } else {
-            summary = "\(snapshot.phase.label) phase \(snapshot.dayType.rawValue) day with \(targets.proteinGrams)g protein."
+            summary = "\(snapshot.phase.label) phase. Weekly budget unavailable until body profile is complete."
         }
 
         return ExplainableMetric(
             domain: "Nutrition",
-            title: "Calorie target",
+            title: "Eat-to",
             value: formattedCalories,
             unit: "kcal",
             state: .ready,
             summary: summary,
             contributors: contributors,
-            citation: ExplainCitation(id: "ev-energy-balance", label: "Energy balance"),
-            coachPromptSeed: "Why is my calorie target \(formattedCalories) kcal today?",
+            citation: ExplainCitation(id: "ev-energy-balance", label: "Weekly energy budget"),
+            coachPromptSeed: "Why is my eat-to \(formattedCalories) kcal today?",
             isCoachHandoffEnabled: coachAvailable
         )
+    }
+
+    private static func tdeeDetail(_ snapshot: NutritionDaySnapshot) -> String {
+        if let adaptive = snapshot.trend.estimatedTDEEKcal,
+           adaptive > 0,
+           let profileMaintenance = snapshot.profileMaintenanceKcal,
+           abs(Int(adaptive.rounded()) - profileMaintenance) > 25 {
+            return "Refined from recent food logs and weight trend"
+        }
+        if snapshot.trend.estimatedTDEEKcal != nil {
+            return "Refined from recent food logs and weight trend"
+        }
+        return "Using profile maintenance until enough weight and intake data"
+    }
+
+    private static func phasePoolDetail(
+        phase: TrainingPhase,
+        dailyPool: Int,
+        tdee: Int,
+        adj: Int
+    ) -> String {
+        switch phase {
+        case .cut:
+            return "Cut. \(dailyPool) kcal/day average, \(abs(adj)) below TDEE"
+        case .gain:
+            return "Gain. \(dailyPool) kcal/day average, \(abs(adj)) above TDEE"
+        case .maintain:
+            return "Maintain. \(dailyPool) kcal/day average from TDEE"
+        }
     }
 
     private static func dayTypeDetail(_ dayType: NutritionDayType) -> String {
@@ -316,30 +438,6 @@ enum ExplainableMetricMappers {
             return "Provisional score with \(score.validNights)/14 baseline nights."
         case .low:
             return "Low confidence while the baseline is still forming."
-        }
-    }
-
-    private static func phaseAdjustmentDetail(for phase: TrainingPhase) -> String {
-        switch phase {
-        case .cut: "500 kcal deficit from TDEE"
-        case .gain: "300 kcal surplus to TDEE"
-        case .maintain: "Maintenance calories"
-        }
-    }
-
-    private static func phaseAdjustmentLabel(for phase: TrainingPhase) -> String {
-        switch phase {
-        case .cut: "-\(Int(phaseAdjustmentKcal(for: phase))) kcal"
-        case .gain: "+\(Int(phaseAdjustmentKcal(for: phase))) kcal"
-        case .maintain: "0 kcal"
-        }
-    }
-
-    private static func phaseAdjustmentKcal(for phase: TrainingPhase) -> Double {
-        switch phase {
-        case .cut: 500
-        case .gain: 300
-        case .maintain: 0
         }
     }
 

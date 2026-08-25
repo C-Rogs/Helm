@@ -6,6 +6,19 @@ public enum WeeklyNutritionDemand: String, Sendable, Hashable, Codable, CaseIter
 }
 
 extension WeeklyNutritionDemand {
+    public var displayLabel: String {
+        switch self {
+        case .heavyLift: "Heavy Lift"
+        case .lightLift: "Light"
+        case .cardio: "Cardio"
+        case .rest: "Rest"
+        case .restOffice: "Office"
+        case .social: "Social"
+        case .party: "Party"
+        case .highIntake: "High"
+        }
+    }
+
     /// Maps the canonical NutritionDayDemand (already resolved with override >
     /// planned training > planned cardio > ordinary) into a weekly-budget
     /// demand type for calorie/macro allocation.
@@ -38,9 +51,24 @@ public enum WeeklyNutritionBudgetDayState: String, Sendable, Hashable, Codable {
 public struct WeeklyNutritionBudgetDayInput: Sendable, Hashable, Codable, Equatable {
     public let day: HelmDay
     public let demand: WeeklyNutritionDemand
+    /// When non-nil, this day is locked and leftover weekly kcal reflow onto unlocked days.
     public let consumedCaloriesKcal: Int?
-    public init(day: HelmDay, demand: WeeklyNutritionDemand, consumedCaloriesKcal: Int? = nil) {
-        self.day = day; self.demand = demand; self.consumedCaloriesKcal = consumedCaloriesKcal
+    /// Intake counted toward weekly remaining. Independent of lock so an in-progress day can show logged kcal without collapsing eat-to.
+    public let loggedCaloriesKcal: Int?
+    public init(
+        day: HelmDay,
+        demand: WeeklyNutritionDemand,
+        consumedCaloriesKcal: Int? = nil,
+        loggedCaloriesKcal: Int? = nil
+    ) {
+        self.day = day
+        self.demand = demand
+        self.consumedCaloriesKcal = consumedCaloriesKcal
+        self.loggedCaloriesKcal = loggedCaloriesKcal
+    }
+
+    public var resolvedLoggedCaloriesKcal: Int? {
+        loggedCaloriesKcal ?? consumedCaloriesKcal
     }
 }
 
@@ -50,13 +78,54 @@ public struct WeeklyNutritionBudgetDay: Sendable, Hashable, Codable, Equatable, 
     public let demand: WeeklyNutritionDemand
     public let reason: WeeklyNutritionBudgetReason
     public let state: WeeklyNutritionBudgetDayState
+    /// Locked days: logged intake. Unlocked days: reflowed eat-to.
     public let caloriesKcal: Int
+    /// Demand-weighted share of the full weekly pool, before logging reflow.
+    public let plannedCaloriesKcal: Int
     public let proteinGrams: Int
     public let carbohydrateGrams: Int
     public let fatGrams: Int
     public let consumedCaloriesKcal: Int?
+    public let loggedCaloriesKcal: Int?
     public let remainingCaloriesKcal: Int
     public var isProvisional: Bool { state == .provisional }
+
+    /// Number the athlete should eat to. Locked days keep planned so past days still compare against the plan.
+    public var eatToCaloriesKcal: Int {
+        state == .consumed ? plannedCaloriesKcal : caloriesKcal
+    }
+
+    public var isReflowed: Bool {
+        eatToCaloriesKcal != plannedCaloriesKcal
+    }
+
+    public init(
+        day: HelmDay,
+        demand: WeeklyNutritionDemand,
+        reason: WeeklyNutritionBudgetReason,
+        state: WeeklyNutritionBudgetDayState,
+        caloriesKcal: Int,
+        plannedCaloriesKcal: Int,
+        proteinGrams: Int,
+        carbohydrateGrams: Int,
+        fatGrams: Int,
+        consumedCaloriesKcal: Int?,
+        loggedCaloriesKcal: Int?,
+        remainingCaloriesKcal: Int
+    ) {
+        self.day = day
+        self.demand = demand
+        self.reason = reason
+        self.state = state
+        self.caloriesKcal = caloriesKcal
+        self.plannedCaloriesKcal = plannedCaloriesKcal
+        self.proteinGrams = proteinGrams
+        self.carbohydrateGrams = carbohydrateGrams
+        self.fatGrams = fatGrams
+        self.consumedCaloriesKcal = consumedCaloriesKcal
+        self.loggedCaloriesKcal = loggedCaloriesKcal
+        self.remainingCaloriesKcal = remainingCaloriesKcal
+    }
 }
 
 public struct WeeklyNutritionBudget: Sendable, Hashable, Codable, Equatable {
@@ -67,6 +136,10 @@ public struct WeeklyNutritionBudget: Sendable, Hashable, Codable, Equatable {
     public let remainingCaloriesKcal: Int
     public let excessCaloriesKcal: Int
     public var allocatedCaloriesKcal: Int { days.reduce(0) { $0 + $1.caloriesKcal } }
+
+    public func day(for helmDay: HelmDay) -> WeeklyNutritionBudgetDay? {
+        days.first { $0.day == helmDay }
+    }
 }
 
 public enum WeeklyNutritionBudgetCalculator {
@@ -85,19 +158,38 @@ public enum WeeklyNutritionBudgetCalculator {
         let ordered = canonicalInputs(weekStart: weekStart, inputs: inputs)
         let weeklyTarget = max(weeklyCaloriesKcal, 0)
         let protein = max(proteinGramsPerDay, 0)
-        let consumedByIndex = ordered.map { max($0.consumedCaloriesKcal ?? 0, 0) }
-        // Only logged intake locks a day. Unlogged past days keep their demand
-        // allocation so a missing diary does not dump those calories onto remaining days.
+        let demands = ordered.map(\.demand)
+        let plannedAllocation = allocate(
+            total: weeklyTarget,
+            indices: Array(ordered.indices),
+            demands: demands,
+            floor: constraints.minimumDailyCaloriesKcal,
+            cap: constraints.maximumDailyCaloriesKcal
+        )
+        // Only a lock (consumedCaloriesKcal) reflows leftover weekly kcal.
+        // In-progress logging lives on loggedCaloriesKcal so today's eat-to stays intact.
         let isLocked = ordered.map { $0.consumedCaloriesKcal != nil }
-        let lockedTotal = zip(consumedByIndex, isLocked).reduce(0) { $0 + ($1.1 ? $1.0 : 0) }
-        let futureIndices = ordered.indices.filter { !isLocked[$0] }
-        let allocation = allocate(total: max(weeklyTarget - lockedTotal, 0), indices: futureIndices, demands: ordered.map(\.demand), floor: constraints.minimumDailyCaloriesKcal, cap: constraints.maximumDailyCaloriesKcal)
-        var targets = consumedByIndex
+        let lockedByIndex = ordered.map { max($0.consumedCaloriesKcal ?? 0, 0) }
+        let lockedTotal = zip(lockedByIndex, isLocked).reduce(0) { $0 + ($1.1 ? $1.0 : 0) }
+        let unlockedIndices = ordered.indices.filter { !isLocked[$0] }
+        let allocation = allocate(
+            total: max(weeklyTarget - lockedTotal, 0),
+            indices: unlockedIndices,
+            demands: demands,
+            floor: constraints.minimumDailyCaloriesKcal,
+            cap: constraints.maximumDailyCaloriesKcal
+        )
+        var targets = lockedByIndex
         for (index, value) in allocation.values { targets[index] = value }
 
+        let loggedTotal = ordered.reduce(0) { $0 + max($1.resolvedLoggedCaloriesKcal ?? 0, 0) }
+
         let days = ordered.indices.map { index in
-            let input = ordered[index], target = targets[index]
+            let input = ordered[index]
+            let target = targets[index]
+            let planned = plannedAllocation.values[index] ?? target
             let consumed = input.consumedCaloriesKcal.map { max($0, 0) }
+            let logged = input.resolvedLoggedCaloriesKcal.map { max($0, 0) }
             let state: WeeklyNutritionBudgetDayState
             if consumed != nil {
                 state = .consumed
@@ -112,11 +204,38 @@ public enum WeeklyNutritionBudgetCalculator {
             else if allocation.hitCap.contains(index) { reason = .constrainedByCap }
             else if lockedTotal > 0 { reason = .futureReflow }
             else { reason = .plannedDemand }
-            let macros = macroAllocation(calories: target, proteinGrams: protein, minimumFatGrams: constraints.minimumFatGrams, demand: input.demand)
-            return WeeklyNutritionBudgetDay(day: input.day, demand: input.demand, reason: reason, state: state, caloriesKcal: target, proteinGrams: protein, carbohydrateGrams: macros.carbs, fatGrams: macros.fat, consumedCaloriesKcal: consumed, remainingCaloriesKcal: max(target - (consumed ?? 0), 0))
+            let eatTo = consumed != nil ? planned : target
+            let macros = macroAllocation(
+                calories: eatTo,
+                proteinGrams: protein,
+                minimumFatGrams: constraints.minimumFatGrams,
+                demand: input.demand
+            )
+            return WeeklyNutritionBudgetDay(
+                day: input.day,
+                demand: input.demand,
+                reason: reason,
+                state: state,
+                caloriesKcal: target,
+                plannedCaloriesKcal: planned,
+                proteinGrams: protein,
+                carbohydrateGrams: macros.carbs,
+                fatGrams: macros.fat,
+                consumedCaloriesKcal: consumed,
+                loggedCaloriesKcal: logged,
+                remainingCaloriesKcal: max(eatTo - (logged ?? 0), 0)
+            )
         }
-        let consumedTotal = consumedByIndex.reduce(0, +)
-        return WeeklyNutritionBudget(weekStart: weekStart, targetCaloriesKcal: weeklyTarget, days: days, consumedCaloriesKcal: consumedTotal, remainingCaloriesKcal: max(weeklyTarget - consumedTotal, 0), excessCaloriesKcal: max(lockedTotal - weeklyTarget, 0) + allocation.unallocated)
+        let capExcess = allocation.unallocated + max(lockedTotal - weeklyTarget, 0)
+        let loggedExcess = max(loggedTotal - weeklyTarget, 0)
+        return WeeklyNutritionBudget(
+            weekStart: weekStart,
+            targetCaloriesKcal: weeklyTarget,
+            days: days,
+            consumedCaloriesKcal: loggedTotal,
+            remainingCaloriesKcal: max(weeklyTarget - loggedTotal, 0),
+            excessCaloriesKcal: max(capExcess, loggedExcess)
+        )
     }
 
     private static func canonicalInputs(weekStart: HelmDay, inputs: [WeeklyNutritionBudgetDayInput]) -> [WeeklyNutritionBudgetDayInput] {
