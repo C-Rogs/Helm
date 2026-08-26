@@ -450,7 +450,7 @@ struct NutritionView: View {
             HStack(alignment: .top, spacing: HelmSpacing.sm) {
                 VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                     HelmSectionEyebrow("LOG FOOD", showsArcMark: true)
-                    Text("Tap + on a meal panel to search, scan, photo, or quick-add. Food logs to that meal by default.")
+                    Text("Tap + on a meal to search, scan, photo, or quick-add.")
                         .helmType(.body, color: HelmColor.fgSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

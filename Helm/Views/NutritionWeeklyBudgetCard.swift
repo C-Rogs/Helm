@@ -94,7 +94,7 @@ struct NutritionWeeklyBudgetCard: View {
             Image(systemName: "info.circle.fill")
                 .font(.system(size: 12))
                 .foregroundStyle(HelmColor.fgMuted)
-            Text("Past days with no food log keep their planned target. Remaining days are not padded.")
+            Text("Past days with no log keep their planned share. Later days are not padded.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
         .padding(.horizontal, HelmSpacing.sm)

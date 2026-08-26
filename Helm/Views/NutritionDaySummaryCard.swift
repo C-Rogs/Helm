@@ -71,7 +71,7 @@ struct NutritionAlcoholGapRow: View {
                 VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                     Text("Untracked energy")
                         .helmType(.body)
-                    Text("Energy logged without full macros. Tap to learn more.")
+                    Text("Alcohol or quick-add without macros.")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
                 Spacer()
@@ -227,14 +227,18 @@ struct NutritionDaySummaryCard: View {
 
     @ViewBuilder
     private var cascadeCaption: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text(cascadeText)
-                .helmType(.body, color: HelmColor.fgMuted)
-                .fixedSize(horizontal: false, vertical: true)
-            if let budgetDay = snapshot.budgetDay, budgetDay.isReflowed {
-                Text("Reflowed from a \(budgetDay.plannedCaloriesKcal) kcal planned share after locked days.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
+        if !cascadeText.isEmpty || snapshot.budgetDay?.isReflowed == true {
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                if !cascadeText.isEmpty {
+                    Text(cascadeText)
+                        .helmType(.body, color: HelmColor.fgMuted)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                if let budgetDay = snapshot.budgetDay, budgetDay.isReflowed {
+                    Text("Reflowed from a \(budgetDay.plannedCaloriesKcal) kcal planned share.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
             }
         }
     }
@@ -243,13 +247,6 @@ struct NutritionDaySummaryCard: View {
         var parts: [String] = []
         if snapshot.targets.estimatedTDEEKcal > 0 {
             parts.append("TDEE \(snapshot.targets.estimatedTDEEKcal)")
-        }
-        parts.append(snapshot.phase.label)
-        if let demand = snapshot.budgetDay?.demand {
-            parts.append(demand.displayLabel)
-        }
-        if let budget = snapshot.weeklyBudget {
-            parts.append("week \(budget.remainingCaloriesKcal) left")
         }
         if let weight = snapshot.trend.smoothedTrendWeightKg {
             parts.append(String(format: "%.1f kg trend", weight))
@@ -264,14 +261,14 @@ struct NutritionDaySummaryCard: View {
             EmptyView()
         case let .stale(partial):
             if let partial, partial > 0 {
-                Text("Active \(partial) kcal syncing from Apple Health. Not added to eat-to.")
+                Text("Active \(partial) kcal syncing. Not in eat-to.")
                     .helmType(.body, color: HelmColor.fgMuted)
             } else {
                 Text(ActiveEnergyDisplayCopy.stalePending)
                     .helmType(.body, color: HelmColor.depleted)
             }
         case let .fresh(burned):
-            Text("Active \(burned) kcal from Apple Health. Context only; TDEE already includes habitual burn.")
+            Text("Active \(burned) kcal. Not in eat-to.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
     }
@@ -338,108 +335,6 @@ struct NutritionDaySummaryCard: View {
         snapshot.actual?.totalFatGrams.map { Int($0.rounded()) }
     }
 }
-
-struct NutritionEnergyBalanceSection: View {
-    let balance: EnergyBalanceSummary
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Energy balance")
-                .helmType(.label)
-
-            if let intake = balance.intakeKcal {
-                StatRow(
-                    label: "Logged in",
-                    value: "\(intake) kcal",
-                    detail: "Food and drinks logged today"
-                )
-            } else {
-                StatRow(
-                    label: "Logged in",
-                    value: "None",
-                    detail: "No intake logged yet"
-                )
-            }
-
-            NutritionActiveEnergyStatRow(freshness: balance.activeEnergy)
-
-            StatRow(
-                label: "Target",
-                value: targetValue,
-                detail: targetDetail
-            )
-        }
-    }
-
-    private var targetValue: String {
-        if let adjusted = balance.adjustedTargetKcal {
-            return "\(adjusted) kcal"
-        }
-        if balance.baseTargetKcal > 0 {
-            return "\(balance.baseTargetKcal) kcal"
-        }
-        return "Pending"
-    }
-
-    private var targetDetail: String {
-        if balance.adjustedTargetKcal != nil {
-            return "\(balance.baseTargetKcal) base + active energy from Health"
-        }
-        if case .stale = balance.activeEnergy {
-            return "\(balance.baseTargetKcal) base until Apple Health catches up"
-        }
-        return "Daily calorie target before activity"
-    }
-}
-
-struct NutritionActiveEnergyStatRow: View {
-    let freshness: ActiveEnergyFreshness
-
-    var body: some View {
-        HStack(alignment: .firstTextBaseline) {
-            Text("Active out")
-                .font(HelmTypography.body)
-                .foregroundStyle(HelmColor.textSecondary)
-
-            Spacer(minLength: HelmSpacing.sm)
-
-            VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
-                Text(valueText)
-                    .font(HelmTypography.statSmall)
-                    .foregroundStyle(valueIsMuted ? HelmColor.textTertiary : HelmColor.textPrimary)
-                    .helmNumericRoll(value: valueText)
-                Text(detailText)
-                    .font(HelmTypography.caption)
-                    .foregroundStyle(HelmColor.textTertiary)
-                    .multilineTextAlignment(.trailing)
-            }
-        }
-    }
-
-    private var valueText: String {
-        switch freshness {
-        case .unavailable: "None"
-        case .stale(nil): "Pending"
-        case let .stale(partial?): "\(partial) kcal"
-        case let .fresh(kilocalories): "\(kilocalories) kcal"
-        }
-    }
-
-    private var detailText: String {
-        switch freshness {
-        case .unavailable: ActiveEnergyDisplayCopy.unavailableDetail
-        case .stale(nil): ActiveEnergyDisplayCopy.stalePending
-        case .stale: ActiveEnergyDisplayCopy.stalePartial
-        case .fresh: ActiveEnergyDisplayCopy.freshDetail
-        }
-    }
-
-    private var valueIsMuted: Bool {
-        if case .stale = freshness { return true }
-        return false
-    }
-}
-
 
 struct NutritionEnergyEstimatesSection: View {
     let snapshot: NutritionDaySnapshot

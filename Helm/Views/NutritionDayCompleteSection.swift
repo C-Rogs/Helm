@@ -17,20 +17,19 @@ struct NutritionDayCompleteSection: View {
                             .foregroundStyle(HelmColor.primed)
                         Text("Logging complete")
                             .helmType(.label)
+                        Spacer()
                     }
-                    Text("Coach treats today's logged intake as your record.")
-                        .helmType(.body, color: HelmColor.fgSecondary)
                     Button("Reopen day") {
                         onReopen()
                     }
                     .buttonStyle(.helmSecondary)
                     .disabled(isSaving)
                 } else {
-                    Text("Done logging for this day?")
+                    Text("Mark day complete")
                         .helmType(.label)
-                    Text("Mark complete so coach does not treat missing meals as low intake.")
+                    Text("Missing meals stay missing, not low intake.")
                         .helmType(.body, color: HelmColor.fgSecondary)
-                    Button("Mark day complete") {
+                    Button("Mark complete") {
                         onMarkComplete()
                     }
                     .buttonStyle(.helmPrimary)
