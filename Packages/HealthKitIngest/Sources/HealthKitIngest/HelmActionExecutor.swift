@@ -68,6 +68,13 @@ public struct HelmActionExecutor: Sendable {
                 sessionAdjustment: applied,
                 sideEffects: [.refreshPrescription]
             )
+        case let .persistAdjustedPrescription(command):
+            PrescriptionDayStore.save(
+                command.prescription,
+                for: command.day,
+                historyFingerprint: command.historyFingerprint
+            )
+            return HelmActionResult(sideEffects: [.refreshPrescription])
         case let .memory(write):
             try HelmMemoryApplier.apply(write, persistence: persistence)
             return HelmActionResult()
@@ -130,7 +137,7 @@ public struct HelmActionExecutor: Sendable {
         )
     }
 
-    public func applySessionAdjustment(
+    func applySessionAdjustment(
         _ command: HelmSessionAdjustmentCommand
     ) throws -> AppliedSessionAdjustment {
         try InSessionCoachService(persistence: persistence).applyAdjustment(

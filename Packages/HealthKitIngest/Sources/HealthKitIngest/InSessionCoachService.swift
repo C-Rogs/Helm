@@ -225,13 +225,13 @@ public struct InSessionCoachService: Sendable {
         _ proposal: CoachSessionProposal,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>
-    ) throws -> AppliedSessionAdjustment {
+    ) async throws -> HelmActionResult {
         guard proposal.requiresConfirmation else {
             throw InSessionCoachError.noApplicableChange
         }
 
-        let applied = try HelmActionExecutor(persistence: persistence).applySessionAdjustment(
-            HelmSessionAdjustmentCommand(
+        let result = try await HelmActionExecutor(persistence: persistence).run(
+            .applySessionAdjustment(HelmSessionAdjustmentCommand(
                 payload: proposal.payload,
                 snapshot: snapshot,
                 excludedExerciseIDs: excludedExerciseIDs,
@@ -239,11 +239,11 @@ public struct InSessionCoachService: Sendable {
                 modelVersion: proposal.payload.schemaVersion,
                 recommendationID: proposal.recommendationID,
                 markActedOn: true
-            )
+            ))
         )
 
         try persistence.coachRecommendations.markActedOn(id: proposal.recommendationID)
-        return applied
+        return result
     }
 
     public func dismissProposal(recommendationID: String) throws {
@@ -271,7 +271,15 @@ public struct InSessionCoachService: Sendable {
         guard proposal.requiresConfirmation else {
             throw InSessionCoachError.noApplicableChange
         }
-        return try applyProposal(proposal, snapshot: snapshot, excludedExerciseIDs: excludedExerciseIDs)
+        let result = try await applyProposal(
+            proposal,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs
+        )
+        guard let applied = result.sessionAdjustment else {
+            throw InSessionCoachError.noApplicableChange
+        }
+        return applied
     }
 
     public func applyAdjustment(

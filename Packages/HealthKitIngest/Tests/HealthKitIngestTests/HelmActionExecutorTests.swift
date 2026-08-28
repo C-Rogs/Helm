@@ -410,6 +410,40 @@ struct HelmActionExecutorTests {
         #expect(parsed.freeform.contains("progressionGoal=strength"))
     }
 
+    @Test("adjusted prescription persist through run() requests a re-plan")
+    func adjustedPrescriptionWriteThroughRun() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let day = HelmDay(year: 2026, month: 8, day: 28)
+        let prescription = SessionPrescription(
+            helmDay: day,
+            title: "Push",
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: "bench_press",
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 8,
+                    targetRepMax: 10
+                )
+            ]
+        )
+        PrescriptionDayStore.clear(for: day)
+
+        let result = try await executor.run(
+            .persistAdjustedPrescription(HelmAdjustedPrescriptionCommand(
+                prescription: prescription,
+                day: day,
+                historyFingerprint: "fp-adjust"
+            ))
+        )
+
+        #expect(result.nutritionDay == nil)
+        #expect(result.sideEffects == [.refreshPrescription])
+        #expect(PrescriptionDayStore.load(for: day, historyFingerprint: "fp-adjust")?.title == "Push")
+        PrescriptionDayStore.clear(for: day)
+    }
+
     private func makeMealExecutor(store: PersistenceStore) -> HelmActionExecutor {
         let meals = ManualMealService(
             writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),

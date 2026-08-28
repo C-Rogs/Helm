@@ -1881,11 +1881,15 @@ final class TrainSessionController {
 
         if let snapshot = store.snapshot {
             do {
-                let applied = try inSessionCoach.applyProposal(
+                let result = try await inSessionCoach.applyProposal(
                     proposal,
                     snapshot: snapshot,
                     excludedExerciseIDs: excludedExerciseIDs
                 )
+                await HelmActionRuntime.apply(result, after: .none)
+                guard let applied = result.sessionAdjustment else {
+                    throw InSessionCoachError.noApplicableChange
+                }
                 pendingCoachProposal = nil
                 isShowingCoachPrompt = false
                 try await finishApplyingAdjustment(applied)
@@ -1906,7 +1910,7 @@ final class TrainSessionController {
         do {
             let readiness = ReadinessBootstrap.readinessService.state.score
             let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
-            let adjusted = try preStartCoach.applyProposal(
+            let adjusted = try await preStartCoach.applyProposal(
                 proposal,
                 prescription: prescription,
                 excludedExerciseIDs: excludedExerciseIDs,
@@ -1954,13 +1958,17 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else {
             throw InSessionCoachError.noActiveSession
         }
-        let applied = try HelmActionExecutor(persistence: persistence).applySessionAdjustment(
-            HelmSessionAdjustmentCommand(
+        let result = try await HelmActionRuntime.perform(
+            .applySessionAdjustment(HelmSessionAdjustmentCommand(
                 payload: payload,
                 snapshot: snapshot,
                 excludedExerciseIDs: excludedExerciseIDs
-            )
+            )),
+            after: .none
         )
+        guard let applied = result.sessionAdjustment else {
+            throw InSessionCoachError.noApplicableChange
+        }
         try await finishApplyingAdjustment(applied)
     }
 

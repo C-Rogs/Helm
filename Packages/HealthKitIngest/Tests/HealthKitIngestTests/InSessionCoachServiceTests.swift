@@ -372,13 +372,14 @@ struct InSessionCoachServiceTests {
             status: .confirmable
         )
 
-        let applied = try service.applyProposal(
+        let result = try await service.applyProposal(
             proposal,
             snapshot: snapshot,
             excludedExerciseIDs: []
         )
 
-        #expect(applied.banner.toLabel == "82.5 kg")
+        #expect(result.sessionAdjustment?.banner.toLabel == "82.5 kg")
+        #expect(result.sideEffects.contains(.refreshPrescription))
 
         let recommendations = try store.coachRecommendations.fetchForSession(sessionID: snapshot.session.id)
         #expect(recommendations.count == 1)

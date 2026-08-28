@@ -10,6 +10,7 @@ public enum HelmActionCommand: Sendable {
     case copyAllMeals(sourceDay: HelmDay, targetDay: HelmDay)
     case logTemplate(MealTemplate, loggedAt: Date?, helmDay: HelmDay?)
     case applySessionAdjustment(HelmSessionAdjustmentCommand)
+    case persistAdjustedPrescription(HelmAdjustedPrescriptionCommand)
     case memory(HelmMemoryWrite)
     case trainingPlan(HelmTrainingPlanWrite)
 }
@@ -135,6 +136,22 @@ public enum HelmTrainingPlanWrite: Sendable {
     case reactiveDeload(HelmReactiveDeloadAction)
     case regenerateToday(HelmDay)
     case methodologyPreferences(MethodologyPreferences)
+}
+
+public struct HelmAdjustedPrescriptionCommand: Sendable {
+    public let prescription: SessionPrescription
+    public let day: HelmDay
+    public let historyFingerprint: String?
+
+    public init(
+        prescription: SessionPrescription,
+        day: HelmDay,
+        historyFingerprint: String? = nil
+    ) {
+        self.prescription = prescription
+        self.day = day
+        self.historyFingerprint = historyFingerprint
+    }
 }
 
 public enum HelmReactiveDeloadAction: Sendable, Equatable {
