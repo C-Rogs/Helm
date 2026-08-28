@@ -746,7 +746,8 @@ final class ChatController {
 
             if pendingAction == nil,
                pendingFoodMealConfirm == nil,
-               let navigate = CoachCatalogQueryDecoder.navigate(from: querySource.functionCalls),
+               let navigate = CoachCatalogQueryDecoder.navigate(from: querySource.functionCalls)
+                ?? NavigatePayloadParser.parse(from: assembledTurn.text),
                let tab = AppTab(coachSurfaceLabel: navigate.tab) {
                 AppTabRouter.shared.open(tab)
             }

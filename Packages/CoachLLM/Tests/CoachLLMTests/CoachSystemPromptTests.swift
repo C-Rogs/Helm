@@ -47,6 +47,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("call the context_refresh tool"))
         #expect(prompt.contains("call the chart tool"))
         #expect(prompt.contains("Call navigate only"))
+        #expect(prompt.contains("append navigate.v1 JSON"))
         #expect(prompt.contains("memory_adjustment"))
         #expect(prompt.contains("Prescription Load Rationale"))
         #expect(prompt.contains("constraint_affected=true"))

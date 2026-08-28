@@ -1910,12 +1910,13 @@ final class TrainSessionController {
         do {
             let readiness = ReadinessBootstrap.readinessService.state.score
             let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
-            let adjusted = try await preStartCoach.applyProposal(
+            let (adjusted, persist) = try await preStartCoach.applyProposal(
                 proposal,
                 prescription: prescription,
                 excludedExerciseIDs: excludedExerciseIDs,
                 day: todayHelmDay()
             )
+            await HelmActionRuntime.apply(persist, after: .none)
             pendingCoachProposal = nil
             await prescriptionService.refresh(readiness: readiness)
             prescriptionSummary = prescriptionService.state.summary

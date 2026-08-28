@@ -69,6 +69,23 @@ struct ChartPayloadTests {
     }
 }
 
+@Suite("NavigatePayload")
+struct NavigatePayloadTests {
+    @Test("parser reads navigate.v1 JSON")
+    func parserReadsJSON() {
+        let text = """
+        Opening Nutrition.
+        {"schemaVersion":"navigate.v1","tab":"nutrition"}
+        """
+        #expect(NavigatePayloadParser.parse(from: text)?.tab == "nutrition")
+        let titled = """
+        Open Nutrition.
+        {"schemaVersion":"navigate.v1","tab":"Nutrition"}
+        """
+        #expect(NavigatePayloadParser.parse(from: titled)?.tab == "nutrition")
+    }
+}
+
 private let expectedChartSnapshot = """
 # Chart
 ## Title

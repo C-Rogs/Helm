@@ -218,6 +218,7 @@ final class ManualFoodLogController {
                 loggedAt: loggedAt,
                 helmDay: helmDay
             )
+            await HelmActionRuntime.apply(.nutrition(helmDay), after: .none)
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .barcode)
             onLogged(helmDay)

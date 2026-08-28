@@ -475,7 +475,35 @@ public struct NavigatePayload: Codable, Sendable, Equatable {
         tab: String
     ) {
         self.schemaVersion = schemaVersion
-        self.tab = tab
+        self.tab = Self.normalizedTab(tab)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.navigateV1.rawValue
+        tab = Self.normalizedTab(try container.decode(String.self, forKey: .tab))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, tab
+    }
+
+    private static func normalizedTab(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+public enum NavigatePayloadParser: Sendable {
+    public static func parse(from text: String) -> NavigatePayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .navigateV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(NavigatePayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.navigateV1.rawValue
+        else {
+            return nil
+        }
+        return payload
     }
 }
 

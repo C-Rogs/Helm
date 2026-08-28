@@ -19,7 +19,7 @@ enum AppTab: Hashable {
     }
 
     init?(coachSurfaceLabel: String) {
-        switch coachSurfaceLabel {
+        switch coachSurfaceLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
         case "dashboard": self = .dashboard
         case "train": self = .train
         case "nutrition": self = .nutrition
