@@ -6,15 +6,18 @@ public struct CoachAppSurfaceSnapshot: Sendable, Equatable {
     public let selectedTab: String
     public let sessionStatus: String
     public let sessionTitle: String?
+    public let viewedNutritionDay: String?
 
     public init(
         selectedTab: String,
         sessionStatus: String,
-        sessionTitle: String? = nil
+        sessionTitle: String? = nil,
+        viewedNutritionDay: String? = nil
     ) {
         self.selectedTab = selectedTab
         self.sessionStatus = sessionStatus
         self.sessionTitle = sessionTitle
+        self.viewedNutritionDay = viewedNutritionDay
     }
 
     public var contextText: String {
@@ -25,6 +28,9 @@ public struct CoachAppSurfaceSnapshot: Sendable, Equatable {
         ]
         if let sessionTitle, !sessionTitle.isEmpty {
             lines.append("session_title=\(sessionTitle)")
+        }
+        if let viewedNutritionDay, !viewedNutritionDay.isEmpty {
+            lines.append("nutrition_day=\(viewedNutritionDay)")
         }
         return lines.joined(separator: "\n")
     }

@@ -62,7 +62,9 @@ public enum GeminiChatTools {
                     "proteinG": ["type": "number"],
                     "carbsG": ["type": "number"],
                     "fatG": ["type": "number"],
-                    "helmDay": stringProperty("YYYY-MM-DD. Defaults to today."),
+                    "helmDay": stringProperty(
+                        "YYYY-MM-DD. Omit only for calendar today. Set to App State nutrition_day when logging the diary day on screen."
+                    ),
                     "items": [
                         "type": "array",
                         "items": ingredientItemSchema()

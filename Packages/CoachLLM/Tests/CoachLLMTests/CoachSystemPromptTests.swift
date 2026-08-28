@@ -55,6 +55,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("call the food_log tool"))
         #expect(prompt.contains("Do not embed those as JSON"))
         #expect(prompt.contains("App State"))
+        #expect(prompt.contains("nutrition_day"))
     }
 
     @Test("in-session coach shares main chat voice")

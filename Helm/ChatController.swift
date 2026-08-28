@@ -834,7 +834,8 @@ final class ChatController {
         return CoachAppSurfaceSnapshot(
             selectedTab: AppTabRouter.shared.selectedTab.coachSurfaceLabel,
             sessionStatus: session?.session.status.rawValue ?? "none",
-            sessionTitle: session?.session.title
+            sessionTitle: session?.session.title,
+            viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
         )
     }
 

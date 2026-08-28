@@ -284,7 +284,8 @@ struct ContextBuilderTests {
         let surface = CoachAppSurfaceSnapshot(
             selectedTab: "nutrition",
             sessionStatus: "active",
-            sessionTitle: "Push"
+            sessionTitle: "Push",
+            viewedNutritionDay: "2026-08-20"
         )
         let prompt = ContextBuilder.build(
             profile: profile,
@@ -299,6 +300,7 @@ struct ContextBuilderTests {
         #expect(suffix.contains("tab=nutrition"))
         #expect(suffix.contains("session=active"))
         #expect(suffix.contains("session_title=Push"))
+        #expect(suffix.contains("nutrition_day=2026-08-20"))
         #expect(!prompt.contextBlock.contains("# App State"))
         #expect(prompt.contextBlock.hasPrefix("# Memory Profile"))
     }
