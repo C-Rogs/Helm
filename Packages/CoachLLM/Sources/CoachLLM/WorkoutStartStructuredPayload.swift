@@ -1,6 +1,6 @@
 import Foundation
 
-/// Gemini JSON-schema payload for chat workout starts (mirrors workout_start.v2 + reply).
+/// Structured JSON payload for chat workout starts (mirrors workout_start.v2 + reply).
 public struct WorkoutStartStructuredPayload: Codable, Sendable, Equatable {
     public struct SetSpec: Codable, Sendable, Equatable {
         public let setType: String?

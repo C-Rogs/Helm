@@ -154,10 +154,6 @@ public struct InSessionCoachService: Sendable {
             throw InSessionCoachError.providerUnavailable(message)
         }
 
-        guard let gemini = provider as? GeminiProvider else {
-            throw InSessionCoachError.providerUnavailable("Session adjustments require Gemini.")
-        }
-
         let prompt = buildPrompt(
             snapshot: snapshot,
             profile: profile,
@@ -166,7 +162,7 @@ public struct InSessionCoachService: Sendable {
             liveVitals: liveVitals
         )
 
-        let artefact = try await gemini.generateSessionAdjustment(
+        let artefact = try await provider.generateSessionAdjustment(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: userMessage,
@@ -202,7 +198,7 @@ public struct InSessionCoachService: Sendable {
         for the exercise the athlete means, or omit the operation if none of the matches is right. \
         Athlete request was: \(userMessage)
         """
-        let retryArtefact = try await gemini.generateSessionAdjustment(
+        let retryArtefact = try await provider.generateSessionAdjustment(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: retryUserMessage,

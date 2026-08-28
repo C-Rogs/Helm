@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import DesignSystem
 import HealthKitIngest
@@ -28,7 +29,7 @@ struct PlanBuilderFlowView: View {
 
     private let service = PlanBuilderService(
         persistence: PersistenceBootstrap.persistenceStore,
-        provider: CoachBootstrap.liveGeminiProvider
+        provider: ProviderRegistry.shared.provider(for: ProviderPreferencesStore().selectedProvider)
     )
 
     var body: some View {

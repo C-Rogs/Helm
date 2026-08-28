@@ -692,17 +692,24 @@ final class ChatController {
                 assembled: assembledTurn.text,
                 functionCalls: assembledTurn.functionCalls,
                 userText: text
-               ),
-               let gemini = provider as? GeminiProvider
+               )
             {
-                assembledTurn = try await runStructuredWorkoutStart(
-                    gemini: gemini,
-                    profile: profile,
-                    contextDays: contextDays,
-                    thread: thread,
-                    userText: text,
-                    priorAssembled: assembledTurn.text
-                )
+                do {
+                    assembledTurn = try await runStructuredWorkoutStart(
+                        provider: provider,
+                        profile: profile,
+                        contextDays: contextDays,
+                        thread: thread,
+                        userText: text,
+                        priorAssembled: assembledTurn.text
+                    )
+                } catch let error as CoachProviderError {
+                    if case .unavailable = error {
+                        // Keep the streamed turn when this provider has no structured start.
+                    } else {
+                        throw error
+                    }
+                }
             }
 
             let wasFoodDictation = isFoodDictationTurn
@@ -944,14 +951,14 @@ final class ChatController {
     }
 
     private func runStructuredWorkoutStart(
-        gemini: GeminiProvider,
+        provider: any CoachLLMProvider,
         profile: MemoryProfile,
         contextDays: CoachContextDays,
         thread: CoachThreadState,
         userText: String,
         priorAssembled: String
     ) async throws -> AssembledCoachTurn {
-        let budget = TokenBudget.maxInputTokens(for: .gemini)
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
         let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
@@ -969,7 +976,7 @@ final class ChatController {
         """
         isStreaming = true
         streamingText = "Building workout start…"
-        let artefact = try await gemini.generateWorkoutStart(
+        let artefact = try await provider.generateWorkoutStart(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,

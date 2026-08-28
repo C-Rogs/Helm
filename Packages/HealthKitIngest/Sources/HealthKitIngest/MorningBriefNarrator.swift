@@ -27,13 +27,18 @@ public struct MorningBriefNarrator: Sendable {
             ProviderRegistry.shared.provider(for: preferences.selectedProvider)
         }
         guard await provider.availability().isAvailable else { return nil }
-        guard let gemini = provider as? GeminiProvider else { return nil }
-
-        return try await gemini.generateMorningBrief(
-            systemInstructions: prompt.systemInstructions,
-            contextBlock: prompt.contextBlock,
-            userMessage: "Write today's morning brief from the engine snapshot.",
-            thread: .empty
-        )
+        do {
+            return try await provider.generateMorningBrief(
+                systemInstructions: prompt.systemInstructions,
+                contextBlock: prompt.contextBlock,
+                userMessage: "Write today's morning brief from the engine snapshot.",
+                thread: .empty
+            )
+        } catch let error as CoachProviderError {
+            if case .unavailable = error {
+                return nil
+            }
+            throw error
+        }
     }
 }

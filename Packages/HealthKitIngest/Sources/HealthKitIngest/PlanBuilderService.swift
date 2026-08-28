@@ -28,9 +28,9 @@ public final class PlanBuilderService {
     public private(set) var generationMessage: String?
 
     private let persistence: PersistenceStore
-    private let provider: GeminiProvider?
+    private let provider: (any CoachLLMProvider)?
 
-    public init(persistence: PersistenceStore, provider: GeminiProvider?) {
+    public init(persistence: PersistenceStore, provider: (any CoachLLMProvider)?) {
         self.persistence = persistence
         self.provider = provider
     }
@@ -108,7 +108,7 @@ public final class PlanBuilderService {
         return decoded.isEmpty ? nil : decoded
     }
 
-    /// Generates candidates deterministically, then asks Gemini for grounded
+    /// Generates candidates deterministically, then asks Coach for grounded
     /// per-card copy. Falls back to engine-derived copy when unavailable.
     public func generateOptions(for interview: PlanBuilderInterview) async {
         isGenerating = true

@@ -182,6 +182,21 @@ struct MockProviderTests {
         #expect(provider.resetThreadCount == 1)
     }
 
+    @Test("structured generate defaults to unavailable")
+    func structuredGenerateUnavailable() async {
+        let provider = MockProvider()
+        await #expect(throws: CoachProviderError.unavailable(
+            "Structured workout start is not available on this provider."
+        )) {
+            _ = try await provider.generateWorkoutStart(
+                systemInstructions: "",
+                contextBlock: "",
+                userMessage: "start",
+                thread: .empty
+            )
+        }
+    }
+
     @Test("mock provider surfaces configured failures")
     func configuredFailure() async throws {
         let provider = MockProvider(
