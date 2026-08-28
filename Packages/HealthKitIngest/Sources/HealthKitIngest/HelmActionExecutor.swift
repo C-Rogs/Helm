@@ -8,18 +8,23 @@ public struct HelmActionExecutor: Sendable {
     private let manualMealService: ManualMealService
     private let persistence: PersistenceStore
     private let mealRepeatService: MealRepeatService
+    private let photoPersister: PhotoMealPersister
     private let calendar: Calendar
 
     public init(
         manualMealService: ManualMealService,
         persistence: PersistenceStore,
         mealRepeatService: MealRepeatService,
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        photoPersister: PhotoMealPersister? = nil
     ) {
         self.manualMealService = manualMealService
         self.persistence = persistence
         self.mealRepeatService = mealRepeatService
         self.calendar = calendar
+        self.photoPersister = photoPersister ?? PhotoMealPersister(
+            localStore: PhotoMealLocalStore(store: persistence, calendar: calendar)
+        )
     }
 
     public init(persistence: PersistenceStore, calendar: Calendar = .current) {
@@ -49,6 +54,14 @@ public struct HelmActionExecutor: Sendable {
         case let .copyAllMeals(sourceDay, targetDay):
             _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: targetDay)
             return .nutrition(targetDay)
+        case let .logTemplate(template, loggedAt, helmDay):
+            let timestamp = loggedAt ?? Date()
+            _ = try await mealRepeatService.logTemplate(
+                template,
+                loggedAt: timestamp,
+                helmDay: helmDay
+            )
+            return .nutrition(helmDay ?? HelmDay.day(for: timestamp, calendar: calendar))
         case let .applySessionAdjustment(session):
             let applied = try applySessionAdjustment(session)
             return HelmActionResult(
@@ -132,6 +145,7 @@ public struct HelmActionExecutor: Sendable {
                 bucket: bucket,
                 lineItems: lineItems,
                 loggedAt: loggedAt,
+                helmDay: helmDay,
                 mealID: mealID,
                 source: source
             )
@@ -151,6 +165,17 @@ public struct HelmActionExecutor: Sendable {
 
         case let .deleteMeal(mealID, helmDay):
             try await manualMealService.deleteMeal(mealID: mealID)
+            return .nutrition(helmDay)
+
+        case let .logPhoto(estimate, name, bucket, loggedAt, helmDay, mealID):
+            _ = try await photoPersister.confirm(
+                estimate: estimate,
+                name: name,
+                bucket: bucket,
+                loggedAt: loggedAt,
+                helmDay: helmDay,
+                mealID: mealID
+            )
             return .nutrition(helmDay)
         }
     }

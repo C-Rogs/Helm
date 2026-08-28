@@ -656,7 +656,13 @@ private struct NutritionLoggingSheets: ViewModifier {
                     isSaving: mealActionsController.isSaving,
                     onConfirm: {
                         Task {
-                            await mealActionsController.confirmLogTemplate(template)
+                            guard let helmDay = currentHelmDay else { return }
+                            let today = todayHelmDay ?? helmDay
+                            await mealActionsController.confirmLogTemplate(
+                                template,
+                                helmDay: helmDay,
+                                today: today
+                            )
                             onMealsChanged()
                         }
                     },

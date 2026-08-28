@@ -16,8 +16,7 @@ public enum PhotoMealError: Error, Sendable, Equatable {
 
 public struct PhotoMealService: Sendable {
     private let estimator: any MealMacroEstimating
-    private let writer: any MealHealthKitWriting
-    private let localStore: PhotoMealLocalStore?
+    private let persister: PhotoMealPersister
 
     public init(
         estimator: any MealMacroEstimating,
@@ -25,8 +24,7 @@ public struct PhotoMealService: Sendable {
         localStore: PhotoMealLocalStore? = nil
     ) {
         self.estimator = estimator
-        self.writer = writer
-        self.localStore = localStore
+        persister = PhotoMealPersister(writer: writer, localStore: localStore)
     }
 
     public func estimate(
@@ -91,27 +89,17 @@ public struct PhotoMealService: Sendable {
         name: String,
         bucket: MealBucket = .snacks,
         loggedAt: Date = Date(),
+        helmDay: HelmDay? = nil,
         mealID: String = UUID().uuidString
     ) async throws -> SavedMealSamples {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        let resolvedName = trimmedName.isEmpty ? estimate.description : trimmedName
-        let request = MealWriteRequest(
+        try await persister.confirm(
             estimate: estimate,
-            name: resolvedName,
+            name: name,
+            bucket: bucket,
             loggedAt: loggedAt,
+            helmDay: helmDay,
             mealID: mealID
         )
-
-        do {
-            let saved = try await writer.saveMeal(request)
-            try localStore?.recordSavedMeal(request, saved: saved, bucket: bucket)
-            photoMealLog.debug("Photo meal saved mealID=\(saved.mealID, privacy: .public)")
-            return saved
-        } catch {
-            photoMealLog.error("Photo meal write failed: \(String(describing: type(of: error)), privacy: .public)")
-            Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo meal HealthKit write failed") }
-            throw error
-        }
     }
 
     public static func userMessage(for error: Error) -> String {

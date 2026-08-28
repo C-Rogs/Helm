@@ -27,7 +27,7 @@ public struct PhotoMealLocalStore: Sendable {
         bucket: MealBucket = .snacks
     ) throws {
         let mealID = UUID(uuidString: request.mealID) ?? saved.energy.id
-        let helmDay = HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
+        let helmDay = request.helmDay ?? HelmDay.day(for: request.loggedAt, cutoff: cutoff, calendar: calendar)
         let meal = MealRecord(
             id: mealID,
             helmDay: helmDay,

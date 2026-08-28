@@ -166,6 +166,130 @@ struct HelmActionExecutorTests {
         #expect(refreshed?.session.exercises.first?.exerciseID == benchPressID)
     }
 
+    @Test("photo confirm writes through run() with source photo")
+    func photoConfirmWritesThroughRun() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = makeMealExecutor(store: store)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        let estimate = MealEstimate(
+            description: "Chicken rice bowl",
+            caloriesKcal: 650,
+            proteinG: 45,
+            carbsG: 70,
+            fatG: 18,
+            confidence: .medium
+        )
+
+        let result = try await executor.run(
+            .meal(.logPhoto(
+                estimate: estimate,
+                name: "Large chicken bowl",
+                bucket: .lunch,
+                loggedAt: loggedAt,
+                helmDay: helmDay,
+                mealID: "fixture-meal"
+            ))
+        )
+
+        #expect(result.nutritionDay == helmDay)
+        #expect(result.sideEffects == [.refreshNutrition(helmDay)])
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].source == .photo)
+        #expect(meals[0].name == "Large chicken bowl")
+        #expect(meals[0].energy?.kilocalories == 650)
+    }
+
+    @Test("template log writes through run() with source template")
+    func templateLogWritesThroughRun() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = makeMealExecutor(store: store)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        let template = MealTemplate(
+            name: "Work breakfast",
+            bucket: .breakfast,
+            lineItems: [
+                MealLineItem(
+                    name: "Yogurt",
+                    grams: 200,
+                    caloriesKcal: 150,
+                    proteinG: 20,
+                    carbsG: 12,
+                    fatG: 2,
+                    matchConfidence: .high
+                )
+            ],
+            updatedAt: loggedAt
+        )
+
+        let result = try await executor.run(
+            .logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
+        )
+
+        #expect(result.nutritionDay == helmDay)
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].source == .template)
+        #expect(meals[0].name == "Work breakfast")
+    }
+
+    @Test("composite meal writes to command helmDay not clock day")
+    func logCompositeHonoursHelmDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = makeMealExecutor(store: store)
+        let helmDay = HelmDay(year: 2023, month: 11, day: 10)
+        let mealID = UUID()
+        let record = MealLineItemRecord(
+            mealID: mealID,
+            foodRef: FoodProductRef(
+                origin: .openFoodFacts,
+                externalID: "1",
+                displayName: "Yogurt"
+            ),
+            grams: 200,
+            energyKcal: 150,
+            proteinG: 20,
+            carbsG: 12,
+            fatG: 2,
+            sortOrder: 0
+        )
+
+        let result = try await executor.run(
+            .meal(.logComposite(
+                name: "Yogurt",
+                bucket: .breakfast,
+                lineItems: [record],
+                loggedAt: loggedAt,
+                helmDay: helmDay,
+                mealID: mealID.uuidString,
+                source: .manual
+            ))
+        )
+
+        #expect(result.nutritionDay == helmDay)
+        let meals = try store.nutrition.fetchMeals(for: helmDay)
+        #expect(meals.count == 1)
+        #expect(meals[0].helmDay == helmDay)
+        #expect(try store.nutrition.fetchMeals(for: HelmDay.day(for: loggedAt, calendar: calendar)).isEmpty)
+    }
+
+    private func makeMealExecutor(store: PersistenceStore) -> HelmActionExecutor {
+        let meals = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        return HelmActionExecutor(
+            manualMealService: meals,
+            persistence: store,
+            mealRepeatService: MealRepeatService(store: store, manualMealService: meals),
+            calendar: calendar,
+            photoPersister: PhotoMealPersister(
+                writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+                localStore: PhotoMealLocalStore(store: store, calendar: calendar)
+            )
+        )
+    }
+
     private func seedExercises(in store: PersistenceStore) throws {
         try store.exercises.upsert(
             id: benchPressID,

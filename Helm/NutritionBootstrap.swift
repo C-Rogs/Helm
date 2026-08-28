@@ -19,7 +19,14 @@ enum NutritionBootstrap {
     static let pendingFoodImportService = PendingFoodImportService(
         persistence: PersistenceBootstrap.persistenceStore,
         foodResolver: foodResolver,
-        manualMealService: manualMealService,
+        actionExecutor: HelmActionExecutor(
+            manualMealService: manualMealService,
+            persistence: PersistenceBootstrap.persistenceStore,
+            mealRepeatService: MealRepeatService(
+                store: PersistenceBootstrap.persistenceStore,
+                manualMealService: manualMealService
+            )
+        ),
         onResolved: { count in
             await PendingImportNotificationScheduler.postResolved(count: count)
             await MainActor.run {

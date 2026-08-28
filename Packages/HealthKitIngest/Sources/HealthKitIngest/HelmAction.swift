@@ -8,6 +8,7 @@ public enum HelmActionCommand: Sendable {
     case meal(HelmMealWrite)
     case copyMeal(HelmCopyMealCommand)
     case copyAllMeals(sourceDay: HelmDay, targetDay: HelmDay)
+    case logTemplate(MealTemplate, loggedAt: Date?, helmDay: HelmDay?)
     case applySessionAdjustment(HelmSessionAdjustmentCommand)
 }
 
@@ -60,6 +61,14 @@ public enum HelmMealWrite: Sendable {
         helmDay: HelmDay
     )
     case deleteMeal(mealID: UUID, helmDay: HelmDay)
+    case logPhoto(
+        estimate: MealEstimate,
+        name: String,
+        bucket: MealBucket,
+        loggedAt: Date,
+        helmDay: HelmDay,
+        mealID: String
+    )
 }
 
 public struct HelmCopyMealCommand: Sendable, Equatable {

@@ -209,10 +209,14 @@ final class ManualFoodLogController {
     ) async {
         phase = .saving
         let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+        let today = todayHelmDay ?? helmDay
+        let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
             _ = try await pendingImportService.queueOfflineBarcode(
                 barcode: barcode,
-                bucket: bucket
+                bucket: bucket,
+                loggedAt: loggedAt,
+                helmDay: helmDay
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .barcode)
@@ -305,7 +309,11 @@ extension ManualFoodLogController {
             pendingImportService: PendingFoodImportService(
                 persistence: store,
                 foodResolver: foodResolver,
-                manualMealService: meals
+                actionExecutor: HelmActionExecutor(
+                    manualMealService: meals,
+                    persistence: store,
+                    mealRepeatService: MealRepeatService(store: store, manualMealService: meals)
+                )
             ),
             networkGate: FixedNetworkGate(online: online)
         )

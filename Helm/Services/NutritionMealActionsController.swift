@@ -88,11 +88,14 @@ final class NutritionMealActionsController {
         pendingAction = nil
     }
 
-    func confirmLogTemplate(_ template: MealTemplate) async {
+    func confirmLogTemplate(_ template: MealTemplate, helmDay: HelmDay, today: HelmDay) async {
         isSaving = true
         defer { isSaving = false }
         do {
-            _ = try await mealRepeatService.logTemplate(template)
+            let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: template.bucket, today: today)
+            _ = try await actionExecutor.run(
+                .logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
+            )
             pendingAction = nil
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
