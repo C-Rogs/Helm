@@ -49,8 +49,13 @@ enum CoachChatActionParser {
         from text: String,
         functionCalls: [CoachLLMFunctionCall] = []
     ) -> CoachChatActionProposal? {
-        proposal(fromFunctionCalls: functionCalls, visibleText: text)
-            ?? proposal(fromJSONText: text)
+        if let fromTools = proposal(fromFunctionCalls: functionCalls, visibleText: text) {
+            return fromTools
+        }
+        if CoachCatalogToolName.hasWrite(in: functionCalls) {
+            return nil
+        }
+        return proposal(fromJSONText: text)
     }
 
     static func foodLogPayload(from functionCalls: [CoachLLMFunctionCall]) -> FoodLogPayload? {
@@ -134,6 +139,8 @@ enum CoachChatActionParser {
                 return nil
             }
             return proposal(fromPlanRegenerate: payload)
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery:
+            return nil
         case nil:
             return nil
         }

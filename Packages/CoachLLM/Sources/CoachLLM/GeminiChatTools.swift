@@ -24,7 +24,13 @@ public enum GeminiChatTools {
             memoryAdjustmentDeclaration(),
             settingsAdjustmentDeclaration(),
             reactiveDeloadDeclaration(),
-            planRegenerateDeclaration()
+            planRegenerateDeclaration(),
+            mealQueryDeclaration(),
+            recoveryQueryDeclaration(),
+            calendarQueryDeclaration(),
+            trendsQueryDeclaration(),
+            workoutQueryDeclaration(),
+            nutritionQueryDeclaration()
         ]
     }
 
@@ -214,6 +220,103 @@ public enum GeminiChatTools {
                 "properties": [
                     "reply": stringProperty()
                 ]
+            ]
+        ]
+    }
+
+    private static func mealQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .mealQuery,
+            description: """
+            Fetch past meals, a usual bucket, or a day summary. The app runs this and \
+            sends macros back. Use before meal_copy. Do not log a meal with this tool.
+            """,
+            queryTypes: ["bucketOnDay", "usualForBucket", "daySummary"],
+            extraProperties: [
+                "bucket": [
+                    "type": "string",
+                    "enum": ["breakfast", "lunch", "dinner", "snacks"]
+                ]
+            ]
+        )
+    }
+
+    private static func recoveryQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .recoveryQuery,
+            description: """
+            Fetch recovery, HRV, or sleep detail beyond Today in context. \
+            The app runs this and sends numbers back.
+            """,
+            queryTypes: ["today", "day", "range", "sleepDetail"]
+        )
+    }
+
+    private static func calendarQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .calendarQuery,
+            description: """
+            Fetch EventKit events and why a day is marked busy. \
+            Week Ahead busy= lines are not an agenda.
+            """,
+            queryTypes: ["today", "day", "range", "weekAhead"]
+        )
+    }
+
+    private static func trendsQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .trendsQuery,
+            description: "Fetch multi-week trends (TRIMP, weight, E1RM, energy balance, readiness).",
+            queryTypes: ["trimp", "weight", "e1rm", "energyBalance", "readiness", "all"],
+            extraProperties: [
+                "exerciseName": stringProperty("Required for a specific e1rm lift.")
+            ]
+        )
+    }
+
+    private static func workoutQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .workoutQuery,
+            description: "Fetch a completed session or recent training logs. The app runs this and sends results back.",
+            queryTypes: ["latestCompleted", "onDay", "includingCardio"]
+        )
+    }
+
+    private static func nutritionQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .nutritionQuery,
+            description: """
+            Fetch engine TDEE, trend weight, intake history, or weekly budget numbers \
+            not shown in the Nutrition Diary context.
+            """,
+            queryTypes: ["today", "day", "range", "weeklyBudget"]
+        )
+    }
+
+    private static func queryDeclaration(
+        name: CoachCatalogToolName,
+        description: String,
+        queryTypes: [String],
+        extraProperties: [String: Any] = [:]
+    ) -> [String: Any] {
+        var properties: [String: Any] = [
+            "queryType": [
+                "type": "string",
+                "enum": queryTypes
+            ],
+            "helmDay": stringProperty("YYYY-MM-DD"),
+            "lookbackDays": ["type": "integer"]
+        ]
+        for (key, value) in extraProperties {
+            properties[key] = value
+        }
+        return [
+            "name": name.rawValue,
+            "description": description,
+            "parameters": [
+                "type": "object",
+                "properties": properties,
+                "required": ["queryType"]
             ]
         ]
     }

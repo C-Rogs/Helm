@@ -522,27 +522,66 @@ final class ChatController {
             )
 
             // Food dictation must stay on food_log.v1 - do not hijack into diary query follow-ups.
-            if !isFoodDictationTurn {
-                if let mealQuery = MealQueryPayloadParser.parse(from: assembledTurn.text) {
-                    assembledTurn = try await runMealQueryFollowUp(
-                        query: mealQuery,
-                        provider: provider,
-                        profile: profile,
-                        endDay: endDay,
-                        priorAssembled: assembledTurn.text
-                    )
-                } else if let inferred = CoachChatIntent.inferredMealQuery(from: text) {
-                    assembledTurn = try await runMealQueryFollowUp(
-                        query: inferred,
-                        provider: provider,
-                        profile: profile,
-                        endDay: endDay,
-                        priorAssembled: assembledTurn.text
-                    )
-                }
-            }
+            let querySource = assembledTurn
+            let mealQuery = isFoodDictationTurn ? nil : catalogQuery(
+                named: .mealQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.meal,
+                parseJSON: MealQueryPayloadParser.parse,
+                infer: CoachChatIntent.inferredMealQuery
+            )
+            let recoveryQuery = catalogQuery(
+                named: .recoveryQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.recovery,
+                parseJSON: RecoveryQueryPayloadParser.parse,
+                infer: CoachChatIntent.inferredRecoveryQuery
+            )
+            let calendarQuery = catalogQuery(
+                named: .calendarQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.calendar,
+                parseJSON: CalendarQueryPayloadParser.parse,
+                infer: { CoachChatIntent.inferredCalendarQuery(from: $0) }
+            )
+            let trendsQuery = catalogQuery(
+                named: .trendsQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.trends,
+                parseJSON: TrendsQueryPayloadParser.parse,
+                infer: CoachChatIntent.inferredTrendsQuery
+            )
+            let workoutQuery = catalogQuery(
+                named: .workoutQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.workout,
+                parseJSON: WorkoutQueryPayloadParser.parse,
+                infer: { CoachChatIntent.inferredWorkoutQuery(from: $0) }
+            )
+            let nutritionQuery = catalogQuery(
+                named: .nutritionQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.nutrition,
+                parseJSON: NutritionQueryPayloadParser.parse,
+                infer: CoachChatIntent.inferredNutritionQuery
+            )
 
-            if let recoveryQuery = RecoveryQueryPayloadParser.parse(from: assembledTurn.text) {
+            if let mealQuery {
+                assembledTurn = try await runMealQueryFollowUp(
+                    query: mealQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembledTurn.text
+                )
+            }
+            if let recoveryQuery {
                 assembledTurn = try await runRecoveryQueryFollowUp(
                     query: recoveryQuery,
                     provider: provider,
@@ -550,17 +589,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            } else if let inferred = CoachChatIntent.inferredRecoveryQuery(from: text) {
-                assembledTurn = try await runRecoveryQueryFollowUp(
-                    query: inferred,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
-                )
             }
-
-            if let calendarQuery = CalendarQueryPayloadParser.parse(from: assembledTurn.text) {
+            if let calendarQuery {
                 assembledTurn = try await runCalendarQueryFollowUp(
                     query: calendarQuery,
                     provider: provider,
@@ -568,17 +598,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            } else if let inferred = CoachChatIntent.inferredCalendarQuery(from: text) {
-                assembledTurn = try await runCalendarQueryFollowUp(
-                    query: inferred,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
-                )
             }
-
-            if let trendsQuery = TrendsQueryPayloadParser.parse(from: assembledTurn.text) {
+            if let trendsQuery {
                 assembledTurn = try await runTrendsQueryFollowUp(
                     query: trendsQuery,
                     provider: provider,
@@ -586,17 +607,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            } else if let inferred = CoachChatIntent.inferredTrendsQuery(from: text) {
-                assembledTurn = try await runTrendsQueryFollowUp(
-                    query: inferred,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
-                )
             }
-
-            if let workoutQuery = WorkoutQueryPayloadParser.parse(from: assembledTurn.text) {
+            if let workoutQuery {
                 assembledTurn = try await runWorkoutQueryFollowUp(
                     query: workoutQuery,
                     provider: provider,
@@ -604,27 +616,10 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            } else if let inferred = CoachChatIntent.inferredWorkoutQuery(from: text) {
-                assembledTurn = try await runWorkoutQueryFollowUp(
-                    query: inferred,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
-                )
             }
-
-            if let nutritionQuery = NutritionQueryPayloadParser.parse(from: assembledTurn.text) {
+            if let nutritionQuery {
                 assembledTurn = try await runNutritionQueryFollowUp(
                     query: nutritionQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
-                )
-            } else if let inferred = CoachChatIntent.inferredNutritionQuery(from: text) {
-                assembledTurn = try await runNutritionQueryFollowUp(
-                    query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
@@ -814,6 +809,23 @@ final class ChatController {
         var isEmpty: Bool {
             text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && functionCalls.isEmpty
         }
+    }
+
+    private func catalogQuery<Payload>(
+        named name: CoachCatalogToolName,
+        from turn: AssembledCoachTurn,
+        userText: String,
+        decode: ([CoachLLMFunctionCall]) -> Payload?,
+        parseJSON: (String) -> Payload?,
+        infer: (String) -> Payload?
+    ) -> Payload? {
+        if CoachCatalogToolName.hasWrite(in: turn.functionCalls) {
+            return nil
+        }
+        if turn.functionCalls.contains(where: { $0.name == name.rawValue }) {
+            return decode(turn.functionCalls)
+        }
+        return parseJSON(turn.text) ?? infer(userText)
     }
 
     private func streamAssistantTurn(

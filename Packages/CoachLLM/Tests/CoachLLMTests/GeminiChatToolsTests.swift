@@ -4,8 +4,8 @@ import Testing
 
 @Suite("Gemini chat tools")
 struct GeminiChatToolsTests {
-    @Test("catalog writes are declared")
-    func declaresWriteTools() throws {
+    @Test("catalog writes and queries are declared")
+    func declaresCatalogTools() throws {
         let names = GeminiChatTools.functionDeclarations().compactMap { $0["name"] as? String }
         #expect(names == CoachCatalogToolName.allCases.map(\.rawValue))
     }
@@ -86,5 +86,33 @@ struct GeminiChatToolsTests {
         #expect(texts == ["Logged."])
         #expect(calls.count == 1)
         #expect(calls[0].name == "food_log")
+    }
+
+    @Test("functionCall args decode into nutrition_query payload")
+    func functionCallDecodesNutritionQuery() throws {
+        let json = """
+        {"candidates":[{"content":{"parts":[
+          {"functionCall":{"name":"nutrition_query","args":{
+            "queryType":"weeklyBudget"
+          }}}
+        ]}}]}
+        """
+        let calls = GeminiSSEParser.functionCallDeltas(from: json)
+        #expect(calls.count == 1)
+        let payload = try #require(CoachCatalogQueryDecoder.nutrition(from: calls))
+        #expect(payload.queryType == .weeklyBudget)
+        #expect(payload.schemaVersion == CoachOutputSchemaVersion.nutritionQueryV1.rawValue)
+    }
+
+    @Test("write tool names are not queries")
+    func writeVersusQuery() {
+        #expect(CoachCatalogToolName.foodLog.isWrite)
+        #expect(!CoachCatalogToolName.foodLog.isQuery)
+        #expect(CoachCatalogToolName.nutritionQuery.isQuery)
+        #expect(!CoachCatalogToolName.nutritionQuery.isWrite)
+        let write = CoachLLMFunctionCall(name: "food_log", arguments: ["action": "log"])
+        let query = CoachLLMFunctionCall(name: "workout_query", arguments: ["queryType": "latestCompleted"])
+        #expect(CoachCatalogToolName.hasWrite(in: [write, query]))
+        #expect(!CoachCatalogToolName.hasWrite(in: [query]))
     }
 }
