@@ -12,14 +12,11 @@ final class MealEditController {
     var errorMessage: String?
 
     private let actionExecutor: HelmActionExecutor
-    private let onChanged: @MainActor () -> Void
 
     init(
-        actionExecutor: HelmActionExecutor,
-        onChanged: @escaping @MainActor () -> Void = {}
+        actionExecutor: HelmActionExecutor
     ) {
         self.actionExecutor = actionExecutor
-        self.onChanged = onChanged
     }
 
     static func isEditable(_ meal: MealRecord) -> Bool {
@@ -91,7 +88,6 @@ final class MealEditController {
             )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not save changes. Try again."
         }
@@ -108,7 +104,6 @@ final class MealEditController {
             )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not delete entry. Try again."
         }

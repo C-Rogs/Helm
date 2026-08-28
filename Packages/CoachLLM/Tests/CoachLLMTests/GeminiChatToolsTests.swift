@@ -138,6 +138,85 @@ struct GeminiChatToolsTests {
         #expect(payload?.queryType == .weeklyBudget)
     }
 
+    @Test("explicit query tools win over inferred follow-ups")
+    func explicitQueryFollowUpGate() {
+        let nutrition = CoachLLMFunctionCall(name: "nutrition_query", arguments: ["queryType": "today"])
+        let explicit = CoachCatalogQueryResolver.explicitQueryNames(in: [nutrition])
+        #expect(explicit == [.nutritionQuery])
+        #expect(CoachCatalogQueryResolver.shouldFollowUp(.nutritionQuery, explicitQueries: explicit))
+        #expect(!CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicit))
+        #expect(CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: []))
+    }
+
+    @Test("chart and navigate survive a follow-up that drops the original tools")
+    func mergeNonQueryPayloadPrefersFollowUpThenOriginal() {
+        let originalChart = CoachLLMFunctionCall(
+            name: "chart",
+            arguments: [
+                "title": "Hard sets",
+                "points": [
+                    ["label": "Mon", "value": 12]
+                ]
+            ]
+        )
+        let originalNavigate = CoachLLMFunctionCall(
+            name: "navigate",
+            arguments: ["tab": "nutrition"]
+        )
+        let followUpText = "Here is today's diary."
+        let originalJSON = """
+        {"schemaVersion":"chart.v1","title":"JSON chart","points":[{"label":"Tue","value":8}]}
+        """
+
+        let fromFollowUpTool = CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: [
+                CoachLLMFunctionCall(
+                    name: "chart",
+                    arguments: [
+                        "title": "Follow-up",
+                        "points": [["label": "Wed", "value": 4]]
+                    ]
+                )
+            ],
+            originalCalls: [originalChart],
+            currentText: followUpText,
+            originalText: originalJSON,
+            decode: CoachCatalogQueryDecoder.chart,
+            parseJSON: ChartPayloadParser.parse
+        )
+        #expect(fromFollowUpTool?.title == "Follow-up")
+
+        let fromOriginalTool = CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: [],
+            originalCalls: [originalChart],
+            currentText: followUpText,
+            originalText: originalJSON,
+            decode: CoachCatalogQueryDecoder.chart,
+            parseJSON: ChartPayloadParser.parse
+        )
+        #expect(fromOriginalTool?.title == "Hard sets")
+
+        let fromOriginalJSON = CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: [],
+            originalCalls: [],
+            currentText: followUpText,
+            originalText: originalJSON,
+            decode: CoachCatalogQueryDecoder.chart,
+            parseJSON: ChartPayloadParser.parse
+        )
+        #expect(fromOriginalJSON?.title == "JSON chart")
+
+        let navigate = CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: [],
+            originalCalls: [originalNavigate],
+            currentText: followUpText,
+            originalText: "",
+            decode: CoachCatalogQueryDecoder.navigate,
+            parseJSON: NavigatePayloadParser.parse
+        )
+        #expect(navigate?.tab == "nutrition")
+    }
+
     @Test("functionCall args decode into context_refresh payload")
     func functionCallDecodesContextRefresh() throws {
         let json = """

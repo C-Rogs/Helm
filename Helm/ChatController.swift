@@ -506,13 +506,6 @@ final class ChatController {
                 4_096,
                 TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider) - reserved
             )
-            let prompt = makeCoachPrompt(
-                profile: profile,
-                days: contextDays,
-                budget: budget,
-                turn: turn
-            )
-
             if coachUserMessage == nil,
                CoachChatIntent.shouldRouteChatToSessionCoach(
                 text,
@@ -527,6 +520,13 @@ final class ChatController {
                 )
                 return
             }
+
+            let prompt = makeCoachPrompt(
+                profile: profile,
+                days: contextDays,
+                budget: budget,
+                turn: turn
+            )
 
             isStreaming = true
             streamingText = ""
@@ -604,7 +604,11 @@ final class ChatController {
                 infer: { _ in nil }
             )
 
-            if let mealQuery {
+            let explicitQueries = CoachCatalogQueryResolver.explicitQueryNames(
+                in: querySource.functionCalls
+            )
+            if CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicitQueries),
+               let mealQuery {
                 assembledTurn = try await runMealQueryFollowUp(
                     query: mealQuery,
                     provider: provider,
@@ -612,8 +616,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let recoveryQuery {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.recoveryQuery, explicitQueries: explicitQueries),
+                      let recoveryQuery {
                 assembledTurn = try await runRecoveryQueryFollowUp(
                     query: recoveryQuery,
                     provider: provider,
@@ -621,8 +625,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let calendarQuery {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.calendarQuery, explicitQueries: explicitQueries),
+                      let calendarQuery {
                 assembledTurn = try await runCalendarQueryFollowUp(
                     query: calendarQuery,
                     provider: provider,
@@ -630,8 +634,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let trendsQuery {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.trendsQuery, explicitQueries: explicitQueries),
+                      let trendsQuery {
                 assembledTurn = try await runTrendsQueryFollowUp(
                     query: trendsQuery,
                     provider: provider,
@@ -639,8 +643,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let workoutQuery {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.workoutQuery, explicitQueries: explicitQueries),
+                      let workoutQuery {
                 assembledTurn = try await runWorkoutQueryFollowUp(
                     query: workoutQuery,
                     provider: provider,
@@ -648,8 +652,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let nutritionQuery {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.nutritionQuery, explicitQueries: explicitQueries),
+                      let nutritionQuery {
                 assembledTurn = try await runNutritionQueryFollowUp(
                     query: nutritionQuery,
                     provider: provider,
@@ -657,8 +661,8 @@ final class ChatController {
                     endDay: endDay,
                     priorAssembled: assembledTurn.text
                 )
-            }
-            if let contextRefresh {
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.contextRefresh, explicitQueries: explicitQueries),
+                      let contextRefresh {
                 assembledTurn = try await runContextRefreshFollowUp(
                     payload: contextRefresh,
                     provider: provider,
@@ -734,8 +738,7 @@ final class ChatController {
             }
 
             var storedText = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
-            if let chart = CoachCatalogQueryDecoder.chart(from: querySource.functionCalls)
-                ?? ChartPayloadParser.parse(from: assembledTurn.text) {
+            if let chart = chartPayload(from: assembledTurn, original: querySource) {
                 storedText = CoachChatChartStitcher.appending(chart, to: storedText)
             }
             let userFacingText = CoachChatDisplayText.assistantText(
@@ -767,8 +770,7 @@ final class ChatController {
 
             if pendingAction == nil,
                pendingFoodMealConfirm == nil,
-               let navigate = CoachCatalogQueryDecoder.navigate(from: querySource.functionCalls)
-                ?? NavigatePayloadParser.parse(from: assembledTurn.text),
+               let navigate = navigatePayload(from: assembledTurn, original: querySource),
                let tab = AppTab(coachSurfaceLabel: navigate.tab) {
                 AppTabRouter.shared.open(tab)
             }
@@ -885,6 +887,34 @@ final class ChatController {
             decode: decode,
             parseJSON: parseJSON,
             infer: infer
+        )
+    }
+
+    private func chartPayload(
+        from current: AssembledCoachTurn,
+        original: AssembledCoachTurn
+    ) -> ChartPayload? {
+        CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: current.functionCalls,
+            originalCalls: original.functionCalls,
+            currentText: current.text,
+            originalText: original.text,
+            decode: CoachCatalogQueryDecoder.chart,
+            parseJSON: ChartPayloadParser.parse
+        )
+    }
+
+    private func navigatePayload(
+        from current: AssembledCoachTurn,
+        original: AssembledCoachTurn
+    ) -> NavigatePayload? {
+        CoachCatalogQueryResolver.mergeNonQueryPayload(
+            currentCalls: current.functionCalls,
+            originalCalls: original.functionCalls,
+            currentText: current.text,
+            originalText: original.text,
+            decode: CoachCatalogQueryDecoder.navigate,
+            parseJSON: NavigatePayloadParser.parse
         )
     }
 

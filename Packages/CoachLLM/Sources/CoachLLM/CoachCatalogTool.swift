@@ -136,4 +136,32 @@ public enum CoachCatalogQueryResolver {
         }
         return parseJSON(assembledText) ?? infer(userText)
     }
+
+    /// Query tool names actually invoked this turn. Empty means follow-ups may use JSON/intent.
+    public static func explicitQueryNames(in calls: [CoachLLMFunctionCall]) -> Set<CoachCatalogToolName> {
+        Set(calls.compactMap { CoachCatalogToolName(rawValue: $0.name) }.filter(\.isQuery))
+    }
+
+    /// At most one catalog follow-up per user turn. Prefer an explicit query tool over intent.
+    public static func shouldFollowUp(
+        _ name: CoachCatalogToolName,
+        explicitQueries: Set<CoachCatalogToolName>
+    ) -> Bool {
+        explicitQueries.isEmpty || explicitQueries.contains(name)
+    }
+
+    /// Chart/navigate from the follow-up stream, else the original turn (tools then JSON).
+    public static func mergeNonQueryPayload<Payload>(
+        currentCalls: [CoachLLMFunctionCall],
+        originalCalls: [CoachLLMFunctionCall],
+        currentText: String,
+        originalText: String,
+        decode: ([CoachLLMFunctionCall]) -> Payload?,
+        parseJSON: (String) -> Payload?
+    ) -> Payload? {
+        decode(currentCalls)
+            ?? decode(originalCalls)
+            ?? parseJSON(currentText)
+            ?? parseJSON(originalText)
+    }
 }

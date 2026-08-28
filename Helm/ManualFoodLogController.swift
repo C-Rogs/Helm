@@ -166,7 +166,6 @@ final class ManualFoodLogController {
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: source == .barcode ? .barcode : .search)
-            onLogged(helmDay)
         } catch {
             phase = .failed(userMessage(for: error))
         }
@@ -197,7 +196,6 @@ final class ManualFoodLogController {
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .quickAdd)
-            onLogged(helmDay)
         } catch {
             phase = .failed(quickAddMessage(for: error))
         }
@@ -221,7 +219,6 @@ final class ManualFoodLogController {
             await HelmActionRuntime.apply(.nutrition(helmDay), after: .none)
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .barcode)
-            onLogged(helmDay)
         } catch {
             phase = .failed("Could not save that barcode for later. Try again.")
         }
@@ -248,7 +245,6 @@ final class ManualFoodLogController {
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .alcohol)
-            onLogged(helmDay)
         } catch {
             phase = .failed(alcoholMessage(for: error))
         }

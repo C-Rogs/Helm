@@ -24,16 +24,10 @@ struct NutritionView: View {
     @State private var mealsStore = NutritionDayMealsStore()
     @State private var mealActionsController = NutritionMealActionsController(
         mealRepeatService: NutritionBootstrap.mealRepeatService,
-        actionExecutor: HelmActionRuntime.executor,
-        onChanged: {
-            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
-        }
+        actionExecutor: HelmActionRuntime.executor
     )
     @State private var mealEditController = MealEditController(
-        actionExecutor: HelmActionRuntime.executor,
-        onChanged: {
-            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
-        }
+        actionExecutor: HelmActionRuntime.executor
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var weeklyBudget: WeeklyNutritionBudget?

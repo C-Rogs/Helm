@@ -32,16 +32,13 @@ final class NutritionMealActionsController {
 
     private let mealRepeatService: MealRepeatService
     private let actionExecutor: HelmActionExecutor
-    private let onChanged: @MainActor () -> Void
 
     init(
         mealRepeatService: MealRepeatService,
-        actionExecutor: HelmActionExecutor,
-        onChanged: @escaping @MainActor () -> Void = {}
+        actionExecutor: HelmActionExecutor
     ) {
         self.mealRepeatService = mealRepeatService
         self.actionExecutor = actionExecutor
-        self.onChanged = onChanged
     }
 
     func reloadTemplates() {
@@ -98,7 +95,6 @@ final class NutritionMealActionsController {
             )
             pendingAction = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not log template. Try again."
         }
@@ -124,7 +120,6 @@ final class NutritionMealActionsController {
                 ))
             )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(bucket.displayName.lowercased()) yesterday."
         } catch {
@@ -155,7 +150,6 @@ final class NutritionMealActionsController {
             )
             copyEntryContext = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(context.sourceBucket.displayName.lowercased()) to copy."
         } catch {
@@ -169,7 +163,6 @@ final class NutritionMealActionsController {
                 .copyAllMeals(sourceDay: sourceDay, targetDay: today)
             )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptySource {
             errorMessage = "No Signal meals logged on that day."
         } catch {
@@ -184,7 +177,6 @@ final class NutritionMealActionsController {
                 .copyAllMeals(sourceDay: sourceDay, targetDay: today)
             )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptySource {
             errorMessage = "No meals logged yesterday."
         } catch {
