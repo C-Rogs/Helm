@@ -212,6 +212,9 @@ final class ChatController {
     }
 
     func dismissChatAction() {
+        if case let .sessionAdjustment(proposal) = pendingChatAction?.kind {
+            TrainBootstrap.sessionController.dismissChatSessionProposal(proposal)
+        }
         pendingChatAction = nil
         lastTurnError = nil
     }
@@ -397,6 +400,9 @@ final class ChatController {
                     .trainingPlan(.regenerateToday(today)),
                     after: .coach
                 )
+            case let .sessionAdjustment(sessionProposal):
+                applyProgressStep = "Updating session…"
+                _ = try await TrainBootstrap.sessionController.applySessionProposal(sessionProposal)
             }
             pendingChatAction = nil
             lastTurnError = nil
@@ -506,6 +512,21 @@ final class ChatController {
                 budget: budget,
                 turn: turn
             )
+
+            if coachUserMessage == nil,
+               CoachChatIntent.shouldRouteChatToSessionCoach(
+                text,
+                sessionIsLive: TrainBootstrap.sessionController.hasActiveSession
+               ) {
+                try await completeSessionCoachTurn(
+                    text: text,
+                    provider: provider,
+                    profile: profile,
+                    contextDays: contextDays,
+                    thread: thread
+                )
+                return
+            }
 
             isStreaming = true
             streamingText = ""
@@ -1393,6 +1414,70 @@ final class ChatController {
             .trimmingCharacters(in: .whitespacesAndNewlines)
     }
     /// if the session warrants it (>= 3 substantive user turns, >= 30 min since last).
+    private func completeSessionCoachTurn(
+        text: String,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        contextDays: CoachContextDays,
+        thread: CoachThreadState
+    ) async throws {
+        isStreaming = true
+        streamingText = ""
+        chatProgressStep = "Checking today's session…"
+        defer {
+            isStreaming = false
+            streamingText = nil
+            clearChatProgress()
+        }
+
+        let sessionProposal = try await TrainBootstrap.sessionController.proposeChatSessionAdjustment(
+            userMessage: text,
+            provider: provider,
+            profile: profile,
+            context: contextDays,
+            thread: thread
+        )
+        let pendingAction = CoachChatActionParser.proposal(fromSession: sessionProposal)
+        var storedText = sessionProposal.reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        if storedText.isEmpty, let pendingAction {
+            storedText = CoachChatDisplayText.assistantText(from: "", pendingAction: pendingAction)
+        }
+        if let failure = sessionProposal.failureNotice {
+            if storedText.isEmpty {
+                storedText = failure
+            } else if !storedText.contains(failure) {
+                storedText += "\n\n" + failure
+            }
+        }
+        guard !storedText.isEmpty || pendingAction != nil else {
+            throw CoachStructuredOutputError.emptyResponse
+        }
+
+        pendingChatAction = pendingAction
+        lastFailedUserMessage = nil
+        CoachDiagnosticsStore.shared.clearTurnState()
+
+        if !storedText.isEmpty {
+            let assistantMessage = try persistence.chat.append(
+                ChatMessageInsert(
+                    role: .assistant,
+                    text: storedText,
+                    promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                    schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue
+                )
+            )
+            messages.append(assistantMessage)
+        }
+
+        maybeTriggerMemoryRefinementExtraction(profile: profile)
+        await logTurn(
+            status: "completed",
+            promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            messageCount: messages.count
+        )
+    }
+
     private func maybeTriggerMemoryRefinementExtraction(profile: MemoryProfile) {
         let substantiveTurns = messages.filter {
             $0.role == .user && $0.text.count > 50

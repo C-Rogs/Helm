@@ -11,6 +11,7 @@ enum CoachChatActionKind: Sendable, Equatable {
     case settingsAdjustment(SettingsAdjustmentPayload)
     case reactiveDeload(ReactiveDeloadPayload)
     case planRegenerate(PlanRegeneratePayload)
+    case sessionAdjustment(CoachSessionProposal)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -169,6 +170,29 @@ enum CoachChatActionParser {
             }
         }
         return nil
+    }
+
+    static func proposal(fromSession proposal: CoachSessionProposal) -> CoachChatActionProposal? {
+        guard proposal.requiresConfirmation else { return nil }
+        let banner = proposal.previewBanner
+        let title: String
+        let detail: String
+        if let banner {
+            title = "\(banner.fromLabel) → \(banner.toLabel)"
+            detail = banner.reason
+        } else {
+            title = "Apply session change"
+            detail = proposal.payload.bannerReason
+        }
+        return CoachChatActionProposal(
+            reply: proposal.reply,
+            kind: .sessionAdjustment(proposal),
+            title: title,
+            detail: detail,
+            reason: proposal.payload.bannerReason,
+            confirmLabel: "Apply change",
+            cancelLabel: "Keep plan"
+        )
     }
 
     static func proposal(fromJSONText text: String) -> CoachChatActionProposal? {
@@ -338,7 +362,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
+            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment:
                 return pendingAction.title
             }
         }

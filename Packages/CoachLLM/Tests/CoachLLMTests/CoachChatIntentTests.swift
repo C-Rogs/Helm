@@ -56,6 +56,23 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.looksLikeNutritionLookup("what can i eat today"))
     }
 
+    @Test("session adjustment intent is exercise-level, not plan or food")
+    func sessionAdjustmentIntent() {
+        #expect(CoachChatIntent.looksLikeSessionAdjustment("Swap bench for dumbbell press"))
+        #expect(CoachChatIntent.looksLikeSessionAdjustment("Add a set to RDL"))
+        #expect(CoachChatIntent.looksLikeSessionAdjustment("Take 5kg off the squat"))
+        #expect(!CoachChatIntent.looksLikeSessionAdjustment("Start the workout"))
+        #expect(!CoachChatIntent.looksLikeSessionAdjustment("How was my workout earlier"))
+        #expect(!CoachChatIntent.looksLikeSessionAdjustment("What's my TDEE"))
+        #expect(!CoachChatIntent.looksLikeSessionAdjustment("Swap my training plan to 4 days"))
+        #expect(CoachChatIntent.shouldRouteChatToSessionCoach("Swap bench for incline", sessionIsLive: true))
+        #expect(!CoachChatIntent.shouldRouteChatToSessionCoach("Swap bench for incline", sessionIsLive: false))
+        #expect(CoachChatIntent.shouldRouteChatToSessionCoach(
+            "Swap bench for incline on today's session",
+            sessionIsLive: false
+        ))
+    }
+
     @Test("looksLikeNutritionLookup does not match unrelated phrases")
     func doesNotDetectNonNutritionPhrases() {
         // Negative cases.

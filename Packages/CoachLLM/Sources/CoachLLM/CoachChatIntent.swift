@@ -362,4 +362,85 @@ public enum CoachChatIntent: Sendable {
         }
         return NutritionQueryPayload(queryType: .today)
     }
+
+    /// Exercise/set/load change to the current session, not a new plan or a past-workout review.
+    public static func looksLikeSessionAdjustment(_ text: String) -> Bool {
+        if looksLikeWorkoutStart(text) { return false }
+        if looksLikeWorkoutReview(text) { return false }
+        if looksLikeNutritionLookup(text) { return false }
+        if looksLikePastMealLookup(text) { return false }
+        if looksLikePlanBuilderRequest(text) { return false }
+
+        let lower = text.lowercased()
+        if looksLikePlanLevelChange(lower) { return false }
+
+        let needles = [
+            "swap ",
+            " swap",
+            "replace ",
+            "instead of",
+            "drop a set",
+            "drop one set",
+            "add a set",
+            "add one set",
+            "extra set",
+            "one more set",
+            "another set",
+            "fewer sets",
+            "less sets",
+            "take a set off",
+            "remove a set",
+            "skip ",
+            "do first",
+            "reorder",
+            "lighter on",
+            "heavier on",
+            "kg off",
+            "kilos off",
+            "warmup set",
+            "warm-up set",
+            "drop the weight",
+            "bump the weight",
+            "take weight off"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Pre-start Chat should only hijack when the athlete named today's session.
+    public static func looksLikeTodaySessionChange(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let cues = [
+            "today's workout",
+            "todays workout",
+            "today's session",
+            "todays session",
+            "this session",
+            "this workout",
+            "before i start",
+            "today's prescribed",
+            "todays prescribed"
+        ]
+        return cues.contains { lower.contains($0) }
+    }
+
+    public static func shouldRouteChatToSessionCoach(_ text: String, sessionIsLive: Bool) -> Bool {
+        guard looksLikeSessionAdjustment(text) else { return false }
+        if sessionIsLive { return true }
+        return looksLikeTodaySessionChange(text)
+    }
+
+    private static func looksLikePlanLevelChange(_ lower: String) -> Bool {
+        let planNeedles = [
+            "training plan",
+            "new plan",
+            "mesocycle",
+            "days a week",
+            "days per week",
+            "my program",
+            "my programme",
+            "the program",
+            "the programme"
+        ]
+        return planNeedles.contains { lower.contains($0) }
+    }
 }
