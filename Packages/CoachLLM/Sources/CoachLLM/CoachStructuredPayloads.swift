@@ -507,6 +507,19 @@ public enum NavigatePayloadParser: Sendable {
     }
 }
 
+/// Confirm cards must not swallow a same-turn `navigate` tool. Open now, or after confirm.
+public enum CoachNavigatePresentation: Equatable, Sendable {
+    case now(String)
+    case afterConfirm(String)
+    case none
+
+    public static func resolve(tab: String?, hasPendingConfirm: Bool) -> Self {
+        guard let tab, !tab.isEmpty else { return .none }
+        if hasPendingConfirm { return .afterConfirm(tab) }
+        return .now(tab)
+    }
+}
+
 /// Shared decoding surface for the `*_query.v1` payload coding-key enums.
 private protocol CoachQueryPayloadCodingKeys: CodingKey {
     static var schemaVersionKey: Self { get }

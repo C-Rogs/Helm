@@ -84,6 +84,19 @@ struct NavigatePayloadTests {
         """
         #expect(NavigatePayloadParser.parse(from: titled)?.tab == "nutrition")
     }
+
+    @Test("navigate waits for confirm when a write card is pending")
+    func defersNavigateUntilConfirm() {
+        #expect(
+            CoachNavigatePresentation.resolve(tab: "nutrition", hasPendingConfirm: false) == .now("nutrition")
+        )
+        #expect(
+            CoachNavigatePresentation.resolve(tab: "nutrition", hasPendingConfirm: true)
+                == .afterConfirm("nutrition")
+        )
+        #expect(CoachNavigatePresentation.resolve(tab: nil, hasPendingConfirm: true) == .none)
+        #expect(CoachNavigatePresentation.resolve(tab: "", hasPendingConfirm: false) == .none)
+    }
 }
 
 private let expectedChartSnapshot = """

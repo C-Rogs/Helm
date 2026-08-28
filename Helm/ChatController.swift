@@ -39,6 +39,8 @@ final class ChatController {
     private(set) var pendingMemoryRefinements: [MemoryRefinementEntry] = []
     /// Date of the last refinement extraction for debouncing.
     private var lastRefinementExtractionDate: Date?
+    /// `navigate` held until the athlete confirms a same-turn write.
+    private var pendingNavigateTab: AppTab?
 
     private let persistence: PersistenceStore
     private let providerPreferences: ProviderPreferencesStore
@@ -85,6 +87,7 @@ final class ChatController {
             messages = []
             pendingChatAction = nil
             pendingFoodMealConfirm = nil
+            pendingNavigateTab = nil
             lastTurnError = nil
             lastFailedUserMessage = nil
             streamingText = nil
@@ -166,6 +169,7 @@ final class ChatController {
 
     func dismissFoodMealConfirm() {
         pendingFoodMealConfirm = nil
+        pendingNavigateTab = nil
         lastTurnError = nil
     }
 
@@ -216,6 +220,7 @@ final class ChatController {
             TrainBootstrap.sessionController.dismissChatSessionProposal(proposal)
         }
         pendingChatAction = nil
+        pendingNavigateTab = nil
         lastTurnError = nil
     }
 
@@ -312,6 +317,7 @@ final class ChatController {
 
             pendingFoodMealConfirm = nil
             lastTurnError = nil
+            applyDeferredNavigateIfNeeded()
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatFoodMeal", error: error)
@@ -406,6 +412,7 @@ final class ChatController {
             }
             pendingChatAction = nil
             lastTurnError = nil
+            applyDeferredNavigateIfNeeded()
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: error)
@@ -768,12 +775,9 @@ final class ChatController {
                 messages.append(assistantMessage)
             }
 
-            if pendingAction == nil,
-               pendingFoodMealConfirm == nil,
-               let navigate = navigatePayload(from: assembledTurn, original: querySource),
-               let tab = AppTab(coachSurfaceLabel: navigate.tab) {
-                AppTabRouter.shared.open(tab)
-            }
+            presentOrDeferNavigate(
+                navigatePayload(from: assembledTurn, original: querySource)
+            )
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clearTurnState()
 
@@ -916,6 +920,29 @@ final class ChatController {
             decode: CoachCatalogQueryDecoder.navigate,
             parseJSON: NavigatePayloadParser.parse
         )
+    }
+
+    private func presentOrDeferNavigate(_ payload: NavigatePayload?) {
+        pendingNavigateTab = nil
+        switch CoachNavigatePresentation.resolve(
+            tab: payload?.tab,
+            hasPendingConfirm: pendingChatAction != nil || pendingFoodMealConfirm != nil
+        ) {
+        case let .now(label):
+            if let tab = AppTab(coachSurfaceLabel: label) {
+                AppTabRouter.shared.open(tab)
+            }
+        case let .afterConfirm(label):
+            pendingNavigateTab = AppTab(coachSurfaceLabel: label)
+        case .none:
+            break
+        }
+    }
+
+    private func applyDeferredNavigateIfNeeded() {
+        guard let tab = pendingNavigateTab else { return }
+        pendingNavigateTab = nil
+        AppTabRouter.shared.open(tab)
     }
 
     private func streamAssistantTurn(
