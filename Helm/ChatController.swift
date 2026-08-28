@@ -465,7 +465,10 @@ final class ChatController {
                 profile: &profile.globalStyle,
                 from: text, turnIndex: messages.count
             )
-            try persistence.memoryProfile.save(profile)
+            try await HelmActionRuntime.perform(
+                .memory(.replaceProfile(profile)),
+                after: .none
+            )
             
             let endDay = HelmDay.day(for: .now, calendar: .current)
             let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
@@ -571,6 +574,14 @@ final class ChatController {
                 parseJSON: NutritionQueryPayloadParser.parse,
                 infer: CoachChatIntent.inferredNutritionQuery
             )
+            let contextRefresh = catalogQuery(
+                named: .contextRefresh,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.contextRefresh,
+                parseJSON: ContextRefreshPayloadParser.parse,
+                infer: { _ in nil }
+            )
 
             if let mealQuery {
                 assembledTurn = try await runMealQueryFollowUp(
@@ -620,6 +631,15 @@ final class ChatController {
             if let nutritionQuery {
                 assembledTurn = try await runNutritionQueryFollowUp(
                     query: nutritionQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: assembledTurn.text
+                )
+            }
+            if let contextRefresh {
+                assembledTurn = try await runContextRefreshFollowUp(
+                    payload: contextRefresh,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
@@ -819,13 +839,15 @@ final class ChatController {
         parseJSON: (String) -> Payload?,
         infer: (String) -> Payload?
     ) -> Payload? {
-        if CoachCatalogToolName.hasWrite(in: turn.functionCalls) {
-            return nil
-        }
-        if turn.functionCalls.contains(where: { $0.name == name.rawValue }) {
-            return decode(turn.functionCalls)
-        }
-        return parseJSON(turn.text) ?? infer(userText)
+        CoachCatalogQueryResolver.resolve(
+            named: name,
+            functionCalls: turn.functionCalls,
+            assembledText: turn.text,
+            userText: userText,
+            decode: decode,
+            parseJSON: parseJSON,
+            infer: infer
+        )
     }
 
     private func streamAssistantTurn(
@@ -1141,6 +1163,46 @@ final class ChatController {
 
         isStreaming = true
         streamingText = "Looking up nutrition…"
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = makeCoachPrompt(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantTurn(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
+        )
+    }
+
+    private func runContextRefreshFollowUp(
+        payload: ContextRefreshPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> AssembledCoachTurn {
+        let labels = payload.blocks.joined(separator: ", ")
+        let toolMessage = """
+        # Context refresh
+        Rebuilt: \(labels). Use the context block. Do not invent data. Do not request another context_refresh unless still stale.
+        """
+
+        isStreaming = true
+        streamingText = "Refreshing context…"
 
         let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(

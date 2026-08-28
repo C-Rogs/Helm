@@ -115,4 +115,37 @@ struct GeminiChatToolsTests {
         #expect(CoachCatalogToolName.hasWrite(in: [write, query]))
         #expect(!CoachCatalogToolName.hasWrite(in: [query]))
     }
+
+    @Test("malformed query tool still falls back to JSON")
+    func malformedQueryToolFallsBackToJSON() {
+        let bad = CoachLLMFunctionCall(name: "nutrition_query", arguments: ["queryType": "not-a-type"])
+        let text = """
+        Looking up budget.
+        {"schemaVersion":"nutrition_query.v1","queryType":"weeklyBudget"}
+        """
+        let payload = CoachCatalogQueryResolver.resolve(
+            named: .nutritionQuery,
+            functionCalls: [bad],
+            assembledText: text,
+            userText: "weekly budget",
+            decode: CoachCatalogQueryDecoder.nutrition,
+            parseJSON: NutritionQueryPayloadParser.parse,
+            infer: { _ in nil }
+        )
+        #expect(payload?.queryType == .weeklyBudget)
+    }
+
+    @Test("functionCall args decode into context_refresh payload")
+    func functionCallDecodesContextRefresh() throws {
+        let json = """
+        {"candidates":[{"content":{"parts":[
+          {"functionCall":{"name":"context_refresh","args":{
+            "blocks":["nutritionDiary"]
+          }}}
+        ]}}]}
+        """
+        let calls = GeminiSSEParser.functionCallDeltas(from: json)
+        let payload = try #require(CoachCatalogQueryDecoder.contextRefresh(from: calls))
+        #expect(payload.blocks == ["nutritionDiary"])
+    }
 }

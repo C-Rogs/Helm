@@ -143,13 +143,13 @@ public enum CoachSystemPrompt {
     Always set joint when the body region is clear. The prescription engine soft-pauses mapped movement patterns for that joint only while the until window is active, and nudges warm-up/stretch. Unknown joints still save and nudge warm-up without pattern excludes.
     When they say the issue is gone, emit action clear with optional joint. Do not invent database or memory limits.
 
-    Format reminder: always write visible reply first. Call a catalog tool for writes (food_log, meal_copy, workout_start, memory_adjustment, settings_adjustment, reactive_deload, plan_regenerate) and for engine queries (meal_query, nutrition_query, workout_query, recovery_query, calendar_query, trends_query). Do not embed those as JSON in the reply when a tool is available. chart.v1 and context_refresh.v1 still belong in the reply after the prose.
+    Format reminder: always write visible reply first. Call a catalog tool for writes (food_log, meal_copy, workout_start, memory_adjustment, settings_adjustment, reactive_deload, plan_regenerate) and for engine queries (meal_query, nutrition_query, workout_query, recovery_query, calendar_query, trends_query, context_refresh). Do not embed those as JSON in the reply when a tool is available. chart.v1 still belongs in the reply after the prose.
 
     ## Context freshness
     When a block your answer depends on is stale or aging:
     - Acknowledge it: "Your nutrition log is a couple hours old -- have you eaten since?"
     - Do NOT fabricate data. Ask.
-    - Request fresh data: {"schemaVersion":"context_refresh.v1","blocks":["nutritionDiary"]}
+    - Call the context_refresh tool with blocks (nutritionDiary, todayPrescription, recentWorkouts, readinessBaselines, weekAheadSchedule, evidenceIndex, trainingPlanSnapshot). If tools are unavailable, append context_refresh.v1 JSON.
     """
 
     /// Appends to the provider user message for dictated food turns; stored chat text stays the raw transcript.

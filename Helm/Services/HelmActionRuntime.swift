@@ -40,6 +40,7 @@ enum HelmActionRuntime {
             case .refreshPrescription:
                 await PlanBootstrap.refreshPrescriptionWithCalendar()
                 await ProactiveBootstrap.refreshScheduling()
+                NutritionBootstrap.refreshNutrition()
             }
         }
         if after == .coach {

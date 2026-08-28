@@ -350,7 +350,8 @@ struct HelmActionExecutorTests {
 
         let result = try await executor.run(.trainingPlan(.fromCoachPayload(payload)))
 
-        #expect(result.sideEffects.contains(.refreshPrescription))
+        #expect(result.nutritionDay == nil)
+        #expect(result.sideEffects == [.refreshPrescription])
         let settings = try store.trainingPlan.load()
         #expect(settings.phaseGoal.phase == .cut)
         #expect(settings.phaseGoal.weeklyRateKg == 0.5)
@@ -370,7 +371,8 @@ struct HelmActionExecutorTests {
 
         let result = try await executor.run(.trainingPlan(.methodologyPreferences(preferences)))
 
-        #expect(result.sideEffects.contains(.refreshPrescription))
+        #expect(result.nutritionDay == nil)
+        #expect(result.sideEffects == [.refreshPrescription])
         let parsed = MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences)
         #expect(parsed.preferences.allowedEquipment == ["dumbbell"])
         #expect(parsed.preferences.selectionBias == .stretch)

@@ -16,6 +16,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     case trendsQuery = "trends_query"
     case workoutQuery = "workout_query"
     case nutritionQuery = "nutrition_query"
+    case contextRefresh = "context_refresh"
 
     public var schemaVersion: CoachOutputSchemaVersion {
         switch self {
@@ -32,13 +33,14 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         case .trendsQuery: .trendsQueryV1
         case .workoutQuery: .workoutQueryV1
         case .nutritionQuery: .nutritionQueryV1
+        case .contextRefresh: .contextRefreshV1
         }
     }
 
     /// Writes become confirm cards. Queries run immediately and feed a follow-up turn.
     public var isQuery: Bool {
         switch self {
-        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery:
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh:
             true
         default:
             false
@@ -78,6 +80,10 @@ public enum CoachCatalogQueryDecoder {
         decode(NutritionQueryPayload.self, named: .nutritionQuery, from: calls)
     }
 
+    public static func contextRefresh(from calls: [CoachLLMFunctionCall]) -> ContextRefreshPayload? {
+        decode(ContextRefreshPayload.self, named: .contextRefresh, from: calls)
+    }
+
     public static func decode<Payload: Decodable>(
         _ type: Payload.Type,
         named name: CoachCatalogToolName,
@@ -89,5 +95,26 @@ public enum CoachCatalogQueryDecoder {
             }
         }
         return nil
+    }
+}
+
+/// Resolves a catalog query from a tool call, with JSON and intent as fallback.
+public enum CoachCatalogQueryResolver {
+    public static func resolve<Payload>(
+        named name: CoachCatalogToolName,
+        functionCalls: [CoachLLMFunctionCall],
+        assembledText: String,
+        userText: String,
+        decode: ([CoachLLMFunctionCall]) -> Payload?,
+        parseJSON: (String) -> Payload?,
+        infer: (String) -> Payload?
+    ) -> Payload? {
+        if CoachCatalogToolName.hasWrite(in: functionCalls) {
+            return nil
+        }
+        if functionCalls.contains(where: { $0.name == name.rawValue }) {
+            return decode(functionCalls) ?? parseJSON(assembledText) ?? infer(userText)
+        }
+        return parseJSON(assembledText) ?? infer(userText)
     }
 }

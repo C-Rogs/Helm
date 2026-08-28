@@ -91,7 +91,7 @@ public struct HelmActionExecutor: Sendable {
         case let .replaceSettings(settings):
             try await engine.saveTrainingPlan(settings)
             PrescriptionDayStore.clear(for: today)
-            return replanned(on: today)
+            return replanned()
 
         case let .fromCoachPayload(payload):
             var settings = try await engine.loadTrainingPlan()
@@ -105,14 +105,14 @@ public struct HelmActionExecutor: Sendable {
             )
             try await engine.saveTrainingPlan(settings)
             PrescriptionDayStore.clear(for: today)
-            return replanned(on: today)
+            return replanned()
 
         case let .reactiveDeload(action):
             switch action {
             case .confirm:
                 try await engine.confirmReactiveDeload()
                 PrescriptionDayStore.clear(for: today)
-                return replanned(on: today)
+                return replanned()
             case .dismiss:
                 try await engine.dismissReactiveDeload()
                 return HelmActionResult(sideEffects: [.refreshPrescription])
@@ -120,21 +120,19 @@ public struct HelmActionExecutor: Sendable {
 
         case let .regenerateToday(day):
             PrescriptionDayStore.clear(for: day)
-            return HelmActionResult(
-                sideEffects: [.refreshNutrition(day), .refreshPrescription]
-            )
+            return HelmActionResult(sideEffects: [.refreshPrescription])
 
         case let .methodologyPreferences(preferences):
             try await engine.saveMethodologyPreferences(preferences)
             PrescriptionDayStore.clear(for: today)
-            return replanned(on: today)
+            return replanned()
         }
     }
 
-    private func replanned(on day: HelmDay) -> HelmActionResult {
-        HelmActionResult(
-            sideEffects: [.refreshNutrition(day), .refreshPrescription]
-        )
+    /// Re-plan side effects. Nutrition refresh is applied by the app against
+    /// the diary day the athlete is already viewing, not today.
+    private func replanned() -> HelmActionResult {
+        HelmActionResult(sideEffects: [.refreshPrescription])
     }
 
     func applySessionAdjustment(

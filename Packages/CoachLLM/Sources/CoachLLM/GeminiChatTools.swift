@@ -30,7 +30,8 @@ public enum GeminiChatTools {
             calendarQueryDeclaration(),
             trendsQueryDeclaration(),
             workoutQueryDeclaration(),
-            nutritionQueryDeclaration()
+            nutritionQueryDeclaration(),
+            contextRefreshDeclaration()
         ]
     }
 
@@ -291,6 +292,37 @@ public enum GeminiChatTools {
             """,
             queryTypes: ["today", "day", "range", "weeklyBudget"]
         )
+    }
+
+    private static func contextRefreshDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.contextRefresh.rawValue,
+            "description": """
+            Ask the app to rebuild stale context blocks (nutrition diary, prescription, \
+            workouts, readiness, week ahead, evidence, training plan snapshot) and send \
+            them back. Use when freshness suffix says a block is aging or stale.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "blocks": [
+                        "type": "array",
+                        "items": [
+                            "type": "string",
+                            "enum": [
+                                "nutritionDiary",
+                                "todayPrescription",
+                                "recentWorkouts",
+                                "readinessBaselines",
+                                "weekAheadSchedule",
+                                "evidenceIndex",
+                                "trainingPlanSnapshot"
+                            ]
+                        ]
+                    ]
+                ]
+            ]
+        ]
     }
 
     private static func queryDeclaration(

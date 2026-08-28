@@ -115,7 +115,7 @@ struct ProviderRegistryTests {
         #expect(placeholder.id == "gemini-placeholder")
 
         let mock = MockProvider(id: "gemini-live")
-        registry.installGeminiProvider(mock)
+        registry.installChatProvider(mock)
         #expect(registry.provider(for: .gemini).id == "gemini-live")
     }
 }

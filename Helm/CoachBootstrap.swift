@@ -23,7 +23,7 @@ enum CoachBootstrap {
         let keyStore = APIKeyStore()
         if keyStore.hasKey(kind: .gemini) {
             let provider = GeminiProvider(apiKeyStore: keyStore)
-            ProviderRegistry.shared.installGeminiProvider(provider)
+            ProviderRegistry.shared.installChatProvider(provider)
             return
         }
 
@@ -39,7 +39,7 @@ enum CoachBootstrap {
                 ]
             )
         )
-        ProviderRegistry.shared.installGeminiProvider(mock)
+            ProviderRegistry.shared.installChatProvider(mock)
         #endif
     }
 }

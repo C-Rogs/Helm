@@ -1130,3 +1130,43 @@ public enum NutritionQueryPayloadParser: Sendable {
         return payload
     }
 }
+
+// MARK: - context_refresh.v1
+
+public struct ContextRefreshPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let blocks: [String]
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.contextRefreshV1.rawValue,
+        blocks: [String] = ["nutritionDiary"]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.blocks = blocks.isEmpty ? ["nutritionDiary"] : blocks
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.contextRefreshV1.rawValue
+        let decoded = try container.decodeIfPresent([String].self, forKey: .blocks) ?? []
+        blocks = decoded.isEmpty ? ["nutritionDiary"] : decoded
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case blocks
+    }
+}
+
+public enum ContextRefreshPayloadParser: Sendable {
+    public static func parse(from text: String) -> ContextRefreshPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .contextRefreshV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(ContextRefreshPayload.self, from: data)
+        else {
+            return nil
+        }
+        return payload
+    }
+}
