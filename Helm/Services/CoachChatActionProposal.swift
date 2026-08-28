@@ -227,7 +227,7 @@ enum CoachChatActionParser {
         return nil
     }
 
-    private static func proposal(fromFoodLog payload: FoodLogPayload) -> CoachChatActionProposal {
+    static func proposal(fromFoodLog payload: FoodLogPayload) -> CoachChatActionProposal {
         let preview = FoodLogCommandPreview.preview(for: payload)
         let confirmLabel: String
         switch payload.action {

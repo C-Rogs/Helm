@@ -287,6 +287,25 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         self.portionNotes = portionNotes
     }
 
+    public func replacingHelmDay(_ helmDay: String?) -> FoodLogPayload {
+        FoodLogPayload(
+            schemaVersion: schemaVersion,
+            reply: reply,
+            action: action,
+            mealID: mealID,
+            description: description,
+            bucket: bucket,
+            caloriesKcal: caloriesKcal,
+            proteinG: proteinG,
+            carbsG: carbsG,
+            fatG: fatG,
+            helmDay: helmDay,
+            items: items,
+            implicitFats: implicitFats,
+            portionNotes: portionNotes
+        )
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decode(String.self, forKey: .schemaVersion)

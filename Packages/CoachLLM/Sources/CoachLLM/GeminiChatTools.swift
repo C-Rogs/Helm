@@ -63,7 +63,7 @@ public enum GeminiChatTools {
                     "carbsG": ["type": "number"],
                     "fatG": ["type": "number"],
                     "helmDay": stringProperty(
-                        "YYYY-MM-DD. Omit only for calendar today. Set to App State nutrition_day when logging the diary day on screen."
+                        "YYYY-MM-DD. Omit for calendar today. Set only if the athlete named a day, or App State tab is nutrition."
                     ),
                     "items": [
                         "type": "array",
@@ -363,8 +363,8 @@ public enum GeminiChatTools {
         [
             "name": CoachCatalogToolName.navigate.rawValue,
             "description": """
-            Switch the app to a tab only when the athlete asked to open or show that screen. \
-            Do not navigate just because you discussed that topic.
+            Switch the app to a tab when the athlete asked to open or show that screen, including "open Train". \
+            Still navigate on a rest day. Do not navigate just because you discussed that topic.
             """,
             "parameters": [
                 "type": "object",

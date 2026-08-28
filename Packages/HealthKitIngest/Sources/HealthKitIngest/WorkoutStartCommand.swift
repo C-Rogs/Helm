@@ -227,7 +227,23 @@ public enum WorkoutStartPlanBuilder {
             return match.id
         }
 
+        let labelTokens = exerciseNameTokens(label)
+        if !labelTokens.isEmpty,
+           let match = catalog.first(where: { row in
+               let tokens = exerciseNameTokens(row.displayName)
+               return !tokens.isEmpty && (tokens.isSubset(of: labelTokens) || labelTokens.isSubset(of: tokens))
+           }) {
+            return match.id
+        }
+
         return nil
+    }
+
+    private static func exerciseNameTokens(_ name: String) -> Set<String> {
+        let folded = name.lowercased().map { character -> Character in
+            character.isLetter || character.isNumber ? character : " "
+        }
+        return Set(String(folded).split(separator: " ").map(String.init).filter { $0.count > 1 })
     }
 }
 

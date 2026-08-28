@@ -616,66 +616,87 @@ final class ChatController {
             )
             if CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicitQueries),
                let mealQuery {
-                assembledTurn = try await runMealQueryFollowUp(
-                    query: mealQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runMealQueryFollowUp(
+                        query: mealQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.recoveryQuery, explicitQueries: explicitQueries),
                       let recoveryQuery {
-                assembledTurn = try await runRecoveryQueryFollowUp(
-                    query: recoveryQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runRecoveryQueryFollowUp(
+                        query: recoveryQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.calendarQuery, explicitQueries: explicitQueries),
                       let calendarQuery {
-                assembledTurn = try await runCalendarQueryFollowUp(
-                    query: calendarQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runCalendarQueryFollowUp(
+                        query: calendarQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.trendsQuery, explicitQueries: explicitQueries),
                       let trendsQuery {
-                assembledTurn = try await runTrendsQueryFollowUp(
-                    query: trendsQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runTrendsQueryFollowUp(
+                        query: trendsQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.workoutQuery, explicitQueries: explicitQueries),
                       let workoutQuery {
-                assembledTurn = try await runWorkoutQueryFollowUp(
-                    query: workoutQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runWorkoutQueryFollowUp(
+                        query: workoutQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.nutritionQuery, explicitQueries: explicitQueries),
                       let nutritionQuery {
-                assembledTurn = try await runNutritionQueryFollowUp(
-                    query: nutritionQuery,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runNutritionQueryFollowUp(
+                        query: nutritionQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.contextRefresh, explicitQueries: explicitQueries),
                       let contextRefresh {
-                assembledTurn = try await runContextRefreshFollowUp(
-                    payload: contextRefresh,
-                    provider: provider,
-                    profile: profile,
-                    endDay: endDay,
-                    priorAssembled: assembledTurn.text
+                assembledTurn = keepIfFollowUpEmpty(
+                    assembledTurn,
+                    next: try await runContextRefreshFollowUp(
+                        payload: contextRefresh,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
                 )
             }
 
@@ -688,13 +709,16 @@ final class ChatController {
                )
             {
                 do {
-                    assembledTurn = try await runStructuredWorkoutStart(
-                        provider: provider,
-                        profile: profile,
-                        contextDays: contextDays,
-                        thread: thread,
-                        userText: text,
-                        priorAssembled: assembledTurn.text
+                    assembledTurn = keepIfFollowUpEmpty(
+                        assembledTurn,
+                        next: try await runStructuredWorkoutStart(
+                            provider: provider,
+                            profile: profile,
+                            contextDays: contextDays,
+                            thread: thread,
+                            userText: text,
+                            priorAssembled: assembledTurn.text
+                        )
                     )
                 } catch let error as CoachProviderError {
                     if case .unavailable = error {
@@ -706,7 +730,7 @@ final class ChatController {
             }
 
             let wasFoodDictation = isFoodDictationTurn
-            let pendingAction: CoachChatActionProposal?
+            var pendingAction: CoachChatActionProposal?
             let foodPayload = CoachChatActionParser.foodLogPayload(from: assembledTurn.functionCalls)
                 ?? FoodLogPayloadParser.parse(from: assembledTurn.text)
             if wasFoodDictation,
@@ -714,10 +738,11 @@ final class ChatController {
                foodPayload.action == .log {
                 isFoodDictationTurn = false
                 let bucket = resolvedFoodLogBucket(foodPayload.bucket)
-                let helmDay = FoodLogCommandApplier.resolvedHelmDay(
-                    from: foodPayload,
-                    now: Date(),
-                    calendar: .current
+                let helmDay = CoachChatIntent.resolvedChatFoodHelmDay(
+                    userText: text,
+                    payloadDay: foodPayload.helmDay,
+                    nutritionTabVisible: AppTabRouter.shared.selectedTab == .nutrition,
+                    viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
                 )
                 isPreparingFoodMealConfirm = true
                 chatProgressCompletedSteps = ["Coach estimated your meal"]
@@ -741,23 +766,38 @@ final class ChatController {
                     from: assembledTurn.text,
                     functionCalls: assembledTurn.functionCalls
                 )
+                if case let .foodLog(payload) = pendingAction?.kind {
+                    let day = CoachChatIntent.resolvedChatFoodHelmDay(
+                        userText: text,
+                        payloadDay: payload.helmDay,
+                        nutritionTabVisible: AppTabRouter.shared.selectedTab == .nutrition,
+                        viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
+                    )
+                    pendingAction = CoachChatActionParser.proposal(
+                        fromFoodLog: payload.replacingHelmDay(day.formatted)
+                    )
+                }
                 pendingChatAction = pendingAction
             }
 
             var storedText = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
-            if let chart = chartPayload(from: assembledTurn, original: querySource) {
+            let chart = chartPayload(from: assembledTurn, original: querySource)
+            if let chart {
                 storedText = CoachChatChartStitcher.appending(chart, to: storedText)
             }
             let userFacingText = CoachChatDisplayText.assistantText(
                 from: storedText,
                 pendingAction: pendingAction
             )
-            let hasChart = ChartPayloadParser.parse(from: storedText) != nil
+            let hasChart = chart != nil || ChartPayloadParser.parse(from: storedText) != nil
+            let navigate = navigatePayload(from: assembledTurn, original: querySource)
+                ?? CoachChatIntent.inferredNavigateTab(from: text).map { NavigatePayload(tab: $0) }
 
             guard !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || pendingAction != nil
                 || pendingFoodMealConfirm != nil
                 || hasChart
+                || navigate != nil
             else {
                 throw CoachStructuredOutputError.emptyResponse
             }
@@ -775,9 +815,7 @@ final class ChatController {
                 messages.append(assistantMessage)
             }
 
-            presentOrDeferNavigate(
-                navigatePayload(from: assembledTurn, original: querySource)
-            )
+            presentOrDeferNavigate(navigate)
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clearTurnState()
 
@@ -862,7 +900,9 @@ final class ChatController {
             selectedTab: AppTabRouter.shared.selectedTab.coachSurfaceLabel,
             sessionStatus: session?.session.status.rawValue ?? "none",
             sessionTitle: session?.session.title,
-            viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
+            viewedNutritionDay: AppTabRouter.shared.selectedTab == .nutrition
+                ? NutritionBootstrap.lastViewedHelmDay?.formatted
+                : nil
         )
     }
 
@@ -873,6 +913,13 @@ final class ChatController {
         var isEmpty: Bool {
             text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && functionCalls.isEmpty
         }
+    }
+
+    private func keepIfFollowUpEmpty(
+        _ current: AssembledCoachTurn,
+        next: AssembledCoachTurn
+    ) -> AssembledCoachTurn {
+        next.isEmpty ? current : next
     }
 
     private func catalogQuery<Payload>(

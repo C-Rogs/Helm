@@ -25,6 +25,7 @@ public struct ExerciseSeedImporter: Sendable {
 
     public func importIfNeeded(
         manifestURL: URL,
+        catalogURL: URL? = nil,
         manifestData: Data? = nil
     ) throws -> ExerciseSeedImportResult {
         let data = try manifestData ?? Data(contentsOf: manifestURL)
@@ -40,7 +41,8 @@ public struct ExerciseSeedImporter: Sendable {
 
         let resolved = try ExerciseSeedLoader.resolveEntries(
             manifest: manifest,
-            manifestDirectory: manifestURL.deletingLastPathComponent()
+            manifestDirectory: manifestURL.deletingLastPathComponent(),
+            catalogURL: catalogURL
         )
         let importedCount = try importEntries(
             resolved.entries,

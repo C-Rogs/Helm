@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// Lightweight heuristics for chat tool loops (no separate classifier model).
@@ -427,6 +428,101 @@ public enum CoachChatIntent: Sendable {
         guard looksLikeSessionAdjustment(text) else { return false }
         if sessionIsLive { return true }
         return looksLikeTodaySessionChange(text)
+    }
+
+    /// Day named in the athlete's message. Nil means they did not name a day.
+    public static func namedHelmDay(
+        in text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay? {
+        let lower = text.lowercased()
+        if lower.contains("yesterday") {
+            guard let date = calendar.date(byAdding: .day, value: -1, to: now) else { return nil }
+            return HelmDay.day(for: date, calendar: calendar)
+        }
+        let todayCues = [" today", "today ", "today,", "this morning", "this afternoon", "tonight"]
+        if todayCues.contains(where: { lower.contains($0) }) || lower == "today" || lower.hasPrefix("today ") {
+            return HelmDay.day(for: now, calendar: calendar)
+        }
+        let weekdays: [(String, Int)] = [
+            ("sunday", 1), ("monday", 2), ("tuesday", 3), ("wednesday", 4),
+            ("thursday", 5), ("friday", 6), ("saturday", 7)
+        ]
+        for (name, weekday) in weekdays where lower.contains(name) {
+            let todayWeekday = calendar.component(.weekday, from: now)
+            var delta = weekday - todayWeekday
+            if delta > 0 { delta -= 7 }
+            guard let date = calendar.date(byAdding: .day, value: delta, to: now) else { return nil }
+            return HelmDay.day(for: date, calendar: calendar)
+        }
+        return nil
+    }
+
+    /// Chat food logs ignore a hidden Nutrition diary day unless the athlete named a date.
+    public static func resolvedChatFoodHelmDay(
+        userText: String,
+        payloadDay: String?,
+        nutritionTabVisible: Bool,
+        viewedNutritionDay: String? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay {
+        if let named = namedHelmDay(in: userText, now: now, calendar: calendar) {
+            return named
+        }
+        if nutritionTabVisible {
+            if let payloadDay, let parsed = parseHelmDay(payloadDay) {
+                return parsed
+            }
+            if let viewedNutritionDay, let parsed = parseHelmDay(viewedNutritionDay) {
+                return parsed
+            }
+        }
+        return HelmDay.day(for: now, calendar: calendar)
+    }
+
+    public static func inferredNavigateTab(from text: String) -> String? {
+        let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.contains("open train")
+            || lower.contains("go to train")
+            || lower.contains("switch to train")
+            || lower.contains("take me to train") {
+            return "train"
+        }
+        if lower.contains("open nutrition")
+            || lower.contains("go to nutrition")
+            || lower.contains("open diary")
+            || lower.contains("open the diary")
+            || (lower.contains("food log") && lower.hasPrefix("open")) {
+            return "nutrition"
+        }
+        if lower.hasPrefix("open"),
+           lower.contains("snack")
+            || lower.contains("meal i just")
+            || lower.contains("entry i just")
+            || lower.contains("entry of") {
+            return "nutrition"
+        }
+        if lower.contains("open dashboard") || lower.contains("go to dashboard") {
+            return "dashboard"
+        }
+        if lower.contains("open settings") || lower.contains("go to settings") {
+            return "settings"
+        }
+        if lower.contains("open chat") { return "chat" }
+        return nil
+    }
+
+    private static func parseHelmDay(_ raw: String) -> HelmDay? {
+        let parts = raw.split(separator: "-").map(String.init)
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]) else {
+            return nil
+        }
+        return HelmDay(year: year, month: month, day: day)
     }
 
     private static func looksLikePlanLevelChange(_ lower: String) -> Bool {

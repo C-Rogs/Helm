@@ -1,4 +1,5 @@
 import CoachLLM
+import Core
 import Testing
 
 @Suite("CoachChatIntent")
@@ -71,6 +72,48 @@ struct CoachChatIntentTests {
             "Swap bench for incline on today's session",
             sessionIsLive: false
         ))
+    }
+
+    @Test("chat food day ignores hidden nutrition diary unless the athlete named a date")
+    func chatFoodDayIgnoresHiddenNutritionDay() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: "Europe/London")!
+        let friday = calendar.date(from: DateComponents(year: 2026, month: 8, day: 28))!
+        let thursday = HelmDay(year: 2026, month: 8, day: 27)
+        let unnamed = CoachChatIntent.resolvedChatFoodHelmDay(
+            userText: "log 400 calories of chicken",
+            payloadDay: thursday.formatted,
+            nutritionTabVisible: false,
+            viewedNutritionDay: thursday.formatted,
+            now: friday,
+            calendar: calendar
+        )
+        #expect(unnamed == HelmDay.day(for: friday, calendar: calendar))
+
+        let named = CoachChatIntent.resolvedChatFoodHelmDay(
+            userText: "log 400 calories of chicken yesterday",
+            payloadDay: nil,
+            nutritionTabVisible: false,
+            now: friday,
+            calendar: calendar
+        )
+        #expect(named == thursday)
+
+        let onNutrition = CoachChatIntent.resolvedChatFoodHelmDay(
+            userText: "log 400 calories of chicken",
+            payloadDay: thursday.formatted,
+            nutritionTabVisible: true,
+            now: friday,
+            calendar: calendar
+        )
+        #expect(onNutrition == thursday)
+    }
+
+    @Test("open train and open snack entry infer navigate tabs")
+    func infersNavigateTab() {
+        #expect(CoachChatIntent.inferredNavigateTab(from: "Open train") == "train")
+        #expect(CoachChatIntent.inferredNavigateTab(from: "open the entry of the snack I just logged") == "nutrition")
+        #expect(CoachChatIntent.inferredNavigateTab(from: "I am open to swapping bench") == nil)
     }
 
     @Test("looksLikeNutritionLookup does not match unrelated phrases")

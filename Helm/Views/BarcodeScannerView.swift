@@ -68,14 +68,20 @@ private final class BarcodeScannerViewController: UIViewController {
     var onError: ((String) -> Void)?
 
     private let session = AVCaptureSession()
+    private let sessionQueue = DispatchQueue(label: "helm.barcode.session")
     private let metadataDelegate = BarcodeMetadataDelegate()
     private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var isConfigured = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
         view.backgroundColor = .black
         metadataDelegate.onBarcode = { [weak self] barcode in
-            self?.session.stopRunning()
+            self?.sessionQueue.async {
+                if self?.session.isRunning == true {
+                    self?.session.stopRunning()
+                }
+            }
             self?.onBarcode?(barcode)
         }
         configureSession()
@@ -88,8 +94,10 @@ private final class BarcodeScannerViewController: UIViewController {
 
     override func viewWillDisappear(_ animated: Bool) {
         super.viewWillDisappear(animated)
-        if session.isRunning {
-            session.stopRunning()
+        sessionQueue.async { [session] in
+            if session.isRunning {
+                session.stopRunning()
+            }
         }
     }
 
@@ -120,31 +128,54 @@ private final class BarcodeScannerViewController: UIViewController {
             return
         }
 
-        session.beginConfiguration()
-        defer { session.commitConfiguration() }
+        sessionQueue.async { [weak self] in
+            guard let self else { return }
+            if self.isConfigured {
+                self.startRunningIfNeeded()
+                return
+            }
 
-        guard session.canAddInput(input) else {
-            onError?("Could not start the camera.")
-            return
+            self.session.beginConfiguration()
+            guard self.session.canAddInput(input) else {
+                self.session.commitConfiguration()
+                DispatchQueue.main.async {
+                    self.onError?("Could not start the camera.")
+                }
+                return
+            }
+            self.session.addInput(input)
+
+            let output = AVCaptureMetadataOutput()
+            guard self.session.canAddOutput(output) else {
+                self.session.commitConfiguration()
+                DispatchQueue.main.async {
+                    self.onError?("Could not start the barcode reader.")
+                }
+                return
+            }
+            self.session.addOutput(output)
+            output.setMetadataObjectsDelegate(self.metadataDelegate, queue: DispatchQueue.main)
+            output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39, .qr]
+            self.session.commitConfiguration()
+            self.isConfigured = true
+
+            DispatchQueue.main.async {
+                let preview = AVCaptureVideoPreviewLayer(session: self.session)
+                preview.videoGravity = .resizeAspectFill
+                preview.frame = self.view.layer.bounds
+                self.view.layer.addSublayer(preview)
+                self.previewLayer = preview
+            }
+
+            self.startRunningIfNeeded()
         }
-        session.addInput(input)
+    }
 
-        let output = AVCaptureMetadataOutput()
-        guard session.canAddOutput(output) else {
-            onError?("Could not start the barcode reader.")
-            return
+    private func startRunningIfNeeded() {
+        sessionQueue.async { [session] in
+            guard !session.isRunning else { return }
+            session.startRunning()
         }
-        session.addOutput(output)
-        output.setMetadataObjectsDelegate(metadataDelegate, queue: DispatchQueue.main)
-        output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39, .qr]
-
-        let preview = AVCaptureVideoPreviewLayer(session: session)
-        preview.videoGravity = .resizeAspectFill
-        preview.frame = view.layer.bounds
-        view.layer.addSublayer(preview)
-        previewLayer = preview
-
-        session.startRunning()
     }
 }
 

@@ -37,7 +37,7 @@ private enum ExercisePickerCategory: String, CaseIterable, Identifiable, Sendabl
         case .legs: "figure.strengthtraining.functional"
         case .shoulders: "figure.boxing"
         case .biceps: "figure.arms.open"
-        case .triceps: "figure.arms.above.head"
+        case .triceps: "figure.strengthtraining.traditional"
         case .abs: "figure.core.training"
         case .olympic: "figure.highintensity.intervaltraining"
         case .fullBody: "figure.mixed.cardio"

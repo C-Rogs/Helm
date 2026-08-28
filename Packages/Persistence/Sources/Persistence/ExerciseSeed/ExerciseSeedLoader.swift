@@ -1,10 +1,21 @@
 import Foundation
 
 public enum ExerciseSeedLoader {
-    public enum LoaderError: Error, Equatable {
+    public enum LoaderError: Error, Equatable, LocalizedError {
         case missingManifest
         case missingCatalog(resource: String)
         case invalidManifest(String)
+
+        public var errorDescription: String? {
+            switch self {
+            case .missingManifest:
+                "Exercise seed manifest is missing from the app bundle."
+            case let .missingCatalog(resource):
+                "Exercise catalog \(resource).json is missing from the app bundle."
+            case let .invalidManifest(detail):
+                "Exercise seed manifest is invalid (\(detail))."
+            }
+        }
     }
 
     public static func loadManifest(from url: URL) throws -> ExerciseSeedDocument {
@@ -22,17 +33,18 @@ public enum ExerciseSeedLoader {
 
     public static func resolveEntries(
         manifest: ExerciseSeedDocument,
-        manifestDirectory: URL
+        manifestDirectory: URL,
+        catalogURL: URL? = nil
     ) throws -> ResolvedExerciseSeed {
         let catalogEntries: [ExerciseSeedEntry]
         if let resource = manifest.catalogResource {
-            let catalogURL = manifestDirectory
+            let resolvedCatalogURL = catalogURL ?? manifestDirectory
                 .appendingPathComponent(resource)
                 .appendingPathExtension("json")
-            guard FileManager.default.fileExists(atPath: catalogURL.path) else {
+            guard FileManager.default.fileExists(atPath: resolvedCatalogURL.path) else {
                 throw LoaderError.missingCatalog(resource: resource)
             }
-            let data = try Data(contentsOf: catalogURL)
+            let data = try Data(contentsOf: resolvedCatalogURL)
             let records = try FreeExerciseCatalogSupport.decodeCatalog(from: data)
             catalogEntries = ExerciseSeedCatalogMapper.mapCatalogRecords(records)
         } else {

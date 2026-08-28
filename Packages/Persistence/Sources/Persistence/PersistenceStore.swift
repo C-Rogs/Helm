@@ -87,8 +87,14 @@ public actor PersistenceStore {
         try ExerciseSeedImporter(pool: pool).appliedSeedVersion()
     }
 
-    public func importExerciseSeedIfNeeded(manifestURL: URL) throws -> ExerciseSeedImportResult {
-        try ExerciseSeedImporter(pool: pool).importIfNeeded(manifestURL: manifestURL)
+    public func importExerciseSeedIfNeeded(
+        manifestURL: URL,
+        catalogURL: URL? = nil
+    ) throws -> ExerciseSeedImportResult {
+        try ExerciseSeedImporter(pool: pool).importIfNeeded(
+            manifestURL: manifestURL,
+            catalogURL: catalogURL
+        )
     }
 
     public func checkpoint() throws {
