@@ -40,7 +40,10 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         return .available
     }
 
-    public func prewarm() async {}
+    public func prewarm() async {
+        guard let key = try? apiKeyStore.load(kind: .gemini), !key.isEmpty else { return }
+        await httpClient.prewarm()
+    }
 
     public func resetThread() async {}
 

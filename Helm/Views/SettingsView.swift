@@ -12,6 +12,8 @@ struct SettingsView: View {
     @Bindable private var focusModePreferences = FocusModePreferences.shared
     @Bindable private var festivalModePreferences = FestivalModePreferences.shared
 
+    @Environment(\.scenePhase) private var scenePhase
+
     @State private var healthStatusLabel = "…"
     @State private var notificationStatusLabel = "…"
     @State private var restNotificationNeedsPermission = false
@@ -20,32 +22,203 @@ struct SettingsView: View {
     @State private var calendarStatusLabel = "…"
     @State private var watchStatusLabel = "…"
     @State private var spotifyStatusLabel = "…"
+    @State private var showPlanBuilder = false
 
     var body: some View {
         NavigationStack {
             List {
-                appearanceSection
-                batterySection
-                feedbackSection
-                trainSoundsSection
                 trainingSection
+                nutritionSection
                 coachSection
                 connectionsSection
+                notificationsSection
+                trainSessionSection
+                restTimerSection
+                appearanceSection
+                batterySection
                 dataSection
                 advancedSection
             }
             .helmSettingsListChrome()
             .navigationTitle("Settings")
+            .sheet(isPresented: $showPlanBuilder) {
+                PlanBuilderFlowView()
+            }
             .task {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
-                guard !Task.isCancelled else { return }
-                await refreshStatusSummaries()
+            }
+            .onAppear {
+                Task { await refreshStatusSummaries() }
+            }
+            .onChange(of: scenePhase) { _, phase in
+                guard phase == .active else { return }
+                Task { await refreshStatusSummaries() }
             }
         }
     }
 
+    private var trainingSection: some View {
+        Section("Training") {
+            settingsSheetButton("New workout plan") {
+                showPlanBuilder = true
+            }
+            settingsLink("Training Plan", value: nil) {
+                PhaseGoalSettingsView()
+            }
+            settingsLink("Body Profile", value: nil) {
+                BodyProfileSettingsView()
+            }
+            settingsLink("Custom Exercises", value: nil) {
+                SettingsCustomExercisesView()
+            }
+            settingsLink("Sources & Methodology", value: nil) {
+                SourcesMethodologyView()
+            }
+        }
+    }
+
+    private var nutritionSection: some View {
+        Section {
+            settingsLink("Nutrition", value: nil) {
+                NutritionSettingsView()
+            }
+        } header: {
+            Text("Nutrition")
+                .accessibilityLabel("Nutrition section")
+        }
+    }
+
+    private var coachSection: some View {
+        Section("Coach") {
+            settingsLink("Coach settings", value: coachKeyStatusLabel) {
+                CoachSettingsView()
+            }
+            settingsLink("Coach Memory", value: memoryStatusLabel) {
+                MemoryProfileEditorView()
+            }
+        }
+    }
+
+    private var connectionsSection: some View {
+        Section("Connections") {
+            settingsLink("Apple Health", value: healthStatusLabel) {
+                AppleHealthSettingsView()
+            }
+            settingsLink("Spotify", value: spotifyStatusLabel) {
+                SpotifySettingsView()
+            }
+            settingsLink("Calendar Hints", value: calendarStatusLabel) {
+                CalendarHintStatusView()
+            }
+            settingsLink("Watch Sync", value: watchStatusLabel) {
+                WatchSyncStatusView()
+            }
+        }
+    }
+
+    private var notificationsSection: some View {
+        Section {
+            settingsLink("Notifications", value: notificationStatusLabel) {
+                NotificationsSettingsView()
+            }
+        } header: {
+            Text("Notifications")
+                .accessibilityLabel("Notifications section")
+        }
+    }
+
+    private var trainSessionSection: some View {
+        Section {
+            Toggle("Focus mode", isOn: $focusModePreferences.isFocusModeEnabled)
+                .helmListRowChrome()
+                .onChange(of: focusModePreferences.isFocusModeEnabled) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+
+            Toggle("Manual rest timer", isOn: $trainPreferences.manualRestTimerEnabled)
+                .helmListRowChrome()
+                .onChange(of: trainPreferences.manualRestTimerEnabled) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+
+            Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
+                .helmListRowChrome()
+                .onChange(of: trainPreferences.workoutFeedbackEnabled) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+
+            Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
+                .helmListRowChrome()
+                .onChange(of: coordinator.hapticsEnabled) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+
+            Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
+                .helmListRowChrome()
+                .disabled(!coordinator.hapticsEnabled)
+                .onChange(of: coordinator.thresholdInsightHapticsEnabled) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
+        } header: {
+            Text("Session")
+        } footer: {
+            Text("Focus dimming hits set and meal rows while you log. Manual rest is a timer pill on the coach bar. Workout feedback is in-session confirmation sounds and cues. Threshold insights surface on the Dashboard when a readiness contributor crosses a baseline.")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+    }
+
+    private var restTimerSection: some View {
+        Section {
+            Picker("Rest timer sound", selection: $trainPreferences.restTimerSoundID) {
+                ForEach(RestTimerSoundID.allCases) { sound in
+                    Text(sound.label).tag(sound)
+                }
+            }
+            .helmListRowChrome()
+            .onChange(of: trainPreferences.restTimerSoundID) { _, newValue in
+                guard trainPreferences.restTimerVolume.isEnabled else { return }
+                previewRestTimerSound(soundID: newValue)
+            }
+
+            Picker("Rest timer volume", selection: $trainPreferences.restTimerVolume) {
+                ForEach(RestTimerVolumeLevel.allCases) { level in
+                    Text(level.label).tag(level)
+                }
+            }
+            .helmListRowChrome()
+            .onChange(of: trainPreferences.restTimerVolume) { _, newValue in
+                HapticEngine.shared.play(.selection)
+                if newValue.isEnabled {
+                    previewRestTimerSound(volume: newValue)
+                }
+            }
+
+            Button {
+                previewRestTimerSound()
+            } label: {
+                Label("Preview sound", systemImage: "speaker.wave.2")
+            }
+            .helmListRowChrome()
+
+            if restNotificationNeedsPermission {
+                Button {
+                    Task { await enableRestNotifications() }
+                } label: {
+                    Label("Enable notifications for rest alerts", systemImage: "bell.slash")
+                }
+                .helmListRowChrome()
+                .foregroundStyle(HelmColor.destructive)
+            }
+        } header: {
+            Text("Rest timer")
+        } footer: {
+            Text("Rings on speaker and headphones when rest ends, in app or with Helm in the background, and ignores the Silent switch. A notification is the backstop if iOS shuts Helm down first, so keep notifications enabled.")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+    }
+
     private var appearanceSection: some View {
-        Section("Appearance") {
+        Section {
             Picker("Theme", selection: $coordinator.themeMode) {
                 ForEach(HelmThemeMode.allCases) { mode in
                     Text(mode.label).tag(mode)
@@ -77,27 +250,11 @@ struct SettingsView: View {
             .onChange(of: coordinator.prefersSystemFonts) { _, _ in
                 HapticEngine.shared.play(.selection)
             }
-
-            HelmRuledRow {
-                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                    Text("Layout preview")
-                        .helmType(.label)
-                    Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-            }
-            .listRowInsets(EdgeInsets())
-            .listRowBackground(Color.clear)
-
-            Toggle("Focus mode", isOn: $focusModePreferences.isFocusModeEnabled)
-                .helmListRowChrome()
-                .onChange(of: focusModePreferences.isFocusModeEnabled) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-
-            Text("Dims inactive set and meal rows while you log, so the active entry stays front and center.")
+        } header: {
+            Text("Appearance")
+        } footer: {
+            Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
                 .helmType(.body, color: HelmColor.fgMuted)
-                .helmListRowChrome()
         }
     }
 
@@ -109,155 +266,18 @@ struct SettingsView: View {
                     HapticEngine.shared.play(.selection)
                     Task {
                         await HealthKitBootstrap.setHealthKitObserving(!newValue)
-                    }
-                    if newValue {
-                        Task { await ProactiveBootstrap.cancelAllScheduled() }
-                    } else {
-                        Task { await ProactiveBootstrap.refreshScheduling() }
+                        if newValue {
+                            await ProactiveBootstrap.cancelAllScheduled()
+                        } else {
+                            await ProactiveBootstrap.refreshScheduling()
+                        }
                     }
                 }
         } header: {
             Text("Battery")
         } footer: {
-            Text("Festival mode pauses HealthKit background observers, Watch readiness pushes, and proactive notifications so Helm draws near-zero idle power. Leave it on when you don't need workout or health tracking — nutrition logging still works from the Nutrition tab.")
+            Text("Festival mode pauses HealthKit background observers, Watch readiness pushes, and proactive notifications so Helm draws near-zero idle power. Leave it on when you don't need workout or health tracking. Nutrition logging still works from the Nutrition tab.")
                 .helmType(.body, color: HelmColor.fgMuted)
-        }
-    }
-
-    private var feedbackSection: some View {
-        Section {
-            Toggle("Haptics", isOn: $coordinator.hapticsEnabled)
-                .helmListRowChrome()
-                .onChange(of: coordinator.hapticsEnabled) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-            Toggle("Threshold insight haptics", isOn: $coordinator.thresholdInsightHapticsEnabled)
-                .helmListRowChrome()
-                .onChange(of: coordinator.thresholdInsightHapticsEnabled) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-            Toggle("Workout feedback", isOn: $trainPreferences.workoutFeedbackEnabled)
-                .helmListRowChrome()
-                .onChange(of: trainPreferences.workoutFeedbackEnabled) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-        } header: {
-            Text("Feedback")
-        } footer: {
-            Text("Threshold insights surface on the Dashboard when a readiness contributor crosses a baseline. Workout feedback covers in-session confirmation sounds and cues.")
-                .helmType(.body, color: HelmColor.fgMuted)
-        }
-    }
-
-    private var trainSoundsSection: some View {
-        Section("Train sounds") {
-            Picker("Rest timer sound", selection: $trainPreferences.restTimerSoundID) {
-                ForEach(RestTimerSoundID.allCases) { sound in
-                    Text(sound.label).tag(sound)
-                }
-            }
-            .helmListRowChrome()
-            .onChange(of: trainPreferences.restTimerSoundID) { _, newValue in
-                previewRestTimerSound(soundID: newValue)
-            }
-
-            Picker("Rest timer volume", selection: $trainPreferences.restTimerVolume) {
-                ForEach(RestTimerVolumeLevel.allCases) { level in
-                    Text(level.label).tag(level)
-                }
-            }
-            .helmListRowChrome()
-            .onChange(of: trainPreferences.restTimerVolume) { _, newValue in
-                HapticEngine.shared.play(.selection)
-                if newValue.isEnabled {
-                    previewRestTimerSound(volume: newValue)
-                }
-            }
-
-            Button {
-                previewRestTimerSound()
-            } label: {
-                Label("Preview sound", systemImage: "speaker.wave.2")
-            }
-            .helmListRowChrome()
-
-            Text("Rings on speaker and headphones when rest ends, in app or with Helm in the background, and ignores the Silent switch. A notification is the backstop if iOS shuts Helm down first, so keep notifications enabled.")
-                .helmType(.body, color: HelmColor.fgMuted)
-                .helmListRowChrome()
-
-            if restNotificationNeedsPermission {
-                Button {
-                    Task { await enableRestNotifications() }
-                } label: {
-                    Label("Enable notifications for rest alerts", systemImage: "bell.slash")
-                }
-                .helmListRowChrome()
-                .foregroundStyle(HelmColor.destructive)
-            }
-        }
-    }
-
-    private var trainingSection: some View {
-        Section("Training & Nutrition") {
-            Toggle("Manual rest timer", isOn: $trainPreferences.manualRestTimerEnabled)
-                .helmListRowChrome()
-                .onChange(of: trainPreferences.manualRestTimerEnabled) { _, _ in
-                    HapticEngine.shared.play(.selection)
-                }
-
-            Text("Shows a timer pill on the coach bar during workouts for starting a custom rest countdown.")
-                .helmType(.body, color: HelmColor.fgMuted)
-                .helmListRowChrome()
-
-            settingsLink("Body Profile", value: nil) {
-                BodyProfileSettingsView()
-            }
-            settingsLink("Plan Builder", value: "Coach-drafted plan options") {
-                PlanBuilderFlowView()
-            }
-            settingsLink("Training Plan", value: nil) {
-                PhaseGoalSettingsView()
-            }
-            settingsLink("Nutrition", value: nil) {
-                NutritionSettingsView()
-            }
-            settingsLink("Custom Exercises", value: nil) {
-                SettingsCustomExercisesView()
-            }
-            settingsLink("Sources & Methodology", value: nil) {
-                SourcesMethodologyView()
-            }
-        }
-    }
-
-    private var coachSection: some View {
-        Section("Coach") {
-            settingsLink("Coach settings", value: coachKeyStatusLabel) {
-                CoachSettingsView()
-            }
-            settingsLink("Coach Memory", value: memoryStatusLabel) {
-                MemoryProfileEditorView()
-            }
-            settingsLink("Notifications", value: notificationStatusLabel) {
-                NotificationsSettingsView()
-            }
-        }
-    }
-
-    private var connectionsSection: some View {
-        Section("Connections") {
-            settingsLink("Apple Health", value: healthStatusLabel) {
-                AppleHealthSettingsView()
-            }
-            settingsLink("Spotify", value: spotifyStatusLabel) {
-                SpotifySettingsView()
-            }
-            settingsLink("Calendar Hints", value: calendarStatusLabel) {
-                CalendarHintStatusView()
-            }
-            settingsLink("Watch Sync", value: watchStatusLabel) {
-                WatchSyncStatusView()
-            }
         }
     }
 
@@ -266,14 +286,14 @@ struct SettingsView: View {
             settingsLink("Data & Backup", value: nil) {
                 DataSafetyView()
             }
+            settingsLink("Export health data", value: nil) {
+                SchemaV2ExportView()
+            }
         }
     }
 
     private var advancedSection: some View {
         Section("Advanced") {
-            settingsLink("Export health data", value: nil) {
-                SchemaV2ExportView()
-            }
             settingsLink("Diagnostics", value: nil) {
                 DiagnosticsView(environment: ExportEnvironmentFactory.current(
                     schemaVersion: PersistenceBootstrap.schemaVersion
@@ -291,6 +311,22 @@ struct SettingsView: View {
             }
             #endif
         }
+    }
+
+    private func settingsSheetButton(_ title: String, action: @escaping () -> Void) -> some View {
+        Button {
+            HapticEngine.shared.play(.selection)
+            action()
+        } label: {
+            HStack {
+                Text(title)
+                Spacer(minLength: HelmSpacing.sm)
+                HelmIconView(.chevronRight, context: .inline)
+                    .foregroundStyle(HelmColor.fgMuted)
+            }
+        }
+        .foregroundStyle(HelmColor.fg)
+        .helmListRowChrome()
     }
 
     private func settingsLink<Destination: View>(

@@ -34,6 +34,14 @@ struct ChartPayloadTests {
         #expect(display == "Weekly hard sets.")
     }
 
+    @Test("persisted assistant text keeps chart JSON")
+    func persistedTextKeepsChartJSON() throws {
+        let block = #"{"schemaVersion":"chart.v1","reply":"Hard sets.","title":"Hard sets","unit":"sets","points":[{"label":"Mon","value":12}]}"#
+        let persisted = CoachChatPersistedAssistantText.make(assembled: block)
+        #expect(ChartPayloadParser.parse(from: persisted) != nil)
+        #expect(CoachChatTextFormatter.userFacingText(from: persisted) == "Hard sets.")
+    }
+
     @Test("chart bubble snapshot is byte-stable")
     func chartBubbleSnapshot() throws {
         let json = try fixtureText(named: "chart_v1")

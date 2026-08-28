@@ -122,6 +122,7 @@ final class TrainSessionController {
     private let trainPreferences: TrainPreferences
 
     private var sessionPersonalRecordKeys: Set<String> = []
+    private var metadataRefreshGeneration = 0
     private var lastEncouragementGlyph: EncouragementGlyph?
     private var sessionNoteSaveTask: Task<Void, Never>?
     private var coachMessageTask: Task<Void, Never>?
@@ -814,7 +815,7 @@ final class TrainSessionController {
 
             let exerciseID = exerciseID(for: sessionExerciseID)
             let completedSet = findSet(setID: setID) ?? refreshedSet
-            let personalRecords = registerPersonalRecords(
+            let personalRecords = await registerPersonalRecords(
                 for: completedSet,
                 exerciseID: exerciseID,
                 setID: setID
@@ -2400,6 +2401,12 @@ final class TrainSessionController {
         case light
     }
 
+    private struct SessionMetadataPack: Sendable {
+        var summaries: [String: ExerciseSummary]
+        var previous: [String: PreviousPerformance]
+        var bestE1RM: [String: Mass]
+    }
+
     private func refreshMetadata(scope: MetadataRefreshScope = .full) async {
         guard let snapshot = store.snapshot else {
             exerciseSummaries = [:]
@@ -2422,61 +2429,155 @@ final class TrainSessionController {
             exerciseTargets = [:]
         }
 
-        if scope == .full {
-            var summaries: [String: ExerciseSummary] = [:]
-            var previous: [String: PreviousPerformance] = [:]
-            var bestE1RM: [String: Mass] = [:]
+        metadataRefreshGeneration += 1
+        let generation = metadataRefreshGeneration
+        let sessionID = snapshot.session.id
+        let exercises = snapshot.session.exercises
+        let workoutSessions = persistence.workoutSessions
+        let exerciseRepo = persistence.exercises
+        let existingSummaries = exerciseSummaries
+        let existingE1RM = historicalBestE1RM
 
-            for exercise in snapshot.session.exercises {
-                if summaries[exercise.exerciseID] == nil,
-                   let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
-                    summaries[exercise.exerciseID] = summary
-                }
-
-                if bestE1RM[exercise.exerciseID] == nil,
-                   let e1rm = try? persistence.workoutSessions.estimatedOneRM(
-                    exerciseID: exercise.exerciseID,
-                    excludingSessionID: snapshot.session.id
-                   ) {
-                    bestE1RM[exercise.exerciseID] = e1rm
-                }
-
-                for set in exercise.sets {
-                    let key = previousKey(exerciseID: exercise.exerciseID, setIndex: set.setIndex, setType: set.setType)
-                    if previous[key] == nil,
-                       let perf = try? persistence.workoutSessions.previousPerformance(
-                        exerciseID: exercise.exerciseID,
-                        setIndex: set.setIndex,
-                        setType: set.setType,
-                        excludingSessionID: snapshot.session.id
-                       ) {
-                        previous[key] = perf
-                    }
-                }
+        let pack = await Task.detached(priority: .userInitiated) { () -> SessionMetadataPack in
+            switch scope {
+            case .full:
+                return Self.buildFullSessionMetadata(
+                    exercises: exercises,
+                    sessionID: sessionID,
+                    workoutSessions: workoutSessions,
+                    exerciseRepo: exerciseRepo
+                )
+            case .light:
+                return Self.buildLightSessionMetadata(
+                    exercises: exercises,
+                    sessionID: sessionID,
+                    workoutSessions: workoutSessions,
+                    exerciseRepo: exerciseRepo,
+                    existingSummaries: existingSummaries,
+                    existingE1RM: existingE1RM
+                )
             }
+        }.value
 
-            exerciseSummaries = summaries
-            previousPerformance = previous
-            historicalBestE1RM = bestE1RM
+        guard generation == metadataRefreshGeneration else { return }
+
+        if scope == .full {
+            exerciseSummaries = pack.summaries
+            previousPerformance = pack.previous
+            historicalBestE1RM = pack.bestE1RM
             syncSessionNoteFromSnapshot()
         } else {
-            for exercise in snapshot.session.exercises where exerciseSummaries[exercise.exerciseID] == nil {
-                if let summary = try? persistence.exercises.fetchSummary(id: exercise.exerciseID) {
-                    exerciseSummaries[exercise.exerciseID] = summary
-                }
-            }
-            for exercise in snapshot.session.exercises where historicalBestE1RM[exercise.exerciseID] == nil {
-                if let e1rm = try? persistence.workoutSessions.estimatedOneRM(
-                    exerciseID: exercise.exerciseID,
-                    excludingSessionID: snapshot.session.id
-                ) {
-                    historicalBestE1RM[exercise.exerciseID] = e1rm
-                }
-            }
+            exerciseSummaries = pack.summaries
+            historicalBestE1RM = pack.bestE1RM
         }
 
         pushWatchCompanionState()
         syncRestTimerMonitor()
+    }
+
+    private nonisolated static func previousMetadataKey(
+        exerciseID: String,
+        setIndex: Int,
+        setType: SetType
+    ) -> String {
+        "\(exerciseID)|\(setIndex)|\(setType.rawValue)"
+    }
+
+    private nonisolated static func buildFullSessionMetadata(
+        exercises: [WorkoutSessionExerciseDraft],
+        sessionID: String,
+        workoutSessions: WorkoutSessionRepository,
+        exerciseRepo: ExerciseRepository
+    ) -> SessionMetadataPack {
+        let exerciseIDs = Array(Set(exercises.map(\.exerciseID)))
+        let summaries = (try? exerciseRepo.fetchSummaries(ids: exerciseIDs)) ?? [:]
+
+        var previous: [String: PreviousPerformance] = [:]
+        var bestE1RM: [String: Mass] = [:]
+        var targetsByExercise: [String: [(setIndex: Int, setType: SetType)]] = [:]
+        var seenKeys: Set<String> = []
+
+        for exercise in exercises {
+            var targets = targetsByExercise[exercise.exerciseID] ?? []
+            for set in exercise.sets {
+                let key = previousMetadataKey(
+                    exerciseID: exercise.exerciseID,
+                    setIndex: set.setIndex,
+                    setType: set.setType
+                )
+                guard seenKeys.insert(key).inserted else { continue }
+                targets.append((set.setIndex, set.setType))
+            }
+            targetsByExercise[exercise.exerciseID] = targets
+        }
+
+        for exerciseID in exerciseIDs {
+            if let e1rm = try? workoutSessions.estimatedOneRM(
+                exerciseID: exerciseID,
+                excludingSessionID: sessionID
+            ) {
+                bestE1RM[exerciseID] = e1rm
+            }
+
+            let targets = targetsByExercise[exerciseID] ?? []
+            guard !targets.isEmpty else { continue }
+            let matches = (try? workoutSessions.previousPerformances(
+                exerciseID: exerciseID,
+                targets: targets,
+                excludingSessionID: sessionID
+            )) ?? []
+            for match in matches {
+                let key = previousMetadataKey(
+                    exerciseID: exerciseID,
+                    setIndex: match.setIndex,
+                    setType: match.setType
+                )
+                previous[key] = match.performance
+            }
+        }
+
+        return SessionMetadataPack(
+            summaries: summaries,
+            previous: previous,
+            bestE1RM: bestE1RM
+        )
+    }
+
+    private nonisolated static func buildLightSessionMetadata(
+        exercises: [WorkoutSessionExerciseDraft],
+        sessionID: String,
+        workoutSessions: WorkoutSessionRepository,
+        exerciseRepo: ExerciseRepository,
+        existingSummaries: [String: ExerciseSummary],
+        existingE1RM: [String: Mass]
+    ) -> SessionMetadataPack {
+        var summaries = existingSummaries
+        var bestE1RM = existingE1RM
+
+        let missingSummaryIDs = exercises
+            .map(\.exerciseID)
+            .filter { summaries[$0] == nil }
+        if !missingSummaryIDs.isEmpty {
+            let fetched = (try? exerciseRepo.fetchSummaries(ids: missingSummaryIDs)) ?? [:]
+            for (id, summary) in fetched {
+                summaries[id] = summary
+            }
+        }
+
+        for exercise in exercises where bestE1RM[exercise.exerciseID] == nil {
+            if let e1rm = try? workoutSessions.estimatedOneRM(
+                exerciseID: exercise.exerciseID,
+                excludingSessionID: sessionID
+            ) {
+                bestE1RM[exercise.exerciseID] = e1rm
+            }
+        }
+
+        return SessionMetadataPack(
+            summaries: summaries,
+            previous: [:],
+            bestE1RM: bestE1RM
+        )
     }
 
     private func findSet(setID: String) -> SetEntryDraft? {
@@ -2582,15 +2683,18 @@ final class TrainSessionController {
         for set: SetEntryDraft,
         exerciseID: String,
         setID: String
-    ) -> [DetectedPersonalRecord] {
+    ) async -> [DetectedPersonalRecord] {
         guard let sessionID = store.snapshot?.session.id else { return [] }
 
-        let detected = (try? PersonalRecordDetector.detectIncremental(
-            set: set,
-            exerciseID: exerciseID,
-            excludingSessionID: sessionID,
-            repository: persistence.workoutSessions
-        )) ?? []
+        let repository = persistence.workoutSessions
+        let detected = await Task.detached(priority: .userInitiated) {
+            (try? PersonalRecordDetector.detectIncremental(
+                set: set,
+                exerciseID: exerciseID,
+                excludingSessionID: sessionID,
+                repository: repository
+            )) ?? []
+        }.value
 
         let newRecords = detected.filter { record in
             let key = PersonalRecordHapticPolicy.stableKey(

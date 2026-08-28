@@ -1,5 +1,6 @@
 import Core
 import Foundation
+import Persistence
 import Testing
 @testable import HealthKitIngest
 

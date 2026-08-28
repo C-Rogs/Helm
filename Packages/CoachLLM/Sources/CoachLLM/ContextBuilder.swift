@@ -98,7 +98,7 @@ public enum ContextBuilder {
                 }
                 sections.append(lines.joined(separator: "\n\n"))
             } else {
-                sections.append("\(header)\n\(workouts)")
+                sections.append("# Recent Workouts\n\(workouts)")
             }
         }
 
@@ -178,7 +178,7 @@ public enum ContextBuilder {
                 }
                 sections.append(lines.joined(separator: "\n\n"))
             } else {
-                sections.append("\(header)\n\(workouts)")
+                sections.append("# Recent Workouts\n\(workouts)")
             }
         }
         let trainingPlan = normalized(days.trainingPlanSnapshot)

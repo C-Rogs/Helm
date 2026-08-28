@@ -21,6 +21,7 @@ struct PhaseGoalSettingsView: View {
     @State private var loadedSettings = StoredTrainingPlanSettings.default
     @State private var pendingReactiveDeload = false
     @State private var reactiveDeloadMessage: String?
+    @State private var showPlanBuilder = false
 
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
 
@@ -53,6 +54,9 @@ struct PhaseGoalSettingsView: View {
                 weeklyRateText = String(format: "%.2f", rate)
                 HapticEngine.shared.play(.selection)
             }
+        }
+        .sheet(isPresented: $showPlanBuilder) {
+            PlanBuilderFlowView()
         }
     }
 
@@ -107,6 +111,17 @@ struct PhaseGoalSettingsView: View {
             Text("Changing phase re-plans today's session and future volume targets. Weekly rate is optional; you can set it later in Settings.")
                 .font(HelmType.body.font)
                 .foregroundStyle(HelmColor.fgSecondary)
+        }
+
+        Section {
+            Button("New workout plan") {
+                HapticEngine.shared.play(.selection)
+                showPlanBuilder = true
+            }
+        } footer: {
+            Text("Rebuild days, volume, and session shape from an interview instead of editing phase fields here.")
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.fgMuted)
         }
 
         Section("Phase") {

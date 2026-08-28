@@ -1,4 +1,6 @@
 import CoachLLM
+import Core
+import Foundation
 import Testing
 
 @Suite("CoachChatIntent")
@@ -9,6 +11,16 @@ struct CoachChatIntentTests {
         #expect(!CoachChatIntent.looksLikeWorkoutStart("Make a full pull day workout"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Start the workout"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Yes let's go"))
+        #expect(CoachChatIntent.looksLikeWorkoutStart("Start a pull day with lat pulldown"))
+        #expect(CoachChatIntent.looksLikeWorkoutStart("Make a workout with just bicep curls and start"))
+        #expect(CoachChatIntent.looksLikeWorkoutStart("Start an example workout"))
+        #expect(CoachChatIntent.requiredWorkoutExerciseHint(from: "Start a pull day with lat pulldown") == "lat pulldown")
+        #expect(
+            CoachChatIntent.exerciseLabelsCoverHint(["Barbell Curl"], hint: "lat pulldown") == false
+        )
+        #expect(
+            CoachChatIntent.exerciseLabelsCoverHint(["Wide Grip Lat Pulldown"], hint: "lat pulldown")
+        )
         #expect(CoachChatIntent.clearsPendingWorkoutStart("How was my workout earlier"))
         #expect(!CoachChatIntent.clearsPendingWorkoutStart("Start the workout"))
     }
@@ -94,6 +106,52 @@ struct CoachChatIntentTests {
 
         let nilQuery = CoachChatIntent.inferredNutritionQuery(from: "log breakfast")
         #expect(nilQuery == nil)
+    }
+
+    @Test("chart and navigation intents from 28 Aug dump")
+    func chartAndNavigationIntents() {
+        #expect(CoachChatIntent.looksLikeChartRequest("Show me the sweetest Hard stes as a chart"))
+        #expect(CoachChatIntent.inferredChartKind(from: "Show me the sweetest Hard stes as a chart") == .hardSets)
+        #expect(CoachChatIntent.inferredChartKind(from: "Show this week calories as a chart") == .weeklyCalories)
+        #expect(CoachChatIntent.looksLikeOpenTrain("Open train"))
+        #expect(CoachChatIntent.looksLikeOpenNutrition("Open the entry of the snack I just locked"))
+        #expect(CoachChatIntent.looksLikeOpenNutrition("Navigate to chicken nutrition log yesterday"))
+        #expect(!CoachChatIntent.looksLikeOpenNutrition("Show this week calories as a chart"))
+    }
+
+    @Test("food log helm day follows athlete date cues")
+    func foodLogHelmDayCues() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let now = calendar.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 16))!
+        #expect(
+            CoachChatIntent.inferredHelmDay(
+                from: "Cheese on toast (log to lunch) for 2026-08-27",
+                now: now,
+                calendar: calendar
+            ) == HelmDay(year: 2026, month: 8, day: 27)
+        )
+        #expect(
+            CoachChatIntent.inferredHelmDay(
+                from: "Block 400 cow chickens for lunch",
+                now: now,
+                calendar: calendar
+            ) == nil
+        )
+        #expect(
+            CoachChatIntent.inferredHelmDay(
+                from: "I just had a naked fruit and nut bar log it",
+                now: now,
+                calendar: calendar
+            ) == nil
+        )
+        #expect(
+            CoachChatIntent.inferredHelmDay(
+                from: "log yesterday lunch",
+                now: now,
+                calendar: calendar
+            ) == HelmDay(year: 2026, month: 8, day: 27)
+        )
     }
 }
 

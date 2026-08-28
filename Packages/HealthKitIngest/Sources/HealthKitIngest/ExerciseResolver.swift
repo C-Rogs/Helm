@@ -55,8 +55,54 @@ public enum ExerciseResolver {
         "machine", "cable", "dumbbell", "db", "barbell", "bb", "rope", "smith", "band", "kettlebell", "kb",
     ]
 
+    static func isEquipmentOnlyPhrase(_ phrase: String) -> Bool {
+        let tokens = phraseTokens(phrase)
+        guard !tokens.isEmpty else { return false }
+        let equipment = Set(equipmentTokens.map(canonicalEquipment))
+        return tokens.isSubset(of: equipment)
+    }
+
+    static func pickEquipmentSibling(
+        of exerciseID: String,
+        equipmentPhrase: String,
+        context: Context,
+        persistence: PersistenceStore
+    ) -> String? {
+        guard isEquipmentOnlyPhrase(equipmentPhrase) else { return nil }
+        var excluded = context.excludedExerciseIDs
+        excluded.insert(exerciseID)
+        let siblingContext = Context(
+            sessionExerciseIDs: context.sessionExerciseIDs,
+            exerciseDisplayNames: context.exerciseDisplayNames,
+            excludedExerciseIDs: excluded,
+            familiarExerciseIDs: context.familiarExerciseIDs,
+            recentExerciseIDs: context.recentExerciseIDs,
+            mustBeInSession: false,
+            phraseHint: equipmentPhrase
+        )
+        let label = displayLabel(exerciseID, persistence: persistence)
+        let combined = equipmentPhrase + " " + label
+        if let archetypeID = CoachArchetypeSupport.archetype(for: exerciseID)?.id
+            ?? CoachArchetypeSupport.exerciseToArchetypeID[exerciseID]
+            ?? CoachArchetypeSupport.exerciseToArchetypeID[stripSeedPrefix(exerciseID)],
+           let picked = pickExercise(
+            for: archetypeID,
+            context: siblingContext,
+            persistence: persistence,
+            phrase: combined
+           ),
+           picked != exerciseID {
+            return picked
+        }
+        return nil
+    }
+
+    private static func canonicalEquipment(_ token: String) -> String {
+        ExerciseSearchNormalizer.synonym(token)
+    }
+
     private static func equipmentTokens(in phrase: String) -> Set<String> {
-        Set(phraseTokens(phrase).intersection(equipmentTokens))
+        Set(phraseTokens(phrase).intersection(equipmentTokens).map(canonicalEquipment))
     }
 
     private static func candidateMentionsEquipment(
@@ -65,11 +111,20 @@ public enum ExerciseResolver {
         requested: Set<String>
     ) -> Bool {
         guard !requested.isEmpty else { return true }
-        let haystack = phraseTokens(exerciseID + " " + displayName)
+        let haystack = Set(phraseTokens(exerciseID + " " + displayName).map(canonicalEquipment))
         for token in requested {
-            if haystack.contains(where: { tokensMatch($0, token) }) {
+            if haystack.contains(canonicalEquipment(token)) {
                 return true
             }
+        }
+        // Hevy unmarked titles are usually the dumbbell/free-weight variant
+        // ("Hammer Curls" vs "Hammer Curl (Cable)").
+        let namedEquipment: Set<String> = [
+            "machine", "cable", "dumbbell", "barbell", "smith", "band", "kettlebell",
+        ]
+        let haystackNamed = haystack.intersection(namedEquipment)
+        if haystackNamed.isEmpty, requested.contains("dumbbell") {
+            return true
         }
         return false
     }
@@ -91,6 +146,10 @@ public enum ExerciseResolver {
             return Result(exerciseID: sessionMatch)
         }
 
+        if context.mustBeInSession, let fuzzy = sessionTokenMatch(rawPhrase, context: context) {
+            return Result(exerciseID: fuzzy)
+        }
+
         let searchPhrases = uniqueNonEmpty([context.phraseHint, rawPhrase])
 
         if context.mustBeInSession == false {
@@ -99,7 +158,7 @@ public enum ExerciseResolver {
             if let hint = context.phraseHint?.trimmingCharacters(in: .whitespacesAndNewlines),
                !hint.isEmpty {
                 if let fuzzy = fuzzyCatalogMatch(hint, context: context, persistence: persistence) {
-                    return catalogResult(exerciseID: fuzzy)
+                    return catalogResult(exerciseID: fuzzy, phrase: hint)
                 }
                 if let archetypeID = CoachArchetypeSupport.archetypeID(for: hint),
                    let exerciseID = pickExercise(
@@ -113,7 +172,13 @@ public enum ExerciseResolver {
             }
 
             if let exact = exactAliasMatch(rawPhrase, context: context, persistence: persistence) {
-                return catalogResult(exerciseID: exact)
+                let chosen = recencyOverride(
+                    current: exact,
+                    rawPhrase: rawPhrase,
+                    context: context,
+                    persistence: persistence
+                ) ?? exact
+                return catalogResult(exerciseID: chosen, phrase: rawPhrase)
             }
 
             if let archetypeID = CoachArchetypeSupport.archetypeID(for: rawPhrase),
@@ -127,7 +192,7 @@ public enum ExerciseResolver {
             }
 
             if let fuzzy = fuzzyCatalogMatch(rawPhrase, context: context, persistence: persistence) {
-                return catalogResult(exerciseID: fuzzy)
+                return catalogResult(exerciseID: fuzzy, phrase: rawPhrase)
             }
         } else if let archetypeID = CoachArchetypeSupport.archetypeID(for: rawPhrase) {
             if let exerciseID = pickExercise(
@@ -154,20 +219,20 @@ public enum ExerciseResolver {
         if context.mustBeInSession == false,
            let seeded = catalogExerciseID(rawPhrase, persistence: persistence),
            accepts(exerciseID: seeded, context: context) {
-            return catalogResult(exerciseID: seeded)
+            return catalogResult(exerciseID: seeded, phrase: rawPhrase)
         }
 
         for phrase in searchPhrases {
             if let resolved = try? persistence.exercises.resolveImportedTitle(phrase)?.exerciseID,
                accepts(exerciseID: resolved, context: context) {
-                return catalogResult(exerciseID: resolved)
+                return catalogResult(exerciseID: resolved, phrase: rawPhrase)
             }
         }
 
         let normalized = normalizeToken(rawPhrase)
         if let aliasMatch = try? persistence.exercises.resolveExerciseID(normalizedAlias: normalized),
            accepts(exerciseID: aliasMatch, context: context) {
-            return catalogResult(exerciseID: aliasMatch)
+            return catalogResult(exerciseID: aliasMatch, phrase: rawPhrase)
         }
 
         for sessionID in context.sessionExerciseIDs {
@@ -190,19 +255,53 @@ public enum ExerciseResolver {
     ) -> String? {
         let ranked = rankedCatalogMatches(for: rawPhrase, context: context, persistence: persistence)
         guard let best = ranked.first else { return nil }
+        if isEquipmentOnlyPhrase(rawPhrase) {
+            return nil
+        }
         // Require meaningful token overlap so archetype IDs like "hammer_curl" do not
         // latch onto an arbitrary picker hit before seed-remapped archetype members run.
         guard best.overlap >= 2 || best.overlap == phraseTokens(rawPhrase).count else { return nil }
         let requested = equipmentTokens(in: rawPhrase)
-        if !candidateMentionsEquipment(
-            best.id,
-            displayName: displayLabel(best.id, persistence: persistence),
-            requested: requested
-        ) {
-            // Phrase names an equipment the candidate lacks (e.g. "hip thrust machine" vs
-            // barbell row): refuse silent collapse so the caller surfaces candidates instead.
-            return nil
+        if !requested.isEmpty {
+            if !candidateMentionsEquipment(
+                best.id,
+                displayName: displayLabel(best.id, persistence: persistence),
+                requested: requested
+            ) {
+                // Phrase names an equipment the candidate lacks (e.g. "hip thrust machine" vs
+                // barbell row): refuse silent collapse so the caller surfaces candidates instead.
+                return nil
+            }
         }
+        if ranked.count > 1, ranked[1].overlap == best.overlap {
+            if best.score > ranked[1].score {
+                return best.id
+            }
+            if requested.isEmpty {
+                return nil
+            }
+        }
+        return best.id
+    }
+
+    /// Unique exact alias can still lose to a same-overlap recent/session variant
+    /// ("face pull" aliased to cable, last used band).
+    private static func recencyOverride(
+        current: String,
+        rawPhrase: String,
+        context: Context,
+        persistence: PersistenceStore
+    ) -> String? {
+        let ranked = rankedCatalogMatches(for: rawPhrase, context: context, persistence: persistence)
+        guard let best = ranked.first, best.id != current else { return nil }
+        let prefersBest = context.recentExerciseIDs.contains(best.id)
+            || context.sessionExerciseIDs.contains(best.id)
+        guard prefersBest else { return nil }
+        let currentOverlap = ranked.first(where: { $0.id == current })?.overlap
+            ?? tokenOverlap(phraseTokens(rawPhrase), in: current + " " + displayLabel(current, persistence: persistence))
+        let currentScore = ranked.first(where: { $0.id == current })?.score
+            ?? score(exerciseID: current, context: context)
+        guard best.overlap >= currentOverlap, best.score > currentScore else { return nil }
         return best.id
     }
 
@@ -211,13 +310,34 @@ public enum ExerciseResolver {
         context: Context,
         persistence: PersistenceStore
     ) -> String? {
+        var ids: [String] = []
+        var seen = Set<String>()
         for candidate in ExerciseSearchNormalizer.searchCandidates(for: rawPhrase) {
-            guard let exerciseID = try? persistence.exercises.resolveExerciseID(normalizedAlias: candidate),
-                  accepts(exerciseID: exerciseID, context: context)
+            guard let matches = try? persistence.exercises.resolveExerciseIDs(normalizedAlias: candidate)
             else { continue }
-            return exerciseID
+            for exerciseID in matches {
+                guard seen.insert(exerciseID).inserted,
+                      accepts(exerciseID: exerciseID, context: context)
+                else { continue }
+                ids.append(exerciseID)
+            }
         }
-        return nil
+        if ids.count == 1 { return ids[0] }
+
+        let requested = equipmentTokens(in: rawPhrase)
+        if !requested.isEmpty {
+            let matching = ids.filter { id in
+                candidateMentionsEquipment(
+                    id,
+                    displayName: displayLabel(id, persistence: persistence),
+                    requested: requested
+                )
+            }
+            if matching.count == 1 { return matching[0] }
+            return nil
+        }
+
+        return ids.count == 1 ? ids[0] : nil
     }
 
     private static func rankedCatalogMatches(
@@ -286,24 +406,30 @@ public enum ExerciseResolver {
 
         guard !members.isEmpty else { return nil }
 
+        var pool = members
+
         let effectivePhrase = phrase ?? ""
         let tokens = phraseTokens(effectivePhrase)
+        let requestedEquipment = equipmentTokens(in: effectivePhrase)
 
         // Dead-alias guard: if the phrase carries equipment wording that no member shares
         // (e.g. "machine hip thrust" with a barbell-only archetype), the alias would silently
         // collapse to the default variant. Skip so resolution falls through to fuzzy/candidates.
-        let requestedEquipment = equipmentTokens(in: effectivePhrase)
         if !requestedEquipment.isEmpty {
-            let anyMemberMentions = members.contains { member in
+            let matching = members.filter { member in
                 candidateMentionsEquipment(
                     member,
                     displayName: displayLabel(member, persistence: persistence),
                     requested: requestedEquipment
                 )
             }
-            if !anyMemberMentions {
+            if matching.count == 1 {
+                return matching[0]
+            }
+            if matching.isEmpty {
                 return nil
             }
+            pool = matching
         }
 
         let preferredRaw = CoachArchetypeSupport.preferredExerciseID(for: archetypeID)
@@ -313,7 +439,7 @@ public enum ExerciseResolver {
         // Prefer phrase-ranked members even when a preferred default exists, so equipment
         // wording (dumbbell vs rope) can beat the archetype default.
         if !tokens.isEmpty {
-            let ranked = members.sorted { lhs, rhs in
+            let ranked = pool.sorted { lhs, rhs in
                 let leftOverlap = tokenOverlap(tokens, in: lhs + " " + displayLabel(lhs, persistence: persistence))
                 let rightOverlap = tokenOverlap(tokens, in: rhs + " " + displayLabel(rhs, persistence: persistence))
                 if leftOverlap != rightOverlap { return leftOverlap > rightOverlap }
@@ -323,17 +449,33 @@ public enum ExerciseResolver {
                 let preferredOverlap = preferred.map {
                     tokenOverlap(tokens, in: $0 + " " + displayLabel($0, persistence: persistence))
                 } ?? 0
-                if tokenOverlap(tokens, in: best + " " + displayLabel(best, persistence: persistence)) >= preferredOverlap {
+                let bestOverlap = tokenOverlap(tokens, in: best + " " + displayLabel(best, persistence: persistence))
+                if ranked.count > 1 {
+                    let second = ranked[1]
+                    let secondOverlap = tokenOverlap(
+                        tokens,
+                        in: second + " " + displayLabel(second, persistence: persistence)
+                    )
+                    if secondOverlap == bestOverlap, requestedEquipment.isEmpty {
+                        let athleteNamedTheLift = effectivePhrase.contains(where: { $0.isWhitespace })
+                        if athleteNamedTheLift {
+                            return nil
+                        }
+                        // Model/archetype token (`hammer_curl`): use preferred below.
+                    } else if bestOverlap >= preferredOverlap {
+                        return best
+                    }
+                } else if bestOverlap >= preferredOverlap {
                     return best
                 }
             }
         }
 
-        if let preferred {
+        if let preferred, pool.contains(preferred) {
             return preferred
         }
 
-        return members.sorted { score(exerciseID: $0, context: context) > score(exerciseID: $1, context: context) }.first
+        return pool.sorted { score(exerciseID: $0, context: context) > score(exerciseID: $1, context: context) }.first
     }
 
     private static func displayLabel(_ exerciseID: String, persistence: PersistenceStore) -> String {
@@ -344,11 +486,13 @@ public enum ExerciseResolver {
         try? persistence.exercises.resolveSeededCatalogID(rawID)
     }
 
-    private static func catalogResult(exerciseID: String) -> Result {
-        Result(
+    private static func catalogResult(exerciseID: String, phrase: String? = nil) -> Result {
+        let fromPhrase = phrase.flatMap { CoachArchetypeSupport.archetypeID(for: $0) }
+        let fromID = CoachArchetypeSupport.exerciseToArchetypeID[exerciseID]
+            ?? CoachArchetypeSupport.exerciseToArchetypeID[stripSeedPrefix(exerciseID)]
+        return Result(
             exerciseID: exerciseID,
-            archetypeID: CoachArchetypeSupport.exerciseToArchetypeID[exerciseID]
-                ?? CoachArchetypeSupport.exerciseToArchetypeID[stripSeedPrefix(exerciseID)]
+            archetypeID: fromPhrase ?? fromID
         )
     }
 
@@ -389,15 +533,44 @@ public enum ExerciseResolver {
         return nil
     }
 
+    /// Token overlap against live session labels. Used when the model ID is an
+    /// archetype or near-miss that does not equal the catalog row in the session.
+    private static func sessionTokenMatch(_ rawPhrase: String, context: Context) -> String? {
+        let tokens = phraseTokens(rawPhrase)
+        guard !tokens.isEmpty else { return nil }
+
+        var scored: [(id: String, overlap: Int)] = []
+        for sessionID in context.sessionExerciseIDs {
+            guard accepts(exerciseID: sessionID, context: context) else { continue }
+            let label = ExerciseDisplayFormatter.friendlyName(
+                for: sessionID,
+                displayNames: context.exerciseDisplayNames
+            )
+            let overlap = tokenOverlap(tokens, in: sessionID + " " + label)
+            if overlap > 0 {
+                scored.append((sessionID, overlap))
+            }
+        }
+        guard let best = scored.max(by: { $0.overlap < $1.overlap }) else { return nil }
+        let tied = scored.filter { $0.overlap == best.overlap }
+        if tied.count > 1 { return nil }
+        // One shared token is too loose for snake_case archetype IDs
+        // (`incline_press` vs a lone Bench Press). Athlete phrases like
+        // "bench dip" still hit via overlap >= 2 or display-name match.
+        guard best.overlap >= 2 else { return nil }
+        return best.id
+    }
+
     private static func phraseTokens(_ value: String) -> Set<String> {
-        let normalized = ExerciseSearchNormalizer.normalize(value)
+        let normalized = ExerciseSearchNormalizer.normalizeKeepingEquipment(value)
         let stop: Set<String> = [
-            "a", "an", "the", "add", "in", "to", "please", "set", "of", "and", "or", "my", "me", "some"
+            "a", "an", "the", "add", "in", "to", "please", "set", "sets", "of", "and", "or", "my", "me", "some"
         ]
         return Set(
             normalized
                 .split(separator: " ")
                 .map(String.init)
+                .map { ExerciseSearchNormalizer.synonym($0) }
                 .filter { $0.count >= 2 && !stop.contains($0) }
         )
     }

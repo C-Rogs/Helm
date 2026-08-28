@@ -79,20 +79,20 @@ public struct FoodLogCommandApplier: Sendable {
         self.calendar = calendar
     }
 
-    public func apply(_ payload: FoodLogPayload, now: Date = Date()) async throws {
+    public func apply(_ payload: FoodLogPayload, now: Date = Date(), userText: String? = nil) async throws {
         switch payload.action {
         case .log:
-            try await applyLog(payload, now: now)
+            try await applyLog(payload, now: now, userText: userText)
         case .edit:
-            try await applyEdit(payload, now: now)
+            try await applyEdit(payload, now: now, userText: userText)
         case .delete:
             try await applyDelete(payload, now: now)
         }
     }
 
-    private func applyLog(_ payload: FoodLogPayload, now: Date) async throws {
+    private func applyLog(_ payload: FoodLogPayload, now: Date, userText: String?) async throws {
         let bucket = resolvedBucket(payload.bucket)
-        let helmDay = resolvedHelmDay(payload.helmDay, now: now)
+        let helmDay = Self.resolvedHelmDay(from: payload, userText: userText, now: now, calendar: calendar)
         let kilocalories = payload.caloriesKcal ?? 0
         guard kilocalories > 0 else {
             throw ManualMealError.invalidQuickAdd
@@ -121,13 +121,13 @@ public struct FoodLogCommandApplier: Sendable {
         return now
     }
 
-    private func applyEdit(_ payload: FoodLogPayload, now: Date) async throws {
+    private func applyEdit(_ payload: FoodLogPayload, now: Date, userText: String?) async throws {
         guard let mealIDString = payload.mealID,
               let mealID = UUID(uuidString: mealIDString) else {
             throw ManualMealError.mealNotFound
         }
         try await manualMealService.deleteMeal(mealID: mealID)
-        try await applyLog(payload, now: now)
+        try await applyLog(payload, now: now, userText: userText)
     }
 
     private func applyDelete(_ payload: FoodLogPayload, now: Date = Date()) async throws {
@@ -162,24 +162,25 @@ public struct FoodLogCommandApplier: Sendable {
         return MealBucket(rawValue: raw.lowercased()) ?? .snacks
     }
 
-    private func resolvedHelmDay(_ raw: String?, now: Date) -> HelmDay {
-        if let raw,
-           let parsed = HelmDayParser.parse(raw) {
-            return parsed
-        }
-        return HelmDay.day(for: now, calendar: calendar)
-    }
-
     public static func resolvedHelmDay(
         from payload: FoodLogPayload,
+        userText: String? = nil,
         now: Date,
         calendar: Calendar = .current
     ) -> HelmDay {
+        let today = HelmDay.day(for: now, calendar: calendar)
+        if let userText {
+            if let named = CoachChatIntent.inferredHelmDay(from: userText, now: now, calendar: calendar) {
+                return named
+            }
+            // Chat turn with no date cue: do not inherit a prior-day helmDay from the model.
+            return today
+        }
         if let raw = payload.helmDay,
            let parsed = HelmDayParser.parse(raw) {
             return parsed
         }
-        return HelmDay.day(for: now, calendar: calendar)
+        return today
     }
 }
 

@@ -6,7 +6,6 @@ import Persistence
 import PlanKit
 
 enum CoachContextBootstrap {
-    @MainActor
     static func assemble(
         from store: PersistenceStore,
         endingAt endDay: HelmDay,
@@ -15,25 +14,52 @@ enum CoachContextBootstrap {
         let weekEnd = endDay.adding(days: WeekAheadScheduleBuilder.horizonDays - 1)
         let loads = await CalendarHintBootstrap.service.dayLoads(from: endDay, through: weekEnd)
         let classifications = await CalendarHintBootstrap.eventClassifier.classify(loads: loads)
+        let prescriptionSummary = await MainActor.run {
+            PlanBootstrap.prescriptionService.state.summary
+        }
+
         let fullyBlocked = CalendarEventClassifier.fullyBlockedDays(from: [:], classifications: classifications)
         let partiallyBlocked = CalendarEventClassifier.partiallyBlockedDays(from: classifications)
-
         let busyDayHints = Self.buildCoachBusyHints(
             loads: loads,
             classifications: classifications,
             fullyBlocked: fullyBlocked,
             partiallyBlocked: partiallyBlocked
         )
+        let todayPrescription = Self.todayPrescriptionText(from: prescriptionSummary)
 
-        let todayPrescription = Self.todayPrescriptionText()
-        let prescriptionLoadSummary = try Self.prescriptionLoadSummaryText(from: store, endingAt: endDay)
+        return try await Task.detached(priority: .userInitiated) {
+            try await assemblePersistedContext(
+                from: store,
+                endingAt: endDay,
+                lookbackDays: lookbackDays,
+                busyDayHints: busyDayHints,
+                todayPrescription: todayPrescription,
+                prescriptionSummary: prescriptionSummary
+            )
+        }.value
+    }
+
+    private static func assemblePersistedContext(
+        from store: PersistenceStore,
+        endingAt endDay: HelmDay,
+        lookbackDays: Int,
+        busyDayHints: [HelmDay: String],
+        todayPrescription: String,
+        prescriptionSummary: PrescribedSessionSummary?
+    ) async throws -> CoachContextDays {
+        let prescriptionLoadSummary = try Self.prescriptionLoadSummaryText(
+            from: store,
+            endingAt: endDay,
+            summary: prescriptionSummary
+        )
         let volumeStateSummary = try Self.volumeStateText(from: store, endingAt: endDay)
         let engineProfile = try Self.engineProfileText(from: store, endingAt: endDay)
 
         let profile = try store.memoryProfile.load()
         let (evidence, groupedEvidence, moduleSummaries) = Self.resolveModuleEvidence(profile: profile)
 
-        var freshness = CoachContextFreshness(blocks: [
+        let freshness = CoachContextFreshness(blocks: [
             .init(key: .nutritionDiary, fetchedAt: .now),
             .init(key: .todayPrescription, fetchedAt: .now),
             .init(key: .recentWorkouts, fetchedAt: .now),
@@ -43,17 +69,40 @@ enum CoachContextBootstrap {
             .init(key: .trainingPlanSnapshot, fetchedAt: .now)
         ])
 
-        // Build session outcome cards from recent completed workouts.
+        let outcomes = try Self.sessionOutcomeCards(from: store)
+
+        return try await CoachContextAssembler.assemble(
+            from: store,
+            endingAt: endDay,
+            lookbackDays: lookbackDays,
+            evidence: evidence,
+            groupedEvidence: groupedEvidence,
+            busyDayHints: busyDayHints,
+            todayPrescription: todayPrescription,
+            prescriptionLoadSummary: prescriptionLoadSummary,
+            volumeStateSummary: volumeStateSummary,
+            engineProfile: engineProfile,
+            moduleSummaries: moduleSummaries,
+            recentSessionOutcomes: outcomes,
+            freshness: freshness
+        )
+    }
+
+    private static func sessionOutcomeCards(from store: PersistenceStore) throws -> [SessionOutcomeCard] {
         let recentSummaries = try store.workoutSessions.listSummaries(limit: 7)
-        let outcomes: [SessionOutcomeCard] = recentSummaries.compactMap { summary in
+        let sessionsByID = try store.workoutSessions.fetch(ids: recentSummaries.map(\.id))
+        let exerciseIDs = Array(
+            Set(sessionsByID.values.flatMap { $0.exercises.map(\.exerciseID) })
+        )
+        let displayNames = (try? store.exercises.displayNames(for: exerciseIDs)) ?? [:]
+
+        return recentSummaries.map { summary in
             let day = HelmDay.day(for: summary.startedAt, cutoff: .default, calendar: .current)
             var exercises: [SessionOutcomeCard.ExerciseOutcome] = []
             var prescribedBy: SessionOutcomeCard.PrescriptionSource = .engine
             var attributedMessageID: String?
 
-            if let session = try? store.workoutSessions.fetch(id: summary.id) {
-                let exerciseIDs = session.exercises.map(\.exerciseID)
-                let displayNames = (try? store.exercises.displayNames(for: exerciseIDs)) ?? [:]
+            if let session = sessionsByID[summary.id] {
                 let prescribed: [PrescribedExercise] = PrescriptionDayStore.load(for: day)?.exercises ?? []
                 let prescribedByID: [String: PrescribedExercise] = Dictionary(
                     uniqueKeysWithValues: prescribed.map { ($0.exerciseID, $0) }
@@ -116,22 +165,6 @@ enum CoachContextBootstrap {
                 prescribedBy: prescribedBy
             )
         }
-
-        return try await CoachContextAssembler.assemble(
-            from: store,
-            endingAt: endDay,
-            lookbackDays: lookbackDays,
-            evidence: evidence,
-            groupedEvidence: groupedEvidence,
-            busyDayHints: busyDayHints,
-            todayPrescription: todayPrescription,
-            prescriptionLoadSummary: prescriptionLoadSummary,
-            volumeStateSummary: volumeStateSummary,
-            engineProfile: engineProfile,
-            moduleSummaries: moduleSummaries,
-            recentSessionOutcomes: outcomes,
-            freshness: freshness
-        )
     }
 
     private static func resolveModuleEvidence(profile: MemoryProfile) -> (evidence: [EvidenceRecord], groupedEvidence: [String: [EvidenceRecord]], moduleSummaries: String) {
@@ -183,9 +216,8 @@ enum CoachContextBootstrap {
         return hints
     }
 
-    @MainActor
-    private static func todayPrescriptionText() -> String {
-        guard let summary = PlanBootstrap.prescriptionService.state.summary else { return "" }
+    private static func todayPrescriptionText(from summary: PrescribedSessionSummary?) -> String {
+        guard let summary else { return "" }
         let bullets = summary.rationale.map { "  - \($0)" }.joined(separator: "\n")
         var lines = [
             "title=\(summary.title)",
@@ -212,13 +244,12 @@ enum CoachContextBootstrap {
         return lines.joined(separator: "\n")
     }
 
-    @MainActor
     private static func prescriptionLoadSummaryText(
         from store: PersistenceStore,
-        endingAt endDay: HelmDay
+        endingAt endDay: HelmDay,
+        summary: PrescribedSessionSummary?
     ) throws -> String {
-        guard let summary = PlanBootstrap.prescriptionService.state.summary,
-              !summary.exercises.isEmpty else { return "" }
+        guard let summary, !summary.exercises.isEmpty else { return "" }
 
         let history = try PrescriptionHistoryBuilder.history(from: store, endingAt: endDay)
         let profile = try store.memoryProfile.load()

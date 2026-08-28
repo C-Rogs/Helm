@@ -20,6 +20,7 @@ struct LayoutRhythmTests {
         #expect(HelmLayout.chartHeight == HelmSpacing.sm * 15)
         #expect(HelmLayout.emptyChartMinHeight == HelmSpacing.sm * 10)
         #expect(HelmLayout.arcReadoutMaxWidth == HelmSpacing.lg * 10)
+        #expect(HelmLayout.calorieArcMaxWidth == HelmSpacing.lg * 12)
         #expect(HelmChartStyle.standardHeight == HelmLayout.chartHeight)
     }
 

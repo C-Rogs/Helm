@@ -56,6 +56,10 @@ final class ChatController {
     func onAppear() async {
         loadHistory()
         await refreshAvailability()
+        if isCoachAvailable {
+            let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
+            Task { await provider.prewarm() }
+        }
     }
 
     func onDisappear() {
@@ -128,6 +132,9 @@ final class ChatController {
             draftText = ""
             pendingPlanBuilderLaunch = true
             return
+        }
+        if CoachChatIntent.looksLikeOpenTrain(trimmed) {
+            AppTabRouter.shared.openTrain()
         }
         if CoachActivityGate.shared.isBlocked(for: .chat) {
             lastTurnError = CoachActivityGate.shared.blockingMessage(for: .chat)
@@ -378,9 +385,11 @@ final class ChatController {
                     manualMealService: NutritionBootstrap.manualMealService,
                     persistence: persistence
                 )
-                try await applier.apply(payload)
+                let lastUser = messages.last(where: { $0.role == .user })?.text
+                try await applier.apply(payload, userText: lastUser)
                 let loggedHelmDay = FoodLogCommandApplier.resolvedHelmDay(
                     from: payload,
+                    userText: lastUser,
                     now: Date(),
                     calendar: .current
                 )
@@ -538,6 +547,7 @@ final class ChatController {
                 )
             )
             messages.append(userMessage)
+            navigateIfRequested(from: text)
 
             // Update coach style profile from this athlete message.
             var profile = try persistence.memoryProfile.load()
@@ -727,6 +737,15 @@ final class ChatController {
                 )
             }
 
+            if let chartKind = CoachChatIntent.inferredChartKind(from: text),
+               let grounded = try? CoachChatChartBuilder.build(
+                kind: chartKind,
+                store: persistence,
+                endingAt: endDay
+               ) {
+                assembled = CoachChatChartBuilder.merge(grounded, into: assembled)
+            }
+
             let wasFoodDictation = isFoodDictationTurn
             let pendingAction: CoachChatActionProposal?
             if wasFoodDictation,
@@ -736,6 +755,7 @@ final class ChatController {
                 let bucket = resolvedFoodLogBucket(foodPayload.bucket)
                 let helmDay = FoodLogCommandApplier.resolvedHelmDay(
                     from: foodPayload,
+                    userText: text,
                     now: Date(),
                     calendar: .current
                 )
@@ -760,24 +780,29 @@ final class ChatController {
                 pendingAction = CoachChatActionParser.proposal(from: assembled)
                 pendingChatAction = pendingAction
             }
-            let userFacingText = CoachChatDisplayText.assistantText(
-                from: assembled,
-                pendingAction: pendingAction
+            let chart = ChartPayloadParser.parse(from: assembled)
+            let persistText = CoachChatPersistedAssistantText.make(
+                assembled: assembled,
+                actionReply: CoachChatDisplayText.assistantText(
+                    from: assembled,
+                    pendingAction: pendingAction
+                ),
+                chart: chart
             )
 
-            guard !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            guard !persistText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || pendingAction != nil
                 || pendingFoodMealConfirm != nil
             else {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
-            // Never persist a blank assistant row; confirmation card can stand alone when reply is empty.
-            if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            // Keep chart.v1 JSON in history so the bubble can render after streaming.
+            if !persistText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
                         role: .assistant,
-                        text: userFacingText,
+                        text: persistText,
                         promptVersion: CoachPromptVersion.chatV1.rawValue,
                         schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
                     )
@@ -816,6 +841,16 @@ final class ChatController {
                 messageCount: messages.count
             )
         } catch {
+            if await persistGroundedChartIfPossible(userText: text) {
+                isFoodDictationTurn = false
+                clearChatProgress()
+                isPreparingFoodMealConfirm = false
+                isStreaming = false
+                streamingText = nil
+                lastFailedUserMessage = nil
+                lastTurnError = nil
+                return
+            }
             isFoodDictationTurn = false
             clearChatProgress()
             isPreparingFoodMealConfirm = false
@@ -843,6 +878,91 @@ final class ChatController {
                 error: error
             )
         }
+    }
+
+    private func persistGroundedChartIfPossible(userText: String) async -> Bool {
+        guard let kind = CoachChatIntent.inferredChartKind(from: userText) else { return false }
+        let endDay = HelmDay.day(for: .now, calendar: .current)
+        guard let chart = try? CoachChatChartBuilder.build(
+            kind: kind,
+            store: persistence,
+            endingAt: endDay
+        ) else {
+            return false
+        }
+        let persistText = ChartPayloadParser.persistText(reply: chart.reply, payload: chart)
+        do {
+            let assistantMessage = try persistence.chat.append(
+                ChatMessageInsert(
+                    role: .assistant,
+                    text: persistText,
+                    promptVersion: CoachPromptVersion.chatV1.rawValue,
+                    schemaVersion: CoachOutputSchemaVersion.chartV1.rawValue
+                )
+            )
+            messages.append(assistantMessage)
+            CoachDiagnosticsStore.shared.clearTurnState()
+            await logTurn(
+                status: "completed",
+                promptVersion: CoachPromptVersion.chatV1.rawValue,
+                schemaVersion: CoachOutputSchemaVersion.chartV1.rawValue,
+                messageCount: messages.count
+            )
+            return true
+        } catch {
+            return false
+        }
+    }
+
+    private func navigateIfRequested(from text: String) {
+        if CoachChatIntent.looksLikeOpenTrain(text) {
+            AppTabRouter.shared.openTrain()
+            return
+        }
+        guard CoachChatIntent.looksLikeOpenNutrition(text) else { return }
+        let calendar = Calendar.current
+        let now = Date()
+        let today = HelmDay.day(for: now, calendar: calendar)
+        let namedDay = CoachChatIntent.inferredHelmDay(from: text, now: now, calendar: calendar)
+        let searchDays = namedDay.map { [$0] } ?? [today, today.adding(days: -1, calendar: calendar)]
+        var meals: [MealRecord] = []
+        for day in searchDays {
+            meals.append(contentsOf: (try? persistence.nutrition.fetchMeals(for: day)) ?? [])
+        }
+        let match = preferredMeal(forNavigation: text, meals: meals)
+        let day = match?.helmDay ?? namedDay ?? today
+        AppTabRouter.shared.openNutrition(
+            focus: NutritionNavigationFocus(helmDay: day, mealID: match?.id)
+        )
+    }
+
+    private func preferredMeal(forNavigation text: String, meals: [MealRecord]) -> MealRecord? {
+        let lower = text.lowercased()
+        var result = meals
+        if lower.contains("snack") {
+            result = result.filter { $0.bucket == .snacks }
+        } else if lower.contains("lunch") {
+            result = result.filter { $0.bucket == .lunch }
+        } else if lower.contains("breakfast") {
+            result = result.filter { $0.bucket == .breakfast }
+        } else if lower.contains("dinner") {
+            result = result.filter { $0.bucket == .dinner }
+        }
+        let stop: Set<String> = [
+            "open", "the", "entry", "of", "just", "locked", "logged", "navigate",
+            "nutrition", "yesterday", "today", "please", "show", "take"
+        ]
+        let tokens = lower
+            .split(separator: " ")
+            .map(String.init)
+            .filter { $0.count >= 4 && !stop.contains($0) }
+        if let token = tokens.first {
+            let named = result.filter { $0.name.lowercased().contains(token) }
+            if !named.isEmpty {
+                result = named
+            }
+        }
+        return result.max(by: { $0.loggedAt < $1.loggedAt })
     }
 
     private func streamAssistantText(
@@ -890,6 +1010,12 @@ final class ChatController {
     }
 
     private func needsStructuredWorkoutStart(assembled: String, userText: String) -> Bool {
+        if let hint = CoachChatIntent.requiredWorkoutExerciseHint(from: userText) {
+            let labels = WorkoutStartPayloadParser.parse(from: assembled)?.exerciseLabels ?? []
+            if !CoachChatIntent.exerciseLabelsCoverHint(labels, hint: hint) {
+                return true
+            }
+        }
         guard let payload = WorkoutStartPayloadParser.parse(from: assembled) else {
             return true
         }
@@ -897,6 +1023,7 @@ final class ChatController {
         if emptyExercises, payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue {
             // Bare engine start is OK only when the athlete did not negotiate a custom list.
             return CoachChatIntent.looksLikeWorkoutProposal(userText)
+                || CoachChatIntent.requiredWorkoutExerciseHint(from: userText) != nil
                 || messages.suffix(8).contains {
                     $0.role == .user && CoachChatIntent.looksLikeWorkoutProposal($0.text)
                 }
@@ -925,6 +1052,8 @@ final class ChatController {
         let toolMessage = """
         # Workout start (structured)
         Athlete is ready to start. Recent workouts and training plan are in context.
+        Honour the CURRENT athlete message over earlier drafts in this thread.
+        If they named specific exercises, those exercises must appear in the session.
         Prior coach draft:
         \(CoachChatTextFormatter.userFacingText(from: priorAssembled))
 

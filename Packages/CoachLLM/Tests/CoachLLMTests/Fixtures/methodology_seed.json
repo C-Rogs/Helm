@@ -1,6 +1,7 @@
 {
   "seedVersion": 1,
   "placeholder": true,
+  "modules": [],
   "evidence": [
     {
       "id": "ev-volume-landmarks",

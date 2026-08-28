@@ -1,5 +1,5 @@
 {
-  "seedVersion": 7,
+  "seedVersion": 8,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -50,6 +50,7 @@
     "seed-Barbell_Bench_Press_-_Medium_Grip",
     "seed-Barbell_Curl",
     "seed-Barbell_Curls_Lying_Against_An_Incline",
+    "seed-Barbell_Deadlift",
     "seed-Barbell_Full_Squat",
     "seed-Barbell_Glute_Bridge",
     "seed-Barbell_Guillotine_Bench_Press",
@@ -80,6 +81,7 @@
     "seed-Bench_Press_with_Chains",
     "seed-Bench_Sprint",
     "seed-Bent-Arm_Barbell_Pullover",
+    "seed-Bent-Arm_Dumbbell_Pullover",
     "seed-Bent-Knee_Hip_Raise",
     "seed-Bent_Over_Barbell_Row",
     "seed-Bent_Over_Dumbbell_Rear_Delt_Raise_With_Head_On_Bench",
@@ -112,6 +114,7 @@
     "seed-Butt_Lift_Bridge",
     "seed-Butterfly",
     "seed-Cable_Chest_Press",
+    "seed-Cable_Crossover",
     "seed-Cable_Crunch",
     "seed-Cable_Deadlifts",
     "seed-Cable_Hammer_Curls_-_Rope_Attachment",
@@ -126,6 +129,7 @@
     "seed-Cable_Preacher_Curl",
     "seed-Cable_Rear_Delt_Fly",
     "seed-Cable_Reverse_Crunch",
+    "seed-Cable_Rope_Overhead_Triceps_Extension",
     "seed-Cable_Rope_Rear-Delt_Rows",
     "seed-Cable_Russian_Twists",
     "seed-Cable_Seated_Crunch",
@@ -134,6 +138,7 @@
     "seed-Cable_Wrist_Curl",
     "seed-Calf-Machine_Shoulder_Shrug",
     "seed-Calf_Press",
+    "seed-Calf_Press_On_The_Leg_Press_Machine",
     "seed-Calf_Raise_On_A_Dumbbell",
     "seed-Calf_Raises_-_With_Bands",
     "seed-Calf_Stretch_Elbows_Against_Wall",
@@ -157,6 +162,7 @@
     "seed-Chest_Push_with_Run_Release",
     "seed-Chest_Stretch_on_Stability_Ball",
     "seed-Childs_Pose",
+    "seed-Chin-Up",
     "seed-Chin_To_Chest_Stretch",
     "seed-Circus_Bell",
     "seed-Clean",
@@ -167,6 +173,7 @@
     "seed-Clean_and_Press",
     "seed-Clean_from_Blocks",
     "seed-Clock_Push-Up",
+    "seed-Close-Grip_Barbell_Bench_Press",
     "seed-Close-Grip_Dumbbell_Press",
     "seed-Close-Grip_EZ-Bar_Curl_with_Band",
     "seed-Close-Grip_EZ-Bar_Press",
@@ -178,6 +185,7 @@
     "seed-Conans_Wheel",
     "seed-Concentration_Curls",
     "seed-Cross-Body_Crunch",
+    "seed-Cross_Body_Hammer_Curl",
     "seed-Cross_Over_-_With_Bands",
     "seed-Crossover_Reverse_Lunge",
     "seed-Crucifix",
@@ -238,6 +246,8 @@
     "seed-Dumbbell_Scaption",
     "seed-Dumbbell_Seated_Box_Jump",
     "seed-Dumbbell_Seated_One-Leg_Calf_Raise",
+    "seed-Dumbbell_Shoulder_Press",
+    "seed-Dumbbell_Shrug",
     "seed-Dumbbell_Side_Bend",
     "seed-Dumbbell_Squat",
     "seed-Dumbbell_Squat_To_A_Bench",
@@ -300,6 +310,7 @@
     "seed-Gorilla_Chin_Crunch",
     "seed-Groin_and_Back_Stretch",
     "seed-Groiners",
+    "seed-Hack_Squat",
     "seed-Hammer_Curls",
     "seed-Hammer_Grip_Incline_DB_Bench_Press",
     "seed-Hamstring-SMR",
@@ -310,6 +321,7 @@
     "seed-Hang_Snatch",
     "seed-Hang_Snatch_-_Below_Knees",
     "seed-Hanging_Bar_Good_Morning",
+    "seed-Hanging_Leg_Raise",
     "seed-Hanging_Pike",
     "seed-Heaving_Snatch_Balance",
     "seed-Heavy_Bag_Thrust",
@@ -360,6 +372,7 @@
     "seed-Jefferson_Squats",
     "seed-Jerk_Balance",
     "seed-Jerk_Dip_Squat",
+    "seed-Jogging_Treadmill",
     "seed-Keg_Load",
     "seed-Kettlebell_Arnold_Press",
     "seed-Kettlebell_Dead_Clean",
@@ -401,6 +414,7 @@
     "seed-Leg-Up_Hamstring_Stretch",
     "seed-Leg_Extensions",
     "seed-Leg_Lift",
+    "seed-Leg_Press",
     "seed-Leg_Pull-In",
     "seed-Leverage_Chest_Press",
     "seed-Leverage_Deadlift",
@@ -441,10 +455,13 @@
     "seed-Lying_Prone_Quadriceps",
     "seed-Lying_Rear_Delt_Raise",
     "seed-Lying_Supine_Dumbbell_Curl",
+    "seed-Lying_T-Bar_Row",
     "seed-Lying_Triceps_Press",
     "seed-Machine_Bench_Press",
+    "seed-Machine_Bicep_Curl",
     "seed-Machine_Preacher_Curls",
     "seed-Machine_Shoulder_Military_Press",
+    "seed-Machine_Triceps_Extension",
     "seed-Medicine_Ball_Chest_Pass",
     "seed-Medicine_Ball_Full_Twist",
     "seed-Medicine_Ball_Scoop_Throw",
@@ -467,6 +484,7 @@
     "seed-Olympic_Squat",
     "seed-On-Your-Back_Quad_Stretch",
     "seed-On_Your_Side_Quad_Stretch",
+    "seed-One-Arm_Dumbbell_Row",
     "seed-One-Arm_Flat_Bench_Dumbbell_Flye",
     "seed-One-Arm_High-Pulley_Cable_Side_Bends",
     "seed-One-Arm_Incline_Lateral_Raise",
@@ -522,6 +540,7 @@
     "seed-Physioball_Hip_Bridge",
     "seed-Pin_Presses",
     "seed-Piriformis-SMR",
+    "seed-Plank",
     "seed-Plate_Pinch",
     "seed-Plate_Twist",
     "seed-Platform_Hamstring_Slides",
@@ -537,6 +556,7 @@
     "seed-Power_Snatch_from_Blocks",
     "seed-Power_Stairs",
     "seed-Preacher_Curl",
+    "seed-Preacher_Hammer_Dumbbell_Curl",
     "seed-Press_Sit-Up",
     "seed-Prone_Manual_Hamstring",
     "seed-Prowler_Sprint",
@@ -566,6 +586,7 @@
     "seed-Reverse_Band_Deadlift",
     "seed-Reverse_Band_Power_Squat",
     "seed-Reverse_Band_Sumo_Deadlift",
+    "seed-Reverse_Barbell_Curl",
     "seed-Reverse_Barbell_Preacher_Curls",
     "seed-Reverse_Cable_Curl",
     "seed-Reverse_Crunch",
@@ -593,6 +614,7 @@
     "seed-Round_The_World_Shoulder_Stretch",
     "seed-Rowing_Stationary",
     "seed-Runners_Stretch",
+    "seed-Running_Treadmill",
     "seed-Russian_Twist",
     "seed-Sandbag_Load",
     "seed-Scapular_Pull-Up",
@@ -607,6 +629,7 @@
     "seed-Seated_Biceps",
     "seed-Seated_Cable_Rows",
     "seed-Seated_Cable_Shoulder_Press",
+    "seed-Seated_Calf_Raise",
     "seed-Seated_Calf_Stretch",
     "seed-Seated_Close-Grip_Concentration_Barbell_Curl",
     "seed-Seated_Dumbbell_Curl",
@@ -622,6 +645,7 @@
     "seed-Seated_Hamstring",
     "seed-Seated_Hamstring_and_Calf_Stretch",
     "seed-Seated_Head_Harness_Neck_Resistance",
+    "seed-Seated_Leg_Curl",
     "seed-Seated_Leg_Tucks",
     "seed-Seated_One-Arm_Dumbbell_Palms-Down_Wrist_Curl",
     "seed-Seated_One-Arm_Dumbbell_Palms-Up_Wrist_Curl",
@@ -676,6 +700,7 @@
     "seed-Sledgehammer_Swings",
     "seed-Smith_Incline_Shoulder_Raise",
     "seed-Smith_Machine_Behind_the_Back_Shrug",
+    "seed-Smith_Machine_Bench_Press",
     "seed-Smith_Machine_Bent_Over_Row",
     "seed-Smith_Machine_Calf_Raise",
     "seed-Smith_Machine_Close-Grip_Bench_Press",
@@ -688,6 +713,7 @@
     "seed-Smith_Machine_Overhead_Shoulder_Press",
     "seed-Smith_Machine_Pistol_Squat",
     "seed-Smith_Machine_Reverse_Calf_Raises",
+    "seed-Smith_Machine_Squat",
     "seed-Smith_Machine_Stiff-Legged_Deadlift",
     "seed-Smith_Machine_Upright_Row",
     "seed-Smith_Single-Leg_Split_Squat",
@@ -733,6 +759,8 @@
     "seed-Standing_Dumbbell_Press",
     "seed-Standing_Dumbbell_Reverse_Curl",
     "seed-Standing_Dumbbell_Straight-Arm_Front_Delt_Raise_Above_Head",
+    "seed-Standing_Dumbbell_Triceps_Extension",
+    "seed-Standing_Dumbbell_Upright_Row",
     "seed-Standing_Elevated_Quad_Stretch",
     "seed-Standing_Front_Barbell_Raise_Over_Head",
     "seed-Standing_Gastrocnemius_Calf_Stretch",
@@ -750,6 +778,7 @@
     "seed-Standing_One-Arm_Cable_Curl",
     "seed-Standing_One-Arm_Dumbbell_Curl_Over_Incline_Bench",
     "seed-Standing_One-Arm_Dumbbell_Triceps_Extension",
+    "seed-Standing_Overhead_Barbell_Triceps_Extension",
     "seed-Standing_Palm-In_One-Arm_Dumbbell_Press",
     "seed-Standing_Palms-In_Dumbbell_Press",
     "seed-Standing_Palms-Up_Barbell_Behind_The_Back_Wrist_Curl",
@@ -810,11 +839,14 @@
     "seed-Underhand_Cable_Pulldowns",
     "seed-Upper_Back-Leg_Grab",
     "seed-Upper_Back_Stretch",
+    "seed-Upright_Barbell_Row",
+    "seed-Upright_Cable_Row",
     "seed-Upright_Row_-_With_Bands",
     "seed-Upward_Stretch",
     "seed-V-Bar_Pulldown",
     "seed-V-Bar_Pullup",
     "seed-Vertical_Swing",
+    "seed-Walking_Treadmill",
     "seed-Weighted_Ball_Hyperextension",
     "seed-Weighted_Ball_Side_Bend",
     "seed-Weighted_Bench_Dip",
@@ -1105,7 +1137,7 @@
     {
       "id": "seed-cable-face-pull",
       "canonicalName": "cable face pull",
-      "displayName": "Face Pull (Cable)",
+      "displayName": "Face Pull",
       "aliases": [
         "Face Pull",
         "Face Pull (Cable)",
@@ -1254,7 +1286,8 @@
       "aliases": [
         "Bench Press",
         "Barbell Bench Press",
-        "Flat Bench Press"
+        "Flat Bench Press",
+        "Bench Press (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1280,7 +1313,8 @@
       "aliases": [
         "Squat",
         "Back Squat",
-        "Barbell Squat"
+        "Barbell Squat",
+        "Squat (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1305,7 +1339,8 @@
       "aliases": [
         "Romanian Deadlift",
         "RDL",
-        "Barbell Romanian Deadlift"
+        "Barbell Romanian Deadlift",
+        "Romanian Deadlift (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1332,7 +1367,8 @@
         "Overhead Press",
         "OHP",
         "Military Press",
-        "Barbell Overhead Press"
+        "Barbell Overhead Press",
+        "Overhead Press (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1403,7 +1439,7 @@
     {
       "id": "seed-dumbbell-curl",
       "canonicalName": "curl (dumbbell)",
-      "displayName": "Curl (Dumbbell)",
+      "displayName": "Bicep Curl (Dumbbell)",
       "aliases": [
         "Dumbbell Curl",
         "Bicep Curl (Dumbbell)",
@@ -1426,7 +1462,7 @@
     {
       "id": "seed-tricep-pushdown",
       "canonicalName": "tricep pushdown (cable)",
-      "displayName": "Tricep Pushdown (Cable)",
+      "displayName": "Triceps Pushdown",
       "aliases": [
         "Tricep Pushdown (Cable)",
         "Triceps Pushdown",
@@ -1452,7 +1488,8 @@
       "displayName": "Hip Thrust (Barbell)",
       "aliases": [
         "Hip Thrust",
-        "Barbell Hip Thrust"
+        "Barbell Hip Thrust",
+        "Hip Thrust (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1523,7 +1560,8 @@
       "aliases": [
         "Bent Over Row",
         "Barbell Row",
-        "Bent-Over Row (Barbell)"
+        "Bent-Over Row (Barbell)",
+        "Bent Over Row (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -1577,7 +1615,14 @@
       "canonicalName": "hammer curl cable",
       "displayName": "Hammer Curl (Cable)",
       "aliases": [
-        "Hammer Curl (Cable)"
+        "Hammer Curl (Cable)",
+        "Cable Hammer Curl",
+        "Rope Hammer Curl",
+        "Hammer Curl Rope",
+        "Hammer Curls Rope",
+        "hammer curls cable",
+        "rope attachment hammer curl",
+        "cable hammer curls"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "cable",
@@ -1890,9 +1935,10 @@
     {
       "id": "seed-cam-seated-dip-machine",
       "canonicalName": "seated dip machine",
-      "displayName": "Seated Dip (Machine)",
+      "displayName": "Seated Dip Machine",
       "aliases": [
-        "Seated Dip (Machine)"
+        "Seated Dip (Machine)",
+        "Seated Dip Machine"
       ],
       "exerciseMode": "weight_reps",
       "secondaryMuscleGroups": [],
@@ -2304,9 +2350,10 @@
     {
       "id": "seed-cam-jm-press-barbell",
       "canonicalName": "jm press barbell",
-      "displayName": "Jm Press (Barbell)",
+      "displayName": "JM Press (Barbell)",
       "aliases": [
-        "Jm Press (Barbell)"
+        "Jm Press (Barbell)",
+        "JM Press (Barbell)"
       ],
       "exerciseMode": "weight_reps",
       "equipment": "barbell",
@@ -2512,7 +2559,7 @@
     {
       "id": "seed-cam-running",
       "canonicalName": "running",
-      "displayName": "Running",
+      "displayName": "Treadmill",
       "aliases": [
         "Running",
         "Treadmill",
@@ -2526,7 +2573,8 @@
       "coachingCues": [
         "Land under your hips with a quick cadence.",
         "Relax shoulders; keep an easy breathing rhythm."
-      ]
+      ],
+      "isPickerDefault": true
     },
     {
       "id": "seed-cam-walking",
@@ -2544,7 +2592,8 @@
       "coachingCues": [
         "Stand tall; swing the arms naturally.",
         "Brisk pace keeps it useful as active recovery."
-      ]
+      ],
+      "isPickerDefault": true
     },
     {
       "id": "seed-cam-hammer-curl-dumbbell",
@@ -2565,7 +2614,8 @@
         "Elbows pinned to your sides; no swinging.",
         "Curl to shoulder height and lower slowly."
       ],
-      "sourceDatasetID": "Alternate_Hammer_Curl"
+      "sourceDatasetID": "Alternate_Hammer_Curl",
+      "isPickerDefault": true
     },
     {
       "id": "seed-cam-preacher-curl-dumbbell",
@@ -2587,7 +2637,8 @@
         "Curl up and squeeze at the top.",
         "Lower slowly to a full stretch without hyperextending."
       ],
-      "sourceDatasetID": "Zottman_Curl"
+      "sourceDatasetID": "Zottman_Curl",
+      "isPickerDefault": true
     },
     {
       "id": "seed-cam-triceps-extension-dumbbell",
@@ -2607,7 +2658,8 @@
         "Lower until you feel a deep triceps stretch.",
         "Extend fully without locking out hard."
       ],
-      "sourceDatasetID": "Lying_Dumbbell_Tricep_Extension"
+      "sourceDatasetID": "Lying_Dumbbell_Tricep_Extension",
+      "isPickerDefault": true
     },
     {
       "id": "seed-cam-triceps-extension-cable-bar",
@@ -2627,12 +2679,13 @@
         "Split the hands slightly at lockout for full contraction.",
         "Control the return; keep tension on the triceps."
       ],
-      "sourceDatasetID": "Triceps_Pushdown"
+      "sourceDatasetID": "Triceps_Pushdown",
+      "isPickerDefault": true
     },
     {
       "id": "seed-Cable_Seated_Lateral_Raise",
       "canonicalName": "cable lateral raise",
-      "displayName": "Cable Lateral Raise",
+      "displayName": "Lateral Raise (Cable)",
       "aliases": [
         "Cable Lateral Raise",
         "Cable Seated Lateral Raise",
@@ -2654,7 +2707,7 @@
     {
       "id": "seed-Low_Cable_Triceps_Extension",
       "canonicalName": "triceps extension cable bar",
-      "displayName": "Triceps Extension (Cable Bar)",
+      "displayName": "Triceps Extension (Cable)",
       "aliases": [
         "Triceps Extension (Cable Bar)",
         "Triceps Extension (Cable)",
@@ -2669,6 +2722,286 @@
       "isPickerDefault": true,
       "isHevyLibrary": false,
       "sourceDatasetID": "Cable_Incline_Pushdown"
+    },
+    {
+      "id": "seed-cam-triceps-extension-machine",
+      "canonicalName": "triceps extension machine",
+      "displayName": "Triceps Extension (Machine)",
+      "aliases": [
+        "Triceps Extension (Machine)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "triceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "machine"
+    },
+    {
+      "id": "seed-cam-shoulder-press-dumbbell",
+      "canonicalName": "shoulder press dumbbell",
+      "displayName": "Shoulder Press (Dumbbell)",
+      "aliases": [
+        "Shoulder Press (Dumbbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "shoulders",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "dumbbell"
+    },
+    {
+      "id": "seed-cam-overhead-triceps-extension-cable",
+      "canonicalName": "overhead triceps extension cable",
+      "displayName": "Overhead Triceps Extension (Cable)",
+      "aliases": [
+        "Overhead Triceps Extension (Cable)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "triceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "cable"
+    },
+    {
+      "id": "seed-cam-reverse-curl-barbell",
+      "canonicalName": "reverse curl barbell",
+      "displayName": "Reverse Curl (Barbell)",
+      "aliases": [
+        "Reverse Curl (Barbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "biceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "barbell"
+    },
+    {
+      "id": "seed-cam-deadlift-barbell",
+      "canonicalName": "deadlift barbell",
+      "displayName": "Deadlift (Barbell)",
+      "aliases": [
+        "Deadlift (Barbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "hamstrings",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "barbell"
+    },
+    {
+      "id": "seed-cam-seated-calf-raise",
+      "canonicalName": "seated calf raise",
+      "displayName": "Seated Calf Raise",
+      "aliases": [
+        "Seated Calf Raise"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "shoulders",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-cam-shrug-dumbbell",
+      "canonicalName": "shrug dumbbell",
+      "displayName": "Shrug (Dumbbell)",
+      "aliases": [
+        "Shrug (Dumbbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "traps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "dumbbell"
+    },
+    {
+      "id": "seed-cam-calf-press-machine",
+      "canonicalName": "calf press machine",
+      "displayName": "Calf Press (Machine)",
+      "aliases": [
+        "Calf Press (Machine)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "machine"
+    },
+    {
+      "id": "seed-cam-bench-press-close-grip-barbell",
+      "canonicalName": "bench press close grip barbell",
+      "displayName": "Bench Press - Close Grip (Barbell)",
+      "aliases": [
+        "Bench Press - Close Grip (Barbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "chest",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "barbell"
+    },
+    {
+      "id": "seed-cam-bicep-curl-machine",
+      "canonicalName": "bicep curl machine",
+      "displayName": "Bicep Curl (Machine)",
+      "aliases": [
+        "Bicep Curl (Machine)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "biceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "machine"
+    },
+    {
+      "id": "seed-cam-dumbbell-row",
+      "canonicalName": "dumbbell row",
+      "displayName": "Dumbbell Row",
+      "aliases": [
+        "Dumbbell Row"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "upper back",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "dumbbell"
+    },
+    {
+      "id": "seed-cam-upright-row-barbell",
+      "canonicalName": "upright row barbell",
+      "displayName": "Upright Row (Barbell)",
+      "aliases": [
+        "Upright Row (Barbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "upper back",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "barbell"
+    },
+    {
+      "id": "seed-cam-cross-body-hammer-curl",
+      "canonicalName": "cross body hammer curl",
+      "displayName": "Cross Body Hammer Curl",
+      "aliases": [
+        "Cross Body Hammer Curl"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "biceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-cam-hanging-leg-raise",
+      "canonicalName": "hanging leg raise",
+      "displayName": "Hanging Leg Raise",
+      "aliases": [
+        "Hanging Leg Raise"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "shoulders",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-cam-pullover-dumbbell",
+      "canonicalName": "pullover dumbbell",
+      "displayName": "Pullover (Dumbbell)",
+      "aliases": [
+        "Pullover (Dumbbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "lats",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "dumbbell"
+    },
+    {
+      "id": "seed-cam-t-bar-row",
+      "canonicalName": "t bar row",
+      "displayName": "T Bar Row",
+      "aliases": [
+        "T Bar Row"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "upper back",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
+    },
+    {
+      "id": "seed-cam-upright-row-cable",
+      "canonicalName": "upright row cable",
+      "displayName": "Upright Row (Cable)",
+      "aliases": [
+        "Upright Row (Cable)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "upper back",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "cable"
+    },
+    {
+      "id": "seed-cam-triceps-extension-barbell",
+      "canonicalName": "triceps extension barbell",
+      "displayName": "Triceps Extension (Barbell)",
+      "aliases": [
+        "Triceps Extension (Barbell)"
+      ],
+      "exerciseMode": "weight_reps",
+      "primaryMuscleGroup": "triceps",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "isolation",
+      "isPickerDefault": true,
+      "isHevyLibrary": true,
+      "equipment": "barbell"
+    },
+    {
+      "id": "seed-cam-plank",
+      "canonicalName": "plank",
+      "displayName": "Plank",
+      "aliases": [
+        "Plank"
+      ],
+      "exerciseMode": "duration",
+      "primaryMuscleGroup": "abdominals",
+      "secondaryMuscleGroups": [],
+      "movementPattern": "core",
+      "isPickerDefault": true,
+      "isHevyLibrary": true
     }
   ]
 }

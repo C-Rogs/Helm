@@ -6,19 +6,15 @@ struct ExerciseSeedMergeResult: Sendable, Equatable {
 }
 
 enum ExerciseSeedMerger {
+    /// Overlay rows keep their own ids. `sourceDatasetID` only copies GIF /
+    /// instructions off the Free Exercise DB row so hide-lists cannot delete
+    /// the Hevy-named overlay.
     static func merge(catalog: [ExerciseSeedEntry], overlay: [ExerciseSeedEntry]) -> ExerciseSeedMergeResult {
         guard !overlay.isEmpty else {
             return ExerciseSeedMergeResult(entries: catalog, explicitPickerIDs: [])
         }
 
         var byID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.id, $0) })
-        var byCanonical: [String: ExerciseSeedEntry] = [:]
-        for entry in catalog {
-            let key = normalizeCanonical(entry.canonicalName)
-            if byCanonical[key] == nil {
-                byCanonical[key] = entry
-            }
-        }
         var bySource: [String: ExerciseSeedEntry] = [:]
         for entry in catalog {
             if let sourceID = entry.sourceDatasetID {
@@ -29,18 +25,15 @@ enum ExerciseSeedMerger {
         var explicitPickerIDs = Set<String>()
 
         for overlayEntry in overlay {
-            let targetID: String
-            if let sourceID = overlayEntry.sourceDatasetID, let match = bySource[sourceID] {
-                targetID = match.id
-            } else if let match = byCanonical[normalizeCanonical(overlayEntry.canonicalName)] {
-                targetID = match.id
-            } else {
-                targetID = overlayEntry.id
-            }
-
+            let targetID = overlayEntry.id
+            let catalogMedia: ExerciseSeedEntry? = overlayEntry.sourceDatasetID.flatMap { bySource[$0] }
             let base = byID[targetID] ?? overlayEntry
-            let merged = mergeEntry(base: base, overlay: overlayEntry, resolvedID: targetID)
-            byID[targetID] = merged
+            byID[targetID] = mergeEntry(
+                base: base,
+                overlay: overlayEntry,
+                resolvedID: targetID,
+                catalogMedia: catalogMedia
+            )
 
             if overlayEntry.isPickerDefault == true {
                 explicitPickerIDs.insert(targetID)
@@ -56,7 +49,8 @@ enum ExerciseSeedMerger {
     private static func mergeEntry(
         base: ExerciseSeedEntry,
         overlay: ExerciseSeedEntry,
-        resolvedID: String
+        resolvedID: String,
+        catalogMedia: ExerciseSeedEntry?
     ) -> ExerciseSeedEntry {
         var aliases = base.aliases
         for alias in overlay.aliases where !aliases.contains(alias) {
@@ -76,9 +70,9 @@ enum ExerciseSeedMerger {
                 : overlay.secondaryMuscleGroups,
             movementPattern: overlay.movementPattern ?? base.movementPattern,
             sourceDatasetID: overlay.sourceDatasetID ?? base.sourceDatasetID,
-            instructionText: overlay.instructionText ?? base.instructionText,
+            instructionText: overlay.instructionText ?? catalogMedia?.instructionText ?? base.instructionText,
             coachingCues: mergedCoachingCues(base: base.coachingCues, overlay: overlay.coachingCues),
-            imageURL: overlay.imageURL ?? base.imageURL,
+            imageURL: overlay.imageURL ?? catalogMedia?.imageURL ?? base.imageURL,
             isPickerDefault: overlay.isPickerDefault ?? base.isPickerDefault,
             isHevyLibrary: overlay.isHevyLibrary ?? base.isHevyLibrary,
             evidence: overlay.evidence ?? base.evidence
@@ -89,11 +83,5 @@ enum ExerciseSeedMerger {
         if let overlay, !overlay.isEmpty { return overlay }
         if let base, !base.isEmpty { return base }
         return nil
-    }
-
-    private static func normalizeCanonical(_ value: String) -> String {
-        value
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            .lowercased()
     }
 }

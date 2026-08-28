@@ -76,7 +76,7 @@ struct CoachFailurePolicyTests {
         #expect(state.mode == .engineOnly)
         #expect(state.reason == .other)
         #expect(state.userMessage.contains("request failed"))
-        #expect(state.userMessage.contains("SampleFailure"))
+        #expect(!state.userMessage.contains("SampleFailure"))
         #expect(!state.userMessage.lowercased().contains("unavailable"))
     }
 }

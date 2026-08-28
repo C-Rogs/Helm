@@ -211,6 +211,15 @@ public enum WorkoutStartPlanBuilder {
     }
 
     private static func resolveExerciseID(label: String, persistence: PersistenceStore) throws -> String? {
+        let context = ExerciseResolver.Context(
+            sessionExerciseIDs: [],
+            mustBeInSession: false,
+            phraseHint: label
+        )
+        if let resolved = ExerciseResolver.resolve(label, context: context, persistence: persistence).exerciseID {
+            return resolved
+        }
+
         if let resolved = try persistence.exercises.resolveImportedTitle(label)?.exerciseID {
             return resolved
         }

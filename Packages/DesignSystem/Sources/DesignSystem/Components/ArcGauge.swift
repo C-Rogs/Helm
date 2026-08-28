@@ -61,7 +61,7 @@ public struct ArcGauge<Center: View>: View {
 
     private func resolvedLineWidth(radius: CGFloat) -> CGFloat {
         if let lineWidth { return lineWidth }
-        return min(radius * 0.12, 14)
+        return HelmArcGeometry.defaultStrokeWidth(radius: radius)
     }
 
     private func arcLayer(
@@ -71,12 +71,12 @@ public struct ArcGauge<Center: View>: View {
         side: CGFloat
     ) -> some View {
         Circle()
-            .trim(from: 0, to: progress * 0.75)
+            .trim(from: 0, to: progress * HelmArcGeometry.sweepFraction)
             .stroke(
                 color,
                 style: StrokeStyle(lineWidth: lineWidth, lineCap: .round)
             )
-            .rotationEffect(.degrees(135))
+            .rotationEffect(.degrees(HelmArcGeometry.rotationDegrees))
             .frame(width: side - lineWidth, height: side - lineWidth)
     }
 }

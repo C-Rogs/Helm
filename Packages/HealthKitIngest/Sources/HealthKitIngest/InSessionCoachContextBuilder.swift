@@ -94,6 +94,16 @@ public enum InSessionCoachContextBuilder {
         return lines.joined(separator: "\n")
     }
 
+    public static func availableExercisesBlock(_ picker: [ExerciseSummary]) -> String {
+        let names = picker.map(\.displayName).filter { !$0.isEmpty }
+        guard !names.isEmpty else { return "" }
+        var lines: [String] = [
+            "Available gym exercises (copy these exact names for add/swap targets):"
+        ]
+        lines.append(contentsOf: names.map { "- \($0)" })
+        return lines.joined(separator: "\n")
+    }
+
     public static func liveVitalsBlock(_ vitals: InSessionLiveVitals) -> String {
         var lines: [String] = ["# Live session"]
         if let elapsed = vitals.sessionElapsedSeconds {

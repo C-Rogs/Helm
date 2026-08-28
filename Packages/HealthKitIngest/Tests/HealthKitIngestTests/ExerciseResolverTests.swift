@@ -4,7 +4,7 @@ import Persistence
 import Testing
 @testable import HealthKitIngest
 
-@Suite("Coach archetype support")
+@Suite("Coach archetype support", .serialized)
 struct CoachArchetypeSupportTests {
     private func loadFixture() throws -> CoachArchetypeCatalog {
         let url = try #require(
@@ -28,7 +28,7 @@ struct CoachArchetypeSupportTests {
     }
 }
 
-@Suite("Exercise resolver")
+@Suite("Exercise resolver", .serialized)
 struct ExerciseResolverTests {
     private let benchPressID = "seed-bench-press"
     private let inclineID = "seed-incline-db-press"
@@ -300,5 +300,124 @@ struct ExerciseResolverTests {
         )
 
         #expect(result.exerciseID == "seed-cam-push-up")
+    }
+
+    private func seedHammerVariants(in store: PersistenceStore) throws {
+        try store.exercises.upsert(
+            id: "seed-cam-hammer-curl-cable",
+            canonicalName: "hammer curl cable",
+            displayName: "Hammer Curl (Cable)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: "seed-cam-hammer-curl-dumbbell",
+            canonicalName: "hammer curl dumbbell",
+            displayName: "Hammer Curl (Dumbbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps",
+            isPickerDefault: true
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-cable",
+            exerciseID: "seed-cam-hammer-curl-cable",
+            alias: "Hammer Curl (Cable)"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-rope",
+            exerciseID: "seed-cam-hammer-curl-cable",
+            alias: "rope hammer curl"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-cable-phrase",
+            exerciseID: "seed-cam-hammer-curl-cable",
+            alias: "hammer curls cable"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-db",
+            exerciseID: "seed-cam-hammer-curl-dumbbell",
+            alias: "Hammer Curl (Dumbbell)"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-db-phrase",
+            exerciseID: "seed-cam-hammer-curl-dumbbell",
+            alias: "dumbbell hammer curls"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-db-short",
+            exerciseID: "seed-cam-hammer-curl-dumbbell",
+            alias: "db hammer curl"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-plain-cable",
+            exerciseID: "seed-cam-hammer-curl-cable",
+            alias: "hammer curl"
+        )
+        try store.exercises.addAlias(
+            id: "alias-hammer-plain-db",
+            exerciseID: "seed-cam-hammer-curl-dumbbell",
+            alias: "hammer curl"
+        )
+    }
+
+    @Test("rope hammer curl binds to cable not dumbbell")
+    func ropeHammerBindsToCable() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedHammerVariants(in: store)
+        let context = ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false)
+
+        #expect(
+            ExerciseResolver.resolve("rope hammer curl", context: context, persistence: store).exerciseID
+                == "seed-cam-hammer-curl-cable"
+        )
+        #expect(
+            ExerciseResolver.resolve("hammer curls cable", context: context, persistence: store).exerciseID
+                == "seed-cam-hammer-curl-cable"
+        )
+        #expect(
+            ExerciseResolver.resolve("db hammer curl", context: context, persistence: store).exerciseID
+                == "seed-cam-hammer-curl-dumbbell"
+        )
+        #expect(
+            ExerciseResolver.resolve("dumbbell hammer curls", context: context, persistence: store).exerciseID
+                == "seed-cam-hammer-curl-dumbbell"
+        )
+    }
+
+    @Test("bare hammer curl stays unresolved when both variants exist")
+    func bareHammerCurlIsAmbiguous() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedHammerVariants(in: store)
+        let result = ExerciseResolver.resolve(
+            "hammer curl",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+        #expect(result.exerciseID == nil)
+    }
+
+    @Test("bare hammer curl resolves when only the dumbbell variant exists")
+    func bareHammerResolvesIfUnambiguous() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: "seed-cam-hammer-curl-dumbbell",
+            canonicalName: "hammer curl dumbbell",
+            displayName: "Hammer Curl (Dumbbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "biceps",
+            isPickerDefault: true
+        )
+        try store.exercises.addAlias(
+            id: "alias-only-hammer",
+            exerciseID: "seed-cam-hammer-curl-dumbbell",
+            alias: "hammer curl"
+        )
+        let result = ExerciseResolver.resolve(
+            "hammer curl",
+            context: ExerciseResolver.Context(sessionExerciseIDs: [], mustBeInSession: false),
+            persistence: store
+        )
+        #expect(result.exerciseID == "seed-cam-hammer-curl-dumbbell")
     }
 }

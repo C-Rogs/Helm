@@ -37,6 +37,11 @@ public protocol GeminiHTTPClient: Sendable {
 
     func streamGenerate(_ request: GeminiStreamHTTPRequest) async throws -> AsyncThrowingStream<Data, Error>
     func generateContent(_ request: GeminiGenerateHTTPRequest) async throws -> Data
+    func prewarm() async
+}
+
+extension GeminiHTTPClient {
+    public func prewarm() async {}
 }
 
 public enum GeminiStreamAssembler {
@@ -86,7 +91,7 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
     private nonisolated(unsafe) var _lastStreamRequestID: UUID?
     private nonisolated(unsafe) var _lastGenerateRequestID: UUID?
 
-    public init(session: URLSession = .shared) {
+    public init(session: URLSession = GeminiHTTPTransport.sharedSession) {
         self.session = session
     }
 
@@ -98,17 +103,40 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
         generateRequestIDLock.withLock { _lastGenerateRequestID }
     }
 
+    public func prewarm() async {
+        guard GeminiHTTPTransport.shouldPrewarm() else { return }
+        var urlRequest = URLRequest(
+            url: GeminiEndpoint.prewarmURL(),
+            timeoutInterval: GeminiHTTPTransport.prewarmTimeout
+        )
+        urlRequest.httpMethod = "GET"
+        urlRequest.cachePolicy = .reloadIgnoringLocalCacheData
+        let started = Date()
+        do {
+            let (_, response) = try await session.data(for: urlRequest)
+            let status = (response as? HTTPURLResponse)?.statusCode
+            coachLLMStreamLog.debug(
+                "Gemini prewarm \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: 0, statusCode: status), privacy: .public)"
+            )
+        } catch {
+            coachLLMStreamLog.debug(
+                "Gemini prewarm \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: 0, error: error), privacy: .public)"
+            )
+        }
+    }
+
     public func streamGenerate(_ request: GeminiStreamHTTPRequest) async throws -> AsyncThrowingStream<Data, Error> {
         streamRequestIDLock.withLock { _lastStreamRequestID = request.requestID }
-        let url = GeminiEndpoint.streamGenerateURL(model: request.model, apiKey: request.apiKey)
-        var urlRequest = URLRequest(url: url)
-        urlRequest.httpMethod = "POST"
-        urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = request.body
-        let preparedRequest = urlRequest
+        let preparedRequest = Self.preparedPOST(
+            url: GeminiEndpoint.streamGenerateURL(model: request.model, apiKey: request.apiKey),
+            body: request.body
+        )
+        let bodyBytes = request.body.count
+        let requestID = request.requestID
 
         return AsyncThrowingStream { continuation in
             Task {
+                let started = Date()
                 do {
                     let (bytes, response) = try await session.bytes(for: preparedRequest)
                     guard let http = response as? HTTPURLResponse else {
@@ -119,11 +147,14 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
                         let errorData = try await Self.collectErrorBody(from: bytes)
                         let providerError = Self.providerError(statusCode: http.statusCode, data: errorData)
                         coachLLMStreamLog.error(
-                            "Gemini stream HTTP \(http.statusCode, privacy: .public) requestID=\(request.requestID.uuidString, privacy: .public)"
+                            "Gemini stream HTTP \(http.statusCode, privacy: .public) requestID=\(requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: bodyBytes, statusCode: http.statusCode), privacy: .public)"
                         )
                         continuation.finish(throwing: providerError)
                         return
                     }
+                    coachLLMStreamLog.debug(
+                        "Gemini stream headers requestID=\(requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: bodyBytes, statusCode: http.statusCode), privacy: .public)"
+                    )
                     var buffer = Data()
                     for try await byte in bytes {
                         buffer.append(byte)
@@ -136,10 +167,13 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
                     if !buffer.isEmpty {
                         continuation.yield(buffer)
                     }
+                    coachLLMStreamLog.debug(
+                        "Gemini stream end requestID=\(requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: bodyBytes, statusCode: http.statusCode), privacy: .public)"
+                    )
                     continuation.finish()
                 } catch {
                     coachLLMStreamLog.error(
-                        "Gemini stream transport failure requestID=\(request.requestID.uuidString, privacy: .public) \(String(describing: type(of: error)), privacy: .public)"
+                        "Gemini stream transport failure requestID=\(requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: bodyBytes, error: error), privacy: .public)"
                     )
                     continuation.finish(throwing: error)
                 }
@@ -149,23 +183,43 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
 
     public func generateContent(_ request: GeminiGenerateHTTPRequest) async throws -> Data {
         generateRequestIDLock.withLock { _lastGenerateRequestID = request.requestID }
-        let url = GeminiEndpoint.generateContentURL(model: request.model, apiKey: request.apiKey)
-        var urlRequest = URLRequest(url: url)
+        let urlRequest = Self.preparedPOST(
+            url: GeminiEndpoint.generateContentURL(model: request.model, apiKey: request.apiKey),
+            body: request.body
+        )
+        let started = Date()
+        do {
+            let (data, response) = try await session.data(for: urlRequest)
+            guard let http = response as? HTTPURLResponse else {
+                throw CoachProviderError.requestFailed("Invalid response")
+            }
+            guard (200 ..< 300).contains(http.statusCode) else {
+                coachLLMStreamLog.error(
+                    "Gemini generate HTTP \(http.statusCode, privacy: .public) requestID=\(request.requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: request.body.count, statusCode: http.statusCode), privacy: .public)"
+                )
+                throw Self.providerError(statusCode: http.statusCode, data: data)
+            }
+            coachLLMStreamLog.debug(
+                "Gemini generate end requestID=\(request.requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: request.body.count, statusCode: http.statusCode), privacy: .public)"
+            )
+            return data
+        } catch {
+            if error is CoachProviderError {
+                throw error
+            }
+            coachLLMStreamLog.error(
+                "Gemini generate transport failure requestID=\(request.requestID.uuidString, privacy: .public) \(GeminiTransportDiagnostics.summary(elapsed: Date().timeIntervalSince(started), bodyBytes: request.body.count, error: error), privacy: .public)"
+            )
+            throw error
+        }
+    }
+
+    private static func preparedPOST(url: URL, body: Data) -> URLRequest {
+        var urlRequest = URLRequest(url: url, timeoutInterval: GeminiHTTPTransport.requestIdleTimeout)
         urlRequest.httpMethod = "POST"
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.httpBody = request.body
-
-        let (data, response) = try await session.data(for: urlRequest)
-        guard let http = response as? HTTPURLResponse else {
-            throw CoachProviderError.requestFailed("Invalid response")
-        }
-        guard (200 ..< 300).contains(http.statusCode) else {
-            coachLLMStreamLog.error(
-                "Gemini generate HTTP \(http.statusCode, privacy: .public) requestID=\(request.requestID.uuidString, privacy: .public)"
-            )
-            throw Self.providerError(statusCode: http.statusCode, data: data)
-        }
-        return data
+        urlRequest.httpBody = body
+        return urlRequest
     }
 
     private static func providerError(statusCode: Int, data: Data) -> CoachProviderError {

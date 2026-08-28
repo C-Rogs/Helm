@@ -30,4 +30,16 @@ enum GeminiEndpoint {
         }
         return url
     }
+
+    /// TLS/HTTP2 warmup only. No API key in the query string.
+    static func prewarmURL() -> URL {
+        var components = URLComponents()
+        components.scheme = "https"
+        components.host = host
+        components.path = "\(apiPrefix)/models"
+        guard let url = components.url else {
+            preconditionFailure("Invalid Gemini prewarm URL components")
+        }
+        return url
+    }
 }

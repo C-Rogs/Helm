@@ -25,6 +25,8 @@ struct PlanBuilderFlowView: View {
     @State private var options: [PlanBuilderOption] = []
     @State private var notice: String?
     @State private var showCommittedConfirmation = false
+    @State private var generateTask: Task<Void, Never>?
+    @Environment(\.dismiss) private var dismiss
 
     private let service = PlanBuilderService(
         persistence: PersistenceBootstrap.persistenceStore,
@@ -72,18 +74,24 @@ struct PlanBuilderFlowView: View {
                     )
                 }
             }
-            .navigationTitle("Plan Builder")
+            .navigationTitle("New workout plan")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                if !isInterviewStage {
-                    ToolbarItem(placement: .cancellationAction) {
-                        Button("Cancel") {
-                            stage = .interview
-                        }
+                ToolbarItem(placement: .cancellationAction) {
+                    Button("Close") {
+                        generateTask?.cancel()
+                        dismiss()
                     }
                 }
             }
             .helmScreenBackground()
+            .alert("Plan locked in", isPresented: $showCommittedConfirmation) {
+                Button("Done", role: .cancel) {
+                    dismiss()
+                }
+            } message: {
+                Text("Your training plan was updated and today's session re-prescribed. Your coach chat can see the new plan too.")
+            }
         }
         .task {
             if let resumable = service.loadResumableSession() {
@@ -97,10 +105,8 @@ struct PlanBuilderFlowView: View {
                 applyInterview(service.makePrefilledInterview())
             }
         }
-        .alert("Plan locked in", isPresented: $showCommittedConfirmation) {
-            Button("Done", role: .cancel) {}
-        } message: {
-            Text("Your training plan was updated and today's session re-prescribed. Your coach chat can see the new plan too.")
+        .onDisappear {
+            generateTask?.cancel()
         }
     }
 
@@ -108,11 +114,6 @@ struct PlanBuilderFlowView: View {
     private func syncedInterview() -> PlanBuilderInterview {
         syncInterview()
         return interview
-    }
-
-    private var isInterviewStage: Bool {
-        if case .interview = stage { return true }
-        return false
     }
 
     private func applyInterview(_ value: PlanBuilderInterview) {
@@ -202,7 +203,8 @@ struct PlanBuilderFlowView: View {
 
                 Button("Draft my plan options") {
                     syncInterview()
-                    Task { await generate() }
+                    generateTask?.cancel()
+                    generateTask = Task { await generate() }
                 }
                 .buttonStyle(.helmPrimary)
                 .disabled(!isInterviewValid)
@@ -234,6 +236,7 @@ struct PlanBuilderFlowView: View {
     private func generate() async {
         stage = .thinking
         await service.generateOptions(for: interview)
+        guard !Task.isCancelled else { return }
         options = service.options
         notice = service.generationMessage
         if options.isEmpty {
@@ -263,6 +266,7 @@ struct PlanBuilderFlowView: View {
             )
             Spacer()
             Button("Cancel") {
+                generateTask?.cancel()
                 stage = .interview
             }
             .buttonStyle(.helmSecondary)

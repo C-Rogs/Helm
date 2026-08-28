@@ -290,6 +290,9 @@ public struct InSessionCoachService: Sendable {
             userMessage: userMessage
         )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
+        let orderedSessionExerciseIDs = snapshot.session.exercises
+            .sorted { $0.displayOrder < $1.displayOrder }
+            .map(\.exerciseID)
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
         let (catalog, familiarExerciseIDs, recentExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
@@ -300,7 +303,8 @@ public struct InSessionCoachService: Sendable {
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
             recentExerciseIDs: recentExerciseIDs,
-            phraseHint: userMessage
+            phraseHint: userMessage,
+            orderedSessionExerciseIDs: orderedSessionExerciseIDs
         )
 
         guard normalized.unresolvedExerciseIDs.isEmpty else {
@@ -386,6 +390,9 @@ public struct InSessionCoachService: Sendable {
             userMessage: userMessage
         )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
+        let orderedSessionExerciseIDs = snapshot.session.exercises
+            .sorted { $0.displayOrder < $1.displayOrder }
+            .map(\.exerciseID)
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
         let (catalog, familiarExerciseIDs, recentExerciseIDs) = try loadCatalog()
         let normalized = try SessionExerciseIDResolver.normalize(
@@ -396,7 +403,8 @@ public struct InSessionCoachService: Sendable {
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
             recentExerciseIDs: recentExerciseIDs,
-            phraseHint: userMessage
+            phraseHint: userMessage,
+            orderedSessionExerciseIDs: orderedSessionExerciseIDs
         )
 
         let storedPayload = normalized.unresolvedExerciseIDs.isEmpty ? normalized.payload : stampedPayload
@@ -577,6 +585,13 @@ public struct InSessionCoachService: Sendable {
         if !exerciseBlock.isEmpty {
             contextBlock += "\n\nActive session exercises:\n\(exerciseBlock)"
         }
+        if let picker = try? persistence.exercises.listForPicker(search: nil, limit: 120),
+           !picker.isEmpty {
+            let available = InSessionCoachContextBuilder.availableExercisesBlock(picker)
+            if !available.isEmpty {
+                contextBlock += "\n\n\(available)"
+            }
+        }
         if !excludedExerciseIDs.isEmpty {
             let excludedArchetypes = excludedExerciseIDs.compactMap { CoachArchetypeSupport.archetype(for: $0)?.id }
             contextBlock += "\n\nExcluded archetype IDs (already swapped this session):\n"
@@ -657,9 +672,17 @@ public struct InSessionCoachService: Sendable {
                 ?? adjusted.exercises.first(where: { $0.exerciseID != fromID })?.exerciseID
                 ?? adjusted.exercises.first?.exerciseID
                 ?? fromID
+            var toName = ExerciseDisplayFormatter.friendlyName(for: toID, displayNames: names)
+            if let ordered = payload.operations.first(where: { $0.kind == .reorder })?.orderedExerciseIDs {
+                if ordered.first == toID {
+                    toName += " (first)"
+                } else if ordered.last == toID {
+                    toName += " (last)"
+                }
+            }
             return (
                 ExerciseDisplayFormatter.friendlyName(for: fromID, displayNames: names),
-                ExerciseDisplayFormatter.friendlyName(for: toID, displayNames: names)
+                toName
             )
         case .reorder:
             return ("Exercise order", "Updated")

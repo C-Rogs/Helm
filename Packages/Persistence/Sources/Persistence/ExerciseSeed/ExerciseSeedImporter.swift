@@ -173,22 +173,20 @@ public struct ExerciseSeedImporter: Sendable {
         for alias in aliases {
             let trimmed = alias.trimmingCharacters(in: .whitespacesAndNewlines)
             guard !trimmed.isEmpty else { continue }
-            let normalized = ExerciseSearchNormalizer.normalize(trimmed)
-            try db.execute(
-                sql: """
-                    INSERT OR IGNORE INTO exercise_alias (id, exercise_id, alias, normalized_alias, created_at)
-                    VALUES (?, ?, ?, ?, ?)
-                    """,
-                arguments: [UUID().uuidString, entry.id, trimmed, normalized, now]
-            )
-            let rawLower = trimmed.lowercased()
-            if rawLower != normalized {
+            let forms = [
+                ExerciseSearchNormalizer.normalize(trimmed),
+                ExerciseSearchNormalizer.normalizeKeepingEquipment(trimmed),
+                trimmed.lowercased()
+            ]
+            var seen = Set<String>()
+            for form in forms {
+                guard !form.isEmpty, seen.insert(form).inserted else { continue }
                 try db.execute(
                     sql: """
                         INSERT OR IGNORE INTO exercise_alias (id, exercise_id, alias, normalized_alias, created_at)
                         VALUES (?, ?, ?, ?, ?)
                         """,
-                    arguments: [UUID().uuidString, entry.id, trimmed, rawLower, now]
+                    arguments: [UUID().uuidString, entry.id, trimmed, form, now]
                 )
             }
         }

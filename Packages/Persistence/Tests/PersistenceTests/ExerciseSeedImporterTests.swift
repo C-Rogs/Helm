@@ -163,7 +163,7 @@ struct ExerciseSeedImporterTests {
             manifest: try ExerciseSeedLoader.loadManifest(from: manifestData),
             manifestDirectory: manifestURL.deletingLastPathComponent()
         )
-        #expect(resolved.entries.count == 5)
+        #expect(resolved.entries.count == 7)
         #expect(resolved.pickerCuration == .explicit)
         #expect(resolved.explicitPickerIDs.count == 3)
 
@@ -190,7 +190,7 @@ struct ExerciseSeedImporterTests {
         #expect(legPress.contains { $0.displayName == "Leg Press Horizontal (Machine)" })
 
         let facePull = try store.exercises.resolveImportedTitle("Face Pull")
-        #expect(facePull?.exerciseID == "seed-Face_Pull")
+        #expect(facePull?.exerciseID == "seed-face-pull-overlay")
 
         let legCurl = try store.exercises.listForPicker(search: "Lying Leg Curl")
         #expect(legCurl.contains { $0.displayName == "Lying Leg Curl (Machine)" })

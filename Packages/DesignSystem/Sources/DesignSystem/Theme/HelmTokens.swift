@@ -94,4 +94,5 @@ public enum HelmLayout {
     public static let trainRestBannerScrollInset: CGFloat = HelmSpacing.xl * 3
     public static let compactArcWidth: CGFloat = HelmSpacing.sm * 10
     public static let compactEnergyArcWidth: CGFloat = HelmSpacing.md * 6
+    public static let calorieArcMaxWidth: CGFloat = HelmSpacing.lg * 12
 }

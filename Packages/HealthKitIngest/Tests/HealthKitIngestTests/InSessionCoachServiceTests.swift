@@ -6,7 +6,7 @@ import PlanKit
 import Testing
 @testable import HealthKitIngest
 
-@Suite("In-session coach")
+@Suite("In-session coach", .serialized)
 struct InSessionCoachServiceTests {
     private let benchPressID = "bench_press"
     private let inclineDBPressID = "incline_db_press"

@@ -72,6 +72,13 @@ enum CoachWorkoutStartAdjuster {
         if let exercises = payload.exercises, !exercises.isEmpty {
             let readiness = ReadinessBootstrap.readinessService.state.score
             let base = try await prescriptionService.todaysPrescription(readiness: readiness)
+            // Rest days and custom lists must import named exercises, not start an empty engine session.
+            if base.exercises.isEmpty {
+                let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)
+                guard !plan.exercises.isEmpty else { throw StartError.emptySession }
+                try await onStart(.importedPlan(plan))
+                return
+            }
             if let adjusted = try WorkoutStartPrescriptionResolver.prescription(
                 exerciseLabels: payload.exerciseLabels,
                 base: base,
@@ -82,7 +89,8 @@ enum CoachWorkoutStartAdjuster {
                     endingAt: helmDay
                 )
                 PrescriptionDayStore.save(adjusted, for: helmDay, historyFingerprint: fingerprint)
-            } else if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue {
+            } else if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue
+                || payload.exercises != nil {
                 let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)
                 guard !plan.exercises.isEmpty else { throw StartError.emptySession }
                 try await onStart(.importedPlan(plan))

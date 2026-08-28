@@ -145,7 +145,14 @@ struct GeminiProviderFixtureTests {
         #expect(text == "Readiness is steady.")
         #expect(client.lastStreamRequestID != nil)
 
-        let spans = await GeminiStreamTracer.shared.completedSpans()
+        var spans: [GeminiStreamTracer.Span] = []
+        for _ in 0..<30 {
+            spans = await GeminiStreamTracer.shared.completedSpans()
+            if spans.contains(where: { $0.name == "GeminiStream" && $0.began && $0.ended }) {
+                break
+            }
+            try await Task.sleep(for: .milliseconds(10))
+        }
         #expect(spans.contains { $0.name == "GeminiStream" && $0.began && $0.ended })
     }
 
@@ -222,5 +229,51 @@ struct ProviderPreferencesStoreTests {
 
         let reloaded = ProviderPreferencesStore(defaults: defaults)
         #expect(reloaded.selectedProvider == .openRouter)
+    }
+}
+
+@Suite("Gemini HTTP transport", .serialized)
+struct GeminiHTTPTransportTests {
+    @Test("idle timeout is longer than URLSession.shared default")
+    func idleTimeout() {
+        #expect(GeminiHTTPTransport.requestIdleTimeout == 180)
+        #expect(GeminiHTTPTransport.resourceTimeout == 600)
+        #expect(GeminiHTTPTransport.prewarmTimeout == 15)
+    }
+
+    @Test("prewarm URL has no API key")
+    func prewarmURLOmitsKey() {
+        let url = GeminiEndpoint.prewarmURL()
+        #expect(url.host == "generativelanguage.googleapis.com")
+        #expect(url.query?.contains("key=") != true)
+    }
+
+    @Test("transport summary records elapsed, body size, and URLError code")
+    func transportSummary() {
+        let summary = GeminiTransportDiagnostics.summary(
+            elapsed: 1.25,
+            bodyBytes: 2048,
+            error: URLError(.timedOut)
+        )
+        #expect(summary.contains("elapsed_ms=1250"))
+        #expect(summary.contains("body_kb=2.0"))
+        #expect(summary.contains("URLError.-1001"))
+        #expect(!summary.contains("generativelanguage"))
+        #expect(!summary.contains("http"))
+    }
+
+    @Test("prewarm cooldown skips a second call")
+    func prewarmCooldown() {
+        GeminiHTTPTransport.resetPrewarmCooldownForTests()
+        #expect(GeminiHTTPTransport.shouldPrewarm())
+        #expect(GeminiHTTPTransport.shouldPrewarm() == false)
+        GeminiHTTPTransport.resetPrewarmCooldownForTests()
+        #expect(GeminiHTTPTransport.shouldPrewarm())
+    }
+
+    @Test("fixture prewarm is a no-op")
+    func fixturePrewarm() async {
+        let client = FixtureGeminiHTTPClient(bundle: .module)
+        await client.prewarm()
     }
 }

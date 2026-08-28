@@ -114,8 +114,7 @@ struct NutritionDaySummaryCard: View {
                 header
 
                 if hasCalculatedTargets {
-                    remainingHero
-                    eatToRow
+                    CalorieArcGauge(model: calorieArcModel)
                     cascadeCaption
                     NutritionMacroProgressRow(
                         label: "Protein",
@@ -135,7 +134,6 @@ struct NutritionDaySummaryCard: View {
                         target: targets.fatGrams,
                         unit: "g"
                     )
-                    activeEnergyContext
                 } else {
                     Text("Complete body profile in onboarding or Settings to calculate calorie targets.")
                         .helmType(.body, color: HelmColor.depleted)
@@ -165,63 +163,26 @@ struct NutritionDaySummaryCard: View {
         }
     }
 
-    private var remainingHero: some View {
-        let eatTo = max(snapshot.eatToKcal, 1)
-        let logged = Double(snapshot.loggedKcal ?? 0)
-        let remaining = snapshot.remainingKcal
-        let over = remaining < 0
-        let state = HelmState.energyBalance(intakeKcal: logged, targetKcal: Double(eatTo))
-
-        return ArcGauge(
-            value: min(logged, Double(eatTo)),
-            range: 0 ... Double(eatTo),
-            state: over ? .depleted : state
-        ) {
-            VStack(spacing: HelmSpacing.xxs) {
-                HelmNumericText(abs(remaining))
-                    .helmType(.heroNumber, color: HelmColor.color(for: over ? .depleted : state))
-                Text(over ? "kcal over" : "kcal left")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-            }
-        }
-        .frame(maxWidth: HelmLayout.arcReadoutMaxWidth)
-        .frame(maxWidth: .infinity)
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(
-            over
-                ? "\(-remaining) kilocalories over eat-to"
-                : "\(remaining) kilocalories remaining"
+    private var calorieArcModel: CalorieArcModel {
+        CalorieArcModel(
+            eatToKcal: snapshot.eatToKcal,
+            loggedKcal: snapshot.loggedKcal,
+            active: calorieArcActive
         )
     }
 
-    private var eatToRow: some View {
-        HStack(alignment: .firstTextBaseline) {
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("Eat-to")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
-                    HelmNumericText(snapshot.eatToKcal)
-                        .helmType(.bigNumber)
-                    Text("kcal")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
+    private var calorieArcActive: CalorieArcModel.Active {
+        switch snapshot.activeEnergyFreshness {
+        case .unavailable:
+            .none
+        case let .stale(partial):
+            if let partial {
+                .partial(partial)
+            } else {
+                .syncing
             }
-            Spacer()
-            VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
-                Text("Logged")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                if let logged = snapshot.loggedKcal {
-                    HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
-                        HelmNumericText(logged)
-                            .helmType(.bigNumber)
-                        Text("kcal")
-                            .helmType(.body, color: HelmColor.fgMuted)
-                    }
-                } else {
-                    Text("None")
-                        .helmType(.bigNumber, color: HelmColor.fgMuted)
-                }
-            }
+        case let .fresh(burned):
+            .fresh(burned)
         }
     }
 
@@ -231,12 +192,12 @@ struct NutritionDaySummaryCard: View {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 if !cascadeText.isEmpty {
                     Text(cascadeText)
-                        .helmType(.body, color: HelmColor.fgMuted)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
                 if let budgetDay = snapshot.budgetDay, budgetDay.isReflowed {
-                    Text("Reflowed from a \(budgetDay.plannedCaloriesKcal) kcal planned share.")
-                        .helmType(.body, color: HelmColor.fgSecondary)
+                    Text("from \(budgetDay.plannedCaloriesKcal) planned")
+                        .helmType(.monoTag, color: HelmColor.fgSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -249,28 +210,9 @@ struct NutritionDaySummaryCard: View {
             parts.append("TDEE \(snapshot.targets.estimatedTDEEKcal)")
         }
         if let weight = snapshot.trend.smoothedTrendWeightKg {
-            parts.append(String(format: "%.1f kg trend", weight))
+            parts.append(String(format: "%.1f kg", weight))
         }
         return parts.joined(separator: " · ")
-    }
-
-    @ViewBuilder
-    private var activeEnergyContext: some View {
-        switch snapshot.activeEnergyFreshness {
-        case .unavailable:
-            EmptyView()
-        case let .stale(partial):
-            if let partial, partial > 0 {
-                Text("Active \(partial) kcal syncing. Not in eat-to.")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            } else {
-                Text(ActiveEnergyDisplayCopy.stalePending)
-                    .helmType(.body, color: HelmColor.depleted)
-            }
-        case let .fresh(burned):
-            Text("Active \(burned) kcal. Not in eat-to.")
-                .helmType(.body, color: HelmColor.fgMuted)
-        }
     }
 
     private var header: some View {

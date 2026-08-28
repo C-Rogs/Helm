@@ -426,6 +426,44 @@ public enum ChartPayloadParser: Sendable {
         }
         return payload
     }
+
+    public static func embeddedJSON(for payload: ChartPayload) throws -> String {
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.sortedKeys]
+        let data = try encoder.encode(payload)
+        return String(data: data, encoding: .utf8) ?? "{}"
+    }
+
+    /// Prose plus chart.v1 JSON so ChatView can render the bubble after persist.
+    public static func persistText(reply: String, payload: ChartPayload) -> String {
+        let json = (try? embeddedJSON(for: payload)) ?? ""
+        let trimmed = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        if json.isEmpty { return trimmed }
+        if trimmed.isEmpty { return json }
+        return "\(trimmed)\n\(json)"
+    }
+}
+
+/// Assistant row stored in `chat_message`. Keeps chart.v1 JSON so the bubble survives history.
+public enum CoachChatPersistedAssistantText: Sendable {
+    public static func make(
+        assembled: String,
+        actionReply: String? = nil,
+        chart: ChartPayload? = nil
+    ) -> String {
+        var display = CoachChatTextFormatter.userFacingText(from: assembled)
+        let resolvedChart = chart ?? ChartPayloadParser.parse(from: assembled)
+        if display.isEmpty {
+            display = actionReply
+                ?? resolvedChart?.reply.trimmingCharacters(in: .whitespacesAndNewlines)
+                ?? ""
+        }
+        guard let resolvedChart else { return display }
+        if ChartPayloadParser.parse(from: display) != nil {
+            return display
+        }
+        return ChartPayloadParser.persistText(reply: display, payload: resolvedChart)
+    }
 }
 
 /// Shared decoding surface for the `*_query.v1` payload coding-key enums.

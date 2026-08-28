@@ -168,4 +168,78 @@ struct WorkoutSessionHistoryTests {
         #expect(snapshot.session.exercises[0].sets[0].mass?.kilograms == 120)
         #expect(snapshot.session.exercises[0].sets[0].reps == 5)
     }
+
+    @Test("fetches multiple completed sessions in one query")
+    func fetchByIDs() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.exercises.upsert(
+            id: squatID,
+            canonicalName: "squat (barbell)",
+            displayName: "Squat (Barbell)",
+            exerciseMode: .weightReps
+        )
+
+        let firstAt = Date(timeIntervalSince1970: 1_700_000_000)
+        let secondAt = firstAt.addingTimeInterval(86_400)
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "session-a",
+                title: "A",
+                startedAt: firstAt,
+                endedAt: firstAt,
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        id: "wse-a",
+                        exerciseID: squatID,
+                        displayOrder: 0,
+                        exerciseMode: .weightReps,
+                        sets: [
+                            SetEntryDraft(
+                                id: "set-a",
+                                setIndex: 0,
+                                mass: Mass(kilograms: 100),
+                                reps: 5,
+                                completedAt: firstAt
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "session-b",
+                title: "B",
+                startedAt: secondAt,
+                endedAt: secondAt,
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        id: "wse-b",
+                        exerciseID: squatID,
+                        displayOrder: 0,
+                        exerciseMode: .weightReps,
+                        sets: [
+                            SetEntryDraft(
+                                id: "set-b",
+                                setIndex: 0,
+                                mass: Mass(kilograms: 110),
+                                reps: 5,
+                                completedAt: secondAt
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+
+        #expect(try store.workoutSessions.fetch(ids: []).isEmpty)
+
+        let fetched = try store.workoutSessions.fetch(ids: ["session-b", "missing", "session-a"])
+        #expect(fetched.count == 2)
+        #expect(fetched["session-a"]?.title == "A")
+        #expect(fetched["session-b"]?.exercises[0].sets[0].mass?.kilograms == 110)
+
+        let completed = try store.workoutSessions.fetchCompletedSessions(since: firstAt)
+        #expect(completed.map(\.id) == ["session-a", "session-b"])
+    }
 }

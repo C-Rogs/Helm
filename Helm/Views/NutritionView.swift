@@ -9,6 +9,7 @@ struct NutritionView: View {
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
     private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
     @Bindable private var chatController = ChatBootstrap.controller
+    @Bindable private var tabRouter = AppTabRouter.shared
     @State private var photoMealController = PhotoMealController()
     @State private var manualFoodLogController = ManualFoodLogController(
         foodResolver: NutritionBootstrap.foodResolver,
@@ -132,6 +133,10 @@ struct NutritionView: View {
         }
         .onChange(of: nutritionService.state) { _, newState in
             reloadMeals(from: newState)
+        }
+        .onChange(of: tabRouter.pendingNutritionFocus) { _, focus in
+            guard let focus else { return }
+            Task { await applyNutritionFocus(focus) }
         }
         .onChange(of: manualFoodLogController.phase) { _, newPhase in
             if case .idle = newPhase {
@@ -340,6 +345,18 @@ struct NutritionView: View {
         selectedHelmDay = day
         syncLoggingContext()
         await refreshSelectedDay()
+    }
+
+    @MainActor
+    private func applyNutritionFocus(_ focus: NutritionNavigationFocus) async {
+        AppTabRouter.shared.pendingNutritionFocus = nil
+        await selectDay(focus.helmDay)
+        mealsStore.reload(for: focus.helmDay)
+        guard let mealID = focus.mealID else { return }
+        let displays = MealBucket.allCases.flatMap { mealsStore.mealsByBucket[$0] ?? [] }
+        if let display = displays.first(where: { $0.id == mealID }) {
+            mealEditController.beginEdit(display)
+        }
     }
 
     private var todayHelmDay: HelmDay? {

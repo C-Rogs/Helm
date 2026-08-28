@@ -243,4 +243,79 @@ struct FoodLogCommandTests {
         #expect(ManualMealError.mealNotFound.errorDescription?.contains("not found") == true)
         #expect(ManualMealError.nothingToDelete.errorDescription?.contains("No meals") == true)
     }
+
+    @Test("chat turn without a date cue logs today not a stale model helmDay")
+    func chatTurnWithoutDateUsesToday() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+        let now = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 16))
+        )
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Logging chicken.",
+            action: .log,
+            description: "400g chicken breast",
+            bucket: "lunch",
+            caloriesKcal: 650,
+            proteinG: 124,
+            carbsG: 0,
+            fatG: 14,
+            helmDay: "2026-08-27"
+        )
+
+        try await applier.apply(
+            payload,
+            now: now,
+            userText: "Block 400 cow chickens for lunch"
+        )
+
+        let today = HelmDay(year: 2026, month: 8, day: 28)
+        let yesterday = HelmDay(year: 2026, month: 8, day: 27)
+        #expect(try store.nutrition.fetchMeals(for: today).count == 1)
+        #expect(try store.nutrition.fetchMeals(for: yesterday).isEmpty)
+    }
+
+    @Test("chat turn that names an ISO date keeps that helmDay")
+    func chatTurnNamedDateKeepsHelmDay() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+        let now = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 16))
+        )
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Logging cheese on toast.",
+            action: .log,
+            description: "Cheese on toast",
+            bucket: "lunch",
+            caloriesKcal: 341,
+            helmDay: "2026-08-28"
+        )
+
+        try await applier.apply(
+            payload,
+            now: now,
+            userText: "Cheese on toast (log to lunch) for 2026-08-27"
+        )
+
+        #expect(try store.nutrition.fetchMeals(for: HelmDay(year: 2026, month: 8, day: 27)).count == 1)
+        #expect(try store.nutrition.fetchMeals(for: HelmDay(year: 2026, month: 8, day: 28)).isEmpty)
+    }
 }

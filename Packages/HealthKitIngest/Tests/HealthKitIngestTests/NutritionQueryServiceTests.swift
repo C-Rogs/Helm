@@ -75,7 +75,7 @@ struct NutritionQueryServiceTests {
 
         let service = NutritionQueryService(store: store, calendar: calendar)
         let payload = NutritionQueryPayload(queryType: .today)
-        let output = await service.run(payload, now: loggedAt)
+        let output = try await service.run(payload, now: loggedAt)
 
         #expect(output.contains("query=today"))
         #expect(output.contains("targets_kcal="))
@@ -101,7 +101,7 @@ struct NutritionQueryServiceTests {
 
         let service = NutritionQueryService(store: store, calendar: calendar)
         let payload = NutritionQueryPayload(queryType: .today)
-        let output = await service.run(payload, now: loggedAt)
+        let output = try await service.run(payload, now: loggedAt)
 
         #expect(output.contains("query=today"))
         #expect(output.contains("targets_kcal=0"))
@@ -154,7 +154,7 @@ struct NutritionQueryServiceTests {
 
         let service = NutritionQueryService(store: store, calendar: calendar)
         let payload = NutritionQueryPayload(queryType: .day, helmDay: "2026-08-20")
-        let output = await service.run(payload, now: futureNow)
+        let output = try await service.run(payload, now: futureNow)
 
         #expect(output.contains("query=day"))
         #expect(output.contains("[past]"))
@@ -216,7 +216,7 @@ struct NutritionQueryServiceTests {
 
         let service = NutritionQueryService(store: store, calendar: calendar)
         let payload = NutritionQueryPayload(queryType: .weeklyBudget)
-        let output = await service.run(payload, now: loggedAt)
+        let output = try await service.run(payload, now: loggedAt)
 
         #expect(output.contains("query=weeklyBudget"))
         #expect(output.contains("week_start="))
@@ -235,7 +235,7 @@ struct NutritionQueryServiceTests {
         let loggedAt = Date()
         let service = NutritionQueryService(store: store, calendar: calendar)
         let payload = NutritionQueryPayload(queryType: .weeklyBudget)
-        let output = await service.run(payload, now: loggedAt)
+        let output = try await service.run(payload, now: loggedAt)
 
         #expect(output.contains("error=unavailable"))
     }
@@ -250,7 +250,7 @@ struct NutritionQueryServiceTests {
         let loggedAt = Date()
 
         // nil helmDay falls back to today.
-        let nilOutput = await service.run(
+        let nilOutput = try await service.run(
             NutritionQueryPayload(queryType: .day, helmDay: nil),
             now: loggedAt
         )
@@ -258,7 +258,7 @@ struct NutritionQueryServiceTests {
         #expect(nilOutput.contains(" [future]"))
 
         // Invalid format falls back to today.
-        let invalidOutput = await service.run(
+        let invalidOutput = try await service.run(
             NutritionQueryPayload(queryType: .day, helmDay: "not-a-date"),
             now: loggedAt
         )
@@ -266,7 +266,7 @@ struct NutritionQueryServiceTests {
         #expect(invalidOutput.contains(" [future]"))
 
         // Valid date works.
-        let validOutput = await service.run(
+        let validOutput = try await service.run(
             NutritionQueryPayload(queryType: .day, helmDay: "2026-08-20"),
             now: loggedAt
         )

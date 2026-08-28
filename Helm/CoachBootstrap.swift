@@ -29,6 +29,7 @@ enum CoachBootstrap {
         if keyStore.hasKey(kind: .gemini) {
             let provider = GeminiProvider(apiKeyStore: keyStore)
             ProviderRegistry.shared.installGeminiProvider(provider)
+            Task { await provider.prewarm() }
             return
         }
 

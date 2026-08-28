@@ -168,6 +168,73 @@ struct LoggerRepositoryTests {
         #expect(previousSet1?.reps == 10)
     }
 
+    @Test("batched previous performances match per-set lookups")
+    func previousPerformancesBatchMatchesSingles() throws {
+        let store = try makeStore()
+        try seedBenchPress(in: store)
+
+        let olderStart = Date(timeIntervalSince1970: 1_700_000_000)
+        let olderSet1Completed = Date(timeIntervalSince1970: 1_700_000_100)
+        let olderSet2Completed = Date(timeIntervalSince1970: 1_700_000_200)
+
+        let olderSession = WorkoutSessionDraft(
+            id: "session-older-batch",
+            startedAt: olderStart,
+            endedAt: olderSet2Completed,
+            exercises: [
+                WorkoutSessionExerciseDraft(
+                    exerciseID: benchPressID,
+                    displayOrder: 0,
+                    exerciseMode: .weightReps,
+                    sets: [
+                        SetEntryDraft(
+                            setIndex: 1,
+                            mass: Mass(kilograms: 60),
+                            reps: 10,
+                            completedAt: olderSet1Completed
+                        ),
+                        SetEntryDraft(
+                            setIndex: 2,
+                            mass: Mass(kilograms: 80),
+                            reps: 8,
+                            completedAt: olderSet2Completed
+                        )
+                    ]
+                )
+            ]
+        )
+        try store.workoutSessions.insert(olderSession)
+
+        let excluding = "session-active"
+        let singles: [(Int, PreviousPerformance?)] = [
+            (1, try store.workoutSessions.previousPerformance(
+                exerciseID: benchPressID,
+                setIndex: 1,
+                excludingSessionID: excluding
+            )),
+            (2, try store.workoutSessions.previousPerformance(
+                exerciseID: benchPressID,
+                setIndex: 2,
+                excludingSessionID: excluding
+            )),
+        ]
+
+        let batch = try store.workoutSessions.previousPerformances(
+            exerciseID: benchPressID,
+            targets: [
+                (setIndex: 1, setType: .normal),
+                (setIndex: 2, setType: .normal),
+            ],
+            excludingSessionID: excluding
+        )
+        let byIndex = Dictionary(uniqueKeysWithValues: batch.map { ($0.setIndex, $0.performance) })
+
+        #expect(byIndex[1]?.mass?.kilograms == singles[0].1?.mass?.kilograms)
+        #expect(byIndex[1]?.reps == singles[0].1?.reps)
+        #expect(byIndex[2]?.mass?.kilograms == singles[1].1?.mass?.kilograms)
+        #expect(byIndex[2]?.reps == singles[1].1?.reps)
+    }
+
     @Test("previous performance ignores warmup bucket when asking for working set")
     func previousPerformanceRespectsWarmupBucket() throws {
         let store = try makeStore()

@@ -108,14 +108,10 @@ public enum CoachFailurePolicy: Sendable {
             )
         }
 
-        let detail = error.localizedDescription.trimmingCharacters(in: .whitespacesAndNewlines)
-        let message = detail.isEmpty
-            ? "Coach request failed. Numbers and logging still work."
-            : "Coach request failed. Numbers and logging still work."
         return CoachDegradedState(
             mode: .engineOnly,
             reason: .other,
-            userMessage: message
+            userMessage: "Coach request failed. Numbers and logging still work."
         )
     }
 

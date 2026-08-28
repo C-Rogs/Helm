@@ -144,6 +144,9 @@ public struct PreStartCoachService: Sendable {
             userMessage: nil
         )
         let sessionExerciseIDs = Set(snapshot.session.exercises.map(\.exerciseID))
+        let orderedSessionExerciseIDs = snapshot.session.exercises
+            .sorted { $0.displayOrder < $1.displayOrder }
+            .map(\.exerciseID)
         let displayNames = try persistence.exercises.displayNames(for: Array(sessionExerciseIDs))
         let rows = try persistence.exercises.fetchCatalogRows()
         let familiarExerciseIDs = PrescriptionHistoryBuilder.familiarExerciseIDs(
@@ -159,7 +162,8 @@ public struct PreStartCoachService: Sendable {
             exerciseDisplayNames: displayNames,
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
-            familiarExerciseIDs: familiarExerciseIDs
+            familiarExerciseIDs: familiarExerciseIDs,
+            orderedSessionExerciseIDs: orderedSessionExerciseIDs
         )
         guard normalized.unresolvedExerciseIDs.isEmpty else {
             throw InSessionCoachError.noApplicableChange

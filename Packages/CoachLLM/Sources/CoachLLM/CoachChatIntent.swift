@@ -1,4 +1,5 @@
 import Foundation
+import Core
 
 /// Lightweight heuristics for chat tool loops (no separate classifier model).
 public enum CoachChatIntent: Sendable {
@@ -39,14 +40,46 @@ public enum CoachChatIntent: Sendable {
             "lets go",
             "begin the workout",
             "lock it in",
-            "lock in"
+            "lock in",
+            "and start"
         ]
-        if startNeedles.contains(where: { lower.contains($0) }) {
+        if startNeedles.contains(where: { containsWholePhrase($0, in: lower) }) {
+            return true
+        }
+        if containsWholePhrase("start a ", in: lower) || containsWholePhrase("start an ", in: lower) {
             return true
         }
         // Short confirm after negotiation.
         let trimmed = lower.trimmingCharacters(in: .whitespacesAndNewlines)
         return ["yes let's go", "yes lets go", "yes start", "start it"].contains(trimmed)
+    }
+
+    /// Exercise phrase the current message requires in workout_start (e.g. "with lat pulldown").
+    public static func requiredWorkoutExerciseHint(from text: String) -> String? {
+        let lower = text.lowercased()
+        for separator in [" with just ", " just ", " with "] {
+            guard let range = lower.range(of: separator) else { continue }
+            var rest = String(lower[range.upperBound...])
+            for trailer in [" and start", " and begin", " please"] {
+                if let trailerRange = rest.range(of: trailer) {
+                    rest = String(rest[..<trailerRange.lowerBound])
+                }
+            }
+            rest = rest.trimmingCharacters(in: .whitespacesAndNewlines)
+            if rest.count >= 3 {
+                return rest
+            }
+        }
+        return nil
+    }
+
+    public static func exerciseLabelsCoverHint(_ labels: [String], hint: String) -> Bool {
+        let hintTokens = hint.split(separator: " ").map(String.init).filter { $0.count >= 3 }
+        guard !hintTokens.isEmpty else { return true }
+        return labels.contains { label in
+            let lower = label.lowercased()
+            return hintTokens.allSatisfy { lower.contains($0) }
+        }
     }
 
     public static func looksLikeWorkoutProposal(_ text: String) -> Bool {
@@ -340,6 +373,7 @@ public enum CoachChatIntent: Sendable {
             "calorie target",
             "weekly budget",
             "week budget",
+            "week ahead nutrition",
             "my nutrition budget",
             "nutrition plan",
             "what can i eat today",
@@ -361,5 +395,134 @@ public enum CoachChatIntent: Sendable {
             return NutritionQueryPayload(queryType: .weeklyBudget)
         }
         return NutritionQueryPayload(queryType: .today)
+    }
+
+    // MARK: - Charts
+
+    public enum ChatChartKind: Sendable, Equatable {
+        case weeklyCalories
+        case weeklyProtein
+        case hardSets
+    }
+
+    public static func looksLikeChartRequest(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("chart") || lower.contains("graph")
+    }
+
+    public static func inferredChartKind(from text: String) -> ChatChartKind? {
+        guard looksLikeChartRequest(text) else { return nil }
+        let lower = text.lowercased()
+        if lower.contains("hard set") || lower.contains("hard stes") || lower.contains("hardsets")
+            || lower.contains("volume landmark") || (lower.contains("volume") && lower.contains("muscle")) {
+            return .hardSets
+        }
+        if lower.contains("protein") {
+            return .weeklyProtein
+        }
+        if lower.contains("calorie") || lower.contains("kcal") || lower.contains("intake") {
+            return .weeklyCalories
+        }
+        if lower.contains("volume") || lower.contains("mev") || lower.contains("mrv") {
+            return .hardSets
+        }
+        return .weeklyCalories
+    }
+
+    // MARK: - Navigation
+
+    public static func looksLikeOpenTrain(_ text: String) -> Bool {
+        let trimmed = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed == "open train"
+            || trimmed.hasPrefix("open train ")
+            || trimmed == "go to train"
+            || trimmed == "open the train tab"
+            || trimmed == "take me to train"
+    }
+
+    public static func looksLikeOpenNutrition(_ text: String) -> Bool {
+        guard !looksLikeChartRequest(text) else { return false }
+        let lower = text.lowercased()
+        let openCue = lower.contains("open") || lower.contains("navigate") || lower.contains("take me")
+            || lower.contains("go to") || lower.contains("show me the entry")
+        guard openCue else { return false }
+        return lower.contains("nutrition") || lower.contains("diary") || lower.contains("entry")
+            || lower.contains("snack") || lower.contains("meal") || lower.contains("lunch")
+            || lower.contains("breakfast") || lower.contains("dinner")
+    }
+
+    // MARK: - Food log day
+
+    /// Calendar day named in the athlete message, if any.
+    public static func inferredHelmDay(
+        from text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay? {
+        let lower = text.lowercased()
+        if let iso = firstISODate(in: text) {
+            return iso
+        }
+        if containsWholePhrase("yesterday", in: lower) || containsWholePhrase("yday", in: lower) {
+            return HelmDay.day(for: now, calendar: calendar).adding(days: -1, calendar: calendar)
+        }
+        if containsWholePhrase("today", in: lower) {
+            return HelmDay.day(for: now, calendar: calendar)
+        }
+        return inferredWeekdayHelmDay(from: lower, now: now, calendar: calendar)
+    }
+
+    public static func athleteNamedCalendarDay(in text: String) -> Bool {
+        inferredHelmDay(from: text) != nil
+    }
+
+    // MARK: - Phrase helpers
+
+    static func containsWholePhrase(_ needle: String, in lower: String) -> Bool {
+        guard let range = lower.range(of: needle) else { return false }
+        if range.lowerBound > lower.startIndex {
+            let before = lower[lower.index(before: range.lowerBound)]
+            if before.isLetter || before.isNumber { return false }
+        }
+        if range.upperBound < lower.endIndex {
+            let after = lower[range.upperBound]
+            if needle.hasSuffix(" ") { return true }
+            if after.isLetter || after.isNumber { return false }
+        }
+        return true
+    }
+
+    private static func firstISODate(in text: String) -> HelmDay? {
+        let pattern = #"\b(20\d{2})-(\d{2})-(\d{2})\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsText = text as NSString
+        let range = NSRange(location: 0, length: nsText.length)
+        guard let match = regex.firstMatch(in: text, range: range),
+              match.numberOfRanges == 4,
+              let year = Int(nsText.substring(with: match.range(at: 1))),
+              let month = Int(nsText.substring(with: match.range(at: 2))),
+              let day = Int(nsText.substring(with: match.range(at: 3)))
+        else {
+            return nil
+        }
+        return HelmDay(year: year, month: month, day: day)
+    }
+
+    private static func inferredWeekdayHelmDay(
+        from lower: String,
+        now: Date,
+        calendar: Calendar
+    ) -> HelmDay? {
+        let names: [(String, Int)] = [
+            ("sunday", 1), ("monday", 2), ("tuesday", 3), ("wednesday", 4),
+            ("thursday", 5), ("friday", 6), ("saturday", 7)
+        ]
+        guard let match = names.first(where: { containsWholePhrase($0.0, in: lower) }) else {
+            return nil
+        }
+        let today = calendar.component(.weekday, from: now)
+        var delta = match.1 - today
+        if delta > 0 { delta -= 7 }
+        return HelmDay.day(for: now, calendar: calendar).adding(days: delta, calendar: calendar)
     }
 }

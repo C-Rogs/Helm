@@ -70,19 +70,31 @@ public struct ExerciseRepository: Sendable {
     }
 
     public func fetchSummary(id: String) throws -> ExerciseSummary? {
-        try pool.read { db in
-            guard let row = try Row.fetchOne(
+        try fetchSummaries(ids: [id])[id]
+    }
+
+    public func fetchSummaries(ids: [String]) throws -> [String: ExerciseSummary] {
+        let uniqueIDs = Array(Set(ids.filter { !$0.isEmpty }))
+        guard !uniqueIDs.isEmpty else { return [:] }
+
+        return try pool.read { db in
+            let placeholders = Array(repeating: "?", count: uniqueIDs.count).joined(separator: ", ")
+            let rows = try Row.fetchAll(
                 db,
                 sql: """
                     SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group, gif_url
                     FROM exercise
-                    WHERE id = ? AND deleted_at IS NULL
+                    WHERE deleted_at IS NULL AND id IN (\(placeholders))
                     """,
-                arguments: [id]
-            ) else {
-                return nil
+                arguments: StatementArguments(uniqueIDs)
+            )
+            var summaries: [String: ExerciseSummary] = [:]
+            summaries.reserveCapacity(rows.count)
+            for row in rows {
+                let summary = try Self.summary(from: row)
+                summaries[summary.id] = summary
             }
-            return try Self.summary(from: row)
+            return summaries
         }
     }
 
@@ -102,17 +114,19 @@ public struct ExerciseRepository: Sendable {
             }
         }
 
+        let source = trimmed.hasPrefix("seed-") ? String(trimmed.dropFirst(5)) : trimmed
         return try pool.read { db in
-            try String.fetchOne(
+            let ids = try String.fetchAll(
                 db,
                 sql: """
                     SELECT id
                     FROM exercise
                     WHERE deleted_at IS NULL AND source_dataset_id = ?
-                    LIMIT 1
                     """,
-                arguments: [trimmed.hasPrefix("seed-") ? String(trimmed.dropFirst(5)) : trimmed]
+                arguments: [source]
             )
+            // Shared sourceDatasetID is GIF metadata, not identity.
+            return ids.count == 1 ? ids[0] : nil
         }
     }
 
@@ -411,14 +425,21 @@ public struct ExerciseRepository: Sendable {
     }
 
     public func resolveExerciseID(normalizedAlias: String) throws -> String? {
+        try resolveExerciseIDs(normalizedAlias: normalizedAlias).first
+    }
+
+    /// All live catalog rows that share this alias. Callers must disambiguate
+    /// when more than one id comes back (dumbbell vs cable hammer curl).
+    public func resolveExerciseIDs(normalizedAlias: String) throws -> [String] {
         try pool.read { db in
-            try String.fetchOne(
+            try String.fetchAll(
                 db,
                 sql: """
-                    SELECT exercise_id
-                    FROM exercise_alias
-                    WHERE normalized_alias = ?
-                    LIMIT 1
+                    SELECT DISTINCT a.exercise_id
+                    FROM exercise_alias a
+                    INNER JOIN exercise e ON e.id = a.exercise_id
+                    WHERE a.normalized_alias = ?
+                      AND e.deleted_at IS NULL
                     """,
                 arguments: [normalizedAlias]
             )
@@ -427,28 +448,30 @@ public struct ExerciseRepository: Sendable {
 
     public func resolveImportedTitle(_ title: String) throws -> ResolvedImportedExerciseID? {
         let candidates = Self.importTitleCandidates(from: title)
+        var uniqueHits: [(candidate: String, result: ResolvedImportedExerciseID)] = []
         for candidate in candidates {
-            if let exerciseID = try resolveExerciseID(normalizedAlias: candidate) {
-                return ResolvedImportedExerciseID(exerciseID: exerciseID, matchKind: .alias)
+            let aliasIDs = try resolveExerciseIDs(normalizedAlias: candidate)
+            if aliasIDs.count == 1, let id = aliasIDs.first {
+                uniqueHits.append((candidate, ResolvedImportedExerciseID(exerciseID: id, matchKind: .alias)))
+                continue
             }
-
-            if let exerciseID = try resolveExerciseByCanonicalName(candidate) {
-                return ResolvedImportedExerciseID(exerciseID: exerciseID, matchKind: .displayName)
+            let displayIDs = try resolveExerciseIDsByCanonicalName(candidate)
+            if displayIDs.count == 1, let id = displayIDs.first {
+                uniqueHits.append((candidate, ResolvedImportedExerciseID(exerciseID: id, matchKind: .displayName)))
             }
         }
-        return nil
+        return uniqueHits.max(by: { $0.candidate.count < $1.candidate.count })?.result
     }
 
-    private func resolveExerciseByCanonicalName(_ normalized: String) throws -> String? {
+    private func resolveExerciseIDsByCanonicalName(_ normalized: String) throws -> [String] {
         try pool.read { db in
-            try String.fetchOne(
+            try String.fetchAll(
                 db,
                 sql: """
                     SELECT id
                     FROM exercise
                     WHERE deleted_at IS NULL
                       AND (lower(display_name) = ? OR lower(canonical_name) = ?)
-                    LIMIT 1
                     """,
                 arguments: [normalized, normalized]
             )

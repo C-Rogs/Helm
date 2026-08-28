@@ -1,5 +1,11 @@
+import Core
 import DesignSystem
 import SwiftUI
+
+struct NutritionNavigationFocus: Equatable {
+    var helmDay: HelmDay
+    var mealID: UUID?
+}
 
 @MainActor
 @Observable
@@ -7,12 +13,14 @@ final class AppTabRouter {
     static let shared = AppTabRouter()
 
     var selectedTab: AppTab = .dashboard
+    var pendingNutritionFocus: NutritionNavigationFocus?
 
     /// Bumped on every tab selection change so deferred loads can follow the latest switch.
     private(set) var selectionEpoch: UInt64 = 0
 
-    func openNutrition() {
+    func openNutrition(focus: NutritionNavigationFocus? = nil) {
         selectedTab = .nutrition
+        pendingNutritionFocus = focus
     }
 
     func openTrain() {
