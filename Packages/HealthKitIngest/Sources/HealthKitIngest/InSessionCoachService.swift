@@ -234,14 +234,16 @@ public struct InSessionCoachService: Sendable {
             throw InSessionCoachError.noApplicableChange
         }
 
-        let applied = try applyAdjustment(
-            payload: proposal.payload,
-            snapshot: snapshot,
-            excludedExerciseIDs: excludedExerciseIDs,
-            userMessage: proposal.sourceUserMessage,
-            modelVersion: proposal.payload.schemaVersion,
-            recommendationID: proposal.recommendationID,
-            markActedOn: true
+        let applied = try HelmActionExecutor(persistence: persistence).applySessionAdjustment(
+            HelmSessionAdjustmentCommand(
+                payload: proposal.payload,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs,
+                userMessage: proposal.sourceUserMessage,
+                modelVersion: proposal.payload.schemaVersion,
+                recommendationID: proposal.recommendationID,
+                markActedOn: true
+            )
         )
 
         try persistence.coachRecommendations.markActedOn(id: proposal.recommendationID)

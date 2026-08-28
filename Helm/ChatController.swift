@@ -329,33 +329,37 @@ final class ChatController {
             }
 
             if records.isEmpty {
-                _ = try await NutritionBootstrap.manualMealService.logQuickAdd(
-                    kilocalories: estimate.caloriesKcal,
-                    proteinG: estimate.proteinG,
-                    carbsG: estimate.carbsG,
-                    fatG: estimate.fatG,
-                    label: resolvedName,
-                    bucket: bucket,
-                    loggedAt: loggedAt,
-                    helmDay: pending.helmDay,
-                    mealID: mealID.uuidString
+                _ = try await HelmActionRuntime.perform(
+                    .meal(.logQuickAdd(
+                        kilocalories: estimate.caloriesKcal,
+                        proteinG: estimate.proteinG,
+                        carbsG: estimate.carbsG,
+                        fatG: estimate.fatG,
+                        label: resolvedName,
+                        bucket: bucket,
+                        loggedAt: loggedAt,
+                        helmDay: pending.helmDay,
+                        mealID: mealID.uuidString
+                    )),
+                    after: .coach
                 )
             } else {
-                _ = try await NutritionBootstrap.manualMealService.logCompositeMeal(
-                    name: resolvedName,
-                    bucket: bucket,
-                    lineItems: records,
-                    loggedAt: loggedAt,
-                    mealID: mealID.uuidString,
-                    source: .manual
+                _ = try await HelmActionRuntime.perform(
+                    .meal(.logComposite(
+                        name: resolvedName,
+                        bucket: bucket,
+                        lineItems: records,
+                        loggedAt: loggedAt,
+                        helmDay: pending.helmDay,
+                        mealID: mealID.uuidString,
+                        source: .manual
+                    )),
+                    after: .coach
                 )
             }
 
-            NutritionBootstrap.lastViewedHelmDay = pending.helmDay
-            NutritionBootstrap.refreshNutrition(for: pending.helmDay)
             pendingFoodMealConfirm = nil
             lastTurnError = nil
-            CoachApplyMomentStore.shared.play()
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatFoodMeal", error: error)
@@ -374,33 +378,24 @@ final class ChatController {
             switch proposal.kind {
             case let .foodLog(payload):
                 applyProgressStep = "Writing to diary…"
-                let applier = FoodLogCommandApplier(
-                    manualMealService: NutritionBootstrap.manualMealService,
-                    persistence: persistence
+                _ = try await HelmActionRuntime.perform(
+                    .meal(.fromCoachPayload(payload, now: Date())),
+                    after: .coach
                 )
-                try await applier.apply(payload)
-                let loggedHelmDay = FoodLogCommandApplier.resolvedHelmDay(
-                    from: payload,
-                    now: Date(),
-                    calendar: .current
-                )
-                NutritionBootstrap.lastViewedHelmDay = loggedHelmDay
-                NutritionBootstrap.refreshNutrition(for: loggedHelmDay)
-                CoachApplyMomentStore.shared.play()
             case let .mealCopy(payload):
                 applyProgressStep = "Copying meal…"
                 guard let resolved = MealCopyCommandApplier.resolvedDays(payload) else {
                     throw ManualMealError.invalidQuickAdd
                 }
-                _ = try await NutritionBootstrap.mealRepeatService.copyBucket(
-                    from: resolved.source,
-                    bucket: resolved.sourceBucket,
-                    to: resolved.target,
-                    targetBucket: resolved.targetBucket
+                _ = try await HelmActionRuntime.perform(
+                    .copyMeal(HelmCopyMealCommand(
+                        sourceDay: resolved.source,
+                        sourceBucket: resolved.sourceBucket,
+                        targetDay: resolved.target,
+                        targetBucket: resolved.targetBucket
+                    )),
+                    after: .coach
                 )
-                NutritionBootstrap.lastViewedHelmDay = resolved.target
-                NutritionBootstrap.refreshNutrition(for: resolved.target)
-                CoachApplyMomentStore.shared.play()
             case let .memoryAdjustment(payload):
                 applyProgressStep = "Updating Memory…"
                 try CoachMemoryAdjuster.apply(payload, persistence: persistence)
@@ -408,7 +403,11 @@ final class ChatController {
             case let .workoutStart(payload):
                 applyProgressStep = "Preparing session…"
                 let today = HelmDay.day(for: .now, calendar: .current)
-                try await applyWorkoutStart(payload, helmDay: today)
+                try await HelmActionRuntime.startFromCoachPayload(
+                    payload,
+                    helmDay: today,
+                    persistence: persistence
+                )
                 CoachApplyMomentStore.shared.play()
 
                 let messageID = messages.last(where: { $0.role == .assistant })?.id ?? UUID().uuidString
@@ -458,31 +457,6 @@ final class ChatController {
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: error)
-        }
-    }
-
-    private func applyWorkoutStart(_ payload: WorkoutStartPayload, helmDay: HelmDay) async throws {
-        try await CoachWorkoutStartAdjuster.start(
-            payload: payload,
-            helmDay: helmDay,
-            persistence: persistence,
-            prescriptionService: PlanBootstrap.prescriptionService
-        ) { action in
-            switch action {
-            case let .prescription(useAdjusted):
-                try await WorkoutStartCoordinator.startTodaysSession(
-                    controller: TrainBootstrap.sessionController,
-                    prescriptionService: PlanBootstrap.prescriptionService,
-                    openTrainTab: true,
-                    useAdjustedPrescription: useAdjusted
-                )
-            case let .importedPlan(plan):
-                try await WorkoutStartCoordinator.startImportedPlan(
-                    controller: TrainBootstrap.sessionController,
-                    plan: plan,
-                    openTrainTab: true
-                )
-            }
         }
     }
 

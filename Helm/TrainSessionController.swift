@@ -415,9 +415,9 @@ final class TrainSessionController {
 
     func startTodaysPrescription() async {
         do {
-            try await WorkoutStartCoordinator.startTodaysSession(
+            try await HelmActionRuntime.startTodaysSession(
                 controller: self,
-                prescriptionService: prescriptionService
+                openTrainTab: false
             )
         } catch {
             errorMessage = error.localizedDescription
@@ -1952,10 +1952,12 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else {
             throw InSessionCoachError.noActiveSession
         }
-        let applied = try inSessionCoach.applyAdjustment(
-            payload: payload,
-            snapshot: snapshot,
-            excludedExerciseIDs: excludedExerciseIDs
+        let applied = try HelmActionExecutor(persistence: persistence).applySessionAdjustment(
+            HelmSessionAdjustmentCommand(
+                payload: payload,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs
+            )
         )
         try await finishApplyingAdjustment(applied)
     }

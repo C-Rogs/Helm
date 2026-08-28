@@ -2,7 +2,6 @@ import Core
 import DesignSystem
 import HealthKitIngest
 import Observation
-import Persistence
 
 @MainActor
 @Observable
@@ -12,14 +11,14 @@ final class MealEditController {
     var showsDeleteConfirm = false
     var errorMessage: String?
 
-    private let manualMealService: ManualMealService
+    private let actionExecutor: HelmActionExecutor
     private let onChanged: @MainActor () -> Void
 
     init(
-        manualMealService: ManualMealService,
+        actionExecutor: HelmActionExecutor,
         onChanged: @escaping @MainActor () -> Void = {}
     ) {
-        self.manualMealService = manualMealService
+        self.actionExecutor = actionExecutor
         self.onChanged = onChanged
     }
 
@@ -78,14 +77,17 @@ final class MealEditController {
                 )
             }
 
-            _ = try await manualMealService.updateMeal(
-                mealID: meal.id,
-                name: trimmedName,
-                bucket: bucket,
-                loggedAt: meal.loggedAt,
-                macros: macros,
-                lineItems: records,
-                source: meal.source
+            _ = try await actionExecutor.run(
+                .meal(.updateMeal(
+                    mealID: meal.id,
+                    name: trimmedName,
+                    bucket: bucket,
+                    loggedAt: meal.loggedAt,
+                    macros: macros,
+                    lineItems: records,
+                    source: meal.source,
+                    helmDay: meal.helmDay
+                ))
             )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
@@ -101,7 +103,9 @@ final class MealEditController {
         defer { isSaving = false }
 
         do {
-            try await manualMealService.deleteMeal(mealID: meal.id)
+            _ = try await actionExecutor.run(
+                .meal(.deleteMeal(mealID: meal.id, helmDay: meal.helmDay))
+            )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()

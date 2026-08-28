@@ -12,7 +12,7 @@ struct NutritionView: View {
     @State private var photoMealController = PhotoMealController()
     @State private var manualFoodLogController = ManualFoodLogController(
         foodResolver: NutritionBootstrap.foodResolver,
-        manualMealService: NutritionBootstrap.manualMealService,
+        actionExecutor: HelmActionRuntime.executor,
         pendingImportService: NutritionBootstrap.pendingFoodImportService,
         portionPreferenceLoader: { ref in
             try PersistenceBootstrap.persistenceStore.foodLog.fetchPortionPreference(ref: ref)
@@ -24,12 +24,13 @@ struct NutritionView: View {
     @State private var mealsStore = NutritionDayMealsStore()
     @State private var mealActionsController = NutritionMealActionsController(
         mealRepeatService: NutritionBootstrap.mealRepeatService,
+        actionExecutor: HelmActionRuntime.executor,
         onChanged: {
             NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
         }
     )
     @State private var mealEditController = MealEditController(
-        manualMealService: NutritionBootstrap.manualMealService,
+        actionExecutor: HelmActionRuntime.executor,
         onChanged: {
             NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
         }

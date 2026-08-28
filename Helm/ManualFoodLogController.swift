@@ -31,7 +31,7 @@ final class ManualFoodLogController {
     var todayHelmDay: HelmDay?
 
     private let foodResolver: FoodResolver
-    private let manualMealService: ManualMealService
+    private let actionExecutor: HelmActionExecutor
     private let pendingImportService: PendingFoodImportService
     private let networkGate: any NetworkGating
     private let portionPreferenceLoader: @Sendable (FoodProductRef) throws -> FoodPortionPreference?
@@ -41,14 +41,14 @@ final class ManualFoodLogController {
 
     init(
         foodResolver: FoodResolver,
-        manualMealService: ManualMealService,
+        actionExecutor: HelmActionExecutor,
         pendingImportService: PendingFoodImportService,
         networkGate: any NetworkGating = LiveNetworkGate(),
         portionPreferenceLoader: @escaping @Sendable (FoodProductRef) throws -> FoodPortionPreference? = { _ in nil },
         onLogged: @escaping @MainActor (HelmDay) -> Void = { _ in }
     ) {
         self.foodResolver = foodResolver
-        self.manualMealService = manualMealService
+        self.actionExecutor = actionExecutor
         self.pendingImportService = pendingImportService
         self.networkGate = networkGate
         self.portionPreferenceLoader = portionPreferenceLoader
@@ -153,14 +153,16 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await manualMealService.logFood(
-                product: product,
-                grams: grams,
-                servingLabel: servingLabel,
-                bucket: bucket,
-                loggedAt: loggedAt,
-                helmDay: helmDay,
-                source: source
+            _ = try await actionExecutor.run(
+                .meal(.logFood(
+                    product: product,
+                    grams: grams,
+                    servingLabel: servingLabel,
+                    bucket: bucket,
+                    loggedAt: loggedAt,
+                    helmDay: helmDay,
+                    source: source
+                ))
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: source == .barcode ? .barcode : .search)
@@ -180,15 +182,18 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await manualMealService.logQuickAdd(
-                kilocalories: macros.energyKcal,
-                proteinG: macros.proteinG,
-                carbsG: macros.carbsG,
-                fatG: macros.fatG,
-                label: label,
-                bucket: bucket,
-                loggedAt: loggedAt,
-                helmDay: helmDay
+            _ = try await actionExecutor.run(
+                .meal(.logQuickAdd(
+                    kilocalories: macros.energyKcal,
+                    proteinG: macros.proteinG,
+                    carbsG: macros.carbsG,
+                    fatG: macros.fatG,
+                    label: label,
+                    bucket: bucket,
+                    loggedAt: loggedAt,
+                    helmDay: helmDay,
+                    mealID: UUID().uuidString
+                ))
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .quickAdd)
@@ -227,12 +232,14 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await manualMealService.logAlcohol(
-                preset: preset,
-                quantity: quantity,
-                bucket: bucket,
-                loggedAt: loggedAt,
-                helmDay: helmDay
+            _ = try await actionExecutor.run(
+                .meal(.logAlcohol(
+                    preset: preset,
+                    quantity: quantity,
+                    bucket: bucket,
+                    loggedAt: loggedAt,
+                    helmDay: helmDay
+                ))
             )
             HapticEngine.shared.play(.mealConfirmed)
             finishLogging(entryMode: .alcohol)
@@ -287,13 +294,18 @@ extension ManualFoodLogController {
     static func previewController(online: Bool) -> ManualFoodLogController {
         let store = try! PersistenceStore.inMemory()
         let foodResolver = FoodResolver(persistence: store)
+        let meals = ManualMealService(localStore: ManualMealLocalStore(store: store))
         return ManualFoodLogController(
             foodResolver: foodResolver,
-            manualMealService: ManualMealService(),
+            actionExecutor: HelmActionExecutor(
+                manualMealService: meals,
+                persistence: store,
+                mealRepeatService: MealRepeatService(store: store, manualMealService: meals)
+            ),
             pendingImportService: PendingFoodImportService(
                 persistence: store,
                 foodResolver: foodResolver,
-                manualMealService: ManualMealService()
+                manualMealService: meals
             ),
             networkGate: FixedNetworkGate(online: online)
         )

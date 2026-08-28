@@ -31,13 +31,16 @@ final class NutritionMealActionsController {
     var errorMessage: String?
 
     private let mealRepeatService: MealRepeatService
+    private let actionExecutor: HelmActionExecutor
     private let onChanged: @MainActor () -> Void
 
     init(
         mealRepeatService: MealRepeatService,
+        actionExecutor: HelmActionExecutor,
         onChanged: @escaping @MainActor () -> Void = {}
     ) {
         self.mealRepeatService = mealRepeatService
+        self.actionExecutor = actionExecutor
         self.onChanged = onChanged
     }
 
@@ -110,7 +113,13 @@ final class NutritionMealActionsController {
     func copyBucketToToday(bucket: MealBucket, today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await mealRepeatService.copyBucket(from: sourceDay, bucket: bucket, to: today)
+            _ = try await actionExecutor.run(
+                .copyMeal(HelmCopyMealCommand(
+                    sourceDay: sourceDay,
+                    sourceBucket: bucket,
+                    targetDay: today
+                ))
+            )
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
         } catch MealRepeatError.emptyBucket {
@@ -133,11 +142,13 @@ final class NutritionMealActionsController {
         isSaving = true
         defer { isSaving = false }
         do {
-            _ = try await mealRepeatService.copyBucket(
-                from: context.sourceDay,
-                bucket: context.sourceBucket,
-                to: targetDay,
-                targetBucket: targetBucket
+            _ = try await actionExecutor.run(
+                .copyMeal(HelmCopyMealCommand(
+                    sourceDay: context.sourceDay,
+                    sourceBucket: context.sourceBucket,
+                    targetDay: targetDay,
+                    targetBucket: targetBucket
+                ))
             )
             copyEntryContext = nil
             HapticEngine.shared.play(.mealConfirmed)
@@ -151,7 +162,9 @@ final class NutritionMealActionsController {
 
     func copyAllMeals(from sourceDay: HelmDay, to today: HelmDay) async {
         do {
-            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            _ = try await actionExecutor.run(
+                .copyAllMeals(sourceDay: sourceDay, targetDay: today)
+            )
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
         } catch MealRepeatError.emptySource {
@@ -164,7 +177,9 @@ final class NutritionMealActionsController {
     func copyYesterdayToToday(today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            _ = try await actionExecutor.run(
+                .copyAllMeals(sourceDay: sourceDay, targetDay: today)
+            )
             HapticEngine.shared.play(.mealConfirmed)
             onChanged()
         } catch MealRepeatError.emptySource {
@@ -181,10 +196,15 @@ final class NutritionMealActionsController {
 
 extension NutritionMealActionsController {
     static func previewController() -> NutritionMealActionsController {
-        NutritionMealActionsController(
-            mealRepeatService: MealRepeatService(
-                store: try! PersistenceStore.inMemory(),
-                manualMealService: ManualMealService()
+        let store = try! PersistenceStore.inMemory()
+        let meals = ManualMealService()
+        let repeatService = MealRepeatService(store: store, manualMealService: meals)
+        return NutritionMealActionsController(
+            mealRepeatService: repeatService,
+            actionExecutor: HelmActionExecutor(
+                manualMealService: meals,
+                persistence: store,
+                mealRepeatService: repeatService
             )
         )
     }
