@@ -27,7 +27,7 @@ struct CoachSystemPromptTests {
     func workoutNegotiation() {
         let prompt = CoachSystemPrompt.chatV1
         #expect(prompt.contains("Negotiate openly"))
-        #expect(prompt.contains("workout_start.v2"))
+        #expect(prompt.contains("workout_start"))
         #expect(prompt.contains("never say \"Ready when you are\""))
         #expect(prompt.contains("confirm card"))
     }
@@ -42,10 +42,13 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("recovery_query.v1"))
         #expect(prompt.contains("calendar_query.v1"))
         #expect(prompt.contains("trends_query.v1"))
-        #expect(prompt.contains("memory_adjustment.v1"))
+        #expect(prompt.contains("memory_adjustment"))
         #expect(prompt.contains("Prescription Load Rationale"))
         #expect(prompt.contains("constraint_affected=true"))
         #expect(prompt.contains("load_decision"))
+        #expect(prompt.contains("call the food_log tool"))
+        #expect(prompt.contains("Do not embed those writes as JSON"))
+        #expect(prompt.contains("App State"))
     }
 
     @Test("in-session coach shares main chat voice")

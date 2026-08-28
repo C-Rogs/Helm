@@ -51,6 +51,47 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         thread: CoachThreadState,
         freshnessSuffix: String? = nil
     ) async throws -> AsyncThrowingStream<String, Error> {
+        let textStream = GeminiStreamAssembler.textChunks(
+            from: try await streamByteStream(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread,
+                freshnessSuffix: freshnessSuffix,
+                includeCatalogTools: false
+            )
+        )
+        return textStream
+    }
+
+    /// Chat catalog turn. Compaction and other non-chat streams stay on `respond`.
+    public func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
+        GeminiStreamAssembler.events(
+            from: try await streamByteStream(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread,
+                freshnessSuffix: freshnessSuffix,
+                includeCatalogTools: true
+            )
+        )
+    }
+
+    private func streamByteStream(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String?,
+        includeCatalogTools: Bool
+    ) async throws -> AsyncThrowingStream<Data, Error> {
         let apiKey = try requireAPIKey()
         let requestID = UUID()
         let signpostID = CoachLLMInstrumentation.beginGeminiStream(requestID: requestID)
@@ -61,7 +102,8 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
             contextBlock: contextBlock,
             userMessage: userMessage,
             thread: thread,
-            freshnessSuffix: freshnessSuffix
+            freshnessSuffix: freshnessSuffix,
+            includeCatalogTools: includeCatalogTools
         ).encoded()
 
         let request = GeminiStreamHTTPRequest(
@@ -72,12 +114,10 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         )
 
         let byteStream = try await httpClient.streamGenerate(request)
-        let textStream = GeminiStreamAssembler.textChunks(from: byteStream)
-
         return AsyncThrowingStream { continuation in
             Task {
                 do {
-                    for try await chunk in textStream {
+                    for try await chunk in byteStream {
                         continuation.yield(chunk)
                     }
                     continuation.finish()

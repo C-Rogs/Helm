@@ -551,7 +551,7 @@ final class ChatController {
                 4_096,
                 TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider) - reserved
             )
-            let prompt = ContextBuilder.build(
+            let prompt = makeCoachPrompt(
                 profile: profile,
                 days: contextDays,
                 budget: budget,
@@ -565,7 +565,7 @@ final class ChatController {
             }
 
             let providerUserMessage = coachUserMessage ?? text
-            var assembled = try await streamAssistantText(
+            var assembledTurn = try await streamAssistantTurn(
                 provider: provider,
                 systemInstructions: prompt.systemInstructions,
                 contextBlock: prompt.contextBlock,
@@ -577,134 +577,140 @@ final class ChatController {
 
             // Food dictation must stay on food_log.v1 - do not hijack into diary query follow-ups.
             if !isFoodDictationTurn {
-                if let mealQuery = MealQueryPayloadParser.parse(from: assembled) {
-                    assembled = try await runMealQueryFollowUp(
+                if let mealQuery = MealQueryPayloadParser.parse(from: assembledTurn.text) {
+                    assembledTurn = try await runMealQueryFollowUp(
                         query: mealQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
-                        priorAssembled: assembled
+                        priorAssembled: assembledTurn.text
                     )
                 } else if let inferred = CoachChatIntent.inferredMealQuery(from: text) {
-                    assembled = try await runMealQueryFollowUp(
+                    assembledTurn = try await runMealQueryFollowUp(
                         query: inferred,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
-                        priorAssembled: assembled
+                        priorAssembled: assembledTurn.text
                     )
                 }
             }
 
-            if let recoveryQuery = RecoveryQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runRecoveryQueryFollowUp(
+            if let recoveryQuery = RecoveryQueryPayloadParser.parse(from: assembledTurn.text) {
+                assembledTurn = try await runRecoveryQueryFollowUp(
                     query: recoveryQuery,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             } else if let inferred = CoachChatIntent.inferredRecoveryQuery(from: text) {
-                assembled = try await runRecoveryQueryFollowUp(
+                assembledTurn = try await runRecoveryQueryFollowUp(
                     query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
-            if let calendarQuery = CalendarQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runCalendarQueryFollowUp(
+            if let calendarQuery = CalendarQueryPayloadParser.parse(from: assembledTurn.text) {
+                assembledTurn = try await runCalendarQueryFollowUp(
                     query: calendarQuery,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             } else if let inferred = CoachChatIntent.inferredCalendarQuery(from: text) {
-                assembled = try await runCalendarQueryFollowUp(
+                assembledTurn = try await runCalendarQueryFollowUp(
                     query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
-            if let trendsQuery = TrendsQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runTrendsQueryFollowUp(
+            if let trendsQuery = TrendsQueryPayloadParser.parse(from: assembledTurn.text) {
+                assembledTurn = try await runTrendsQueryFollowUp(
                     query: trendsQuery,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             } else if let inferred = CoachChatIntent.inferredTrendsQuery(from: text) {
-                assembled = try await runTrendsQueryFollowUp(
+                assembledTurn = try await runTrendsQueryFollowUp(
                     query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
-            if let workoutQuery = WorkoutQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runWorkoutQueryFollowUp(
+            if let workoutQuery = WorkoutQueryPayloadParser.parse(from: assembledTurn.text) {
+                assembledTurn = try await runWorkoutQueryFollowUp(
                     query: workoutQuery,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             } else if let inferred = CoachChatIntent.inferredWorkoutQuery(from: text) {
-                assembled = try await runWorkoutQueryFollowUp(
+                assembledTurn = try await runWorkoutQueryFollowUp(
                     query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
-            if let nutritionQuery = NutritionQueryPayloadParser.parse(from: assembled) {
-                assembled = try await runNutritionQueryFollowUp(
+            if let nutritionQuery = NutritionQueryPayloadParser.parse(from: assembledTurn.text) {
+                assembledTurn = try await runNutritionQueryFollowUp(
                     query: nutritionQuery,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             } else if let inferred = CoachChatIntent.inferredNutritionQuery(from: text) {
-                assembled = try await runNutritionQueryFollowUp(
+                assembledTurn = try await runNutritionQueryFollowUp(
                     query: inferred,
                     provider: provider,
                     profile: profile,
                     endDay: endDay,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
             if CoachChatIntent.looksLikeWorkoutStart(text),
                !CoachChatIntent.looksLikeWorkoutReview(text),
-               needsStructuredWorkoutStart(assembled: assembled, userText: text),
+               needsStructuredWorkoutStart(
+                assembled: assembledTurn.text,
+                functionCalls: assembledTurn.functionCalls,
+                userText: text
+               ),
                let gemini = provider as? GeminiProvider
             {
-                assembled = try await runStructuredWorkoutStart(
+                assembledTurn = try await runStructuredWorkoutStart(
                     gemini: gemini,
                     profile: profile,
                     contextDays: contextDays,
                     thread: thread,
                     userText: text,
-                    priorAssembled: assembled
+                    priorAssembled: assembledTurn.text
                 )
             }
 
             let wasFoodDictation = isFoodDictationTurn
             let pendingAction: CoachChatActionProposal?
+            let foodPayload = CoachChatActionParser.foodLogPayload(from: assembledTurn.functionCalls)
+                ?? FoodLogPayloadParser.parse(from: assembledTurn.text)
             if wasFoodDictation,
-               let foodPayload = FoodLogPayloadParser.parse(from: assembled),
+               let foodPayload,
                foodPayload.action == .log {
                 isFoodDictationTurn = false
                 let bucket = resolvedFoodLogBucket(foodPayload.bucket)
@@ -731,11 +737,14 @@ final class ChatController {
             } else {
                 isFoodDictationTurn = false
                 clearChatProgress()
-                pendingAction = CoachChatActionParser.proposal(from: assembled)
+                pendingAction = CoachChatActionParser.proposal(
+                    from: assembledTurn.text,
+                    functionCalls: assembledTurn.functionCalls
+                )
                 pendingChatAction = pendingAction
             }
             let userFacingText = CoachChatDisplayText.assistantText(
-                from: assembled,
+                from: assembledTurn.text,
                 pendingAction: pendingAction
             )
 
@@ -763,7 +772,9 @@ final class ChatController {
 
             maybeTriggerMemoryRefinementExtraction(profile: profile)
 
-            if pendingAction == nil, FoodLogPayloadParser.hasMalformedBlock(in: assembled) {
+            if pendingAction == nil,
+               CoachChatActionParser.hasMalformedFoodLogCall(assembledTurn.functionCalls)
+                || FoodLogPayloadParser.hasMalformedBlock(in: assembledTurn.text) {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
             } else if wasFoodDictation, pendingFoodMealConfirm == nil, lastTurnError == nil {
                 // Nutrition describe has no chat transcript UI - prose-only replies looked like a hang.
@@ -819,7 +830,40 @@ final class ChatController {
         }
     }
 
-    private func streamAssistantText(
+    private func makeCoachPrompt(
+        profile: MemoryProfile,
+        days: CoachContextDays,
+        budget: Int,
+        turn: ContextTurn
+    ) -> CoachPrompt {
+        ContextBuilder.build(
+            profile: profile,
+            days: days,
+            budget: budget,
+            turn: turn,
+            appSurface: currentAppSurface()
+        )
+    }
+
+    private func currentAppSurface() -> CoachAppSurfaceSnapshot {
+        let session = try? persistence.activeSessions.fetchActiveSnapshot(at: .now)
+        return CoachAppSurfaceSnapshot(
+            selectedTab: AppTabRouter.shared.selectedTab.coachSurfaceLabel,
+            sessionStatus: session?.session.status.rawValue ?? "none",
+            sessionTitle: session?.session.title
+        )
+    }
+
+    private struct AssembledCoachTurn {
+        var text: String
+        var functionCalls: [CoachLLMFunctionCall]
+
+        var isEmpty: Bool {
+            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && functionCalls.isEmpty
+        }
+    }
+
+    private func streamAssistantTurn(
         provider: any CoachLLMProvider,
         systemInstructions: String,
         contextBlock: String,
@@ -827,23 +871,29 @@ final class ChatController {
         thread: CoachThreadState,
         allowEmptyRetry: Bool,
         freshnessSuffix: String? = nil
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         for attempt in 0 ... (allowEmptyRetry ? 1 : 0) {
             isStreaming = true
             streamingText = attempt == 0 ? "" : "Retrying…"
-            let stream = try await provider.respond(
-                systemInstructions: systemInstructions,
-                contextBlock: contextBlock,
-                userMessage: userMessage,
-                thread: thread,
-                freshnessSuffix: freshnessSuffix
-            )
             var assembled = ""
+            var functionCalls: [CoachLLMFunctionCall] = []
             do {
-                for try await chunk in stream {
+                let events = try await provider.respondTurn(
+                    systemInstructions: systemInstructions,
+                    contextBlock: contextBlock,
+                    userMessage: userMessage,
+                    thread: thread,
+                    freshnessSuffix: freshnessSuffix
+                )
+                for try await event in events {
                     try Task.checkCancellation()
-                    assembled += chunk
-                    streamingText = assembled
+                    switch event {
+                    case .text(let chunk):
+                        assembled += chunk
+                        streamingText = assembled
+                    case .functionCall(let call):
+                        functionCalls.append(call)
+                    }
                 }
             } catch is CancellationError {
                 isStreaming = false
@@ -852,8 +902,9 @@ final class ChatController {
             }
             isStreaming = false
             streamingText = nil
-            if !assembled.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                return assembled
+            let turn = AssembledCoachTurn(text: assembled, functionCalls: functionCalls)
+            if !turn.isEmpty {
+                return turn
             }
             if attempt == 0, allowEmptyRetry {
                 continue
@@ -863,10 +914,21 @@ final class ChatController {
         throw CoachStructuredOutputError.emptyResponse
     }
 
-    private func needsStructuredWorkoutStart(assembled: String, userText: String) -> Bool {
+    private func needsStructuredWorkoutStart(
+        assembled: String,
+        functionCalls: [CoachLLMFunctionCall],
+        userText: String
+    ) -> Bool {
+        if let fromTool = CoachChatActionParser.workoutStartPayload(from: functionCalls) {
+            return needsStructuredWorkoutStart(payload: fromTool, userText: userText)
+        }
         guard let payload = WorkoutStartPayloadParser.parse(from: assembled) else {
             return true
         }
+        return needsStructuredWorkoutStart(payload: payload, userText: userText)
+    }
+
+    private func needsStructuredWorkoutStart(payload: WorkoutStartPayload, userText: String) -> Bool {
         let emptyExercises = payload.exercises == nil || payload.exercises?.isEmpty == true
         if emptyExercises, payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV1.rawValue {
             // Bare engine start is OK only when the athlete did not negotiate a custom list.
@@ -888,9 +950,9 @@ final class ChatController {
         thread: CoachThreadState,
         userText: String,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let budget = TokenBudget.maxInputTokens(for: .gemini)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
@@ -918,7 +980,10 @@ final class ChatController {
         guard !artefact.payload.exercises.isEmpty else {
             throw CoachWorkoutStartAdjuster.StartError.emptySession
         }
-        return try artefact.payload.chatAssemblyText()
+        return AssembledCoachTurn(
+            text: try artefact.payload.chatAssemblyText(),
+            functionCalls: []
+        )
     }
 
     private func runWorkoutQueryFollowUp(
@@ -927,7 +992,7 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = WorkoutHistoryQueryService(store: persistence)
         let results = try service.run(query)
         let toolMessage = """
@@ -946,20 +1011,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 
@@ -969,7 +1035,7 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = RecoveryHistoryQueryService(store: persistence)
         let results = try await service.run(query)
         let toolMessage = """
@@ -988,20 +1054,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 
@@ -1011,7 +1078,7 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = CalendarHistoryQueryService()
         let results = await service.run(query)
         let toolMessage = """
@@ -1030,20 +1097,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 
@@ -1053,7 +1121,7 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = TrendsHistoryQueryService(store: persistence)
         let results = try service.run(query)
         let toolMessage = """
@@ -1072,20 +1140,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 
@@ -1095,7 +1164,7 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = NutritionQueryService(store: persistence)
         let results = try await service.run(query)
         let toolMessage = """
@@ -1114,20 +1183,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 
@@ -1137,14 +1207,14 @@ final class ChatController {
         profile: MemoryProfile,
         endDay: HelmDay,
         priorAssembled: String
-    ) async throws -> String {
+    ) async throws -> AssembledCoachTurn {
         let service = MealHistoryQueryService(store: persistence)
         let results = try service.run(query)
         let toolMessage = """
         # Meal query results
         \(results)
 
-        Answer the athlete using these results. If they asked to copy a meal, emit meal_copy.v1. Do not invent foods not listed.
+        Answer the athlete using these results. If they asked to copy a meal, call the meal_copy tool. Do not invent foods not listed.
         """
 
         isStreaming = true
@@ -1156,20 +1226,21 @@ final class ChatController {
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
         ).windowed()
         let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
-        let prompt = ContextBuilder.build(
+        let prompt = makeCoachPrompt(
             profile: profile,
             days: contextDays,
             budget: budget,
             turn: .followUp
         )
 
-        return try await streamAssistantText(
+        return try await streamAssistantTurn(
             provider: provider,
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
         )
     }
 

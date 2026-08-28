@@ -4,13 +4,21 @@ public struct GeminiStreamRequestBody {
     public let systemInstruction: [String: Any]
     public let contents: [[String: Any]]
     public let generationConfig: [String: Any]
+    public let tools: [[String: Any]]
+    public let toolConfig: [String: Any]?
 
     public func encoded() throws -> Data {
-        let payload: [String: Any] = [
+        var payload: [String: Any] = [
             "system_instruction": systemInstruction,
             "contents": contents,
             "generationConfig": generationConfig
         ]
+        if !tools.isEmpty {
+            payload["tools"] = tools
+        }
+        if let toolConfig {
+            payload["toolConfig"] = toolConfig
+        }
         return try JSONSerialization.data(withJSONObject: payload)
     }
 }
@@ -36,7 +44,8 @@ public enum GeminiRequestBuilder {
         contextBlock: String,
         userMessage: String,
         thread: CoachThreadState,
-        freshnessSuffix: String? = nil
+        freshnessSuffix: String? = nil,
+        includeCatalogTools: Bool = false
     ) throws -> GeminiStreamRequestBody {
         GeminiStreamRequestBody(
             systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
@@ -50,7 +59,9 @@ public enum GeminiRequestBuilder {
             generationConfig: [
                 "temperature": 0.4,
                 "maxOutputTokens": 2048
-            ]
+            ],
+            tools: includeCatalogTools ? GeminiChatTools.streamTools() : [],
+            toolConfig: includeCatalogTools ? GeminiChatTools.streamToolConfig() : nil
         )
     }
 

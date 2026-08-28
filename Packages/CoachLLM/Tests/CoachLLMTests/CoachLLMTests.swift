@@ -150,6 +150,34 @@ struct MockProviderTests {
         #expect(provider.lastRequest?.userMessage == "hello")
         #expect(provider.lastRequest?.thread.isFollowUp == false)
 
+        let call = CoachLLMFunctionCall(
+            name: CoachCatalogToolName.foodLog.rawValue,
+            arguments: ["action": "log", "caloriesKcal": 200]
+        )
+        provider.setConfiguration(
+            MockProvider.Configuration(
+                responseChunks: ["Logged."],
+                functionCalls: [call]
+            )
+        )
+        let turn = try await provider.respondTurn(
+            systemInstructions: "system",
+            contextBlock: "context",
+            userMessage: "log lunch",
+            thread: .empty,
+            freshnessSuffix: nil
+        )
+        var texts: [String] = []
+        var calls: [CoachLLMFunctionCall] = []
+        for try await event in turn {
+            switch event {
+            case .text(let chunk): texts.append(chunk)
+            case .functionCall(let functionCall): calls.append(functionCall)
+            }
+        }
+        #expect(texts == ["Logged."])
+        #expect(calls.map(\.name) == [CoachCatalogToolName.foodLog.rawValue])
+
         await provider.resetThread()
         #expect(provider.resetThreadCount == 1)
     }

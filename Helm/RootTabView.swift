@@ -7,6 +7,16 @@ enum AppTab: Hashable {
     case nutrition
     case chat
     case settings
+
+    var coachSurfaceLabel: String {
+        switch self {
+        case .dashboard: "dashboard"
+        case .train: "train"
+        case .nutrition: "nutrition"
+        case .chat: "chat"
+        case .settings: "settings"
+        }
+    }
 }
 
 struct RootTabView: View {

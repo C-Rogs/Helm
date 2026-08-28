@@ -26,6 +26,44 @@ enum GeminiSSEParser {
         return parts.compactMap { $0["text"] as? String }.joined()
     }
 
+    static func functionCallDeltas(from eventJSON: String) -> [CoachLLMFunctionCall] {
+        guard let data = eventJSON.data(using: .utf8) else { return [] }
+        guard let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+            return []
+        }
+        guard let candidates = object["candidates"] as? [[String: Any]],
+              let first = candidates.first,
+              let content = first["content"] as? [String: Any],
+              let parts = content["parts"] as? [[String: Any]]
+        else {
+            return []
+        }
+        return parts.compactMap { part in
+            guard let functionCall = part["functionCall"] as? [String: Any],
+                  let name = functionCall["name"] as? String,
+                  !name.isEmpty
+            else {
+                return nil
+            }
+            return CoachLLMFunctionCall(
+                name: name,
+                argumentsJSON: argumentsJSON(from: functionCall["args"])
+            )
+        }
+    }
+
+    static func argumentsJSON(from args: Any?) -> Data {
+        if let dict = args as? [String: Any],
+           JSONSerialization.isValidJSONObject(dict),
+           let data = try? JSONSerialization.data(withJSONObject: dict) {
+            return data
+        }
+        if let string = args as? String, let data = string.data(using: .utf8) {
+            return data
+        }
+        return Data("{}".utf8)
+    }
+
     /// Gemini sometimes returns an error object as an SSE `data:` event instead of HTTP failure.
     static func streamErrorMessage(from eventJSON: String) -> String? {
         guard let data = eventJSON.data(using: .utf8),

@@ -28,6 +28,24 @@ struct ReservedFoundationModelsProvider: CoachLLMProvider {
             continuation.finish(throwing: CoachProviderError.unavailable("On-device coaching is not available yet."))
         }
     }
+
+    func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
+        CoachLLMStreamEvent.wrapping(
+            try await respond(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread,
+                freshnessSuffix: freshnessSuffix
+            )
+        )
+    }
 }
 
 struct DisabledOpenRouterProvider: CoachLLMProvider {
@@ -58,6 +76,24 @@ struct DisabledOpenRouterProvider: CoachLLMProvider {
             continuation.finish(throwing: CoachProviderError.unavailable("OpenRouter is not enabled yet."))
         }
     }
+
+    func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
+        CoachLLMStreamEvent.wrapping(
+            try await respond(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread,
+                freshnessSuffix: freshnessSuffix
+            )
+        )
+    }
 }
 
 struct GeminiPlaceholderProvider: CoachLLMProvider {
@@ -87,5 +123,23 @@ struct GeminiPlaceholderProvider: CoachLLMProvider {
         AsyncThrowingStream { continuation in
             continuation.finish(throwing: CoachProviderError.unavailable("Add your Gemini API key in Settings."))
         }
+    }
+
+    func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
+        CoachLLMStreamEvent.wrapping(
+            try await respond(
+                systemInstructions: systemInstructions,
+                contextBlock: contextBlock,
+                userMessage: userMessage,
+                thread: thread,
+                freshnessSuffix: freshnessSuffix
+            )
+        )
     }
 }

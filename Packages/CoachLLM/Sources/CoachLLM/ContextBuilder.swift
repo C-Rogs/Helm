@@ -6,7 +6,8 @@ public enum ContextBuilder {
         profile: MemoryProfile,
         days: CoachContextDays,
         budget: Int,
-        turn: ContextTurn
+        turn: ContextTurn,
+        appSurface: CoachAppSurfaceSnapshot? = nil
     ) -> CoachPrompt {
         var systemInstructions = CoachSystemPrompt.chatV1
         if let style = profile.globalStyle ?? profile.trainingStyle {
@@ -49,8 +50,10 @@ public enum ContextBuilder {
             characterCount: systemInstructions.count + contextBlock.count
         )
 
-        let freshnessSuffix = days.freshness.stalenessSummary()
-        let suffix = freshnessSuffix.isEmpty ? nil : freshnessSuffix
+        let suffix = freshnessSuffix(
+            appSurface: appSurface,
+            staleness: days.freshness.stalenessSummary()
+        )
 
         return CoachPrompt(
             systemInstructions: systemInstructions,
@@ -60,6 +63,21 @@ public enum ContextBuilder {
             droppedDayCount: droppedDayCount,
             freshnessSuffix: suffix
         )
+    }
+
+    public static func freshnessSuffix(
+        appSurface: CoachAppSurfaceSnapshot?,
+        staleness: String
+    ) -> String? {
+        var parts: [String] = []
+        if let appSurface {
+            parts.append(appSurface.contextText)
+        }
+        if !staleness.isEmpty {
+            parts.append(staleness)
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: "\n")
     }
 
     public static func stablePrefixText(profile: MemoryProfile, days: CoachContextDays) -> String {

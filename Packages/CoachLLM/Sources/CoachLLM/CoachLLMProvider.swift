@@ -14,5 +14,13 @@ public protocol CoachLLMProvider: Sendable {
         thread: CoachThreadState,
         freshnessSuffix: String?
     ) async throws -> AsyncThrowingStream<String, Error>
+    /// Chat catalog turn. May emit function calls. `respond` stays tool-free (compaction, summaries).
+    func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String?
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error>
     func resetThread() async
 }
