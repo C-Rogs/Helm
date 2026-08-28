@@ -32,6 +32,15 @@ public struct ExerciseSeedImporter: Sendable {
         }
     }
 
+    private func pickerDefaultCount() throws -> Int {
+        try pool.read { db in
+            try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM exercise WHERE deleted_at IS NULL AND is_picker_default = 1"
+            ) ?? 0
+        }
+    }
+
     public func importIfNeeded(
         manifestURL: URL,
         catalogURL: URL? = nil,
@@ -41,7 +50,8 @@ public struct ExerciseSeedImporter: Sendable {
         let manifest = try ExerciseSeedLoader.loadManifest(from: data)
         let applied = try appliedSeedVersion()
         let visibleCount = try visibleExerciseCount()
-        guard manifest.seedVersion > applied || visibleCount == 0 else {
+        let pickerDefaultCount = try pickerDefaultCount()
+        guard manifest.seedVersion > applied || visibleCount == 0 || pickerDefaultCount == 0 else {
             return ExerciseSeedImportResult(
                 appliedSeedVersion: applied,
                 importedCount: 0,

@@ -32,6 +32,7 @@ struct HelmApp: App {
                 )
             }
             await CloudBackupCoordinator.shared.pullIfNeededOnLaunch()
+            await PersistenceBootstrap.importExerciseSeed()
             PlanBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()

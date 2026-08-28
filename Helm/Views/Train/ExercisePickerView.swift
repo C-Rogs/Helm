@@ -155,7 +155,15 @@ struct ExercisePickerView: View {
                     .accessibilityLabel("Close")
                 }
             }
-            .onAppear { reloadAll() }
+            .onAppear {
+                reloadAll()
+                if pickerDefaults.isEmpty {
+                    Task {
+                        await PersistenceBootstrap.importExerciseSeed()
+                        reloadAll()
+                    }
+                }
+            }
             .onChange(of: searchText) { _, _ in
                 if !searchText.isEmpty {
                     selectedCategory = nil
@@ -186,10 +194,24 @@ struct ExercisePickerView: View {
     private var browseList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                if !recentExercises.isEmpty {
-                    recentSection
+                if pickerDefaults.isEmpty {
+                    HelmErrorState(
+                        title: "No exercises yet",
+                        message: "The catalogue is still loading. Retry, or search after a few seconds.",
+                        onRetry: {
+                            Task {
+                                await PersistenceBootstrap.importExerciseSeed()
+                                reloadAll()
+                            }
+                        }
+                    )
+                    .padding(.top, HelmSpacing.lg)
+                } else {
+                    if !recentExercises.isEmpty {
+                        recentSection
+                    }
+                    muscleGridSection
                 }
-                muscleGridSection
             }
             .padding(.horizontal, HelmSpacing.screenGutter)
             .padding(.bottom, HelmSpacing.xl)

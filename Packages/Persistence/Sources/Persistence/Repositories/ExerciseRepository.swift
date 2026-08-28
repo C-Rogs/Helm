@@ -159,10 +159,35 @@ public struct ExerciseRepository: Sendable {
         muscleGroup: String?,
         limit: Int = 500
     ) throws -> [ExerciseSummary] {
-        try pool.read { db in
-            let trimmedSearch = search?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            let isSearching = !trimmedSearch.isEmpty
+        let trimmedSearch = search?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let isSearching = !trimmedSearch.isEmpty
+        let rows = try fetchPickerRows(
+            trimmedSearch: trimmedSearch,
+            isSearching: isSearching,
+            pickerDefaultsOnly: !isSearching,
+            muscleGroup: muscleGroup,
+            limit: limit
+        )
+        if !isSearching, rows.isEmpty {
+            return try fetchPickerRows(
+                trimmedSearch: trimmedSearch,
+                isSearching: false,
+                pickerDefaultsOnly: false,
+                muscleGroup: muscleGroup,
+                limit: limit
+            )
+        }
+        return rows
+    }
 
+    private func fetchPickerRows(
+        trimmedSearch: String,
+        isSearching: Bool,
+        pickerDefaultsOnly: Bool,
+        muscleGroup: String?,
+        limit: Int
+    ) throws -> [ExerciseSummary] {
+        try pool.read { db in
             var sql = """
                 SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group,
                        e.is_picker_default, e.sort_name, e.gif_url
@@ -172,7 +197,7 @@ public struct ExerciseRepository: Sendable {
                 """
             var arguments: [DatabaseValueConvertible] = []
 
-            if !isSearching {
+            if pickerDefaultsOnly {
                 sql += " AND e.is_picker_default = 1"
             }
 

@@ -383,6 +383,23 @@ struct ExerciseSeedImporterTests {
         #expect(try store.exercises.exerciseCount() == 2)
     }
 
+    @Test("picker lists visible exercises when no picker-default flags")
+    func pickerFallsBackWhenDefaultsMissing() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let entry = ExerciseSeedEntry(
+            id: "seed-bench-press",
+            canonicalName: "bench press",
+            displayName: "Bench Press (Barbell)",
+            aliases: ["Bench Press"],
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+        _ = try importer.importEntries([entry], seedVersion: 1, pickerCuration: .explicit, explicitPickerIDs: [])
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.contains { $0.id == "seed-bench-press" })
+    }
+
     @Test("free-exercise-db catalog maps loggy-style entries")
     func freeExerciseDBMapping() throws {
         let record = FreeExerciseDBRecord(

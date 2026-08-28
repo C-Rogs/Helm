@@ -95,6 +95,16 @@ targets:
             ditto "$SECRETS_SRC" "$SECRETS_DST"
           fi
         basedOnDependencyAnalysis: false
+      - name: Copy Exercise Seed
+        script: |
+          set -e
+          SEED_SRC="${SRCROOT}/Helm/Resources/ExerciseSeed"
+          RES="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$RES/ExerciseSeed"
+          ditto "$SEED_SRC" "$RES/ExerciseSeed"
+          cp -f "$SEED_SRC/exercises.json" "$RES/exercises.json"
+          cp -f "$SEED_SRC/free-exercise-db.json" "$RES/free-exercise-db.json"
+        basedOnDependencyAnalysis: false
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm
