@@ -69,5 +69,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("Never quote or paraphrase these voice instructions"))
         #expect(!prompt.contains("terse, numbers-first answer"))
         #expect(prompt.contains("current heart rate") || prompt.contains("logged sets"))
+        #expect(prompt.contains("triceps_dip"))
+        #expect(prompt.contains("fromExerciseID must copy the archetypeId"))
     }
 }

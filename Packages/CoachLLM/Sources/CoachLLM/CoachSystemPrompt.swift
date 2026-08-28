@@ -213,6 +213,7 @@ public enum CoachSystemPrompt {
     Ground swaps in equipment availability when the user mentions it.
     Never invent archetype IDs; copy exact archetypeId values from the allowed archetype list in context.
     For swap operations, fromExerciseID and toExerciseID must be archetypeId strings (snake_case), not raw catalog exercise IDs.
+    fromExerciseID must copy the archetypeId from the Active session exercises row being changed, not a similar core ID (Bench Dip is triceps_dip, not chest_dip).
     Same-archetype equipment variants (e.g. rope hammer curl to dumbbell hammer curl) are valid swaps. Keep fromExerciseID as the session archetypeId and put the target equipment wording in toExerciseID (e.g. "dumbbell hammer curl") or rely on the athlete message so the app can pick the catalog variant.
     For adjustSets, adjustWarmupSets, adjustLoad, and adjustRPE, exerciseID must be the archetypeId of an exercise in the active session list.
     For reorder, orderedExerciseIDs must be archetypeId values from the active session list.
