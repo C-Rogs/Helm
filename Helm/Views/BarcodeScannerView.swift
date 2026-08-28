@@ -87,6 +87,13 @@ private final class BarcodeScannerViewController: UIViewController {
         configureSession()
     }
 
+    override func viewWillAppear(_ animated: Bool) {
+        super.viewWillAppear(animated)
+        sessionQueue.async { [weak self] in
+            self?.startRunningOnSessionQueue()
+        }
+    }
+
     override func viewDidLayoutSubviews() {
         super.viewDidLayoutSubviews()
         previewLayer?.frame = view.layer.bounds
@@ -121,23 +128,26 @@ private final class BarcodeScannerViewController: UIViewController {
     }
 
     private func startSession() {
-        guard let device = AVCaptureDevice.default(for: .video),
-              let input = try? AVCaptureDeviceInput(device: device)
-        else {
-            onError?("This device does not have a usable camera.")
-            return
-        }
-
         sessionQueue.async { [weak self] in
             guard let self else { return }
             if self.isConfigured {
-                self.startRunningIfNeeded()
+                self.startRunningOnSessionQueue()
+                return
+            }
+
+            guard let device = AVCaptureDevice.default(for: .video),
+                  let input = try? AVCaptureDeviceInput(device: device)
+            else {
+                DispatchQueue.main.async {
+                    self.onError?("This device does not have a usable camera.")
+                }
                 return
             }
 
             self.session.beginConfiguration()
+            defer { self.session.commitConfiguration() }
+
             guard self.session.canAddInput(input) else {
-                self.session.commitConfiguration()
                 DispatchQueue.main.async {
                     self.onError?("Could not start the camera.")
                 }
@@ -147,7 +157,6 @@ private final class BarcodeScannerViewController: UIViewController {
 
             let output = AVCaptureMetadataOutput()
             guard self.session.canAddOutput(output) else {
-                self.session.commitConfiguration()
                 DispatchQueue.main.async {
                     self.onError?("Could not start the barcode reader.")
                 }
@@ -156,25 +165,29 @@ private final class BarcodeScannerViewController: UIViewController {
             self.session.addOutput(output)
             output.setMetadataObjectsDelegate(self.metadataDelegate, queue: DispatchQueue.main)
             output.metadataObjectTypes = [.ean8, .ean13, .upce, .code128, .code39, .qr]
-            self.session.commitConfiguration()
             self.isConfigured = true
+        }
 
-            DispatchQueue.main.async {
-                let preview = AVCaptureVideoPreviewLayer(session: self.session)
-                preview.videoGravity = .resizeAspectFill
-                preview.frame = self.view.layer.bounds
-                self.view.layer.addSublayer(preview)
-                self.previewLayer = preview
-            }
-
-            self.startRunningIfNeeded()
+        sessionQueue.async { [weak self] in
+            guard let self, self.isConfigured else { return }
+            self.startRunningOnSessionQueue()
+            self.installPreviewIfNeeded()
         }
     }
 
-    private func startRunningIfNeeded() {
-        sessionQueue.async { [session] in
-            guard !session.isRunning else { return }
-            session.startRunning()
+    private func startRunningOnSessionQueue() {
+        guard isConfigured, !session.isRunning else { return }
+        session.startRunning()
+    }
+
+    private func installPreviewIfNeeded() {
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.previewLayer == nil else { return }
+            let preview = AVCaptureVideoPreviewLayer(session: self.session)
+            preview.videoGravity = .resizeAspectFill
+            preview.frame = self.view.layer.bounds
+            self.view.layer.insertSublayer(preview, at: 0)
+            self.previewLayer = preview
         }
     }
 }

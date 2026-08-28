@@ -12,15 +12,19 @@ public struct ResolvedExerciseSeed: Sendable, Equatable {
     public let entries: [ExerciseSeedEntry]
     public let pickerCuration: ExercisePickerCuration
     public let explicitPickerIDs: Set<String>
+    /// Overlay rows after catalog merge. `hiddenIDs` must not soft-delete these.
+    public let overlayResolvedIDs: Set<String>
 
     public init(
         entries: [ExerciseSeedEntry],
         pickerCuration: ExercisePickerCuration,
-        explicitPickerIDs: Set<String> = []
+        explicitPickerIDs: Set<String> = [],
+        overlayResolvedIDs: Set<String> = []
     ) {
         self.entries = entries
         self.pickerCuration = pickerCuration
         self.explicitPickerIDs = explicitPickerIDs
+        self.overlayResolvedIDs = overlayResolvedIDs
     }
 }
 
@@ -70,6 +74,13 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
     public let isHevyLibrary: Bool?
     public let evidence: ExerciseSeedEvidence?
 
+    enum CodingKeys: String, CodingKey {
+        case id, canonicalName, displayName, aliases, exerciseMode, equipment
+        case primaryMuscleGroup, secondaryMuscleGroups, movementPattern
+        case sourceDatasetID, instructionText, coachingCues, imageURL
+        case isPickerDefault, isHevyLibrary, evidence
+    }
+
     public init(
         id: String,
         canonicalName: String,
@@ -104,6 +115,65 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         self.isPickerDefault = isPickerDefault
         self.isHevyLibrary = isHevyLibrary
         self.evidence = evidence
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        canonicalName = try container.decode(String.self, forKey: .canonicalName)
+        displayName = try container.decode(String.self, forKey: .displayName)
+        aliases = try container.decodeIfPresent([String].self, forKey: .aliases) ?? []
+        exerciseMode = Self.decodeExerciseMode(container)
+        equipment = try container.decodeIfPresent(String.self, forKey: .equipment)
+        primaryMuscleGroup = try container.decodeIfPresent(String.self, forKey: .primaryMuscleGroup)
+        secondaryMuscleGroups = try container.decodeIfPresent([String].self, forKey: .secondaryMuscleGroups) ?? []
+        movementPattern = try container.decodeIfPresent(String.self, forKey: .movementPattern)
+        sourceDatasetID = try container.decodeIfPresent(String.self, forKey: .sourceDatasetID)
+        instructionText = try container.decodeIfPresent(String.self, forKey: .instructionText)
+        coachingCues = try container.decodeIfPresent([String].self, forKey: .coachingCues)
+        imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        isPickerDefault = try container.decodeIfPresent(Bool.self, forKey: .isPickerDefault)
+        isHevyLibrary = try container.decodeIfPresent(Bool.self, forKey: .isHevyLibrary)
+        evidence = try container.decodeIfPresent(ExerciseSeedEvidence.self, forKey: .evidence)
+    }
+
+    private static func decodeExerciseMode(_ container: KeyedDecodingContainer<CodingKeys>) -> ExerciseMode {
+        guard let raw = try? container.decodeIfPresent(String.self, forKey: .exerciseMode) else {
+            return .weightReps
+        }
+        if let mode = ExerciseMode(rawValue: raw) {
+            return mode
+        }
+        switch raw {
+        case "distanceDuration":
+            return .distanceDuration
+        case "weightReps":
+            return .weightReps
+        case "bodyweightReps":
+            return .bodyweightReps
+        default:
+            return .weightReps
+        }
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(canonicalName, forKey: .canonicalName)
+        try container.encode(displayName, forKey: .displayName)
+        try container.encode(aliases, forKey: .aliases)
+        try container.encode(exerciseMode, forKey: .exerciseMode)
+        try container.encodeIfPresent(equipment, forKey: .equipment)
+        try container.encodeIfPresent(primaryMuscleGroup, forKey: .primaryMuscleGroup)
+        try container.encode(secondaryMuscleGroups, forKey: .secondaryMuscleGroups)
+        try container.encodeIfPresent(movementPattern, forKey: .movementPattern)
+        try container.encodeIfPresent(sourceDatasetID, forKey: .sourceDatasetID)
+        try container.encodeIfPresent(instructionText, forKey: .instructionText)
+        try container.encodeIfPresent(coachingCues, forKey: .coachingCues)
+        try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(isPickerDefault, forKey: .isPickerDefault)
+        try container.encodeIfPresent(isHevyLibrary, forKey: .isHevyLibrary)
+        try container.encodeIfPresent(evidence, forKey: .evidence)
     }
 }
 

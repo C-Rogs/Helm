@@ -23,6 +23,15 @@ public struct ExerciseSeedImporter: Sendable {
         }
     }
 
+    private func visibleExerciseCount() throws -> Int {
+        try pool.read { db in
+            try Int.fetchOne(
+                db,
+                sql: "SELECT COUNT(*) FROM exercise WHERE deleted_at IS NULL"
+            ) ?? 0
+        }
+    }
+
     public func importIfNeeded(
         manifestURL: URL,
         catalogURL: URL? = nil,
@@ -31,7 +40,8 @@ public struct ExerciseSeedImporter: Sendable {
         let data = try manifestData ?? Data(contentsOf: manifestURL)
         let manifest = try ExerciseSeedLoader.loadManifest(from: data)
         let applied = try appliedSeedVersion()
-        guard manifest.seedVersion > applied else {
+        let visibleCount = try visibleExerciseCount()
+        guard manifest.seedVersion > applied || visibleCount == 0 else {
             return ExerciseSeedImportResult(
                 appliedSeedVersion: applied,
                 importedCount: 0,
@@ -51,7 +61,8 @@ public struct ExerciseSeedImporter: Sendable {
             explicitPickerIDs: resolved.explicitPickerIDs
         )
         if let hiddenIDs = manifest.hiddenIDs, !hiddenIDs.isEmpty {
-            try hideExercises(ids: hiddenIDs)
+            let protected = resolved.overlayResolvedIDs.union(resolved.explicitPickerIDs)
+            try hideExercises(ids: hiddenIDs.filter { !protected.contains($0) })
         }
         return ExerciseSeedImportResult(
             appliedSeedVersion: manifest.seedVersion,

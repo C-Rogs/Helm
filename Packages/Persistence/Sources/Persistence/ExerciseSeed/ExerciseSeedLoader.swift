@@ -36,38 +36,44 @@ public enum ExerciseSeedLoader {
         manifestDirectory: URL,
         catalogURL: URL? = nil
     ) throws -> ResolvedExerciseSeed {
+        let overlay = manifest.exercises
         let catalogEntries: [ExerciseSeedEntry]
         if let resource = manifest.catalogResource {
             let resolvedCatalogURL = catalogURL ?? manifestDirectory
                 .appendingPathComponent(resource)
                 .appendingPathExtension("json")
-            guard FileManager.default.fileExists(atPath: resolvedCatalogURL.path) else {
+            if FileManager.default.fileExists(atPath: resolvedCatalogURL.path) {
+                let data = try Data(contentsOf: resolvedCatalogURL)
+                let records = try FreeExerciseCatalogSupport.decodeCatalog(from: data)
+                catalogEntries = ExerciseSeedCatalogMapper.mapCatalogRecords(records)
+            } else if overlay.isEmpty {
                 throw LoaderError.missingCatalog(resource: resource)
+            } else {
+                catalogEntries = []
             }
-            let data = try Data(contentsOf: resolvedCatalogURL)
-            let records = try FreeExerciseCatalogSupport.decodeCatalog(from: data)
-            catalogEntries = ExerciseSeedCatalogMapper.mapCatalogRecords(records)
         } else {
             catalogEntries = []
         }
 
-        let overlay = manifest.exercises
         let curation = manifest.pickerCuration ?? (overlay.isEmpty ? .algorithmic : .explicit)
 
         if overlay.isEmpty {
             return ResolvedExerciseSeed(
                 entries: catalogEntries,
                 pickerCuration: curation,
-                explicitPickerIDs: []
+                explicitPickerIDs: [],
+                overlayResolvedIDs: []
             )
         }
 
         if catalogEntries.isEmpty {
+            let overlayIDs = Set(overlay.map(\.id))
             let explicitIDs = Set(overlay.filter { $0.isPickerDefault == true }.map(\.id))
             return ResolvedExerciseSeed(
                 entries: overlay,
                 pickerCuration: curation,
-                explicitPickerIDs: explicitIDs
+                explicitPickerIDs: explicitIDs,
+                overlayResolvedIDs: overlayIDs
             )
         }
 
@@ -75,7 +81,8 @@ public enum ExerciseSeedLoader {
         return ResolvedExerciseSeed(
             entries: merged.entries,
             pickerCuration: curation,
-            explicitPickerIDs: merged.explicitPickerIDs
+            explicitPickerIDs: merged.explicitPickerIDs,
+            overlayResolvedIDs: merged.overlayResolvedIDs
         )
     }
 }

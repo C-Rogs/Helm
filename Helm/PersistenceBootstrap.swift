@@ -28,6 +28,9 @@ enum PersistenceBootstrap {
             return
         }
         let catalogURL = bundledJSON(named: "free-exercise-db")
+        if catalogURL == nil {
+            logger.error("Exercise catalog free-exercise-db.json missing; importing overlay only.")
+        }
 
         do {
             let result = try await store.importExerciseSeedIfNeeded(
@@ -43,6 +46,15 @@ enum PersistenceBootstrap {
     }
 
     private static func bundledJSON(named name: String) -> URL? {
+        let fileName = "\(name).json"
+        let directCandidates = [
+            Bundle.main.bundleURL.appendingPathComponent("ExerciseSeed").appendingPathComponent(fileName),
+            Bundle.main.bundleURL.appendingPathComponent(fileName)
+        ]
+        for url in directCandidates where FileManager.default.fileExists(atPath: url.path) {
+            return url
+        }
+
         let subdirectories = ["ExerciseSeed", "Helm/Resources/ExerciseSeed", "Resources/ExerciseSeed"]
         for subdirectory in subdirectories {
             if let url = Bundle.main.url(forResource: name, withExtension: "json", subdirectory: subdirectory) {
@@ -52,12 +64,11 @@ enum PersistenceBootstrap {
         if let url = Bundle.main.url(forResource: name, withExtension: "json") {
             return url
         }
-        let target = "\(name).json"
         if let enumerator = FileManager.default.enumerator(
             at: Bundle.main.bundleURL,
             includingPropertiesForKeys: nil
         ) {
-            for case let url as URL in enumerator where url.lastPathComponent == target {
+            for case let url as URL in enumerator where url.lastPathComponent == fileName {
                 return url
             }
         }
