@@ -20,13 +20,22 @@ enum HelmActionRuntime {
     }
 
     @discardableResult
-    static func perform(
+    static func persist(
         _ command: HelmActionCommand,
-        after: AfterPersist
+        using executor: HelmActionExecutor,
+        after: AfterPersist = .none
     ) async throws -> HelmActionResult {
         let result = try await executor.run(command)
         await apply(result, after: after)
         return result
+    }
+
+    @discardableResult
+    static func perform(
+        _ command: HelmActionCommand,
+        after: AfterPersist
+    ) async throws -> HelmActionResult {
+        try await persist(command, using: executor, after: after)
     }
 
     static func apply(_ result: HelmActionResult, after: AfterPersist) async {

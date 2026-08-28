@@ -114,6 +114,9 @@ struct GeminiChatToolsTests {
         let query = CoachLLMFunctionCall(name: "workout_query", arguments: ["queryType": "latestCompleted"])
         #expect(CoachCatalogToolName.hasWrite(in: [write, query]))
         #expect(!CoachCatalogToolName.hasWrite(in: [query]))
+        #expect(!CoachCatalogToolName.chart.isWrite)
+        #expect(!CoachCatalogToolName.navigate.isWrite)
+        #expect(!CoachCatalogToolName.chart.isQuery)
     }
 
     @Test("malformed query tool still falls back to JSON")
@@ -147,5 +150,35 @@ struct GeminiChatToolsTests {
         let calls = GeminiSSEParser.functionCallDeltas(from: json)
         let payload = try #require(CoachCatalogQueryDecoder.contextRefresh(from: calls))
         #expect(payload.blocks == ["nutritionDiary"])
+    }
+
+    @Test("functionCall args decode into chart payload without schemaVersion")
+    func functionCallDecodesChart() throws {
+        let json = """
+        {"candidates":[{"content":{"parts":[
+          {"functionCall":{"name":"chart","args":{
+            "title":"Hard sets",
+            "points":[{"label":"Mon","value":12},{"label":"Tue","value":10}]
+          }}}
+        ]}}]}
+        """
+        let calls = GeminiSSEParser.functionCallDeltas(from: json)
+        let payload = try #require(CoachCatalogQueryDecoder.chart(from: calls))
+        #expect(payload.title == "Hard sets")
+        #expect(payload.points.count == 2)
+        #expect(payload.schemaVersion == CoachOutputSchemaVersion.chartV1.rawValue)
+    }
+
+    @Test("functionCall args decode into navigate payload")
+    func functionCallDecodesNavigate() throws {
+        let json = """
+        {"candidates":[{"content":{"parts":[
+          {"functionCall":{"name":"navigate","args":{"tab":"nutrition"}}}
+        ]}}]}
+        """
+        let calls = GeminiSSEParser.functionCallDeltas(from: json)
+        let payload = try #require(CoachCatalogQueryDecoder.navigate(from: calls))
+        #expect(payload.tab == "nutrition")
+        #expect(payload.schemaVersion == CoachOutputSchemaVersion.navigateV1.rawValue)
     }
 }

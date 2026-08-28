@@ -45,6 +45,8 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("call the workout_query tool"))
         #expect(prompt.contains("call the meal_query tool"))
         #expect(prompt.contains("call the context_refresh tool"))
+        #expect(prompt.contains("call the chart tool"))
+        #expect(prompt.contains("Call navigate only"))
         #expect(prompt.contains("memory_adjustment"))
         #expect(prompt.contains("Prescription Load Rationale"))
         #expect(prompt.contains("constraint_affected=true"))

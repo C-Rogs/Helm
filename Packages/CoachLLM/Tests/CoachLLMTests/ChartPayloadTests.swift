@@ -45,6 +45,21 @@ struct ChartPayloadTests {
         #expect(text.contains("Mon=12"))
     }
 
+    @Test("stitcher appends chart JSON once")
+    func stitcherAppendsChartOnce() {
+        let payload = ChartPayload(
+            reply: "Hard sets.",
+            title: "Hard sets",
+            unit: "sets",
+            points: [ChartPayload.Point(label: "Mon", value: 12)]
+        )
+        let once = CoachChatChartStitcher.appending(payload, to: "Weekly hard sets.")
+        #expect(ChartPayloadParser.parse(from: once)?.points.first?.value == 12)
+        #expect(CoachChatTextFormatter.userFacingText(from: once) == "Weekly hard sets.")
+        let twice = CoachChatChartStitcher.appending(payload, to: once)
+        #expect(twice == once)
+    }
+
     private func fixtureText(named name: String) throws -> String {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json") else {
             Issue.record("Missing fixture \(name).json")

@@ -12,11 +12,15 @@ final class AppTabRouter {
     private(set) var selectionEpoch: UInt64 = 0
 
     func openNutrition() {
-        selectedTab = .nutrition
+        open(.nutrition)
     }
 
     func openTrain() {
-        selectedTab = .train
+        open(.train)
+    }
+
+    func open(_ tab: AppTab) {
+        selectedTab = tab
     }
 
     func noteSelectionChanged() {

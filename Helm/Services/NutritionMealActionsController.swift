@@ -93,7 +93,7 @@ final class NutritionMealActionsController {
         defer { isSaving = false }
         do {
             let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: template.bucket, today: today)
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
             )
             pendingAction = nil
@@ -116,7 +116,7 @@ final class NutritionMealActionsController {
     func copyBucketToToday(bucket: MealBucket, today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .copyMeal(HelmCopyMealCommand(
                     sourceDay: sourceDay,
                     sourceBucket: bucket,
@@ -145,7 +145,7 @@ final class NutritionMealActionsController {
         isSaving = true
         defer { isSaving = false }
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .copyMeal(HelmCopyMealCommand(
                     sourceDay: context.sourceDay,
                     sourceBucket: context.sourceBucket,
@@ -165,7 +165,7 @@ final class NutritionMealActionsController {
 
     func copyAllMeals(from sourceDay: HelmDay, to today: HelmDay) async {
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .copyAllMeals(sourceDay: sourceDay, targetDay: today)
             )
             HapticEngine.shared.play(.mealConfirmed)
@@ -180,7 +180,7 @@ final class NutritionMealActionsController {
     func copyYesterdayToToday(today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .copyAllMeals(sourceDay: sourceDay, targetDay: today)
             )
             HapticEngine.shared.play(.mealConfirmed)
@@ -194,6 +194,10 @@ final class NutritionMealActionsController {
 
     func dismissError() {
         errorMessage = nil
+    }
+
+    private func persist(_ command: HelmActionCommand) async throws -> HelmActionResult {
+        try await HelmActionRuntime.persist(command, using: actionExecutor)
     }
 }
 

@@ -412,6 +412,20 @@ public struct ChartPayload: Codable, Sendable, Equatable {
         self.unit = unit
         self.points = points
     }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.chartV1.rawValue
+        reply = try container.decodeIfPresent(String.self, forKey: .reply) ?? ""
+        title = try container.decode(String.self, forKey: .title)
+        unit = try container.decodeIfPresent(String.self, forKey: .unit)
+        points = try container.decode([Point].self, forKey: .points)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, reply, title, unit, points
+    }
 }
 
 public enum ChartPayloadParser: Sendable {
@@ -425,6 +439,43 @@ public enum ChartPayloadParser: Sendable {
             return nil
         }
         return payload
+    }
+}
+
+public enum CoachChatChartStitcher {
+    /// Keeps write JSON out of stored chat while preserving a chart block ChatView can parse.
+    public static func appending(_ payload: ChartPayload, to text: String) -> String {
+        if ChartPayloadParser.parse(from: text) != nil {
+            return text
+        }
+        guard let json = payload.embeddedJSON() else { return text }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return json }
+        return trimmed + "\n" + json
+    }
+}
+
+extension ChartPayload {
+    public func embeddedJSON() -> String? {
+        guard let data = try? JSONEncoder().encode(self),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return nil
+        }
+        return json
+    }
+}
+
+public struct NavigatePayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let tab: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.navigateV1.rawValue,
+        tab: String
+    ) {
+        self.schemaVersion = schemaVersion
+        self.tab = tab
     }
 }
 

@@ -17,6 +17,8 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     case workoutQuery = "workout_query"
     case nutritionQuery = "nutrition_query"
     case contextRefresh = "context_refresh"
+    case chart = "chart"
+    case navigate = "navigate"
 
     public var schemaVersion: CoachOutputSchemaVersion {
         switch self {
@@ -34,6 +36,8 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         case .workoutQuery: .workoutQueryV1
         case .nutritionQuery: .nutritionQueryV1
         case .contextRefresh: .contextRefreshV1
+        case .chart: .chartV1
+        case .navigate: .navigateV1
         }
     }
 
@@ -47,7 +51,14 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         }
     }
 
-    public var isWrite: Bool { !isQuery }
+    public var isWrite: Bool {
+        switch self {
+        case .foodLog, .mealCopy, .workoutStart, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
+            true
+        default:
+            false
+        }
+    }
 
     public static func hasWrite(in calls: [CoachLLMFunctionCall]) -> Bool {
         calls.contains { CoachCatalogToolName(rawValue: $0.name)?.isWrite == true }
@@ -82,6 +93,14 @@ public enum CoachCatalogQueryDecoder {
 
     public static func contextRefresh(from calls: [CoachLLMFunctionCall]) -> ContextRefreshPayload? {
         decode(ContextRefreshPayload.self, named: .contextRefresh, from: calls)
+    }
+
+    public static func chart(from calls: [CoachLLMFunctionCall]) -> ChartPayload? {
+        decode(ChartPayload.self, named: .chart, from: calls)
+    }
+
+    public static func navigate(from calls: [CoachLLMFunctionCall]) -> NavigatePayload? {
+        decode(NavigatePayload.self, named: .navigate, from: calls)
     }
 
     public static func decode<Payload: Decodable>(

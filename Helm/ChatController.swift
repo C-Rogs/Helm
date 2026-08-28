@@ -711,29 +711,44 @@ final class ChatController {
                 )
                 pendingChatAction = pendingAction
             }
+
+            var storedText = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
+            if let chart = CoachCatalogQueryDecoder.chart(from: querySource.functionCalls)
+                ?? ChartPayloadParser.parse(from: assembledTurn.text) {
+                storedText = CoachChatChartStitcher.appending(chart, to: storedText)
+            }
             let userFacingText = CoachChatDisplayText.assistantText(
-                from: assembledTurn.text,
+                from: storedText,
                 pendingAction: pendingAction
             )
+            let hasChart = ChartPayloadParser.parse(from: storedText) != nil
 
             guard !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
                 || pendingAction != nil
                 || pendingFoodMealConfirm != nil
+                || hasChart
             else {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
             // Never persist a blank assistant row; confirmation card can stand alone when reply is empty.
-            if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasChart {
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
                         role: .assistant,
-                        text: userFacingText,
+                        text: hasChart ? storedText : userFacingText,
                         promptVersion: CoachPromptVersion.chatV1.rawValue,
                         schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
                     )
                 )
                 messages.append(assistantMessage)
+            }
+
+            if pendingAction == nil,
+               pendingFoodMealConfirm == nil,
+               let navigate = CoachCatalogQueryDecoder.navigate(from: querySource.functionCalls),
+               let tab = AppTab(coachSurfaceLabel: navigate.tab) {
+                AppTabRouter.shared.open(tab)
             }
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clearTurnState()

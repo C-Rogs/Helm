@@ -31,7 +31,9 @@ public enum GeminiChatTools {
             trendsQueryDeclaration(),
             workoutQueryDeclaration(),
             nutritionQueryDeclaration(),
-            contextRefreshDeclaration()
+            contextRefreshDeclaration(),
+            chartDeclaration(),
+            navigateDeclaration()
         ]
     }
 
@@ -321,6 +323,56 @@ public enum GeminiChatTools {
                         ]
                     ]
                 ]
+            ]
+        ]
+    }
+
+    private static func chartDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.chart.rawValue,
+            "description": """
+            Render a small chart in chat when the athlete asks for a visual of numbers \
+            already in context or query results. 2 to 14 points. Do not invent values.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "reply": stringProperty("Short athlete-facing line."),
+                    "title": stringProperty(),
+                    "unit": stringProperty(),
+                    "points": [
+                        "type": "array",
+                        "items": [
+                            "type": "object",
+                            "properties": [
+                                "label": stringProperty(),
+                                "value": ["type": "number"]
+                            ],
+                            "required": ["label", "value"]
+                        ]
+                    ]
+                ],
+                "required": ["reply", "title", "points"]
+            ]
+        ]
+    }
+
+    private static func navigateDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.navigate.rawValue,
+            "description": """
+            Switch the app to a tab only when the athlete asked to open or show that screen. \
+            Do not navigate just because you discussed that topic.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "tab": [
+                        "type": "string",
+                        "enum": ["dashboard", "train", "nutrition", "chat", "settings"]
+                    ]
+                ],
+                "required": ["tab"]
             ]
         ]
     }

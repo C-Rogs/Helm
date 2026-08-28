@@ -24,4 +24,5 @@ public enum CoachOutputSchemaVersion: String, Sendable, Codable, Equatable, Case
     case planRegenerateV1 = "plan_regenerate.v1"
     case calendarEventClassifyV1 = "calendar_event_classify.v1"
     case planOptionCardsV1 = "plan_option_cards.v1"
+    case navigateV1 = "navigate.v1"
 }

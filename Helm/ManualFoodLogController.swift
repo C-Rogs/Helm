@@ -153,7 +153,7 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .meal(.logFood(
                     product: product,
                     grams: grams,
@@ -182,7 +182,7 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .meal(.logQuickAdd(
                     kilocalories: macros.energyKcal,
                     proteinG: macros.proteinG,
@@ -236,7 +236,7 @@ final class ManualFoodLogController {
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .meal(.logAlcohol(
                     preset: preset,
                     quantity: quantity,
@@ -251,6 +251,10 @@ final class ManualFoodLogController {
         } catch {
             phase = .failed(alcoholMessage(for: error))
         }
+    }
+
+    private func persist(_ command: HelmActionCommand) async throws -> HelmActionResult {
+        try await HelmActionRuntime.persist(command, using: actionExecutor)
     }
 
     private func finishLogging(entryMode: AddFoodEntryMode) {

@@ -139,7 +139,7 @@ enum CoachChatActionParser {
                 return nil
             }
             return proposal(fromPlanRegenerate: payload)
-        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh:
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .chart, .navigate:
             return nil
         case nil:
             return nil

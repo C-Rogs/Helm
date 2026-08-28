@@ -77,7 +77,7 @@ final class MealEditController {
                 )
             }
 
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .meal(.updateMeal(
                     mealID: meal.id,
                     name: trimmedName,
@@ -103,7 +103,7 @@ final class MealEditController {
         defer { isSaving = false }
 
         do {
-            _ = try await actionExecutor.run(
+            _ = try await persist(
                 .meal(.deleteMeal(mealID: meal.id, helmDay: meal.helmDay))
             )
             selectedMeal = nil
@@ -116,5 +116,9 @@ final class MealEditController {
 
     func dismissError() {
         errorMessage = nil
+    }
+
+    private func persist(_ command: HelmActionCommand) async throws -> HelmActionResult {
+        try await HelmActionRuntime.persist(command, using: actionExecutor)
     }
 }
