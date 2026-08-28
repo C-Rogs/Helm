@@ -97,6 +97,16 @@ public actor PersistenceStore {
         )
     }
 
+    public func importBundledExerciseSeedIfNeeded() throws -> ExerciseSeedImportResult {
+        guard let manifestURL = ExerciseSeedBundle.url(named: "exercises") else {
+            throw ExerciseSeedLoader.LoaderError.missingManifest
+        }
+        return try importExerciseSeedIfNeeded(
+            manifestURL: manifestURL,
+            catalogURL: ExerciseSeedBundle.url(named: "free-exercise-db")
+        )
+    }
+
     public func checkpoint() throws {
         _ = try pool.writeWithoutTransaction { db in
             try db.checkpoint(.passive)

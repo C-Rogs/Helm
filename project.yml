@@ -46,6 +46,10 @@ targets:
       - path: Helm/Resources/ExerciseSeed
         type: folder
         buildPhase: resources
+      - path: Helm/Resources/ExerciseSeed/exercises.json
+        buildPhase: resources
+      - path: Helm/Resources/ExerciseSeed/free-exercise-db.json
+        buildPhase: resources
       - path: Helm/Resources/MethodologySeed
         type: folder
         buildPhase: resources

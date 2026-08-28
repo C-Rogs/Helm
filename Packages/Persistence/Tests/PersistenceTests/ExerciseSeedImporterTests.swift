@@ -365,6 +365,16 @@ struct ExerciseSeedImporterTests {
         #expect(defaults.contains { $0.displayName.localizedCaseInsensitiveContains("bench") })
     }
 
+    @Test("Persistence module bundle imports picker defaults")
+    func bundledModuleSeedImportsPickerDefaults() async throws {
+        let store = try PersistenceStore.inMemory()
+        let result = try await store.importBundledExerciseSeedIfNeeded()
+        #expect(!result.skippedBecauseUpToDate)
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.count >= 70)
+        #expect(defaults.contains { $0.displayName.localizedCaseInsensitiveContains("bench") })
+    }
+
     @Test("empty store reimports even when seed version already matches")
     func emptyStoreReimportsAtSameVersion() throws {
         let store = try PersistenceStore.inMemory()

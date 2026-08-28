@@ -20,6 +20,9 @@ let package = Package(
                 "Core",
                 "CoachLLM",
                 .product(name: "GRDB", package: "GRDB.swift")
+            ],
+            resources: [
+                .copy("Resources/ExerciseSeed")
             ]
         ),
         .testTarget(
