@@ -116,6 +116,11 @@ public struct HelmActionExecutor: Sendable {
             return HelmActionResult(
                 sideEffects: [.refreshNutrition(day), .refreshPrescription]
             )
+
+        case let .methodologyPreferences(preferences):
+            try await engine.saveMethodologyPreferences(preferences)
+            PrescriptionDayStore.clear(for: today)
+            return replanned(on: today)
         }
     }
 

@@ -29,8 +29,6 @@ struct PlanRefinementView: View {
     /// Recomputed candidate when dials change.
     @State private var refined: CandidatePlan
 
-    private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
-
     init(
         option: PlanBuilderOption,
         interview: PlanBuilderInterview,
@@ -221,7 +219,10 @@ struct PlanRefinementView: View {
         do {
             let chosen = PlanBuilderOption(candidate: refined, copy: option.copy)
             let settings = try service.makeUpdatedSettings(option: chosen, interview: finalInterview)
-            try await prescriptionService.saveTrainingPlan(settings)
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.replaceSettings(settings)),
+                after: .none
+            )
             service.clearSession()
             HapticEngine.shared.play(.phaseChange)
             onCommitted()

@@ -183,12 +183,18 @@ public final class PlanBuilderService {
         do {
             var profile = try persistence.memoryProfile.load()
             let parsed = MethodologyPreferences.parse(from: profile.preferences)
-            var lines = parsed.freeform
+            var freeform = parsed.freeform
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map(String.init)
-                .filter { !$0.hasPrefix("\(Self.goalKey)=") }
-            lines.append("\(Self.goalKey)=\(goal.rawValue)")
-            profile.preferences = lines.joined(separator: "\n")
+                .filter { line in
+                    !line.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                        .hasPrefix("\(Self.goalKey)=")
+                }
+            freeform.append("\(Self.goalKey)=\(goal.rawValue)")
+            profile.preferences = parsed.preferences.merge(into: freeform.joined(separator: "\n"))
             try persistence.memoryProfile.save(profile)
         } catch {
             // Goal persistence is best-effort; the plan itself still commits.

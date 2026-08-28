@@ -2,6 +2,7 @@ import CoachLLM
 import Core
 import Foundation
 import Persistence
+import PlanKit
 import Testing
 @testable import HealthKitIngest
 
@@ -356,6 +357,57 @@ struct HelmActionExecutorTests {
         #expect(settings.phaseGoal.emphasis == "arms")
         let profile = try store.memoryProfile.load()
         #expect(profile.phaseGoal?.phase == .cut)
+    }
+
+    @Test("methodology preferences persist through run() and request a re-plan")
+    func methodologyPreferencesWriteThroughRun() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let preferences = MethodologyPreferences(
+            allowedEquipment: ["dumbbell"],
+            selectionBias: .stretch
+        )
+
+        let result = try await executor.run(.trainingPlan(.methodologyPreferences(preferences)))
+
+        #expect(result.sideEffects.contains(.refreshPrescription))
+        let parsed = MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences)
+        #expect(parsed.preferences.allowedEquipment == ["dumbbell"])
+        #expect(parsed.preferences.selectionBias == .stretch)
+    }
+
+    @Test("plan builder commit keeps methodology equipment lines")
+    func planBuilderCommitKeepsMethodologyPreferences() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        try store.memoryProfile.save(
+            MemoryProfile(preferences: "equipment=dumbbell\nselectionBias=stretch")
+        )
+        let service = PlanBuilderService(persistence: store, provider: nil)
+        let candidate = CandidatePlan(
+            id: "demo",
+            headline: "Push / Pull / Legs",
+            programTemplateRaw: "ppl",
+            daysPerWeek: 3,
+            sessionDurationMinutes: 60,
+            weeklyPeakSetsByMuscle: [.chest: 12],
+            frequencyByMuscle: [.chest: 1],
+            deloadCadenceWeeks: 5,
+            availabilityFitScore: 1.0,
+            leverNotes: []
+        )
+        let option = PlanBuilderOption(
+            candidate: candidate,
+            copy: PlanBuilderService.fallbackCopy(for: candidate)
+        )
+        let interview = PlanBuilderInterview(progressionGoal: .strength)
+
+        _ = try service.makeUpdatedSettings(option: option, interview: interview)
+
+        let parsed = MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences)
+        #expect(parsed.preferences.allowedEquipment == ["dumbbell"])
+        #expect(parsed.preferences.selectionBias == .stretch)
+        #expect(parsed.freeform.contains("progressionGoal=strength"))
     }
 
     private func makeMealExecutor(store: PersistenceStore) -> HelmActionExecutor {

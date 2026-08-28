@@ -62,8 +62,6 @@ struct PlanBuilderFlowView: View {
                         service: service,
                         onCommitted: {
                             HapticEngine.shared.play(.sessionFinished)
-                            PlanBootstrap.refreshPrescription()
-                            NutritionBootstrap.refreshNutrition()
                             CloudBackupCoordinator.shared.schedulePush()
                             showCommittedConfirmation = true
                             options = []
