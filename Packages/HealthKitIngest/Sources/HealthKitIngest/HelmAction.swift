@@ -10,6 +10,8 @@ public enum HelmActionCommand: Sendable {
     case copyAllMeals(sourceDay: HelmDay, targetDay: HelmDay)
     case logTemplate(MealTemplate, loggedAt: Date?, helmDay: HelmDay?)
     case applySessionAdjustment(HelmSessionAdjustmentCommand)
+    case memory(HelmMemoryWrite)
+    case trainingPlan(HelmTrainingPlanWrite)
 }
 
 public enum HelmMealWrite: Sendable {
@@ -116,6 +118,27 @@ public struct HelmSessionAdjustmentCommand: Sendable {
         self.recommendationID = recommendationID
         self.markActedOn = markActedOn
     }
+}
+
+/// Memory writes shared by Coach confirm, refinement cards, Memory editor, and Train notes.
+public enum HelmMemoryWrite: Sendable {
+    case fromCoachPayload(MemoryAdjustmentPayload, today: HelmDay)
+    case replaceProfile(MemoryProfile)
+    case applyRefinements([MemoryRefinementEntry], today: HelmDay)
+    case appendTrainingResponse(note: String, today: HelmDay)
+}
+
+/// Plan writes shared by Settings, Train regenerate, and Coach confirm.
+public enum HelmTrainingPlanWrite: Sendable {
+    case replaceSettings(StoredTrainingPlanSettings)
+    case fromCoachPayload(SettingsAdjustmentPayload)
+    case reactiveDeload(HelmReactiveDeloadAction)
+    case regenerateToday(HelmDay)
+}
+
+public enum HelmReactiveDeloadAction: Sendable, Equatable {
+    case confirm
+    case dismiss
 }
 
 public enum HelmActionSideEffect: Sendable, Equatable {

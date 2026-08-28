@@ -25,11 +25,11 @@ enum HelmActionRuntime {
         after: AfterPersist
     ) async throws -> HelmActionResult {
         let result = try await executor.run(command)
-        apply(result, after: after)
+        await apply(result, after: after)
         return result
     }
 
-    static func apply(_ result: HelmActionResult, after: AfterPersist) {
+    static func apply(_ result: HelmActionResult, after: AfterPersist) async {
         if let day = result.nutritionDay {
             NutritionBootstrap.lastViewedHelmDay = day
         }
@@ -38,7 +38,8 @@ enum HelmActionRuntime {
             case let .refreshNutrition(day):
                 NutritionBootstrap.refreshNutrition(for: day)
             case .refreshPrescription:
-                PlanBootstrap.refreshPrescription()
+                await PlanBootstrap.refreshPrescriptionWithCalendar()
+                await ProactiveBootstrap.refreshScheduling()
             }
         }
         if after == .coach {

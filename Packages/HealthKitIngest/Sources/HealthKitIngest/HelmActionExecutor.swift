@@ -3,7 +3,7 @@ import Core
 import Foundation
 import Persistence
 
-/// Single persist implementation for meal writes, meal copy, and in-session PlanKit adjusts.
+/// Single persist implementation for meal writes, Memory, plan settings, and PlanKit adjusts.
 public struct HelmActionExecutor: Sendable {
     private let manualMealService: ManualMealService
     private let persistence: PersistenceStore
@@ -68,7 +68,61 @@ public struct HelmActionExecutor: Sendable {
                 sessionAdjustment: applied,
                 sideEffects: [.refreshPrescription]
             )
+        case let .memory(write):
+            try HelmMemoryApplier.apply(write, persistence: persistence)
+            return HelmActionResult()
+        case let .trainingPlan(write):
+            return try await runTrainingPlan(write)
         }
+    }
+
+    private func runTrainingPlan(_ write: HelmTrainingPlanWrite) async throws -> HelmActionResult {
+        let engine = PlanPrescriptionEngine(persistence: persistence, calendar: calendar)
+        let today = HelmDay.day(for: Date(), calendar: calendar)
+
+        switch write {
+        case let .replaceSettings(settings):
+            try await engine.saveTrainingPlan(settings)
+            PrescriptionDayStore.clear(for: today)
+            return replanned(on: today)
+
+        case let .fromCoachPayload(payload):
+            var settings = try await engine.loadTrainingPlan()
+            let current = settings.phaseGoal
+            let phase = payload.phase.flatMap(TrainingPhase.init(rawValue:)) ?? current.phase
+            settings.phaseGoal = PhaseGoal(
+                phase: phase,
+                weeklyRateKg: payload.weeklyRateKg ?? current.weeklyRateKg,
+                targetMass: current.targetMass,
+                emphasis: payload.emphasis ?? current.emphasis
+            )
+            try await engine.saveTrainingPlan(settings)
+            PrescriptionDayStore.clear(for: today)
+            return replanned(on: today)
+
+        case let .reactiveDeload(action):
+            switch action {
+            case .confirm:
+                try await engine.confirmReactiveDeload()
+                PrescriptionDayStore.clear(for: today)
+                return replanned(on: today)
+            case .dismiss:
+                try await engine.dismissReactiveDeload()
+                return HelmActionResult(sideEffects: [.refreshPrescription])
+            }
+
+        case let .regenerateToday(day):
+            PrescriptionDayStore.clear(for: day)
+            return HelmActionResult(
+                sideEffects: [.refreshNutrition(day), .refreshPrescription]
+            )
+        }
+    }
+
+    private func replanned(on day: HelmDay) -> HelmActionResult {
+        HelmActionResult(
+            sideEffects: [.refreshNutrition(day), .refreshPrescription]
+        )
     }
 
     public func applySessionAdjustment(

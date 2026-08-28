@@ -245,9 +245,15 @@ final class TrainSessionController {
 
     func regenerateTodaysPrescription() async {
         let day = todayHelmDay()
-        PrescriptionDayStore.clear(for: day)
-        await PlanBootstrap.refreshPrescriptionWithCalendar()
-        prescriptionSummary = prescriptionService.state.summary
+        do {
+            _ = try await HelmActionRuntime.perform(
+                .trainingPlan(.regenerateToday(day)),
+                after: .none
+            )
+            prescriptionSummary = prescriptionService.state.summary
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func discussTodaysSession() {
@@ -962,17 +968,13 @@ final class TrainSessionController {
         guard !trimmed.isEmpty else { return }
         do {
             await persistSessionNote()
-            var profile = try persistence.memoryProfile.load()
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withFullDate]
-            let dateLine = formatter.string(from: Date())
-            let line = "\(dateLine): \(trimmed)"
-            if profile.standingConstraints.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                profile.standingConstraints = line
-            } else {
-                profile.standingConstraints += "\n" + line
-            }
-            try persistence.memoryProfile.save(profile)
+            _ = try await HelmActionRuntime.perform(
+                .memory(.appendTrainingResponse(
+                    note: trimmed,
+                    today: HelmDay.day(for: Date(), calendar: .current)
+                )),
+                after: .none
+            )
             sessionNoteSavedConfirmation = true
             HapticEngine.shared.play(.mealConfirmed)
         } catch {

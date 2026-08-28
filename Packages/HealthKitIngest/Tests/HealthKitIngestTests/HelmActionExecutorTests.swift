@@ -273,6 +273,91 @@ struct HelmActionExecutorTests {
         #expect(try store.nutrition.fetchMeals(for: HelmDay.day(for: loggedAt, calendar: calendar)).isEmpty)
     }
 
+    @Test("coach memory add writes tagged standing constraint")
+    func memoryCoachAddWritesTaggedConstraint() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let today = HelmDay(year: 2026, month: 8, day: 5)
+        let payload = MemoryAdjustmentPayload(
+            reply: "Noted.",
+            action: .add,
+            standingConstraintNote: "Soft pause overhead pressing",
+            untilDate: "2026-08-08",
+            joint: "shoulder"
+        )
+
+        _ = try await executor.run(.memory(.fromCoachPayload(payload, today: today)))
+
+        let profile = try store.memoryProfile.load()
+        #expect(profile.standingConstraints.contains("[joint:shoulder]"))
+        #expect(profile.standingConstraints.contains("[until:2026-08-08]"))
+        #expect(profile.standingConstraints.contains("Soft pause overhead pressing"))
+    }
+
+    @Test("constraint refinement add uses tagged line not raw concat")
+    func memoryRefinementConstraintUsesTags() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let today = HelmDay(year: 2026, month: 8, day: 5)
+        let entry = MemoryRefinementEntry(
+            field: "standingConstraints",
+            action: .add,
+            proposedValue: "Shoulder niggle on overhead press",
+            confidence: .high,
+            evidence: [],
+            rationale: "Athlete said so"
+        )
+
+        _ = try await executor.run(.memory(.applyRefinements([entry], today: today)))
+
+        let profile = try store.memoryProfile.load()
+        #expect(profile.standingConstraints.contains("[joint:shoulder]"))
+        #expect(!profile.standingConstraints.hasPrefix("Shoulder niggle"))
+    }
+
+    @Test("session note lands in trainingResponses not standingConstraints")
+    func sessionNoteDoesNotSmashConstraints() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.memoryProfile.save(
+            MemoryProfile(
+                standingConstraints: "2026-08-05 [until:2026-08-08] [joint:shoulder] Soft pause OHP"
+            )
+        )
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let today = HelmDay(year: 2026, month: 8, day: 6)
+
+        _ = try await executor.run(
+            .memory(.appendTrainingResponse(note: "Felt strong on bench", today: today))
+        )
+
+        let profile = try store.memoryProfile.load()
+        #expect(profile.standingConstraints.contains("[joint:shoulder]"))
+        #expect(!profile.standingConstraints.contains("Felt strong on bench"))
+        #expect(profile.trainingResponses.contains("2026-08-06: Felt strong on bench"))
+    }
+
+    @Test("coach settings payload saves phase and syncs memory")
+    func settingsPayloadSyncsMemoryPhase() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = HelmActionExecutor(persistence: store, calendar: calendar)
+        let payload = SettingsAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.settingsAdjustmentV1.rawValue,
+            phase: "cut",
+            weeklyRateKg: 0.5,
+            emphasis: "arms"
+        )
+
+        let result = try await executor.run(.trainingPlan(.fromCoachPayload(payload)))
+
+        #expect(result.sideEffects.contains(.refreshPrescription))
+        let settings = try store.trainingPlan.load()
+        #expect(settings.phaseGoal.phase == .cut)
+        #expect(settings.phaseGoal.weeklyRateKg == 0.5)
+        #expect(settings.phaseGoal.emphasis == "arms")
+        let profile = try store.memoryProfile.load()
+        #expect(profile.phaseGoal?.phase == .cut)
+    }
+
     private func makeMealExecutor(store: PersistenceStore) -> HelmActionExecutor {
         let meals = ManualMealService(
             writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),

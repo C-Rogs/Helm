@@ -233,8 +233,10 @@ struct MemoryProfileEditorView: View {
         isSaving = true
         defer { isSaving = false }
         do {
-            try PersistenceBootstrap.persistenceStore.memoryProfile.save(profile)
-            CoachApplyMomentStore.shared.play()
+            try await HelmActionRuntime.perform(
+                .memory(.replaceProfile(profile)),
+                after: .coach
+            )
             saveMessage = "Saved. Coach will use this on the next turn."
         } catch {
             saveMessage = error.localizedDescription

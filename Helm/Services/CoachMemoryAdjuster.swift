@@ -1,38 +1,11 @@
 import CoachLLM
 import Core
 import Foundation
+import HealthKitIngest
 import Persistence
 
 enum CoachMemoryAdjuster {
     private static let shoulderSeedDefaultsKey = "helm.memory.seededShoulderNiggle.v1"
-
-    static func apply(
-        _ payload: MemoryAdjustmentPayload,
-        persistence: PersistenceStore,
-        today: HelmDay = HelmDay.day(for: Date(), calendar: .current)
-    ) throws {
-        var profile = try persistence.memoryProfile.load()
-        switch payload.action {
-        case .add:
-            let note = payload.standingConstraintNote?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-            guard !note.isEmpty else { return }
-            let until = payload.untilDate.flatMap(HelmDay.init(formatted:))
-            profile.standingConstraints = StandingConstraintNotes.append(
-                note: note,
-                joint: payload.joint,
-                notedOn: today,
-                until: until,
-                to: profile.standingConstraints
-            )
-        case .clear:
-            profile.standingConstraints = StandingConstraintNotes.clear(
-                joint: payload.joint,
-                on: today,
-                in: profile.standingConstraints
-            )
-        }
-        try persistence.memoryProfile.save(profile)
-    }
 
     /// One-shot seed for Cameron's current shoulder niggle (launch-time).
     static func seedShoulderNiggleIfNeeded(
@@ -55,7 +28,7 @@ enum CoachMemoryAdjuster {
             return
         }
 
-        try apply(
+        try HelmMemoryApplier.applyCoachPayload(
             MemoryAdjustmentPayload(
                 reply: "Saved shoulder recovery note.",
                 action: .add,

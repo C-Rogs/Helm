@@ -224,39 +224,14 @@ final class ChatController {
         guard !pendingMemoryRefinements.isEmpty else { return }
         Task { @MainActor in
             do {
-                var profile = try persistence.memoryProfile.load()
-                for entry in pendingMemoryRefinements {
-                    let isStringField: Bool = {
-                        switch entry.field {
-                        case "baselinesSummary", "preferences", "standingConstraints",
-                             "whatHasWorked", "injuryHistory", "trainingResponses",
-                             "nutritionPatterns":
-                            return true
-                        default:
-                            return false
-                        }
-                    }()
-                    guard isStringField else { continue }
-                    switch entry.action {
-                    case .add:
-                        let current = Self.currentValue(of: entry.field, in: profile)
-                        let separator = current.isEmpty ? "" : "\n"
-                        let newValue = current + separator + entry.proposedValue
-                        Self.setValue(of: entry.field, in: &profile, to: newValue)
-                    case .merge:
-                        let current = Self.currentValue(of: entry.field, in: profile)
-                        let separator = current.isEmpty ? "" : "\n"
-                        let newValue = current + separator + entry.proposedValue
-                        Self.setValue(of: entry.field, in: &profile, to: newValue)
-                    case .replace:
-                        Self.setValue(of: entry.field, in: &profile, to: entry.proposedValue)
-                    case .remove:
-                        Self.setValue(of: entry.field, in: &profile, to: "")
-                    }
-                }
-                try persistence.memoryProfile.save(profile)
+                _ = try await HelmActionRuntime.perform(
+                    .memory(.applyRefinements(
+                        pendingMemoryRefinements,
+                        today: HelmDay.day(for: Date(), calendar: .current)
+                    )),
+                    after: .coach
+                )
                 pendingMemoryRefinements = []
-                CoachApplyMomentStore.shared.play()
             } catch {
                 lastTurnError = error.localizedDescription
             }
@@ -265,32 +240,6 @@ final class ChatController {
 
     func dismissMemoryRefinements() {
         pendingMemoryRefinements = []
-    }
-
-    private static func currentValue(of field: String, in profile: MemoryProfile) -> String {
-        switch field {
-        case "baselinesSummary": return profile.baselinesSummary
-        case "preferences": return profile.preferences
-        case "standingConstraints": return profile.standingConstraints
-        case "whatHasWorked": return profile.whatHasWorked
-        case "injuryHistory": return profile.injuryHistory
-        case "trainingResponses": return profile.trainingResponses
-        case "nutritionPatterns": return profile.nutritionPatterns
-        default: return ""
-        }
-    }
-
-    private static func setValue(of field: String, in profile: inout MemoryProfile, to value: String) {
-        switch field {
-        case "baselinesSummary": profile.baselinesSummary = value
-        case "preferences": profile.preferences = value
-        case "standingConstraints": profile.standingConstraints = value
-        case "whatHasWorked": profile.whatHasWorked = value
-        case "injuryHistory": profile.injuryHistory = value
-        case "trainingResponses": profile.trainingResponses = value
-        case "nutritionPatterns": profile.nutritionPatterns = value
-        default: break
-        }
     }
 
     func reportSurfaceError(_ message: String) {
@@ -398,8 +347,11 @@ final class ChatController {
                 )
             case let .memoryAdjustment(payload):
                 applyProgressStep = "Updating Memory…"
-                try CoachMemoryAdjuster.apply(payload, persistence: persistence)
-                CoachApplyMomentStore.shared.play()
+                let today = HelmDay.day(for: Date(), calendar: .current)
+                _ = try await HelmActionRuntime.perform(
+                    .memory(.fromCoachPayload(payload, today: today)),
+                    after: .coach
+                )
             case let .workoutStart(payload):
                 applyProgressStep = "Preparing session…"
                 let today = HelmDay.day(for: .now, calendar: .current)
@@ -427,30 +379,24 @@ final class ChatController {
                 )
             case let .settingsAdjustment(payload):
                 applyProgressStep = "Updating plan…"
-                try CoachPlanSettingsAdjuster.apply(payload, persistence: persistence)
-                await PlanBootstrap.prescriptionService.refresh(
-                    readiness: ReadinessBootstrap.readinessService.state.score
+                _ = try await HelmActionRuntime.perform(
+                    .trainingPlan(.fromCoachPayload(payload)),
+                    after: .coach
                 )
-                CoachApplyMomentStore.shared.play()
             case let .reactiveDeload(payload):
                 applyProgressStep = "Updating plan…"
-                if payload.action == .confirm {
-                    try await PlanBootstrap.prescriptionService.confirmReactiveDeload()
-                } else {
-                    try await PlanBootstrap.prescriptionService.dismissReactiveDeload()
-                }
-                await PlanBootstrap.prescriptionService.refresh(
-                    readiness: ReadinessBootstrap.readinessService.state.score
+                let action: HelmReactiveDeloadAction = payload.action == .confirm ? .confirm : .dismiss
+                _ = try await HelmActionRuntime.perform(
+                    .trainingPlan(.reactiveDeload(action)),
+                    after: .coach
                 )
-                CoachApplyMomentStore.shared.play()
             case let .planRegenerate:
                 applyProgressStep = "Regenerating…"
                 let today = HelmDay.day(for: .now, calendar: .current)
-                PrescriptionDayStore.clear(for: today)
-                await PlanBootstrap.prescriptionService.refresh(
-                    readiness: ReadinessBootstrap.readinessService.state.score
+                _ = try await HelmActionRuntime.perform(
+                    .trainingPlan(.regenerateToday(today)),
+                    after: .coach
                 )
-                CoachApplyMomentStore.shared.play()
             }
             pendingChatAction = nil
             lastTurnError = nil
