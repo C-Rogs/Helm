@@ -20,6 +20,7 @@ struct HelmApp: App {
             )
         }
         HelmFontRegistration.registerFontsIfNeeded()
+        MethodologyBootstrap.start()
         Task { @MainActor in
             await DiagnosticsBootstrap.run()
             await PersistenceBootstrap.logOpen()
@@ -45,7 +46,6 @@ struct HelmApp: App {
             BriefBootstrap.start()
             NutritionBootstrap.start()
             TrendsBootstrap.start()
-            MethodologyBootstrap.start()
             ProactiveBootstrap.start()
             WatchReadinessBootstrap.start()
             // Prepare bell buffer only - do not activate AVAudioSession (pauses music).

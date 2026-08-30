@@ -44,30 +44,32 @@ struct SourcesMethodologyView: View {
                 .padding(.vertical, HelmSpacing.xs)
             }
 
-            Section("Methodology") {
-                if document.placeholder {
-                    Text("Placeholder seed content. Cameron will author final citations and notes.")
-                        .font(HelmType.body.font)
-                        .foregroundStyle(HelmColor.fgSecondary)
-                }
+            Section {
+                Text(methodologyIntro)
+                    .font(HelmType.body.font)
+                    .foregroundStyle(HelmColor.fgSecondary)
+            }
 
-                ForEach(document.topics) { topic in
-                    Button {
-                        selectedTopic = topic
-                        HapticEngine.shared.play(.selection)
-                    } label: {
-                        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                            Text(topic.title)
-                                .font(HelmType.label.font)
-                                .foregroundStyle(HelmColor.fg)
-                            if !topic.citationIDs.isEmpty {
-                                Text(topic.citationIDs.joined(separator: ", "))
-                                    .font(HelmType.monoTag.font)
-                                    .foregroundStyle(HelmColor.fgMuted)
+            ForEach(topicGroups, id: \.title) { group in
+                Section(group.title) {
+                    ForEach(group.topics) { topic in
+                        Button {
+                            selectedTopic = topic
+                            HapticEngine.shared.play(.selection)
+                        } label: {
+                            VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                                Text(topic.title)
+                                    .font(HelmType.label.font)
+                                    .foregroundStyle(HelmColor.fg)
+                                if let caption = topicCaption(topic) {
+                                    Text(caption)
+                                        .font(HelmType.monoTag.font)
+                                        .foregroundStyle(HelmColor.fgMuted)
+                                }
                             }
                         }
+                        .buttonStyle(.helmPressable)
                     }
-                    .buttonStyle(.helmPressable)
                 }
             }
 
@@ -123,6 +125,7 @@ struct SourcesMethodologyView: View {
         .helmScreenBackground()
         .scrollContentBackground(.hidden)
         .task {
+            MethodologyBootstrap.start()
             await load()
         }
         .sheet(item: $selectedTopic) { topic in
@@ -135,6 +138,36 @@ struct SourcesMethodologyView: View {
 
     private var isDirty: Bool {
         preferences != loadedPreferences
+    }
+
+    private var methodologyIntro: String {
+        if document.placeholder || document.topics.isEmpty {
+            return "Methodology library failed to load."
+        }
+        return "This is the science Helm uses for coaching notes. Essays never change engine maths. Selection bias and equipment below do."
+    }
+
+    private var topicGroups: [(title: String, topics: [MethodologyTopic])] {
+        let lookup = Dictionary(uniqueKeysWithValues: document.topics.map { ($0.id, $0) })
+        var used: Set<String> = []
+        var groups: [(title: String, topics: [MethodologyTopic])] = []
+        for module in document.modules {
+            let topics = module.topicIDs.compactMap { lookup[$0] }
+            guard !topics.isEmpty else { continue }
+            topics.forEach { used.insert($0.id) }
+            groups.append((module.title, topics))
+        }
+        let orphans = document.topics.filter { !used.contains($0.id) }
+        if !orphans.isEmpty {
+            groups.append(("Other", orphans))
+        }
+        return groups
+    }
+
+    private func topicCaption(_ topic: MethodologyTopic) -> String? {
+        let count = topic.citationIDs.count
+        guard count > 0 else { return nil }
+        return "\(count) SOURCE\(count == 1 ? "" : "S")"
     }
 
     @MainActor
@@ -159,9 +192,7 @@ struct SourcesMethodologyView: View {
             let session = try await prescriptionService.todaysPrescription(readiness: readiness)
             let ids = Array(Set(session.exercises.flatMap(\.evidenceIDs))).sorted()
             prescriptionCitations = document.evidence(for: ids)
-            if prescriptionCitations.isEmpty, !ids.isEmpty {
-                prescriptionCitations = MethodologyEvidenceSupport.records(for: ids)
-            }
+                .filter { !$0.placeholder }
         } catch {
             prescriptionCitations = []
         }
@@ -220,10 +251,9 @@ private struct CitationRow: View {
                     .font(HelmType.monoTag.font)
                     .foregroundStyle(HelmColor.fgMuted)
             }
-            if record.placeholder {
-                Text("PLACEHOLDER")
-                    .font(HelmType.monoTag.font)
-                    .foregroundStyle(HelmColor.fgMuted)
+            if let url = record.url {
+                Link(url.host ?? url.absoluteString, destination: url)
+                    .font(HelmType.body.font)
             }
         }
         .padding(.vertical, HelmSpacing.xs)
@@ -233,6 +263,7 @@ private struct CitationRow: View {
 #Preview {
     NavigationStack {
         SourcesMethodologyView()
+            .onAppear { MethodologyBootstrap.start() }
     }
     .helmTheme()
 }

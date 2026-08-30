@@ -53,28 +53,62 @@ enum SessionSwapPhrase: Sendable {
     /// "add rope hammer curl" / "include face pull". Used so athlete wording
     /// is tried as a catalog phrase before a wrong toExerciseID.
     static func parseAdd(_ text: String?) -> String? {
-        guard let text, parse(text) == nil else { return nil }
+        parseAddList(text).first
+    }
+
+    /// "add dumbbell curls and leg extensions" → two lifts.
+    /// "add face pull and move it to the start" → one lift (move is not a second add).
+    static func parseAddList(_ text: String?) -> [String] {
+        guard let text, parse(text) == nil else { return [] }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard let regex = try? NSRegularExpression(pattern: #"(?i)(?:add|include)\s+(.+?)(?:\s+and\b.*)?$"#) else {
-            return nil
+        guard let regex = try? NSRegularExpression(pattern: #"(?i)(?:add|include)\s+(.+)$"#) else {
+            return []
         }
         let range = NSRange(trimmed.startIndex..., in: trimmed)
         guard let match = regex.firstMatch(in: trimmed, range: range),
               match.numberOfRanges >= 2,
               let capture = Range(match.range(at: 1), in: trimmed)
-        else { return nil }
-        var value = sanitize(String(trimmed[capture]))
-        if let insteadRange = value.range(of: " instead", options: [.caseInsensitive, .backwards]),
-           insteadRange.upperBound == value.endIndex {
-            value = String(value[..<insteadRange.lowerBound])
+        else { return [] }
+
+        var rest = String(trimmed[capture])
+        if let moveStrip = try? NSRegularExpression(
+            pattern: #"(?i)\s+and\s+(?:then\s+)?(?:move|put|place)\b.*$"#
+        ) {
+            let restRange = NSRange(rest.startIndex..., in: rest)
+            if let moveMatch = moveStrip.firstMatch(in: rest, range: restRange),
+               let drop = Range(moveMatch.range, in: rest) {
+                rest = String(rest[..<drop.lowerBound])
+            }
         }
-        if let regex = try? NSRegularExpression(pattern: #"(?i)^\d+\s+sets?\s+of\s+"#),
-           let match = regex.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)),
-           let junk = Range(match.range, in: value),
-           junk.lowerBound == value.startIndex {
-            value = String(value[junk.upperBound...])
+
+        let parts = rest
+            .replacingOccurrences(
+                of: #"(?i)\s*(?:,\s*and|and then|&|plus|,|and)\s+"#,
+                with: "\u{1e}",
+                options: .regularExpression
+            )
+            .split(separator: "\u{1e}", omittingEmptySubsequences: true)
+            .map(String.init)
+
+        var results: [String] = []
+        var seen = Set<String>()
+        for part in parts {
+            var value = sanitize(part)
+            if let insteadRange = value.range(of: " instead", options: [.caseInsensitive, .backwards]),
+               insteadRange.upperBound == value.endIndex {
+                value = String(value[..<insteadRange.lowerBound])
+            }
+            if let qty = try? NSRegularExpression(pattern: #"(?i)^\d+\s+sets?\s+of\s+"#),
+               let qtyMatch = qty.firstMatch(in: value, range: NSRange(value.startIndex..., in: value)),
+               let junk = Range(qtyMatch.range, in: value),
+               junk.lowerBound == value.startIndex {
+                value = String(value[junk.upperBound...])
+            }
+            let key = value.lowercased()
+            guard value.count >= 3, seen.insert(key).inserted else { continue }
+            results.append(value)
         }
-        return value.count >= 3 ? value : nil
+        return results
     }
 
     static func parseMove(_ text: String?) -> Move? {
@@ -142,7 +176,7 @@ enum SessionSwapPhrase: Sendable {
         }
         let prefixes = [
             "can we do ", "can i do ", "let's do ", "lets do ", "i want ",
-            "please ", "try ", "use ", "do ",
+            "please ", "try ", "use ", "do ", "and ",
             "the ", "a ", "an ", "my ", "some ", "out ",
         ]
         var stripped = true

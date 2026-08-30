@@ -18,7 +18,7 @@ struct CoachKeyOnboardingStepView: View {
 
     var body: some View {
         OnboardingStepChrome(
-            step: .coachKey,
+            step: .welcome,
             stepIndex: stepIndex,
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
@@ -48,9 +48,8 @@ struct CoachKeyOnboardingStepView: View {
         }
         .onAppear {
             if geminiKey.isEmpty {
-                geminiKey = keyStore.displayValue(for: .gemini)
+                keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "Optional. Skip to use engine-only mode."
             }
-            keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "Optional. Skip to use engine-only mode."
         }
     }
 

@@ -890,8 +890,6 @@ final class ChatController {
         }
     }
 
-    }
-
     private func persistGroundedChartIfPossible(userText: String) async -> Bool {
         guard let kind = CoachChatIntent.inferredChartKind(from: userText) else { return false }
         let endDay = HelmDay.day(for: .now, calendar: .current)

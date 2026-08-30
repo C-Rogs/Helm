@@ -1,5 +1,5 @@
 {
-  "seedVersion": 2,
+  "seedVersion": 3,
   "placeholder": false,
   "modules": [
     {
@@ -202,7 +202,7 @@
     {
       "id": "endurance",
       "title": "Endurance and Concurrent Training",
-      "description": "How to integrate cardiovascular conditioning alongside strength training without compromising hypertrophy, maximal strength, or power \u2014 from energy system interplay through molecular signaling, modality selection, polarized intensity distribution, and respiratory fatigue management.",
+      "description": "How to integrate cardiovascular conditioning alongside strength training without compromising hypertrophy, maximal strength, or power: from energy system interplay through molecular signaling, modality selection, polarized intensity distribution, and respiratory fatigue management.",
       "topicIDs": [
         "endurance-energy-systems",
         "endurance-interference-effect",
@@ -244,7 +244,7 @@
     {
       "id": "lifting",
       "title": "Science-Based Lifting",
-      "description": "Biomechanical and neuromuscular execution science for squatting, hinging, pressing, bracing, and form management \u2014 bridging the gap between gym folklore and evidence-based technique.",
+      "description": "Biomechanical and neuromuscular execution science for squatting, hinging, pressing, bracing, and form management: bridging the gap between gym folklore and evidence-based technique.",
       "topicIDs": [
         "lifting-attentional-focus",
         "lifting-squat-execution",
@@ -286,103 +286,91 @@
     {
       "id": "ev-hypertrophy-volume-landmarks",
       "title": "Muscle-Specific MEV, MAV, and MRV Baseline Landmarks",
-      "summary": "Muscle groups exhibit distinct volume thresholds. Chest MEV is 8.0 sets/week and MRV 22.0; back MEV is 10.0 and MRV 25.0; quadriceps MEV is 6.0 and MRV 20.0; side deltoids MEV is 6.0 and MRV 24.0; biceps and triceps have a direct-work MEV of 4.0 with MRV 18.0. Anterior deltoids receive sufficient stimulus from pressing (MEV 0.0). The optimal 10\u201320 weekly set range provides the MAV window for most muscle groups. Coaches should seed volume targets per muscle group rather than applying a single global target.",
+      "summary": "Muscle groups exhibit distinct volume thresholds. Chest MEV is 8.0 sets/week and MRV 22.0; back MEV is 10.0 and MRV 25.0; quadriceps MEV is 6.0 and MRV 20.0; side deltoids MEV is 6.0 and MRV 24.0; biceps and triceps have a direct-work MEV of 4.0 with MRV 18.0. Anterior deltoids receive sufficient stimulus from pressing (MEV 0.0). The optimal 10–20 weekly set range provides the MAV window for most muscle groups. Coaches should seed volume targets per muscle group rather than applying a single global target.",
       "citation": "Schoenfeld et al. (2017). Meta-analysis of volume dose-response. Baz-Valle et al. (2022). Systematic review of weekly set thresholds.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-volume-landmarks-2",
       "title": "Demographic Volume Scalars for Landmark Initialization",
-      "summary": "MEV and MRV landmarks are modulated by experience (novice \u00d70.80, intermediate \u00d71.00, advanced \u00d71.10), age (<40 \u00d71.00, 40\u201355 \u00d70.90, >55 \u00d70.80), and biological sex (male \u00d71.00, female \u00d71.05). These scalars compound: MEV_seeded = MEV_base \u00d7 \u03b1_exp \u00d7 \u03b1_age \u00d7 \u03b1_sex. Female athletes show superior fatigue resistance in high-rep ranges and faster intra-set recovery. Masters athletes (\u226545) require caps of +1 set/week progression, 0.85\u00d7 MRV ceilings, and a deload every 4th microcycle.",
+      "summary": "MEV and MRV landmarks are modulated by experience (novice ×0.80, intermediate ×1.00, advanced ×1.10), age (<40 ×1.00, 40–55 ×0.90, >55 ×0.80), and biological sex (male ×1.00, female ×1.05). These scalars compound: MEV_seeded = MEV_base × α_exp × α_age × α_sex. Female athletes show superior fatigue resistance in high-rep ranges and faster intra-set recovery. Masters athletes (≥45) require caps of +1 set/week progression, 0.85× MRV ceilings, and a deload every 4th microcycle.",
       "citation": "Scarpelli et al. (2020). Individual variability in volume tolerance. Hammert et al. (2023). Baseline-adjusted set progression.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-hard-set-definition",
-      "title": "Hard Set Criteria: Load, Rep Range, and Proximity Thresholds",
-      "summary": "A hard set is defined as any set performed at 30%\u201385% 1RM, across 5\u201330 repetitions, terminating at 0\u20134 RIR (RPE 6\u201310). Sets below 30% 1RM, above 30 reps, or with RIR >4 fail to generate sufficient mechanical tension and motor unit recruitment to drive hypertrophy. Warm-up sets (RIR >5 or load <30% 1RM) receive 0.00 volume credit. Coaches should ensure every working set falls within these boundaries to accumulate effective training volume.",
-      "citation": "Schoenfeld et al. (2017). Meta-analysis of volume dose-response. Mechanistic studies on motor unit recruitment and mechanical tension thresholds.",
-      "placeholder": false,
-      "url": ""
+      "title": "Hard-set credit is graded by proximity to failure, not a binary cutoff",
+      "summary": "Hypertrophy rises continuously as RIR falls, with no evidence for a hard RIR-4 cliff. Helm grants full stimulus credit through RIR 2, then tapers 0.9 / 0.8 / 0.5, and zeros from RIR 6 (warmup). Work outside the typical 5-30 rep band still counts at 0.5 rather than 0. Load has a floor at 30% 1RM; there is no 85% upper cutoff.",
+      "citation": "Robinson et al. (2024). Proximity to Failure Dose-Response. Sports Medicine. Refalo et al. (2023). Influence of Proximity-to-Failure on Hypertrophy. Sports Medicine.",
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-hard-set-definition-2",
-      "title": "Fractional Set Accounting: Synergist Contribution Model",
-      "summary": "Compound movements provide hypertrophic stimulus to synergist muscles that traditional binary counting either overstates or ignores. A tiered model assigns 1.00 credit to primary movers, 0.50 to major synergists (e.g., triceps on bench press, biceps on rows), and 0.25 to minor stabilizers. Fractional sets cannot satisfy more than 50% of a muscle's weekly target volume. When a muscle's MEV exceeds 8.0 sets/week, PlanKit enforces a minimum floor of 4.0 direct sets per week. Multi-level meta-regressions confirm fractional accounting provides superior fit for growth models.",
-      "citation": "Meta-regression analyses on synergist contribution coefficients. PlanKit engineering specification v2.0.",
-      "placeholder": false,
-      "url": ""
+      "title": "Fractional (0.5) synergist counting best predicts hypertrophy and strength",
+      "summary": "Across 67 studies, counting indirect sets as fractional (0.5) predicted both hypertrophy and strength better than total or direct-only counting. Helm credits primary movers at 1.0, major synergists at 0.5, and minor stabilizers at 0.25, with a 50% weekly synergist cap so rows cannot replace curls.",
+      "citation": "Pelland et al. (2025). The Resistance Training Dose Response. Sports Medicine.",
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-session-design",
       "title": "Per-Exercise Set Caps and Intra-Session Volume Ceilings",
-      "summary": "Meta-regressions demonstrate that hypertrophic stimulus per set drops significantly past 3\u20134 sets per exercise in a single session as acute local fatigue accumulates. Helm enforces a strict cap of 4 sets per exercise (3 for novices). Research also shows diminishing returns beyond 8\u201310 total effective sets per muscle group within a single session; working sets beyond 10.0 receive only 0.50 stimulus credit. Coaches should split muscle volume across multiple movement pattern slots rather than dumping sets onto one exercise.",
+      "summary": "Meta-regressions demonstrate that hypertrophic stimulus per set drops significantly past 3–4 sets per exercise in a single session as acute local fatigue accumulates. Helm enforces a strict cap of 4 sets per exercise (3 for novices). Research also shows diminishing returns beyond 8–10 total effective sets per muscle group within a single session; working sets beyond 10.0 receive only 0.50 stimulus credit. Coaches should split muscle volume across multiple movement pattern slots rather than dumping sets onto one exercise.",
       "citation": "Meta-regressions on per-exercise set efficiency and diminishing returns. Neuromuscular fatigue studies on intra-session set allocation caps.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-session-design-2",
       "title": "Rest Interval Prescriptions by Movement Class",
-      "summary": "Meta-analyses show that rest periods of 2\u20133 minutes for compound lifts maintain mechanical tension and force output across subsequent sets compared to short rest. Helm allocates 180 seconds rest for compound movements (squat, press, row) and 90 seconds for isolation exercises. Session time budgets are calculated deterministically: T_session = \u03a3(S_j \u00d7 40s per set + (S_j \u2212 1) \u00d7 rest_j) + 300s warmup. Shorter rest degrades volume quality on heavy compounds.",
+      "summary": "Meta-analyses show that rest periods of 2–3 minutes for compound lifts maintain mechanical tension and force output across subsequent sets compared to short rest. Helm allocates 180 seconds rest for compound movements (squat, press, row) and 90 seconds for isolation exercises. Session time budgets are calculated deterministically: T_session = Σ(S_j × 40s per set + (S_j − 1) × rest_j) + 300s warmup. Shorter rest degrades volume quality on heavy compounds.",
       "citation": "Meta-analyses on rest interval duration and force maintenance across sets. Grade A evidence.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-progression",
       "title": "Linear-Step Weekly Volume Ramp and Double Progression",
-      "summary": "A mesocycle uses a linear-step progression from MEV to MRV across 4\u20136 weeks: V_target(W_k) = MEV + ((k\u22121)/(N\u22121)) \u00d7 (MRV \u2212 MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, weekly targets are 10.0, 12.0, 14.0, 16.0, 18.0, followed by a deload at 50% MEV (5.0 sets). Volume aggressiveness controls step size: Conservative +1, Moderate +2, Aggressive +3 sets/week. Load progression uses Standard Double Progression (reach rep ceiling, then add load) for most compounds and Rep-First Step Progression for isolations.",
+      "summary": "A mesocycle uses a linear-step progression from MEV to MRV across 4–6 weeks: V_target(W_k) = MEV + ((k−1)/(N−1)) × (MRV − MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, weekly targets are 10.0, 12.0, 14.0, 16.0, 18.0, followed by a deload at 50% MEV (5.0 sets). Volume aggressiveness controls step size: Conservative +1, Moderate +2, Aggressive +3 sets/week. Load progression uses Standard Double Progression (reach rep ceiling, then add load) for most compounds and Rep-First Step Progression for isolations.",
       "citation": "PlanKit engine specification v2.0. Progression scheme algorithms by lift class.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-training-frequency",
       "title": "Volume-Equated Training Frequency and Hypertrophy",
-      "summary": "Meta-analyses demonstrate that training frequency (1\u00d7, 2\u00d7, or 3\u00d7 per week) yields equivalent hypertrophy when total weekly volume is equated. However, higher frequencies allow higher total volume without exceeding single-session fatigue limits of 8\u201310 sets per muscle. Helm distributes weekly targets across exposures: V_session = V_target \u00f7 M (where M is the number of weekly sessions hitting that muscle). Coaches should not add days for the same volume but may add frequency to accommodate higher weekly totals.",
+      "summary": "Meta-analyses demonstrate that training frequency (1×, 2×, or 3× per week) yields equivalent hypertrophy when total weekly volume is equated. However, higher frequencies allow higher total volume without exceeding single-session fatigue limits of 8–10 sets per muscle. Helm distributes weekly targets across exposures: V_session = V_target ÷ M (where M is the number of weekly sessions hitting that muscle). Coaches should not add days for the same volume but may add frequency to accommodate higher weekly totals.",
       "citation": "Meta-analyses on training frequency and hypertrophy when volume is equated. Grade A evidence.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-proximity-to-failure",
       "title": "Proximity to Failure Thresholds and RIR Policy by Experience",
-      "summary": "Working sets require termination within 0\u20134 RIR to generate sufficient mechanical tension and motor unit recruitment. Sets completed at RIR >4 fail to provide hypertrophic stimulus and receive 0.00 volume ledger credit. Experience-level policies: Novices train at RIR 2\u20133 to preserve technique; Intermediates progress toward RIR 1\u20132; Advanced lifters use RIR 0\u20131 with planned failure on final isolation sets. During autoregulation, increasing RIR is Tier 1 action (least disruptive) before reducing load or trimming volume.",
+      "summary": "Working sets require termination within 0–4 RIR to generate sufficient mechanical tension and motor unit recruitment. Sets completed at RIR >4 fail to provide hypertrophic stimulus and receive 0.00 volume ledger credit. Experience-level policies: Novices train at RIR 2–3 to preserve technique; Intermediates progress toward RIR 1–2; Advanced lifters use RIR 0–1 with planned failure on final isolation sets. During autoregulation, increasing RIR is Tier 1 action (least disruptive) before reducing load or trimming volume.",
       "citation": "Mechanical tension and motor unit recruitment studies. Autoregulation precedence hierarchy (Helm PrescriptionEngine v2.0).",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-recovery-monitoring",
       "title": "Biofeedback-Driven Landmark Refinement",
-      "summary": "MEV and MRV landmarks adjust dynamically from three weekly biofeedback inputs per muscle group: Soreness (S, 0\u20134 scale), RIR Delta (\u0394RIR, prescribed vs actual), and Performance Trend (\u0394e1RM, 2-week rolling). High recovery (S\u22641, \u0394RIR\u22640, e1RM stable or rising) allows MRV+1 and V_target+1. Optimal adaptive state (S=2, \u0394RIR within \u00b10.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate fatigue (S=3 or \u0394RIR>1.0) holds volume constant. Safety bounds clamp MEV to [4.0, MEV_base+2.0] and MRV to [MEV+2.0, MRV_base+6.0].",
+      "summary": "MEV and MRV landmarks adjust dynamically from three weekly biofeedback inputs per muscle group: Soreness (S, 0–4 scale), RIR Delta (ΔRIR, prescribed vs actual), and Performance Trend (Δe1RM, 2-week rolling). High recovery (S≤1, ΔRIR≤0, e1RM stable or rising) allows MRV+1 and V_target+1. Optimal adaptive state (S=2, ΔRIR within ±0.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate fatigue (S=3 or ΔRIR>1.0) holds volume constant. Safety bounds clamp MEV to [4.0, MEV_base+2.0] and MRV to [MEV+2.0, MRV_base+6.0].",
       "citation": "PlanKit autoregulated landmark refinement engine v2.0. Dual state machine adjusting MEV and MRV from recovery and performance trends.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-recovery-monitoring-2",
       "title": "Overreaching Detection, MRV Enforcement, and Deload Triggers",
-      "summary": "PlanKit establishes two MRV boundaries: a soft warning cap at 0.90\u00d7MRV (halve progressive additions) and a hard operational cap at 1.00\u00d7MRV (reject all set additions). An overreaching alarm triggers when a muscle logs Performance=4 for two consecutive microcycles while at or above MRV_soft, terminating the mesocycle and scheduling a 7-day reactive deload. Reactive deloads also trigger on estimated 1RM drop >5% across two sessions, persistent soreness (4/4 for >72h), or ARC readiness <0.40 for three consecutive days. Scheduled deloads occur every 4\u20136 microcycles depending on training age.",
+      "summary": "PlanKit establishes two MRV boundaries: a soft warning cap at 0.90×MRV (halve progressive additions) and a hard operational cap at 1.00×MRV (reject all set additions). An overreaching alarm triggers when a muscle logs Performance=4 for two consecutive microcycles while at or above MRV_soft, terminating the mesocycle and scheduling a 7-day reactive deload. Reactive deloads also trigger on estimated 1RM drop >5% across two sessions, persistent soreness (4/4 for >72h), or ARC readiness <0.40 for three consecutive days. Scheduled deloads occur every 4–6 microcycles depending on training age.",
       "citation": "PlanKit overreaching detection and MRV threshold enforcement specification. Deload execution trigger criteria.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-hypertrophy-intensity-techniques",
       "title": "Drop Sets, Rest-Pause, and Stretch-Mediated Hypertrophy",
-      "summary": "Intensity techniques receive fractional set credit in the volume ledger. Drop sets credit 1.00 for the initial set plus 0.50 for the drop portion (primary mover only, synergist credit 0.00 on drops). Rest-pause/Myo-reps aggregate mini-sets into 0.50 fractional credit after the activation set. Maximum credit per exercise slot with intensity techniques is capped at 1.50 effective sets. Lengthened partials at long muscle lengths count identically to full-ROM sets (1.00) when performed within 0\u20134 RIR. Stretch-mediated loading yields equal or superior regional hypertrophy compared to shortened ranges.",
+      "summary": "Intensity techniques receive fractional set credit in the volume ledger. Drop sets credit 1.00 for the initial set plus 0.50 for the drop portion (primary mover only, synergist credit 0.00 on drops). Rest-pause/Myo-reps aggregate mini-sets into 0.50 fractional credit after the activation set. Maximum credit per exercise slot with intensity techniques is capped at 1.50 effective sets. Lengthened partials at long muscle lengths count identically to full-ROM sets (1.00) when performed within 0–4 RIR. Stretch-mediated loading yields equal or superior regional hypertrophy compared to shortened ranges.",
       "citation": "Wolf et al. (2023), Maeo et al. (2023), Pedrosa et al. (2022). Lengthened-range hypertrophy systematic reviews and emerging RCTs. Intensity technique set-credit accounting (PlanKit v2.0).",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-nutrition-deficit-mrv",
-      "title": "Caloric deficit reduces recovery capacity and MRV by 15\u201325%",
-      "summary": "During a caloric deficit, systemic recovery capacity and muscle protein synthesis rates are attenuated. PlanKit lowers default MRV caps by 15\u201325%, halts progressive volume ramps once MAV is reached, and prioritises absolute intensity of effort (\u22642 RIR) over high volume accumulation to preserve lean mass. Sustained energy deficits impair recovery and elevate overuse injury risk.",
+      "title": "Caloric deficit reduces recovery capacity and MRV by 15–25%",
+      "summary": "During a caloric deficit, systemic recovery capacity and muscle protein synthesis rates are attenuated. PlanKit lowers default MRV caps by 15–25%, halts progressive volume ramps once MAV is reached, and prioritises absolute intensity of effort (≤2 RIR) over high volume accumulation to preserve lean mass. Sustained energy deficits impair recovery and elevate overuse injury risk.",
       "citation": "Mountjoy et al. (2018, 2023). IOC consensus statement on relative energy deficiency in sport (RED-S). British Journal of Sports Medicine.",
       "placeholder": false,
       "url": "https://doi.org/10.1136/bjsports-2018-099193"
@@ -391,14 +379,13 @@
       "id": "ev-nutrition-surplus-recovery",
       "title": "Caloric surplus enhances recovery and enables aggressive volume progression",
       "summary": "In a caloric surplus, glycogen availability and systemic recovery capacities are optimised. PlanKit enables aggressive volume progression rates of +2 to +3 sets per week up to the full MRV_hard ceiling. The enhanced recovery environment supports higher training volumes and more frequent progressive overload.",
-      "citation": "Helm engine evidence derived from Mountjoy et al. (2018) RED-S consensus and phase-adjustment scaling logic in PlanKit volume model (0.txt \u00a79, 2.txt Phase Interaction table).",
-      "placeholder": false,
-      "url": ""
+      "citation": "Helm engine evidence derived from Mountjoy et al. (2018) RED-S consensus and phase-adjustment scaling logic in PlanKit volume model (0.txt §9, 2.txt Phase Interaction table).",
+      "placeholder": false
     },
     {
       "id": "ev-nutrition-lea-risk",
       "title": "Low Energy Availability (LEA) and REDs risk detection signals",
-      "summary": "If an athlete logs persistent performance declines across more than 2 microcycles alongside low ARC readiness, elevated muscle soreness (4/4), and suppressed resting heart rate metrics, the engine flags potential LEA risk. The system restricts session volume to MV (maintenance volume), locks RIR at \u22653, and prompts the user to evaluate their nutritional intake.",
+      "summary": "If an athlete logs persistent performance declines across more than 2 microcycles alongside low ARC readiness, elevated muscle soreness (4/4), and suppressed resting heart rate metrics, the engine flags potential LEA risk. The system restricts session volume to MV (maintenance volume), locks RIR at ≥3, and prompts the user to evaluate their nutritional intake.",
       "citation": "Mountjoy et al. (2023). 2023 International Olympic Committee's (IOC) consensus statement on Relative Energy Deficiency in Sport (REDs). British Journal of Sports Medicine.",
       "placeholder": false,
       "url": "https://doi.org/10.1136/bjsports-2023-106994"
@@ -406,312 +393,267 @@
     {
       "id": "ev-nutrition-phase-table",
       "title": "Caloric state modifies MEV, MRV, progression rate, session caps, and deload frequency",
-      "summary": "Nutritional phase systematically alters training parameters: during a cut, MEV scales up (\u00d71.15 \u2014 more volume needed to retain muscle) while MRV scales down (\u00d70.80 \u2014 reduced recovery); during a surplus, MEV scales down (\u00d70.85) while MRV scales up (\u00d71.15). Progression rate shifts from maintenance-only in a deficit to aggressive load progression in a surplus. Max intra-session sets per muscle are capped at 6 (cut), 8 (maintain), or 10 (gain). Deload frequency tightens to every 4\u20135 weeks in a deficit and extends to every 6\u20138 weeks in a surplus.",
+      "summary": "Nutritional phase systematically alters training parameters: during a cut, MEV scales up (×1.15: more volume needed to retain muscle) while MRV scales down (×0.80: reduced recovery); during a surplus, MEV scales down (×0.85) while MRV scales up (×1.15). Progression rate shifts from maintenance-only in a deficit to aggressive load progression in a surplus. Max intra-session sets per muscle are capped at 6 (cut), 8 (maintain), or 10 (gain). Deload frequency tightens to every 4–5 weeks in a deficit and extends to every 6–8 weeks in a surplus.",
       "citation": "Helm engine PlanKit Phase Interaction Table (2.txt). Derived from RED-S consensus (Mountjoy et al., 2018) and volume recovery modelling.",
-      "placeholder": false,
-      "url": ""
+      "placeholder": false
     },
     {
       "id": "ev-nutrition-protein-targets",
-      "title": "Protein intake should be 1.6\u20132.2 g/kg for hypertrophy and lean mass retention",
-      "summary": "Daily protein intake of 1.6\u20132.2 g/kg bodyweight maximises muscle protein synthesis and supports lean mass retention during caloric deficits. Higher intakes (up to 2.2 g/kg) are recommended during cuts to offset the anti-catabolic effect of energy restriction. Protein should be distributed across 3\u20135 meals with 0.4\u20130.55 g/kg per feeding to optimise MPS.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "title": "Protein intake should be 1.6–2.2 g/kg for hypertrophy and lean mass retention",
+      "summary": "Daily protein intake of 1.6–2.2 g/kg bodyweight maximises muscle protein synthesis and supports lean mass retention during caloric deficits. Higher intakes (up to 2.2 g/kg) are recommended during cuts to offset the anti-catabolic effect of energy restriction. Protein should be distributed across 3–5 meals with 0.4–0.55 g/kg per feeding to optimise MPS.",
+      "citation": "Morton RW, et al. (2018). Br J Sports Med. PMID: 28698222. Helms ER, et al. (2014). J Int Soc Sports Nutr. PMID: 24864135.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/28698222/"
     },
     {
       "id": "ev-nutrition-fat-minimums",
       "title": "Dietary fat minimums are critical for hormonal health",
-      "summary": "Fat intake should not fall below 0.5\u20130.7 g/kg bodyweight to maintain testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins (A, D, E, K). Severe fat restriction during cuts compounds the hormonal stress of caloric deficits and impairs recovery.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "summary": "Fat intake should not fall below 0.5–0.7 g/kg bodyweight to maintain testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins (A, D, E, K). Severe fat restriction during cuts compounds the hormonal stress of caloric deficits and impairs recovery.",
+      "citation": "Helms ER, et al. (2014). J Int Soc Sports Nutr. PMID: 24864135.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24864135/"
     },
     {
       "id": "ev-nutrition-carb-periodization",
       "title": "Carbohydrate intake should be periodised around training demand",
       "summary": "Carbohydrate intake is the most flexible macronutrient and should be titrated to training volume. On high-volume training days, higher carbohydrate intake replenishes glycogen and supports performance. On rest or low-volume days, lower carbohydrate intake aids fat oxidation and insulin sensitivity. During cuts, carbohydrate periodisation helps maintain training intensity while sustaining the deficit.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "citation": "Impey SG, et al. (2018). Sports Med. PMID: 29453741.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/29453741/"
     },
     {
       "id": "ev-nutrition-rate-limits",
-      "title": "Body composition change should not exceed 0.25\u20130.5% bodyweight per week",
-      "summary": "Rate of weight loss during a cut should be limited to 0.5\u20131.0% bodyweight per week, with 0.25\u20130.5% per week recommended for lean individuals to minimise lean mass loss. Rate of weight gain in a surplus should not exceed 0.25\u20130.5% bodyweight per week to limit excessive fat gain. Faster rates increase the ratio of fat gain to muscle gain in a surplus and muscle loss in a deficit.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "title": "Body composition change should not exceed 0.25–0.5% bodyweight per week",
+      "summary": "Rate of weight loss during a cut should be limited to 0.5–1.0% bodyweight per week, with 0.25–0.5% per week recommended for lean individuals to minimise lean mass loss. Rate of weight gain in a surplus should not exceed 0.25–0.5% bodyweight per week to limit excessive fat gain. Faster rates increase the ratio of fat gain to muscle gain in a surplus and muscle loss in a deficit.",
+      "citation": "Iraki J, et al. (2019). Sports. PMID: 31247944.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/31247944/"
     },
     {
       "id": "ev-nutrition-creatine",
       "title": "Creatine monohydrate is the most evidence-backed performance supplement",
-      "summary": "Creatine monohydrate (3\u20135 g/day) increases intramuscular phosphocreatine stores, improving repeated high-intensity exercise performance, strength output, and lean mass accrual. It is safe for long-term use, well-tolerated, and effective without a loading phase (though loading accelerates saturation). Benefits extend beyond performance to cognitive function and recovery.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "summary": "Creatine monohydrate (3–5 g/day) increases intramuscular phosphocreatine stores, improving repeated high-intensity exercise performance, strength output, and lean mass accrual. It is safe for long-term use, well-tolerated, and effective without a loading phase (though loading accelerates saturation). Benefits extend beyond performance to cognitive function and recovery.",
+      "citation": "Helms ER, et al. (2014). J Int Soc Sports Nutr. PMID: 24864135.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24864135/"
     },
     {
       "id": "ev-nutrition-caffeine",
       "title": "Caffeine is an effective ergogenic aid for strength and endurance",
-      "summary": "Caffeine (3\u20136 mg/kg) reduces perceived exertion, improves muscular endurance, and enhances focus during training. Timing 30\u201360 minutes pre-training is optimal. Habitual users may experience attenuated effects; cycling off caffeine periodically can restore sensitivity. Excessive intake (>6 mg/kg) increases anxiety and may impair fine motor control without additional performance benefit.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "summary": "Caffeine (3–6 mg/kg) reduces perceived exertion, improves muscular endurance, and enhances focus during training. Timing 30–60 minutes pre-training is optimal. Habitual users may experience attenuated effects; cycling off caffeine periodically can restore sensitivity. Excessive intake (>6 mg/kg) increases anxiety and may impair fine motor control without additional performance benefit.",
+      "citation": "Helms ER, et al. (2014). J Int Soc Sports Nutr. PMID: 24864135.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/24864135/"
     },
     {
       "id": "ev-nutrition-refeeds-diet-breaks",
       "title": "Refeeds and diet breaks attenuate metabolic adaptation during prolonged deficits",
-      "summary": "Scheduled refeeds (1\u20132 days at maintenance calories with elevated carbohydrate) and diet breaks (1\u20132 weeks at maintenance) help restore leptin levels, reduce diet fatigue, and preserve training performance during prolonged cuts. Diet breaks every 4\u20138 weeks of deficit improve long-term adherence and reduce the magnitude of metabolic adaptation. Refeeds are most effective when aligned with high-volume training days.",
-      "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "summary": "Scheduled refeeds (1–2 days at maintenance calories with elevated carbohydrate) and diet breaks (1–2 weeks at maintenance) help restore leptin levels, reduce diet fatigue, and preserve training performance during prolonged cuts. Diet breaks every 4–8 weeks of deficit improve long-term adherence and reduce the magnitude of metabolic adaptation. Refeeds are most effective when aligned with high-volume training days.",
+      "citation": "Campbell BI, et al. (2020). J Funct Morphol Kinesiol. PMID: 33467301. Peos JJ, et al. (2021). Transl Sports Med. DOI: 10.1002/tsm2.215.",
+      "placeholder": false,
+      "url": "https://pubmed.ncbi.nlm.nih.gov/33467301/"
     },
     {
       "id": "ev-nutrition-hydration",
       "title": "Hydration status directly impacts strength, endurance, and recovery",
-      "summary": "Even mild dehydration (2% body mass loss) impairs strength, power output, and cognitive function during training. Athletes should consume 5\u201310 mL/kg bodyweight 2\u20134 hours pre-training and replace 150% of fluid lost during exercise within 4\u20136 hours post-training. Electrolyte replacement (sodium, potassium) is critical for sessions exceeding 60 minutes or in hot environments.",
+      "summary": "Even mild dehydration (2% body mass loss) impairs strength, power output, and cognitive function during training. Athletes should consume 5–10 mL/kg bodyweight 2–4 hours pre-training and replace 150% of fluid lost during exercise within 4–6 hours post-training. Electrolyte replacement (sodium, potassium) is critical for sessions exceeding 60 minutes or in hot environments.",
       "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "placeholder": true
     },
     {
       "id": "ev-nutrition-sleep-nutrition",
       "title": "Sleep deprivation impairs nutrient partitioning and recovery",
-      "summary": "Sleep restriction (<6 hours) reduces insulin sensitivity, increases evening cortisol, and blunts muscle protein synthesis. It also elevates ghrelin and reduces leptin, increasing hunger and undermining dietary adherence. Nutritional strategies that support sleep include avoiding large meals within 2\u20133 hours of bedtime, moderating evening caffeine, and ensuring adequate magnesium and zinc intake.",
+      "summary": "Sleep restriction (<6 hours) reduces insulin sensitivity, increases evening cortisol, and blunts muscle protein synthesis. It also elevates ghrelin and reduces leptin, increasing hunger and undermining dietary adherence. Nutritional strategies that support sleep include avoiding large meals within 2–3 hours of bedtime, moderating evening caffeine, and ensuring adequate magnesium and zinc intake.",
       "citation": "Content to be authored with specific citations.",
-      "placeholder": true,
-      "url": ""
+      "placeholder": true
     },
     {
       "id": "ev-recovery-hrv-sdnn",
       "title": "HRV/SDNN as Autonomic Recovery Marker",
-      "summary": "Morning Autonomic Recovery Condition (ARC) scores are derived from sleep-window standard deviation of NN intervals (SDNN), a time-domain heart rate variability metric that reflects cardiac parasympathetic modulation. The ARC z-score is calculated against a 30-day rolling individual baseline: z_ARC = (SDNN_today \u2212 \u03bc_SDNN,30d) / \u03c3_SDNN,30d. rMSSD serves as an alternative time-domain HRV metric likewise sensitive to parasympathetic tone. ARC is treated as a systemic fatigue prior that gates total daily volume and cardiovascular strain, not as an absolute indicator of localized muscular force capacity.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L8-9, L40-41"
-      },
+      "summary": "Morning Autonomic Recovery Condition (ARC) scores are derived from sleep-window standard deviation of NN intervals (SDNN), a time-domain heart rate variability metric that reflects cardiac parasympathetic modulation. The ARC z-score is calculated against a 30-day rolling individual baseline: z_ARC = (SDNN_today − μ_SDNN,30d) / σ_SDNN,30d. rMSSD serves as an alternative time-domain HRV metric likewise sensitive to parasympathetic tone. ARC is treated as a systemic fatigue prior that gates total daily volume and cardiovascular strain, not as an absolute indicator of localized muscular force capacity.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L8-9, L40-41",
       "placeholder": false
     },
     {
       "id": "ev-recovery-hrv-local-damage",
       "title": "Autonomic Marker Limits for Hypertrophy",
-      "summary": "HRV measures autonomic nervous system balance and correlates weakly with acute single-joint force production and localized muscle damage. Autonomic markers cannot capture localized muscular microtrauma, excitation-contraction coupling failure, or joint-specific inflammation. An athlete may register suppressed nocturnal SDNN from psychological stress or late-evening thermal strain while retaining baseline force production. Conversely, systemic parasympathetic saturation can co-occur with severe localized eccentric-induced muscle damage. In hypertrophy, the primary driver is local mechanical tension and peripheral fatigue, not central cardiovascular strain \u2014 so HRV-guided protocols that directly scale session intensity are inappropriate for resistance training.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L8-32"
-      },
+      "summary": "HRV measures autonomic nervous system balance and correlates weakly with acute single-joint force production and localized muscle damage. Autonomic markers cannot capture localized muscular microtrauma, excitation-contraction coupling failure, or joint-specific inflammation. An athlete may register suppressed nocturnal SDNN from psychological stress or late-evening thermal strain while retaining baseline force production. Conversely, systemic parasympathetic saturation can co-occur with severe localized eccentric-induced muscle damage. In hypertrophy, the primary driver is local mechanical tension and peripheral fatigue, not central cardiovascular strain: so HRV-guided protocols that directly scale session intensity are inappropriate for resistance training.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L8-32",
       "placeholder": false
     },
     {
       "id": "ev-recovery-sleep-arc",
       "title": "Sleep Quality and ARC Relationship",
       "summary": "ARC scores are explicitly derived from sleep-window SDNN, making sleep duration and quality direct inputs to the readiness calculation. Sleep disruption suppresses parasympathetic nervous system activity and reduces SDNN, which cascades into lower ARC z-scores and potentially lower readiness band classification. Poor sleep therefore flows through the Readiness Index formula both via the ARC z-score term (60% weight) and indirectly through the subjective sleep quality rating in the S_sub composite (40% weight).",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L8-9, L35-38, L43-44"
-      },
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L8-9, L35-38, L43-44",
       "placeholder": false
     },
     {
       "id": "ev-recovery-cold-travel",
       "title": "Cold Exposure Interference and Travel Effects on Recovery",
-      "summary": "Post-training cold exposure (cold water immersion, cryotherapy) may blunt hypertrophic signaling by attenuating the inflammatory and satellite cell responses necessary for muscle protein synthesis, creating interference with the mechanotransduction pathways that drive hypertrophy. Travel-induced schedule disruptions are routed through the deterministic drift policy matrix: sessions logged 24h\u201348h late trigger calendar shifts and accessory volume trimming; 5+ day gaps freeze the microcycle week index and mark missed sets as SKIPPED_EXPIRED. PPL sequence integrity and intra-muscle rest clamps (48h compounds, 24h isolation) are preserved throughout.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L68-113, L307-309"
-      },
+      "summary": "Post-training cold exposure (cold water immersion, cryotherapy) may blunt hypertrophic signaling by attenuating the inflammatory and satellite cell responses necessary for muscle protein synthesis, creating interference with the mechanotransduction pathways that drive hypertrophy. Travel-induced schedule disruptions are routed through the deterministic drift policy matrix: sessions logged 24h–48h late trigger calendar shifts and accessory volume trimming; 5+ day gaps freeze the microcycle week index and mark missed sets as SKIPPED_EXPIRED. PPL sequence integrity and intra-muscle rest clamps (48h compounds, 24h isolation) are preserved throughout.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L68-113, L307-309",
       "placeholder": false
     },
     {
       "id": "ev-recovery-readiness-bands",
       "title": "Readiness Band Definitions",
-      "summary": "Four operational readiness bands are defined by the composite Readiness Index (RI). High/Peaking (RI > 0.75): volume pinned to mesocycle plan, no RPE cap, permits higher absolute loads within target RPE/RIR windows but hard-set counts remain fixed. Normal/Baseline (0.45 \u2264 RI \u2264 0.75): standard baseline volume (M_V = 1.00), RPE clamped \u2264 8.5 as autonomic safeguard. Low (0.30 \u2264 RI < 0.45): volume scaled to ~75% (M_V \u2248 0.75), RPE clamped \u2264 8.0. Depleted (RI < 0.30): volume scaled to ~50% (M_V \u2248 0.50), RPE clamped \u2264 7.0. High readiness does not authorize set volume additions beyond planned mesocycle progression.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L39-47, L300-305"
-      },
+      "summary": "Four operational readiness bands are defined by the composite Readiness Index (RI). High/Peaking (RI > 0.75): volume pinned to mesocycle plan, no RPE cap, permits higher absolute loads within target RPE/RIR windows but hard-set counts remain fixed. Normal/Baseline (0.45 ≤ RI ≤ 0.75): standard baseline volume (M_V = 1.00), RPE clamped ≤ 8.5 as autonomic safeguard. Low (0.30 ≤ RI < 0.45): volume scaled to ~75% (M_V ≈ 0.75), RPE clamped ≤ 8.0. Depleted (RI < 0.30): volume scaled to ~50% (M_V ≈ 0.50), RPE clamped ≤ 7.0. High readiness does not authorize set volume additions beyond planned mesocycle progression.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L39-47, L300-305",
       "placeholder": false
     },
     {
       "id": "ev-recovery-readiness-index",
       "title": "Readiness Index Formula",
-      "summary": "The composite Readiness Index merges objective autonomic data with subjective athlete input: RI = 0.6 \u00d7 ((z_ARC + 3) / 6) + 0.4 \u00d7 S_sub. The ARC term maps z_ARC (typically ranging \u22123 to +3) into a 0\u20131 range by adding 3 and dividing by 6, then weights it at 60%. The S_sub term is the normalized (0.0\u20131.0) subjective recovery composite incorporating perceived soreness, sleep quality, and stress ratings (each 1\u20135). The 0.6/0.4 weighting gives ARC majority influence while subjective markers prevent purely autonomic signals from dominating when they conflict with athlete experience. Signal conflict example: z_ARC = \u22121.60 (Depleted) combined with high subjective scores (4.5/5.0 soreness, 4.0/5.0 sleep) yields RI = 0.48, mapping to Normal/Baseline with an RPE cap of 8.5 as safeguard.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L43-44, L305"
-      },
+      "summary": "The composite Readiness Index merges objective autonomic data with subjective athlete input: RI = 0.6 × ((z_ARC + 3) / 6) + 0.4 × S_sub. The ARC term maps z_ARC (typically ranging −3 to +3) into a 0–1 range by adding 3 and dividing by 6, then weights it at 60%. The S_sub term is the normalized (0.0–1.0) subjective recovery composite incorporating perceived soreness, sleep quality, and stress ratings (each 1–5). The 0.6/0.4 weighting gives ARC majority influence while subjective markers prevent purely autonomic signals from dominating when they conflict with athlete experience. Signal conflict example: z_ARC = −1.60 (Depleted) combined with high subjective scores (4.5/5.0 soreness, 4.0/5.0 sleep) yields RI = 0.48, mapping to Normal/Baseline with an RPE cap of 8.5 as safeguard.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L43-44, L305",
       "placeholder": false
     },
     {
       "id": "ev-recovery-safety-cascade",
       "title": "Multi-Metric Priority Cascade",
-      "summary": "Daily gating follows a strictly ordered hierarchical cascade designed to prevent noisy HRV signals from corrupting training prescriptions. Priority 1: Safety Red-Flags \u2014 user-reported sharp joint pain (>4/10), illness, or acute injury triggers immediate movement substitution or rest day recommendation. Priority 2: Subjective Recovery Composite \u2014 perceived soreness, sleep quality, and stress (rated 1\u20135), normalized to S_sub (0.0\u20131.0). Priority 3: ARC Readiness Score \u2014 morning SDNN z-score against 30-day rolling baseline. Priority 4: Prior-Day EWMA Acute Load Residual \u2014 quantified systemic fatigue residual from exponentially weighted workload tracking.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L33-38"
-      },
+      "summary": "Daily gating follows a strictly ordered hierarchical cascade designed to prevent noisy HRV signals from corrupting training prescriptions. Priority 1: Safety Red-Flags: user-reported sharp joint pain (>4/10), illness, or acute injury triggers immediate movement substitution or rest day recommendation. Priority 2: Subjective Recovery Composite: perceived soreness, sleep quality, and stress (rated 1–5), normalized to S_sub (0.0–1.0). Priority 3: ARC Readiness Score: morning SDNN z-score against 30-day rolling baseline. Priority 4: Prior-Day EWMA Acute Load Residual: quantified systemic fatigue residual from exponentially weighted workload tracking.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L33-38",
       "placeholder": false
     },
     {
       "id": "ev-recovery-autoreg-order",
       "title": "Intra-Session Autoregulation Precedence",
-      "summary": "Intra-session modification follows a deterministic precedence order: (1) RIR/RPE correction \u2014 if athlete reaches absolute failure (RPE 10) on a set prescribed at RPE 8, the engine recalculates working load at \u22125% for subsequent sets of that exercise. If a second consecutive set misses target RPE by \u22651.5 units, remaining sets for that exercise slot are dropped. (2) Fatigue drop-off \u2014 if RPE rises by >2.0 units across consecutive sets at identical loads OR completed reps drop by >30% between sets at equal load, the engine terminates the current exercise slot and cancels remaining secondary accessory slots for that target muscle.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L63-66"
-      },
+      "summary": "Intra-session modification follows a deterministic precedence order: (1) RIR/RPE correction: if athlete reaches absolute failure (RPE 10) on a set prescribed at RPE 8, the engine recalculates working load at −5% for subsequent sets of that exercise. If a second consecutive set misses target RPE by ≥1.5 units, remaining sets for that exercise slot are dropped. (2) Fatigue drop-off: if RPE rises by >2.0 units across consecutive sets at identical loads OR completed reps drop by >30% between sets at equal load, the engine terminates the current exercise slot and cancels remaining secondary accessory slots for that target muscle.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L63-66",
       "placeholder": false
     },
     {
       "id": "ev-recovery-low-readiness-seq",
       "title": "Low-Readiness Day Modification Algorithm",
-      "summary": "When RI < 0.45, the engine processes session modifications through a 6-step ordered sequence, halting immediately once the daily target set reduction factor (M_V) is satisfied. Step 1: Apply RPE Ceiling \u2014 clamp all prescribed RPE to 7.0 (Depleted) or 8.0 (Low), recalculating absolute working loads. Step 2: Trim Accessory Sets \u2014 reduce isolation/secondary machine slots (Priority 3\u20134) by 1 set/slot. Step 3: Equipment Swap (if RI < 0.35) \u2014 replace high axial-load compounds (barbell squat, RDL) with low axial-load equivalents (hack squat, lying leg curl), preserving target muscle mapping. Step 4: Trim Compound Sets \u2014 reduce primary multi-joint slots (Priority 1\u20132) by 1 set, provided remaining daily sets stay \u2265 MEV_daily_floor. Step 5: Convert to Technique/Pump (if RI < 0.30 and MEV floor would be violated) \u2014 all working sets become fixed RPE \u2264 6.0 velocity/pump sets, progression tracking disabled. Step 6: Full Rest Day \u2014 if z_ARC < \u22122.0 AND subjective soreness \u2264 1.5/5.0, OR if prior steps fail to mitigate deficits, session transitions to CANCELLED_REST_RECOMMENDED and drift policy advances the calendar.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L54-62"
-      },
+      "summary": "When RI < 0.45, the engine processes session modifications through a 6-step ordered sequence, halting immediately once the daily target set reduction factor (M_V) is satisfied. Step 1: Apply RPE Ceiling: clamp all prescribed RPE to 7.0 (Depleted) or 8.0 (Low), recalculating absolute working loads. Step 2: Trim Accessory Sets: reduce isolation/secondary machine slots (Priority 3–4) by 1 set/slot. Step 3: Equipment Swap (if RI < 0.35): replace high axial-load compounds (barbell squat, RDL) with low axial-load equivalents (hack squat, lying leg curl), preserving target muscle mapping. Step 4: Trim Compound Sets: reduce primary multi-joint slots (Priority 1–2) by 1 set, provided remaining daily sets stay ≥ MEV_daily_floor. Step 5: Convert to Technique/Pump (if RI < 0.30 and MEV floor would be violated): all working sets become fixed RPE ≤ 6.0 velocity/pump sets, progression tracking disabled. Step 6: Full Rest Day: if z_ARC < −2.0 AND subjective soreness ≤ 1.5/5.0, OR if prior steps fail to mitigate deficits, session transitions to CANCELLED_REST_RECOMMENDED and drift policy advances the calendar.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L54-62",
       "placeholder": false
     },
     {
       "id": "ev-recovery-mev-vdl",
       "title": "MEV Floor Protection and Volume Deficit Ledger",
-      "summary": "Chronic low readiness risks stranding an athlete below Minimum Effective Volume for consecutive weeks. The Volume Deficit Ledger tracks cumulative per-muscle set deficit: VDL_muscle = \u03a3(Sets_planned,d \u2212 Sets_executed,d). If VDL threatens to drop weekly completed volume below MEV by day 5 of the microcycle, the engine suspends set-trimming on compounds and enforces an RPE cap of 7.5 instead of trimming sets. If low readiness persists for >72 consecutive hours despite RPE caps, the engine overrides daily session execution and converts the remaining microcycle into a Reactive Micro-Deload, resetting weekly volume requirements.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L48-53"
-      },
+      "summary": "Chronic low readiness risks stranding an athlete below Minimum Effective Volume for consecutive weeks. The Volume Deficit Ledger tracks cumulative per-muscle set deficit: VDL_muscle = Σ(Sets_planned,d − Sets_executed,d). If VDL threatens to drop weekly completed volume below MEV by day 5 of the microcycle, the engine suspends set-trimming on compounds and enforces an RPE cap of 7.5 instead of trimming sets. If low readiness persists for >72 consecutive hours despite RPE caps, the engine overrides daily session execution and converts the remaining microcycle into a Reactive Micro-Deload, resetting weekly volume requirements.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L48-53",
       "placeholder": false
     },
     {
       "id": "ev-recovery-deload-types",
       "title": "Deload Types and Trigger Criteria",
-      "summary": "Scheduled deloads occur at fixed mesocycle boundaries: every 6th week for novice/intermediate athletes (5:1 overload:deload), every 4th week for advanced athletes (3:1). Three reactive deload triggers are evaluated daily: (1) Autonomic Suppression \u2014 3+ consecutive Depleted sessions (z_ARC < \u22121.5). (2) Performance Regression \u2014 2+ consecutive microcycles with \u22653.5% e1RM drop on primary compounds at RPE \u2265 9.0, where e1RM = Load \u00d7 (1 + Reps/30). (3) Joint Discomfort \u2014 subjective joint soreness \u22654.0/5.0 for 4+ consecutive days across movement patterns sharing a joint axis. Severity levels: Single Easy Day (50% volume cut, RPE \u2264 6.0, triggered by single Depleted day with low soreness); Full Reactive Deload Week (50% cut across microcycle, RPE \u2264 5.0, triggered by 3+ days Depleted or \u22653.5% e1RM drop); Regional Deload (reduce affected joint patterns only, normal training on unaffected groups).",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L148-169"
-      },
+      "summary": "Scheduled deloads occur at fixed mesocycle boundaries: every 6th week for novice/intermediate athletes (5:1 overload:deload), every 4th week for advanced athletes (3:1). Three reactive deload triggers are evaluated daily: (1) Autonomic Suppression: 3+ consecutive Depleted sessions (z_ARC < −1.5). (2) Performance Regression: 2+ consecutive microcycles with ≥3.5% e1RM drop on primary compounds at RPE ≥ 9.0, where e1RM = Load × (1 + Reps/30). (3) Joint Discomfort: subjective joint soreness ≥4.0/5.0 for 4+ consecutive days across movement patterns sharing a joint axis. Severity levels: Single Easy Day (50% volume cut, RPE ≤ 6.0, triggered by single Depleted day with low soreness); Full Reactive Deload Week (50% cut across microcycle, RPE ≤ 5.0, triggered by 3+ days Depleted or ≥3.5% e1RM drop); Regional Deload (reduce affected joint patterns only, normal training on unaffected groups).",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L148-169",
       "placeholder": false
     },
     {
       "id": "ev-recovery-deload-params",
       "title": "Deload Parameter Profiles Across States",
-      "summary": "Baseline hypertrophy microcycle: 100% MEV\u2192MRV ramp, all slots active, 70\u201385% 1RM, 3\u20130 RIR. Scheduled deload week: 50\u201360% of peak week sets (clamped to MEV floor), primary compounds retained, 50% isolation trimmed, 60\u201370% 1RM, 5\u20134 RIR (RPE 5\u20136), LISS conditioning only. Reactive deload week: 50% of peak week sets, primary compounds retained, all isolation dropped, 55\u201365% 1RM, 6\u20135 RIR (RPE 4\u20135), active recovery/walking only. Single easy day: 50% of daily target, primary compound only, all isolation dropped, 60% 1RM, 5 RIR (RPE 5), active recovery. Deload set floors use the formula: Sets_deload = max(MEV_muscle, Round(0.50 \u00d7 Sets_peak_week)).",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L153-200, L165-200"
-      },
+      "summary": "Baseline hypertrophy microcycle: 100% MEV→MRV ramp, all slots active, 70–85% 1RM, 3–0 RIR. Scheduled deload week: 50–60% of peak week sets (clamped to MEV floor), primary compounds retained, 50% isolation trimmed, 60–70% 1RM, 5–4 RIR (RPE 5–6), LISS conditioning only. Reactive deload week: 50% of peak week sets, primary compounds retained, all isolation dropped, 55–65% 1RM, 6–5 RIR (RPE 4–5), active recovery/walking only. Single easy day: 50% of daily target, primary compound only, all isolation dropped, 60% 1RM, 5 RIR (RPE 5), active recovery. Deload set floors use the formula: Sets_deload = max(MEV_muscle, Round(0.50 × Sets_peak_week)).",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L153-200, L165-200",
       "placeholder": false
     },
     {
       "id": "ev-recovery-ewma-acwr",
-      "title": "EWMA ACWR Model and Operational Zones",
-      "summary": "Exponentially Weighted Moving Average (EWMA) ACWR tracks workload dynamics with acute decay constant \u03bb_a = 0.25 (7-day window) and chronic decay constant \u03bb_c = 0.069 (28-day window). Daily session load: L_t = \u03a3(1.0 + 0.1 \u00d7 (RPE_s \u2212 7.0)) per hard set. Acute workload w_acute,t = L_t \u00d7 \u03bb_a + (1 \u2212 \u03bb_a) \u00d7 w_acute,t\u22121; chronic workload w_chronic,t = L_t \u00d7 \u03bb_c + (1 \u2212 \u03bb_c) \u00d7 w_chronic,t\u22121; ACWR_t = w_acute,t / w_chronic,t. Four operational zones: Under-training/Detraining (ACWR < 0.80) \u2014 permit +15%/wk ramp-up toward target MEV; Optimal Adaptation (0.80\u20131.30) \u2014 standard progression, +1\u20132 sets/muscle; Warning/High Load (1.31\u20131.50) \u2014 cap +5%/wk growth, RPE \u2264 8.5, max +1 set backfill; Spike Danger (>1.50) \u2014 hard volume clamp to \u2264 w_chronic,t, drop non-essential accessories, volume catch-up strictly prohibited, missed sets discarded.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L209-247"
-      },
+      "title": "ACWR is displayed; skip-gating stays off unless explicitly enabled",
+      "summary": "Helm still computes EWMA ACWR (acute 7-day, chronic 28-day) and shows the ratio. Impellizzeri et al. showed ACWR is mathematically coupled, fails to normalise, and does not usefully predict injury. Ability for ACWR to downgrade a session into a skip sits behind a flag, default off. Deleting real training on a spurious spike is a real cost for no proven benefit.",
+      "citation": "Impellizzeri et al. (2020, 2021). ACWR critiques. Sports Medicine / JAT.",
       "placeholder": false
     },
     {
       "id": "ev-recovery-deload-nutrition",
       "title": "Deload Modulation by Nutritional Phase and Landmark Resets",
-      "summary": "Energy surplus (mass gain phase): deload sets at 50% of peak volume; high energy availability supports rapid systemic recovery enabling full neural supercompensation within 7 days. Energy deficit (fat loss cut phase): deload sets capped at 60% of peak volume (preserving higher volume for muscle retention signaling), but working loads reduced by additional \u22125% to account for impaired recovery capacity. Post-deload landmark resets: volume targets reset to MEV_baseline and cumulative hard-set accumulator cleared; initial working loads re-anchored at 92.5\u201395.0% of pre-deload top weights; 30-day ARC rolling baseline (\u03bc_SDNN,30d and \u03c3_SDNN,30d) recalculated excluding deload-week data to prevent skewing future readiness metrics.",
-      "citation": {
-        "source": "Autoregulation, Drift Management, and Periodization Policies for Helm",
-        "line": "L201-208, L153-154"
-      },
+      "summary": "Energy surplus (mass gain phase): deload sets at 50% of peak volume; high energy availability supports rapid systemic recovery enabling full neural supercompensation within 7 days. Energy deficit (fat loss cut phase): deload sets capped at 60% of peak volume (preserving higher volume for muscle retention signaling), but working loads reduced by additional −5% to account for impaired recovery capacity. Post-deload landmark resets: volume targets reset to MEV_baseline and cumulative hard-set accumulator cleared; initial working loads re-anchored at 92.5–95.0% of pre-deload top weights; 30-day ARC rolling baseline (μ_SDNN,30d and σ_SDNN,30d) recalculated excluding deload-week data to prevent skewing future readiness metrics.",
+      "citation": "Autoregulation, Drift Management, and Periodization Policies for Helm. L201-208, L153-154",
       "placeholder": false
     },
     {
       "id": "ev-strength-rpe-rir-definition",
-      "title": "Hard Set Definition and RPE/RIR Calibration",
-      "summary": "A hard set terminates at 0-4 RIR (RPE 6-10) within 30-85% 1RM across 5-30 reps. Sets at RIR > 4 or below 30% 1RM fail to recruit high-threshold motor units and contribute zero effective volume. RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR (failure).",
-      "citation": "Docs/Research/2.txt \u00a7Hard-Set Definition",
+      "title": "RPE maps to RIR; stimulus credit is graded",
+      "summary": "RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR. Helm does not treat RIR 4 as a cliff. Stimulus credit is full through RIR 2, then tapers, and zeros from RIR 6. Calibration improves with training experience; novices tend to underestimate RIR.",
+      "citation": "Robinson et al. (2024). Proximity to Failure Dose-Response. Sports Medicine. Docs/Research/RECONCILE.md.",
       "placeholder": false
     },
     {
       "id": "ev-strength-progression-matrix",
       "title": "Movement-Class Progression Matrix",
-      "summary": "Progression parameters are matched to movement biomechanics. Squat/Hinge uses Load-First Double Progression (load increments prioritized over rep expansion, +2.5 kg, 6-8 reps, RIR 3\u21921). Horizontal Press uses Standard Double Progression (+2.5 kg, 8-10 reps, RIR 3\u21920-1). Vertical Press uses Standard Double Progression with smaller steps (+1.25 kg, 8-12 reps, RIR 3\u21920-1). Pull movements use Dynamic Rep-Range Progression (+2.5 kg, 10-12 reps, RIR 2\u21920). Isolation movements use Rep-First Step Progression (+1.25 kg, 12-15 reps, RIR 2\u21920).",
-      "citation": "Docs/Research/2.txt \u00a7Progression Schemes by Lift Class",
+      "summary": "Progression parameters are matched to movement biomechanics. Squat/Hinge uses Load-First Double Progression (load increments prioritized over rep expansion, +2.5 kg, 6-8 reps, RIR 3→1). Horizontal Press uses Standard Double Progression (+2.5 kg, 8-10 reps, RIR 3→0-1). Vertical Press uses Standard Double Progression with smaller steps (+1.25 kg, 8-12 reps, RIR 3→0-1). Pull movements use Dynamic Rep-Range Progression (+2.5 kg, 10-12 reps, RIR 2→0). Isolation movements use Rep-First Step Progression (+1.25 kg, 12-15 reps, RIR 2→0).",
+      "citation": "Docs/Research/2.txt §Progression Schemes by Lift Class",
       "placeholder": false
     },
     {
       "id": "ev-strength-double-progression-algo",
       "title": "Standard Double Progression Algorithm",
-      "summary": "Load (W) is held static while repetitions expand across working sets. Reps increase until all prescribed sets hit the upper boundary of the target rep range (R_max) at or below target RIR. Once achieved, load increments by the movement-class step size (\u0394W), and reps reset to R_min for the next session. This ensures progressive overload is earned through demonstrated rep-volume expansion before load escalation.",
-      "citation": "Docs/Research/2.txt \u00a7Execution Algorithms",
+      "summary": "Load (W) is held static while repetitions expand across working sets. Reps increase until all prescribed sets hit the upper boundary of the target rep range (R_max) at or below target RIR. Once achieved, load increments by the movement-class step size (ΔW), and reps reset to R_min for the next session. This ensures progressive overload is earned through demonstrated rep-volume expansion before load escalation.",
+      "citation": "Docs/Research/2.txt §Execution Algorithms",
       "placeholder": false
     },
     {
       "id": "ev-strength-rep-first-progression",
       "title": "Rep-First Step Progression",
       "summary": "Used for isolation movements. Load is held static while reps are added set-by-set. When Set 1 reaches R_max at target RIR, reps are then added to Set 2 in subsequent sessions. Load increases only when every prescribed set achieves R_max at or below target RIR. This staggered approach protects smaller muscle groups from premature load jumps that degrade form and stimulus quality.",
-      "citation": "Docs/Research/2.txt \u00a7Execution Algorithms",
+      "citation": "Docs/Research/2.txt §Execution Algorithms",
       "placeholder": false
     },
     {
       "id": "ev-strength-load-first-progression",
       "title": "Load-First Progression for Compound Lower Movements",
       "summary": "Applied to Squat and Hinge patterns. Load increments (+2.5 kg) are prioritized before chasing rep-range expansion. This recognizes that heavy compound lower-body movements produce high systemic fatigue per set; inflating rep counts before adding load reduces the risk of form degradation under fatigue. The rep window (6-8) is narrower than other classes, reflecting the CNS demands of maximal-force production.",
-      "citation": "Docs/Research/2.txt \u00a7Progression Schemes by Lift Class",
+      "citation": "Docs/Research/2.txt §Progression Schemes by Lift Class",
       "placeholder": false
     },
     {
       "id": "ev-strength-stall-detection",
       "title": "Stall Detection: 2-Exposure Rule and 10% Micro-Reset",
-      "summary": "A stall is registered when an exercise fails to progress in rep volume or load across consecutive exposures at or above target RIR. Exposure 1: log a warning flag, maintain current load and rep target. Exposure 2 (consecutive miss): confirm stall, execute a 10% load reduction (W_new = W \u00d7 0.90), hold set count static, reset RIR to 3. The 10% reset sheds accumulated fatigue without abandoning the movement, allowing the athlete to re-sensitize and resume progression from the reset load. Volume-based stall solutions (adding sets) are explicitly rejected in favor of load resets to prevent fatigue compounding.",
-      "citation": "Docs/Research/2.txt \u00a7Stall Detection; Open Decisions \u00a7Stall Resolution",
+      "summary": "A stall is registered when an exercise fails to progress in rep volume or load across consecutive exposures at or above target RIR. Exposure 1: log a warning flag, maintain current load and rep target. Exposure 2 (consecutive miss): confirm stall, execute a 10% load reduction (W_new = W × 0.90), hold set count static, reset RIR to 3. The 10% reset sheds accumulated fatigue without abandoning the movement, allowing the athlete to re-sensitize and resume progression from the reset load. Volume-based stall solutions (adding sets) are explicitly rejected in favor of load resets to prevent fatigue compounding.",
+      "citation": "Docs/Research/2.txt §Stall Detection; Open Decisions §Stall Resolution",
       "placeholder": false
     },
     {
       "id": "ev-strength-experience-progression",
       "title": "Experience-Tier Progression Differences",
       "summary": "Novices (<1 yr): fixed weekly load increments (+2.5 kg on compounds), wide rep windows (6-10 reps), stall detection at 3 consecutive missed exposures. Intermediates (1-4 yrs): standard double progression per movement class, stall at 2 consecutive exposures. Advanced (>4 yrs): micro-periodized wave loading alternating high-load/low-rep and low-load/high-rep sessions across the week, micro-scaled increments (+1.0 kg), stall threshold at 2 exposures. These differences reflect the transition from neural adaptation-driven gains (novice) to structural adaptation requiring periodized variation (advanced).",
-      "citation": "Docs/Research/2.txt \u00a7Experience-Tier Dynamic Adjustments",
+      "citation": "Docs/Research/2.txt §Experience-Tier Dynamic Adjustments",
       "placeholder": false
     },
     {
       "id": "ev-strength-epley-1rm",
       "title": "Epley Formula for 1RM Estimation",
-      "summary": "Estimated 1RM is calculated using the Epley formula: e1RM = w \u00d7 (1 + r/30), where w is weight lifted and r is repetitions completed. This formula provides a submaximal estimation that avoids the injury risk and program disruption of true 1RM testing. It is most accurate for sets within 0-4 RIR and 5-10 reps. The engine uses e1RM to initialize working loads for new exercises and to track longitudinal strength trends on indicator lifts.",
-      "citation": "Docs/Research/2.txt \u00a7Estimated 1RM Initialization",
+      "summary": "Estimated 1RM is calculated using the Epley formula: e1RM = w × (1 + r/30), where w is weight lifted and r is repetitions completed. This formula provides a submaximal estimation that avoids the injury risk and program disruption of true 1RM testing. It is most accurate for sets within 0-4 RIR and 5-10 reps. The engine uses e1RM to initialize working loads for new exercises and to track longitudinal strength trends on indicator lifts.",
+      "citation": "Docs/Research/2.txt §Estimated 1RM Initialization",
       "placeholder": false
     },
     {
       "id": "ev-strength-1rm-time-decay",
       "title": "Historical 1RM Time Decay",
-      "summary": "Strength data decays over time following exponential decay with \u03bb = 0.005/day. Logs older than 14 days have their e1RM adjusted by: e1RM_adjusted = e1RM_logged \u00d7 e^(-\u03bb \u00d7 (t - 14)), where t is days since the lift was logged. This models the neuromuscular and structural detraining that occurs during layoffs, ensuring that stale historical data does not produce inappropriately heavy initial working loads when reinstating an exercise after a training gap.",
-      "citation": "Docs/Research/2.txt \u00a7Historical Time Decay",
+      "summary": "Strength data decays over time following exponential decay with λ = 0.005/day. Logs older than 14 days have their e1RM adjusted by: e1RM_adjusted = e1RM_logged × e^(-λ × (t - 14)), where t is days since the lift was logged. This models the neuromuscular and structural detraining that occurs during layoffs, ensuring that stale historical data does not produce inappropriately heavy initial working loads when reinstating an exercise after a training gap.",
+      "citation": "Docs/Research/2.txt §Historical Time Decay",
       "placeholder": false
     },
     {
       "id": "ev-strength-initial-load",
       "title": "Initial Working Load Calculation from e1RM",
       "summary": "When initializing working weights for a new exercise, the target working load is derived from the time-decayed e1RM: W_init = e1RM_adjusted / (1 + (R_target + RIR_target) / 30). R_target is the prescribed rep target, RIR_target is the prescribed reps-in-reserve. This formula reverses the Epley equation to solve for the load that produces the desired rep count at the target proximity to failure, ensuring the first session of a new movement starts at an appropriate intensity.",
-      "citation": "Docs/Research/2.txt \u00a7Estimated 1RM Initialization",
+      "citation": "Docs/Research/2.txt §Estimated 1RM Initialization",
       "placeholder": false
     },
     {
       "id": "ev-strength-rir-ramp",
       "title": "RIR Ramp Across Mesocycle Weeks",
-      "summary": "Proximity to failure follows a structured ramp from week 1 to peak week. Squat/Hinge 3\u21921 RIR, Horizontal Press 3\u21920-1 RIR, Vertical Press 3\u21920-1 RIR, Pull 2\u21920 RIR, Isolation 2\u21920 RIR. This progressive RIR compression mirrors the mesocycle volume ramp (MEV\u2192MRV). Early weeks build work capacity and technique at higher RIR buffers; late weeks drive adaptation by approaching failure, culminating in functional overreach at peak week before the deload.",
-      "citation": "Docs/Research/2.txt \u00a7Progression Schemes by Lift Class",
+      "summary": "Proximity to failure follows a structured ramp from week 1 to peak week. Squat/Hinge 3→1 RIR, Horizontal Press 3→0-1 RIR, Vertical Press 3→0-1 RIR, Pull 2→0 RIR, Isolation 2→0 RIR. This progressive RIR compression mirrors the mesocycle volume ramp (MEV→MRV). Early weeks build work capacity and technique at higher RIR buffers; late weeks drive adaptation by approaching failure, culminating in functional overreach at peak week before the deload.",
+      "citation": "Docs/Research/2.txt §Progression Schemes by Lift Class",
       "placeholder": false
     },
     {
       "id": "ev-strength-autoregulation",
       "title": "Autoregulation: 5-Tier Precedence Order",
-      "summary": "When readiness (ARC) drops or acute fatigue manifests, session parameters adjust in strict priority order. Tier 1: Increase target RIR (2\u21923) at ARC 0.60-0.69 \u2014 reduces neural strain while preserving movement volume. Tier 2: Reduce load at target rep range \u2014 triggered by bar velocity drop or high RPE. Tier 3: Trim secondary isolation sets at ARC 0.45-0.59. Tier 4: Drop final pattern slot exercise at ARC 0.35-0.44. Tier 5: Truncate session to maintenance volume (2 sets/muscle) at ARC < 0.35. This hierarchy protects the highest-value compound work before sacrificing accessory volume.",
-      "citation": "Docs/Research/0.txt \u00a7Autoregulation Precedence Order",
+      "summary": "When readiness (ARC) drops or acute fatigue manifests, session parameters adjust in strict priority order. Tier 1: Increase target RIR (2→3) at ARC 0.60-0.69: reduces neural strain while preserving movement volume. Tier 2: Reduce load at target rep range: triggered by bar velocity drop or high RPE. Tier 3: Trim secondary isolation sets at ARC 0.45-0.59. Tier 4: Drop final pattern slot exercise at ARC 0.35-0.44. Tier 5: Truncate session to maintenance volume (2 sets/muscle) at ARC < 0.35. This hierarchy protects the highest-value compound work before sacrificing accessory volume.",
+      "citation": "Docs/Research/0.txt §Autoregulation Precedence Order",
       "placeholder": false
     },
     {
       "id": "ev-strength-deload",
       "title": "Deload Triggers and Execution",
-      "summary": "Deloads are governed by two mechanisms. Scheduled deloads occur every 4th-6th microcycle based on training age and recovery capacity. Reactive deloads trigger immediately when: e1RM drops >5% across primary movements over 2 consecutive sessions, soreness 4/4 persists >72h across 2+ muscle groups, or ARC remains <0.40 for 3 consecutive days. During deload, volume drops to ~50% of MEV (maintenance volume), RIR is held at \u22653, and load is maintained or slightly reduced to preserve neuromuscular patterns without accumulating fatigue.",
-      "citation": "Docs/Research/0.txt \u00a7Deload Execution Triggers",
+      "summary": "Deloads are governed by two mechanisms. Scheduled deloads occur every 4th-6th microcycle based on training age and recovery capacity. Reactive deloads trigger immediately when: e1RM drops >5% across primary movements over 2 consecutive sessions, soreness 4/4 persists >72h across 2+ muscle groups, or ARC remains <0.40 for 3 consecutive days. During deload, volume drops to ~50% of MEV (maintenance volume), RIR is held at ≥3, and load is maintained or slightly reduced to preserve neuromuscular patterns without accumulating fatigue.",
+      "citation": "Docs/Research/0.txt §Deload Execution Triggers",
       "placeholder": false
     },
     {
@@ -719,14 +661,14 @@
       "title": "Nociception Is Neither Sufficient Nor Necessary for Pain",
       "summary": "Nociception is the neural encoding of noxious stimuli via A-delta and C-fibers to the dorsal horn. Pain is a conscious, multisensory output generated by the CNS only when the brain concludes body tissues are in danger. The two are distinct physiological processes.",
       "citation": "Moseley GL, Butler DS. Explain Pain Supercharged (2017). NOI Group Publications.",
-      "placeholder": true
+      "placeholder": false
     },
     {
       "id": "ev-rehab-central-sensitization",
       "title": "Central Sensitization in Persistent Pain States",
       "summary": "In chronic conditions, CNS neural circuits become hyper-responsive, producing allodynia (pain from normally non-painful stimuli) and hyperalgesia (exaggerated pain from normally painful stimuli). Pain is then centrally maintained, not driven by active peripheral tissue injury.",
       "citation": "Woolf CJ. Central sensitization: implications for the diagnosis and treatment of pain. Pain (2011). PMID: 20961685.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/20961685/"
     },
     {
@@ -734,7 +676,7 @@
       "title": "The Fear-Avoidance Model of Chronic Musculoskeletal Pain",
       "summary": "Catastrophic misinterpretation of pain triggers kinesiophobia (fear of movement), leading to protective avoidance behaviors. Avoidance paradoxically maintains and amplifies threat beliefs, producing a vicious cycle of disuse syndrome, deconditioning, reduced tissue capacity, and worsened pain.",
       "citation": "Vlaeyen JWS, Linton SJ. Fear-avoidance model of chronic musculoskeletal pain: 12 years on. Pain (2012). PMID: 22463735.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/22463735/"
     },
     {
@@ -742,7 +684,7 @@
       "title": "Explain Pain: Pain Neuroscience Education Reduces Pain Catastrophizing",
       "summary": "Targeted pain neuroscience education (PNE) shifts understanding from a tissue-damage model to a CNS-protective-output model. Evidence shows PNE increases pain biology knowledge, decreases catastrophizing, and imparts short-term reductions in pain intensity and disability.",
       "citation": "Moseley GL, Butler DS. Fifteen years of Explain Pain. J Pain (2015). PMID: 26051220.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/26051220/"
     },
     {
@@ -750,14 +692,14 @@
       "title": "Weak Correlation Between Structural Imaging Findings and Pain",
       "summary": "Many asymptomatic individuals display bulging discs, rotator cuff tears, and meniscal degeneration on MRI. Epidemiological context added to imaging reports reduces threat perception and facilitates faster recovery by preventing catastrophic interpretation of normal age-related changes.",
       "citation": "Moseley GL, Karran EL. Contextualizing imaging findings reduces threat. Br J Sports Med (2020).",
-      "placeholder": true
+      "placeholder": false
     },
     {
       "id": "ev-rehab-nocebo-coaching",
       "title": "Catastrophic Coaching Language Induces Nocebo Effects",
       "summary": "Placebo and nocebo effects are mediated by opposite dopamine and endogenous opioid responses in brain reward circuits. Catastrophic language (e.g., 'your spine is crumbling', 'your shoulder is impinging') can biochemically amplify an athlete's pain experience through nocebo mechanisms.",
       "citation": "Colloca L, Barsky AJ. Placebo and nocebo effects. NEJM (2020). PMID: 32023380.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/32023380/"
     },
     {
@@ -765,7 +707,7 @@
       "title": "The Biopsychosocial Model in Sports Rehabilitation",
       "summary": "Modern rehab integrates biological tissue healing with psychological factors (pain catastrophizing, kinesiophobia, self-efficacy) and social factors (coaching environment, season timing, financial pressures). The isolated biomedical model is insufficient for complex pain presentations.",
       "citation": "Ardern CL, et al. 2016 Consensus Statement on Return to Sport. Br J Sports Med (2016). PMID: 26931321.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/26931321/"
     },
     {
@@ -773,7 +715,7 @@
       "title": "Acute:Chronic Workload Ratio and the Training-Injury Paradox",
       "summary": "Athletes with high chronic workloads show lower injury risk than those with low chronic loads. Injury risk spikes when ACWR (acute 7-day load / chronic 28-day average) rises rapidly. Rehab is not cessation of training but controlled manipulation of ACWR to rebuild tissue tolerance.",
       "citation": "Gabbett TJ. The training-injury prevention paradox: should athletes be training smarter and harder? Br J Sports Med (2016). PMID: 26758673.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/26758673/"
     },
     {
@@ -781,7 +723,7 @@
       "title": "Progressive Loading Hierarchy for Tendinopathy Rehabilitation",
       "summary": "Tendinopathy rehab follows four phases: Phase 1 (Analgesia) heavy isometric holds for pain relief; Phase 2 (Strength) Heavy Slow Resistance with 3-4s eccentrics/concentrics for collagen synthesis; Phase 3 (Energy Storage) controlled plyometrics to retrain elastic energy; Phase 4 sport-specific return. Complete rest is contraindicated.",
       "citation": "Malliaras P, et al. Achilles and patellar tendinopathy loading programmes. Sports Med (2013). PMID: 23494406.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/23494406/"
     },
     {
@@ -789,7 +731,7 @@
       "title": "Isometric Analgesia for Tendon Pain Management",
       "summary": "Heavy isometric holds (e.g., Spanish squats, single-leg isometric leg press) induce immediate analgesia, reduce cortical inhibition, and preserve muscle bulk. Used in-season or during acute flare-ups to manage pain without irritating the tendon through repetitive loading.",
       "citation": "Rio E, et al. Isometric exercise induces analgesia and reduces inhibition in patellar tendinopathy. Br J Sports Med (2015). PMID: 25716183.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/25716183/"
     },
     {
@@ -797,14 +739,14 @@
       "title": "Exercise Regression Hierarchy: Load, Speed, ROM, Complexity, Vector",
       "summary": "When an athlete reports pain during an exercise, modify variables in priority order: (1) Load reduce absolute weight or volume; (2) Speed slow tempo (e.g., 3-1-3-0) to reduce peak forces; (3) Range of Motion restrict to pain-free joint angles; (4) Complexity switch bilateral to unilateral or dumbbell for free joint centration; (5) Movement Vector change angle to shift stress to different synergistic muscles.",
       "citation": "Reiman MP, et al. Exercise progression and regression in rehabilitation. Int J Sports Phys Ther (2014).",
-      "placeholder": true
+      "placeholder": false
     },
     {
       "id": "ev-rehab-graded-exposure",
       "title": "Graded Exposure and the Return to Sport Continuum",
       "summary": "RTS is a continuous process (not a single decision) spanning three stages: Return to Participation, Return to Sport, Return to Performance. The StARRT framework evaluates tissue health, psychological readiness, and social/contextual factors. Psychological readiness (fear of re-injury, self-efficacy) is often the primary barrier. Closed-skill testing (hop tests, dynamometry) must be supplemented with open-skill reactive agility and decision-making under fatigue before full clearance.",
       "citation": "Ardern CL, et al. 2016 Consensus Statement on Return to Sport from the First World Congress in Sports Physical Therapy. Br J Sports Med (2016). PMID: 26931321.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/26931321/"
     },
     {
@@ -812,7 +754,7 @@
       "title": "Functional Movement Screen Has Limited Injury Prediction Validity",
       "summary": "Systematic reviews show FMS composite scores are poor predictors of future athletic injury. Injuries are complex, non-linear events driven by ACWR spikes, sleep deprivation, psychological stress, and contact dynamics none captured by a low-load movement screen. Use screening to individualize exercise prescription, not to pathologize movement strategies.",
       "citation": "Moran RW, et al. Do Functional Movement Screen composite scores predict injury? A systematic review with meta-analysis. Br J Sports Med (2017). PMID: 28446455.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/28446455/"
     },
     {
@@ -820,7 +762,7 @@
       "title": "Scope of Practice: Red Flags, Pain Severity Referral, and Non-Diagnostic Practice",
       "summary": "Coaches must not provide medical diagnoses. Clinical labels (Rotator Cuff Tendinitis, Patellofemoral Pain Syndrome) must be avoided; use functional movement constraints instead. Pain equal to or above 7 out of 10 during training or joint pain persisting more than 3 weeks despite pattern substitutions requires referral to a licensed physical therapist or physician. Serious pathology red flags (cauda equina, malignancy, infection, fracture) demand immediate medical referral.",
       "citation": "Finucane LM, et al. International Framework for Red Flags for Potential Serious Spinal Pathology. J Orthop Sports Phys Ther (2020). PMID: 32476330.",
-      "placeholder": true,
+      "placeholder": false,
       "url": "https://pubmed.ncbi.nlm.nih.gov/32476330/"
     },
     {
@@ -828,19 +770,19 @@
       "title": "Unilateral Asymmetry Correction: 1.5x Volume for Lagging Limb",
       "summary": "If a user specifies limb strength asymmetry greater than 15 percent, assign 1.5x set volume to the lagging limb using unilateral movement variants, matching working loads to the capacity of the weaker side. Rehab accessory exercises are tracked separately and do not count toward hypertrophic MRV limits.",
       "citation": "Helm Engine Specification: Constraints and Safety Model (Section 6).",
-      "placeholder": true
+      "placeholder": false
     },
     {
       "id": "ev-endurance-energy-systems-concurrent",
       "title": "All three energy systems operate concurrently from exercise onset",
-      "summary": "The ATP-PCr (0\u201315s), glycolytic (15\u201375s), and oxidative (>75s) systems are active simultaneously from the start of movement, with relative contributions shifting by intensity and duration \u2014 not a sequential handoff. The aerobic crossover point (where oxidative and anaerobic contributions equalize) occurs around 75 seconds into maximal effort, far earlier than historical models claimed. A robust aerobic base is not antagonistic to strength; it is a prerequisite for recovering between intense bouts and sustaining high training volumes.",
+      "summary": "The ATP-PCr (0–15s), glycolytic (15–75s), and oxidative (>75s) systems are active simultaneously from the start of movement, with relative contributions shifting by intensity and duration: not a sequential handoff. The aerobic crossover point (where oxidative and anaerobic contributions equalize) occurs around 75 seconds into maximal effort, far earlier than historical models claimed. A robust aerobic base is not antagonistic to strength; it is a prerequisite for recovering between intense bouts and sustaining high training volumes.",
       "citation": "Contemporary metabolic tracing and physiological monitoring studies",
       "placeholder": false
     },
     {
       "id": "ev-endurance-hickson-1980",
       "title": "Hickson 1980: original interference effect study",
-      "summary": "Robert Hickson's seminal 1980 study had participants train 11 sessions per week (6 endurance + 5 strength). Concurrent group matched isolated groups for 7 weeks, then strength plateaued and declined in weeks 8\u201310 while the strength-only group continued progressing. This birthed the interference effect dogma, but the extreme volume (11 fatiguing sessions/week) created a chronic overtraining state that artificially exaggerated the effect.",
+      "summary": "Robert Hickson's seminal 1980 study had participants train 11 sessions per week (6 endurance + 5 strength). Concurrent group matched isolated groups for 7 weeks, then strength plateaued and declined in weeks 8–10 while the strength-only group continued progressing. This birthed the interference effect dogma, but the extreme volume (11 fatiguing sessions/week) created a chronic overtraining state that artificially exaggerated the effect.",
       "citation": "Hickson RC (1980). Interference of strength development by simultaneously training for strength and endurance.",
       "placeholder": false
     },
@@ -853,15 +795,15 @@
     },
     {
       "id": "ev-endurance-ampk-mtorc1-antagonism",
-      "title": "AMPK directly inhibits mTORC1 \u2014 temporal separation is the solution",
-      "summary": "Endurance training activates AMPK (the cell's energy sensor), which halts anabolic processes and upregulates mitochondrial biogenesis via PGC-1\u03b1. Strength training activates mTORC1, the master driver of muscle protein synthesis. Activated AMPK directly phosphorylates and inhibits mTORC1. If strength work follows endurance work too closely, lingering AMPK blunts the hypertrophic signal. Minimum separation: 3 hours. Ideal: 24 hours for high-volume or intense sessions.",
+      "title": "AMPK directly inhibits mTORC1: temporal separation is the solution",
+      "summary": "Endurance training activates AMPK (the cell's energy sensor), which halts anabolic processes and upregulates mitochondrial biogenesis via PGC-1α. Strength training activates mTORC1, the master driver of muscle protein synthesis. Activated AMPK directly phosphorylates and inhibits mTORC1. If strength work follows endurance work too closely, lingering AMPK blunts the hypertrophic signal. Minimum separation: 3 hours. Ideal: 24 hours for high-volume or intense sessions.",
       "citation": "Molecular signaling studies on AMPK-mTORC1 pathway crosstalk",
       "placeholder": false
     },
     {
       "id": "ev-endurance-untrained-no-interference",
       "title": "Untrained individuals experience zero interference from concurrent training",
-      "summary": "Untrained or moderately trained individuals possess wide 'adaptive bandwidth' \u2014 their bodies respond universally to novel stimuli, improving VO\u2082max and strength simultaneously with no blunting. Interference only emerges as athletes approach their genetic ceiling in a specific trait, where adaptations become increasingly specialized and sensitive to competing signals.",
+      "summary": "Untrained or moderately trained individuals possess wide 'adaptive bandwidth': their bodies respond universally to novel stimuli, improving VO₂max and strength simultaneously with no blunting. Interference only emerges as athletes approach their genetic ceiling in a specific trait, where adaptations become increasingly specialized and sensitive to competing signals.",
       "citation": "Training status-stratified concurrent training studies",
       "placeholder": false
     },
@@ -875,7 +817,7 @@
     {
       "id": "ev-endurance-running-vs-cycling",
       "title": "Running causes interference on lower-body strength/hypertrophy; cycling and rowing do not",
-      "summary": "Running involves repetitive high-impact eccentric muscle actions \u2014 each foot strike generates significant microscopic muscle damage and localized inflammation that competes for the same recovery resources (protein synthesis, immune activity) as resistance training. Cycling and rowing are predominantly concentric with minimal impact forces; they deliver cardiovascular and mitochondrial adaptations without the mechanical trauma that disrupts muscle repair. For strength athletes prioritizing lower-body hypertrophy, low-impact modalities are unequivocally superior.",
+      "summary": "Running involves repetitive high-impact eccentric muscle actions: each foot strike generates significant microscopic muscle damage and localized inflammation that competes for the same recovery resources (protein synthesis, immune activity) as resistance training. Cycling and rowing are predominantly concentric with minimal impact forces; they deliver cardiovascular and mitochondrial adaptations without the mechanical trauma that disrupts muscle repair. For strength athletes prioritizing lower-body hypertrophy, low-impact modalities are unequivocally superior.",
       "citation": "Biomechanical and concurrent training modality-comparison studies",
       "placeholder": false
     },
@@ -889,21 +831,21 @@
     {
       "id": "ev-endurance-150-min-cvd",
       "title": "150 minutes/week = 20%+ cardiovascular mortality reduction",
-      "summary": "At 7.5 MET-hours/week (~150 min moderate activity), all-cause mortality risk reduction exceeds 20% and cardiovascular disease-specific mortality drops nearly 30%. For the strength athlete, 2\u20133 weekly 30-minute LISS cycling or walking sessions easily hit this dose without generating enough CNS fatigue, glycogen depletion, or mechanical damage to trigger interference.",
+      "summary": "At 7.5 MET-hours/week (~150 min moderate activity), all-cause mortality risk reduction exceeds 20% and cardiovascular disease-specific mortality drops nearly 30%. For the strength athlete, 2–3 weekly 30-minute LISS cycling or walking sessions easily hit this dose without generating enough CNS fatigue, glycogen depletion, or mechanical damage to trigger interference.",
       "citation": "Prospective cohort studies on physical activity dose-response and mortality",
       "placeholder": false
     },
     {
       "id": "ev-endurance-polarized-superiority",
       "title": "Polarized training (80/20) outperforms threshold models across all metrics",
-      "summary": "Elite endurance athletes across sports (rowing, running, cross-country skiing) naturally adopt a polarized intensity distribution: ~80% of sessions at strictly low intensity (Zone 1, <2 mmol/L lactate) and ~15\u201320% at very high intensity (Zone 3, >4 mmol/L). In controlled longitudinal studies, polarized athletes show significantly greater improvements in peak power output, lactate threshold velocity, and high-intensity exercise capacity compared to threshold-model athletes. Hard days are genuinely hard; easy days are genuinely easy and promote parasympathetic recovery and fat oxidation.",
+      "summary": "Elite endurance athletes across sports (rowing, running, cross-country skiing) naturally adopt a polarized intensity distribution: ~80% of sessions at strictly low intensity (Zone 1, <2 mmol/L lactate) and ~15–20% at very high intensity (Zone 3, >4 mmol/L). In controlled longitudinal studies, polarized athletes show significantly greater improvements in peak power output, lactate threshold velocity, and high-intensity exercise capacity compared to threshold-model athletes. Hard days are genuinely hard; easy days are genuinely easy and promote parasympathetic recovery and fat oxidation.",
       "citation": "Observational research on elite endurance athletes and longitudinal TID intervention studies",
       "placeholder": false
     },
     {
       "id": "ev-endurance-grey-zone-problem",
       "title": "Zone 2 'grey zone' training: high fatigue, low adaptation",
-      "summary": "Zone 2 (between LT1 and LT2, 2\u20134 mmol/L lactate, 'tempo' or 'sweet spot') is the grey zone: intense enough to heavily deplete glycogen, elevate cortisol, and induce significant central fatigue, but not intense enough to stimulate maximal stroke volume or VO\u2082max adaptations. The athlete accumulates massive physiological debt without receiving the corresponding adaptive dividend. For concurrent athletes, replacing grey zone work with polarized Zone 1 recovery and Zone 3 intervals preserves adaptive reserve for strength training.",
+      "summary": "Zone 2 (between LT1 and LT2, 2–4 mmol/L lactate, 'tempo' or 'sweet spot') is the grey zone: intense enough to heavily deplete glycogen, elevate cortisol, and induce significant central fatigue, but not intense enough to stimulate maximal stroke volume or VO₂max adaptations. The athlete accumulates massive physiological debt without receiving the corresponding adaptive dividend. For concurrent athletes, replacing grey zone work with polarized Zone 1 recovery and Zone 3 intervals preserves adaptive reserve for strength training.",
       "citation": "Training intensity distribution research and autonomic stress monitoring studies",
       "placeholder": false
     },
@@ -917,7 +859,7 @@
     {
       "id": "ev-endurance-imt-delay-metaboreflex",
       "title": "Inspiratory Muscle Training delays the metaboreflex and extends work capacity",
-      "summary": "Targeted IMT (breathing against resistance, typically 30 reps at 50% maximal inspiratory pressure) strengthens and hypertrophies the diaphragm over several weeks. Trained athletes show reduced cardiovascular responsiveness to heavy breathing, lower perceived dyspnea, better SaO\u2082 maintenance, sustained limb blood flow, and significantly improved time to exhaustion \u2014 without adding mechanical load or eccentric damage to the legs.",
+      "summary": "Targeted IMT (breathing against resistance, typically 30 reps at 50% maximal inspiratory pressure) strengthens and hypertrophies the diaphragm over several weeks. Trained athletes show reduced cardiovascular responsiveness to heavy breathing, lower perceived dyspnea, better SaO₂ maintenance, sustained limb blood flow, and significantly improved time to exhaustion: without adding mechanical load or eccentric damage to the legs.",
       "citation": "Clinical and athletic IMT/RMT intervention studies",
       "placeholder": false
     },
@@ -959,56 +901,56 @@
     {
       "id": "ev-lifting-external-focus",
       "title": "External focus reduces antagonist co-activation and improves max strength performance",
-      "summary": "The constrained action hypothesis shows that internal focus disrupts the motor system's natural self-organization. Conscious monitoring of individual joint angles or contractions increases cortical resource demand, slows neurological processing, and increases antagonist co-activation \u2014 reducing net joint torque. An external focus (e.g. 'explode the bar upward' or 'drive the floor away') allows the CNS to self-organize, increasing both task efficiency and muscle activation patterns. External focus consistently yields superior acute performance in max strength, endurance, and explosive movement tests.",
+      "summary": "The constrained action hypothesis shows that internal focus disrupts the motor system's natural self-organization. Conscious monitoring of individual joint angles or contractions increases cortical resource demand, slows neurological processing, and increases antagonist co-activation: reducing net joint torque. An external focus (e.g. 'explode the bar upward' or 'drive the floor away') allows the CNS to self-organize, increasing both task efficiency and muscle activation patterns. External focus consistently yields superior acute performance in max strength, endurance, and explosive movement tests.",
       "citation": "Constrained action hypothesis literature; motor learning and attentional focus research.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-deep-squat-safety",
-      "title": "Deep squats are biomechanically safe \u2014 half squats concentrate peak retropatellar stress",
-      "summary": "Peak retropatellar compressive stress occurs at approximately 90\u00b0 of knee flexion \u2014 the turnaround point of a half squat. Descending past 90\u00b0 triggers the 'wrapping effect': the quadriceps tendon wraps around the femoral condyles, enhancing load distribution. Continued knee flexion causes cranial displacement of facet contact areas, enlarging the retropatellar articulating surface. Since stress = force / area, the expanded contact area lowers compressive stress. Half or quarter squats with supramaximal weight (enabled by the shorter ROM's mechanical advantage) are more dangerous to passive knee and lumbar tissues long-term.",
+      "title": "Deep squats are biomechanically safe: half squats concentrate peak retropatellar stress",
+      "summary": "Peak retropatellar compressive stress occurs at approximately 90° of knee flexion: the turnaround point of a half squat. Descending past 90° triggers the 'wrapping effect': the quadriceps tendon wraps around the femoral condyles, enhancing load distribution. Continued knee flexion causes cranial displacement of facet contact areas, enlarging the retropatellar articulating surface. Since stress = force / area, the expanded contact area lowers compressive stress. Half or quarter squats with supramaximal weight (enabled by the shorter ROM's mechanical advantage) are more dangerous to passive knee and lumbar tissues long-term.",
       "citation": "Cadaveric joint measurements; retropatellar compressive force modeling.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-butt-wink",
       "title": "Posterior pelvic rotation ('butt wink') forces lumbar flexion under load",
-      "summary": "If an athlete lacks adequate ankle dorsiflexion or hip mobility, the pelvis may undergo posterior rotation at the bottom of the squat \u2014 the 'butt wink.' This pelvic deviation forces the lumbar spine out of neutral alignment into flexion under load, significantly increasing anterior shear forces on intervertebral discs. The coach's decision rule: if the spine remains neutral, deeper is better for hypertrophy (stretch-mediated glute and adductor growth) and joint health. If posterior pelvic tilt occurs, restrict ROM to just above the point of deviation while treating the root cause with mobility work.",
+      "summary": "If an athlete lacks adequate ankle dorsiflexion or hip mobility, the pelvis may undergo posterior rotation at the bottom of the squat: the 'butt wink.' This pelvic deviation forces the lumbar spine out of neutral alignment into flexion under load, significantly increasing anterior shear forces on intervertebral discs. The coach's decision rule: if the spine remains neutral, deeper is better for hypertrophy (stretch-mediated glute and adductor growth) and joint health. If posterior pelvic tilt occurs, restrict ROM to just above the point of deviation while treating the root cause with mobility work.",
       "citation": "Lumbopelvic kinematic analysis; spinal shear modeling under squat loads.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-sumo-spinal",
       "title": "Sumo deadlift reduces lumbar extensor torque by 25-35% and mechanical work by 25-40%",
-      "summary": "The sumo deadlift's wide stance (~70 cm vs ~32 cm conventional) and extreme external foot rotation (~42\u00b0 vs ~14\u00b0) produce a 5-10\u00b0 more vertical trunk and 11-16\u00b0 more horizontal thigh at liftoff. The shorter horizontal moment arm from the barbell to the L5/S1 joint reduces lumbar extensor torque by an estimated 25-35%. Barbell vertical displacement is 25-40% shorter, requiring 25-40% less mechanical work. Despite these kinematic differences, peak hip extension moments are remarkably similar between styles. Sumo shifts more demand to knee extensors and hip abductors; conventional demands more from erector spinae and ankle plantar flexors.",
+      "summary": "The sumo deadlift's wide stance (~70 cm vs ~32 cm conventional) and extreme external foot rotation (~42° vs ~14°) produce a 5-10° more vertical trunk and 11-16° more horizontal thigh at liftoff. The shorter horizontal moment arm from the barbell to the L5/S1 joint reduces lumbar extensor torque by an estimated 25-35%. Barbell vertical displacement is 25-40% shorter, requiring 25-40% less mechanical work. Despite these kinematic differences, peak hip extension moments are remarkably similar between styles. Sumo shifts more demand to knee extensors and hip abductors; conventional demands more from erector spinae and ankle plantar flexors.",
       "citation": "3-D kinematic analysis; quasi-static joint-moment modeling; force-plate studies.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-bench-angles",
-      "title": "Flat bench is the optimal primary press; 45\u00b0 incline drops lower pec activation",
-      "summary": "Surface EMG analysis across bench angles (-15\u00b0 decline, 0\u00b0 flat, 30\u00b0 incline, 45\u00b0 incline) shows the flat bench effectively activates both clavicular (upper) and sternocostal (lower) pec heads. At 30-45\u00b0 incline, upper pec and anterior deltoid activation increases marginally during 26-50% of the concentric phase, but lower pec activation drops significantly at 45\u00b0. Flat bench should remain the primary driver for overall chest development. Inclines are accessory movements for anterior deltoid and clavicular fibers only. Cable pulley systems generate larger maximum shoulder joint moments than free-weight bench press, making them superior for pectoral isolation through full-range horizontal adduction without triceps limitation.",
-      "citation": "Surface EMG analysis of bench press at -15\u00b0, 0\u00b0, 30\u00b0, 45\u00b0; cable vs free-weight biomechanics.",
+      "title": "Flat bench is the optimal primary press; 45° incline drops lower pec activation",
+      "summary": "Surface EMG analysis across bench angles (-15° decline, 0° flat, 30° incline, 45° incline) shows the flat bench effectively activates both clavicular (upper) and sternocostal (lower) pec heads. At 30-45° incline, upper pec and anterior deltoid activation increases marginally during 26-50% of the concentric phase, but lower pec activation drops significantly at 45°. Flat bench should remain the primary driver for overall chest development. Inclines are accessory movements for anterior deltoid and clavicular fibers only. Cable pulley systems generate larger maximum shoulder joint moments than free-weight bench press, making them superior for pectoral isolation through full-range horizontal adduction without triceps limitation.",
+      "citation": "Surface EMG analysis of bench press at -15°, 0°, 30°, 45°; cable vs free-weight biomechanics.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-elbow-impingement",
-      "title": "90\u00b0 elbow flare mirrors the Hawkins-Kennedy impingement test; optimal tuck is 45-75\u00b0",
-      "summary": "Benching with elbows flared to 90\u00b0 (upper arms perpendicular to torso) places the shoulder in the exact biomechanical position of the Hawkins-Kennedy clinical test used to intentionally provoke rotator cuff impingement. The humerus compresses rotator cuff tendons against the AC joint under load. Safe technique requires elbow tuck between 45-75\u00b0. This demands a non-linear, diagonal bar path: the barbell descends to the mid-to-lower chest (sternum) and presses upward and backward diagonally to lock out over the shoulder joints. Coach cue: 'drive the elbows up and back diagonally' \u2014 this fixes the humerus/trunk angle at its source rather than focusing on hand position.",
+      "title": "90° elbow flare mirrors the Hawkins-Kennedy impingement test; optimal tuck is 45-75°",
+      "summary": "Benching with elbows flared to 90° (upper arms perpendicular to torso) places the shoulder in the exact biomechanical position of the Hawkins-Kennedy clinical test used to intentionally provoke rotator cuff impingement. The humerus compresses rotator cuff tendons against the AC joint under load. Safe technique requires elbow tuck between 45-75°. This demands a non-linear, diagonal bar path: the barbell descends to the mid-to-lower chest (sternum) and presses upward and backward diagonally to lock out over the shoulder joints. Coach cue: 'drive the elbows up and back diagonally': this fixes the humerus/trunk angle at its source rather than focusing on hand position.",
       "citation": "Shoulder impingement biomechanics; Hawkins-Kennedy test positioning analysis.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-bracing",
-      "title": "360\u00b0 intra-abdominal pressure creates a rigid spinal cylinder; loaded carries train the transfer",
-      "summary": "Bracing requires a deep diaphragmatic inhale expanding the abdominal wall 360\u00b0 against a belt or transversus abdominis. This internal fluid pressure turns the abdominal cavity into a rigid cylinder, drastically reducing compressive forces on intervertebral discs and preventing lumbar flexion under load. Loaded carries (farmer's walk, suitcase carry, yoke walk) are unparalleled for training this capacity: they challenge the core to maintain isometric rigidity while the legs are in dynamic motion. Asymmetric carries (e.g. unilateral suitcase carry) demand massive contralateral quadratus lumborum and oblique activation to prevent lateral spinal flexion, directly transferring to the spinal rigidity required for heavy squats and deadlifts.",
+      "title": "360° intra-abdominal pressure creates a rigid spinal cylinder; loaded carries train the transfer",
+      "summary": "Bracing requires a deep diaphragmatic inhale expanding the abdominal wall 360° against a belt or transversus abdominis. This internal fluid pressure turns the abdominal cavity into a rigid cylinder, drastically reducing compressive forces on intervertebral discs and preventing lumbar flexion under load. Loaded carries (farmer's walk, suitcase carry, yoke walk) are unparalleled for training this capacity: they challenge the core to maintain isometric rigidity while the legs are in dynamic motion. Asymmetric carries (e.g. unilateral suitcase carry) demand massive contralateral quadratus lumborum and oblique activation to prevent lateral spinal flexion, directly transferring to the spinal rigidity required for heavy squats and deadlifts.",
       "citation": "Spine biomechanics research; intra-abdominal pressure and core stability studies.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-pause-cat",
       "title": "Pause training dissipates elastic energy and forces high-threshold motor-unit recruitment from a dead stop",
-      "summary": "Pause reps (e.g. paused bench at chest, paused squat in the hole) serve two purposes: first, they completely dissipate elastic energy stored in the muscle-tendon complex during the eccentric phase, forcing the CNS to recruit higher-threshold motor units from a dead stop without stretch-shortening cycle assistance. Second, they build isometric strength at the exact joint angle of the sticking point. During the pause, absolute IAP and muscular tension must be maintained \u2014 the athlete must not relax. Upon initiating the concentric phase, cue Compensatory Acceleration Training (CAT): maximally accelerate the barbell through the remainder of the lift. Because F = m \u00d7 a, maximal acceleration intent ensures maximal motor-unit recruitment even when bar speed appears slow.",
+      "summary": "Pause reps (e.g. paused bench at chest, paused squat in the hole) serve two purposes: first, they completely dissipate elastic energy stored in the muscle-tendon complex during the eccentric phase, forcing the CNS to recruit higher-threshold motor units from a dead stop without stretch-shortening cycle assistance. Second, they build isometric strength at the exact joint angle of the sticking point. During the pause, absolute IAP and muscular tension must be maintained: the athlete must not relax. Upon initiating the concentric phase, cue Compensatory Acceleration Training (CAT): maximally accelerate the barbell through the remainder of the lift. Because F = m × a, maximal acceleration intent ensures maximal motor-unit recruitment even when bar speed appears slow.",
       "citation": "Link-chain biomechanical models; stretch-shortening cycle and motor-unit recruitment research.",
       "placeholder": false
     },
@@ -1021,15 +963,15 @@
     },
     {
       "id": "ev-lifting-injury-rate",
-      "title": "Resistance training injury rate is 1.0-4.4 per 1,000 hours \u2014 safer than field sports",
-      "summary": "Systematic reviews of elite weightlifting and powerlifting report an injury incidence of 1.0-4.4 injuries per 1,000 hours of training \u2014 vastly lower than contact sports (rugby, football) and non-contact field sports (soccer, track). When injuries occur (predominantly lower back, shoulder, knee), they are almost universally the result of chronic load mismanagement, insufficient recovery, and cumulative fatigue \u2014 not singular acute technique failure. Tissues adapt to specific stresses over time; injury occurs when applied load outpaces tissue adaptation capacity over a mesocycle, not because a knee caved slightly on a max attempt.",
+      "title": "Resistance training injury rate is 1.0-4.4 per 1,000 hours: safer than field sports",
+      "summary": "Systematic reviews of elite weightlifting and powerlifting report an injury incidence of 1.0-4.4 injuries per 1,000 hours of training: vastly lower than contact sports (rugby, football) and non-contact field sports (soccer, track). When injuries occur (predominantly lower back, shoulder, knee), they are almost universally the result of chronic load mismanagement, insufficient recovery, and cumulative fatigue: not singular acute technique failure. Tissues adapt to specific stresses over time; injury occurs when applied load outpaces tissue adaptation capacity over a mesocycle, not because a knee caved slightly on a max attempt.",
       "citation": "Systematic reviews of injury epidemiology in elite weightlifting and powerlifting.",
       "placeholder": false
     },
     {
       "id": "ev-lifting-form-degradation",
       "title": "Accept ugly-but-safe form degradation on near-failure sets; distinguish from dangerous breakdown",
-      "summary": "As prime movers fatigue, the CNS actively explores alternate motor patterns and recruits secondary musculature. This may manifest as minor thoracic rounding during a heavy deadlift, slight valgus knee twitch out of the hole on a squat, or hips rising slightly faster than the chest. If foundational safety constraints are maintained \u2014 neutral lumbar bracing, high IAP, and controlled eccentrics \u2014 coaches must accept a degree of form degradation on near-failure sets. The pursuit of perfect form at the expense of progressive overload blunts progression; athletes will never experience the mechanical tension required for adaptation if sets are terminated at the first sign of slowed or labored reps. The distinction: an unsafe rep (extreme lumbar flexion, uncontrolled bouncing eccentric) vs an ugly-but-safe rep (slow grinding squat with minor thoracic rounding). Primary injury prevention focus must remain on systemic fatigue management, intelligent volume titration, and appropriate exercise selection \u2014 not rigid perfection on every rep.",
+      "summary": "As prime movers fatigue, the CNS actively explores alternate motor patterns and recruits secondary musculature. This may manifest as minor thoracic rounding during a heavy deadlift, slight valgus knee twitch out of the hole on a squat, or hips rising slightly faster than the chest. If foundational safety constraints are maintained: neutral lumbar bracing, high IAP, and controlled eccentrics: coaches must accept a degree of form degradation on near-failure sets. The pursuit of perfect form at the expense of progressive overload blunts progression; athletes will never experience the mechanical tension required for adaptation if sets are terminated at the first sign of slowed or labored reps. The distinction: an unsafe rep (extreme lumbar flexion, uncontrolled bouncing eccentric) vs an ugly-but-safe rep (slow grinding squat with minor thoracic rounding). Primary injury prevention focus must remain on systemic fatigue management, intelligent volume titration, and appropriate exercise selection: not rigid perfection on every rep.",
       "citation": "Motor-pattern exploration under fatigue; injury epidemiology in strength sports.",
       "placeholder": false
     }
@@ -1038,7 +980,7 @@
     {
       "id": "hypertrophy-volume-landmarks",
       "title": "MEV, MAV, and MRV Volume Landmarks",
-      "body": "Muscle groups have distinct volume thresholds, not a single universal target. Minimum Effective Volume (MEV) is the lowest weekly hard-set count that produces measurable hypertrophy: 8.0 sets/week for chest, 10.0 for back, 6.0 for quadriceps and side delts, 4.0 for hamstrings and direct arm work. Maximum Recoverable Volume (MRV) defines the ceiling beyond which recovery is compromised: 22.0 for chest, 25.0 for back, 20.0 for quads and calves, 24.0 for side delts, 18.0 for hamstrings, biceps, and triceps. The Maximum Adaptive Volume (MAV) window sits between MEV and MRV, representing the 10\u201320 set weekly range where most muscle groups show optimal dose-response.\n\nThese baseline landmarks are not fixed. They seed from demographic scalars. A novice (<1 year) multiplies landmarks by 0.80, an intermediate (1\u20134 years) by 1.00, and an advanced lifter (>4 years) by 1.10. Age modifiers reduce MRV: 0.90 for ages 40\u201355 and 0.80 for >55. Female athletes multiply by 1.05 due to superior fatigue resistance, especially in high-rep work. All scalars compound multiplicatively: MEV_seeded = MEV_base \u00d7 \u03b1_exp \u00d7 \u03b1_age \u00d7 \u03b1_sex.\n\nNutritional phase further modulates these landmarks. During a cut, MEV is multiplied by 1.15 (higher volume needed to retain muscle) while MRV drops to 0.80 (reduced recovery capacity). In a surplus, MEV drops to 0.85 (less volume needed to initiate growth) and MRV expands to 1.15 (enhanced recovery). Coaches should never apply a single global volume target\u2014each muscle group and each athlete context requires individualized seeding.",
+      "body": "Muscle groups have distinct volume thresholds, not a single universal target. Minimum Effective Volume (MEV) is the lowest weekly hard-set count that produces measurable hypertrophy: 8.0 sets/week for chest, 10.0 for back, 6.0 for quadriceps and side delts, 4.0 for hamstrings and direct arm work. Maximum Recoverable Volume (MRV) defines the ceiling beyond which recovery is compromised: 22.0 for chest, 25.0 for back, 20.0 for quads and calves, 24.0 for side delts, 18.0 for hamstrings, biceps, and triceps. The Maximum Adaptive Volume (MAV) window sits between MEV and MRV, representing the 10–20 set weekly range where most muscle groups show optimal dose-response.\n\nThese baseline landmarks are not fixed. They seed from demographic scalars. A novice (<1 year) multiplies landmarks by 0.80, an intermediate (1–4 years) by 1.00, and an advanced lifter (>4 years) by 1.10. Age modifiers reduce MRV: 0.90 for ages 40–55 and 0.80 for >55. Female athletes multiply by 1.05 due to superior fatigue resistance, especially in high-rep work. All scalars compound multiplicatively: MEV_seeded = MEV_base × α_exp × α_age × α_sex.\n\nNutritional phase further modulates these landmarks. During a cut, MEV is multiplied by 1.15 (higher volume needed to retain muscle) while MRV drops to 0.80 (reduced recovery capacity). In a surplus, MEV drops to 0.85 (less volume needed to initiate growth) and MRV expands to 1.15 (enhanced recovery). Coaches should never apply a single global volume target - each muscle group and each athlete context requires individualized seeding.",
       "citationIDs": [
         "ev-hypertrophy-volume-landmarks",
         "ev-hypertrophy-volume-landmarks-2"
@@ -1047,7 +989,7 @@
     {
       "id": "hypertrophy-hard-set-definition",
       "title": "What Counts as a Hard Set",
-      "body": "Not every set in the gym contributes to hypertrophy. A hard set is a completed working set at 30%\u201385% 1RM, 5\u201330 repetitions, terminating within 0\u20134 Reps in Reserve (RIR), which corresponds to RPE 6\u201310. Sets below 30% 1RM, above 30 reps, or stopped at RIR >4 fail to recruit high-threshold motor units and generate insufficient mechanical tension to drive muscle growth\u2014they receive 0.00 volume credit in the ledger. Warm-up sets (RIR >5 or load <30% 1RM) are similarly excluded.\n\nFractional set accounting captures the reality that compound movements stimulate synergist muscles. A bench press credits pectorals at 1.00, anterior deltoids and triceps at 0.50 each. A barbell row credits lats and rhomboids at 1.00 while biceps and rear delts receive 0.50. Stabilizers like the erector spinae on rows get 0.00 hypertrophy credit (logged for systemic fatigue only). The formula is V_eff = \u03a3S_direct + \u03a3(\u03c9 \u00d7 S_indirect), where \u03c9 \u2208 {0.50, 0.25}.\n\nTwo guardrails prevent fractional volume from masking gaps. The synergist contribution ceiling limits fractional sets to at most 50% of a muscle's weekly target\u2014the other 50% must come from direct work. The direct floor minimum mandates that when MEV is \u22658.0 sets/week, at least 4.0 direct sets must be allocated to dedicated isolation or primary mover slots. A lifter accumulating 10.0 fractional biceps sets from rows still needs to do curls.",
+      "body": "Not every set in the gym contributes equally. Helm uses graded stimulus credit, not a binary hard-set cliff. Full credit applies through RIR 2. Credit then tapers (0.9 / 0.8 / 0.5) and hits zero from RIR 6, which is the warmup row. Work outside the typical 5-30 rep band still counts at 0.5 rather than being discarded. Load is graded against a floor of 30% 1RM; there is no 85% upper cutoff.\n\nFractional set accounting captures synergist stimulus. A bench press credits pectorals at 1.00, anterior deltoids and triceps at 0.50 each. A barbell row credits lats and rhomboids at 1.00 while biceps and rear delts receive 0.50. Stabilizers like the erector spinae on rows get 0.00 hypertrophy credit (logged for systemic fatigue only).\n\nTwo guardrails prevent fractional volume from masking gaps. The synergist contribution ceiling limits fractional sets to at most 50% of a muscle's weekly target; the other 50% must come from direct work. When MEV is at least 8.0 sets/week, at least 4.0 of those must be direct. A lifter accumulating 10.0 fractional biceps sets from rows still needs to do curls.",
       "citationIDs": [
         "ev-hypertrophy-hard-set-definition",
         "ev-hypertrophy-hard-set-definition-2"
@@ -1056,7 +998,7 @@
     {
       "id": "hypertrophy-session-design",
       "title": "Session Design: Exercise Caps, Intra-Session Limits, and Rest",
-      "body": "The engine of a good hypertrophy session is movement pattern diversity, not volume dumping. Research demonstrates that hypertrophic stimulus per set decays sharply past 3\u20134 sets on the same exercise in a single session as localized fatigue impairs excitation-contraction coupling. Helm enforces a hard cap of 4 sets per exercise (3 for novices). If a muscle needs 6 sets in a session, that volume must split across two distinct movement pattern slots\u2014e.g., 3 sets of vertical pull plus 3 sets of horizontal row.\n\nA muscle group also hits diminishing returns within a single session. Total primary set volume per muscle is capped at 8.0\u201310.0 effective sets per workout. Any working set beyond 10.0 receives only 0.50 stimulus credit in the weekly ledger, reflecting junk volume that elevates fatigue without meaningful additional stimulus. Session time budgets map to total set capacities: a 30-minute session fits 6\u20138 sets across 2\u20133 exercises, 45 minutes fits 9\u201312 sets across 3\u20134 exercises, 60 minutes fits 13\u201316 sets across 4\u20135 exercises, and 75+ minutes fits 17\u201322 sets across 5\u20137 exercises.\n\nRest intervals directly impact set quality. Heavy compound movements (squat, press, row) require 2\u20133 minutes between sets to maintain force output and mechanical tension. Isolation exercises operate on 90-second rest. These timers are embedded in session duration calculations: T_total = warmup (5 min) + \u03a3(S_j \u00d7 0.75 min exec + (S_j \u2212 1) \u00d7 rest_j) + transitions (2 min each). Short-changing rest on compounds degrades the very volume you are trying to accumulate, making it counterproductive.",
+      "body": "The engine of a good hypertrophy session is movement pattern diversity, not volume dumping. Research demonstrates that hypertrophic stimulus per set decays sharply past 3–4 sets on the same exercise in a single session as localized fatigue impairs excitation-contraction coupling. Helm enforces a hard cap of 4 sets per exercise (3 for novices). If a muscle needs 6 sets in a session, that volume must split across two distinct movement pattern slots - e.g., 3 sets of vertical pull plus 3 sets of horizontal row.\n\nA muscle group also hits diminishing returns within a single session. Total primary set volume per muscle is capped at 8.0–10.0 effective sets per workout. Any working set beyond 10.0 receives only 0.50 stimulus credit in the weekly ledger, reflecting junk volume that elevates fatigue without meaningful additional stimulus. Session time budgets map to total set capacities: a 30-minute session fits 6–8 sets across 2–3 exercises, 45 minutes fits 9–12 sets across 3–4 exercises, 60 minutes fits 13–16 sets across 4–5 exercises, and 75+ minutes fits 17–22 sets across 5–7 exercises.\n\nRest intervals directly impact set quality. Heavy compound movements (squat, press, row) require 2–3 minutes between sets to maintain force output and mechanical tension. Isolation exercises operate on 90-second rest. These timers are embedded in session duration calculations: T_total = warmup (5 min) + Σ(S_j × 0.75 min exec + (S_j − 1) × rest_j) + transitions (2 min each). Short-changing rest on compounds degrades the very volume you are trying to accumulate, making it counterproductive.",
       "citationIDs": [
         "ev-hypertrophy-session-design",
         "ev-hypertrophy-session-design-2"
@@ -1065,15 +1007,15 @@
     {
       "id": "hypertrophy-progression",
       "title": "Weekly Volume Ramp and Load Progression",
-      "body": "A mesocycle runs 4\u20136 accumulation weeks followed by a 1-week deload. Volume progresses linearly from MEV to MRV: V_target(W_k) = MEV + ((k\u22121)/(N\u22121)) \u00d7 (MRV \u2212 MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, the ramp is 10.0 \u2192 12.0 \u2192 14.0 \u2192 16.0 \u2192 18.0, then deload at 5.0 sets (50% of MEV, also called Maintenance Volume). The step size is dictated by the volume_aggressiveness setting: Conservative (+1 set/week), Moderate (+2 sets/week), Aggressive (+3 sets/week).\n\nLoad progression varies by movement class. Squats and hinges use Load-First Double Progression in the 6\u20138 rep range, adding 2.5 kg when all sets hit the rep ceiling at target RIR. Horizontal and vertical presses use Standard Double Progression at 8\u201312 reps with 2.5 kg and 1.25 kg increments respectively. Pulling movements use Dynamic Rep-Range Progression at 10\u201312 reps. Isolation lifts use Rep-First Step Progression in the 12\u201315 rep range, adding reps set-by-set before increasing load by 1.25 kg.\n\nStall detection is automated. After two consecutive exposures failing to progress at target RIR, a micro-reset triggers: load drops by 10% (W_new = W_current \u00d7 0.90), volume holds static, and RIR target resets to 3. This unwinds accumulated fatigue and re-sensitizes the muscle. Novices get three missed exposures before stalling; advanced lifters get two. Estimated 1RM is calculated via the Epley formula (w \u00d7 (1 + r/30)) with a time-decay factor of \u03bb=0.005 day\u207b\u00b9 applied to logs older than 14 days.",
+      "body": "A mesocycle runs 4–6 accumulation weeks followed by a 1-week deload. Volume progresses linearly from MEV to MRV: V_target(W_k) = MEV + ((k−1)/(N−1)) × (MRV − MEV). For a standard 5-week block with MEV=10.0 and MRV=18.0, the ramp is 10.0 → 12.0 → 14.0 → 16.0 → 18.0, then deload at 5.0 sets (50% of MEV, also called Maintenance Volume). The step size is dictated by the volume_aggressiveness setting: Conservative (+1 set/week), Moderate (+2 sets/week), Aggressive (+3 sets/week).\n\nLoad progression varies by movement class. Squats and hinges use Load-First Double Progression in the 6–8 rep range, adding 2.5 kg when all sets hit the rep ceiling at target RIR. Horizontal and vertical presses use Standard Double Progression at 8–12 reps with 2.5 kg and 1.25 kg increments respectively. Pulling movements use Dynamic Rep-Range Progression at 10–12 reps. Isolation lifts use Rep-First Step Progression in the 12–15 rep range, adding reps set-by-set before increasing load by 1.25 kg.\n\nStall detection is automated. After two consecutive exposures failing to progress at target RIR, a micro-reset triggers: load drops by 10% (W_new = W_current × 0.90), volume holds static, and RIR target resets to 3. This unwinds accumulated fatigue and re-sensitizes the muscle. Novices get three missed exposures before stalling; advanced lifters get two. Estimated 1RM is calculated via the Epley formula (w × (1 + r/30)) with a time-decay factor of λ=0.005 day⁻¹ applied to logs older than 14 days.",
       "citationIDs": [
         "ev-hypertrophy-progression"
       ]
     },
     {
       "id": "hypertrophy-training-frequency",
-      "title": "Training Frequency: 2\u00d7 vs 3\u00d7 per Week",
-      "body": "When total weekly volume is equated, training a muscle 1\u00d7, 2\u00d7, or 3\u00d7 per week produces equivalent hypertrophy. The advantage of higher frequency is not in the frequency itself\u2014it is that higher frequencies allow higher total volume without violating the single-session ceiling of 8\u201310 sets per muscle. A lifter targeting 20 weekly sets for back cannot fit that into one session under the intra-session cap. Splitting across two or three exposures makes the target achievable without junk volume.\n\nHelm allocates session volume by dividing the weekly target by remaining exposures: V_session_base = V_target \u00f7 M. For a PPL split repeated twice weekly (M=2), a quadriceps target of 14.0 sets becomes 7.0 sets per session. Within each session, volume is distributed across primary compound slots (3\u20134 sets) and secondary isolation slots (2\u20133 sets). If a session assignment drops below 2.0 sets for any exercise, that slot is removed and its sets reallocated to remaining slots\u2014single-set exercises are mechanically ineffective.\n\nCoaches should not add a training day just to match a frequency number. Add frequency when volume demands exceed what a single session can accommodate. If a muscle's per-session allocation exceeds 10.0 effective sets, spill the excess into an additional weekly exposure or add a secondary session slot. Frequency is a volume distribution tool, not an independent hypertrophy driver.",
+      "title": "Training Frequency: 2× vs 3× per Week",
+      "body": "When total weekly volume is equated, training a muscle 1×, 2×, or 3× per week produces equivalent hypertrophy. The advantage of higher frequency is not in the frequency itself - it is that higher frequencies allow higher total volume without violating the single-session ceiling of 8–10 sets per muscle. A lifter targeting 20 weekly sets for back cannot fit that into one session under the intra-session cap. Splitting across two or three exposures makes the target achievable without junk volume.\n\nHelm allocates session volume by dividing the weekly target by remaining exposures: V_session_base = V_target ÷ M. For a PPL split repeated twice weekly (M=2), a quadriceps target of 14.0 sets becomes 7.0 sets per session. Within each session, volume is distributed across primary compound slots (3–4 sets) and secondary isolation slots (2–3 sets). If a session assignment drops below 2.0 sets for any exercise, that slot is removed and its sets reallocated to remaining slots - single-set exercises are mechanically ineffective.\n\nCoaches should not add a training day just to match a frequency number. Add frequency when volume demands exceed what a single session can accommodate. If a muscle's per-session allocation exceeds 10.0 effective sets, spill the excess into an additional weekly exposure or add a secondary session slot. Frequency is a volume distribution tool, not an independent hypertrophy driver.",
       "citationIDs": [
         "ev-hypertrophy-training-frequency"
       ]
@@ -1081,7 +1023,7 @@
     {
       "id": "hypertrophy-proximity-to-failure",
       "title": "How Close to Failure Should You Train",
-      "body": "Proximity to failure is measured in Reps in Reserve (RIR)\u2014how many more repetitions you could have completed. Hypertrophy requires 0\u20134 RIR. Above 4 RIR, motor unit recruitment and mechanical tension are insufficient to stimulate growth; those sets receive 0.00 volume credit. The optimal RIR target depends on experience: novices train at RIR 2\u20133 to protect movement mechanics while building work capacity; intermediates progress toward RIR 1\u20132; advanced lifters use RIR 0\u20131 with planned failure on final isolation sets only.\n\nAutoregulation adjusts RIR before touching load or volume. The five-tier precedence order is: Tier 1\u2014increase target RIR (e.g., 2\u21923 RIR) when ARC readiness is 0.60\u20130.69. Tier 2\u2014reduce load at the target rep range if bar velocity drops or RPE spikes. Tier 3\u2014trim secondary isolation sets when ARC is 0.45\u20130.59. Tier 4\u2014drop the final pattern slot exercise at ARC 0.35\u20130.44. Tier 5\u2014truncate to Maintenance Volume (2 sets/muscle) at ARC <0.35. Increasing RIR is always the first and least disruptive adjustment, preserving movement execution and volume while reducing neurological strain.\n\nA critical floor protection prevents chronic undertraining. If readiness gating depresses actual volume below MEV for two consecutive microcycles, the engine locks volume at exact MEV targets, forces RIR \u22653, and suspends dynamic readiness reductions. This ensures the athlete continues to receive a growth stimulus even during periods of compromised recovery.",
+      "body": "Proximity to failure is measured in Reps in Reserve (RIR) - how many more repetitions you could have completed. Hypertrophy requires 0–4 RIR. Above 4 RIR, motor unit recruitment and mechanical tension are insufficient to stimulate growth; those sets receive 0.00 volume credit. The optimal RIR target depends on experience: novices train at RIR 2–3 to protect movement mechanics while building work capacity; intermediates progress toward RIR 1–2; advanced lifters use RIR 0–1 with planned failure on final isolation sets only.\n\nAutoregulation adjusts RIR before touching load or volume. The five-tier precedence order is: Tier 1 - increase target RIR (e.g., 2→3 RIR) when ARC readiness is 0.60–0.69. Tier 2 - reduce load at the target rep range if bar velocity drops or RPE spikes. Tier 3 - trim secondary isolation sets when ARC is 0.45–0.59. Tier 4 - drop the final pattern slot exercise at ARC 0.35–0.44. Tier 5 - truncate to Maintenance Volume (2 sets/muscle) at ARC <0.35. Increasing RIR is always the first and least disruptive adjustment, preserving movement execution and volume while reducing neurological strain.\n\nA critical floor protection prevents chronic undertraining. If readiness gating depresses actual volume below MEV for two consecutive microcycles, the engine locks volume at exact MEV targets, forces RIR ≥3, and suspends dynamic readiness reductions. This ensures the athlete continues to receive a growth stimulus even during periods of compromised recovery.",
       "citationIDs": [
         "ev-hypertrophy-proximity-to-failure"
       ]
@@ -1089,7 +1031,7 @@
     {
       "id": "hypertrophy-recovery-monitoring",
       "title": "Biofeedback Titration and Overreaching Detection",
-      "body": "Volume landmarks are not static. Each microcycle, PlanKit processes three biofeedback inputs per muscle group: Soreness (S, 0\u20134 scale where 0=none, 4=severe and impairing), RIR Delta (\u0394RIR, the gap between prescribed and actual RIR), and Performance Trend (\u0394e1RM over a 2-week rolling window). These feed a state machine with four recovery states. High Recovery (S\u22641, \u0394RIR\u22640, e1RM stable or rising) increases MRV by 1.0 and adds +1 set/week. Optimal Adaptive (S=2, \u0394RIR within \u00b10.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate Fatigue (S=3 or \u0394RIR>1.0) holds volume constant. Overreaching (S=4 or \u0394e1RM <\u22122.0% across 2 consecutive weeks) drops MRV by 2.0, MEV by 1.0, and V_target by 2.0, triggering an early deload evaluation.\n\nMEV and MRV are safety-bounded: MEV cannot drop below 4.0 or exceed MEV_base + 2.0; MRV cannot drop below MEV + 2.0 or exceed MRV_base + 6.0. These boundaries prevent the engine from ratcheting an athlete into either zero stimulus or unsustainable volume.\n\nOverreaching detection uses two MRV thresholds. The soft warning cap at 0.90\u00d7MRV halves progressive volume additions and alerts the athlete that recovery capacity is saturating. The hard operational cap at 1.00\u00d7MRV strictly rejects all set additions. If a muscle group logs Performance=4 for two consecutive microcycles while operating at or above the soft cap, the engine terminates the active mesocycle and schedules a 7-day reactive deload. Reactive deloads also fire on estimated 1RM drops >5% across two sessions, persistent soreness (4/4 for >72 hours across \u22652 muscle groups), or ARC readiness <0.40 for three consecutive days.",
+      "body": "Volume landmarks are not static. Each microcycle, PlanKit processes three biofeedback inputs per muscle group: Soreness (S, 0–4 scale where 0=none, 4=severe and impairing), RIR Delta (ΔRIR, the gap between prescribed and actual RIR), and Performance Trend (Δe1RM over a 2-week rolling window). These feed a state machine with four recovery states. High Recovery (S≤1, ΔRIR≤0, e1RM stable or rising) increases MRV by 1.0 and adds +1 set/week. Optimal Adaptive (S=2, ΔRIR within ±0.5, e1RM stable) maintains MRV while adding +1 set/week. Moderate Fatigue (S=3 or ΔRIR>1.0) holds volume constant. Overreaching (S=4 or Δe1RM <−2.0% across 2 consecutive weeks) drops MRV by 2.0, MEV by 1.0, and V_target by 2.0, triggering an early deload evaluation.\n\nMEV and MRV are safety-bounded: MEV cannot drop below 4.0 or exceed MEV_base + 2.0; MRV cannot drop below MEV + 2.0 or exceed MRV_base + 6.0. These boundaries prevent the engine from ratcheting an athlete into either zero stimulus or unsustainable volume.\n\nOverreaching detection uses two MRV thresholds. The soft warning cap at 0.90×MRV halves progressive volume additions and alerts the athlete that recovery capacity is saturating. The hard operational cap at 1.00×MRV strictly rejects all set additions. If a muscle group logs Performance=4 for two consecutive microcycles while operating at or above the soft cap, the engine terminates the active mesocycle and schedules a 7-day reactive deload. Reactive deloads also fire on estimated 1RM drops >5% across two sessions, persistent soreness (4/4 for >72 hours across ≥2 muscle groups), or ARC readiness <0.40 for three consecutive days.",
       "citationIDs": [
         "ev-hypertrophy-recovery-monitoring",
         "ev-hypertrophy-recovery-monitoring-2"
@@ -1098,7 +1040,7 @@
     {
       "id": "hypertrophy-intensity-techniques",
       "title": "Drop Sets, Rest-Pause, and Stretch-Mediated Hypertrophy",
-      "body": "Intensity techniques extend a set's stimulus but do not multiply set credit. Drop sets log 1.00 for the initial set (performed at 0\u20132 RIR) plus 0.50 for the drop portion\u2014applied to the primary mover only; synergists receive 0.00 on the drop. Rest-pause and Myo-reps log 1.00 for the activation set plus 0.50 aggregated from the 3\u20134 mini-sets. A single exercise slot using either technique cannot exceed 1.50 total effective sets toward the primary target muscle, preventing arbitrary volume inflation. These techniques increase per-set stimulus density but do not replace additional working sets.\n\nLengthened partials\u2014sets performed exclusively in the stretched portion of a movement\u2014count identically to full-ROM sets (1.00) when executed within 0\u20134 RIR at long muscle lengths. Research demonstrates that loading extended muscle lengths yields equal or superior regional hypertrophy compared to shortened ranges. The engine records a length_bias field per exercise (LENGTHENED, SHORTENED, FULL) and applies a lengthened_partial_hypertrophy_modifier of 1.08 in its JSON exercise definitions.\n\nWhen an athlete selects the Stretch_Focused exercise selection bias, the engine prioritizes exercises with long muscle length resistance profiles (e.g., seated leg curls over lying leg curls for hamstrings, incline curls over preacher curls for biceps). This bias is a ranking weight applied during exercise slot selection, not a volume or load modifier. Coaches should view intensity techniques and stretch-focused exercise selection as tools within a volume framework, not replacements for adequate hard-set totals.",
+      "body": "Intensity techniques extend a set's stimulus but do not multiply set credit. Drop sets log 1.00 for the initial set (performed at 0–2 RIR) plus 0.50 for the drop portion - applied to the primary mover only; synergists receive 0.00 on the drop. Rest-pause and Myo-reps log 1.00 for the activation set plus 0.50 aggregated from the 3–4 mini-sets. A single exercise slot using either technique cannot exceed 1.50 total effective sets toward the primary target muscle, preventing arbitrary volume inflation. These techniques increase per-set stimulus density but do not replace additional working sets.\n\nLengthened partials - sets performed exclusively in the stretched portion of a movement - count identically to full-ROM sets (1.00) when executed within 0–4 RIR at long muscle lengths. Research demonstrates that loading extended muscle lengths yields equal or superior regional hypertrophy compared to shortened ranges. The engine records a length_bias field per exercise (LENGTHENED, SHORTENED, FULL) and applies a lengthened_partial_hypertrophy_modifier of 1.08 in its JSON exercise definitions.\n\nWhen an athlete selects the Stretch_Focused exercise selection bias, the engine prioritizes exercises with long muscle length resistance profiles (e.g., seated leg curls over lying leg curls for hamstrings, incline curls over preacher curls for biceps). This bias is a ranking weight applied during exercise slot selection, not a volume or load modifier. Coaches should view intensity techniques and stretch-focused exercise selection as tools within a volume framework, not replacements for adequate hard-set totals.",
       "citationIDs": [
         "ev-hypertrophy-intensity-techniques"
       ]
@@ -1106,7 +1048,7 @@
     {
       "id": "nutrition-phase-interaction",
       "title": "Caloric State and Training Parameters",
-      "body": "An athlete's nutritional phase \u2014 cut (deficit), maintain (eucaloric), or gain (surplus) \u2014 directly alters recovery capacity and therefore every volume landmark in the training engine. This is not a suggestion layer; it is a mechanical adjustment the engine applies automatically.\n\nDuring a caloric deficit, systemic recovery is impaired. The engine scales MRV down by 15\u201325%, halts progressive volume ramps at MAV rather than MRV, and prioritises intensity (\u22642 RIR) over volume accumulation. This preserves the anabolic signal per set while reducing total fatigue. MEV is raised (\u00d71.15) because more volume is required to retain muscle when energy is restricted. Max sets per muscle per session are capped at 6, and deloads come every 4\u20135 weeks.\n\nDuring a caloric surplus, the opposite occurs: recovery capacity is enhanced, MRV scales up (\u00d71.15), MEV falls (\u00d70.85) because less volume is needed to initiate growth, progression rates become aggressive (+2 to +3 sets/week), session caps rise to 10 sets per muscle, and deload frequency extends to every 6\u20138 weeks. The maintenance phase sits at baseline (\u00d71.00) with standard double progression and 8-set session caps.\n\nThese scalars are applied at mesocycle compilation and are not user-facing toggles \u2014 they are structural parameters that reflect the biological reality that you cannot train a calorie-restricted body the same way you train a well-fed one.",
+      "body": "An athlete's nutritional phase: cut (deficit), maintain (eucaloric), or gain (surplus): directly alters recovery capacity and therefore every volume landmark in the training engine. This is not a suggestion layer; it is a mechanical adjustment the engine applies automatically.\n\nDuring a caloric deficit, systemic recovery is impaired. The engine scales MRV down by 15–25%, halts progressive volume ramps at MAV rather than MRV, and prioritises intensity (≤2 RIR) over volume accumulation. This preserves the anabolic signal per set while reducing total fatigue. MEV is raised (×1.15) because more volume is required to retain muscle when energy is restricted. Max sets per muscle per session are capped at 6, and deloads come every 4–5 weeks.\n\nDuring a caloric surplus, the opposite occurs: recovery capacity is enhanced, MRV scales up (×1.15), MEV falls (×0.85) because less volume is needed to initiate growth, progression rates become aggressive (+2 to +3 sets/week), session caps rise to 10 sets per muscle, and deload frequency extends to every 6–8 weeks. The maintenance phase sits at baseline (×1.00) with standard double progression and 8-set session caps.\n\nThese scalars are applied at mesocycle compilation and are not user-facing toggles: they are structural parameters that reflect the biological reality that you cannot train a calorie-restricted body the same way you train a well-fed one.",
       "citationIDs": [
         "ev-nutrition-deficit-mrv",
         "ev-nutrition-surplus-recovery",
@@ -1116,7 +1058,7 @@
     {
       "id": "nutrition-low-energy-availability",
       "title": "Low Energy Availability and REDs Risk",
-      "body": "Low Energy Availability (LEA) occurs when energy intake is insufficient to support both exercise expenditure and basic physiological function. It is the underlying cause of Relative Energy Deficiency in Sport (REDs), a syndrome affecting metabolic rate, bone health, immunity, and reproductive function.\n\nThe engine monitors for LEA risk signals automatically. If an athlete logs persistent performance declines across more than 2 consecutive microcycles paired with low ARC readiness scores, elevated muscle soreness (4/4), and suppressed resting heart rate, the system flags potential LEA. When flagged, the engine forcibly restricts session volume to maintenance volume (MV), locks target RIR at \u22653, and prompts the athlete to evaluate their nutritional intake.\n\nLEA is not the same as a planned caloric deficit. A planned deficit is intentional, rate-limited, and monitored. LEA is often unintentional \u2014 the athlete is simply not eating enough to fuel their training \u2014 and leads to a cascade of negative outcomes that training cannot outrun. The only fix is increased energy intake.",
+      "body": "Low Energy Availability (LEA) occurs when energy intake is insufficient to support both exercise expenditure and basic physiological function. It is the underlying cause of Relative Energy Deficiency in Sport (REDs), a syndrome affecting metabolic rate, bone health, immunity, and reproductive function.\n\nThe engine monitors for LEA risk signals automatically. If an athlete logs persistent performance declines across more than 2 consecutive microcycles paired with low ARC readiness scores, elevated muscle soreness (4/4), and suppressed resting heart rate, the system flags potential LEA. When flagged, the engine forcibly restricts session volume to maintenance volume (MV), locks target RIR at ≥3, and prompts the athlete to evaluate their nutritional intake.\n\nLEA is not the same as a planned caloric deficit. A planned deficit is intentional, rate-limited, and monitored. LEA is often unintentional: the athlete is simply not eating enough to fuel their training: and leads to a cascade of negative outcomes that training cannot outrun. The only fix is increased energy intake.",
       "citationIDs": [
         "ev-nutrition-lea-risk"
       ]
@@ -1124,7 +1066,7 @@
     {
       "id": "nutrition-macro-partitioning",
       "title": "Macro Partitioning: Protein, Fat, and Carbohydrate",
-      "body": "Protein is the highest-priority macronutrient for athletes. Target 1.6\u20132.2 g/kg bodyweight daily, distributed across 3\u20135 meals with roughly 0.4\u20130.55 g/kg per feeding to repeatedly spike muscle protein synthesis. Higher intakes (upper end of the range) are recommended during caloric deficits to offset the catabolic pressure of energy restriction. Protein quality matters: prioritise complete sources (animal proteins, soy) with high leucine content (\u22652.5 g per meal) to maximally stimulate MPS.\n\nDietary fat must not fall below 0.5\u20130.7 g/kg bodyweight. Fat is essential for testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins. Severe fat restriction during a cut compounds the hormonal stress of the deficit and impairs recovery. The remainder of fat intake beyond this floor depends on personal preference and adherence.\n\nCarbohydrate is the most flexible macro and should be periodised around training demand. Higher training days warrant higher carbohydrate intake to replenish glycogen and support performance. Rest days or low-volume days can be lower to improve insulin sensitivity. During a cut, carbohydrate periodisation helps maintain training intensity while sustaining the deficit. Total carb intake fills the remaining calorie budget after protein and fat targets are satisfied.",
+      "body": "Protein is the highest-priority macronutrient for athletes. Target 1.6–2.2 g/kg bodyweight daily, distributed across 3–5 meals with roughly 0.4–0.55 g/kg per feeding to repeatedly spike muscle protein synthesis. Higher intakes (upper end of the range) are recommended during caloric deficits to offset the catabolic pressure of energy restriction. Protein quality matters: prioritise complete sources (animal proteins, soy) with high leucine content (≥2.5 g per meal) to maximally stimulate MPS.\n\nDietary fat must not fall below 0.5–0.7 g/kg bodyweight. Fat is essential for testosterone production, cell membrane integrity, and absorption of fat-soluble vitamins. Severe fat restriction during a cut compounds the hormonal stress of the deficit and impairs recovery. The remainder of fat intake beyond this floor depends on personal preference and adherence.\n\nCarbohydrate is the most flexible macro and should be periodised around training demand. Higher training days warrant higher carbohydrate intake to replenish glycogen and support performance. Rest days or low-volume days can be lower to improve insulin sensitivity. During a cut, carbohydrate periodisation helps maintain training intensity while sustaining the deficit. Total carb intake fills the remaining calorie budget after protein and fat targets are satisfied.",
       "citationIDs": [
         "ev-nutrition-protein-targets",
         "ev-nutrition-fat-minimums",
@@ -1134,7 +1076,7 @@
     {
       "id": "nutrition-body-composition-rates",
       "title": "Rate Limits for Cutting and Gaining",
-      "body": "The maximum sustainable rate of body composition change is constrained by biology, not willpower. For lean individuals, weight loss during a cut should not exceed 0.5\u20131.0% of bodyweight per week, with 0.25\u20130.5% per week recommended. Faster cuts increase the proportion of weight lost from lean mass rather than fat, slow metabolic rate more aggressively, and degrade training performance and recovery.\n\nWeight gain in a surplus should similarly not exceed 0.25\u20130.5% bodyweight per week. Beyond this rate, the ratio of fat gain to muscle gain deteriorates sharply. Since muscle protein synthesis has a finite ceiling regardless of energy surplus, excess calories beyond what supports MPS are partitioned to adipose tissue. A smaller surplus sustained for longer produces a better muscle-to-fat gain ratio than an aggressive surplus.\n\nThe engine phase table (gain \u00d70.85 MEV, cut \u00d71.15 MEV) reflects the biological reality that rate-limited changes create the most favourable environment for body recomposition. These are not prescriptive rates enforced by the engine but coaching guidelines the system can surface when an athlete's logged weight trend exceeds them.",
+      "body": "The maximum sustainable rate of body composition change is constrained by biology, not willpower. For lean individuals, weight loss during a cut should not exceed 0.5–1.0% of bodyweight per week, with 0.25–0.5% per week recommended. Faster cuts increase the proportion of weight lost from lean mass rather than fat, slow metabolic rate more aggressively, and degrade training performance and recovery.\n\nWeight gain in a surplus should similarly not exceed 0.25–0.5% bodyweight per week. Beyond this rate, the ratio of fat gain to muscle gain deteriorates sharply. Since muscle protein synthesis has a finite ceiling regardless of energy surplus, excess calories beyond what supports MPS are partitioned to adipose tissue. A smaller surplus sustained for longer produces a better muscle-to-fat gain ratio than an aggressive surplus.\n\nThe engine phase table (gain ×0.85 MEV, cut ×1.15 MEV) reflects the biological reality that rate-limited changes create the most favourable environment for body recomposition. These are not prescriptive rates enforced by the engine but coaching guidelines the system can surface when an athlete's logged weight trend exceeds them.",
       "citationIDs": [
         "ev-nutrition-rate-limits",
         "ev-nutrition-phase-table"
@@ -1143,7 +1085,7 @@
     {
       "id": "nutrition-periworkout",
       "title": "Peri-Workout Nutrition and Timing",
-      "body": "Peri-workout nutrition encompasses the meals consumed before, during, and after training. The primary goal is to fuel performance and initiate recovery without causing gastrointestinal distress during the session.\n\nThe pre-training meal (1\u20133 hours before) should contain moderate protein (20\u201340 g) and carbohydrate, with fat kept low to speed gastric emptying. A liquid or easily digestible option is preferred closer to training. Intra-workout nutrition is generally unnecessary for sessions under 60 minutes unless training fasted; for longer sessions, 30\u201360 g carbohydrate per hour can sustain performance.\n\nPost-training, the 'anabolic window' is wider than often claimed. Total daily protein intake and distribution across meals matters more than immediate post-workout timing. However, consuming 20\u201340 g of protein within 2 hours post-training is a practical habit that ensures MPS stimulation. Adding carbohydrate post-training accelerates glycogen resynthesis, which is most critical when training the same muscle group within 24 hours.\n\nNutrient timing is a refinement layer, not a replacement for total daily intake. An athlete who hits protein and calorie targets but eats at irregular times will outperform an athlete with perfect timing who undereats.",
+      "body": "Peri-workout nutrition encompasses the meals consumed before, during, and after training. The primary goal is to fuel performance and initiate recovery without causing gastrointestinal distress during the session.\n\nThe pre-training meal (1–3 hours before) should contain moderate protein (20–40 g) and carbohydrate, with fat kept low to speed gastric emptying. A liquid or easily digestible option is preferred closer to training. Intra-workout nutrition is generally unnecessary for sessions under 60 minutes unless training fasted; for longer sessions, 30–60 g carbohydrate per hour can sustain performance.\n\nPost-training, the 'anabolic window' is wider than often claimed. Total daily protein intake and distribution across meals matters more than immediate post-workout timing. However, consuming 20–40 g of protein within 2 hours post-training is a practical habit that ensures MPS stimulation. Adding carbohydrate post-training accelerates glycogen resynthesis, which is most critical when training the same muscle group within 24 hours.\n\nNutrient timing is a refinement layer, not a replacement for total daily intake. An athlete who hits protein and calorie targets but eats at irregular times will outperform an athlete with perfect timing who undereats.",
       "citationIDs": [
         "ev-nutrition-protein-targets",
         "ev-nutrition-carb-periodization"
@@ -1152,7 +1094,7 @@
     {
       "id": "nutrition-supplements",
       "title": "Evidence-Based Supplements",
-      "body": "Most supplements marketed to athletes lack robust evidence. Three stand out with strong, replicated support and low risk profiles.\n\nCreatine monohydrate (3\u20135 g/day) is the most thoroughly researched performance supplement. It increases intramuscular phosphocreatine stores, improving repeated high-intensity effort, strength, and lean mass accrual. It is safe for long-term use. A loading phase (20 g/day for 5\u20137 days) accelerates saturation but is not required; consistent daily dosing achieves the same result over 3\u20134 weeks. Benefits extend to cognitive function, making it relevant during periods of sleep restriction or high stress.\n\nCaffeine (3\u20136 mg/kg, 30\u201360 minutes pre-training) reduces perceived exertion, improves muscular endurance, and sharpens focus. Effects are more pronounced in non-habitual users; chronic high intake attenuates response. Cycling off caffeine periodically restores sensitivity. Doses exceeding 6 mg/kg increase anxiety and jitter without additional performance benefit.\n\nBeta-alanine (3\u20136 g/day) elevates intramuscular carnosine, buffering hydrogen ion accumulation during high-intensity efforts lasting 60\u2013240 seconds. It is most relevant for athletes performing repeated sprint or high-rep training. Paraesthesia (tingling) is a benign side effect that can be mitigated with split dosing or sustained-release formulations.\n\nProtein powder (whey or plant-based blends) is not a supplement in the ergogenic sense \u2014 it is a convenience food that helps athletes hit daily protein targets. It offers no benefit beyond equivalent protein from whole food, but its practicality for peri-workout use and meal gaps makes it a staple tool.",
+      "body": "Most supplements marketed to athletes lack robust evidence. Three stand out with strong, replicated support and low risk profiles.\n\nCreatine monohydrate (3–5 g/day) is the most thoroughly researched performance supplement. It increases intramuscular phosphocreatine stores, improving repeated high-intensity effort, strength, and lean mass accrual. It is safe for long-term use. A loading phase (20 g/day for 5–7 days) accelerates saturation but is not required; consistent daily dosing achieves the same result over 3–4 weeks. Benefits extend to cognitive function, making it relevant during periods of sleep restriction or high stress.\n\nCaffeine (3–6 mg/kg, 30–60 minutes pre-training) reduces perceived exertion, improves muscular endurance, and sharpens focus. Effects are more pronounced in non-habitual users; chronic high intake attenuates response. Cycling off caffeine periodically restores sensitivity. Doses exceeding 6 mg/kg increase anxiety and jitter without additional performance benefit.\n\nBeta-alanine (3–6 g/day) elevates intramuscular carnosine, buffering hydrogen ion accumulation during high-intensity efforts lasting 60–240 seconds. It is most relevant for athletes performing repeated sprint or high-rep training. Paraesthesia (tingling) is a benign side effect that can be mitigated with split dosing or sustained-release formulations.\n\nProtein powder (whey or plant-based blends) is not a supplement in the ergogenic sense: it is a convenience food that helps athletes hit daily protein targets. It offers no benefit beyond equivalent protein from whole food, but its practicality for peri-workout use and meal gaps makes it a staple tool.",
       "citationIDs": [
         "ev-nutrition-creatine",
         "ev-nutrition-caffeine",
@@ -1162,7 +1104,7 @@
     {
       "id": "nutrition-recovery",
       "title": "Nutrition-Supported Recovery: Sleep, Hydration, Refeeds, and Diet Breaks",
-      "body": "Recovery is a nutritional event as much as a training event. Three domains interact directly with the engine's readiness and progression systems.\n\nHydration status directly impacts strength, endurance, and cognitive function. Even mild dehydration (2% body mass loss) measurably impairs performance. Athletes should consume 5\u201310 mL/kg bodyweight 2\u20134 hours pre-training and replace 150% of fluid lost during exercise within 4\u20136 hours post-training. Electrolyte replacement (sodium and potassium) is critical for sessions exceeding 60 minutes or training in hot environments.\n\nSleep-nutrition interaction is bidirectional. Sleep restriction below 6 hours reduces insulin sensitivity, elevates evening cortisol, blunts MPS, and disrupts appetite-regulating hormones (elevated ghrelin, reduced leptin) \u2014 making dietary adherence harder. Nutritional strategies that support sleep include avoiding large meals within 2\u20133 hours of bedtime, moderating evening caffeine intake, and ensuring adequate magnesium and zinc. The engine already scales volume when ARC readiness is depressed by poor sleep; nutrition amplifies or mitigates the root cause.\n\nRefeeds and diet breaks are tools for prolonged deficits. A refeed (1\u20132 days at maintenance calories with elevated carbohydrate) restores leptin and glycogen, improving training quality and psychological adherence. A diet break (1\u20132 weeks at maintenance) every 4\u20138 weeks of deficit reduces metabolic adaptation and preserves lean mass. These are particularly relevant when the engine is operating in cut-phase parameters with compressed MRV \u2014 if an athlete cannot sustain performance at those reduced volumes, a diet break may be the correct intervention, not a training adjustment.",
+      "body": "Recovery is a nutritional event as much as a training event. Three domains interact directly with the engine's readiness and progression systems.\n\nHydration status directly impacts strength, endurance, and cognitive function. Even mild dehydration (2% body mass loss) measurably impairs performance. Athletes should consume 5–10 mL/kg bodyweight 2–4 hours pre-training and replace 150% of fluid lost during exercise within 4–6 hours post-training. Electrolyte replacement (sodium and potassium) is critical for sessions exceeding 60 minutes or training in hot environments.\n\nSleep-nutrition interaction is bidirectional. Sleep restriction below 6 hours reduces insulin sensitivity, elevates evening cortisol, blunts MPS, and disrupts appetite-regulating hormones (elevated ghrelin, reduced leptin): making dietary adherence harder. Nutritional strategies that support sleep include avoiding large meals within 2–3 hours of bedtime, moderating evening caffeine intake, and ensuring adequate magnesium and zinc. The engine already scales volume when ARC readiness is depressed by poor sleep; nutrition amplifies or mitigates the root cause.\n\nRefeeds and diet breaks are tools for prolonged deficits. A refeed (1–2 days at maintenance calories with elevated carbohydrate) restores leptin and glycogen, improving training quality and psychological adherence. A diet break (1–2 weeks at maintenance) every 4–8 weeks of deficit reduces metabolic adaptation and preserves lean mass. These are particularly relevant when the engine is operating in cut-phase parameters with compressed MRV: if an athlete cannot sustain performance at those reduced volumes, a diet break may be the correct intervention, not a training adjustment.",
       "citationIDs": [
         "ev-nutrition-refeeds-diet-breaks",
         "ev-nutrition-hydration",
@@ -1183,7 +1125,7 @@
     {
       "id": "recovery-readiness-bands",
       "title": "Readiness Bands and Composite Index",
-      "body": "Four operational readiness bands (High/Peaking, Normal/Baseline, Low, Depleted) defined by the composite Readiness Index formula (RI = 0.6 \u00d7 ARC + 0.4 \u00d7 subjective), with per-band volume multipliers and RPE caps that gate daily session intensity without overriding mesocycle volume plans.",
+      "body": "Four operational readiness bands (High/Peaking, Normal/Baseline, Low, Depleted) defined by the composite Readiness Index formula (RI = 0.6 × ARC + 0.4 × subjective), with per-band volume multipliers and RPE caps that gate daily session intensity without overriding mesocycle volume plans.",
       "citationIDs": [
         "ev-recovery-readiness-bands",
         "ev-recovery-readiness-index"
@@ -1217,7 +1159,7 @@
     {
       "id": "recovery-deload",
       "title": "Deload Policy and Execution",
-      "body": "Scheduled deloads at fixed mesocycle boundaries (4\u20136 week cycles), reactive deloads triggered by autonomic suppression, performance regression, or joint discomfort thresholds, severity-graded parameter profiles for sets/intensity/RIR, nutritional-phase modulation, and post-deload landmark resets for volume, load, and ARC baseline.",
+      "body": "Scheduled deloads at fixed mesocycle boundaries (4–6 week cycles), reactive deloads triggered by autonomic suppression, performance regression, or joint discomfort thresholds, severity-graded parameter profiles for sets/intensity/RIR, nutritional-phase modulation, and post-deload landmark resets for volume, load, and ARC baseline.",
       "citationIDs": [
         "ev-recovery-deload-types",
         "ev-recovery-deload-params",
@@ -1227,7 +1169,7 @@
     {
       "id": "recovery-acwr",
       "title": "ACWR Workload Monitoring and Spike Guards",
-      "body": "EWMA acute:chronic workload ratio (\u03bb_a=0.25, \u03bb_c=0.069) with RPE-weighted set load calculation, four operational zones (Under-training, Optimal, Warning, Spike Danger), and deterministic spike guards that enforce volume clamps and prohibit catch-up when ACWR exceeds safety thresholds.",
+      "body": "Helm computes an EWMA acute:chronic workload ratio (7-day acute, 28-day chronic) and can display it. Literature does not support using that ratio to predict injury or to cancel sessions. Skip-gating from an ACWR spike is behind a flag and is off by default.\n\nReadiness still trims volume on depleted days through the cheapest-first cascade (cap RPE, then isolation, then compounds at the MEV floor). ACWR is a readout, not a veto, unless you turn the experimental skip flag on.",
       "citationIDs": [
         "ev-recovery-ewma-acwr"
       ]
@@ -1235,7 +1177,7 @@
     {
       "id": "strength-rpe-rir",
       "title": "RPE and RIR Calibration",
-      "body": "Rating of Perceived Exertion (RPE) maps directly to Reps in Reserve (RIR): RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR (failure). Only sets within 0-4 RIR (RPE 6-10) count as effective hard sets. Sets at RIR > 4 produce insufficient mechanical tension for hypertrophic or strength adaptation. Calibration improves with training experience; novices tend to underestimate RIR (leave more reps than perceived).",
+      "body": "Rating of Perceived Exertion (RPE) maps directly to Reps in Reserve (RIR): RPE 6 = 4 RIR, RPE 7 = 3 RIR, RPE 8 = 2 RIR, RPE 9 = 1 RIR, RPE 10 = 0 RIR (failure). Stimulus credit is graded rather than binary: full credit through RIR 2, then a taper, then zero from RIR 6 (warmup). Calibration improves with training experience; novices tend to underestimate RIR (leave more reps than perceived).",
       "citationIDs": [
         "ev-strength-rpe-rir-definition"
       ]
@@ -1261,7 +1203,7 @@
     {
       "id": "strength-stall-detection",
       "title": "Stall Detection and Micro-Reset",
-      "body": "Stall detection uses a 2-exposure rule for intermediate and advanced lifters. A stall is confirmed when an exercise fails to progress in reps or load across two consecutive sessions at or above target RIR. The prescribed action is a 10% load micro-reset (W_new = W \u00d7 0.90) with RIR reset to 3, followed by resumed progression from the new baseline. Volume-based stall solutions (adding sets) increase fatigue without addressing the underlying adaptive stall and are avoided. Novices use a 3-exposure threshold due to higher session-to-session variability.",
+      "body": "Stall detection uses a 2-exposure rule for intermediate and advanced lifters. A stall is confirmed when an exercise fails to progress in reps or load across two consecutive sessions at or above target RIR. The prescribed action is a 10% load micro-reset (W_new = W × 0.90) with RIR reset to 3, followed by resumed progression from the new baseline. Volume-based stall solutions (adding sets) increase fatigue without addressing the underlying adaptive stall and are avoided. Novices use a 3-exposure threshold due to higher session-to-session variability.",
       "citationIDs": [
         "ev-strength-stall-detection",
         "ev-strength-experience-progression"
@@ -1270,7 +1212,7 @@
     {
       "id": "strength-1rm-estimation",
       "title": "1RM Estimation and Strength Tracking",
-      "body": "Estimated 1RM uses the Epley formula (w \u00d7 (1 + r/30)) computed from submaximal sets within 0-4 RIR. Historical e1RM data decays at \u03bb = 0.005/day after 14 days to model detraining during layoffs. Initial working loads for new exercises are derived from time-decayed e1RM by reversing the Epley equation. This submaximal approach avoids the injury risk and program disruption of direct 1RM testing while providing a reliable longitudinal strength metric for progression decisions.",
+      "body": "Estimated 1RM uses the Epley formula (w × (1 + r/30)) computed from submaximal sets within 0-4 RIR. Historical e1RM data decays at λ = 0.005/day after 14 days to model detraining during layoffs. Initial working loads for new exercises are derived from time-decayed e1RM by reversing the Epley equation. This submaximal approach avoids the injury risk and program disruption of direct 1RM testing while providing a reliable longitudinal strength metric for progression decisions.",
       "citationIDs": [
         "ev-strength-epley-1rm",
         "ev-strength-1rm-time-decay",
@@ -1280,7 +1222,7 @@
     {
       "id": "strength-experience-tiers",
       "title": "Experience-Tier Progression Architecture",
-      "body": "Progression parameters differ by training age. Novices (<1 yr, high neural adaptation rate) use fixed weekly load increments with wide rep windows and a lenient 3-exposure stall threshold. Intermediates (1-4 yrs) use standard double progression per movement class with 2-exposure stall. Advanced lifters (>4 yrs, diminishing adaptation rate) require micro-periodized wave loading \u2014 alternating high-load/low-rep and low-load/high-rep sessions \u2014 with micro-scaled load jumps (+1.0 kg) and a 2-exposure stall threshold. These tiers are set during onboarding but only apply at mesocycle boundaries, never mid-block.",
+      "body": "Progression parameters differ by training age. Novices (<1 yr, high neural adaptation rate) use fixed weekly load increments with wide rep windows and a lenient 3-exposure stall threshold. Intermediates (1-4 yrs) use standard double progression per movement class with 2-exposure stall. Advanced lifters (>4 yrs, diminishing adaptation rate) require micro-periodized wave loading: alternating high-load/low-rep and low-load/high-rep sessions: with micro-scaled load jumps (+1.0 kg) and a 2-exposure stall threshold. These tiers are set during onboarding but only apply at mesocycle boundaries, never mid-block.",
       "citationIDs": [
         "ev-strength-experience-progression"
       ]
@@ -1288,7 +1230,7 @@
     {
       "id": "strength-autoregulation",
       "title": "Autoregulation, Readiness Gating, and Deload Policy",
-      "body": "Session intensity and volume auto-adjust via a 5-tier precedence order based on ARC readiness: increase RIR \u2192 reduce load \u2192 trim isolation sets \u2192 drop pattern slots \u2192 truncate to maintenance volume. Deloads occur on schedule (every 4-6 weeks) or reactively (e1RM drop >5%, persistent soreness 4/4, or ARC < 0.40 for 3 days). RIR follows a structured ramp across the mesocycle (W1 3 RIR \u2192 Peak 0-1 RIR). MEV floor protection prevents readiness gating from depressing volume below MEV for 2+ consecutive weeks.",
+      "body": "Session intensity and volume auto-adjust via a 5-tier precedence order based on ARC readiness: increase RIR → reduce load → trim isolation sets → drop pattern slots → truncate to maintenance volume. Deloads occur on schedule (every 4-6 weeks) or reactively (e1RM drop >5%, persistent soreness 4/4, or ARC < 0.40 for 3 days). RIR follows a structured ramp across the mesocycle (W1 3 RIR → Peak 0-1 RIR). MEV floor protection prevents readiness gating from depressing volume below MEV for 2+ consecutive weeks.",
       "citationIDs": [
         "ev-strength-autoregulation",
         "ev-strength-deload",
@@ -1371,19 +1313,19 @@
     {
       "id": "endurance-energy-systems",
       "title": "Energy Systems and Metabolic Demands",
-      "body": "How the ATP-PCr, glycolytic, and oxidative systems work concurrently from exercise onset, why the aerobic crossover occurs around 75 seconds, and why a robust aerobic base is a prerequisite \u2014 not an antagonist \u2014 for sustaining high training volumes and recovering between intense bouts.",
+      "body": "How the ATP-PCr, glycolytic, and oxidative systems work concurrently from exercise onset, why the aerobic crossover occurs around 75 seconds, and why a robust aerobic base is a prerequisite: not an antagonist: for sustaining high training volumes and recovering between intense bouts.",
       "citationIDs": []
     },
     {
       "id": "endurance-interference-effect",
       "title": "The Interference Effect: History and Modern Understanding",
-      "body": "The 1980 Hickson study that birthed the 'cardio kills gains' dogma, why its extreme 11-session/week protocol exaggerated the effect, and how modern meta-analyses reveal interference is specific to explosive power \u2014 not hypertrophy or maximal strength \u2014 and is primarily a CNS/neurological phenomenon manageable through session separation.",
+      "body": "The 1980 Hickson study that birthed the 'cardio kills gains' dogma, why its extreme 11-session/week protocol exaggerated the effect, and how modern meta-analyses reveal interference is specific to explosive power: not hypertrophy or maximal strength: and is primarily a CNS/neurological phenomenon manageable through session separation.",
       "citationIDs": []
     },
     {
       "id": "endurance-ampk-mtorc1",
       "title": "AMPK vs. mTORC1 Molecular Antagonism",
-      "body": "The intracellular signaling conflict at the heart of the interference effect: endurance training activates AMPK (the energy sensor that halts anabolic processes), strength training activates mTORC1 (the master driver of muscle protein synthesis), and AMPK directly inhibits mTORC1. Temporal separation of 3+ hours \u2014 ideally 24 \u2014 allows AMPK to return to baseline so mTORC1 can respond fully to the lifting stimulus.",
+      "body": "The intracellular signaling conflict at the heart of the interference effect: endurance training activates AMPK (the energy sensor that halts anabolic processes), strength training activates mTORC1 (the master driver of muscle protein synthesis), and AMPK directly inhibits mTORC1. Temporal separation of 3+ hours: ideally 24: allows AMPK to return to baseline so mTORC1 can respond fully to the lifting stimulus.",
       "citationIDs": []
     },
     {
@@ -1401,25 +1343,25 @@
     {
       "id": "endurance-minimum-effective-dose",
       "title": "Minimum Effective Dose for Health and Longevity",
-      "body": "90 minutes/week of moderate activity delivers a 14% all-cause mortality reduction and 3 years of added life expectancy. 150 minutes/week pushes cardiovascular mortality reduction past 20\u201330%. For the strength-focused athlete, 2\u20133 weekly 30-minute LISS sessions (cycling, incline walking) easily hit this dose without generating the CNS fatigue, glycogen depletion, or mechanical damage that triggers interference \u2014 rendering it entirely safe for preserving maximal strength and hypertrophy.",
+      "body": "90 minutes/week of moderate activity delivers a 14% all-cause mortality reduction and 3 years of added life expectancy. 150 minutes/week pushes cardiovascular mortality reduction past 20–30%. For the strength-focused athlete, 2–3 weekly 30-minute LISS sessions (cycling, incline walking) easily hit this dose without generating the CNS fatigue, glycogen depletion, or mechanical damage that triggers interference: rendering it entirely safe for preserving maximal strength and hypertrophy.",
       "citationIDs": []
     },
     {
       "id": "endurance-polarized-training",
       "title": "Polarized Training Intensity Distribution",
-      "body": "The 80/20 model used by elite endurance athletes: ~80% of sessions at strictly low intensity (Zone 1, below LT1, <2 mmol/L lactate) and ~15\u201320% at very high intensity (Zone 3, above LT2, >4 mmol/L). Zone 2 'grey zone' training (between thresholds, 2\u20134 mmol/L) is deliberately avoided \u2014 it's intense enough to deplete glycogen and elevate cortisol but not intense enough to drive maximal stroke volume or VO\u2082max adaptations. For the concurrent athlete, polarized distribution preserves adaptive reserve for strength training while delivering superior endurance outcomes.",
+      "body": "The 80/20 model used by elite endurance athletes: ~80% of sessions at strictly low intensity (Zone 1, below LT1, <2 mmol/L lactate) and ~15–20% at very high intensity (Zone 3, above LT2, >4 mmol/L). Zone 2 'grey zone' training (between thresholds, 2–4 mmol/L) is deliberately avoided: it's intense enough to deplete glycogen and elevate cortisol but not intense enough to drive maximal stroke volume or VO₂max adaptations. For the concurrent athlete, polarized distribution preserves adaptive reserve for strength training while delivering superior endurance outcomes.",
       "citationIDs": []
     },
     {
       "id": "endurance-respiratory-metaboreflex",
       "title": "Respiratory Muscle Metaboreflex and Fatigue Management",
-      "body": "During heavy sustained exercise, a fatigued diaphragm triggers the respiratory muscle metaboreflex \u2014 a protective reflex that constricts blood vessels in the working limbs to redirect cardiac output to the struggling respiratory muscles. The athlete experiences sudden, severe leg fatigue that originates from respiratory insufficiency, not muscular failure. Inspiratory Muscle Training (IMT, breathing against resistance) strengthens the diaphragm, delaying metaboreflex activation and preserving limb blood flow. Self-Myofascial Release (foam rolling) improves tissue perfusion and lactate clearance between sessions.",
+      "body": "During heavy sustained exercise, a fatigued diaphragm triggers the respiratory muscle metaboreflex: a protective reflex that constricts blood vessels in the working limbs to redirect cardiac output to the struggling respiratory muscles. The athlete experiences sudden, severe leg fatigue that originates from respiratory insufficiency, not muscular failure. Inspiratory Muscle Training (IMT, breathing against resistance) strengthens the diaphragm, delaying metaboreflex activation and preserving limb blood flow. Self-Myofascial Release (foam rolling) improves tissue perfusion and lactate clearance between sessions.",
       "citationIDs": []
     },
     {
       "id": "lifting-attentional-focus",
       "title": "Mind-Muscle Connection & Attentional Focus",
-      "body": "How your cognitive focus \u2014 internal (on the muscle) vs external (on the outcome) \u2014 alters neuromuscular recruitment, force output, and long-term adaptation. The right focus depends entirely on load and goal.",
+      "body": "How your cognitive focus: internal (on the muscle) vs external (on the outcome): alters neuromuscular recruitment, force output, and long-term adaptation. The right focus depends entirely on load and goal.",
       "citationIDs": []
     },
     {
@@ -1431,7 +1373,7 @@
     {
       "id": "lifting-deadlift-kinematics",
       "title": "Deadlift: Sumo vs Conventional",
-      "body": "How stance width, foot angle, and anthropometry dictate the choice between sumo and conventional deadlifts \u2014 and why neither style is inherently superior.",
+      "body": "How stance width, foot angle, and anthropometry dictate the choice between sumo and conventional deadlifts: and why neither style is inherently superior.",
       "citationIDs": []
     },
     {
@@ -1443,7 +1385,7 @@
     {
       "id": "lifting-bracing-stability",
       "title": "Bracing, Intra-Abdominal Pressure & Core Stability",
-      "body": "How to create a rigid spinal cylinder through 360\u00b0 bracing, and why loaded carries are the best transfer exercise for spinal stability under heavy loads.",
+      "body": "How to create a rigid spinal cylinder through 360° bracing, and why loaded carries are the best transfer exercise for spinal stability under heavy loads.",
       "citationIDs": []
     },
     {
@@ -1455,7 +1397,7 @@
     {
       "id": "lifting-unilateral-stability",
       "title": "Unilateral Training & Stability Myths",
-      "body": "Why unilateral work is essential for structural balance but can't replace bilateral lifts for max strength \u2014 and why unstable surface training (BOSU balls, balance boards) is actively counterproductive for strength and hypertrophy.",
+      "body": "Why unilateral work is essential for structural balance but can't replace bilateral lifts for max strength: and why unstable surface training (BOSU balls, balance boards) is actively counterproductive for strength and hypertrophy.",
       "citationIDs": []
     },
     {

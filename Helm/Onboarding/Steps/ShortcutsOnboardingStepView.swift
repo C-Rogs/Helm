@@ -23,7 +23,7 @@ struct ShortcutsOnboardingStepView: View {
 
     var body: some View {
         OnboardingStepChrome(
-            step: .shortcuts,
+            step: .welcome,
             stepIndex: stepIndex,
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,

@@ -11,6 +11,7 @@ struct SettingsView: View {
     @Bindable private var trainPreferences = TrainPreferences.shared
     @Bindable private var focusModePreferences = FocusModePreferences.shared
     @Bindable private var festivalModePreferences = FestivalModePreferences.shared
+    @Bindable private var friendsRelease = FriendsReleasePreferences.shared
 
     @Environment(\.scenePhase) private var scenePhase
 
@@ -23,10 +24,12 @@ struct SettingsView: View {
     @State private var watchStatusLabel = "…"
     @State private var spotifyStatusLabel = "…"
     @State private var showPlanBuilder = false
+    @State private var advancedTapCount = 0
 
     var body: some View {
         NavigationStack {
             List {
+                feedbackSection
                 trainingSection
                 nutritionSection
                 coachSection
@@ -35,14 +38,19 @@ struct SettingsView: View {
                 trainSessionSection
                 restTimerSection
                 appearanceSection
-                batterySection
+                if friendsRelease.showsAdvanced {
+                    batterySection
+                }
                 dataSection
-                advancedSection
+                if friendsRelease.showsAdvanced {
+                    advancedSection
+                }
+                versionSection
             }
             .helmSettingsListChrome()
             .navigationTitle("Settings")
             .sheet(isPresented: $showPlanBuilder) {
-                PlanBuilderFlowView()
+                PlanBuilderFlowView(hidesMaintenanceField: false)
             }
             .task {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
@@ -57,22 +65,35 @@ struct SettingsView: View {
         }
     }
 
+    private var feedbackSection: some View {
+        Section {
+            settingsLink("Send feedback", value: nil) {
+                FeedbackView()
+            }
+        } footer: {
+            Text("Bug or idea. Lands with Cam. Optionally attach coach chat.")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+    }
+
     private var trainingSection: some View {
         Section("Training") {
-            settingsSheetButton("New workout plan") {
+            settingsSheetButton("Training plan") {
                 showPlanBuilder = true
-            }
-            settingsLink("Training Plan", value: nil) {
-                PhaseGoalSettingsView()
             }
             settingsLink("Body Profile", value: nil) {
                 BodyProfileSettingsView()
             }
-            settingsLink("Custom Exercises", value: nil) {
-                SettingsCustomExercisesView()
-            }
-            settingsLink("Sources & Methodology", value: nil) {
-                SourcesMethodologyView()
+            if friendsRelease.showsAdvanced {
+                settingsLink("Plan details", value: nil) {
+                    PhaseGoalSettingsView()
+                }
+                settingsLink("Custom Exercises", value: nil) {
+                    SettingsCustomExercisesView()
+                }
+                settingsLink("Sources & Methodology", value: nil) {
+                    SourcesMethodologyView()
+                }
             }
         }
     }
@@ -91,7 +112,7 @@ struct SettingsView: View {
     private var coachSection: some View {
         Section("Coach") {
             settingsLink("Coach settings", value: coachKeyStatusLabel) {
-                CoachSettingsView()
+                CoachSettingsView(showsSecretFields: friendsRelease.showsAdvanced)
             }
             settingsLink("Coach Memory", value: memoryStatusLabel) {
                 MemoryProfileEditorView()
@@ -104,14 +125,16 @@ struct SettingsView: View {
             settingsLink("Apple Health", value: healthStatusLabel) {
                 AppleHealthSettingsView()
             }
-            settingsLink("Spotify", value: spotifyStatusLabel) {
-                SpotifySettingsView()
-            }
-            settingsLink("Calendar Hints", value: calendarStatusLabel) {
-                CalendarHintStatusView()
-            }
-            settingsLink("Watch Sync", value: watchStatusLabel) {
-                WatchSyncStatusView()
+            if friendsRelease.showsAdvanced {
+                settingsLink("Spotify", value: spotifyStatusLabel) {
+                    SpotifySettingsView()
+                }
+                settingsLink("Calendar Hints", value: calendarStatusLabel) {
+                    CalendarHintStatusView()
+                }
+                settingsLink("Watch Sync", value: watchStatusLabel) {
+                    WatchSyncStatusView()
+                }
             }
         }
     }
@@ -230,31 +253,35 @@ struct SettingsView: View {
                 HapticEngine.shared.play(.selection)
             }
 
-            Picker("Layout", selection: $coordinator.skin) {
-                ForEach(HelmSkin.selectableSkins) { skin in
-                    Text(skin.label).tag(skin)
+            if friendsRelease.showsAdvanced {
+                Picker("Layout", selection: $coordinator.skin) {
+                    ForEach(HelmSkin.selectableSkins) { skin in
+                        Text(skin.label).tag(skin)
+                    }
                 }
-            }
-            .pickerStyle(.menu)
-            .helmListRowChrome()
-            .onChange(of: coordinator.skin) { _, _ in
-                HapticEngine.shared.play(.selection)
-            }
+                .pickerStyle(.menu)
+                .helmListRowChrome()
+                .onChange(of: coordinator.skin) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
 
-            Picker("Font", selection: $coordinator.prefersSystemFonts) {
-                Text("Bundled").tag(false)
-                Text("System").tag(true)
-            }
-            .pickerStyle(.segmented)
-            .helmListRowChrome()
-            .onChange(of: coordinator.prefersSystemFonts) { _, _ in
-                HapticEngine.shared.play(.selection)
+                Picker("Font", selection: $coordinator.prefersSystemFonts) {
+                    Text("Bundled").tag(false)
+                    Text("System").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .helmListRowChrome()
+                .onChange(of: coordinator.prefersSystemFonts) { _, _ in
+                    HapticEngine.shared.play(.selection)
+                }
             }
         } header: {
             Text("Appearance")
         } footer: {
-            Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
-                .helmType(.body, color: HelmColor.fgMuted)
+            if friendsRelease.showsAdvanced {
+                Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
         }
     }
 
@@ -286,14 +313,19 @@ struct SettingsView: View {
             settingsLink("Data & Backup", value: nil) {
                 DataSafetyView()
             }
-            settingsLink("Export health data", value: nil) {
-                SchemaV2ExportView()
+            if friendsRelease.showsAdvanced {
+                settingsLink("Export health data", value: nil) {
+                    SchemaV2ExportView()
+                }
             }
         }
     }
 
     private var advancedSection: some View {
         Section("Advanced") {
+            settingsLink("Shortcuts setup", value: nil) {
+                MorningBriefAutomationGuideView()
+            }
             settingsLink("Diagnostics", value: nil) {
                 DiagnosticsView(environment: ExportEnvironmentFactory.current(
                     schemaVersion: PersistenceBootstrap.schemaVersion
@@ -310,6 +342,17 @@ struct SettingsView: View {
                 InSessionCoachDebugView()
             }
             #endif
+        }
+    }
+
+    private var versionSection: some View {
+        Section {
+            Text(versionLabel)
+                .helmType(.body, color: HelmColor.fgMuted)
+                .frame(maxWidth: .infinity)
+                .onTapGesture { registerAdvancedTap() }
+                .accessibilityAddTraits(.isButton)
+                .accessibilityHint("Tap seven times to show advanced settings")
         }
     }
 
@@ -392,7 +435,7 @@ struct SettingsView: View {
         notificationStatusLabel = notificationSummary(notificationStatus)
         restNotificationNeedsPermission = notificationStatus == .denied || notificationStatus == .notDetermined
 
-        coachKeyStatusLabel = APIKeyStore().hasKey(kind: .gemini) ? "Key saved" : "No key"
+        coachKeyStatusLabel = APIKeyStore().hasKey(kind: .gemini) ? "Ready" : "Unavailable"
 
         let memoryProfile = try? PersistenceBootstrap.persistenceStore.memoryProfile.load()
         if let profile = memoryProfile {
@@ -437,6 +480,25 @@ struct SettingsView: View {
         if coordinator.isCompanionLive { return "Live" }
         if coordinator.isReachable { return "Reachable" }
         return "Reconnect"
+    }
+
+    private var versionLabel: String {
+        let version = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0"
+        let build = Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "1"
+        return "Signal \(version) (\(build))"
+    }
+
+    private func registerAdvancedTap() {
+        #if DEBUG
+        return
+        #else
+        advancedTapCount += 1
+        if advancedTapCount >= 7 {
+            friendsRelease.advancedUnlocked = true
+            HapticEngine.shared.play(.thresholdInsight)
+            advancedTapCount = 0
+        }
+        #endif
     }
 }
 

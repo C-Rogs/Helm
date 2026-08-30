@@ -4,6 +4,8 @@ import HealthKitIngest
 import SwiftUI
 
 struct CoachSettingsView: View {
+    var showsSecretFields: Bool = true
+
     @State private var preferences = ProviderPreferencesStore()
     @State private var geminiKey = ""
     @State private var openRouterKey = ""
@@ -22,8 +24,12 @@ struct CoachSettingsView: View {
     var body: some View {
         Form {
             Section {
-                Text("Coach chat uses Gemini. OpenRouter powers photo meal vision below.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
+                Text(
+                    showsSecretFields
+                        ? "Coach chat uses Gemini. OpenRouter is the photo-meal fallback."
+                        : (keyStore.hasKey(kind: .gemini) ? "Coach is ready." : "Coach is unavailable on this build.")
+                )
+                .helmType(.body, color: HelmColor.fgSecondary)
             }
 
             Section("Coach name") {
@@ -36,6 +42,7 @@ struct CoachSettingsView: View {
                     .helmType(.body, color: HelmColor.fgMuted)
             }
 
+            if showsSecretFields {
             Section("Concurrency") {
                 Toggle("Allow Chat and workout coach at the same time", isOn: $allowsParallelCoaches)
                     .onChange(of: allowsParallelCoaches) { _, newValue in
@@ -139,18 +146,13 @@ struct CoachSettingsView: View {
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
             }
+            }
         }
         .navigationTitle("Coach settings")
         .helmScreenBackground()
         .scrollContentBackground(.hidden)        .onAppear {
             coachDisplayName = CoachDisplayNameStore.name
             allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
-            if geminiKey.isEmpty {
-                geminiKey = keyStore.displayValue(for: .gemini)
-            }
-            if openRouterKey.isEmpty {
-                openRouterKey = keyStore.displayValue(for: .openRouter)
-            }
             keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "No key saved yet."
             refreshOpenRouterStatus()
         }
@@ -204,7 +206,6 @@ struct CoachSettingsView: View {
                     openRouterStatus = wasNew
                         ? "Cloud key provisioned and saved."
                         : "Existing cloud key restored."
-                    openRouterKey = keyStore.displayValue(for: .openRouter)
                     HapticEngine.shared.play(.selection)
                 case .alreadyPresent:
                     openRouterStatus = "OpenRouter key already in Keychain."

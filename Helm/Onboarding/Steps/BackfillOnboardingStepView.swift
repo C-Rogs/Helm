@@ -20,6 +20,7 @@ struct BackfillOnboardingStepView: View {
         isComplete: false
     )
     @State private var hasStarted = false
+    @State private var revealDetailsVisible = false
 
     var body: some View {
         OnboardingStepChrome(
@@ -27,6 +28,8 @@ struct BackfillOnboardingStepView: View {
             stepIndex: stepIndex,
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
+            primaryTitle: "Get started",
+            skipTitle: showsFlowControls ? "Skip import" : nil,
             onPrimary: onContinue,
             onBack: onBack,
             onSkip: onSkip
@@ -99,6 +102,41 @@ struct BackfillOnboardingStepView: View {
         }
         await ReadinessBootstrap.readinessService.refresh()
         HapticEngine.shared.play(.selection)
+    }
+
+    @ViewBuilder
+    private var payoffSection: some View {
+        if case let .scored(score) = ReadinessBootstrap.readinessService.state {
+            let helmState = HelmState.readiness(score: Double(score.score))
+            VStack(spacing: HelmSpacing.md) {
+                Text("Your first readiness score")
+                    .font(HelmTypography.headline)
+                    .foregroundStyle(HelmColor.fg)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                ArcRevealGauge(
+                    targetValue: Double(score.score),
+                    state: helmState,
+                    reveal: true,
+                    reduceMotion: reduceMotion,
+                    detailsVisible: $revealDetailsVisible,
+                    onRevealStart: {
+                        HapticEngine.shared.play(.readinessReveal)
+                    }
+                ) { displayValue in
+                    VStack(spacing: HelmSpacing.xxs) {
+                        HelmNumericText(Int(displayValue.rounded()))
+                            .helmType(.heroNumber, color: HelmColor.color(for: helmState))
+                        Text(helmState.label)
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                    }
+                }
+                .frame(maxWidth: 200)
+                .frame(maxWidth: .infinity)
+            }
+            .padding(HelmSpacing.md)
+            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+        }
     }
 }
 

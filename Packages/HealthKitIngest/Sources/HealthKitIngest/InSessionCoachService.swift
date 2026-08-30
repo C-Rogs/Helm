@@ -63,8 +63,9 @@ public enum CoachProposalFailure: Sendable, Equatable {
             return "Couldn't apply that change: exercise order didn't match this session."
         case .exerciseNotFound:
             return "Couldn't apply that change: exercise not found in the catalogue."
-        case .duplicateExercise:
-            return "Couldn't apply that change: that exercise is already in this session."
+        case .duplicateExercise(let exerciseID):
+            let label = ExerciseDisplayFormatter.humanizeID(exerciseID)
+            return "Couldn't add \(label): it's already in this session."
         }
     }
 }
@@ -644,10 +645,15 @@ public struct InSessionCoachService: Sendable {
         let data = try encoder.encode(payload)
         let json = String(decoding: data, as: UTF8.self)
 
+        // Pre-start Discuss uses a synthetic snapshot id; there is no workout_session row yet.
+        let workoutSessionID = sessionID == PrescriptionCoachSnapshotBuilder.preStartSessionID
+            ? nil
+            : sessionID
+
         let stored = try persistence.coachRecommendations.insert(
             CoachRecommendationInsert(
                 scope: .session,
-                workoutSessionID: sessionID,
+                workoutSessionID: workoutSessionID,
                 recommendationType: .sessionAdjustment,
                 payloadJSON: json,
                 modelVersion: modelVersion

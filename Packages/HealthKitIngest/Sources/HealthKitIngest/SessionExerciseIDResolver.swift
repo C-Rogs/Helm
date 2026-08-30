@@ -23,21 +23,94 @@ enum SessionExerciseIDResolver {
     ) throws -> Result {
         var unresolved: [String] = []
         var catalogCandidates: [String] = []
-        let normalizedOps = payload.operations.map { operation in
-            mapOperation(
-                operation,
-                sessionExerciseIDs: sessionExerciseIDs,
-                exerciseDisplayNames: exerciseDisplayNames,
-                persistence: persistence,
-                excludedExerciseIDs: excludedExerciseIDs,
-                familiarExerciseIDs: familiarExerciseIDs,
-                recentExerciseIDs: recentExerciseIDs,
-                phraseHint: phraseHint,
-                replyHint: payload.reply,
-                unresolved: &unresolved,
-                catalogCandidates: &catalogCandidates
+        let addPhrases = SessionSwapPhrase.parseAddList(phraseHint)
+        var addPhraseIndex = 0
+        var addedThisPayload: Set<String> = []
+        var mappedOps: [SessionAdjustmentOperation] = []
+
+        for operation in payload.operations {
+            if operation.kind == .addExercise {
+                let span = addPhraseIndex < addPhrases.count ? addPhrases[addPhraseIndex] : nil
+                addPhraseIndex += 1
+                mappedOps.append(
+                    mapOperation(
+                        operation,
+                        sessionExerciseIDs: sessionExerciseIDs,
+                        exerciseDisplayNames: exerciseDisplayNames,
+                        persistence: persistence,
+                        excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
+                        familiarExerciseIDs: familiarExerciseIDs,
+                        recentExerciseIDs: recentExerciseIDs,
+                        phraseHint: phraseHint,
+                        replyHint: payload.reply,
+                        addSpan: span,
+                        restrictAddHintsToSpan: addPhrases.isEmpty == false,
+                        unresolved: &unresolved,
+                        catalogCandidates: &catalogCandidates
+                    )
+                )
+                if let added = mappedOps.last?.toExerciseID {
+                    addedThisPayload.insert(added)
+                }
+                continue
+            }
+            mappedOps.append(
+                mapOperation(
+                    operation,
+                    sessionExerciseIDs: sessionExerciseIDs,
+                    exerciseDisplayNames: exerciseDisplayNames,
+                    persistence: persistence,
+                    excludedExerciseIDs: excludedExerciseIDs,
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    recentExerciseIDs: recentExerciseIDs,
+                    phraseHint: phraseHint,
+                    replyHint: payload.reply,
+                    unresolved: &unresolved,
+                    catalogCandidates: &catalogCandidates
+                )
             )
         }
+
+        while addPhraseIndex < addPhrases.count {
+            let span = addPhrases[addPhraseIndex]
+            addPhraseIndex += 1
+            mappedOps.append(
+                mapOperation(
+                    SessionAdjustmentOperation(kind: .addExercise, targetSets: 3),
+                    sessionExerciseIDs: sessionExerciseIDs,
+                    exerciseDisplayNames: exerciseDisplayNames,
+                    persistence: persistence,
+                    excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    recentExerciseIDs: recentExerciseIDs,
+                    phraseHint: phraseHint,
+                    replyHint: payload.reply,
+                    addSpan: span,
+                    restrictAddHintsToSpan: true,
+                    unresolved: &unresolved,
+                    catalogCandidates: &catalogCandidates
+                )
+            )
+            if let added = mappedOps.last?.toExerciseID {
+                addedThisPayload.insert(added)
+            }
+        }
+
+        let swappedFrom = Set(mappedOps.compactMap { $0.kind == .swap ? $0.fromExerciseID : nil })
+        let swappedTo = Set(mappedOps.compactMap { $0.kind == .swap ? $0.toExerciseID : nil })
+        let expectedAfterMutations = Set(orderedSessionExerciseIDs)
+            .subtracting(swappedFrom)
+            .union(swappedTo)
+            .union(addedThisPayload)
+
+        let keptOps = mappedOps.filter { operation in
+            guard operation.kind == .reorder else { return true }
+            guard let ordered = operation.orderedExerciseIDs, !ordered.isEmpty else { return false }
+            return Set(ordered) == expectedAfterMutations
+        }
+        let nonReorder = keptOps.filter { $0.kind != .reorder }
+        let reorders = keptOps.filter { $0.kind == .reorder }
+        let normalizedOps = nonReorder + reorders
 
         let withMove = applyRelativeMove(
             operations: normalizedOps,
@@ -70,6 +143,8 @@ enum SessionExerciseIDResolver {
         recentExerciseIDs: Set<String>,
         phraseHint: String?,
         replyHint: String?,
+        addSpan: String? = nil,
+        restrictAddHintsToSpan: Bool = false,
         unresolved: inout [String],
         catalogCandidates: inout [String]
     ) -> SessionAdjustmentOperation {
@@ -163,7 +238,8 @@ enum SessionExerciseIDResolver {
                     phraseHint: nil,
                     mustBeInSession: true,
                     unresolved: &unresolved,
-                    catalogCandidates: &catalogCandidates
+                    catalogCandidates: &catalogCandidates,
+                    recordUnresolved: false
                 ) ?? id
             }
             return SessionAdjustmentOperation(
@@ -195,10 +271,15 @@ enum SessionExerciseIDResolver {
                 loadAdjustmentIntent: operation.loadAdjustmentIntent
             )
         case .addExercise:
-            let addPhrase = SessionSwapPhrase.parseAdd(phraseHint)
+            let hints: [String?]
+            if restrictAddHintsToSpan {
+                hints = [addSpan]
+            } else {
+                hints = [addSpan ?? SessionSwapPhrase.parseAdd(phraseHint), phraseHint, replyHint]
+            }
             let to = resolveCatalogTarget(
                 modelID: operation.toExerciseID,
-                hints: [addPhrase, phraseHint, replyHint],
+                hints: hints,
                 sessionExerciseIDs: sessionExerciseIDs,
                 exerciseDisplayNames: exerciseDisplayNames,
                 persistence: persistence,
@@ -348,7 +429,8 @@ enum SessionExerciseIDResolver {
         phraseHint: String?,
         mustBeInSession: Bool,
         unresolved: inout [String],
-        catalogCandidates: inout [String]
+        catalogCandidates: inout [String],
+        recordUnresolved: Bool = true
     ) -> String? {
         guard let rawID, !rawID.isEmpty else { return rawID }
 
@@ -366,10 +448,10 @@ enum SessionExerciseIDResolver {
             return exerciseID
         }
 
-        unresolved.append(rawID)
-        catalogCandidates.append(contentsOf: resolved.catalogCandidates)
-        // Do not pass unresolved archetype/phrase IDs into PlanKit for in-session ops -
-        // that surfaces as a misleading "not found in the catalogue" clamp.
+        if recordUnresolved {
+            unresolved.append(rawID)
+            catalogCandidates.append(contentsOf: resolved.catalogCandidates)
+        }
         if mustBeInSession {
             return nil
         }

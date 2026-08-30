@@ -39,6 +39,10 @@ struct MethodologyTopicDetailView: View {
                                         .font(HelmType.monoTag.font)
                                         .foregroundStyle(HelmColor.fgMuted)
                                 }
+                                if let url = record.url {
+                                    Link(url.host ?? url.absoluteString, destination: url)
+                                        .font(HelmType.body.font)
+                                }
                             }
                             .padding(HelmSpacing.sm)
                             .background(HelmColor.surfaceElevated)
@@ -80,8 +84,8 @@ struct MethodologyTopicDetailView: View {
                     id: "ev-volume-landmarks",
                     title: "Volume landmarks",
                     summary: "MEV to MRV framing.",
-                    citation: "Placeholder review",
-                    placeholder: true
+                    citation: "Schoenfeld et al. (2017). Volume dose-response.",
+                    placeholder: false
                 )
             ]
         )

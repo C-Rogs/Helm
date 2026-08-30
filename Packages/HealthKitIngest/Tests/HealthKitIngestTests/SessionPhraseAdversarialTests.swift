@@ -83,7 +83,7 @@ struct SessionPhraseAdversarialTests {
             try lift(press, "Leg Press Horizontal (Machine)", muscle: "quadriceps", aliases: ["leg press", "horizontal leg press"])
             try lift(ext, "Leg Extension (Machine)", muscle: "quadriceps", aliases: ["leg extension", "leg extensions"])
             try lift(rdl, "Romanian Deadlift (Barbell)", muscle: "hamstrings", aliases: ["romanian deadlift", "rdl", "bb rdl"])
-            try lift(curl, "Bicep Curl (Dumbbell)", muscle: "biceps", aliases: ["bicep curl", "dumbbell curl"])
+            try lift(curl, "Bicep Curl (Dumbbell)", muscle: "biceps", aliases: ["bicep curl", "dumbbell curl", "dumbbell curls"])
             try lift(hammerCable, "Hammer Curl (Cable)", muscle: "biceps", aliases: [
                 "Hammer Curl (Cable)", "cable hammer curl", "rope hammer curl", "hammer curl",
             ])
@@ -545,6 +545,47 @@ struct SessionPhraseAdversarialTests {
         #expect(result.payload.operations.first?.fromExerciseID != gym.press)
         #expect(result.payload.operations.first?.fromExerciseID != gym.rdl)
         #expect(result.payload.operations.first?.toExerciseID == gym.ext)
+    }
+
+    @Test("add dumbbell curls and leg extensions does not collapse to one lift")
+    func dualAddDoesNotDuplicate() throws {
+        let gym = try Gym.seed()
+        let phrase = "add dumbbell curls and leg extensions"
+        let twoModelAdds = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Adding both.",
+            operations: [
+                SessionAdjustmentOperation(kind: .addExercise, toExerciseID: gym.facePull, targetSets: 3),
+                SessionAdjustmentOperation(kind: .addExercise, toExerciseID: gym.facePull, targetSets: 3),
+                SessionAdjustmentOperation(
+                    kind: .reorder,
+                    orderedExerciseIDs: [gym.facePull, gym.facePull]
+                ),
+            ]
+        )
+        let dual = try SessionExerciseIDResolver.normalize(
+            payload: twoModelAdds,
+            sessionExerciseIDs: [gym.press, gym.rdl],
+            exerciseDisplayNames: gym.names,
+            persistence: gym.store,
+            phraseHint: phrase,
+            orderedSessionExerciseIDs: [gym.press, gym.rdl]
+        )
+        let added = dual.payload.operations.filter { $0.kind == .addExercise }.compactMap(\.toExerciseID)
+        #expect(dual.unresolvedExerciseIDs.isEmpty)
+        #expect(Set(added) == Set([gym.curl, gym.ext]))
+        #expect(dual.payload.operations.contains { $0.kind == .reorder } == false)
+
+        let oneModelAdd = try SessionExerciseIDResolver.normalize(
+            payload: addPayload(to: gym.facePull),
+            sessionExerciseIDs: [gym.press, gym.rdl],
+            exerciseDisplayNames: gym.names,
+            persistence: gym.store,
+            phraseHint: phrase,
+            orderedSessionExerciseIDs: [gym.press, gym.rdl]
+        )
+        let synthesized = oneModelAdd.payload.operations.filter { $0.kind == .addExercise }.compactMap(\.toExerciseID)
+        #expect(Set(synthesized) == Set([gym.curl, gym.ext]))
     }
 
     @Test("equipment-only machine with no sibling stays unresolved")

@@ -78,7 +78,6 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
-                onBack: goBack,
                 onSkip: skip
             )
         case .backfill:

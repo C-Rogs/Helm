@@ -104,6 +104,7 @@
 		57C0E46F1EF63CEC4395A15E /* WeekAheadScheduleBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 276156A9C2905E234541F09E /* WeekAheadScheduleBuilder.swift */; };
 		57D2EBE94DD42A4530633322 /* ReccoBeatsSongTempoProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = AF5EC68FB1B8FD3686AFD4A3 /* ReccoBeatsSongTempoProvider.swift */; };
 		58F1A60E5F827FA8774613E9 /* MemoryProfileEditorView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4F4E43BE3C8ABC6AACFEC82C /* MemoryProfileEditorView.swift */; };
+		59E8D622D7741851AB0A8D73 /* FriendsReleasePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */; };
 		5A3C3560CF51F0BC7644C76A /* FocusExerciseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639D565DA13B004E67C23272 /* FocusExerciseCard.swift */; };
 		5A933EEBF3392510EB21211B /* MirroredWorkoutSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */; };
 		5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */; };
@@ -134,6 +135,7 @@
 		772C2C026E839B960447B8E7 /* CopyMealEntrySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8045F9E7A6B189532126DA2B /* CopyMealEntrySheet.swift */; };
 		7750DE096060DD95590DD340 /* MealDepthCameraView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFB878F4BA5B5A0E1FB8244E /* MealDepthCameraView.swift */; };
 		77F96344398E63ABA9288949 /* ChatBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */; };
+		77FFA43E2909C995AAEF2B93 /* free-exercise-db.json in Resources */ = {isa = PBXBuildFile; fileRef = E118F39622F273F0BAC781DE /* free-exercise-db.json */; };
 		7852DE6668EEADFAA522099C /* PhoneWorkoutSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */; };
 		7890C1F20FA5AA527FCDC0AF /* NutritionDaySummaryCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */; };
 		79321EC3187EAB4681EC7122 /* PersonalRecordsCelebrationView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 91AE49C058C1BAA271BFB930 /* PersonalRecordsCelebrationView.swift */; };
@@ -284,8 +286,10 @@
 		F3C6B91B82AD6E0D8448222F /* ProactiveCoachRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2D16E2E7A513E9CA6343E03B /* ProactiveCoachRouter.swift */; };
 		F5EF64E16A0FDE9394AD68BA /* NutritionSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */; };
 		F7D98FF2B5682898D25D4762 /* SchemaV2ExportView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1FF07947400503AACAFFEFE /* SchemaV2ExportView.swift */; };
+		F816CD34D82C9BCB678374CD /* FeedbackView.swift in Sources */ = {isa = PBXBuildFile; fileRef = C9D043FB9117A9888ACE6279 /* FeedbackView.swift */; };
 		FAB3696AB8180612170795EA /* MemoryRefinementConfirmationCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6480D201C16347D0FA2FD126 /* MemoryRefinementConfirmationCard.swift */; };
 		FB59917E341F578C9E56ABC7 /* NutritionWeeklyBudgetCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 55EB7907FBC0CA6CA48E8F25 /* NutritionWeeklyBudgetCard.swift */; };
+		FBA98274D943B6ACB45885E2 /* exercises.json in Resources */ = {isa = PBXBuildFile; fileRef = E6AE432E160663E92ED7F0CF /* exercises.json */; };
 		FC429EBFF532646F68A1F1D3 /* HealthKitIngest in Frameworks */ = {isa = PBXBuildFile; productRef = 96FB402A98901B62B12BBC28 /* HealthKitIngest */; };
 		FE7E46994A2ACD0C3BF08DAF /* FocusSessionLogSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3BBBC51EF9811FE5D79AA9E3 /* FocusSessionLogSheet.swift */; };
 		FEE21EB3F638CBC634233B02 /* MealTemplatesSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6ACFBF7FD0D8A51247C2F4C8 /* MealTemplatesSheet.swift */; };
@@ -597,6 +601,7 @@
 		C6F4099C403CAEFCA3076FF9 /* SongTempoCache.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SongTempoCache.swift; sourceTree = "<group>"; };
 		C8AA843D1E6F3CF48565DDA2 /* RootTabView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootTabView.swift; sourceTree = "<group>"; };
 		C94B1BFCF261C13C4B0670F5 /* TrainingHistoryTransferController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingHistoryTransferController.swift; sourceTree = "<group>"; };
+		C9D043FB9117A9888ACE6279 /* FeedbackView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FeedbackView.swift; sourceTree = "<group>"; };
 		CA95CABA5A4BAA4B02EBB6E2 /* WorkoutImportPreviewView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportPreviewView.swift; sourceTree = "<group>"; };
 		CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachSettingsView.swift; sourceTree = "<group>"; };
 		CC085FFEC48EBA405C30F1B0 /* WorkoutActivityAttributes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutActivityAttributes.swift; sourceTree = "<group>"; };
@@ -624,10 +629,12 @@
 		DEA4D2E1FECDAF8007A22DF9 /* PlanBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanBootstrap.swift; sourceTree = "<group>"; };
 		E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeArcGridCard.swift; sourceTree = "<group>"; };
 		E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailView.swift; sourceTree = "<group>"; };
+		E118F39622F273F0BAC781DE /* free-exercise-db.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "free-exercise-db.json"; sourceTree = "<group>"; };
 		E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsOnboardingStepView.swift; sourceTree = "<group>"; };
 		E2EC8FF604C9F6C1C11F6B46 /* HelmShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HelmShare.entitlements; sourceTree = "<group>"; };
 		E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodFlowView.swift; sourceTree = "<group>"; };
 		E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGoalSettingsView.swift; sourceTree = "<group>"; };
+		E6AE432E160663E92ED7F0CF /* exercises.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = exercises.json; sourceTree = "<group>"; };
 		E792D229847662F52C00583F /* InSessionCoachDebugView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InSessionCoachDebugView.swift; sourceTree = "<group>"; };
 		E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBootstrap.swift; sourceTree = "<group>"; };
 		EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerSoundPlayer.swift; sourceTree = "<group>"; };
@@ -647,6 +654,7 @@
 		FC587134C8EB2C87F3B76479 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
 		FEEF754F3E09C21EF17863B4 /* WorkoutSessionLifecycleTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionLifecycleTracker.swift; sourceTree = "<group>"; };
 		FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainSessionController.swift; sourceTree = "<group>"; };
+		FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsReleasePreferences.swift; sourceTree = "<group>"; };
 		FF70385AB40ED2CA66092D57 /* ExportEnvironmentFactory.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExportEnvironmentFactory.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -812,6 +820,15 @@
 			path = Debug;
 			sourceTree = "<group>";
 		};
+		3FB0DE6255BB529F78D4D224 /* ExerciseSeed */ = {
+			isa = PBXGroup;
+			children = (
+				E6AE432E160663E92ED7F0CF /* exercises.json */,
+				E118F39622F273F0BAC781DE /* free-exercise-db.json */,
+			);
+			path = ExerciseSeed;
+			sourceTree = "<group>";
+		};
 		4519BA9FC6E7EAFF14C36642 /* HelmWatch */ = {
 			isa = PBXGroup;
 			children = (
@@ -952,6 +969,7 @@
 				042A3A10E4834C27909AE730 /* ExerciseSeed */,
 				8151F07EF3F569F725808118 /* MethodologySeed */,
 				618BEB910286D2A493ECF63B /* Sounds */,
+				3FB0DE6255BB529F78D4D224 /* ExerciseSeed */,
 			);
 			path = Resources;
 			sourceTree = "<group>";
@@ -1009,6 +1027,7 @@
 				718EAF186FDB48BD87B5F071 /* DashboardView.swift */,
 				03C643CA6B30C2E3422578B1 /* DataSafetyView.swift */,
 				5FDC90C1367E4D301748CCEB /* DescribeFoodSheet.swift */,
+				C9D043FB9117A9888ACE6279 /* FeedbackView.swift */,
 				34CB2832408F087D8650F12D /* FoodPortionStepView.swift */,
 				7B04F28C575E039C74C48B68 /* FoodSearchView.swift */,
 				B7961B190CE87BDBDB314C9B /* HealthKitStatusView.swift */,
@@ -1119,6 +1138,7 @@
 				25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */,
 				1C8D4688B8A17D2FB2A84831 /* FestivalModePreferences.swift */,
 				3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */,
+				FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */,
 				C3E116AB09202F35B9F02B49 /* SongTempoPreferences.swift */,
 				82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */,
 			);
@@ -1299,7 +1319,7 @@
 			buildPhases = (
 				97B6595F711DC4F8F753702F /* Sync Xcode Project */,
 				F9A584B783041C1620DBFC98 /* Verify bundled seed resources */,
-				2DCFD64DFDEB6372AE4DE00C /* Bundle Debug Secrets */,
+				190B7EEFA6535874AEF411B0 /* Bundle Secrets */,
 				0E036B128A1CF1D10308AF83 /* Copy Exercise Seed */,
 				444DAB170895784CF27DEA5D /* Sources */,
 				88A04A27B030E7AC82EA7871 /* Resources */,
@@ -1482,6 +1502,8 @@
 				5EE09BE100418B1855BA4C37 /* Sounds in Resources */,
 				DC8F00B879B027CBA72C783C /* boxing-bell-notification.caf in Resources */,
 				1576D51D91D83168CCF7F8D0 /* boxing-bell.caf in Resources */,
+				FBA98274D943B6ACB45885E2 /* exercises.json in Resources */,
+				77FFA43E2909C995AAEF2B93 /* free-exercise-db.json in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1523,7 +1545,7 @@
 			shellPath = /bin/sh;
 			shellScript = "set -e\nSEED_SRC=\"${SRCROOT}/Helm/Resources/ExerciseSeed\"\nRES=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"$RES/ExerciseSeed\"\nditto \"$SEED_SRC\" \"$RES/ExerciseSeed\"\ncp -f \"$SEED_SRC/exercises.json\" \"$RES/exercises.json\"\ncp -f \"$SEED_SRC/free-exercise-db.json\" \"$RES/free-exercise-db.json\"\n";
 		};
-		2DCFD64DFDEB6372AE4DE00C /* Bundle Debug Secrets */ = {
+		190B7EEFA6535874AEF411B0 /* Bundle Secrets */ = {
 			isa = PBXShellScriptBuildPhase;
 			alwaysOutOfDate = 1;
 			buildActionMask = 2147483647;
@@ -1533,14 +1555,14 @@
 			);
 			inputPaths = (
 			);
-			name = "Bundle Debug Secrets";
+			name = "Bundle Secrets";
 			outputFileListPaths = (
 			);
 			outputPaths = (
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "if [ \"$CONFIGURATION\" != \"Debug\" ]; then exit 0; fi\nSECRETS_SRC=\"${SRCROOT}/Secrets\"\nSECRETS_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets\"\nif [ -d \"$SECRETS_SRC\" ]; then\n  mkdir -p \"$SECRETS_DST\"\n  ditto \"$SECRETS_SRC\" \"$SECRETS_DST\"\nfi\n";
+			shellScript = "SECRETS_SRC=\"${SRCROOT}/Secrets\"\nSECRETS_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets\"\nif [ -d \"$SECRETS_SRC\" ]; then\n  mkdir -p \"$SECRETS_DST\"\n  ditto \"$SECRETS_SRC\" \"$SECRETS_DST\"\nfi\n";
 		};
 		97B6595F711DC4F8F753702F /* Sync Xcode Project */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1677,6 +1699,7 @@
 				C6C44BFF48DC039C035EA405 /* ExerciseSectionView.swift in Sources */,
 				219DA0137C5B7DDE9EF0460B /* ExplainableMetricMappers.swift in Sources */,
 				E19F4FECD9FC4631AC12C298 /* ExportEnvironmentFactory.swift in Sources */,
+				F816CD34D82C9BCB678374CD /* FeedbackView.swift in Sources */,
 				FF5AF1A7C42C70CA9FBA6C40 /* FestivalModePreferences.swift in Sources */,
 				E646E8BB325DA892ECAFA219 /* FocusCardLoggingView.swift in Sources */,
 				5A3C3560CF51F0BC7644C76A /* FocusExerciseCard.swift in Sources */,
@@ -1686,6 +1709,7 @@
 				1A7912BB2CD5268DB0AB6089 /* FoodLogTipStore.swift in Sources */,
 				207556337A4D0B9AE5E2C006 /* FoodPortionStepView.swift in Sources */,
 				36C05273FC5A79F8FED5D9DC /* FoodSearchView.swift in Sources */,
+				59E8D622D7741851AB0A8D73 /* FriendsReleasePreferences.swift in Sources */,
 				1969F8C1BCE12A2B8A065486 /* GenerateBriefIntent.swift in Sources */,
 				E7D930A65EB05162ACC5A2BC /* HealthKitBootstrap.swift in Sources */,
 				5D2989127D96B244FE8EFC55 /* HealthKitOnboardingStepView.swift in Sources */,
@@ -1970,7 +1994,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -2171,7 +2195,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;

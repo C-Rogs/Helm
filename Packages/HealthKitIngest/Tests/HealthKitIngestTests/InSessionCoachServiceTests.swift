@@ -329,6 +329,44 @@ struct InSessionCoachServiceTests {
         #expect(refreshed?.session.exercises.first?.sets.count == 3)
     }
 
+    @Test("pre-start advisory proposal logs without workout session FK")
+    func preStartAdvisoryLogsWithoutWorkoutSessionFK() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 30),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: inclineDBPressID,
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 10,
+                    targetRepMax: 10
+                )
+            ]
+        )
+        let snapshot = PrescriptionCoachSnapshotBuilder.snapshot(from: prescription)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Today is incline-focused horizontal press; flat bench rotates on the next push day.",
+            operations: []
+        )
+
+        let proposal = try service.buildProposal(
+            payload: payload,
+            userMessage: "Why are we not including bench press or dumbbell press?",
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            modelVersion: payload.schemaVersion
+        )
+
+        #expect(proposal.status == .advisory)
+        let stored = try store.coachRecommendations.fetch(id: proposal.recommendationID)
+        #expect(stored?.workoutSessionID == nil)
+    }
+
     @Test("load adjustment applies and logs on confirm")
     func adjustLoadAppliesAndLogs() async throws {
         let store = try PersistenceStore.inMemory()

@@ -85,7 +85,7 @@ struct PlanBuilderFlowView: View {
                             dismiss()
                         }
                     }
-                } else if case let .onboarding(_, _, onSkip) = presentation, stage == .interview {
+                } else if case let .onboarding(_, _, onSkip) = presentation, case .interview = stage {
                     ToolbarItem(placement: .cancellationAction) {
                         Button("Set up later") {
                             generateTask?.cancel()

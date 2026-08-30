@@ -59,6 +59,19 @@ struct SessionSwapPhraseTests {
         #expect(parsed?.to.lowercased().contains("hammer") == true)
         #expect(SessionSwapPhrase.parseAdd("add rope hammer curl") == "rope hammer curl")
         #expect(SessionSwapPhrase.parseAdd("include face pull please") == "face pull")
+        #expect(
+            SessionSwapPhrase.parseAddList("add dumbbell curls and leg extensions")
+                == ["dumbbell curls", "leg extensions"]
+        )
+        #expect(
+            SessionSwapPhrase.parseAddList("add face pull and move it to the start")
+                == ["face pull"]
+        )
+        #expect(
+            SessionSwapPhrase.parseAddList("include curls, extensions, and face pull")
+                .map { $0.lowercased() }
+                == ["curls", "extensions", "face pull"]
+        )
     }
 
     @Test("expand order simulates swap then move to start")
