@@ -168,7 +168,7 @@ struct PhaseGoalSettingsView: View {
 
         if pendingReactiveDeload {
             Section("Recovery") {
-                Text("Helm detected sustained low readiness. Confirm to start a reactive deload week at about half of peak volume with MEV floors held.")
+                Text("Signal detected sustained low readiness. Confirm to start a reactive deload week at about half of peak volume with MEV floors held.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                 Button("Start reactive deload week", role: .destructive) {
                     Task { await confirmReactiveDeload() }

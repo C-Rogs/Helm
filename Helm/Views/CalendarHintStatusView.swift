@@ -12,7 +12,7 @@ struct CalendarHintStatusView: View {
         List {
             Section {
                 Text(
-                    "Helm reads your calendar to flag busy days on the week-ahead schedule. "
+                    "Signal reads your calendar to flag busy days on the week-ahead schedule. "
                         + "Events are never written back."
                 )
                 .helmType(.body, color: HelmColor.fgSecondary)

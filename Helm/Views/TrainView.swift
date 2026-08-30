@@ -660,7 +660,7 @@ struct TrainView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel("Open Spotify")
-                        .accessibilityHint("Switches to Spotify so Helm can read now playing")
+                        .accessibilityHint("Switches to Spotify so Signal can read now playing")
                     }
 
                     if let notice = controller.watchCompanionNotice {

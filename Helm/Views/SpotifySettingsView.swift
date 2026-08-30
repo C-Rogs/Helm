@@ -9,7 +9,7 @@ struct SpotifySettingsView: View {
     var body: some View {
         List {
             Section {
-                Text("Helm reads now playing from Spotify during workouts and shows tracks on the session timeline.")
+                Text("Signal reads now playing from Spotify during workouts and shows tracks on the session timeline.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                     .helmListRowChrome()
             }

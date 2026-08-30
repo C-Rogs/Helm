@@ -41,7 +41,7 @@ final class ScreenshotTourTests: XCTestCase {
             openSettingsDestination(title)
             let slug = Self.slug(title)
             capture(String(format: "06-%02d-settings-%@", index + 1, slug))
-            navigateBackToSettings()
+            dismissSettingsDestination(title)
         }
 
         openTab("Dashboard")
@@ -93,6 +93,19 @@ final class ScreenshotTourTests: XCTestCase {
         }
         link.tap()
         RunLoop.current.run(until: Date().addingTimeInterval(0.7))
+    }
+
+    private func dismissSettingsDestination(_ title: String) {
+        if Self.sheetDestinations.contains(title) {
+            let close = app.buttons["Close"]
+            if close.waitForExistence(timeout: 2) {
+                close.tap()
+                _ = app.navigationBars["Settings"].waitForExistence(timeout: 4)
+                RunLoop.current.run(until: Date().addingTimeInterval(0.4))
+                return
+            }
+        }
+        navigateBackToSettings()
     }
 
     private func navigateBackToSettings() {
@@ -167,9 +180,13 @@ final class ScreenshotTourTests: XCTestCase {
             if app.collectionViews.firstMatch.exists { return app.collectionViews.firstMatch }
             return app.tables.firstMatch
         }()
-        for _ in 0..<10 {
+        for _ in 0..<8 {
             if contentLink(title).exists { return }
             list.swipeUp()
+        }
+        for _ in 0..<8 {
+            if contentLink(title).exists { return }
+            list.swipeDown()
         }
     }
 
@@ -216,9 +233,13 @@ final class ScreenshotTourTests: XCTestCase {
             .filter { $0.isLetter || $0.isNumber || $0 == "-" }
     }
 
+    private static let sheetDestinations: Set<String> = ["Training plan"]
+
     private static let settingsDestinations = [
+        "Send feedback",
+        "Training plan",
         "Body Profile",
-        "Training Plan",
+        "Plan details",
         "Nutrition",
         "Sources & Methodology",
         "Coach settings",

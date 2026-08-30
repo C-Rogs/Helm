@@ -10,7 +10,6 @@
 		00045E9C351CA85A054A1CD1 /* FocusModePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */; };
 		0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */; };
 		023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */; };
-		0372714472429631A78F2B2B /* CoachKeyOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */; };
 		03A44EE5523957231B425BB5 /* SpotifyAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0537918F8ED3DBAE09E784 /* SpotifyAuthClient.swift */; };
 		04C0548C908F47918CB4872C /* PhaseGoalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */; };
 		06E1FF6417AE2A1165178FEC /* TrendsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AE07A1436E7283081C804B /* TrendsModels.swift */; };
@@ -241,7 +240,6 @@
 		D5B3D7590F528C4E244A64C5 /* ProactiveCoachBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */; };
 		D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */; };
 		D5DFD49C2DE0A3F6418848C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */; };
-		D6934FE7C74E3E136CB25D73 /* ShortcutsOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */; };
 		D6F0E27D96165DB60CAEC6CE /* InSessionCoachDebugView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E792D229847662F52C00583F /* InSessionCoachDebugView.swift */; };
 		D7901362865FCAFA02B63AE7 /* HealthKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 04F1CC5687F480A0C72BDD40 /* HealthKit.framework */; };
 		D7DC3FFB702C92E0A0823F8E /* WatchBriefView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 877BE2032AE31153B6E4A2CC /* WatchBriefView.swift */; };
@@ -388,7 +386,6 @@
 		058D654D744C8C945D6A6E19 /* DashboardTrendsSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DashboardTrendsSection.swift; sourceTree = "<group>"; };
 		08E190D352AF84EAB945126A /* ProgressionDetailBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailBuilder.swift; sourceTree = "<group>"; };
 		0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealEstimatingView.swift; sourceTree = "<group>"; };
-		0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachKeyOnboardingStepView.swift; sourceTree = "<group>"; };
 		0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchSessionCoordinator.swift; sourceTree = "<group>"; };
 		0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyProfileOnboardingStepView.swift; sourceTree = "<group>"; };
 		0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "WatchSessionCoordinator+WCSession.swift"; sourceTree = "<group>"; };
@@ -630,7 +627,6 @@
 		E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeArcGridCard.swift; sourceTree = "<group>"; };
 		E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressionDetailView.swift; sourceTree = "<group>"; };
 		E118F39622F273F0BAC781DE /* free-exercise-db.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "free-exercise-db.json"; sourceTree = "<group>"; };
-		E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShortcutsOnboardingStepView.swift; sourceTree = "<group>"; };
 		E2EC8FF604C9F6C1C11F6B46 /* HelmShare.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HelmShare.entitlements; sourceTree = "<group>"; };
 		E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AddFoodFlowView.swift; sourceTree = "<group>"; };
 		E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhaseGoalSettingsView.swift; sourceTree = "<group>"; };
@@ -1238,10 +1234,8 @@
 			children = (
 				66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */,
 				0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */,
-				0A9E08C752DFAAAC21DE6842 /* CoachKeyOnboardingStepView.swift */,
 				59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */,
 				3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */,
-				E26714D41E651E9E6D80DEF6 /* ShortcutsOnboardingStepView.swift */,
 				20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */,
 				BBF48AA231CAF609F9A593BB /* WelcomeOnboardingStepView.swift */,
 			);
@@ -1674,7 +1668,6 @@
 				1DDD00D7759A8C3E416C397F /* CoachDisplayNameStore.swift in Sources */,
 				A4C3A5964BFA6C25269EEB94 /* CoachFoodMealConfirmSheet.swift in Sources */,
 				94B55AC71169CAD888BA4000 /* CoachFoodMealConfirmState.swift in Sources */,
-				0372714472429631A78F2B2B /* CoachKeyOnboardingStepView.swift in Sources */,
 				AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */,
 				9C43933ED172237747E00858 /* CoachPlanSettingsAdjuster.swift in Sources */,
 				996DC6FB96C784C69A5A295D /* CoachSettingsView.swift in Sources */,
@@ -1809,7 +1802,6 @@
 				64C36565E67479B17CC357BA /* SetRowView.swift in Sources */,
 				3B6BDE4164D11B6E851840C1 /* SettingsCustomExercisesView.swift in Sources */,
 				D0562786AF970E8AF6E16B85 /* SettingsView.swift in Sources */,
-				D6934FE7C74E3E136CB25D73 /* ShortcutsOnboardingStepView.swift in Sources */,
 				3D97A9EBA74398585E05C0EE /* SleepAnalysisBuilder.swift in Sources */,
 				47C7B6ADDB6957DC457978A7 /* SleepAnalysisContainer.swift in Sources */,
 				9B99D16555C2E142CA6A5C3C /* SleepAnalysisView.swift in Sources */,

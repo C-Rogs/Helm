@@ -43,118 +43,124 @@ struct CoachSettingsView: View {
             }
 
             if showsSecretFields {
-            Section("Concurrency") {
-                Toggle("Allow Chat and workout coach at the same time", isOn: $allowsParallelCoaches)
-                    .onChange(of: allowsParallelCoaches) { _, newValue in
-                        CoachActivityGate.shared.allowsParallelCoaches = newValue
-                        HapticEngine.shared.play(.selection)
-                    }
-            }
-
-            Section {
-                Text("Proactive coach peeks, banners, milestones, and push live under Settings → Notifications.")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
-
-            Section("Provider") {
-                Picker("Coach provider", selection: Binding(
-                    get: { preferences.selectedProvider },
-                    set: { newValue in
-                        preferences.selectedProvider = newValue
-                        HapticEngine.shared.play(.selection)
-                        refreshInstalledProvider()
-                    }
-                )) {
-                    Text("Gemini").tag(ProviderKind.gemini)
-                    Text("On-device").tag(ProviderKind.foundationModels)
-                }
-            }
-
-            Section("Gemini API key") {
-                SecureField("API key", text: $geminiKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
-                Button(isSaving ? "Saving…" : "Save key") {
-                    saveKey()
-                }
-                .disabled(isSaving || geminiKey.isEmpty)
-
-                if !keyStatus.isEmpty {
-                    Text(keyStatus)
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-            }
-
-            Section("Photo meal vision") {
-                Picker("Photo model", selection: Binding(
-                    get: { photoVisionPreferences.backendPreference },
-                    set: { newValue in
-                        photoVisionPreferences.backendPreference = newValue
-                        HapticEngine.shared.play(.selection)
-                    }
-                )) {
-                    Text("Auto").tag(MealVisionBackendPreference.auto)
-                    Text("Gemini").tag(MealVisionBackendPreference.gemini)
-                    Text("OpenRouter").tag(MealVisionBackendPreference.openRouter)
-                }
-
-                Picker("Photo accuracy", selection: Binding(
-                    get: { photoVisionPreferences.qualityPreference },
-                    set: { newValue in
-                        photoVisionPreferences.qualityPreference = newValue
-                        HapticEngine.shared.play(.selection)
-                    }
-                )) {
-                    Text("Accurate (slower)").tag(MealVisionQualityPreference.accurate)
-                    Text("Fast").tag(MealVisionQualityPreference.fast)
-                }
-
-                Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Macro math stays on-device via CoFID.")
-                    .helmType(.body, color: HelmColor.fgMuted)
-            }
-
-            Section("OpenRouter (TestFlight)") {
-                Text(
-                    "Release builds can auto-provision a capped, free-models-only key via the personal Coacher worker. Friends-only: the worker shared secret ships in the binary, not for App Store."
-                )
-                .helmType(.body, color: HelmColor.fgMuted)
-
-                if keyStore.hasKey(kind: .openRouter) {
-                    Text("OpenRouter key saved in Keychain.")
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-
-                #if !DEBUG
-                Button(isProvisioningOpenRouter ? "Provisioning…" : "Request cloud key") {
-                    provisionOpenRouterKey()
-                }
-                .disabled(isProvisioningOpenRouter)
-                #endif
-
-                SecureField("Or paste OpenRouter API key", text: $openRouterKey)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-
-                Button(isSavingOpenRouter ? "Saving…" : "Save OpenRouter key") {
-                    saveOpenRouterKey()
-                }
-                .disabled(isSavingOpenRouter || openRouterKey.isEmpty)
-
-                if !openRouterStatus.isEmpty {
-                    Text(openRouterStatus)
-                        .helmType(.body, color: HelmColor.fgMuted)
-                }
-            }
+                advancedSections
             }
         }
         .navigationTitle("Coach settings")
         .helmScreenBackground()
-        .scrollContentBackground(.hidden)        .onAppear {
+        .scrollContentBackground(.hidden)
+        .onAppear {
             coachDisplayName = CoachDisplayNameStore.name
             allowsParallelCoaches = CoachActivityGate.shared.allowsParallelCoaches
             keyStatus = keyStore.hasKey(kind: .gemini) ? "Key saved in Keychain." : "No key saved yet."
             refreshOpenRouterStatus()
+        }
+    }
+
+    @ViewBuilder
+    private var advancedSections: some View {
+        Section("Concurrency") {
+            Toggle("Allow Chat and workout coach at the same time", isOn: $allowsParallelCoaches)
+                .onChange(of: allowsParallelCoaches) { _, newValue in
+                    CoachActivityGate.shared.allowsParallelCoaches = newValue
+                    HapticEngine.shared.play(.selection)
+                }
+        }
+
+        Section {
+            Text("Proactive coach peeks, banners, milestones, and push live under Settings → Notifications.")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+
+        Section("Provider") {
+            Picker("Coach provider", selection: Binding(
+                get: { preferences.selectedProvider },
+                set: { newValue in
+                    preferences.selectedProvider = newValue
+                    HapticEngine.shared.play(.selection)
+                    refreshInstalledProvider()
+                }
+            )) {
+                Text("Gemini").tag(ProviderKind.gemini)
+                Text("On-device").tag(ProviderKind.foundationModels)
+            }
+        }
+
+        Section("Gemini API key") {
+            SecureField("API key", text: $geminiKey)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            Button(isSaving ? "Saving…" : "Save key") {
+                saveKey()
+            }
+            .disabled(isSaving || geminiKey.isEmpty)
+
+            if !keyStatus.isEmpty {
+                Text(keyStatus)
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        }
+
+        Section("Photo meal vision") {
+            Picker("Photo model", selection: Binding(
+                get: { photoVisionPreferences.backendPreference },
+                set: { newValue in
+                    photoVisionPreferences.backendPreference = newValue
+                    HapticEngine.shared.play(.selection)
+                }
+            )) {
+                Text("Auto").tag(MealVisionBackendPreference.auto)
+                Text("Gemini").tag(MealVisionBackendPreference.gemini)
+                Text("OpenRouter").tag(MealVisionBackendPreference.openRouter)
+            }
+
+            Picker("Photo accuracy", selection: Binding(
+                get: { photoVisionPreferences.qualityPreference },
+                set: { newValue in
+                    photoVisionPreferences.qualityPreference = newValue
+                    HapticEngine.shared.play(.selection)
+                }
+            )) {
+                Text("Accurate (slower)").tag(MealVisionQualityPreference.accurate)
+                Text("Fast").tag(MealVisionQualityPreference.fast)
+            }
+
+            Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Macro math stays on-device via CoFID.")
+                .helmType(.body, color: HelmColor.fgMuted)
+        }
+
+        Section("OpenRouter (TestFlight)") {
+            Text(
+                "Release builds can auto-provision a capped, free-models-only key via the personal Coacher worker. Friends-only: the worker shared secret ships in the binary, not for App Store."
+            )
+            .helmType(.body, color: HelmColor.fgMuted)
+
+            if keyStore.hasKey(kind: .openRouter) {
+                Text("OpenRouter key saved in Keychain.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+
+            #if !DEBUG
+            Button(isProvisioningOpenRouter ? "Provisioning…" : "Request cloud key") {
+                provisionOpenRouterKey()
+            }
+            .disabled(isProvisioningOpenRouter)
+            #endif
+
+            SecureField("Or paste OpenRouter API key", text: $openRouterKey)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+
+            Button(isSavingOpenRouter ? "Saving…" : "Save OpenRouter key") {
+                saveOpenRouterKey()
+            }
+            .disabled(isSavingOpenRouter || openRouterKey.isEmpty)
+
+            if !openRouterStatus.isEmpty {
+                Text(openRouterStatus)
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
         }
     }
 

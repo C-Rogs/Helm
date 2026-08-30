@@ -20,7 +20,7 @@ struct NotificationsSettingsView: View {
     var body: some View {
         List {
             Section {
-                Text("Helm delivers a morning brief, a pre-workout prime, and a post-workout summary. Morning briefs need HealthKit data; if the phone is locked, open Helm and the brief generates on the Dashboard.")
+                Text("Signal delivers a morning brief, a pre-workout prime, and a post-workout summary. Morning briefs need HealthKit data; if the phone is locked, open Signal and the brief generates on the Dashboard.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                     .helmListRowChrome()
             }
@@ -110,7 +110,7 @@ struct NotificationsSettingsView: View {
             }
 
             Section("Threshold insights") {
-                Text("When a readiness contributor crosses a baseline threshold, Helm surfaces it on the Dashboard only. No push. Optional haptics live under Settings → Feedback.")
+                Text("When a readiness contributor crosses a baseline threshold, Signal surfaces it on the Dashboard only. No push. Optional haptics live under Settings → Session.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                     .helmListRowChrome()
             }

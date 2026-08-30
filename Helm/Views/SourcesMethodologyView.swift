@@ -144,7 +144,7 @@ struct SourcesMethodologyView: View {
         if document.placeholder || document.topics.isEmpty {
             return "Methodology library failed to load."
         }
-        return "This is the science Helm uses for coaching notes. Essays never change engine maths. Selection bias and equipment below do."
+        return "This is the science Signal uses for coaching notes. Essays never change engine maths. Selection bias and equipment below do."
     }
 
     private var topicGroups: [(title: String, topics: [MethodologyTopic])] {

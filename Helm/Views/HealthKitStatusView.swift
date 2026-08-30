@@ -80,7 +80,7 @@ struct AppleHealthSettingsView: View {
                             .helmListRowChrome()
                         }
                     }
-                    Text("Helm checks for samples, not permission grants. Denied reads look empty here.")
+                    Text("Signal checks for samples, not permission grants. Denied reads look empty here.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
                 }
@@ -122,7 +122,7 @@ struct AppleHealthSettingsView: View {
                 }
                 .disabled(isBackfilling)
                 .helmListRowChrome()
-                Text("Loads about six months of Health samples into Helm. Safe to re-run; already-imported chunks are skipped.")
+                Text("Loads about six months of Health samples into Signal. Safe to re-run; already-imported chunks are skipped.")
                     .helmType(.body, color: HelmColor.fgMuted)
                     .helmListRowChrome()
             }

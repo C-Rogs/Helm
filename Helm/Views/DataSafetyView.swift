@@ -234,7 +234,7 @@ struct DataSafetyView: View {
             } header: {
                 Text("iCloud sync")
             } footer: {
-                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. History on device includes HealthKit cardio; iCloud history is Helm-logged workouts only. Optional 30-day food log includes recents, meal templates, and recent meals. HealthKit re-backfills health rows on reinstall.")
+                Text("Opt-in iCloud Drive backup of coach memory, body profile, training plan, and mesocycle state. Optional 90-day workout history restores PBs after delete/reinstall. History on device includes HealthKit cardio; iCloud history is Signal-logged workouts only. Optional 30-day food log includes recents, meal templates, and recent meals. HealthKit re-backfills health rows on reinstall.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         }

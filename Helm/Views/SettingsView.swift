@@ -235,7 +235,7 @@ struct SettingsView: View {
         } header: {
             Text("Rest timer")
         } footer: {
-            Text("Rings on speaker and headphones when rest ends, in app or with Helm in the background, and ignores the Silent switch. A notification is the backstop if iOS shuts Helm down first, so keep notifications enabled.")
+            Text("Rings on speaker and headphones when rest ends, in app or with Signal in the background, and ignores the Silent switch. A notification is the backstop if iOS shuts Signal down first, so keep notifications enabled.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
     }
@@ -303,7 +303,7 @@ struct SettingsView: View {
         } header: {
             Text("Battery")
         } footer: {
-            Text("Festival mode pauses HealthKit background observers, Watch readiness pushes, and proactive notifications so Helm draws near-zero idle power. Leave it on when you don't need workout or health tracking. Nutrition logging still works from the Nutrition tab.")
+            Text("Festival mode pauses HealthKit background observers, Watch readiness pushes, and proactive notifications so Signal draws near-zero idle power. Leave it on when you don't need workout or health tracking. Nutrition logging still works from the Nutrition tab.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
     }
