@@ -216,6 +216,17 @@ public enum ExerciseResolver {
             }
         }
 
+        // Nearby core IDs (chest_dip) miss in-session cousins (Bench Dip / triceps_dip).
+        // Require the movement token (last word) so chest_dip cannot latch onto Bench Press.
+        if context.mustBeInSession,
+           let sessionMatch = sessionMovementOverlapMatch(rawPhrase, context: context) {
+            return Result(
+                exerciseID: sessionMatch,
+                archetypeID: CoachArchetypeSupport.archetype(for: sessionMatch)?.id
+                    ?? CoachArchetypeSupport.exerciseToArchetypeID[stripSeedPrefix(sessionMatch)]
+            )
+        }
+
         if context.mustBeInSession == false,
            let seeded = catalogExerciseID(rawPhrase, persistence: persistence),
            accepts(exerciseID: seeded, context: context) {
@@ -554,11 +565,46 @@ public enum ExerciseResolver {
         guard let best = scored.max(by: { $0.overlap < $1.overlap }) else { return nil }
         let tied = scored.filter { $0.overlap == best.overlap }
         if tied.count > 1 { return nil }
-        // One shared token is too loose for snake_case archetype IDs
-        // (`incline_press` vs a lone Bench Press). Athlete phrases like
-        // "bench dip" still hit via overlap >= 2 or display-name match.
         guard best.overlap >= 2 else { return nil }
         return best.id
+    }
+
+    /// Unique in-session exercise that shares the query's movement token (last word).
+    /// `chest_dip` + session "Bench Dip" → match on `dip`; `chest_dip` + "Bench Press" → no.
+    private static func sessionMovementOverlapMatch(_ rawPhrase: String, context: Context) -> String? {
+        let queryTokens = phraseTokens(rawPhrase)
+        guard !queryTokens.isEmpty, let movement = lastMovementToken(in: rawPhrase) else { return nil }
+
+        var scored: [(id: String, overlap: Int)] = []
+        for sessionID in context.sessionExerciseIDs {
+            let label = ExerciseDisplayFormatter.friendlyName(
+                for: sessionID,
+                displayNames: context.exerciseDisplayNames
+            )
+            let haystack = sessionID + " " + label
+            let haystackTokens = phraseTokens(haystack)
+            guard haystackTokens.contains(where: { tokensMatch($0, movement) }) else { continue }
+            let overlap = tokenOverlap(queryTokens, in: haystack)
+            if overlap > 0 {
+                scored.append((sessionID, overlap))
+            }
+        }
+
+        guard let bestOverlap = scored.map(\.overlap).max() else { return nil }
+        let winners = scored.filter { $0.overlap == bestOverlap }
+        guard winners.count == 1 else { return nil }
+        return winners[0].id
+    }
+
+    private static func lastMovementToken(in phrase: String) -> String? {
+        let stop: Set<String> = [
+            "a", "an", "the", "add", "in", "to", "please", "set", "of", "and", "or", "my", "me", "some"
+        ]
+        let ordered = ExerciseSearchNormalizer.normalize(phrase)
+            .split(separator: " ")
+            .map(String.init)
+            .filter { $0.count >= 2 && !stop.contains($0) }
+        return ordered.last
     }
 
     private static func phraseTokens(_ value: String) -> Set<String> {

@@ -13,7 +13,7 @@ struct NutritionView: View {
     @State private var photoMealController = PhotoMealController()
     @State private var manualFoodLogController = ManualFoodLogController(
         foodResolver: NutritionBootstrap.foodResolver,
-        manualMealService: NutritionBootstrap.manualMealService,
+        actionExecutor: HelmActionRuntime.executor,
         pendingImportService: NutritionBootstrap.pendingFoodImportService,
         portionPreferenceLoader: { ref in
             try PersistenceBootstrap.persistenceStore.foodLog.fetchPortionPreference(ref: ref)
@@ -25,15 +25,10 @@ struct NutritionView: View {
     @State private var mealsStore = NutritionDayMealsStore()
     @State private var mealActionsController = NutritionMealActionsController(
         mealRepeatService: NutritionBootstrap.mealRepeatService,
-        onChanged: {
-            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
-        }
+        actionExecutor: HelmActionRuntime.executor
     )
     @State private var mealEditController = MealEditController(
-        manualMealService: NutritionBootstrap.manualMealService,
-        onChanged: {
-            NutritionBootstrap.refreshNutrition(for: NutritionBootstrap.lastViewedHelmDay)
-        }
+        actionExecutor: HelmActionRuntime.executor
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
     @State private var isRefreshing = false
@@ -642,7 +637,13 @@ private struct NutritionLoggingSheets: ViewModifier {
                     isSaving: mealActionsController.isSaving,
                     onConfirm: {
                         Task {
-                            await mealActionsController.confirmLogTemplate(template)
+                            guard let helmDay = currentHelmDay else { return }
+                            let today = todayHelmDay ?? helmDay
+                            await mealActionsController.confirmLogTemplate(
+                                template,
+                                helmDay: helmDay,
+                                today: today
+                            )
                             onMealsChanged()
                         }
                     },

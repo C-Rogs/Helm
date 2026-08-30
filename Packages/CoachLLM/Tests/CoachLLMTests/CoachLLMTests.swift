@@ -115,7 +115,7 @@ struct ProviderRegistryTests {
         #expect(placeholder.id == "gemini-placeholder")
 
         let mock = MockProvider(id: "gemini-live")
-        registry.installGeminiProvider(mock)
+        registry.installChatProvider(mock)
         #expect(registry.provider(for: .gemini).id == "gemini-live")
     }
 }
@@ -150,8 +150,51 @@ struct MockProviderTests {
         #expect(provider.lastRequest?.userMessage == "hello")
         #expect(provider.lastRequest?.thread.isFollowUp == false)
 
+        let call = CoachLLMFunctionCall(
+            name: CoachCatalogToolName.foodLog.rawValue,
+            arguments: ["action": "log", "caloriesKcal": 200]
+        )
+        provider.setConfiguration(
+            MockProvider.Configuration(
+                responseChunks: ["Logged."],
+                functionCalls: [call]
+            )
+        )
+        let turn = try await provider.respondTurn(
+            systemInstructions: "system",
+            contextBlock: "context",
+            userMessage: "log lunch",
+            thread: .empty,
+            freshnessSuffix: nil
+        )
+        var texts: [String] = []
+        var calls: [CoachLLMFunctionCall] = []
+        for try await event in turn {
+            switch event {
+            case .text(let chunk): texts.append(chunk)
+            case .functionCall(let functionCall): calls.append(functionCall)
+            }
+        }
+        #expect(texts == ["Logged."])
+        #expect(calls.map(\.name) == [CoachCatalogToolName.foodLog.rawValue])
+
         await provider.resetThread()
         #expect(provider.resetThreadCount == 1)
+    }
+
+    @Test("structured generate defaults to unavailable")
+    func structuredGenerateUnavailable() async {
+        let provider = MockProvider()
+        await #expect(throws: CoachProviderError.unavailable(
+            "Structured workout start is not available on this provider."
+        )) {
+            _ = try await provider.generateWorkoutStart(
+                systemInstructions: "",
+                contextBlock: "",
+                userMessage: "start",
+                thread: .empty
+            )
+        }
     }
 
     @Test("mock provider surfaces configured failures")

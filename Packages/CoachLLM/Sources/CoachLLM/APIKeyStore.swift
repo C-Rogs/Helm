@@ -84,9 +84,17 @@ public struct APIKeyStore: Sendable {
         (try? load(kind: kind)) != nil
     }
 
+    /// Masked key for UI. Never returns the raw secret.
     public func displayValue(for kind: APIKeyKind) -> String {
+        maskedDisplayValue(for: kind)
+    }
+
+    public func maskedDisplayValue(for kind: APIKeyKind) -> String {
         guard let value = try? load(kind: kind) else { return "" }
-        return value
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return "" }
+        if trimmed.count <= 4 { return "••••" }
+        return "••••" + String(trimmed.suffix(4))
     }
 
     private func baseQuery(for kind: APIKeyKind) -> [String: Any] {

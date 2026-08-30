@@ -123,8 +123,8 @@ public struct PreStartCoachService: Sendable {
         prescription: SessionPrescription,
         excludedExerciseIDs: Set<String>,
         day: HelmDay
-    ) throws -> SessionPrescription {
-        try applyAdjustmentToPrescription(
+    ) async throws -> (prescription: SessionPrescription, persist: HelmActionResult) {
+        try await applyAdjustmentToPrescription(
             proposal: proposal,
             prescription: prescription,
             excludedExerciseIDs: excludedExerciseIDs,
@@ -137,7 +137,7 @@ public struct PreStartCoachService: Sendable {
         prescription: SessionPrescription,
         excludedExerciseIDs: Set<String>,
         day: HelmDay
-    ) throws -> SessionPrescription {
+    ) async throws -> (prescription: SessionPrescription, persist: HelmActionResult) {
         let snapshot = PrescriptionCoachSnapshotBuilder.snapshot(from: prescription)
         let stampedPayload = LoadAdjustmentIntentClassifier.stamp(
             payload: proposal.payload,
@@ -201,8 +201,14 @@ public struct PreStartCoachService: Sendable {
                 through: day,
                 muscleMaps: muscleMaps
             )
-            PrescriptionDayStore.save(titled, for: day, historyFingerprint: fingerprint)
-            return titled
+            let persist = try await HelmActionExecutor(persistence: persistence).run(
+                .persistAdjustedPrescription(HelmAdjustedPrescriptionCommand(
+                    prescription: titled,
+                    day: day,
+                    historyFingerprint: fingerprint
+                ))
+            )
+            return (titled, persist)
         }
     }
 }

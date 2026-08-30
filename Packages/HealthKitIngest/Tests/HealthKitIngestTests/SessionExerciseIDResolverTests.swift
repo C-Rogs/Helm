@@ -344,6 +344,104 @@ struct SessionExerciseIDResolverTests {
         #expect(result.payload.operations.first?.toExerciseID == dbID)
         #expect(result.payload.operations.first?.fromExerciseID != result.payload.operations.first?.toExerciseID)
     }
+
+    @Test("swap chest_dip for bench_press maps from in-session bench dip")
+    func chestDipSwapMapsToSessionBenchDip() throws {
+        let store = try PersistenceStore.inMemory()
+        let benchDipID = "seed-cam-bench-dip"
+        let chestDipID = "seed-cam-chest-dip"
+        let benchPressID = "seed-bench-press"
+        try store.exercises.upsert(
+            id: benchDipID,
+            canonicalName: "bench dip",
+            displayName: "Bench Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "triceps"
+        )
+        try store.exercises.upsert(
+            id: chestDipID,
+            canonicalName: "chest dip",
+            displayName: "Chest Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "chest"
+        )
+        try store.exercises.upsert(
+            id: benchPressID,
+            canonicalName: "bench press (barbell)",
+            displayName: "Bench Press",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+        CoachArchetypeSupport.configure(
+            with: CoachArchetypeCatalog(
+                schemaVersion: "coach_archetype_catalog.v1",
+                generatedAt: "2026-08-28T00:00:00Z",
+                archetypes: [
+                    CoachArchetype(
+                        id: "chest_dip",
+                        displayName: "Chest Dip",
+                        priority: "core",
+                        coachAliases: ["chest dip"]
+                    ),
+                    CoachArchetype(
+                        id: "triceps_dip",
+                        displayName: "Triceps Dip",
+                        priority: "core",
+                        coachAliases: ["tricep dip", "bench dip"]
+                    ),
+                    CoachArchetype(
+                        id: "bench_press",
+                        displayName: "Bench Press",
+                        priority: "core",
+                        coachAliases: ["bench press", "flat bench"]
+                    )
+                ],
+                mapping: [
+                    benchDipID: "triceps_dip",
+                    chestDipID: "chest_dip",
+                    benchPressID: "bench_press"
+                ],
+                variants: [
+                    "triceps_dip": CoachArchetypeVariants(
+                        members: [benchDipID],
+                        preferredDefaultExerciseId: benchDipID
+                    ),
+                    "chest_dip": CoachArchetypeVariants(
+                        members: [chestDipID],
+                        preferredDefaultExerciseId: chestDipID
+                    ),
+                    "bench_press": CoachArchetypeVariants(
+                        members: [benchPressID],
+                        preferredDefaultExerciseId: benchPressID
+                    )
+                ]
+            )
+        )
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Swapping to bench press.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .swap,
+                    fromExerciseID: "chest_dip",
+                    toExerciseID: "bench_press"
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [benchDipID],
+            exerciseDisplayNames: [benchDipID: "Bench Dip"],
+            persistence: store,
+            phraseHint: "swap bench dip for bench press"
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.payload.operations.first?.fromExerciseID == benchDipID)
+        #expect(result.payload.operations.first?.toExerciseID == benchPressID)
+    }
 }
 
 @Suite("In-session coach proposal status", .serialized)

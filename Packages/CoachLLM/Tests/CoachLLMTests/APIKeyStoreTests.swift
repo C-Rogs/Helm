@@ -43,6 +43,16 @@ struct APIKeyStoreTests {
         #expect(try store.load(kind: .gemini) == "second")
     }
 
+    @Test("displayValue never returns the raw key")
+    func masksDisplayValue() throws {
+        let store = makeStore()
+        try store.save("sk-abcdefghijklmnopqrstuvwxyz", kind: .gemini)
+        let displayed = store.displayValue(for: .gemini)
+        #expect(displayed.hasPrefix("••••"))
+        #expect(!displayed.contains("sk-abcdefghijklmnopqrstuvwxyz"))
+        #expect(displayed.hasSuffix("wxyz"))
+    }
+
     @Test("rejects empty values")
     func rejectsEmptyValue() throws {
         let store = makeStore()

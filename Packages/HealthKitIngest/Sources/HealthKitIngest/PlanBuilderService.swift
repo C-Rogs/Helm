@@ -28,9 +28,9 @@ public final class PlanBuilderService {
     public private(set) var generationMessage: String?
 
     private let persistence: PersistenceStore
-    private let provider: GeminiProvider?
+    private let provider: (any CoachLLMProvider)?
 
-    public init(persistence: PersistenceStore, provider: GeminiProvider?) {
+    public init(persistence: PersistenceStore, provider: (any CoachLLMProvider)?) {
         self.persistence = persistence
         self.provider = provider
     }
@@ -108,21 +108,25 @@ public final class PlanBuilderService {
         return decoded.isEmpty ? nil : decoded
     }
 
-    /// Generates candidates deterministically, then asks Gemini for grounded
+    /// Generates candidates deterministically, then asks Coach for grounded
     /// per-card copy. Falls back to engine-derived copy when unavailable.
     public func generateOptions(for interview: PlanBuilderInterview) async {
         isGenerating = true
         defer { isGenerating = false }
 
+        let interpreted = PlanBuilderDiscussionInterpreter.applying(interview.discussionNote, to: interview)
+        let preferredTemplate = PlanBuilderDiscussionInterpreter.interpret(interview.discussionNote)
+            .preferredTemplateRaw
         let candidates = CandidatePlanGenerator.generate(
-            interview: interview,
-            experience: CandidatePlanGenerator.experience(of: interview)
+            interview: interpreted,
+            experience: CandidatePlanGenerator.experience(of: interpreted),
+            preferredTemplateRaw: preferredTemplate
         )
 
         var copies: [String: PlanOptionCardCopy] = [:]
         if let provider {
             do {
-                let payload = try await requestCards(candidates: candidates, interview: interview)
+                let payload = try await requestCards(candidates: candidates, interview: interpreted)
                 for card in payload.cards {
                     copies[card.candidateID] = card
                 }
@@ -139,6 +143,43 @@ public final class PlanBuilderService {
                 copy: copies[candidate.id] ?? Self.fallbackCopy(for: candidate)
             )
         }
+    }
+
+    public struct ExampleWorkoutPreview: Sendable, Equatable {
+        public let dayKind: TrainingDayKind
+        public let exercises: [ExampleWorkoutExercise]
+    }
+
+    public struct ExampleWorkoutExercise: Sendable, Equatable, Identifiable {
+        public let id: String
+        public let name: String
+        public let sets: Int
+        public let patternLabel: String
+    }
+
+    /// Dry-run first session for a candidate. Does not write planned workouts.
+    public func previewExampleWorkout(for candidate: CandidatePlan) -> ExampleWorkoutPreview {
+        let dayKind = CandidatePlanGenerator.exampleDayKind(for: candidate)
+        let budget = SessionDurationBudget.from(minutes: candidate.sessionDurationMinutes)
+        let template = ProgramTemplate(rawValue: candidate.programTemplateRaw) ?? .ppl
+        let rows = (try? persistence.exercises.fetchCatalogRows()) ?? []
+        let catalog = PrescriptionCatalogBuilder.build(from: rows)
+        let lines = PlanKit.exampleWorkout(
+            dayKind: dayKind,
+            budget: budget,
+            template: template,
+            catalog: catalog
+        )
+        let names = (try? persistence.exercises.displayNames(for: lines.map(\.exerciseID))) ?? [:]
+        let exercises = lines.map { line in
+            ExampleWorkoutExercise(
+                id: line.exerciseID,
+                name: names[line.exerciseID] ?? line.exerciseID,
+                sets: line.targetSets,
+                patternLabel: line.pattern.rawValue
+            )
+        }
+        return ExampleWorkoutPreview(dayKind: dayKind, exercises: exercises)
     }
 
     /// Computes updated training-plan settings from the chosen option.
@@ -183,12 +224,18 @@ public final class PlanBuilderService {
         do {
             var profile = try persistence.memoryProfile.load()
             let parsed = MethodologyPreferences.parse(from: profile.preferences)
-            var lines = parsed.freeform
+            var freeform = parsed.freeform
+                .replacingOccurrences(of: "\r\n", with: "\n")
+                .replacingOccurrences(of: "\r", with: "\n")
                 .split(separator: "\n", omittingEmptySubsequences: false)
                 .map(String.init)
-                .filter { !$0.hasPrefix("\(Self.goalKey)=") }
-            lines.append("\(Self.goalKey)=\(goal.rawValue)")
-            profile.preferences = lines.joined(separator: "\n")
+                .filter { line in
+                    !line.trimmingCharacters(in: .whitespacesAndNewlines)
+                        .lowercased()
+                        .hasPrefix("\(Self.goalKey)=")
+                }
+            freeform.append("\(Self.goalKey)=\(goal.rawValue)")
+            profile.preferences = parsed.preferences.merge(into: freeform.joined(separator: "\n"))
             try persistence.memoryProfile.save(profile)
         } catch {
             // Goal persistence is best-effort; the plan itself still commits.
@@ -241,7 +288,8 @@ public final class PlanBuilderService {
         Athlete goal: \(interview.progressionGoal.rawValue) (\(interview.progressionGoal.label)). \
         Experience: \(interview.experienceRaw). \
         Available days: \(interview.daysPerWeek)/week. Session length: \(interview.sessionDurationMinutes) minutes.\
-        \(interview.emphasis.map { " Stated emphasis: \($0)." } ?? "")
+        \(interview.emphasis.map { " Stated emphasis: \($0)." } ?? "")\
+        \(interview.discussionNote.map { " Athlete asked for a different option: \($0)." } ?? "")
         Candidates:
         [
         \(facts)

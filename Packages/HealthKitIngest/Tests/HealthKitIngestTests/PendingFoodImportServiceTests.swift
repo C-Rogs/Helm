@@ -27,14 +27,19 @@ struct PendingFoodImportServiceTests {
             networkGate: FixedNetworkGate(online: online),
             now: { loggedAt }
         )
-        let manualMealService = ManualMealService(
+        let meals = ManualMealService(
             writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
             localStore: ManualMealLocalStore(store: store)
+        )
+        let executor = HelmActionExecutor(
+            manualMealService: meals,
+            persistence: store,
+            mealRepeatService: MealRepeatService(store: store, manualMealService: meals)
         )
         return PendingFoodImportService(
             foodLog: store.foodLog,
             foodResolver: foodResolver,
-            manualMealService: manualMealService,
+            actionExecutor: executor,
             localStore: ManualMealLocalStore(store: store),
             networkGate: FixedNetworkGate(online: online),
             now: { loggedAt }

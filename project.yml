@@ -10,7 +10,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "1"
+    CURRENT_PROJECT_VERSION: "2"
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: SXWJBD2V3V
@@ -45,6 +45,10 @@ targets:
           - Resources
       - path: Helm/Resources/ExerciseSeed
         type: folder
+        buildPhase: resources
+      - path: Helm/Resources/ExerciseSeed/exercises.json
+        buildPhase: resources
+      - path: Helm/Resources/ExerciseSeed/free-exercise-db.json
         buildPhase: resources
       - path: Helm/Resources/MethodologySeed
         type: folder
@@ -85,15 +89,24 @@ targets:
             fi
           done
         basedOnDependencyAnalysis: false
-      - name: Bundle Debug Secrets
+      - name: Bundle Secrets
         script: |
-          if [ "$CONFIGURATION" != "Debug" ]; then exit 0; fi
           SECRETS_SRC="${SRCROOT}/Secrets"
           SECRETS_DST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets"
           if [ -d "$SECRETS_SRC" ]; then
             mkdir -p "$SECRETS_DST"
             ditto "$SECRETS_SRC" "$SECRETS_DST"
           fi
+        basedOnDependencyAnalysis: false
+      - name: Copy Exercise Seed
+        script: |
+          set -e
+          SEED_SRC="${SRCROOT}/Helm/Resources/ExerciseSeed"
+          RES="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}"
+          mkdir -p "$RES/ExerciseSeed"
+          ditto "$SEED_SRC" "$RES/ExerciseSeed"
+          cp -f "$SEED_SRC/exercises.json" "$RES/exercises.json"
+          cp -f "$SEED_SRC/free-exercise-db.json" "$RES/free-exercise-db.json"
         basedOnDependencyAnalysis: false
     settings:
       base:

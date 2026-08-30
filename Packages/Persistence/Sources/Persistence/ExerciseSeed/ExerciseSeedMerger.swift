@@ -3,6 +3,7 @@ import Foundation
 struct ExerciseSeedMergeResult: Sendable, Equatable {
     let entries: [ExerciseSeedEntry]
     let explicitPickerIDs: Set<String>
+    let overlayResolvedIDs: Set<String>
 }
 
 enum ExerciseSeedMerger {
@@ -11,7 +12,11 @@ enum ExerciseSeedMerger {
     /// the Hevy-named overlay.
     static func merge(catalog: [ExerciseSeedEntry], overlay: [ExerciseSeedEntry]) -> ExerciseSeedMergeResult {
         guard !overlay.isEmpty else {
-            return ExerciseSeedMergeResult(entries: catalog, explicitPickerIDs: [])
+            return ExerciseSeedMergeResult(
+                entries: catalog,
+                explicitPickerIDs: [],
+                overlayResolvedIDs: []
+            )
         }
 
         var byID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.id, $0) })
@@ -23,6 +28,7 @@ enum ExerciseSeedMerger {
         }
 
         var explicitPickerIDs = Set<String>()
+        var overlayResolvedIDs = Set<String>()
 
         for overlayEntry in overlay {
             let targetID = overlayEntry.id
@@ -34,6 +40,7 @@ enum ExerciseSeedMerger {
                 resolvedID: targetID,
                 catalogMedia: catalogMedia
             )
+            overlayResolvedIDs.insert(targetID)
 
             if overlayEntry.isPickerDefault == true {
                 explicitPickerIDs.insert(targetID)
@@ -42,7 +49,8 @@ enum ExerciseSeedMerger {
 
         return ExerciseSeedMergeResult(
             entries: Array(byID.values),
-            explicitPickerIDs: explicitPickerIDs
+            explicitPickerIDs: explicitPickerIDs,
+            overlayResolvedIDs: overlayResolvedIDs
         )
     }
 

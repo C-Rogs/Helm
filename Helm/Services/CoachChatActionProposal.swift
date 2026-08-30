@@ -11,6 +11,7 @@ enum CoachChatActionKind: Sendable, Equatable {
     case settingsAdjustment(SettingsAdjustmentPayload)
     case reactiveDeload(ReactiveDeloadPayload)
     case planRegenerate(PlanRegeneratePayload)
+    case sessionAdjustment(CoachSessionProposal)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -45,121 +46,304 @@ struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
 }
 
 enum CoachChatActionParser {
-    static func proposal(from text: String) -> CoachChatActionProposal? {
-        if let payload = FoodLogPayloadParser.parse(from: text) {
-            let preview = FoodLogCommandPreview.preview(for: payload)
-            let confirmLabel: String
-            switch payload.action {
-            case .log: confirmLabel = "Log meal"
-            case .edit: confirmLabel = "Update meal"
-            case .delete: confirmLabel = "Delete meal"
-            }
-            return CoachChatActionProposal(
-                reply: payload.reply,
-                kind: .foodLog(payload),
-                title: preview.title,
-                detail: preview.detail,
-                reason: payload.reply,
-                confirmLabel: confirmLabel,
-                cancelLabel: "Cancel"
+    static func proposal(
+        from text: String,
+        functionCalls: [CoachLLMFunctionCall] = []
+    ) -> CoachChatActionProposal? {
+        if let fromTools = proposal(fromFunctionCalls: functionCalls, visibleText: text) {
+            return fromTools
+        }
+        if CoachCatalogToolName.hasWrite(in: functionCalls) {
+            return nil
+        }
+        return proposal(fromJSONText: text)
+    }
+
+    static func foodLogPayload(from functionCalls: [CoachLLMFunctionCall]) -> FoodLogPayload? {
+        decodeFirst(FoodLogPayload.self, named: .foodLog, from: functionCalls)
+    }
+
+    static func hasMalformedFoodLogCall(_ functionCalls: [CoachLLMFunctionCall]) -> Bool {
+        functionCalls.contains { $0.name == CoachCatalogToolName.foodLog.rawValue }
+            && foodLogPayload(from: functionCalls) == nil
+    }
+
+    static func workoutStartPayload(from functionCalls: [CoachLLMFunctionCall]) -> WorkoutStartPayload? {
+        decodeFirst(WorkoutStartPayload.self, named: .workoutStart, from: functionCalls)
+            ?? decodeFirst(
+                WorkoutStartPayload.self,
+                named: .workoutStart,
+                schema: .workoutStartV1,
+                from: functionCalls
             )
+    }
+
+    private static func proposal(
+        fromFunctionCalls calls: [CoachLLMFunctionCall],
+        visibleText: String
+    ) -> CoachChatActionProposal? {
+        for call in calls {
+            if let proposal = proposal(from: call, visibleText: visibleText) {
+                return proposal
+            }
+        }
+        return nil
+    }
+
+    private static func proposal(
+        from call: CoachLLMFunctionCall,
+        visibleText: String
+    ) -> CoachChatActionProposal? {
+        switch CoachCatalogToolName(rawValue: call.name) {
+        case .foodLog:
+            guard let payload = try? call.decode(FoodLogPayload.self, schemaVersion: .foodLogV1) else {
+                return nil
+            }
+            return proposal(fromFoodLog: payload)
+        case .mealCopy:
+            guard let payload = try? call.decode(MealCopyPayload.self, schemaVersion: .mealCopyV1) else {
+                return nil
+            }
+            return proposal(fromMealCopy: payload)
+        case .memoryAdjustment:
+            guard let payload = try? call.decode(
+                MemoryAdjustmentPayload.self,
+                schemaVersion: .memoryAdjustmentV1
+            ), isValidMemoryAdjustment(payload) else {
+                return nil
+            }
+            return proposal(fromMemory: payload)
+        case .workoutStart:
+            guard let payload = workoutStartPayload(from: [call]) else { return nil }
+            return proposal(fromWorkoutStart: payload, visibleText: visibleText)
+        case .settingsAdjustment:
+            guard let payload = try? call.decode(
+                SettingsAdjustmentPayload.self,
+                schemaVersion: .settingsAdjustmentV1
+            ) else {
+                return nil
+            }
+            return proposal(fromSettings: payload, visibleText: visibleText)
+        case .reactiveDeload:
+            guard let payload = try? call.decode(
+                ReactiveDeloadPayload.self,
+                schemaVersion: .reactiveDeloadV1
+            ) else {
+                return nil
+            }
+            return proposal(fromDeload: payload)
+        case .planRegenerate:
+            guard let payload = try? call.decode(
+                PlanRegeneratePayload.self,
+                schemaVersion: .planRegenerateV1
+            ) else {
+                return nil
+            }
+            return proposal(fromPlanRegenerate: payload)
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .chart, .navigate:
+            return nil
+        case nil:
+            return nil
+        }
+    }
+
+    private static func isValidMemoryAdjustment(_ payload: MemoryAdjustmentPayload) -> Bool {
+        switch payload.action {
+        case .add:
+            let note = payload.standingConstraintNote?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            return !note.isEmpty
+        case .clear:
+            return true
+        }
+    }
+
+    private static func decodeFirst<Payload: Decodable>(
+        _ type: Payload.Type,
+        named name: CoachCatalogToolName,
+        schema: CoachOutputSchemaVersion? = nil,
+        from calls: [CoachLLMFunctionCall]
+    ) -> Payload? {
+        let version = schema ?? name.schemaVersion
+        for call in calls where call.name == name.rawValue {
+            if let payload = try? call.decode(type, schemaVersion: version) {
+                return payload
+            }
+        }
+        return nil
+    }
+
+    static func proposal(fromSession proposal: CoachSessionProposal) -> CoachChatActionProposal? {
+        guard proposal.requiresConfirmation else { return nil }
+        let banner = proposal.previewBanner
+        let title: String
+        let detail: String
+        if let banner {
+            title = "\(banner.fromLabel) → \(banner.toLabel)"
+            detail = banner.reason
+        } else {
+            title = "Apply session change"
+            detail = proposal.payload.bannerReason
+        }
+        return CoachChatActionProposal(
+            reply: proposal.reply,
+            kind: .sessionAdjustment(proposal),
+            title: title,
+            detail: detail,
+            reason: proposal.payload.bannerReason,
+            confirmLabel: "Apply change",
+            cancelLabel: "Keep plan"
+        )
+    }
+
+    static func proposal(fromJSONText text: String) -> CoachChatActionProposal? {
+        if let payload = FoodLogPayloadParser.parse(from: text) {
+            return proposal(fromFoodLog: payload)
         }
 
         if let payload = MealCopyPayloadParser.parse(from: text) {
-            let preview = MealCopyCommandApplier.preview(for: payload)
-            return CoachChatActionProposal(
-                reply: payload.reply,
-                kind: .mealCopy(payload),
-                title: preview.title,
-                detail: preview.detail,
-                reason: payload.reply,
-                confirmLabel: "Copy meal",
-                cancelLabel: "Cancel"
-            )
+            return proposal(fromMealCopy: payload)
         }
 
         if let payload = MemoryAdjustmentPayloadParser.parse(from: text) {
-            let preview = MemoryAdjustmentPayloadParser.preview(for: payload)
-            let confirmLabel: String
-            switch payload.action {
-            case .add: confirmLabel = "Save to Memory"
-            case .clear: confirmLabel = "Clear constraint"
-            }
-            return CoachChatActionProposal(
-                reply: payload.reply,
-                kind: .memoryAdjustment(payload),
-                title: preview.title,
-                detail: preview.detail,
-                reason: payload.rationale ?? payload.reply,
-                confirmLabel: confirmLabel,
-                cancelLabel: "Cancel"
-            )
+            return proposal(fromMemory: payload)
         }
 
         if let payload = WorkoutStartPayloadParser.parse(from: text) {
-            let preview = WorkoutStartCommandPreview.preview(for: payload)
-            let stripped = CoachChatTextFormatter.userFacingText(from: text)
-            let reply = stripped.isEmpty
-                ? "Ready when you are. Confirm to start \(preview.title)."
-                : stripped
-            return CoachChatActionProposal(
-                reply: reply,
-                kind: .workoutStart(payload),
-                title: preview.title,
-                detail: preview.detail,
-                reason: preview.reason,
-                confirmLabel: "Start workout",
-                cancelLabel: "Not yet"
-            )
+            return proposal(fromWorkoutStart: payload, visibleText: text)
         }
 
         if let payload = SettingsAdjustmentPayloadParser.parse(from: text) {
-            let preview = SettingsAdjustmentPreview.preview(for: payload)
-            let stripped = CoachChatTextFormatter.userFacingText(from: text)
-            let reply = stripped.isEmpty
-                ? "Settings updated."
-                : stripped
-            return CoachChatActionProposal(
-                reply: reply,
-                kind: .settingsAdjustment(payload),
-                title: preview.title,
-                detail: preview.detail,
-                reason: payload.rationale ?? payload.reply,
-                confirmLabel: "Apply",
-                cancelLabel: "Cancel"
-            )
+            return proposal(fromSettings: payload, visibleText: text)
         }
 
         if let payload = ReactiveDeloadPayloadParser.parse(from: text) {
-            let label = payload.action == .confirm ? "Confirm deload" : "Dismiss deload"
-            let title = payload.action == .confirm ? "Take a deload week" : "Skip deload"
-            let detail = payload.action == .confirm
-                ? "Engine proposes a full-week deload for recovery."
-                : "Continue training as scheduled."
-            return CoachChatActionProposal(
-                reply: payload.reply,
-                kind: .reactiveDeload(payload),
-                title: title,
-                detail: detail,
-                reason: payload.reply,
-                confirmLabel: label,
-                cancelLabel: "Cancel"
-            )
+            return proposal(fromDeload: payload)
         }
 
         if let payload = PlanRegeneratePayloadParser.parse(from: text) {
-            return CoachChatActionProposal(
-                reply: payload.reply,
-                kind: .planRegenerate(payload),
-                title: "Regenerate today's plan",
-                detail: "Clears today's prescription and re-plans from the engine.",
-                reason: payload.reply,
-                confirmLabel: "Regenerate",
-                cancelLabel: "Cancel"
-            )
+            return proposal(fromPlanRegenerate: payload)
         }
 
         return nil
+    }
+
+    static func proposal(fromFoodLog payload: FoodLogPayload) -> CoachChatActionProposal {
+        let preview = FoodLogCommandPreview.preview(for: payload)
+        let confirmLabel: String
+        switch payload.action {
+        case .log: confirmLabel = "Log meal"
+        case .edit: confirmLabel = "Update meal"
+        case .delete: confirmLabel = "Delete meal"
+        }
+        return CoachChatActionProposal(
+            reply: payload.reply,
+            kind: .foodLog(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: payload.reply,
+            confirmLabel: confirmLabel,
+            cancelLabel: "Cancel"
+        )
+    }
+
+    private static func proposal(fromMealCopy payload: MealCopyPayload) -> CoachChatActionProposal {
+        let preview = MealCopyCommandApplier.preview(for: payload)
+        return CoachChatActionProposal(
+            reply: payload.reply,
+            kind: .mealCopy(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: payload.reply,
+            confirmLabel: "Copy meal",
+            cancelLabel: "Cancel"
+        )
+    }
+
+    private static func proposal(fromMemory payload: MemoryAdjustmentPayload) -> CoachChatActionProposal {
+        let preview = MemoryAdjustmentPayloadParser.preview(for: payload)
+        let confirmLabel: String
+        switch payload.action {
+        case .add: confirmLabel = "Save to Memory"
+        case .clear: confirmLabel = "Clear constraint"
+        }
+        return CoachChatActionProposal(
+            reply: payload.reply,
+            kind: .memoryAdjustment(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: payload.rationale ?? payload.reply,
+            confirmLabel: confirmLabel,
+            cancelLabel: "Cancel"
+        )
+    }
+
+    private static func proposal(
+        fromWorkoutStart payload: WorkoutStartPayload,
+        visibleText: String
+    ) -> CoachChatActionProposal {
+        let preview = WorkoutStartCommandPreview.preview(for: payload)
+        let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
+        let reply = stripped.isEmpty
+            ? "Confirm to start \(preview.title)."
+            : stripped
+        return CoachChatActionProposal(
+            reply: reply,
+            kind: .workoutStart(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: preview.reason,
+            confirmLabel: "Start workout",
+            cancelLabel: "Not yet"
+        )
+    }
+
+    private static func proposal(
+        fromSettings payload: SettingsAdjustmentPayload,
+        visibleText: String
+    ) -> CoachChatActionProposal {
+        let preview = SettingsAdjustmentPreview.preview(for: payload)
+        let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
+        let reply = stripped.isEmpty
+            ? "Settings updated."
+            : stripped
+        return CoachChatActionProposal(
+            reply: reply,
+            kind: .settingsAdjustment(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: payload.rationale ?? payload.reply,
+            confirmLabel: "Apply",
+            cancelLabel: "Cancel"
+        )
+    }
+
+    private static func proposal(fromDeload payload: ReactiveDeloadPayload) -> CoachChatActionProposal {
+        let label = payload.action == .confirm ? "Confirm deload" : "Dismiss deload"
+        let title = payload.action == .confirm ? "Take a deload week" : "Skip deload"
+        let detail = payload.action == .confirm
+            ? "Engine proposes a full-week deload for recovery."
+            : "Continue training as scheduled."
+        return CoachChatActionProposal(
+            reply: payload.reply,
+            kind: .reactiveDeload(payload),
+            title: title,
+            detail: detail,
+            reason: payload.reply,
+            confirmLabel: label,
+            cancelLabel: "Cancel"
+        )
+    }
+
+    private static func proposal(fromPlanRegenerate payload: PlanRegeneratePayload) -> CoachChatActionProposal {
+        CoachChatActionProposal(
+            reply: payload.reply,
+            kind: .planRegenerate(payload),
+            title: "Regenerate today's plan",
+            detail: "Clears today's prescription and re-plans from the engine.",
+            reason: payload.reply,
+            confirmLabel: "Regenerate",
+            cancelLabel: "Cancel"
+        )
     }
 }
 
@@ -178,7 +362,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
+            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment:
                 return pendingAction.title
             }
         }

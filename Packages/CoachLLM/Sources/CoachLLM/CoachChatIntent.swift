@@ -1,5 +1,5 @@
-import Foundation
 import Core
+import Foundation
 
 /// Lightweight heuristics for chat tool loops (no separate classifier model).
 public enum CoachChatIntent: Sendable {
@@ -40,13 +40,9 @@ public enum CoachChatIntent: Sendable {
             "lets go",
             "begin the workout",
             "lock it in",
-            "lock in",
-            "and start"
+            "lock in"
         ]
-        if startNeedles.contains(where: { containsWholePhrase($0, in: lower) }) {
-            return true
-        }
-        if containsWholePhrase("start a ", in: lower) || containsWholePhrase("start an ", in: lower) {
+        if startNeedles.contains(where: { lower.contains($0) }) {
             return true
         }
         // Short confirm after negotiation.
@@ -373,7 +369,6 @@ public enum CoachChatIntent: Sendable {
             "calorie target",
             "weekly budget",
             "week budget",
-            "week ahead nutrition",
             "my nutrition budget",
             "nutrition plan",
             "what can i eat today",
@@ -472,11 +467,162 @@ public enum CoachChatIntent: Sendable {
         return inferredWeekdayHelmDay(from: lower, now: now, calendar: calendar)
     }
 
-    public static func athleteNamedCalendarDay(in text: String) -> Bool {
-        inferredHelmDay(from: text) != nil
+    /// Exercise/set/load change to the current session, not a new plan or a past-workout review.
+    public static func looksLikeSessionAdjustment(_ text: String) -> Bool {
+        if looksLikeWorkoutStart(text) { return false }
+        if looksLikeWorkoutReview(text) { return false }
+        if looksLikeNutritionLookup(text) { return false }
+        if looksLikePastMealLookup(text) { return false }
+        if looksLikePlanBuilderRequest(text) { return false }
+
+        let lower = text.lowercased()
+        if looksLikePlanLevelChange(lower) { return false }
+
+        let needles = [
+            "swap ",
+            " swap",
+            "replace ",
+            "instead of",
+            "drop a set",
+            "drop one set",
+            "add a set",
+            "add one set",
+            "extra set",
+            "one more set",
+            "another set",
+            "fewer sets",
+            "less sets",
+            "take a set off",
+            "remove a set",
+            "skip ",
+            "do first",
+            "reorder",
+            "lighter on",
+            "heavier on",
+            "kg off",
+            "kilos off",
+            "warmup set",
+            "warm-up set",
+            "drop the weight",
+            "bump the weight",
+            "take weight off"
+        ]
+        return needles.contains { lower.contains($0) }
     }
 
-    // MARK: - Phrase helpers
+    /// Pre-start Chat should only hijack when the athlete named today's session.
+    public static func looksLikeTodaySessionChange(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let cues = [
+            "today's workout",
+            "todays workout",
+            "today's session",
+            "todays session",
+            "this session",
+            "this workout",
+            "before i start",
+            "today's prescribed",
+            "todays prescribed"
+        ]
+        return cues.contains { lower.contains($0) }
+    }
+
+    public static func shouldRouteChatToSessionCoach(_ text: String, sessionIsLive: Bool) -> Bool {
+        guard looksLikeSessionAdjustment(text) else { return false }
+        if sessionIsLive { return true }
+        return looksLikeTodaySessionChange(text)
+    }
+
+    /// Day named in the athlete's message. Nil means they did not name a day.
+    public static func namedHelmDay(
+        in text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay? {
+        inferredHelmDay(from: text, now: now, calendar: calendar)
+    }
+
+
+    /// Chat food logs ignore a hidden Nutrition diary day unless the athlete named a date.
+    public static func resolvedChatFoodHelmDay(
+        userText: String,
+        payloadDay: String?,
+        nutritionTabVisible: Bool,
+        viewedNutritionDay: String? = nil,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay {
+        if let named = namedHelmDay(in: userText, now: now, calendar: calendar) {
+            return named
+        }
+        if nutritionTabVisible {
+            if let payloadDay, let parsed = parseHelmDay(payloadDay) {
+                return parsed
+            }
+            if let viewedNutritionDay, let parsed = parseHelmDay(viewedNutritionDay) {
+                return parsed
+            }
+        }
+        return HelmDay.day(for: now, calendar: calendar)
+    }
+
+    public static func inferredNavigateTab(from text: String) -> String? {
+        let lower = text.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if lower.contains("open train")
+            || lower.contains("go to train")
+            || lower.contains("switch to train")
+            || lower.contains("take me to train") {
+            return "train"
+        }
+        if lower.contains("open nutrition")
+            || lower.contains("go to nutrition")
+            || lower.contains("open diary")
+            || lower.contains("open the diary")
+            || (lower.contains("food log") && lower.hasPrefix("open")) {
+            return "nutrition"
+        }
+        if lower.hasPrefix("open"),
+           lower.contains("snack")
+            || lower.contains("meal i just")
+            || lower.contains("entry i just")
+            || lower.contains("entry of") {
+            return "nutrition"
+        }
+        if lower.contains("open dashboard") || lower.contains("go to dashboard") {
+            return "dashboard"
+        }
+        if lower.contains("open settings") || lower.contains("go to settings") {
+            return "settings"
+        }
+        if lower.contains("open chat") { return "chat" }
+        return nil
+    }
+
+    private static func parseHelmDay(_ raw: String) -> HelmDay? {
+        let parts = raw.split(separator: "-").map(String.init)
+        guard parts.count == 3,
+              let year = Int(parts[0]),
+              let month = Int(parts[1]),
+              let day = Int(parts[2]) else {
+            return nil
+        }
+        return HelmDay(year: year, month: month, day: day)
+    }
+
+    private static func looksLikePlanLevelChange(_ lower: String) -> Bool {
+        let planNeedles = [
+            "training plan",
+            "new plan",
+            "mesocycle",
+            "days a week",
+            "days per week",
+            "my program",
+            "my programme",
+            "the program",
+            "the programme"
+        ]
+        return planNeedles.contains { lower.contains($0) }
+    }
 
     static func containsWholePhrase(_ needle: String, in lower: String) -> Bool {
         guard let range = lower.range(of: needle) else { return false }

@@ -80,6 +80,22 @@ struct WorkoutStartCommandTests {
         #expect(plan.exercises[0].sets[1].reps == 8)
     }
 
+    @Test("matches barbell bench press to Bench Press catalogue name")
+    func matchesReorderedBarbellBenchName() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let payload = WorkoutStartPayload(
+            schemaVersion: CoachOutputSchemaVersion.workoutStartV2.rawValue,
+            helmDay: "2026-07-29",
+            title: "Push",
+            exercises: [
+                WorkoutStartExerciseSpec(name: "Barbell bench press")
+            ]
+        )
+        let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: store)
+        #expect(plan.exercises[0].exerciseID == benchID)
+    }
+
     @Test("reorders prescription when chat exercise list differs")
     func reordersPrescriptionFromExerciseList() throws {
         let store = try PersistenceStore.inMemory()

@@ -356,4 +356,71 @@ public enum PlanKit {
             isDeload: isDeload
         )
     }
+
+    /// Evidence-driven movement selection for a composer slot.
+    public static func selectExercise(
+        for slot: PatternSlot,
+        catalog: [CatalogExercise],
+        excluding excludedExerciseIDs: Set<String> = [],
+        availableEquipment: Set<String>? = nil,
+        selectionBias: MethodologyPreferences.SelectionBias = .balanced,
+        familiarExerciseIDs: Set<String> = []
+    ) -> ExerciseSelection? {
+        ExerciseSelectionEngine.select(
+            for: slot,
+            catalog: catalog,
+            excluding: excludedExerciseIDs,
+            availableEquipment: availableEquipment,
+            selectionBias: selectionBias,
+            familiarExerciseIDs: familiarExerciseIDs
+        )
+    }
+
+    /// Dry-run example session for a plan-builder candidate. Does not persist.
+    public static func exampleWorkout(
+        dayKind: TrainingDayKind,
+        budget: SessionDurationBudget,
+        template: ProgramTemplate,
+        catalog: [CatalogExercise]
+    ) -> [ExampleWorkoutLine] {
+        let slots = sessionSlots(dayKind: dayKind, budget: budget, template: template)
+        var excluded: Set<String> = []
+        var lines: [ExampleWorkoutLine] = []
+        for slot in slots {
+            guard let selection = selectExercise(
+                for: slot,
+                catalog: catalog,
+                excluding: excluded
+            ) else { continue }
+            excluded.insert(selection.exercise.exerciseID)
+            let sets: Int
+            switch slot.role {
+            case .primary: sets = min(4, budget.maxSetsPerSlot)
+            case .secondary: sets = min(3, budget.maxSetsPerSlot)
+            case .isolation: sets = min(2, budget.maxSetsPerSlot)
+            }
+            lines.append(
+                ExampleWorkoutLine(
+                    exerciseID: selection.exercise.exerciseID,
+                    pattern: slot.pattern,
+                    targetSets: sets
+                )
+            )
+        }
+        return lines
+    }
+}
+
+public struct ExampleWorkoutLine: Sendable, Equatable, Identifiable {
+    public var id: String { exerciseID }
+
+    public let exerciseID: String
+    public let pattern: MovementPatternKind
+    public let targetSets: Int
+
+    public init(exerciseID: String, pattern: MovementPatternKind, targetSets: Int) {
+        self.exerciseID = exerciseID
+        self.pattern = pattern
+        self.targetSets = targetSets
+    }
 }

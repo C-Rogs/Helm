@@ -111,29 +111,27 @@ final class PhotoMealController {
     }
 
     func confirm(estimate: MealEstimate, name: String, bucket: MealBucket) async {
-        guard let service else {
-            phase = .failed("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
-            return
-        }
-
         let helmDay = loggingHelmDay ?? todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
         let today = todayHelmDay ?? helmDay
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
 
         phase = .saving
         do {
-            _ = try await service.confirm(
-                estimate: estimate,
-                name: name,
-                bucket: bucket,
-                loggedAt: loggedAt
+            _ = try await HelmActionRuntime.perform(
+                .meal(.logPhoto(
+                    estimate: estimate,
+                    name: name,
+                    bucket: bucket,
+                    loggedAt: loggedAt,
+                    helmDay: helmDay,
+                    mealID: UUID().uuidString
+                )),
+                after: .coach
             )
-            CoachApplyMomentStore.shared.play()
             pendingImageJPEG = nil
             pendingPreview = nil
             pendingPortionAssist = nil
             phase = .idle
-            NutritionBootstrap.refreshNutrition(for: helmDay)
         } catch {
             phase = .failed(PhotoMealService.userMessage(for: error))
         }

@@ -88,7 +88,14 @@ enum CoachWorkoutStartAdjuster {
                     from: persistence,
                     endingAt: helmDay
                 )
-                PrescriptionDayStore.save(adjusted, for: helmDay, historyFingerprint: fingerprint)
+                _ = try await HelmActionRuntime.perform(
+                    .persistAdjustedPrescription(HelmAdjustedPrescriptionCommand(
+                        prescription: adjusted,
+                        day: helmDay,
+                        historyFingerprint: fingerprint
+                    )),
+                    after: .none
+                )
             } else if payload.schemaVersion == CoachOutputSchemaVersion.workoutStartV2.rawValue
                 || payload.exercises != nil {
                 let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: persistence)

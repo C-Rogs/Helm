@@ -45,10 +45,14 @@ extension GeminiHTTPClient {
 }
 
 public enum GeminiStreamAssembler {
-    public static func textChunks(from stream: AsyncThrowingStream<Data, Error>) -> AsyncThrowingStream<String, Error> {
+    public static func events(
+        from stream: AsyncThrowingStream<Data, Error>
+    ) -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
         AsyncThrowingStream { continuation in
             Task {
                 var lastUsage: GeminiUsageMetadata?
+                var pendingCalls: [String: CoachLLMFunctionCall] = [:]
+                var callOrder: [String] = []
                 do {
                     for try await chunk in stream {
                         for line in GeminiSSEParser.eventDataLines(from: chunk) {
@@ -61,14 +65,43 @@ public enum GeminiStreamAssembler {
                                 lastUsage = usage
                             }
                             if let text = GeminiSSEParser.textDelta(from: line), !text.isEmpty {
-                                continuation.yield(text)
+                                continuation.yield(.text(text))
                             }
+                            for call in GeminiSSEParser.functionCallDeltas(from: line) {
+                                if pendingCalls[call.name] == nil {
+                                    callOrder.append(call.name)
+                                }
+                                pendingCalls[call.name] = call
+                            }
+                        }
+                    }
+                    for name in callOrder {
+                        if let call = pendingCalls[name] {
+                            continuation.yield(.functionCall(call))
                         }
                     }
                     if let lastUsage {
                         coachLLMStreamLog.debug(
                             "Gemini stream usage \(lastUsage.summary, privacy: .public)"
                         )
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
+    }
+
+    public static func textChunks(from stream: AsyncThrowingStream<Data, Error>) -> AsyncThrowingStream<String, Error> {
+        let eventStream = events(from: stream)
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    for try await event in eventStream {
+                        if case .text(let text) = event {
+                            continuation.yield(text)
+                        }
                     }
                     continuation.finish()
                 } catch {

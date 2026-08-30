@@ -73,14 +73,6 @@ struct OnboardingFlowView: View {
                 onBack: goBack,
                 onSkip: skip
             )
-        case .coachKey:
-            CoachKeyOnboardingStepView(
-                stepIndex: stepIndex,
-                totalSteps: totalSteps,
-                onContinue: advance,
-                onBack: goBack,
-                onSkip: skip
-            )
         case .trainingPlan:
             TrainingPlanOnboardingStepView(
                 stepIndex: stepIndex,
@@ -91,14 +83,6 @@ struct OnboardingFlowView: View {
             )
         case .backfill:
             BackfillOnboardingStepView(
-                stepIndex: stepIndex,
-                totalSteps: totalSteps,
-                onContinue: advance,
-                onBack: goBack,
-                onSkip: skip
-            )
-        case .shortcuts:
-            ShortcutsOnboardingStepView(
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: finish,

@@ -153,6 +153,7 @@ public struct ManualMealService: Sendable {
         bucket: MealBucket,
         lineItems: [MealLineItemRecord],
         loggedAt: Date = Date(),
+        helmDay: HelmDay? = nil,
         mealID: String = UUID().uuidString,
         source: MealRecord.Source,
         overrideMacros: FoodPortionMacros? = nil
@@ -179,7 +180,7 @@ public struct ManualMealService: Sendable {
                 name: name,
                 bucket: bucket,
                 loggedAt: loggedAt,
-                helmDay: nil,
+                helmDay: helmDay,
                 mealID: mealID,
                 source: source,
                 macros: macros,

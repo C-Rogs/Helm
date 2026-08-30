@@ -154,10 +154,6 @@ public struct InSessionCoachService: Sendable {
             throw InSessionCoachError.providerUnavailable(message)
         }
 
-        guard let gemini = provider as? GeminiProvider else {
-            throw InSessionCoachError.providerUnavailable("Session adjustments require Gemini.")
-        }
-
         let prompt = buildPrompt(
             snapshot: snapshot,
             profile: profile,
@@ -166,7 +162,7 @@ public struct InSessionCoachService: Sendable {
             liveVitals: liveVitals
         )
 
-        let artefact = try await gemini.generateSessionAdjustment(
+        let artefact = try await provider.generateSessionAdjustment(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: userMessage,
@@ -202,7 +198,7 @@ public struct InSessionCoachService: Sendable {
         for the exercise the athlete means, or omit the operation if none of the matches is right. \
         Athlete request was: \(userMessage)
         """
-        let retryArtefact = try await gemini.generateSessionAdjustment(
+        let retryArtefact = try await provider.generateSessionAdjustment(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
             userMessage: retryUserMessage,
@@ -229,23 +225,25 @@ public struct InSessionCoachService: Sendable {
         _ proposal: CoachSessionProposal,
         snapshot: ActiveSessionSnapshot,
         excludedExerciseIDs: Set<String>
-    ) throws -> AppliedSessionAdjustment {
+    ) async throws -> HelmActionResult {
         guard proposal.requiresConfirmation else {
             throw InSessionCoachError.noApplicableChange
         }
 
-        let applied = try applyAdjustment(
-            payload: proposal.payload,
-            snapshot: snapshot,
-            excludedExerciseIDs: excludedExerciseIDs,
-            userMessage: proposal.sourceUserMessage,
-            modelVersion: proposal.payload.schemaVersion,
-            recommendationID: proposal.recommendationID,
-            markActedOn: true
+        let result = try await HelmActionExecutor(persistence: persistence).run(
+            .applySessionAdjustment(HelmSessionAdjustmentCommand(
+                payload: proposal.payload,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs,
+                userMessage: proposal.sourceUserMessage,
+                modelVersion: proposal.payload.schemaVersion,
+                recommendationID: proposal.recommendationID,
+                markActedOn: true
+            ))
         )
 
         try persistence.coachRecommendations.markActedOn(id: proposal.recommendationID)
-        return applied
+        return result
     }
 
     public func dismissProposal(recommendationID: String) throws {
@@ -273,7 +271,15 @@ public struct InSessionCoachService: Sendable {
         guard proposal.requiresConfirmation else {
             throw InSessionCoachError.noApplicableChange
         }
-        return try applyProposal(proposal, snapshot: snapshot, excludedExerciseIDs: excludedExerciseIDs)
+        let result = try await applyProposal(
+            proposal,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs
+        )
+        guard let applied = result.sessionAdjustment else {
+            throw InSessionCoachError.noApplicableChange
+        }
+        return applied
     }
 
     public func applyAdjustment(

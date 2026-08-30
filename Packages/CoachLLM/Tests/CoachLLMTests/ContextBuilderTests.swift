@@ -278,4 +278,30 @@ struct ContextBuilderTests {
         #expect(secondIndex != nil)
         #expect(firstIndex! < secondIndex!)
     }
+
+    @Test("app surface rides on freshness suffix, not stable prefix")
+    func appSurfaceOnFreshnessSuffix() {
+        let surface = CoachAppSurfaceSnapshot(
+            selectedTab: "nutrition",
+            sessionStatus: "active",
+            sessionTitle: "Push",
+            viewedNutritionDay: "2026-08-20"
+        )
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: fixtureDays(),
+            budget: 10_000,
+            turn: .initial,
+            appSurface: surface
+        )
+
+        let suffix = prompt.freshnessSuffix ?? ""
+        #expect(suffix.contains("# App State"))
+        #expect(suffix.contains("tab=nutrition"))
+        #expect(suffix.contains("session=active"))
+        #expect(suffix.contains("session_title=Push"))
+        #expect(suffix.contains("nutrition_day=2026-08-20"))
+        #expect(!prompt.contextBlock.contains("# App State"))
+        #expect(prompt.contextBlock.hasPrefix("# Memory Profile"))
+    }
 }

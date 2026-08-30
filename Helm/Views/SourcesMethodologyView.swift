@@ -173,11 +173,13 @@ struct SourcesMethodologyView: View {
         defer { isSaving = false }
 
         do {
-            try await prescriptionService.saveMethodologyPreferences(preferences)
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.methodologyPreferences(preferences)),
+                after: .coach
+            )
             loadedPreferences = preferences
-            CoachApplyMomentStore.shared.play()
+            CloudBackupCoordinator.shared.schedulePush()
             saveMessage = "Saved. Today's prescription was re-planned."
-            PlanBootstrap.refreshPrescription()
             await loadPrescriptionCitations()
         } catch {
             saveMessage = error.localizedDescription

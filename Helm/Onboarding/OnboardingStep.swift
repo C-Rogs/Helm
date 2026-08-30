@@ -5,10 +5,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
     case healthKit
     case bodyProfile
     case notifications
-    case coachKey
     case trainingPlan
     case backfill
-    case shortcuts
 
     var id: Int { rawValue }
 
@@ -18,10 +16,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         case .healthKit: "Health data"
         case .bodyProfile: "Body profile"
         case .notifications: "Notifications"
-        case .coachKey: "Coach"
         case .trainingPlan: "Training plan"
         case .backfill: "Import history"
-        case .shortcuts: "Shortcuts"
         }
     }
 
@@ -35,14 +31,10 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
             "Confirm weight, height, sex, and date of birth so Signal can estimate maintenance calories."
         case .notifications:
             "Rest timers and future briefs use local notifications."
-        case .coachKey:
-            "Add a Gemini API key for coach narration. Engine-only mode works without one."
         case .trainingPlan:
-            "Set your phase and goal so today's session is prescribed."
+            "Draft plan options, ask for a different split, and preview an example session."
         case .backfill:
             "Import the last six months to seed readiness baselines."
-        case .shortcuts:
-            "Automate your morning brief from Shortcuts when you are ready."
         }
     }
 
@@ -52,10 +44,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         case .healthKit: "Health Access"
         case .bodyProfile: "Body Profile"
         case .notifications: "Notifications"
-        case .coachKey: "Coach API Key"
         case .trainingPlan: "Training Plan"
         case .backfill: "Health Import"
-        case .shortcuts: "Shortcuts Setup"
         }
     }
 

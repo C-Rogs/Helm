@@ -246,9 +246,15 @@ final class TrainSessionController {
 
     func regenerateTodaysPrescription() async {
         let day = todayHelmDay()
-        PrescriptionDayStore.clear(for: day)
-        await PlanBootstrap.refreshPrescriptionWithCalendar()
-        prescriptionSummary = prescriptionService.state.summary
+        do {
+            _ = try await HelmActionRuntime.perform(
+                .trainingPlan(.regenerateToday(day)),
+                after: .none
+            )
+            prescriptionSummary = prescriptionService.state.summary
+        } catch {
+            errorMessage = error.localizedDescription
+        }
     }
 
     func discussTodaysSession() {
@@ -416,9 +422,9 @@ final class TrainSessionController {
 
     func startTodaysPrescription() async {
         do {
-            try await WorkoutStartCoordinator.startTodaysSession(
+            try await HelmActionRuntime.startTodaysSession(
                 controller: self,
-                prescriptionService: prescriptionService
+                openTrainTab: false
             )
         } catch {
             errorMessage = error.localizedDescription
@@ -963,17 +969,13 @@ final class TrainSessionController {
         guard !trimmed.isEmpty else { return }
         do {
             await persistSessionNote()
-            var profile = try persistence.memoryProfile.load()
-            let formatter = ISO8601DateFormatter()
-            formatter.formatOptions = [.withFullDate]
-            let dateLine = formatter.string(from: Date())
-            let line = "\(dateLine): \(trimmed)"
-            if profile.standingConstraints.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
-                profile.standingConstraints = line
-            } else {
-                profile.standingConstraints += "\n" + line
-            }
-            try persistence.memoryProfile.save(profile)
+            _ = try await HelmActionRuntime.perform(
+                .memory(.appendTrainingResponse(
+                    note: trimmed,
+                    today: HelmDay.day(for: Date(), calendar: .current)
+                )),
+                after: .none
+            )
             sessionNoteSavedConfirmation = true
             HapticEngine.shared.play(.mealConfirmed)
         } catch {
@@ -1872,54 +1874,108 @@ final class TrainSessionController {
         }
     }
 
+    func proposeChatSessionAdjustment(
+        userMessage: String,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        context: CoachContextDays,
+        thread: CoachThreadState
+    ) async throws -> CoachSessionProposal {
+        let proposal: CoachSessionProposal
+        if let snapshot = store.snapshot {
+            proposal = try await inSessionCoach.proposeAdjustment(
+                userMessage: userMessage,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs,
+                provider: provider,
+                profile: profile,
+                context: context,
+                thread: thread,
+                liveVitals: InSessionLiveVitals.from(
+                    buffer: sessionHeartRateBuffer,
+                    currentBPM: WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM,
+                    sessionStartedAt: snapshot.session.startedAt
+                )
+            )
+        } else {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+            proposal = try await preStartCoach.proposeAdjustment(
+                userMessage: userMessage,
+                prescription: prescription,
+                excludedExerciseIDs: excludedExerciseIDs,
+                provider: provider,
+                profile: profile,
+                context: context,
+                thread: thread
+            )
+        }
+        coachThread.messages.append(CoachMessage(role: .user, text: userMessage))
+        coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
+        return proposal
+    }
+
+    func dismissChatSessionProposal(_ proposal: CoachSessionProposal) {
+        try? inSessionCoach.dismissProposal(recommendationID: proposal.recommendationID)
+    }
+
+    /// Persist a session or pre-start adjustment. Train sheet chrome stays with `confirmCoachProposal`.
+    @discardableResult
+    func applySessionProposal(_ proposal: CoachSessionProposal) async throws -> SessionPrescription? {
+        if let snapshot = store.snapshot {
+            let result = try await inSessionCoach.applyProposal(
+                proposal,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs
+            )
+            await HelmActionRuntime.apply(result, after: .none)
+            guard let applied = result.sessionAdjustment else {
+                throw InSessionCoachError.noApplicableChange
+            }
+            try await finishApplyingAdjustment(applied)
+            return nil
+        }
+
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
+        let (adjusted, persist) = try await preStartCoach.applyProposal(
+            proposal,
+            prescription: prescription,
+            excludedExerciseIDs: excludedExerciseIDs,
+            day: todayHelmDay()
+        )
+        await HelmActionRuntime.apply(persist, after: .none)
+        await prescriptionService.refresh(readiness: readiness)
+        prescriptionSummary = prescriptionService.state.summary
+        applyPrescriptionTargets(from: adjusted)
+        WorkoutHapticCoordinator.playCoachAdjustment()
+        return adjusted
+    }
+
     func confirmCoachProposal() async {
         guard let proposal = pendingCoachProposal else { return }
 
         isCoachThinking = true
         defer { isCoachThinking = false }
 
-        if let snapshot = store.snapshot {
-            do {
-                let applied = try inSessionCoach.applyProposal(
-                    proposal,
-                    snapshot: snapshot,
-                    excludedExerciseIDs: excludedExerciseIDs
-                )
-                pendingCoachProposal = nil
-                isShowingCoachPrompt = false
-                try await finishApplyingAdjustment(applied)
-            } catch InSessionCoachError.adjustmentRejected(let reason) {
-                WorkoutHapticCoordinator.play(.clampRejected)
-                pendingCoachProposal = nil
-                appendCoachFailureNotice(CoachProposalFailure.clamp(reason).userMessage)
-            } catch InSessionCoachError.noApplicableChange {
-                pendingCoachProposal = nil
-                appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
-            } catch {
-                pendingCoachProposal = nil
-                appendCoachFailureNotice(error.localizedDescription)
-            }
-            return
-        }
-
+        let hadLiveSession = store.snapshot != nil
         do {
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
-            let adjusted = try preStartCoach.applyProposal(
-                proposal,
-                prescription: prescription,
-                excludedExerciseIDs: excludedExerciseIDs,
-                day: todayHelmDay()
-            )
+            let adjusted = try await applySessionProposal(proposal)
             pendingCoachProposal = nil
-            await prescriptionService.refresh(readiness: readiness)
-            prescriptionSummary = prescriptionService.state.summary
-            applyPrescriptionTargets(from: adjusted)
-            let names = try persistence.exercises.displayNames(for: adjusted.exercises.map(\.exerciseID))
-            let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
-            coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
-            coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
-            WorkoutHapticCoordinator.playCoachAdjustment()
+            isShowingCoachPrompt = false
+            if !hadLiveSession, let adjusted {
+                let names = try persistence.exercises.displayNames(for: adjusted.exercises.map(\.exerciseID))
+                let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
+                coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
+                coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
+            }
+        } catch InSessionCoachError.adjustmentRejected(let reason) {
+            WorkoutHapticCoordinator.play(.clampRejected)
+            pendingCoachProposal = nil
+            appendCoachFailureNotice(CoachProposalFailure.clamp(reason).userMessage)
+        } catch InSessionCoachError.noApplicableChange {
+            pendingCoachProposal = nil
+            appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
         } catch {
             pendingCoachProposal = nil
             appendCoachFailureNotice(error.localizedDescription)
@@ -1953,11 +2009,17 @@ final class TrainSessionController {
         guard let snapshot = store.snapshot else {
             throw InSessionCoachError.noActiveSession
         }
-        let applied = try inSessionCoach.applyAdjustment(
-            payload: payload,
-            snapshot: snapshot,
-            excludedExerciseIDs: excludedExerciseIDs
+        let result = try await HelmActionRuntime.perform(
+            .applySessionAdjustment(HelmSessionAdjustmentCommand(
+                payload: payload,
+                snapshot: snapshot,
+                excludedExerciseIDs: excludedExerciseIDs
+            )),
+            after: .none
         )
+        guard let applied = result.sessionAdjustment else {
+            throw InSessionCoachError.noApplicableChange
+        }
         try await finishApplyingAdjustment(applied)
     }
 

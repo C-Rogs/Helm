@@ -32,6 +32,8 @@ struct BackfillOnboardingStepView: View {
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                payoffSection
+
                 if isBackfilling || hasStarted || progress.isComplete {
                     ArcProgressGauge(progress: progressFraction, state: .ready, reduceMotion: reduceMotion) {
                         VStack(spacing: HelmSpacing.xxs) {

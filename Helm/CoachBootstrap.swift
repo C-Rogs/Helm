@@ -12,12 +12,7 @@ enum CoachBootstrap {
     }
 
     @MainActor
-    static var liveGeminiProvider: GeminiProvider? {
-        ProviderRegistry.shared.provider(for: .gemini) as? GeminiProvider
-    }
-
-    @MainActor
-    static var calendarGeminiProvider: GeminiProvider? {
+    static var calendarClassifierProvider: (any CoachLLMProvider)? {
         let keyStore = APIKeyStore()
         guard keyStore.hasKey(kind: .gemini) else { return nil }
         return GeminiProvider(apiKeyStore: keyStore, model: .calendar)
@@ -28,7 +23,7 @@ enum CoachBootstrap {
         let keyStore = APIKeyStore()
         if keyStore.hasKey(kind: .gemini) {
             let provider = GeminiProvider(apiKeyStore: keyStore)
-            ProviderRegistry.shared.installGeminiProvider(provider)
+            ProviderRegistry.shared.installChatProvider(provider)
             Task { await provider.prewarm() }
             return
         }
@@ -45,7 +40,7 @@ enum CoachBootstrap {
                 ]
             )
         )
-        ProviderRegistry.shared.installGeminiProvider(mock)
+            ProviderRegistry.shared.installChatProvider(mock)
         #endif
     }
 }

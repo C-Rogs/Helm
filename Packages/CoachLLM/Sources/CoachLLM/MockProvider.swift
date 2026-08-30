@@ -5,15 +5,18 @@ public final class MockProvider: CoachLLMProvider, @unchecked Sendable {
         public var availability: ProviderAvailability
         public var responseChunks: [String]
         public var responseError: CoachProviderError?
+        public var functionCalls: [CoachLLMFunctionCall]
 
         public init(
             availability: ProviderAvailability = .available,
             responseChunks: [String] = ["Hello from mock coach."],
-            responseError: CoachProviderError? = nil
+            responseError: CoachProviderError? = nil,
+            functionCalls: [CoachLLMFunctionCall] = []
         ) {
             self.availability = availability
             self.responseChunks = responseChunks
             self.responseError = responseError
+            self.functionCalls = functionCalls
         }
     }
 
@@ -104,5 +107,37 @@ public final class MockProvider: CoachLLMProvider, @unchecked Sendable {
         }
 
         return FixtureStreamHarness.stream(chunks: config.responseChunks)
+    }
+
+    public func respondTurn(
+        systemInstructions: String,
+        contextBlock: String,
+        userMessage: String,
+        thread: CoachThreadState,
+        freshnessSuffix: String? = nil
+    ) async throws -> AsyncThrowingStream<CoachLLMStreamEvent, Error> {
+        let textStream = try await respond(
+            systemInstructions: systemInstructions,
+            contextBlock: contextBlock,
+            userMessage: userMessage,
+            thread: thread,
+            freshnessSuffix: freshnessSuffix
+        )
+        let calls = lock.withLock { configuration.functionCalls }
+        return AsyncThrowingStream { continuation in
+            Task {
+                do {
+                    for try await chunk in textStream {
+                        continuation.yield(.text(chunk))
+                    }
+                    for call in calls {
+                        continuation.yield(.functionCall(call))
+                    }
+                    continuation.finish()
+                } catch {
+                    continuation.finish(throwing: error)
+                }
+            }
+        }
     }
 }

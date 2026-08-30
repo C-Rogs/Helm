@@ -24,7 +24,11 @@ final class AppTabRouter {
     }
 
     func openTrain() {
-        selectedTab = .train
+        open(.train)
+    }
+
+    func open(_ tab: AppTab) {
+        selectedTab = tab
     }
 
     func noteSelectionChanged() {

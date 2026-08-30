@@ -25,7 +25,7 @@ final class CalendarEventClassifierService {
     /// Days without all-day events are not included in the result.
     func classify(
         loads: [HelmDay: CalendarDayLoad],
-        provider: GeminiProvider? = CoachBootstrap.calendarGeminiProvider
+        provider: (any CoachLLMProvider)? = CoachBootstrap.calendarClassifierProvider
     ) async -> [HelmDay: EventBlockingClassification] {
         var result: [HelmDay: EventBlockingClassification] = [:]
 
@@ -73,7 +73,7 @@ final class CalendarEventClassifierService {
 
     private func classifyInFlight(
         titles: [String],
-        provider: GeminiProvider
+        provider: any CoachLLMProvider
     ) async throws -> [String: EventBlockingClassification] {
         if let existing = inFlightTask {
             let classifications = try await existing.value

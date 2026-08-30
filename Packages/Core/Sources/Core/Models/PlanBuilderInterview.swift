@@ -45,6 +45,8 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
     public var progressionGoal: ProgressionGoal
     /// Free-form emphasis such as "arms" or "v-taper"; optional.
     public var emphasis: String?
+    /// Free-text request for a different plan option, shown on the cards screen.
+    public var discussionNote: String?
 
     public init(
         confirmedMaintenanceKcal: Double? = nil,
@@ -53,7 +55,8 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
         sessionDurationMinutes: Int = 60,
         experienceRaw: String = "intermediate",
         progressionGoal: ProgressionGoal = .hypertrophy,
-        emphasis: String? = nil
+        emphasis: String? = nil,
+        discussionNote: String? = nil
     ) {
         self.confirmedMaintenanceKcal = confirmedMaintenanceKcal
         self.usesComputedEstimate = usesComputedEstimate
@@ -62,5 +65,6 @@ public struct PlanBuilderInterview: Sendable, Hashable, Codable {
         self.experienceRaw = experienceRaw
         self.progressionGoal = progressionGoal
         self.emphasis = emphasis
+        self.discussionNote = discussionNote
     }
 }

@@ -7,6 +7,27 @@ enum AppTab: Hashable {
     case nutrition
     case chat
     case settings
+
+    var coachSurfaceLabel: String {
+        switch self {
+        case .dashboard: "dashboard"
+        case .train: "train"
+        case .nutrition: "nutrition"
+        case .chat: "chat"
+        case .settings: "settings"
+        }
+    }
+
+    init?(coachSurfaceLabel: String) {
+        switch coachSurfaceLabel.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+        case "dashboard": self = .dashboard
+        case "train": self = .train
+        case "nutrition": self = .nutrition
+        case "chat": self = .chat
+        case "settings": self = .settings
+        default: return nil
+        }
+    }
 }
 
 struct RootTabView: View {

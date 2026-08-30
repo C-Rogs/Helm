@@ -160,17 +160,34 @@ public enum CandidatePlanGenerator {
     public static func generate(
         interview: PlanBuilderInterview,
         experience: TrainingExperience,
-        historicalWeeklyHardSets: [MuscleGroup: Double] = [:]
+        historicalWeeklyHardSets: [MuscleGroup: Double] = [:],
+        preferredTemplateRaw: String? = nil
     ) -> [CandidatePlan] {
-        candidateBlueprints(daysPerWeek: interview.daysPerWeek)
-            .map { blueprint in
-                makeCandidate(
-                    blueprint: blueprint,
-                    interview: interview,
-                    experience: experience,
-                    historicalWeeklyHardSets: historicalWeeklyHardSets
-                )
+        var blueprints = candidateBlueprints(daysPerWeek: interview.daysPerWeek)
+        if let preferred = preferredTemplateRaw {
+            let matching = blueprints.filter { $0.templateRaw == preferred }
+            if !matching.isEmpty {
+                let rest = blueprints.filter { $0.templateRaw != preferred }
+                blueprints = matching + rest
             }
+        }
+        return blueprints.map { blueprint in
+            makeCandidate(
+                blueprint: blueprint,
+                interview: interview,
+                experience: experience,
+                historicalWeeklyHardSets: historicalWeeklyHardSets
+            )
+        }
+    }
+
+    /// First session of the week for an example-workout preview.
+    public static func exampleDayKind(for candidate: CandidatePlan) -> TrainingDayKind {
+        switch candidate.programTemplateRaw {
+        case "upper_lower": .upper
+        case "full_body": .full
+        default: .push
+        }
     }
 
     static func makeCandidate(

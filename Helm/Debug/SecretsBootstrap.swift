@@ -1,4 +1,3 @@
-#if DEBUG
 import CoachLLM
 import Diagnostics
 import Foundation
@@ -101,4 +100,3 @@ enum SecretsBootstrap {
         return directoryURL
     }
 }
-#endif

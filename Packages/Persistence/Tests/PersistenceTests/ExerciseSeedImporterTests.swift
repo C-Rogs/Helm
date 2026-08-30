@@ -16,6 +16,32 @@ struct ExerciseSeedImporterTests {
         throw FixtureError.missing
     }
 
+    @Test("overlay exerciseMode accepts camelCase and missing values")
+    func overlayExerciseModeIsLenient() throws {
+        let json = """
+        {
+          "seedVersion": 1,
+          "placeholder": false,
+          "exercises": [
+            {
+              "id": "seed-run",
+              "canonicalName": "running",
+              "displayName": "Running",
+              "exerciseMode": "distanceDuration"
+            },
+            {
+              "id": "seed-curl",
+              "canonicalName": "hammer curl",
+              "displayName": "Hammer Curl (Dumbbell)"
+            }
+          ]
+        }
+        """
+        let manifest = try ExerciseSeedLoader.loadManifest(from: Data(json.utf8))
+        #expect(manifest.exercises[0].exerciseMode == .distanceDuration)
+        #expect(manifest.exercises[1].exerciseMode == .weightReps)
+    }
+
     @Test("placeholder manifest round-trips into GRDB")
     func placeholderRoundTrip() throws {
         let store = try PersistenceStore.inMemory()
@@ -229,20 +255,33 @@ struct ExerciseSeedImporterTests {
         #expect(resolved?.exerciseID == "seed-horizontal-leg-press")
     }
 
-    @Test("hiddenIDs soft-deletes catalogue rows but keeps custom rows")
-    func hiddenIDSoftDeletes() throws {
+    @Test("hiddenIDs skip overlay picker rows and hide unused catalogue ids")
+    func hiddenIDsPreserveOverlayPicker() throws {
         let store = try PersistenceStore.inMemory()
         let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("exercise-seed-hidden-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let catalog = """
+        [
+          {"id":"Bench_Press","name":"Bench Press","primaryMuscles":["chest"],"secondaryMuscles":[],"equipment":"barbell"},
+          {"id":"Sit_Up","name":"Sit Up","primaryMuscles":["abdominals"],"secondaryMuscles":[],"equipment":"body only"}
+        ]
+        """
+        try Data(catalog.utf8).write(to: directory.appendingPathComponent("free-exercise-db.json"))
 
         let manifest = """
         {
-          "seedVersion": 7,
+          "seedVersion": 1,
           "placeholder": false,
-          "hiddenIDs": ["seed-bench-press"],
+          "catalogResource": "free-exercise-db",
+          "pickerCuration": "explicit",
+          "hiddenIDs": ["seed-Bench_Press", "seed-Sit_Up"],
           "exercises": [
             {
-              "id": "seed-bench-press",
-              "canonicalName": "bench press (barbell)",
+              "id": "seed-cam-bench",
+              "canonicalName": "bench press",
               "displayName": "Bench Press (Barbell)",
               "aliases": ["Bench Press"],
               "exerciseMode": "weight_reps",
@@ -250,20 +289,125 @@ struct ExerciseSeedImporterTests {
               "primaryMuscleGroup": "chest",
               "secondaryMuscleGroups": [],
               "isPickerDefault": true,
-              "isHevyLibrary": true
+              "sourceDatasetID": "Bench_Press"
             }
           ]
         }
         """
-        let data = Data(manifest.utf8)
-        let url = FileManager.default.temporaryDirectory
-            .appendingPathComponent("exercise_seed_hidden_test.json")
-        try data.write(to: url)
+        let manifestURL = directory.appendingPathComponent("exercises.json")
+        try Data(manifest.utf8).write(to: manifestURL)
 
-        _ = try importer.importIfNeeded(manifestURL: url, manifestData: data)
+        _ = try importer.importIfNeeded(manifestURL: manifestURL)
 
-        #expect(try store.exercises.fetchSummary(id: "seed-bench-press") == nil)
-        #expect(try !store.exercises.listForPicker(search: "Bench Press").contains { $0.id == "seed-bench-press" })
+        #expect(try store.exercises.fetchSummary(id: "seed-Bench_Press") != nil)
+        #expect(try store.exercises.fetchSummary(id: "seed-Sit_Up") == nil)
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.contains { $0.id == "seed-Bench_Press" })
+    }
+
+    @Test("missing catalog still imports overlay exercises")
+    func missingCatalogFallsBackToOverlay() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent("exercise-seed-overlay-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+
+        let manifest = """
+        {
+          "seedVersion": 1,
+          "placeholder": false,
+          "catalogResource": "free-exercise-db",
+          "pickerCuration": "explicit",
+          "exercises": [
+            {
+              "id": "seed-cam-bench",
+              "canonicalName": "bench press",
+              "displayName": "Bench Press (Barbell)",
+              "aliases": ["Bench Press"],
+              "exerciseMode": "weight_reps",
+              "equipment": "barbell",
+              "primaryMuscleGroup": "chest",
+              "secondaryMuscleGroups": [],
+              "isPickerDefault": true
+            }
+          ]
+        }
+        """
+        let manifestURL = directory.appendingPathComponent("exercises.json")
+        try Data(manifest.utf8).write(to: manifestURL)
+
+        _ = try importer.importIfNeeded(manifestURL: manifestURL)
+
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.contains { $0.id == "seed-cam-bench" })
+    }
+
+    @Test("production seed keeps picker defaults after hiddenIDs")
+    func productionSeedKeepsPickerDefaults() throws {
+        let root = URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+            .deletingLastPathComponent()
+        let directory = root.appendingPathComponent("Helm/Resources/ExerciseSeed")
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+
+        _ = try importer.importIfNeeded(
+            manifestURL: directory.appendingPathComponent("exercises.json"),
+            catalogURL: directory.appendingPathComponent("free-exercise-db.json")
+        )
+
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.count >= 70)
+        #expect(defaults.contains { $0.displayName.localizedCaseInsensitiveContains("bench") })
+    }
+
+    @Test("Persistence module bundle imports picker defaults")
+    func bundledModuleSeedImportsPickerDefaults() async throws {
+        let store = try PersistenceStore.inMemory()
+        let result = try await store.importBundledExerciseSeedIfNeeded()
+        #expect(!result.skippedBecauseUpToDate)
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.count >= 70)
+        #expect(defaults.contains { $0.displayName.localizedCaseInsensitiveContains("bench") })
+    }
+
+    @Test("empty store reimports even when seed version already matches")
+    func emptyStoreReimportsAtSameVersion() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let manifestURL = try fixtureURL("exercise_seed_v1")
+        let manifestData = try Data(contentsOf: manifestURL)
+
+        _ = try importer.importIfNeeded(manifestURL: manifestURL, manifestData: manifestData)
+        try store.poolForTesting.write { db in
+            try db.execute(sql: "UPDATE exercise SET deleted_at = ?", arguments: ["2026-01-01T00:00:00Z"])
+        }
+        #expect(try store.exercises.exerciseCount() == 0)
+
+        let second = try importer.importIfNeeded(manifestURL: manifestURL, manifestData: manifestData)
+        #expect(!second.skippedBecauseUpToDate)
+        #expect(try store.exercises.exerciseCount() == 2)
+    }
+
+    @Test("picker lists visible exercises when no picker-default flags")
+    func pickerFallsBackWhenDefaultsMissing() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let entry = ExerciseSeedEntry(
+            id: "seed-bench-press",
+            canonicalName: "bench press",
+            displayName: "Bench Press (Barbell)",
+            aliases: ["Bench Press"],
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+        _ = try importer.importEntries([entry], seedVersion: 1, pickerCuration: .explicit, explicitPickerIDs: [])
+        let defaults = try store.exercises.listForPicker(search: nil)
+        #expect(defaults.contains { $0.id == "seed-bench-press" })
     }
 
     @Test("free-exercise-db catalog maps loggy-style entries")

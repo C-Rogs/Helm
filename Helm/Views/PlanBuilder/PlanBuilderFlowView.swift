@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import DesignSystem
 import HealthKitIngest
@@ -14,6 +15,15 @@ struct PlanBuilderFlowView: View {
         case refine(PlanBuilderOption)
     }
 
+    enum Presentation {
+        case sheet
+        case onboarding(stepIndex: Int, totalSteps: Int, onSkip: () -> Void)
+    }
+
+    var presentation: Presentation = .sheet
+    var hidesMaintenanceField: Bool = false
+    var onFinished: (() -> Void)?
+
     @State private var stage: Stage = .interview
     @State private var interview = PlanBuilderInterview()
     @State private var maintenanceText = ""
@@ -22,6 +32,9 @@ struct PlanBuilderFlowView: View {
     @State private var selectedExperience: Set<String> = ["intermediate"]
     @State private var selectedGoal: Set<String> = [PlanBuilderInterview.ProgressionGoal.hypertrophy.rawValue]
     @State private var emphasisText = ""
+    @State private var discussionText = ""
+    @State private var phase: TrainingPhase = .maintain
+    @State private var weeklyRateText = ""
     @State private var options: [PlanBuilderOption] = []
     @State private var notice: String?
     @State private var showCommittedConfirmation = false
@@ -30,7 +43,7 @@ struct PlanBuilderFlowView: View {
 
     private let service = PlanBuilderService(
         persistence: PersistenceBootstrap.persistenceStore,
-        provider: CoachBootstrap.liveGeminiProvider
+        provider: ProviderRegistry.shared.provider(for: ProviderPreferencesStore().selectedProvider)
     )
 
     var body: some View {
@@ -42,25 +55,13 @@ struct PlanBuilderFlowView: View {
                 case .thinking:
                     thinkingView
                 case .cards:
-                    PlanOptionCardsView(options: options) { option in
-                        HapticEngine.shared.play(.coachAdjust)
-                        withAnimation {
-                            stage = .refine(option)
-                        }
-                    }
-                    .safeAreaInset(edge: .bottom) {
-                        Button("Back to questions") {
-                            stage = .interview
-                        }
-                        .buttonStyle(.helmSecondary)
-                        .padding(.horizontal, HelmSpacing.screenGutter)
-                        .padding(.bottom, HelmSpacing.sm)
-                    }
+                    cardsView
                 case .refine(let option):
                     PlanRefinementView(
                         option: option,
                         interview: syncedInterview(),
                         service: service,
+                        phaseGoal: currentPhaseGoal(),
                         onCommitted: {
                             HapticEngine.shared.play(.sessionFinished)
                             PlanBootstrap.refreshPrescription()
@@ -74,29 +75,38 @@ struct PlanBuilderFlowView: View {
                     )
                 }
             }
-            .navigationTitle("New workout plan")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
-                        generateTask?.cancel()
-                        dismiss()
+                if case .sheet = presentation {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Close") {
+                            generateTask?.cancel()
+                            dismiss()
+                        }
+                    }
+                } else if case let .onboarding(_, _, onSkip) = presentation, stage == .interview {
+                    ToolbarItem(placement: .cancellationAction) {
+                        Button("Set up later") {
+                            generateTask?.cancel()
+                            onSkip()
+                        }
                     }
                 }
             }
             .helmScreenBackground()
             .alert("Plan locked in", isPresented: $showCommittedConfirmation) {
                 Button("Done", role: .cancel) {
-                    dismiss()
+                    finish()
                 }
             } message: {
                 Text("Your training plan was updated and today's session re-prescribed. Your coach chat can see the new plan too.")
             }
         }
         .task {
+            loadPhase()
             if let resumable = service.loadResumableSession() {
                 applyInterview(resumable.interview)
-                // A completed generation pass resumes straight at the cards.
                 if let restoredOptions = service.restoredOptions() {
                     options = restoredOptions
                     stage = .cards
@@ -107,6 +117,19 @@ struct PlanBuilderFlowView: View {
         }
         .onDisappear {
             generateTask?.cancel()
+        }
+    }
+
+    private var navigationTitle: String {
+        if case .onboarding = presentation { return "Training plan" }
+        return "Training plan"
+    }
+
+    private func finish() {
+        if let onFinished {
+            onFinished()
+        } else {
+            dismiss()
         }
     }
 
@@ -123,9 +146,25 @@ struct PlanBuilderFlowView: View {
         selectedExperience = [value.experienceRaw]
         selectedGoal = [value.progressionGoal.rawValue]
         emphasisText = value.emphasis ?? ""
+        discussionText = value.discussionNote ?? ""
         if let kcal = value.confirmedMaintenanceKcal {
             maintenanceText = String(Int(kcal))
         }
+    }
+
+    private func loadPhase() {
+        if let settings = try? PersistenceBootstrap.persistenceStore.trainingPlan.load() {
+            phase = settings.phaseGoal.phase
+            if let rate = settings.phaseGoal.weeklyRateKg {
+                weeklyRateText = String(rate)
+            }
+        }
+    }
+
+    private func currentPhaseGoal() -> PhaseGoal {
+        let trimmed = weeklyRateText.trimmingCharacters(in: .whitespacesAndNewlines)
+        let rate = trimmed.isEmpty ? nil : Double(trimmed)
+        return PhaseGoal(phase: phase, weeklyRateKg: rate)
     }
 
     // MARK: - Interview
@@ -133,8 +172,19 @@ struct PlanBuilderFlowView: View {
     private var interviewView: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                Text("Confirm what Helm knows, then I will draft plan options.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
+                if case let .onboarding(stepIndex, totalSteps, _) = presentation {
+                    Text("Step \(stepIndex) of \(totalSteps)")
+                        .font(HelmTypography.monoTag)
+                        .foregroundStyle(HelmColor.fgMuted)
+                        .textCase(.uppercase)
+                    Text("Set phase, then draft plan options you can talk through.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                } else {
+                    Text("Confirm what Signal knows, then draft plan options.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                }
+
+                phaseStrip
 
                 MultipleChoiceQuestionView(
                     question: "How many days per week can you train?",
@@ -177,15 +227,17 @@ struct PlanBuilderFlowView: View {
                     selection: $selectedGoal
                 )
 
-                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                    Text("Maintenance calories")
-                        .helmType(.label, color: HelmColor.fgSecondary)
-                    TextField("kcal / day", text: $maintenanceText)
-                        .keyboardType(.numberPad)
-                        .textFieldStyle(.roundedBorder)
-                    Text("Pre-filled from your body profile estimate. Adjust if your own tracking disagrees.")
-                        .font(HelmTypography.caption)
-                        .foregroundStyle(HelmColor.fgMuted)
+                if !hidesMaintenanceField {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                        Text("Maintenance calories")
+                            .helmType(.label, color: HelmColor.fgSecondary)
+                        TextField("kcal / day", text: $maintenanceText)
+                            .keyboardType(.numberPad)
+                            .textFieldStyle(.roundedBorder)
+                        Text("Pre-filled from your body profile estimate. Adjust if your own tracking disagrees.")
+                            .font(HelmTypography.caption)
+                            .foregroundStyle(HelmColor.fgMuted)
+                    }
                 }
 
                 VStack(alignment: .leading, spacing: HelmSpacing.xs) {
@@ -213,6 +265,65 @@ struct PlanBuilderFlowView: View {
         }
     }
 
+    private var phaseStrip: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Phase")
+                .helmType(.label, color: HelmColor.fgSecondary)
+            Picker("Phase", selection: $phase) {
+                Text("Cut").tag(TrainingPhase.cut)
+                Text("Maintain").tag(TrainingPhase.maintain)
+                Text("Gain").tag(TrainingPhase.gain)
+            }
+            .pickerStyle(.segmented)
+            .onChange(of: phase) { _, _ in
+                HapticEngine.shared.play(.phaseChange)
+            }
+
+            if phase != .maintain {
+                TextField("Weekly rate (kg)", text: $weeklyRateText)
+                    .keyboardType(.decimalPad)
+                    .textFieldStyle(.roundedBorder)
+                Text(WeeklyRateCalculator.safeRangeHint(for: phase))
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
+            }
+        }
+    }
+
+    private var cardsView: some View {
+        VStack(spacing: 0) {
+            PlanOptionCardsView(options: options) { option in
+                HapticEngine.shared.play(.coachAdjust)
+                withAnimation {
+                    stage = .refine(option)
+                }
+            }
+
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                Text("Want a different option?")
+                    .helmType(.label, color: HelmColor.fgSecondary)
+                TextField("e.g. 4 day upper/lower, shorter sessions", text: $discussionText, axis: .vertical)
+                    .lineLimit(2 ... 4)
+                    .textFieldStyle(.roundedBorder)
+                Button("Ask for a different option") {
+                    syncInterview()
+                    interview.discussionNote = discussionText.trimmingCharacters(in: .whitespacesAndNewlines)
+                    generateTask?.cancel()
+                    generateTask = Task { await generate() }
+                }
+                .buttonStyle(.helmPrimary)
+                .disabled(discussionText.trimmingCharacters(in: .whitespacesAndNewlines).count < 3)
+
+                Button("Back to questions") {
+                    stage = .interview
+                }
+                .buttonStyle(.helmSecondary)
+            }
+            .padding(.horizontal, HelmSpacing.screenGutter)
+            .padding(.bottom, HelmSpacing.sm)
+        }
+    }
+
     private var isInterviewValid: Bool {
         !selectedDays.isEmpty && !selectedDuration.isEmpty && !selectedGoal.isEmpty && !selectedExperience.isEmpty
     }
@@ -226,11 +337,15 @@ struct PlanBuilderFlowView: View {
         let trimmedKcal = maintenanceText.trimmingCharacters(in: .whitespacesAndNewlines)
         if let kcal = Double(trimmedKcal), kcal > 500, kcal < 8000 {
             interview.confirmedMaintenanceKcal = kcal
+        } else if hidesMaintenanceField {
+            // Keep the prefilled estimate from the body-profile step.
         } else {
             interview.confirmedMaintenanceKcal = nil
         }
         let trimmedEmphasis = emphasisText.trimmingCharacters(in: .whitespacesAndNewlines)
         interview.emphasis = trimmedEmphasis.isEmpty ? nil : trimmedEmphasis
+        let trimmedDiscussion = discussionText.trimmingCharacters(in: .whitespacesAndNewlines)
+        interview.discussionNote = trimmedDiscussion.isEmpty ? nil : trimmedDiscussion
     }
 
     private func generate() async {
@@ -261,7 +376,7 @@ struct PlanBuilderFlowView: View {
                     "Computed candidate volumes from engine landmarks"
                 ],
                 currentStep: "Writing outcome copy for each option…",
-                footnote: "Candidates come from Helm's planning engine. The coach adds outcome copy grounded in current evidence.",
+                footnote: "Candidates come from Signal's planning engine. The coach adds outcome copy grounded in current evidence.",
                 isImpactful: true
             )
             Spacer()

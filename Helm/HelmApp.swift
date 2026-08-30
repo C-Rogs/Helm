@@ -32,12 +32,13 @@ struct HelmApp: App {
                 )
             }
             await CloudBackupCoordinator.shared.pullIfNeededOnLaunch()
+            await PersistenceBootstrap.importExerciseSeed()
             PlanBootstrap.start()
             TrainBootstrap.start()
             HealthKitBootstrap.start()
-            #if DEBUG
-            await SecretsBootstrap.run()
-            #endif
+            if !ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
+                await SecretsBootstrap.run()
+            }
             CoachArchetypeBootstrap.start()
             CoachBootstrap.start()
             ChatBootstrap.start()

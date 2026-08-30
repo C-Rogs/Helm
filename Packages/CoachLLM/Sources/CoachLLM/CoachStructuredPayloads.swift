@@ -287,6 +287,25 @@ public struct FoodLogPayload: Codable, Sendable, Equatable {
         self.portionNotes = portionNotes
     }
 
+    public func replacingHelmDay(_ helmDay: String?) -> FoodLogPayload {
+        FoodLogPayload(
+            schemaVersion: schemaVersion,
+            reply: reply,
+            action: action,
+            mealID: mealID,
+            description: description,
+            bucket: bucket,
+            caloriesKcal: caloriesKcal,
+            proteinG: proteinG,
+            carbsG: carbsG,
+            fatG: fatG,
+            helmDay: helmDay,
+            items: items,
+            implicitFats: implicitFats,
+            portionNotes: portionNotes
+        )
+    }
+
     public init(from decoder: any Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         schemaVersion = try container.decode(String.self, forKey: .schemaVersion)
@@ -412,6 +431,20 @@ public struct ChartPayload: Codable, Sendable, Equatable {
         self.unit = unit
         self.points = points
     }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.chartV1.rawValue
+        reply = try container.decodeIfPresent(String.self, forKey: .reply) ?? ""
+        title = try container.decode(String.self, forKey: .title)
+        unit = try container.decodeIfPresent(String.self, forKey: .unit)
+        points = try container.decode([Point].self, forKey: .points)
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, reply, title, unit, points
+    }
 }
 
 public enum ChartPayloadParser: Sendable {
@@ -463,6 +496,84 @@ public enum CoachChatPersistedAssistantText: Sendable {
             return display
         }
         return ChartPayloadParser.persistText(reply: display, payload: resolvedChart)
+    }
+}
+
+public enum CoachChatChartStitcher {
+    /// Keeps write JSON out of stored chat while preserving a chart block ChatView can parse.
+    public static func appending(_ payload: ChartPayload, to text: String) -> String {
+        if ChartPayloadParser.parse(from: text) != nil {
+            return text
+        }
+        guard let json = payload.embeddedJSON() else { return text }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty { return json }
+        return trimmed + "\n" + json
+    }
+}
+
+extension ChartPayload {
+    public func embeddedJSON() -> String? {
+        guard let data = try? JSONEncoder().encode(self),
+              let json = String(data: data, encoding: .utf8)
+        else {
+            return nil
+        }
+        return json
+    }
+}
+
+public struct NavigatePayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let tab: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.navigateV1.rawValue,
+        tab: String
+    ) {
+        self.schemaVersion = schemaVersion
+        self.tab = Self.normalizedTab(tab)
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.navigateV1.rawValue
+        tab = Self.normalizedTab(try container.decode(String.self, forKey: .tab))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, tab
+    }
+
+    private static func normalizedTab(_ raw: String) -> String {
+        raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+}
+
+public enum NavigatePayloadParser: Sendable {
+    public static func parse(from text: String) -> NavigatePayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .navigateV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(NavigatePayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.navigateV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+/// Confirm cards must not swallow a same-turn `navigate` tool. Open now, or after confirm.
+public enum CoachNavigatePresentation: Equatable, Sendable {
+    case now(String)
+    case afterConfirm(String)
+    case none
+
+    public static func resolve(tab: String?, hasPendingConfirm: Bool) -> Self {
+        guard let tab, !tab.isEmpty else { return .none }
+        if hasPendingConfirm { return .afterConfirm(tab) }
+        return .now(tab)
     }
 }
 
@@ -1162,6 +1273,46 @@ public enum NutritionQueryPayloadParser: Sendable {
               let data = block.data(using: .utf8),
               let payload = try? JSONDecoder().decode(NutritionQueryPayload.self, from: data),
               payload.schemaVersion == CoachOutputSchemaVersion.nutritionQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+// MARK: - context_refresh.v1
+
+public struct ContextRefreshPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let blocks: [String]
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.contextRefreshV1.rawValue,
+        blocks: [String] = ["nutritionDiary"]
+    ) {
+        self.schemaVersion = schemaVersion
+        self.blocks = blocks.isEmpty ? ["nutritionDiary"] : blocks
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.contextRefreshV1.rawValue
+        let decoded = try container.decodeIfPresent([String].self, forKey: .blocks) ?? []
+        blocks = decoded.isEmpty ? ["nutritionDiary"] : decoded
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+        case blocks
+    }
+}
+
+public enum ContextRefreshPayloadParser: Sendable {
+    public static func parse(from text: String) -> ContextRefreshPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .contextRefreshV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(ContextRefreshPayload.self, from: data)
         else {
             return nil
         }

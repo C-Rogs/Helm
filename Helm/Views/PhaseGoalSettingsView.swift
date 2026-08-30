@@ -289,11 +289,13 @@ struct PhaseGoalSettingsView: View {
     @MainActor
     private func confirmReactiveDeload() async {
         do {
-            try await prescriptionService.confirmReactiveDeload()
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.reactiveDeload(.confirm)),
+                after: .none
+            )
             pendingReactiveDeload = false
             reactiveDeloadMessage = "Reactive deload week confirmed. Today's session was re-planned."
             HapticEngine.shared.play(.phaseChange)
-            PlanBootstrap.refreshPrescription()
         } catch {
             reactiveDeloadMessage = error.localizedDescription
         }
@@ -302,7 +304,10 @@ struct PhaseGoalSettingsView: View {
     @MainActor
     private func dismissReactiveDeload() async {
         do {
-            try await prescriptionService.dismissReactiveDeload()
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.reactiveDeload(.dismiss)),
+                after: .none
+            )
             pendingReactiveDeload = false
             reactiveDeloadMessage = "Reactive deload dismissed for now."
         } catch {
@@ -318,13 +323,14 @@ struct PhaseGoalSettingsView: View {
         syncEmphasis()
 
         do {
-            try await prescriptionService.saveTrainingPlan(settings)
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.replaceSettings(settings)),
+                after: .none
+            )
             loadedSettings = settings
             CloudBackupCoordinator.shared.schedulePush()
             HapticEngine.shared.play(.phaseChange)
             saveMessage = "Saved. Today's prescription was re-planned."
-            PlanBootstrap.refreshPrescription()
-            NutritionBootstrap.refreshNutrition()
             onSaved?()
             return true
         } catch {

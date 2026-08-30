@@ -93,6 +93,63 @@ struct ExerciseResolverTests {
         #expect(result.exerciseID == benchPressID)
     }
 
+    @Test("nearby chest_dip archetype maps to in-session bench dip")
+    func chestDipArchetypeMapsToSessionBenchDip() throws {
+        let store = try PersistenceStore.inMemory()
+        let benchDipID = "seed-cam-bench-dip"
+        let chestDipID = "seed-cam-chest-dip"
+        try store.exercises.upsert(
+            id: benchDipID,
+            canonicalName: "bench dip",
+            displayName: "Bench Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "triceps"
+        )
+        try store.exercises.upsert(
+            id: chestDipID,
+            canonicalName: "chest dip",
+            displayName: "Chest Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "chest"
+        )
+        CoachArchetypeSupport.configure(with: dipSwapCatalog(benchDipID: benchDipID, chestDipID: chestDipID))
+
+        let result = ExerciseResolver.resolve(
+            "chest_dip",
+            context: ExerciseResolver.Context(
+                sessionExerciseIDs: [benchDipID],
+                exerciseDisplayNames: [benchDipID: "Bench Dip"],
+                mustBeInSession: true
+            ),
+            persistence: store
+        )
+
+        #expect(result.exerciseID == benchDipID)
+    }
+
+    @Test("nearby chest_dip archetype does not map to in-session bench press")
+    func chestDipDoesNotMapToSessionBenchPress() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        CoachArchetypeSupport.configure(with: dipSwapCatalog(
+            benchDipID: "seed-cam-bench-dip",
+            chestDipID: "seed-cam-chest-dip",
+            benchPressID: benchPressID
+        ))
+
+        let result = ExerciseResolver.resolve(
+            "chest_dip",
+            context: ExerciseResolver.Context(
+                sessionExerciseIDs: [benchPressID],
+                exerciseDisplayNames: [benchPressID: "Bench Press"],
+                mustBeInSession: true
+            ),
+            persistence: store
+        )
+
+        #expect(result.exerciseID == nil)
+    }
+
     @Test("recents bias prefers recently used exercise for catalog phrase")
     func recentsBias() throws {
         let store = try PersistenceStore.inMemory()
@@ -419,5 +476,55 @@ struct ExerciseResolverTests {
             persistence: store
         )
         #expect(result.exerciseID == "seed-cam-hammer-curl-dumbbell")
+    }
+
+    private func dipSwapCatalog(
+        benchDipID: String,
+        chestDipID: String,
+        benchPressID: String = "seed-bench-press"
+    ) -> CoachArchetypeCatalog {
+        CoachArchetypeCatalog(
+            schemaVersion: "coach_archetype_catalog.v1",
+            generatedAt: "2026-08-28T00:00:00Z",
+            archetypes: [
+                CoachArchetype(
+                    id: "chest_dip",
+                    displayName: "Chest Dip",
+                    priority: "core",
+                    coachAliases: ["chest dip", "parallel bar chest dip"]
+                ),
+                CoachArchetype(
+                    id: "triceps_dip",
+                    displayName: "Triceps Dip",
+                    priority: "core",
+                    coachAliases: ["tricep dip", "bench dip"]
+                ),
+                CoachArchetype(
+                    id: "bench_press",
+                    displayName: "Bench Press",
+                    priority: "core",
+                    coachAliases: ["bench press", "flat bench"]
+                )
+            ],
+            mapping: [
+                benchDipID: "triceps_dip",
+                chestDipID: "chest_dip",
+                benchPressID: "bench_press"
+            ],
+            variants: [
+                "triceps_dip": CoachArchetypeVariants(
+                    members: [benchDipID],
+                    preferredDefaultExerciseId: benchDipID
+                ),
+                "chest_dip": CoachArchetypeVariants(
+                    members: [chestDipID],
+                    preferredDefaultExerciseId: chestDipID
+                ),
+                "bench_press": CoachArchetypeVariants(
+                    members: [benchPressID],
+                    preferredDefaultExerciseId: benchPressID
+                )
+            ]
+        )
     }
 }

@@ -6,7 +6,8 @@ public enum ContextBuilder {
         profile: MemoryProfile,
         days: CoachContextDays,
         budget: Int,
-        turn: ContextTurn
+        turn: ContextTurn,
+        appSurface: CoachAppSurfaceSnapshot? = nil
     ) -> CoachPrompt {
         var systemInstructions = CoachSystemPrompt.chatV1
         if let style = profile.globalStyle ?? profile.trainingStyle {
@@ -49,8 +50,10 @@ public enum ContextBuilder {
             characterCount: systemInstructions.count + contextBlock.count
         )
 
-        let freshnessSuffix = days.freshness.stalenessSummary()
-        let suffix = freshnessSuffix.isEmpty ? nil : freshnessSuffix
+        let suffix = freshnessSuffix(
+            appSurface: appSurface,
+            staleness: days.freshness.stalenessSummary()
+        )
 
         return CoachPrompt(
             systemInstructions: systemInstructions,
@@ -60,6 +63,21 @@ public enum ContextBuilder {
             droppedDayCount: droppedDayCount,
             freshnessSuffix: suffix
         )
+    }
+
+    public static func freshnessSuffix(
+        appSurface: CoachAppSurfaceSnapshot?,
+        staleness: String
+    ) -> String? {
+        var parts: [String] = []
+        if let appSurface {
+            parts.append(appSurface.contextText)
+        }
+        if !staleness.isEmpty {
+            parts.append(staleness)
+        }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: "\n")
     }
 
     public static func stablePrefixText(profile: MemoryProfile, days: CoachContextDays) -> String {
@@ -86,20 +104,11 @@ public enum ContextBuilder {
             sections.append("# Evidence Index\n\(evidence)")
         }
 
-        let workouts = normalized(days.recentWorkouts)
-        let outcomes = days.recentSessionOutcomes
-        if !workouts.isEmpty || !outcomes.isEmpty {
-            var header = "# Recent Sessions"
-            if !outcomes.isEmpty {
-                let outcomesText = outcomes.map(\.llmText).joined(separator: "\n")
-                var lines = ["\(header)\n\(outcomesText)"]
-                if !workouts.isEmpty {
-                    lines.append("# Recent Workouts\n\(workouts)")
-                }
-                sections.append(lines.joined(separator: "\n\n"))
-            } else {
-                sections.append("# Recent Workouts\n\(workouts)")
-            }
+        if let training = recentTrainingSection(
+            workouts: normalized(days.recentWorkouts),
+            outcomes: days.recentSessionOutcomes
+        ) {
+            sections.append(training)
         }
 
         let trainingPlan = normalized(days.trainingPlanSnapshot)
@@ -166,20 +175,11 @@ public enum ContextBuilder {
                 sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
             }
         }
-        let workouts = normalized(days.recentWorkouts)
-        let outcomes = days.recentSessionOutcomes
-        if !workouts.isEmpty || !outcomes.isEmpty {
-            var header = "# Recent Sessions"
-            if !outcomes.isEmpty {
-                let outcomesText = outcomes.map(\.llmText).joined(separator: "\n")
-                var lines = ["\(header)\n\(outcomesText)"]
-                if !workouts.isEmpty {
-                    lines.append("# Recent Workouts\n\(workouts)")
-                }
-                sections.append(lines.joined(separator: "\n\n"))
-            } else {
-                sections.append("# Recent Workouts\n\(workouts)")
-            }
+        if let training = recentTrainingSection(
+            workouts: normalized(days.recentWorkouts),
+            outcomes: days.recentSessionOutcomes
+        ) {
+            sections.append(training)
         }
         let trainingPlan = normalized(days.trainingPlanSnapshot)
         if !trainingPlan.isEmpty {
@@ -283,6 +283,21 @@ public enum ContextBuilder {
         }
 
         return ([], days.count)
+    }
+
+    private static func recentTrainingSection(
+        workouts: String,
+        outcomes: [SessionOutcomeCard]
+    ) -> String? {
+        guard !workouts.isEmpty || !outcomes.isEmpty else { return nil }
+        if outcomes.isEmpty {
+            return "# Recent Workouts\n\(workouts)"
+        }
+        var lines = ["# Recent Sessions\n\(outcomes.map(\.llmText).joined(separator: "\n"))"]
+        if !workouts.isEmpty {
+            lines.append("# Recent Workouts\n\(workouts)")
+        }
+        return lines.joined(separator: "\n\n")
     }
 
     private static func normalized(_ text: String) -> String {

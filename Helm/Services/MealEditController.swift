@@ -2,7 +2,6 @@ import Core
 import DesignSystem
 import HealthKitIngest
 import Observation
-import Persistence
 
 @MainActor
 @Observable
@@ -12,15 +11,12 @@ final class MealEditController {
     var showsDeleteConfirm = false
     var errorMessage: String?
 
-    private let manualMealService: ManualMealService
-    private let onChanged: @MainActor () -> Void
+    private let actionExecutor: HelmActionExecutor
 
     init(
-        manualMealService: ManualMealService,
-        onChanged: @escaping @MainActor () -> Void = {}
+        actionExecutor: HelmActionExecutor
     ) {
-        self.manualMealService = manualMealService
-        self.onChanged = onChanged
+        self.actionExecutor = actionExecutor
     }
 
     static func isEditable(_ meal: MealRecord) -> Bool {
@@ -78,18 +74,20 @@ final class MealEditController {
                 )
             }
 
-            _ = try await manualMealService.updateMeal(
-                mealID: meal.id,
-                name: trimmedName,
-                bucket: bucket,
-                loggedAt: meal.loggedAt,
-                macros: macros,
-                lineItems: records,
-                source: meal.source
+            _ = try await persist(
+                .meal(.updateMeal(
+                    mealID: meal.id,
+                    name: trimmedName,
+                    bucket: bucket,
+                    loggedAt: meal.loggedAt,
+                    macros: macros,
+                    lineItems: records,
+                    source: meal.source,
+                    helmDay: meal.helmDay
+                ))
             )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not save changes. Try again."
         }
@@ -101,10 +99,11 @@ final class MealEditController {
         defer { isSaving = false }
 
         do {
-            try await manualMealService.deleteMeal(mealID: meal.id)
+            _ = try await persist(
+                .meal(.deleteMeal(mealID: meal.id, helmDay: meal.helmDay))
+            )
             selectedMeal = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not delete entry. Try again."
         }
@@ -112,5 +111,9 @@ final class MealEditController {
 
     func dismissError() {
         errorMessage = nil
+    }
+
+    private func persist(_ command: HelmActionCommand) async throws -> HelmActionResult {
+        try await HelmActionRuntime.persist(command, using: actionExecutor)
     }
 }

@@ -19,6 +19,7 @@ struct PlanRefinementView: View {
     let option: PlanBuilderOption
     let interview: PlanBuilderInterview
     let service: PlanBuilderService
+    var phaseGoal: PhaseGoal
     let onCommitted: () -> Void
     let onBack: () -> Void
 
@@ -28,19 +29,20 @@ struct PlanRefinementView: View {
     @State private var errorMessage: String?
     /// Recomputed candidate when dials change.
     @State private var refined: CandidatePlan
-
-    private var prescriptionService: PrescriptionService { PlanBootstrap.prescriptionService }
+    @State private var examplePreview: PlanBuilderService.ExampleWorkoutPreview?
 
     init(
         option: PlanBuilderOption,
         interview: PlanBuilderInterview,
         service: PlanBuilderService,
+        phaseGoal: PhaseGoal = PhaseGoal(phase: .maintain),
         onCommitted: @escaping () -> Void,
         onBack: @escaping () -> Void
     ) {
         self.option = option
         self.interview = interview
         self.service = service
+        self.phaseGoal = phaseGoal
         self.onCommitted = onCommitted
         self.onBack = onBack
         _daysPerWeek = State(initialValue: option.candidate.daysPerWeek)
@@ -66,6 +68,8 @@ struct PlanRefinementView: View {
                 }
 
                 volumePreview
+
+                exampleWorkout
 
                 if !option.copy.benefits.isEmpty || !option.copy.challenges.isEmpty {
                     tradeoffs
@@ -97,6 +101,9 @@ struct PlanRefinementView: View {
                 .buttonStyle(.helmSecondary)
             }
             .padding(HelmSpacing.screenGutter)
+        }
+        .task {
+            examplePreview = service.previewExampleWorkout(for: refined)
         }
         .onChange(of: daysPerWeek) { _, _ in regenerate() }
         .onChange(of: sessionMinutes) { _, _ in regenerate() }
@@ -164,6 +171,36 @@ struct PlanRefinementView: View {
         .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
     }
 
+    private var exampleWorkout: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Example \(refinedDayLabel) session")
+                .helmType(.label, color: HelmColor.fgSecondary)
+            if let examplePreview, !examplePreview.exercises.isEmpty {
+                ForEach(examplePreview.exercises) { exercise in
+                    HStack {
+                        Text(exercise.name)
+                            .helmType(.body, color: HelmColor.fg)
+                        Spacer()
+                        Text("\(exercise.sets) sets")
+                            .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    }
+                }
+                Text("Preview only. Today's session is prescribed after you lock the plan in.")
+                    .font(HelmTypography.caption)
+                    .foregroundStyle(HelmColor.fgMuted)
+            } else {
+                Text("No example session yet. Catalog still loading, or this split needs more exercises.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+        }
+        .padding(HelmSpacing.md)
+        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+    }
+
+    private var refinedDayLabel: String {
+        CandidatePlanGenerator.exampleDayKind(for: refined).label
+    }
+
     private var tradeoffs: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             if !option.copy.benefits.isEmpty {
@@ -210,6 +247,7 @@ struct PlanRefinementView: View {
         let sameFamily = adjustedCandidates.first { $0.id == option.candidate.id }
         let bestFit = adjustedCandidates.max { $0.availabilityFitScore < $1.availabilityFitScore }
         refined = sameFamily ?? bestFit ?? option.candidate
+        examplePreview = service.previewExampleWorkout(for: refined)
     }
 
     private func commit() async {
@@ -220,8 +258,17 @@ struct PlanRefinementView: View {
         finalInterview.sessionDurationMinutes = sessionMinutes
         do {
             let chosen = PlanBuilderOption(candidate: refined, copy: option.copy)
-            let settings = try service.makeUpdatedSettings(option: chosen, interview: finalInterview)
-            try await prescriptionService.saveTrainingPlan(settings)
+            var settings = try service.makeUpdatedSettings(option: chosen, interview: finalInterview)
+            settings.phaseGoal = PhaseGoal(
+                phase: phaseGoal.phase,
+                weeklyRateKg: phaseGoal.weeklyRateKg,
+                targetMass: settings.phaseGoal.targetMass,
+                emphasis: settings.phaseGoal.emphasis
+            )
+            try await HelmActionRuntime.perform(
+                .trainingPlan(.replaceSettings(settings)),
+                after: .none
+            )
             service.clearSession()
             HapticEngine.shared.play(.phaseChange)
             onCommitted()

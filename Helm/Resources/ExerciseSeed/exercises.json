@@ -1,5 +1,5 @@
 {
-  "seedVersion": 8,
+  "seedVersion": 9,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -2566,7 +2566,7 @@
         "Running, Treadmill",
         "Running Treadmill"
       ],
-      "exerciseMode": "distanceDuration",
+      "exerciseMode": "distance_duration",
       "primaryMuscleGroup": "legs",
       "secondaryMuscleGroups": [],
       "movementPattern": "cardio",
@@ -2585,7 +2585,7 @@
         "Walking, Treadmill",
         "Walking Treadmill"
       ],
-      "exerciseMode": "distanceDuration",
+      "exerciseMode": "distance_duration",
       "primaryMuscleGroup": "legs",
       "secondaryMuscleGroups": [],
       "movementPattern": "cardio",
@@ -2603,7 +2603,9 @@
         "Hammer Curl (Dumbbell)",
         "Dumbbell Hammer Curl"
       ],
+      "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
+      "isPickerDefault": true,
       "primaryMuscleGroup": "biceps",
       "secondaryMuscleGroups": [
         "forearms"
@@ -2626,7 +2628,9 @@
         "Dumbbell Preacher Curl",
         "Preacher Curl"
       ],
+      "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
+      "isPickerDefault": true,
       "primaryMuscleGroup": "biceps",
       "secondaryMuscleGroups": [
         "forearms"
@@ -2649,7 +2653,9 @@
         "Dumbbell Triceps Extension",
         "Lying Triceps Extension (Dumbbell)"
       ],
+      "exerciseMode": "weight_reps",
       "equipment": "dumbbell",
+      "isPickerDefault": true,
       "primaryMuscleGroup": "triceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "isolation",
@@ -2670,7 +2676,9 @@
         "Cable Bar Triceps Extension",
         "Straight Bar Triceps Extension"
       ],
+      "exerciseMode": "weight_reps",
       "equipment": "cable",
+      "isPickerDefault": true,
       "primaryMuscleGroup": "triceps",
       "secondaryMuscleGroups": [],
       "movementPattern": "isolation",

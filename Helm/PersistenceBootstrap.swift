@@ -22,24 +22,16 @@ enum PersistenceBootstrap {
     }
 
     static func importExerciseSeed() async {
-        guard let manifestURL = Bundle.main.url(
-            forResource: "exercises",
-            withExtension: "json",
-            subdirectory: "ExerciseSeed"
-        ) ?? Bundle.main.url(forResource: "exercises", withExtension: "json")
-        else {
-            return
-        }
-
+        let logger = helmLogger(category: .persistence)
         do {
-            let result = try await store.importExerciseSeedIfNeeded(manifestURL: manifestURL)
-            if !result.skippedBecauseUpToDate {
-                let logger = helmLogger(category: .persistence)
+            let result = try await store.importBundledExerciseSeedIfNeeded()
+            if result.skippedBecauseUpToDate {
+                logger.info("Exercise seed already applied version=\(result.appliedSeedVersion)")
+            } else {
                 logger.info("Exercise seed import complete count=\(result.importedCount) version=\(result.appliedSeedVersion)")
             }
         } catch {
-            let logger = helmLogger(category: .persistence)
-            logger.error("Exercise seed import failed: \(error.localizedDescription)")
+            logger.error("Exercise seed import failed: \(String(describing: error))")
         }
     }
 

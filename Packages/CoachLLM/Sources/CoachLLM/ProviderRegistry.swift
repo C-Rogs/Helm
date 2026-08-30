@@ -5,7 +5,7 @@ public final class ProviderRegistry {
 
     private let foundationModelsProvider = ReservedFoundationModelsProvider()
     private let openRouterProvider = DisabledOpenRouterProvider()
-    private var geminiProvider: (any CoachLLMProvider)?
+    private var chatProvider: (any CoachLLMProvider)?
 
     public init() {}
 
@@ -16,27 +16,26 @@ public final class ProviderRegistry {
         case .openRouter:
             return openRouterProvider
         case .gemini:
-            if let geminiProvider {
-                return geminiProvider
+            if let chatProvider {
+                return chatProvider
             }
             let placeholder = GeminiPlaceholderProvider()
-            geminiProvider = placeholder
+            chatProvider = placeholder
             return placeholder
         }
     }
 
-    /// M4.2 installs the live Gemini provider without changing the protocol surface.
-    public func installGeminiProvider(_ provider: any CoachLLMProvider) {
-        geminiProvider = provider
+    public func installChatProvider(_ provider: any CoachLLMProvider) {
+        chatProvider = provider
     }
 
-    public func resetGeminiProvider() {
-        geminiProvider = nil
+    public func resetChatProvider() {
+        chatProvider = nil
     }
 
     public func resetAllThreads() async {
         await foundationModelsProvider.resetThread()
         await openRouterProvider.resetThread()
-        await geminiProvider?.resetThread()
+        await chatProvider?.resetThread()
     }
 }

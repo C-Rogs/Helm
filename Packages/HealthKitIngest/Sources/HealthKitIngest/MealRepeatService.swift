@@ -79,7 +79,11 @@ public struct MealRepeatService: Sendable {
     }
 
     @discardableResult
-    public func logTemplate(_ template: MealTemplate, loggedAt: Date? = nil) async throws -> SavedMealSamples {
+    public func logTemplate(
+        _ template: MealTemplate,
+        loggedAt: Date? = nil,
+        helmDay: HelmDay? = nil
+    ) async throws -> SavedMealSamples {
         let timestamp = loggedAt ?? now()
         let mealID = UUID()
         let records = template.lineItems.enumerated().map { index, item in
@@ -90,6 +94,7 @@ public struct MealRepeatService: Sendable {
             bucket: template.bucket,
             lineItems: records,
             loggedAt: timestamp,
+            helmDay: helmDay,
             mealID: mealID.uuidString,
             source: .template
         )
@@ -152,6 +157,7 @@ public struct MealRepeatService: Sendable {
                     bucket: bucket,
                     lineItems: [],
                     loggedAt: timestamp,
+                    helmDay: targetDay,
                     mealID: mealID.uuidString,
                     source: meal.source,
                     overrideMacros: FoodPortionMacros(
@@ -180,6 +186,7 @@ public struct MealRepeatService: Sendable {
                     bucket: bucket,
                     lineItems: copiedRecords,
                     loggedAt: timestamp,
+                    helmDay: targetDay,
                     mealID: mealID.uuidString,
                     source: meal.source
                 )

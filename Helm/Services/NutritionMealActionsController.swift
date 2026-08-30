@@ -31,14 +31,14 @@ final class NutritionMealActionsController {
     var errorMessage: String?
 
     private let mealRepeatService: MealRepeatService
-    private let onChanged: @MainActor () -> Void
+    private let actionExecutor: HelmActionExecutor
 
     init(
         mealRepeatService: MealRepeatService,
-        onChanged: @escaping @MainActor () -> Void = {}
+        actionExecutor: HelmActionExecutor
     ) {
         self.mealRepeatService = mealRepeatService
-        self.onChanged = onChanged
+        self.actionExecutor = actionExecutor
     }
 
     func reloadTemplates() {
@@ -85,14 +85,16 @@ final class NutritionMealActionsController {
         pendingAction = nil
     }
 
-    func confirmLogTemplate(_ template: MealTemplate) async {
+    func confirmLogTemplate(_ template: MealTemplate, helmDay: HelmDay, today: HelmDay) async {
         isSaving = true
         defer { isSaving = false }
         do {
-            _ = try await mealRepeatService.logTemplate(template)
+            let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: template.bucket, today: today)
+            _ = try await persist(
+                .logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
+            )
             pendingAction = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch {
             errorMessage = "Could not log template. Try again."
         }
@@ -110,9 +112,14 @@ final class NutritionMealActionsController {
     func copyBucketToToday(bucket: MealBucket, today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await mealRepeatService.copyBucket(from: sourceDay, bucket: bucket, to: today)
+            _ = try await persist(
+                .copyMeal(HelmCopyMealCommand(
+                    sourceDay: sourceDay,
+                    sourceBucket: bucket,
+                    targetDay: today
+                ))
+            )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(bucket.displayName.lowercased()) yesterday."
         } catch {
@@ -133,15 +140,16 @@ final class NutritionMealActionsController {
         isSaving = true
         defer { isSaving = false }
         do {
-            _ = try await mealRepeatService.copyBucket(
-                from: context.sourceDay,
-                bucket: context.sourceBucket,
-                to: targetDay,
-                targetBucket: targetBucket
+            _ = try await persist(
+                .copyMeal(HelmCopyMealCommand(
+                    sourceDay: context.sourceDay,
+                    sourceBucket: context.sourceBucket,
+                    targetDay: targetDay,
+                    targetBucket: targetBucket
+                ))
             )
             copyEntryContext = nil
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(context.sourceBucket.displayName.lowercased()) to copy."
         } catch {
@@ -151,9 +159,10 @@ final class NutritionMealActionsController {
 
     func copyAllMeals(from sourceDay: HelmDay, to today: HelmDay) async {
         do {
-            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            _ = try await persist(
+                .copyAllMeals(sourceDay: sourceDay, targetDay: today)
+            )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptySource {
             errorMessage = "No Signal meals logged on that day."
         } catch {
@@ -164,9 +173,10 @@ final class NutritionMealActionsController {
     func copyYesterdayToToday(today: HelmDay) async {
         let sourceDay = today.adding(days: -1)
         do {
-            _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: today)
+            _ = try await persist(
+                .copyAllMeals(sourceDay: sourceDay, targetDay: today)
+            )
             HapticEngine.shared.play(.mealConfirmed)
-            onChanged()
         } catch MealRepeatError.emptySource {
             errorMessage = "No meals logged yesterday."
         } catch {
@@ -177,14 +187,23 @@ final class NutritionMealActionsController {
     func dismissError() {
         errorMessage = nil
     }
+
+    private func persist(_ command: HelmActionCommand) async throws -> HelmActionResult {
+        try await HelmActionRuntime.persist(command, using: actionExecutor)
+    }
 }
 
 extension NutritionMealActionsController {
     static func previewController() -> NutritionMealActionsController {
-        NutritionMealActionsController(
-            mealRepeatService: MealRepeatService(
-                store: try! PersistenceStore.inMemory(),
-                manualMealService: ManualMealService()
+        let store = try! PersistenceStore.inMemory()
+        let meals = ManualMealService()
+        let repeatService = MealRepeatService(store: store, manualMealService: meals)
+        return NutritionMealActionsController(
+            mealRepeatService: repeatService,
+            actionExecutor: HelmActionExecutor(
+                manualMealService: meals,
+                persistence: store,
+                mealRepeatService: repeatService
             )
         )
     }

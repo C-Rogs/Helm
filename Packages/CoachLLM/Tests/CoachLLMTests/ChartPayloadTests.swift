@@ -53,12 +53,57 @@ struct ChartPayloadTests {
         #expect(text.contains("Mon=12"))
     }
 
+    @Test("stitcher appends chart JSON once")
+    func stitcherAppendsChartOnce() {
+        let payload = ChartPayload(
+            reply: "Hard sets.",
+            title: "Hard sets",
+            unit: "sets",
+            points: [ChartPayload.Point(label: "Mon", value: 12)]
+        )
+        let once = CoachChatChartStitcher.appending(payload, to: "Weekly hard sets.")
+        #expect(ChartPayloadParser.parse(from: once)?.points.first?.value == 12)
+        #expect(CoachChatTextFormatter.userFacingText(from: once) == "Weekly hard sets.")
+        let twice = CoachChatChartStitcher.appending(payload, to: once)
+        #expect(twice == once)
+    }
+
     private func fixtureText(named name: String) throws -> String {
         guard let url = Bundle.module.url(forResource: name, withExtension: "json") else {
             Issue.record("Missing fixture \(name).json")
             return ""
         }
         return try String(contentsOf: url, encoding: .utf8)
+    }
+}
+
+@Suite("NavigatePayload")
+struct NavigatePayloadTests {
+    @Test("parser reads navigate.v1 JSON")
+    func parserReadsJSON() {
+        let text = """
+        Opening Nutrition.
+        {"schemaVersion":"navigate.v1","tab":"nutrition"}
+        """
+        #expect(NavigatePayloadParser.parse(from: text)?.tab == "nutrition")
+        let titled = """
+        Open Nutrition.
+        {"schemaVersion":"navigate.v1","tab":"Nutrition"}
+        """
+        #expect(NavigatePayloadParser.parse(from: titled)?.tab == "nutrition")
+    }
+
+    @Test("navigate waits for confirm when a write card is pending")
+    func defersNavigateUntilConfirm() {
+        #expect(
+            CoachNavigatePresentation.resolve(tab: "nutrition", hasPendingConfirm: false) == .now("nutrition")
+        )
+        #expect(
+            CoachNavigatePresentation.resolve(tab: "nutrition", hasPendingConfirm: true)
+                == .afterConfirm("nutrition")
+        )
+        #expect(CoachNavigatePresentation.resolve(tab: nil, hasPendingConfirm: true) == .none)
+        #expect(CoachNavigatePresentation.resolve(tab: "", hasPendingConfirm: false) == .none)
     }
 }
 

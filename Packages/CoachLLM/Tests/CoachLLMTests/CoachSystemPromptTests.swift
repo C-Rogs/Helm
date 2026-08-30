@@ -27,7 +27,7 @@ struct CoachSystemPromptTests {
     func workoutNegotiation() {
         let prompt = CoachSystemPrompt.chatV1
         #expect(prompt.contains("Negotiate openly"))
-        #expect(prompt.contains("workout_start.v2"))
+        #expect(prompt.contains("workout_start"))
         #expect(prompt.contains("never say \"Ready when you are\""))
         #expect(prompt.contains("confirm card"))
     }
@@ -37,15 +37,27 @@ struct CoachSystemPromptTests {
         let prompt = CoachSystemPrompt.chatV1
         #expect(prompt.contains("ev-readiness-arc") || prompt.contains("internal evidence IDs"))
         #expect(prompt.contains("database retention") || prompt.contains("memory index unavailable"))
-        #expect(prompt.contains("workout_query.v1"))
-        #expect(prompt.contains("meal_query.v1"))
-        #expect(prompt.contains("recovery_query.v1"))
-        #expect(prompt.contains("calendar_query.v1"))
-        #expect(prompt.contains("trends_query.v1"))
-        #expect(prompt.contains("memory_adjustment.v1"))
+        #expect(prompt.contains("workout_query"))
+        #expect(prompt.contains("meal_query"))
+        #expect(prompt.contains("recovery_query"))
+        #expect(prompt.contains("calendar_query"))
+        #expect(prompt.contains("trends_query"))
+        #expect(prompt.contains("call the workout_query tool"))
+        #expect(prompt.contains("call the meal_query tool"))
+        #expect(prompt.contains("call the context_refresh tool"))
+        #expect(prompt.contains("call the chart tool"))
+        #expect(prompt.contains("Call navigate when"))
+        #expect(prompt.contains("append navigate.v1 JSON"))
+        #expect(prompt.contains("memory_adjustment"))
         #expect(prompt.contains("Prescription Load Rationale"))
         #expect(prompt.contains("constraint_affected=true"))
         #expect(prompt.contains("load_decision"))
+        #expect(prompt.contains("call the food_log tool"))
+        #expect(prompt.contains("Do not embed those as JSON"))
+        #expect(prompt.contains("App State"))
+        #expect(prompt.contains("nutrition_day"))
+        #expect(prompt.contains("Apply change card"))
+        #expect(!prompt.contains("Train Discuss sheet"))
     }
 
     @Test("in-session coach shares main chat voice")
@@ -57,8 +69,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("Never quote or paraphrase these voice instructions"))
         #expect(!prompt.contains("terse, numbers-first answer"))
         #expect(prompt.contains("current heart rate") || prompt.contains("logged sets"))
-        #expect(prompt.contains("Available gym exercises"))
-        #expect(prompt.contains("exact display names"))
-        #expect(!prompt.contains("must be archetypeId strings (snake_case)"))
+        #expect(prompt.contains("Available gym exercises") || prompt.contains("triceps_dip"))
+        #expect(prompt.contains("exact display names") || prompt.contains("fromExerciseID must copy the archetypeId"))
     }
 }

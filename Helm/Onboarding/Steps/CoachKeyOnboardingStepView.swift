@@ -70,9 +70,9 @@ struct CoachKeyOnboardingStepView: View {
 
     @MainActor
     private func refreshInstalledProvider() {
-        ProviderRegistry.shared.resetGeminiProvider()
+        ProviderRegistry.shared.resetChatProvider()
         if keyStore.hasKey(kind: .gemini) {
-            ProviderRegistry.shared.installGeminiProvider(GeminiProvider(apiKeyStore: keyStore))
+            ProviderRegistry.shared.installChatProvider(GeminiProvider(apiKeyStore: keyStore))
         }
     }
 }

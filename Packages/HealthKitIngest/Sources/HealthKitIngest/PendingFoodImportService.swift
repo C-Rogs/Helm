@@ -23,9 +23,10 @@ public enum PendingFoodImportError: Error, Sendable, Equatable {
 public actor PendingFoodImportService {
     private let foodLog: FoodLogRepository
     private let foodResolver: FoodResolver
-    private let manualMealService: ManualMealService
+    private let actionExecutor: HelmActionExecutor
     private let localStore: ManualMealLocalStore
     private let networkGate: any NetworkGating
+    private let calendar: Calendar
     private let now: @Sendable () -> Date
     private let onResolved: @Sendable (Int) async -> Void
     private let log: Logger
@@ -33,16 +34,18 @@ public actor PendingFoodImportService {
     public init(
         persistence: PersistenceStore,
         foodResolver: FoodResolver,
-        manualMealService: ManualMealService,
+        actionExecutor: HelmActionExecutor,
         networkGate: any NetworkGating = LiveNetworkGate(),
+        calendar: Calendar = .current,
         now: @escaping @Sendable () -> Date = Date.init,
         onResolved: @escaping @Sendable (Int) async -> Void = { _ in }
     ) {
         foodLog = persistence.foodLog
         self.foodResolver = foodResolver
-        self.manualMealService = manualMealService
-        localStore = ManualMealLocalStore(store: persistence)
+        self.actionExecutor = actionExecutor
+        localStore = ManualMealLocalStore(store: persistence, calendar: calendar)
         self.networkGate = networkGate
+        self.calendar = calendar
         self.now = now
         self.onResolved = onResolved
         log = helmLogger(category: .healthKitIngest)
@@ -51,17 +54,19 @@ public actor PendingFoodImportService {
     init(
         foodLog: FoodLogRepository,
         foodResolver: FoodResolver,
-        manualMealService: ManualMealService,
+        actionExecutor: HelmActionExecutor,
         localStore: ManualMealLocalStore,
         networkGate: any NetworkGating,
+        calendar: Calendar = .current,
         now: @escaping @Sendable () -> Date = Date.init,
         onResolved: @escaping @Sendable (Int) async -> Void = { _ in }
     ) {
         self.foodLog = foodLog
         self.foodResolver = foodResolver
-        self.manualMealService = manualMealService
+        self.actionExecutor = actionExecutor
         self.localStore = localStore
         self.networkGate = networkGate
+        self.calendar = calendar
         self.now = now
         self.onResolved = onResolved
         log = helmLogger(category: .healthKitIngest)
@@ -72,7 +77,8 @@ public actor PendingFoodImportService {
         bucket: MealBucket,
         grams: Double = FoodPortionDefaultsResolver.produceDefaultGrams,
         servingLabel: String? = nil,
-        loggedAt: Date? = nil
+        loggedAt: Date? = nil,
+        helmDay: HelmDay? = nil
     ) async throws -> UUID {
         let trimmed = barcode.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
@@ -115,13 +121,16 @@ public actor PendingFoodImportService {
             sortOrder: 0
         )
 
-        _ = try await manualMealService.logCompositeMeal(
-            name: "Pending \(trimmed)",
-            bucket: bucket,
-            lineItems: [record],
-            loggedAt: loggedAt,
-            mealID: mealID.uuidString.lowercased(),
-            source: .barcode
+        _ = try await actionExecutor.run(
+            .meal(.logComposite(
+                name: "Pending \(trimmed)",
+                bucket: bucket,
+                lineItems: [record],
+                loggedAt: loggedAt,
+                helmDay: helmDay ?? HelmDay.day(for: loggedAt, calendar: calendar),
+                mealID: mealID.uuidString.lowercased(),
+                source: .barcode
+            ))
         )
         try foodLog.insertPendingImport(pendingImport)
         log.debug("Queued offline barcode import barcode=\(trimmed, privacy: .public) mealID=\(mealID.uuidString, privacy: .public)")
@@ -194,14 +203,17 @@ public actor PendingFoodImportService {
             sortOrder: 0
         )
 
-        _ = try await manualMealService.updateMeal(
-            mealID: mealID,
-            name: product.ref.displayName,
-            bucket: meal.bucket,
-            loggedAt: meal.loggedAt,
-            macros: macros,
-            lineItems: [updatedLineItem],
-            source: .barcode
+        _ = try await actionExecutor.run(
+            .meal(.updateMeal(
+                mealID: mealID,
+                name: product.ref.displayName,
+                bucket: meal.bucket,
+                loggedAt: meal.loggedAt,
+                macros: macros,
+                lineItems: [updatedLineItem],
+                source: .barcode,
+                helmDay: meal.helmDay
+            ))
         )
 
         try foodLog.updatePendingImport(

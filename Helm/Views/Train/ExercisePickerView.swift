@@ -37,7 +37,7 @@ private enum ExercisePickerCategory: String, CaseIterable, Identifiable, Sendabl
         case .legs: "figure.strengthtraining.functional"
         case .shoulders: "figure.boxing"
         case .biceps: "figure.arms.open"
-        case .triceps: "figure.arms.above.head"
+        case .triceps: "figure.strengthtraining.traditional"
         case .abs: "figure.core.training"
         case .olympic: "figure.highintensity.intervaltraining"
         case .fullBody: "figure.mixed.cardio"
@@ -155,7 +155,15 @@ struct ExercisePickerView: View {
                     .accessibilityLabel("Close")
                 }
             }
-            .onAppear { reloadAll() }
+            .onAppear {
+                reloadAll()
+                if pickerDefaults.isEmpty {
+                    Task {
+                        await PersistenceBootstrap.importExerciseSeed()
+                        reloadAll()
+                    }
+                }
+            }
             .onChange(of: searchText) { _, _ in
                 if !searchText.isEmpty {
                     selectedCategory = nil
@@ -186,10 +194,24 @@ struct ExercisePickerView: View {
     private var browseList: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                if !recentExercises.isEmpty {
-                    recentSection
+                if pickerDefaults.isEmpty {
+                    HelmErrorState(
+                        title: "No exercises yet",
+                        message: "The catalogue is still loading. Retry, or search after a few seconds.",
+                        onRetry: {
+                            Task {
+                                await PersistenceBootstrap.importExerciseSeed()
+                                reloadAll()
+                            }
+                        }
+                    )
+                    .padding(.top, HelmSpacing.lg)
+                } else {
+                    if !recentExercises.isEmpty {
+                        recentSection
+                    }
+                    muscleGridSection
                 }
-                muscleGridSection
             }
             .padding(.horizontal, HelmSpacing.screenGutter)
             .padding(.bottom, HelmSpacing.xl)

@@ -81,4 +81,15 @@ struct CandidatePlanGeneratorTests {
         )
         #expect(fourDay.first { $0.id == "upperlower_4day" }?.programTemplateRaw == "upper_lower")
     }
+
+    @Test("discussion preferred template is listed first")
+    func preferredTemplateFirst() {
+        let interview = PlanBuilderInterview(daysPerWeek: 4, sessionDurationMinutes: 60)
+        let candidates = CandidatePlanGenerator.generate(
+            interview: interview,
+            experience: .intermediate,
+            preferredTemplateRaw: "upper_lower"
+        )
+        #expect(candidates.first?.programTemplateRaw == "upper_lower")
+    }
 }
