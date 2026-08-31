@@ -24,7 +24,7 @@ struct ChatView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        VStack(alignment: .leading, spacing: HelmSpacing.md) {
                             if controller.messages.isEmpty,
                                !controller.isStreaming,
                                controller.lastTurnError == nil,
@@ -80,9 +80,15 @@ struct ChatView: View {
                                         .id("streaming")
                                 }
                             }
+
+                            Color.clear
+                                .frame(height: 1)
+                                .id("chat-bottom")
                         }
                         .padding(HelmSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .defaultScrollAnchor(controller.messages.isEmpty ? .top : .bottom)
                     .scrollDismissesKeyboard(.interactively)
                     .onTapGesture {
                         isInputFocused = false
@@ -108,29 +114,18 @@ struct ChatView: View {
                     .onChange(of: controller.chatProgressStep) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
+                    .onChange(of: isInputFocused) { _, focused in
+                        Task { @MainActor in
+                            if focused {
+                                try? await Task.sleep(for: .milliseconds(350))
+                            }
+                            scrollToBottom(proxy: proxy)
+                        }
+                    }
                 }
-
-                if controller.isApplyingChatAction, controller.pendingFoodMealConfirm == nil {
-                    CoachAIProgressCard(
-                        eyebrow: "COACH",
-                        title: "Applying change",
-                        completedSteps: ["Confirmed"],
-                        currentStep: controller.applyProgressStep ?? "Working…",
-                        isImpactful: true
-                    )
-                    .helmScreenPadding()
-                    .padding(.vertical, HelmSpacing.sm)
-                    .helmPanelChrome(.surface)
-                    .transition(.opacity)
-                }
-
-                composer
-
-                if controller.citationFailureCount > 0, !controller.messages.isEmpty {
-                    citationWarningPill
-                }
+                chatBottomChrome
             }
-            .helmScreenBackground()
+            .helmScreenBackground(ignoreKeyboard: false)
             .navigationTitle("Chat")
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
@@ -434,6 +429,30 @@ struct ChatView: View {
         return true
     }
 
+    private var chatBottomChrome: some View {
+        VStack(spacing: 0) {
+            if controller.isApplyingChatAction, controller.pendingFoodMealConfirm == nil {
+                CoachAIProgressCard(
+                    eyebrow: "COACH",
+                    title: "Applying change",
+                    completedSteps: ["Confirmed"],
+                    currentStep: controller.applyProgressStep ?? "Working…",
+                    isImpactful: true
+                )
+                .helmScreenPadding()
+                .padding(.vertical, HelmSpacing.sm)
+                .helmPanelChrome(.surface)
+                .transition(.opacity)
+            }
+
+            composer
+
+            if controller.citationFailureCount > 0, !controller.messages.isEmpty {
+                citationWarningPill
+            }
+        }
+    }
+
     private var composer: some View {
         HStack(spacing: HelmSpacing.sm) {
             Button {
@@ -535,24 +554,10 @@ struct ChatView: View {
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         let scroll = {
-            if showsCoachProgress {
-                proxy.scrollTo("chat-progress", anchor: .bottom)
-            } else if controller.isStreaming,
-               let streamingText = controller.streamingText,
-               shouldShowStreamingBubble(streamingText) {
-                proxy.scrollTo("streaming", anchor: .bottom)
-            } else if controller.pendingChatAction != nil {
-                proxy.scrollTo("chat-confirmation", anchor: .bottom)
-            } else if !controller.pendingMemoryRefinements.isEmpty {
-                proxy.scrollTo("memory-refinements", anchor: .bottom)
-            } else if controller.lastTurnError != nil {
-                proxy.scrollTo("last-turn-error", anchor: .bottom)
-            } else if let lastID = controller.messages.last?.id {
-                proxy.scrollTo(lastID, anchor: .bottom)
-            }
+            proxy.scrollTo("chat-bottom", anchor: .bottom)
         }
         if animated {
-            withAnimation { scroll() }
+            withAnimation(HelmMotion.quickAnimation) { scroll() }
         } else {
             scroll()
         }

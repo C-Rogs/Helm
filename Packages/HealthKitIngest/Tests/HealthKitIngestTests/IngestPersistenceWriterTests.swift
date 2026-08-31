@@ -131,4 +131,128 @@ struct IngestPersistenceWriterTests {
         _ = try writer.apply(delta: deleteDelta)
         #expect(try store.sleep.fetch(id: sampleID) == nil)
     }
+
+    @Test("body fat fraction and whole percent both persist")
+    func bodyFatAcceptsFractionAndWholePercent() async throws {
+        let store = try PersistenceStore.inMemory()
+        let writer = IngestPersistenceWriter(store: store, calendar: calendar)
+        let fractionAt = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 7))
+        )
+        let wholeAt = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 22, hour: 7))
+        )
+        let nextDay = HelmDay(year: 2026, month: 7, day: 22)
+
+        _ = try writer.apply(
+            delta: IngestDelta(
+                kind: .bodyFatPercentage,
+                addedQuantitySamples: [
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: fractionAt,
+                        end: fractionAt,
+                        value: 0.145,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    )
+                ]
+            )
+        )
+        _ = try writer.apply(
+            delta: IngestDelta(
+                kind: .bodyFatPercentage,
+                addedQuantitySamples: [
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: wholeAt,
+                        end: wholeAt,
+                        value: 14.5,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    )
+                ]
+            )
+        )
+
+        #expect(try store.bodyComposition.fetch(for: day).last?.bodyFatPercentage == 14.5)
+        #expect(try store.bodyComposition.fetch(for: nextDay).last?.bodyFatPercentage == 14.5)
+    }
+
+    @Test("body fat zero and over-cap samples are dropped")
+    func bodyFatDropsInvalid() async throws {
+        let store = try PersistenceStore.inMemory()
+        let writer = IngestPersistenceWriter(store: store, calendar: calendar)
+        let loggedAt = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 7))
+        )
+
+        _ = try writer.apply(
+            delta: IngestDelta(
+                kind: .bodyFatPercentage,
+                addedQuantitySamples: [
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: loggedAt,
+                        end: loggedAt,
+                        value: 0,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    ),
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: loggedAt,
+                        end: loggedAt,
+                        value: 70,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    ),
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: loggedAt,
+                        end: loggedAt,
+                        value: -0.1,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    )
+                ]
+            )
+        )
+
+        #expect(try store.bodyComposition.fetch(for: day).isEmpty)
+    }
+
+    @Test("body fat uses end date when it is later than start")
+    func bodyFatBucketsByEndDate() async throws {
+        let store = try PersistenceStore.inMemory()
+        let writer = IngestPersistenceWriter(store: store, calendar: calendar)
+        let start = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 10, hour: 8))
+        )
+        let end = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 8, day: 31, hour: 9))
+        )
+        let expectedDay = HelmDay(year: 2026, month: 8, day: 31)
+
+        _ = try writer.apply(
+            delta: IngestDelta(
+                kind: .bodyFatPercentage,
+                addedQuantitySamples: [
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: start,
+                        end: end,
+                        value: 0.244,
+                        unitSymbol: "%",
+                        sourceBundleID: "com.apple.health"
+                    )
+                ]
+            )
+        )
+
+        #expect(try store.bodyComposition.fetch(for: HelmDay(year: 2026, month: 8, day: 10)).isEmpty)
+        let stored = try #require(try store.bodyComposition.fetch(for: expectedDay).last)
+        #expect(stored.bodyFatPercentage == 24.4)
+        #expect(stored.measuredAt == end)
+    }
 }

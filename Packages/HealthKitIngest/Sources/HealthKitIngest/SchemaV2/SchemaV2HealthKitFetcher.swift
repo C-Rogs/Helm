@@ -1,7 +1,6 @@
+import Core
 import ExportKit
 import Foundation
-import HealthKit
-
 import HealthKit
 
 public actor SchemaV2HealthKitFetcher {
@@ -193,7 +192,9 @@ public actor SchemaV2HealthKitFetcher {
 
         return days.map { day in
             let dayKey = startOfCalendarDay(day, calendar: calendar)
-            let bodyFatValue = bodyFatRaw[dayKey].flatMap { $0 }.map { $0 <= 1.0 ? $0 * 100.0 : $0 }
+            let bodyFatValue = bodyFatRaw[dayKey]
+                .flatMap { $0 }
+                .flatMap(BodyFatPercent.storedPercent(fromHealthKitPercentUnit:))
             let alcoholCount = alcohol[dayKey].flatMap { $0 }.map { Int($0.rounded()) }
 
             return DailyLog(

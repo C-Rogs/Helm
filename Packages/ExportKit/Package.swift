@@ -8,8 +8,16 @@ let package = Package(
     products: [
         .library(name: "ExportKit", targets: ["ExportKit"])
     ],
+    dependencies: [
+        .package(path: "../Core")
+    ],
     targets: [
-        .target(name: "ExportKit"),
+        .target(
+            name: "ExportKit",
+            dependencies: [
+                .product(name: "Core", package: "Core")
+            ]
+        ),
         .testTarget(
             name: "ExportKitTests",
             dependencies: ["ExportKit"],

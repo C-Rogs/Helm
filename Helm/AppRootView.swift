@@ -23,6 +23,8 @@ struct AppRootView: View {
             AppLifecycleState.update(scenePhase: newPhase)
             switch newPhase {
             case .active:
+                HelmFontRegistration.reregister()
+                HelmThemeCoordinator.shared.bumpTypographyEpoch()
                 SpotifyAppRemoteService.shared.handleAppBecomeActive()
                 Task { @MainActor in
                     await RestNotificationRouter.processPendingIfForeground()

@@ -62,11 +62,17 @@ enum HealthKitBootstrap {
         let window = BackfillWindow.sixMonths()
         let backfillComplete = await backfill.isComplete(for: window)
         let shouldStart = await ingest.shouldBootstrapOnLaunch(backfillComplete: backfillComplete)
-        guard shouldStart else { return }
 
+        var didV20Reset = false
         try? await HealthKitV19AnchorMigration.runIfNeeded { kind in
             try await ingest.resetAnchor(for: kind)
         }
+        try? await HealthKitV20AnchorMigration.runIfNeeded { kind in
+            try await ingest.resetAnchor(for: kind)
+            didV20Reset = true
+        }
+
+        guard shouldStart || didV20Reset else { return }
 
         try? await ingest.requestAuthorization()
         await ingest.startObserving()

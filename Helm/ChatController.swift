@@ -615,90 +615,99 @@ final class ChatController {
             let explicitQueries = CoachCatalogQueryResolver.explicitQueryNames(
                 in: querySource.functionCalls
             )
-            if CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicitQueries),
+            let inferredBodyFatQuery: TrendsQueryPayload? = {
+                guard CoachChatIntent.inferredTrendsQuery(from: text)?.queryType == .bodyFat else {
+                    return nil
+                }
+                return TrendsQueryPayload(queryType: .bodyFat, lookbackDays: 90)
+            }()
+            if let inferredBodyFatQuery {
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runTrendsQueryFollowUp(
+                        query: inferredBodyFatQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
+                }
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicitQueries),
                let mealQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runMealQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runMealQueryFollowUp(
                         query: mealQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.recoveryQuery, explicitQueries: explicitQueries),
                       let recoveryQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runRecoveryQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runRecoveryQueryFollowUp(
                         query: recoveryQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.calendarQuery, explicitQueries: explicitQueries),
                       let calendarQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runCalendarQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runCalendarQueryFollowUp(
                         query: calendarQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.trendsQuery, explicitQueries: explicitQueries),
                       let trendsQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runTrendsQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runTrendsQueryFollowUp(
                         query: trendsQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.workoutQuery, explicitQueries: explicitQueries),
                       let workoutQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runWorkoutQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runWorkoutQueryFollowUp(
                         query: workoutQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.nutritionQuery, explicitQueries: explicitQueries),
                       let nutritionQuery {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runNutritionQueryFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runNutritionQueryFollowUp(
                         query: nutritionQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.contextRefresh, explicitQueries: explicitQueries),
                       let contextRefresh {
-                assembledTurn = keepIfFollowUpEmpty(
-                    assembledTurn,
-                    next: try await runContextRefreshFollowUp(
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runContextRefreshFollowUp(
                         payload: contextRefresh,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
                         priorAssembled: assembledTurn.text
                     )
-                )
+                }
             }
 
             if CoachChatIntent.looksLikeWorkoutStart(text),
@@ -1007,7 +1016,9 @@ final class ChatController {
         var functionCalls: [CoachLLMFunctionCall]
 
         var isEmpty: Bool {
-            text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty && functionCalls.isEmpty
+            CoachChatTextFormatter.userFacingText(from: text)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .isEmpty && functionCalls.isEmpty
         }
     }
 
@@ -1015,7 +1026,26 @@ final class ChatController {
         _ current: AssembledCoachTurn,
         next: AssembledCoachTurn
     ) -> AssembledCoachTurn {
-        next.isEmpty ? current : next
+        let nextVisible = CoachChatTextFormatter.userFacingText(from: next.text)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        if nextVisible.isEmpty {
+            return current.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? next : current
+        }
+        return next
+    }
+
+    private func followUpOrKeepCurrent(
+        _ current: AssembledCoachTurn,
+        next: () async throws -> AssembledCoachTurn
+    ) async throws -> AssembledCoachTurn {
+        do {
+            return keepIfFollowUpEmpty(current, next: try await next())
+        } catch let error as CoachStructuredOutputError where error == .emptyResponse {
+            let visible = CoachChatTextFormatter.userFacingText(from: current.text)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if visible.isEmpty { throw error }
+            return current
+        }
     }
 
     private func catalogQuery<Payload>(
@@ -1347,6 +1377,31 @@ final class ChatController {
         endDay: HelmDay,
         priorAssembled: String
     ) async throws -> AssembledCoachTurn {
+        if query.queryType == .bodyFat {
+            isStreaming = true
+            streamingText = "Checking Apple Health for body fat…"
+            _ = await HealthKitBootstrap.healthKitIngest.syncKinds([.bodyFatPercentage])
+            _ = await HealthKitBootstrap.healthKitIngest.liveBodyFatSummary()
+            let trace = await HealthKitBootstrap.healthKitIngest.lastBodyFatQueryTrace()
+            let facts = await HealthKitBootstrap.healthKitIngest.lastBodyFatLatestFacts()
+            var context = trace.diagnosticContext
+            context["hkHasReading"] = facts.hkPercent == nil ? "false" : "true"
+            context["storeHasReading"] = facts.storePercent == nil ? "false" : "true"
+            if let source = facts.hkSource {
+                context["hkSource"] = source
+            }
+            let reply = facts.groundedChatReply()
+            context["reply"] = "grounded"
+            await DiagnosticsLog.shared.record(
+                category: .coachLLM,
+                level: facts.hkPercent == nil ? .error : .info,
+                message: "Coach body fat follow-up",
+                context: context
+            )
+            isStreaming = false
+            streamingText = nil
+            return AssembledCoachTurn(text: reply, functionCalls: [])
+        }
         let service = TrendsHistoryQueryService(store: persistence)
         let results = try service.run(query)
         let toolMessage = """

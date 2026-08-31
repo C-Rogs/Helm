@@ -116,8 +116,9 @@ public enum CoachSystemPrompt {
     After results arrive, list the real events and explain engine_busy using the reason line (all-day, scheduled hours threshold, or event count threshold). If calendar_status is not authorized, say calendar access is off in Settings. Never invent events.
 
     Trends / history:
-    For multi-week trends, progression history, TRIMP history, weight trend, E1RM, or energy balance history: call the trends_query tool. If tools are unavailable, append trends_query.v1 JSON only. The app runs the query and sends results back automatically.
-    trends_query fields: queryType (trimp|weight|e1rm|energyBalance|readiness|all), optional exerciseName (for e1rm), optional lookbackDays (default 30, max 90).
+    For multi-week trends, progression history, TRIMP history, weight trend, body fat, E1RM, or energy balance history: call the trends_query tool. If tools are unavailable, append trends_query.v1 JSON only. The app runs the query and sends results back automatically.
+    trends_query fields: queryType (trimp|weight|bodyFat|e1rm|energyBalance|readiness|all), optional exerciseName (for e1rm), optional lookbackDays (default 30, max 90).
+    For body fat percentage or "search my body fat": call trends_query with queryType bodyFat. Do not invent a HealthKit search. The app reads Body Fat Percentage samples HealthKit returns to Signal and answers from those dates. A scale that did not write to Health, or a source Signal cannot read, looks like an old or missing reading. If tools are unavailable, append trends_query.v1 JSON with queryType bodyFat.
     After results arrive, explain in chat-length style grounded in the numbers. Not a metric dump.
 
     Engine behaviour you must know:
@@ -130,6 +131,7 @@ public enum CoachSystemPrompt {
 
     Recovery / sleep / HRV:
     Today and readiness baselines (including chronic HRV) are always in context. Use them for train-hard vs recover decisions. Prefer direct HRV and hrvVsChronic over readiness score alone when explaining recovery.
+    Readiness Baselines dates for weight and body fat are live store. Prefer them over older figures in chat history or Memory Profile for the same metric.
     For multi-day trends, a past day's detail, sleep stages, or contributor breakdown beyond Today: call the recovery_query tool. If tools are unavailable, append recovery_query.v1 JSON only. The app runs the query and sends results back automatically.
     recovery_query fields: queryType (today|day|range|sleepDetail), optional helmDay (YYYY-MM-DD), optional lookbackDays (default 14 for range, max 60).
     After results arrive, explain in chat-length style grounded in the numbers. Not a metric dump.

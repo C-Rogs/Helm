@@ -80,6 +80,87 @@ struct HealthRepositoryTests {
         #expect(fetched == composition)
     }
 
+    @Test("merge body fat advances measuredAt when the sample is later")
+    func mergeBodyFatAdvancesMeasuredAt() throws {
+        let store = try PersistenceStore.inMemory()
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 7))!
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 19))!
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 82.4),
+                measuredAt: morning
+            )
+        )
+
+        try store.bodyComposition.mergeBodyFat(
+            helmDay: day,
+            bodyFatPercentage: 14.5,
+            measuredAt: evening
+        )
+
+        let fetched = try #require(store.bodyComposition.fetch(for: day).last)
+        #expect(fetched.bodyFatPercentage == 14.5)
+        #expect(fetched.measuredAt == evening)
+        #expect(fetched.mass.kilograms == 82.4)
+    }
+
+    @Test("merge body fat keeps earlier measuredAt")
+    func mergeBodyFatDoesNotRewindMeasuredAt() throws {
+        let store = try PersistenceStore.inMemory()
+        let evening = calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 19))!
+        let morning = calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 7))!
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 82.4),
+                bodyFatPercentage: 15.0,
+                measuredAt: evening
+            )
+        )
+
+        try store.bodyComposition.mergeBodyFat(
+            helmDay: day,
+            bodyFatPercentage: 14.5,
+            measuredAt: morning
+        )
+
+        let fetched = try #require(store.bodyComposition.fetch(for: day).last)
+        #expect(fetched.bodyFatPercentage == 14.5)
+        #expect(fetched.measuredAt == evening)
+    }
+
+    @Test("fetchLatestWithBodyFat skips newer weight-only rows")
+    func fetchLatestWithBodyFatSkipsWeightOnly() throws {
+        let store = try PersistenceStore.inMemory()
+        let fatDay = HelmDay(year: 2026, month: 7, day: 1)
+        let fatAt = calendar.date(from: DateComponents(year: 2026, month: 7, day: 1, hour: 8))!
+        let weightAt = calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 8))!
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: fatDay,
+                mass: Mass(kilograms: 82.4),
+                bodyFatPercentage: 14.5,
+                measuredAt: fatAt
+            )
+        )
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 81.0),
+                measuredAt: weightAt
+            )
+        )
+
+        let latestFat = try #require(try store.bodyComposition.fetchLatestWithBodyFat(onOrBefore: day))
+        #expect(latestFat.bodyFatPercentage == 14.5)
+        #expect(latestFat.helmDay == fatDay)
+
+        let history = try store.bodyComposition.fetchBodyFatHistory(onOrBefore: day, limit: 5)
+        #expect(history.count == 1)
+        #expect(history.first?.helmDay == fatDay)
+    }
+
     @Test("sleep records round trip and replace")
     func sleepRoundTrip() throws {
         let store = try PersistenceStore.inMemory()

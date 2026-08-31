@@ -28,7 +28,7 @@ struct InSessionCoachSheet: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        VStack(alignment: .leading, spacing: HelmSpacing.md) {
                             if controller.coachMessages.isEmpty, !controller.isCoachThinking, controller.coachTurnError == nil {
                                 emptyState
                             }
@@ -61,9 +61,15 @@ struct InSessionCoachSheet: View {
                                 confirmationRow(proposal)
                                     .id("coach-confirmation")
                             }
+
+                            Color.clear
+                                .frame(height: 1)
+                                .id("coach-bottom")
                         }
                         .padding(HelmSpacing.md)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     }
+                    .defaultScrollAnchor(controller.coachMessages.isEmpty ? .top : .bottom)
                     .onAppear {
                         scrollToBottom(proxy: proxy, animated: false)
                     }
@@ -83,7 +89,7 @@ struct InSessionCoachSheet: View {
 
                 composer
             }
-            .helmScreenBackground()
+            .helmScreenBackground(ignoreKeyboard: false)
             .navigationTitle(coachName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -223,15 +229,7 @@ struct InSessionCoachSheet: View {
 
     private func scrollToBottom(proxy: ScrollViewProxy, animated: Bool = true) {
         let scroll = {
-            if controller.pendingCoachProposal != nil {
-                proxy.scrollTo("coach-confirmation", anchor: .bottom)
-            } else if controller.coachTurnError != nil {
-                proxy.scrollTo("coach-turn-error", anchor: .bottom)
-            } else if controller.isCoachThinking {
-                proxy.scrollTo("coach-thinking", anchor: .bottom)
-            } else if let last = controller.coachMessages.last {
-                proxy.scrollTo(last.id, anchor: .bottom)
-            }
+            proxy.scrollTo("coach-bottom", anchor: .bottom)
         }
         if animated {
             withAnimation(

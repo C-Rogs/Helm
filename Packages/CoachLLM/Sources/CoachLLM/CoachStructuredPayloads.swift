@@ -972,6 +972,7 @@ public struct TrendsQueryPayload: Codable, Sendable, Equatable {
         case e1rm
         case energyBalance
         case readiness
+        case bodyFat
         case all
 
         public init?(rawFlexible value: String) {
@@ -986,6 +987,8 @@ public struct TrendsQueryPayload: Codable, Sendable, Equatable {
                 self = .energyBalance
             case "readiness", "readiness_history", "scores":
                 self = .readiness
+            case "bodyfat", "body_fat", "bodyfatpercentage", "body_fat_percentage", "bf":
+                self = .bodyFat
             case "all", "everything", "overview":
                 self = .all
             default:
@@ -1017,7 +1020,7 @@ public struct TrendsQueryPayload: Codable, Sendable, Equatable {
         queryType = try container.decodeFlexibleQueryType(
             flexible: QueryType.init(rawFlexible:),
             context: "trends_query.v1",
-            allowedValues: "trimp, weight, e1rm, energyBalance, readiness, or all"
+            allowedValues: "trimp, weight, e1rm, energyBalance, readiness, bodyFat, or all"
         )
         exerciseName = try container.decodeIfPresent(String.self, forKey: .exerciseName)
         lookbackDays = container.decodeLenientLookbackDays()

@@ -46,6 +46,8 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.inferredTrendsQuery(from: "Energy balance history")?.queryType == .energyBalance)
         #expect(CoachChatIntent.inferredTrendsQuery(from: "Readiness over time")?.queryType == .readiness)
         #expect(CoachChatIntent.inferredTrendsQuery(from: "My trends")?.queryType == .all)
+        #expect(CoachChatIntent.inferredTrendsQuery(from: "search my body fat")?.queryType == .bodyFat)
+        #expect(CoachChatIntent.inferredTrendsQuery(from: "What's my body fat percentage")?.queryType == .bodyFat)
         let yesterday = CoachChatIntent.inferredWorkoutQuery(from: "Can you see the run I logged yesterday")
         #expect(yesterday?.queryType == .onDay)
         #expect(yesterday?.helmDay != nil)

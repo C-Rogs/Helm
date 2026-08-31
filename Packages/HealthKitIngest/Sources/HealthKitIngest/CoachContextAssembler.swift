@@ -335,20 +335,30 @@ public enum CoachContextAssembler {
     ) throws -> String {
         let yesterday = endDay.adding(days: -1, calendar: calendar)
         var lines: [String] = []
+        var daysCovered = Set<HelmDay>()
 
-        if let today = try store.bodyComposition.fetch(for: endDay).last {
-            var line = "\(endDay.formatted) weight=\(format(today.mass.kilograms))kg"
-            if let bf = today.bodyFatPercentage {
+        func appendDay(_ helmDay: HelmDay, _ composition: BodyComposition) {
+            var line = "\(helmDay.formatted) weight=\(format(composition.mass.kilograms))kg"
+            if let bf = composition.bodyFatPercentage {
                 line += " bodyfat=\(format(bf))%"
             }
             lines.append(line)
+            daysCovered.insert(helmDay)
         }
-        if let prior = try store.bodyComposition.fetch(for: yesterday).last {
-            var line = "\(yesterday.formatted) weight=\(format(prior.mass.kilograms))kg"
-            if let bf = prior.bodyFatPercentage {
-                line += " bodyfat=\(format(bf))%"
-            }
-            lines.append(line)
+
+        if let today = mergeBodyComposition(try store.bodyComposition.fetch(for: endDay)) {
+            appendDay(endDay, today)
+        }
+        if let prior = mergeBodyComposition(try store.bodyComposition.fetch(for: yesterday)) {
+            appendDay(yesterday, prior)
+        }
+
+        if let latestFat = try store.bodyComposition.fetchLatestWithBodyFat(onOrBefore: endDay),
+           let fat = latestFat.bodyFatPercentage,
+           !daysCovered.contains(latestFat.helmDay) {
+            lines.append(
+                "latest bodyfat=\(format(fat))% on \(latestFat.helmDay.formatted)"
+            )
         } else if lines.isEmpty,
                   let latest = try store.bodyComposition.fetchLatest(onOrBefore: endDay, limit: 1).first {
             var line = "latest weight=\(format(latest.mass.kilograms))kg on \(latest.helmDay.formatted)"

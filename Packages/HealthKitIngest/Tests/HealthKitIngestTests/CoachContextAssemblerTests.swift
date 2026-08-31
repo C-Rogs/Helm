@@ -38,6 +38,47 @@ struct CoachContextAssemblerTests {
         #expect(context.recent[0].text.contains("weight=82.4kg"))
     }
 
+    @Test("baselines keep latest body fat when today is weight-only")
+    func latestBodyFatOutsideLookback() async throws {
+        let store = try PersistenceStore.inMemory()
+        let todayMeasured = Calendar.current.date(from: DateComponents(
+            timeZone: .current,
+            year: 2026,
+            month: 7,
+            day: 22,
+            hour: 8
+        ))!
+        let fatDay = HelmDay(year: 2026, month: 7, day: 1)
+        let fatMeasured = Calendar.current.date(from: DateComponents(
+            timeZone: .current,
+            year: 2026,
+            month: 7,
+            day: 1,
+            hour: 8
+        ))!
+
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 81.0),
+                measuredAt: todayMeasured
+            )
+        )
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: fatDay,
+                mass: Mass(kilograms: 82.4),
+                bodyFatPercentage: 14.5,
+                measuredAt: fatMeasured
+            )
+        )
+
+        let context = try await CoachContextAssembler.assemble(from: store, endingAt: day, lookbackDays: 7)
+
+        #expect(context.readinessBaselines.contains("2026-07-22 weight=81kg"))
+        #expect(context.readinessBaselines.contains("latest bodyfat=14.5% on 2026-07-01"))
+    }
+
     @Test("assembles recent days from persisted health rows")
     func assemblesRecentDays() async throws {
         let store = try PersistenceStore.inMemory()

@@ -323,6 +323,9 @@ public enum CoachChatIntent: Sendable {
             "readiness history",
             "readiness over time",
             "how has readiness trended",
+            "body fat",
+            "bodyfat",
+            "body fat percentage",
             "trend data",
             "my trends"
         ]
@@ -332,6 +335,9 @@ public enum CoachChatIntent: Sendable {
     public static func inferredTrendsQuery(from text: String) -> TrendsQueryPayload? {
         guard looksLikeTrendsLookup(text) else { return nil }
         let lower = text.lowercased()
+        if lower.contains("body fat") || lower.contains("bodyfat") {
+            return TrendsQueryPayload(queryType: .bodyFat)
+        }
         if lower.contains("trimp") || lower.contains("training load") || lower.contains("strain") {
             return TrendsQueryPayload(queryType: .trimp)
         }

@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 public enum HelmType {
     case heroNumber
@@ -94,6 +95,11 @@ public enum HelmFont {
         }
     }
 
+    /// True when Core Text has a face for this PostScript name.
+    public static func isRegistered(postScriptName: String) -> Bool {
+        UIFont(name: postScriptName, size: 12) != nil
+    }
+
     public static func grotesk(
         size: CGFloat,
         weight: GroteskWeight = .regular,
@@ -102,7 +108,11 @@ public enum HelmFont {
         if prefersSystemFonts {
             return .system(size: size, weight: weight.systemWeight)
         }
-        return .custom(weight.postScriptName, size: size)
+        return registeredOrSystem(
+            postScriptName: weight.postScriptName,
+            size: size,
+            weight: weight.systemWeight
+        )
     }
 
     public static func mono(
@@ -114,7 +124,27 @@ public enum HelmFont {
             // System default design + tabular digits (not JetBrains / SF Mono).
             return .system(size: size, weight: weight.systemWeight).monospacedDigit()
         }
-        return .custom(weight.postScriptName, size: size).monospacedDigit()
+        return registeredOrSystem(
+            postScriptName: weight.postScriptName,
+            size: size,
+            weight: weight.systemWeight,
+            monospacedDigit: true
+        )
+    }
+
+    private static func registeredOrSystem(
+        postScriptName: String,
+        size: CGFloat,
+        weight: Font.Weight,
+        monospacedDigit: Bool = false
+    ) -> Font {
+        let font: Font
+        if let uiFont = UIFont(name: postScriptName, size: size) {
+            font = Font(uiFont)
+        } else {
+            font = .system(size: size, weight: weight)
+        }
+        return monospacedDigit ? font.monospacedDigit() : font
     }
 }
 
@@ -147,14 +177,20 @@ private struct HelmTypeModifier: ViewModifier {
     let style: HelmType
     let color: Color
     @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     func body(content: Content) -> some View {
         HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
         return content
-            .font(style.resolvedFont(prefersSystemFonts: prefersSystemFonts))
+            .font(resolvedFont)
             .foregroundStyle(color)
             .tracking(trackingValue)
             .textCase(style.isUppercase ? .uppercase : nil)
+    }
+
+    private var resolvedFont: Font {
+        _ = typographyEpoch
+        return style.resolvedFont(prefersSystemFonts: prefersSystemFonts)
     }
 
     private var trackingValue: CGFloat {
@@ -166,10 +202,16 @@ private struct HelmTypeModifier: ViewModifier {
 private struct HelmFontOnlyModifier: ViewModifier {
     let style: HelmType
     @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     func body(content: Content) -> some View {
         HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
         return content
-            .font(style.resolvedFont(prefersSystemFonts: prefersSystemFonts))
+            .font(resolvedFont)
+    }
+
+    private var resolvedFont: Font {
+        _ = typographyEpoch
+        return style.resolvedFont(prefersSystemFonts: prefersSystemFonts)
     }
 }

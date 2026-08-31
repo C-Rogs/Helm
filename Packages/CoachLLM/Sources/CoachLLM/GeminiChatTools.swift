@@ -271,8 +271,8 @@ public enum GeminiChatTools {
     private static func trendsQueryDeclaration() -> [String: Any] {
         queryDeclaration(
             name: .trendsQuery,
-            description: "Fetch multi-week trends (TRIMP, weight, E1RM, energy balance, readiness).",
-            queryTypes: ["trimp", "weight", "e1rm", "energyBalance", "readiness", "all"],
+            description: "Fetch multi-week trends (TRIMP, weight, body fat, E1RM, energy balance, readiness).",
+            queryTypes: ["trimp", "weight", "bodyFat", "e1rm", "energyBalance", "readiness", "all"],
             extraProperties: [
                 "exerciseName": stringProperty("Required for a specific e1rm lift.")
             ]

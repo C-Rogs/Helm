@@ -55,6 +55,22 @@ public struct BodyCompositionRepository: Sendable {
         }
     }
 
+    public func fetchLatestWithBodyFat(onOrBefore helmDay: HelmDay) throws -> BodyComposition? {
+        try fetchBodyFatHistory(onOrBefore: helmDay, limit: 1).first
+    }
+
+    public func fetchBodyFatHistory(onOrBefore helmDay: HelmDay, limit: Int) throws -> [BodyComposition] {
+        try pool.read { db in
+            let records = try BodyCompositionRecord
+                .filter(Column("helm_day") <= HelmDayColumn.encode(helmDay))
+                .filter(Column("body_fat_percentage") != nil)
+                .order(Column("measured_at").desc)
+                .limit(max(limit, 1))
+                .fetchAll(db)
+            return try records.map { try $0.toValue() }
+        }
+    }
+
     public func delete(id: UUID) throws {
         _ = try pool.write { db in
             try BodyCompositionRecord.deleteOne(db, key: id.uuidString.lowercased())
@@ -69,6 +85,15 @@ public struct BodyCompositionRepository: Sendable {
                 .fetchOne(db)
             {
                 existing.bodyFatPercentage = bodyFatPercentage
+                let shouldAdvanceTimestamp: Bool
+                if let existingDate = try? ISO8601Coding.date(from: existing.measuredAt) {
+                    shouldAdvanceTimestamp = measuredAt > existingDate
+                } else {
+                    shouldAdvanceTimestamp = true
+                }
+                if shouldAdvanceTimestamp {
+                    existing.measuredAt = ISO8601Coding.string(from: measuredAt)
+                }
                 try existing.save(db)
             } else {
                 let composition = BodyComposition(

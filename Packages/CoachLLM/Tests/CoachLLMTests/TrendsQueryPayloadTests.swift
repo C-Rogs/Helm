@@ -34,4 +34,14 @@ struct TrendsQueryPayloadTests {
         let payload = try JSONDecoder().decode(TrendsQueryPayload.self, from: data)
         #expect(payload.queryType == .all)
     }
+
+    @Test("parses bodyFat query type")
+    func bodyFatQueryType() throws {
+        let data = """
+        {"schemaVersion":"trends_query.v1","queryType":"body_fat","lookbackDays":90}
+        """.data(using: .utf8)!
+        let payload = try JSONDecoder().decode(TrendsQueryPayload.self, from: data)
+        #expect(payload.queryType == .bodyFat)
+        #expect(payload.lookbackDays == 90)
+    }
 }

@@ -21,6 +21,10 @@ public protocol HealthKitStoreClient: Sendable {
         predicate: NSPredicate?,
         limit: Int
     ) async throws -> [HKSample]
+    func fetchNewestSamples(
+        sampleType: HKSampleType,
+        limit: Int
+    ) async throws -> [HKSample]
     func fetchAnchored(
         sampleType: HKSampleType,
         anchor: HKQueryAnchor?
@@ -75,6 +79,35 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
                 predicate: predicate,
                 limit: limit,
                 sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: true)]
+            ) { _, samples, error in
+                if let error {
+                    continuation.resume(throwing: error)
+                    return
+                }
+                continuation.resume(returning: samples ?? [])
+            }
+            store.execute(query)
+        }
+    }
+
+    public func fetchNewestSamples(
+        sampleType: HKSampleType,
+        limit: Int
+    ) async throws -> [HKSample] {
+        let resolvedLimit = limit <= 0 ? 50 : limit
+        if let quantityType = sampleType as? HKQuantityType {
+            return try await HKSampleQueryDescriptor(
+                predicates: [.quantitySample(type: quantityType)],
+                sortDescriptors: [SortDescriptor(\.endDate, order: .reverse)],
+                limit: resolvedLimit
+            ).result(for: store)
+        }
+        return try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<[HKSample], Error>) in
+            let query = HKSampleQuery(
+                sampleType: sampleType,
+                predicate: nil,
+                limit: resolvedLimit,
+                sortDescriptors: [NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)]
             ) { _, samples, error in
                 if let error {
                     continuation.resume(throwing: error)

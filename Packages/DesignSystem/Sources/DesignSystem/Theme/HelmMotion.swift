@@ -61,4 +61,6 @@ public extension EnvironmentValues {
     @Entry var helmReduceMotion: Bool = false
     /// Extra delay before staggered appear (e.g. after tab liquid-glass morph).
     @Entry var helmStaggerBaseDelay: TimeInterval = 0
+    /// Bumped on foreground after custom fonts re-register so `Text` re-resolves faces.
+    @Entry var helmTypographyEpoch: Int = 0
 }

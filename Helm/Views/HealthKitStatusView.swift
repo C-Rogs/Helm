@@ -22,6 +22,8 @@ struct AppleHealthSettingsView: View {
     )
     @State private var storedDayCount = 0
     @State private var latestStoredDay: HelmDay?
+    @State private var latestBodyFatText = "None stored"
+    @State private var bodyFatTrace = BodyFatQueryTrace.empty
     @State private var showsAdvancedDetail = false
 
     private let presenceChecker = HealthKitDataPresenceChecker()
@@ -80,7 +82,7 @@ struct AppleHealthSettingsView: View {
                             .helmListRowChrome()
                         }
                     }
-                    Text("Signal checks for samples, not permission grants. Denied reads look empty here.")
+                    Text("Signal checks for samples, not permission grants. Denied reads look empty here. A checkmark means at least one sample exists, not that today synced.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
                 }
@@ -140,9 +142,70 @@ struct AppleHealthSettingsView: View {
                         HelmStatusRow(label: "Latest day", value: latestStoredDay.formatted)
                             .helmListRowChrome()
                     }
+                    HelmStatusRow(label: "Latest body fat", value: latestBodyFatText)
+                        .helmListRowChrome()
                     HelmStatusRow(label: "Last sample count", value: "\(status.lastSyncSampleCount)")
                         .helmListRowChrome()
                     HelmStatusRow(label: "Last deleted count", value: "\(status.lastSyncDeletedCount)")
+                        .helmListRowChrome()
+                }
+
+                Section("Body fat probe") {
+                    HelmStatusRow(
+                        label: "HK samples",
+                        value: "\(bodyFatTrace.hkSampleCount)"
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "Newest HK day",
+                        value: bodyFatTrace.newestHkDay ?? "None"
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "Newest stored day",
+                        value: bodyFatTrace.storedDay ?? "None"
+                    )
+                    .helmListRowChrome()
+                    HelmStatusRow(label: "Lag", value: bodyFatTrace.lag)
+                        .helmListRowChrome()
+                    HelmStatusRow(
+                        label: "Would ingest",
+                        value: "\(bodyFatTrace.keptCount)"
+                    )
+                    .helmListRowChrome()
+                    if bodyFatTrace.skippedOwnSource > 0 {
+                        HelmStatusRow(
+                            label: "Skipped own source",
+                            value: "\(bodyFatTrace.skippedOwnSource)"
+                        )
+                        .helmListRowChrome()
+                    }
+                    if bodyFatTrace.skippedIncompatibleUnit > 0 {
+                        HelmStatusRow(
+                            label: "Skipped unit",
+                            value: "\(bodyFatTrace.skippedIncompatibleUnit)"
+                        )
+                        .helmListRowChrome()
+                    }
+                    if bodyFatTrace.skippedOutOfRange > 0 {
+                        HelmStatusRow(
+                            label: "Skipped out of range",
+                            value: "\(bodyFatTrace.skippedOutOfRange)"
+                        )
+                        .helmListRowChrome()
+                    }
+                    HelmStatusRow(label: "Sources", value: bodyFatTrace.sources)
+                        .helmListRowChrome()
+                    if let queryError = bodyFatTrace.queryError {
+                        HelmStatusRow(label: "Query error", value: queryError)
+                            .helmListRowChrome()
+                    }
+                    if let overlayError = bodyFatTrace.overlayError {
+                        HelmStatusRow(label: "Overlay error", value: overlayError)
+                            .helmListRowChrome()
+                    }
+                    Text("Newest HK day is the latest Body Fat Percentage sample HealthKit gave Signal. Health can mark the type present from an old reading. If a scale weigh-in is missing, check that the scale wrote that type to Health before assuming a Signal bug. Same probe lands in Settings → Export Diagnostics.")
+                        .helmType(.body, color: HelmColor.fgMuted)
                         .helmListRowChrome()
                 }
 
@@ -205,9 +268,18 @@ struct AppleHealthSettingsView: View {
             let days = try store.dailyMetrics.listDays()
             storedDayCount = days.count
             latestStoredDay = days.last
+            let today = HelmDay.day(for: Date(), calendar: .current)
+            if let fat = try store.bodyComposition.fetchLatestWithBodyFat(onOrBefore: today),
+               let percent = fat.bodyFatPercentage {
+                latestBodyFatText = String(format: "%.1f%% on %@", percent, fat.helmDay.formatted)
+            } else {
+                latestBodyFatText = "None stored"
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
+        _ = await HealthKitBootstrap.healthKitIngest.liveBodyFatSummary()
+        bodyFatTrace = await HealthKitBootstrap.healthKitIngest.lastBodyFatQueryTrace()
     }
 
     private func requestAuthorization() async {

@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 public enum SchemaV2DailyLogAssembler: Sendable {
@@ -14,7 +15,9 @@ public enum SchemaV2DailyLogAssembler: Sendable {
 
         return days.map { day in
             let dayKey = BioharvestHealthKitMath.startOfCalendarDay(day, calendar: calendar)
-            let bodyFatValue = metrics.bodyFat[dayKey].flatMap { $0 }.map { $0 <= 1.0 ? $0 * 100.0 : $0 }
+            let bodyFatValue = metrics.bodyFat[dayKey]
+                .flatMap { $0 }
+                .flatMap(BodyFatPercent.storedPercent(fromHealthKitPercentUnit:))
             let alcoholCount = metrics.alcohol[dayKey].flatMap { $0 }.map { Int($0.rounded()) }
 
             return DailyLog(

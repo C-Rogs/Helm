@@ -154,12 +154,15 @@ public struct IngestPersistenceWriter: Sendable {
 
     private func applyBodyFatDelta(_ delta: IngestDelta) throws {
         for sample in delta.addedQuantitySamples {
-            guard sample.value > 0, sample.value <= 0.6 else { continue }
-            let helmDay = HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)
+            guard let percent = BodyFatPercent.storedPercent(fromHealthKitPercentUnit: sample.value) else {
+                continue
+            }
+            let measuredAt = max(sample.start, sample.end)
+            let helmDay = HelmDay.day(for: measuredAt, cutoff: cutoff, calendar: calendar)
             try store.bodyComposition.mergeBodyFat(
                 helmDay: helmDay,
-                bodyFatPercentage: sample.value * 100,
-                measuredAt: sample.start
+                bodyFatPercentage: percent,
+                measuredAt: measuredAt
             )
         }
     }

@@ -41,7 +41,6 @@ public struct CoachMessageBubble: View {
             Text(text)
                 .helmType(.body)
                 .foregroundStyle(palette.fg)
-                .textSelection(.enabled)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
                 .modifier(BubbleChromeModifier(kind: .user, skin: skin, palette: palette))
@@ -55,7 +54,6 @@ public struct CoachMessageBubble: View {
                 Text(displayText)
                     .helmType(.body)
                     .foregroundStyle(palette.fg)
-                    .textSelection(.enabled)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)

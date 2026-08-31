@@ -15,6 +15,7 @@ enum IngestSampleMapper {
             guard IngestSampleFilter.shouldIngest(sourceBundleID: bundleID, ownBundleID: ownBundleID) else {
                 return nil
             }
+            guard quantitySample.quantity.is(compatibleWith: unit) else { return nil }
             return IngestQuantitySample(
                 id: quantitySample.uuid,
                 start: quantitySample.startDate,

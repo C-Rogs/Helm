@@ -3,6 +3,7 @@ import Foundation
 import HealthKit
 import OSLog
 import Persistence
+import Core
 
 public actor HealthKitIngest {
     public static let defaultOwnBundleID = "com.cameronro.helm"
@@ -28,6 +29,9 @@ public actor HealthKitIngest {
     private var pendingKinds: Set<HealthKitSampleKind> = []
     private var syncTask: Task<Void, Never>?
     private var familyContinuations: [HealthKitMetricFamily: [UUID: AsyncStream<HealthKitMetricSnapshot>.Continuation]] = [:]
+    private var didResetBodyFatAnchorThisProcess = false
+    private var lastBodyFatTrace = BodyFatQueryTrace.empty
+    private var lastBodyFatFacts = BodyFatLatestFacts.empty
 
     public init(
         persistence: PersistenceStore,
@@ -159,6 +163,10 @@ public actor HealthKitIngest {
     }
 
     public func syncNow() async -> HealthKitIngestOutcome {
+        await syncKinds(Array(HealthKitSampleKind.allCases))
+    }
+
+    public func syncKinds(_ kinds: [HealthKitSampleKind]) async -> HealthKitIngestOutcome {
         guard store.isHealthDataAvailable() else {
             lastErrorMessage = HealthKitIngestError.healthDataUnavailable.localizedDescription
             return .empty
@@ -168,7 +176,7 @@ public actor HealthKitIngest {
         var totalDeleted = 0
         var affectedFamilies: Set<HealthKitMetricFamily> = []
 
-        for kind in HealthKitSampleKind.allCases {
+        for kind in kinds {
             let outcome = await syncKind(kind)
             totalIngested += outcome.samplesIngested
             totalDeleted += outcome.samplesDeleted
@@ -198,6 +206,47 @@ public actor HealthKitIngest {
     public func resetAnchor(for kind: HealthKitSampleKind) async throws {
         try await anchorStore.resetAnchor(for: kind)
         log.info("HealthKit anchor reset for \(kind.rawValue, privacy: .public)")
+    }
+
+    public func lastBodyFatQueryTrace() -> BodyFatQueryTrace {
+        lastBodyFatTrace
+    }
+
+    public func lastBodyFatLatestFacts() -> BodyFatLatestFacts {
+        lastBodyFatFacts
+    }
+
+    /// Newest Body Fat Percentage samples HealthKit will return to this app.
+    /// Health's type checkmark or "added today" is not this list.
+    public func liveBodyFatSummary(limit: Int = 15) async -> String {
+        let calendar = Calendar.current
+        do {
+            let samples = try await fetchNewestBodyFatSamples()
+            await publishBodyFatTrace(makeBodyFatTrace(samples: samples, stage: "live"))
+            let quantitySamples = samples
+                .compactMap { $0 as? HKQuantitySample }
+                .sorted { max($0.startDate, $0.endDate) > max($1.startDate, $1.endDate) }
+            lastBodyFatFacts = makeBodyFatFacts(quantitySamples: quantitySamples, calendar: calendar)
+            if quantitySamples.isEmpty {
+                return "hk_live count=0 bodyfat=none"
+            }
+            let sliced = Array(quantitySamples.prefix(limit))
+            var header = "hk_live count=\(quantitySamples.count) showing=\(sliced.count)"
+            if let day = lastBodyFatFacts.hkDay, let percent = lastBodyFatFacts.hkPercent {
+                header += " newest=\(day) bodyfat=\(percent)%"
+            }
+            return header
+        } catch {
+            lastBodyFatFacts = .empty
+            await publishBodyFatTrace(
+                makeBodyFatTrace(
+                    samples: [],
+                    stage: "live",
+                    queryError: error.localizedDescription
+                )
+            )
+            return "hk_live error=\(error.localizedDescription)"
+        }
     }
 
     private func scheduleSync(for kind: HealthKitSampleKind) {
@@ -251,6 +300,10 @@ public actor HealthKitIngest {
         }
 
         do {
+            if kind == .bodyFatPercentage {
+                try await resetBodyFatAnchorIfHealthKitIsAhead()
+            }
+
             let anchor = await anchorStore.anchor(for: kind)
             let fetchResult = try await store.fetchAnchored(
                 sampleType: kind.sampleType,
@@ -277,12 +330,38 @@ public actor HealthKitIngest {
                 )
             }
 
-            let sampleCount = delta.addedQuantitySamples.count
+            var sampleCount = delta.addedQuantitySamples.count
                 + delta.addedSleepSamples.count
                 + delta.addedWorkouts.count
             let deletedCount = delta.deletedSampleIDs.count
 
-            let families = try writer.apply(delta: delta)
+            var families = try writer.apply(delta: delta)
+
+            if kind == .bodyFatPercentage {
+                do {
+                    let overlay = try await ingestNewestBodyFatSamples()
+                    families.formUnion(overlay.families)
+                    if sampleCount == 0 {
+                        sampleCount = overlay.ingestedCount
+                    }
+                } catch {
+                    await diagnosticsLog.capture(
+                        error: error,
+                        category: .healthKitIngest,
+                        message: "Body fat overlay failed",
+                        context: ["sampleType": kind.rawValue]
+                    )
+                    if lastBodyFatTrace.overlayError == nil {
+                        await publishBodyFatTrace(
+                            makeBodyFatTrace(
+                                samples: [],
+                                stage: "overlay",
+                                overlayError: error.localizedDescription
+                            )
+                        )
+                    }
+                }
+            }
 
             if let newAnchor = fetchResult.newAnchor {
                 try await anchorStore.save(anchor: newAnchor, for: kind)
@@ -309,6 +388,223 @@ public actor HealthKitIngest {
             lastErrorMessage = error.localizedDescription
             return .empty
         }
+    }
+
+    /// Anchored ingest can skip samples and still save the cursor. If HealthKit's
+    /// newest body-fat sample is later than GRDB, rewind that kind once per process.
+    private func resetBodyFatAnchorIfHealthKitIsAhead() async throws {
+        let newest = try await store.fetchNewestSamples(
+            sampleType: HealthKitSampleKind.bodyFatPercentage.sampleType,
+            limit: 1
+        )
+        guard let newestSample = newest.first else { return }
+        let hkDate = max(newestSample.startDate, newestSample.endDate)
+        let stored = try persistence.bodyComposition.fetchLatestWithBodyFat(
+            onOrBefore: HelmDay.day(for: Date(), calendar: .current)
+        )
+        if let stored, stored.measuredAt.addingTimeInterval(1) >= hkDate {
+            return
+        }
+        let context: [String: String] = [
+            "hkDay": HelmDay.day(for: hkDate, calendar: .current).formatted,
+            "storedDay": stored?.helmDay.formatted ?? "none",
+        ]
+        if didResetBodyFatAnchorThisProcess {
+            await diagnosticsLog.record(
+                category: .healthKitIngest,
+                level: .error,
+                message: "Body fat store still behind HealthKit after anchor reset",
+                context: context
+            )
+            let hkDay = context["hkDay"] ?? "none"
+            let storedDay = context["storedDay"] ?? "none"
+            log.info(
+                "Body fat still lagging after anchor reset hkDay=\(hkDay, privacy: .public) storedDay=\(storedDay, privacy: .public)"
+            )
+            return
+        }
+        try await anchorStore.resetAnchor(for: .bodyFatPercentage)
+        didResetBodyFatAnchorThisProcess = true
+        await diagnosticsLog.record(
+            category: .healthKitIngest,
+            level: .info,
+            message: "Reset body fat anchor; HealthKit newer than stored",
+            context: context
+        )
+        log.info("Reset body fat anchor; HealthKit newer than stored")
+    }
+
+    /// Anchored queries can skip samples and still advance the cursor. Merge the
+    /// newest HealthKit body-fat rows so Coach is not stuck on an old GRDB date.
+    private func ingestNewestBodyFatSamples() async throws -> (families: Set<HealthKitMetricFamily>, ingestedCount: Int) {
+        let samples = try await fetchNewestBodyFatSamples()
+        guard !samples.isEmpty else {
+            await publishBodyFatTrace(makeBodyFatTrace(samples: [], stage: "overlay"))
+            return ([], 0)
+        }
+
+        let delta = IngestSampleMapper.delta(
+            kind: .bodyFatPercentage,
+            addedSamples: samples,
+            deletedObjectIDs: [],
+            ownBundleID: ownBundleID
+        )
+
+        let acceptedCount = delta.addedQuantitySamples.filter { sample in
+            BodyFatPercent.storedPercent(fromHealthKitPercentUnit: sample.value) != nil
+        }.count
+        if acceptedCount == 0 {
+            await publishBodyFatTrace(makeBodyFatTrace(samples: samples, stage: "overlay"))
+            return ([], 0)
+        }
+
+        let families: Set<HealthKitMetricFamily>
+        do {
+            families = try writer.apply(delta: delta)
+        } catch {
+            await publishBodyFatTrace(
+                makeBodyFatTrace(
+                    samples: samples,
+                    stage: "overlay",
+                    overlayError: error.localizedDescription
+                )
+            )
+            throw error
+        }
+        await publishBodyFatTrace(makeBodyFatTrace(samples: samples, stage: "overlay"))
+        return (families, acceptedCount)
+    }
+
+    private func fetchNewestBodyFatSamples() async throws -> [HKSample] {
+        try await store.fetchNewestSamples(
+            sampleType: HealthKitSampleKind.bodyFatPercentage.sampleType,
+            limit: 50
+        )
+    }
+
+    private enum BodyFatSampleDisposition {
+        case kept
+        case ownSource
+        case incompatibleUnit
+        case outOfRange
+        case notQuantity
+    }
+
+    private func disposition(for sample: HKSample) -> BodyFatSampleDisposition {
+        guard let quantitySample = sample as? HKQuantitySample else { return .notQuantity }
+        let bundleID = quantitySample.sourceRevision.source.bundleIdentifier
+        if !IngestSampleFilter.shouldIngest(sourceBundleID: bundleID, ownBundleID: ownBundleID) {
+            return .ownSource
+        }
+        if BodyFatQuantity.storedPercent(from: quantitySample.quantity) != nil {
+            return .kept
+        }
+        if quantitySample.quantity.is(compatibleWith: .percent()) {
+            return .outOfRange
+        }
+        return .incompatibleUnit
+    }
+
+    private func makeBodyFatTrace(
+        samples: [HKSample],
+        stage: String,
+        overlayError: String? = nil,
+        queryError: String? = nil
+    ) -> BodyFatQueryTrace {
+        var kept = 0
+        var own = 0
+        var unit = 0
+        var range = 0
+        var notQuantity = 0
+        var sources: Set<String> = []
+        var newest: Date?
+        for sample in samples {
+            if let quantitySample = sample as? HKQuantitySample {
+                sources.insert(quantitySample.sourceRevision.source.bundleIdentifier)
+            }
+            let measured = max(sample.startDate, sample.endDate)
+            if newest.map({ measured > $0 }) ?? true {
+                newest = measured
+            }
+            switch disposition(for: sample) {
+            case .kept: kept += 1
+            case .ownSource: own += 1
+            case .incompatibleUnit: unit += 1
+            case .outOfRange: range += 1
+            case .notQuantity: notQuantity += 1
+            }
+        }
+        let stored = try? persistence.bodyComposition.fetchLatestWithBodyFat(
+            onOrBefore: HelmDay.day(for: Date(), calendar: .current)
+        )
+        let newestHkDay = newest.map { HelmDay.day(for: $0, calendar: .current).formatted }
+        let storedDay = stored?.helmDay.formatted
+        let sourceList = sources.sorted()
+        let sourcesText: String
+        if sourceList.isEmpty {
+            sourcesText = "none"
+        } else if sourceList.count <= 4 {
+            sourcesText = sourceList.joined(separator: ",")
+        } else {
+            sourcesText = sourceList.prefix(4).joined(separator: ",") + "+\(sourceList.count - 4)"
+        }
+        return BodyFatQueryTrace(
+            probedAt: Date(),
+            hkSampleCount: samples.count,
+            newestHkDay: newestHkDay,
+            storedDay: storedDay,
+            keptCount: kept,
+            skippedOwnSource: own,
+            skippedIncompatibleUnit: unit,
+            skippedOutOfRange: range,
+            skippedNotQuantity: notQuantity,
+            overlayError: overlayError,
+            queryError: queryError,
+            sources: sourcesText,
+            lag: BodyFatQueryTrace.lag(newestHkDay: newestHkDay, storedDay: storedDay),
+            stage: stage
+        )
+    }
+
+    private func makeBodyFatFacts(
+        quantitySamples: [HKQuantitySample],
+        calendar: Calendar
+    ) -> BodyFatLatestFacts {
+        var hkDay: String?
+        var hkPercent: Double?
+        var hkSource: String?
+        for sample in quantitySamples {
+            guard let stored = BodyFatQuantity.storedPercent(from: sample.quantity) else { continue }
+            let measured = max(sample.startDate, sample.endDate)
+            hkDay = HelmDay.day(for: measured, calendar: calendar).formatted
+            hkPercent = stored
+            hkSource = sample.sourceRevision.source.bundleIdentifier
+            break
+        }
+        let storedRow = try? persistence.bodyComposition.fetchLatestWithBodyFat(
+            onOrBefore: HelmDay.day(for: Date(), calendar: calendar)
+        )
+        return BodyFatLatestFacts(
+            hkDay: hkDay,
+            hkPercent: hkPercent,
+            storeDay: storedRow?.helmDay.formatted,
+            storePercent: storedRow?.bodyFatPercentage,
+            hkReadableCount: quantitySamples.count,
+            hkSource: hkSource
+        )
+    }
+
+    private func publishBodyFatTrace(_ trace: BodyFatQueryTrace) async {
+        lastBodyFatTrace = trace
+        let level: LogLevel = (trace.queryError != nil || trace.overlayError != nil) ? .error : .info
+        await diagnosticsLog.record(
+            category: .healthKitIngest,
+            level: level,
+            message: "Body fat HealthKit probe",
+            context: trace.diagnosticContext
+        )
+        let line = trace.logLine
+        log.info("Body fat probe \(line, privacy: .public)")
     }
 
     private func publishSnapshots(for families: Set<HealthKitMetricFamily>) {

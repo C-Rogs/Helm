@@ -6,8 +6,17 @@ public enum HelmFontRegistration {
 
     public static func registerFontsIfNeeded() {
         guard !didRegister else { return }
+        registerAll()
         didRegister = true
+    }
 
+    /// Re-install process-scoped fonts after foreground. Safe if already registered.
+    public static func reregister() {
+        registerAll()
+        didRegister = true
+    }
+
+    private static func registerAll() {
         let fontNames = [
             "SpaceGrotesk-Regular",
             "SpaceGrotesk-Medium",

@@ -78,6 +78,8 @@ A section that owns one of these rows must emit it; a section landing a new crit
 - **Gemini request URLs are never logged, anywhere, full stop.** The API key travels as a URL query parameter; no `Logger` call, signpost annotation, or ring-buffer context may include a request URL. Grep for this at review time on any `CoachLLM` change.
 - **No raw HealthKit values or chat content in the ring buffer or OSLog extract** (see Ring buffer contract and Export bundle schema above). This is a cleanliness rule for a personal single-user app, not a strict privacy requirement (the top-level plan already treats privacy as low concern since data goes to Gemini), but it keeps diagnostics small, fast to scan, and safe to hand to anyone without a second thought.
 
+HealthKit body-fat debugging: a type checkmark or Health's "added today" is not Signal's newest readable sample. Coach body fat and Settings → Apple Health → Body fat probe quote `Body Fat Percentage` sample dates this app can read (ring messages `Body fat HealthKit probe` and `Coach body fat follow-up`). An old or empty newest day usually means the source never wrote that type, or Signal is not allowed to read that source.
+
 ---
 
 ## Instrumentation gate

@@ -82,6 +82,7 @@ public final class HelmThemeCoordinator {
     }
 
     public private(set) var activePalette: HelmPalette = .dark
+    public private(set) var typographyEpoch: Int = 0
 
     private let defaults: UserDefaults
 
@@ -118,6 +119,10 @@ public final class HelmThemeCoordinator {
         let palette = themeMode.resolvedPalette(colorScheme: colorScheme, accent: accentSource)
         activePalette = palette
         HelmActivePalette.current = palette
+    }
+
+    public func bumpTypographyEpoch() {
+        typographyEpoch += 1
     }
 
     private func persist() {
@@ -179,14 +184,17 @@ public extension View {
     }
 
     /// Standard screen chrome behind navigation content.
-    func helmScreenBackground() -> some View {
-        modifier(HelmScreenBackgroundModifier())
+    /// Pass `ignoreKeyboard: false` on screens with a bottom composer so the canvas
+    /// shrinks with the keyboard instead of the field floating over the grid.
+    func helmScreenBackground(ignoreKeyboard: Bool = true) -> some View {
+        modifier(HelmScreenBackgroundModifier(ignoreKeyboard: ignoreKeyboard))
     }
 }
 
 private struct HelmScreenBackgroundModifier: ViewModifier {
     @Environment(\.helmSkin) private var skin
     @Environment(\.helmPalette) private var palette
+    var ignoreKeyboard: Bool = true
 
     func body(content: Content) -> some View {
         content
@@ -198,7 +206,7 @@ private struct HelmScreenBackgroundModifier: ViewModifier {
                         SignalGridBackground()
                     }
                 }
-                .ignoresSafeArea()
+                .ignoresSafeArea(ignoreKeyboard ? .all : .container)
             }
     }
 }
@@ -226,6 +234,7 @@ private struct HelmThemeContainer<Content: View>: View {
             .environment(\.helmPalette, palette)
             .environment(\.helmSkin, coordinator.skin)
             .environment(\.helmPrefersSystemFonts, coordinator.prefersSystemFonts)
+            .environment(\.helmTypographyEpoch, coordinator.typographyEpoch)
             .environment(\.helmReduceMotion, reduceMotion)
             .preferredColorScheme(preferredScheme)
             .tint(palette.accent)

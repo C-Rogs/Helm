@@ -45,7 +45,21 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     ) async throws -> [HKSample] {
         lock.withLock {
             let samples = sampleResults[sampleType.identifier] ?? []
-            if samples.count <= limit {
+            if limit == 0 || samples.count <= limit {
+                return samples
+            }
+            return Array(samples.prefix(limit))
+        }
+    }
+
+    func fetchNewestSamples(
+        sampleType: HKSampleType,
+        limit: Int
+    ) async throws -> [HKSample] {
+        lock.withLock {
+            let samples = (sampleResults[sampleType.identifier] ?? [])
+                .sorted { $0.endDate > $1.endDate }
+            if limit == 0 || samples.count <= limit {
                 return samples
             }
             return Array(samples.prefix(limit))

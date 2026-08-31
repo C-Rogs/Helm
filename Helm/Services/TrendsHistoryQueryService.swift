@@ -33,6 +33,8 @@ struct TrendsHistoryQueryService {
             return try energyBalanceHistory(lookback: lookback)
         case .readiness:
             return try readinessHistory(lookback: lookback)
+        case .bodyFat:
+            return try bodyFatHistory(lookback: lookback)
         case .all:
             return try allTrends(lookback: lookback)
         }
@@ -161,10 +163,31 @@ struct TrendsHistoryQueryService {
         return lines.joined(separator: "\n")
     }
 
+    private func bodyFatHistory(lookback: Int) throws -> String {
+        let today = HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
+        let rows = try store.bodyComposition.fetchBodyFatHistory(onOrBefore: today, limit: 90)
+        let filtered = rows.filter {
+            today.days(to: $0.helmDay, calendar: calendar) <= lookback
+        }
+        if filtered.isEmpty {
+            return "query=bodyFat lookback=\(lookback)\nbodyfat=none"
+        }
+        var lines = ["query=bodyFat lookback=\(lookback) count=\(filtered.count)"]
+        let formatter = ISO8601DateFormatter()
+        for row in filtered.sorted(by: { $0.helmDay < $1.helmDay }) {
+            guard let fat = row.bodyFatPercentage else { continue }
+            lines.append(
+                "\(row.helmDay.formatted) bodyfat=\(format(fat))% measured=\(formatter.string(from: row.measuredAt))"
+            )
+        }
+        return lines.joined(separator: "\n")
+    }
+
     private func allTrends(lookback: Int) throws -> String {
         let sections = [
             try trimpHistory(lookback: lookback),
             try weightTrend(lookback: lookback),
+            try bodyFatHistory(lookback: lookback),
             try readinessHistory(lookback: lookback),
             try energyBalanceHistory(lookback: lookback)
         ]
