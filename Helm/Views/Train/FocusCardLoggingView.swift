@@ -40,6 +40,9 @@ struct FocusCardLoggingView: View {
             syncIndicesToFirstIncomplete()
             didInitialSync = true
         }
+        .task(id: neighborImagePrefetchKey) {
+            prefetchNeighborImages()
+        }
         .onChange(of: controller.snapshot?.session.exercises.map { $0.sets.map { "\($0.id):\($0.status.rawValue)" } }) { _, _ in
             guard didInitialSync else { return }
             guard controller.numpadTarget == nil else { return }
@@ -146,7 +149,7 @@ struct FocusCardLoggingView: View {
                         displayName: controller.displayName(for: currentExercise.exerciseID),
                         coachingCue: controller.coachingCue(for: currentExercise.exerciseID),
                         imageURL: exerciseImageURL(for: currentExercise.exerciseID),
-                        imageMaxHeight: min(130, maxHeight * 0.38),
+                        imageMaxHeight: max(0, maxHeight * 0.5),
                         currentSetIndex: currentSetIndex,
                         previous: controller.previousFor(
                             set: currentExercise.sets[safe: currentSetIndex] ?? SetEntryDraft(setIndex: currentSetIndex),
@@ -188,11 +191,13 @@ struct FocusCardLoggingView: View {
                         onCompleteSet: {
                             Task { @MainActor in
                                 guard let set = currentExercise.sets[safe: currentSetIndex] else { return }
-                                await controller.completeSet(
+                                let didComplete = await controller.completeSet(
                                     sessionExerciseID: currentExercise.id,
                                     setID: set.id
                                 )
-                                advanceToNextSet()
+                                if didComplete {
+                                    advanceToNextSet()
+                                }
                             }
                         }
                     )
@@ -212,6 +217,14 @@ struct FocusCardLoggingView: View {
 
                     if currentExercise.sets.contains(where: { $0.setType.countsAsPrescribedWorkingSet }) {
                         setManagementControls(currentExercise)
+                    }
+
+                    if currentExerciseIndex == exercises.count - 1 {
+                        TrainSessionActionBar(
+                            isFinishing: controller.isFinishingWorkout,
+                            onDiscard: { controller.isShowingDiscardConfirmation = true },
+                            onFinish: { controller.isShowingFinishConfirmation = true }
+                        )
                     }
                 }
                 .transition(.opacity)
@@ -297,10 +310,7 @@ struct FocusCardLoggingView: View {
     }
 
     private func setTypeGlyph(for set: SetEntryDraft) -> String {
-        if let abbreviation = set.setType.loggerAbbreviation {
-            return abbreviation
-        }
-        return "W"
+        set.setType.loggerGlyph(setNumber: set.setIndex + 1)
     }
 
     private func setTypeColor(for set: SetEntryDraft) -> Color {
@@ -483,6 +493,22 @@ struct FocusCardLoggingView: View {
         guard let summary = controller.exerciseSummaries[exerciseID],
               let gifURL = summary.gifURL else { return nil }
         return URL(string: gifURL)
+    }
+
+    private func prefetchNeighborImages() {
+        for offset in [-1, 1] {
+            let index = currentExerciseIndex + offset
+            guard let exercise = exercises[safe: index],
+                  let url = exerciseImageURL(for: exercise.exerciseID) else { continue }
+            ExerciseImagePrefetcher.prefetch(url)
+        }
+    }
+
+    private var neighborImagePrefetchKey: String {
+        let neighborIDs = [currentExerciseIndex - 1, currentExerciseIndex + 1]
+            .compactMap { exercises[safe: $0]?.exerciseID }
+        let urls = neighborIDs.compactMap { exerciseImageURL(for: $0)?.absoluteString }
+        return "\(currentExerciseIndex)|\(urls.joined(separator: ","))"
     }
 }
 

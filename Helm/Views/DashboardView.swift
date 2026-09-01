@@ -18,6 +18,7 @@ struct DashboardView: View {
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var revealStore = ReadinessRevealStore()
+    @State private var usualMealStore = UsualMealStore()
     @State private var contributorDetailsVisible = true
     @State private var sleepSummary: SleepNightSummary?
     @Namespace private var readinessNamespace
@@ -73,6 +74,9 @@ struct DashboardView: View {
                 await nutritionService.refresh(
                     prescriptionSummary: prescriptionService.state.summary
                 )
+                if case let .ready(snapshot) = nutritionService.state {
+                    usualMealStore.reload(for: snapshot.helmDay)
+                }
                 await briefService.refresh(
                     readiness: readinessService.state.score,
                     prescriptionSummary: prescriptionService.state.summary
@@ -101,6 +105,11 @@ struct DashboardView: View {
                         readiness: readinessService.state.score,
                         prescriptionSummary: newState.summary
                     )
+                }
+            }
+            .onChange(of: nutritionService.state) { _, newState in
+                if case let .ready(snapshot) = newState {
+                    usualMealStore.reload(for: snapshot.helmDay)
                 }
             }
         }
@@ -488,8 +497,53 @@ struct DashboardView: View {
                 }
             }
         case let .ready(snapshot):
-            nutritionNavigationLink {
-                compactNutritionContent(snapshot: snapshot)
+            Card {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    Button {
+                        AppTabRouter.shared.openNutrition()
+                    } label: {
+                        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                            HStack {
+                                HelmSectionEyebrow("NUTRITION", showsArcMark: false)
+                                Spacer()
+                                HelmIconView(.chevronRight, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                            }
+                            compactNutritionContent(snapshot: snapshot)
+                        }
+                        .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.helmPressableCard)
+
+                    if let proposal = usualMealStore.nextDashboardProposal {
+                        UsualMealConfirmRow(
+                            proposal: proposal,
+                            isLogging: usualMealStore.loggingBucket == proposal.bucket,
+                            showsSomethingElse: true,
+                            onYes: {
+                                Task {
+                                    await usualMealStore.log(proposal, helmDay: snapshot.helmDay)
+                                }
+                            },
+                            onSomethingElse: {
+                                AppTabRouter.shared.openNutrition(
+                                    focus: NutritionNavigationFocus(
+                                        helmDay: snapshot.helmDay,
+                                        bucket: proposal.bucket,
+                                        startSearch: true
+                                    )
+                                )
+                            }
+                        )
+                    } else {
+                        Button {
+                            AppTabRouter.shared.openNutrition()
+                        } label: {
+                            Label("Log food", helmIcon: .plus, context: .inline)
+                        }
+                        .buttonStyle(.helmSecondary)
+                    }
+                }
             }
         }
     }
@@ -576,14 +630,6 @@ struct DashboardView: View {
            gap > MacroGapCalculator.significanceThresholdKcal {
             NutritionAlcoholGapRow(gapKilocalories: gap)
         }
-
-        Button {
-            AppTabRouter.shared.openNutrition()
-        } label: {
-            Label("Log food", helmIcon: .plus, context: .inline)
-        }
-        .buttonStyle(.helmSecondary)
-        .padding(.top, HelmSpacing.xs)
     }
 
     private func nutritionMacroChip(_ label: String, actual: Double?, target: Int) -> some View {

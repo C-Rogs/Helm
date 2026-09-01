@@ -57,7 +57,8 @@ public enum PrescriptionLoadRationale {
             "load_decision=\(progression.loadDecision.rawValue)",
             "last_session_kg=\(last)",
             "prescribed_kg=\(prescribed)",
-            "rep_range=\(progression.targetRepMin)-\(progression.targetRepMax)",
+            "prescribed_reps=\(progression.targetRepMin)",
+            "scheme=\(progression.schemeRepMin)-\(progression.schemeRepMax)",
             "increment_kg=\(increment)",
             "is_stalled_backoff=\(progression.isStalledBackoff)",
             "constraint_affected=\(exercise.constraintAffected)"

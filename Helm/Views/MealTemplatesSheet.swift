@@ -78,59 +78,6 @@ struct MealTemplatesSheet: View {
     }
 }
 
-struct LogMealTemplateConfirmSheet: View {
-    let template: MealTemplate
-    let isSaving: Bool
-    let onConfirm: () -> Void
-    let onCancel: () -> Void
-
-    var body: some View {
-        NavigationStack {
-            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                    Text(template.name)
-                        .helmType(.title)
-                    Text("\(template.bucket.displayName) · \(template.lineItems.count) items")
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                }
-
-                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    ForEach(template.lineItems) { item in
-                        HStack {
-                            Text(item.name)
-                                .helmType(.body)
-                            Spacer()
-                            Text("\(Int(item.caloriesKcal.rounded())) kcal")
-                                .helmType(.monoTag, color: HelmColor.fgMuted)
-                        }
-                    }
-                }
-
-                Spacer()
-            }
-            .padding(HelmSpacing.md)
-            .helmScreenBackground()
-            .navigationTitle("Log saved meal")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel", action: onCancel)
-                }
-            }
-            .safeAreaInset(edge: .bottom) {
-                Button("Log meal") {
-                    onConfirm()
-                }
-                .buttonStyle(.helmPrimary)
-                .disabled(isSaving)
-                .padding(HelmSpacing.md)
-                .background(HelmColor.surface.opacity(0.96))
-            }
-        }
-        .presentationDetents([.medium, .large])
-    }
-}
-
 #Preview("Templates list") {
     MealTemplatesSheet(
         templates: [
@@ -154,31 +101,6 @@ struct LogMealTemplateConfirmSheet: View {
         onLog: { _ in },
         onDelete: { _ in },
         onDismiss: {}
-    )
-    .helmTheme()
-}
-
-#Preview("Log template confirm") {
-    LogMealTemplateConfirmSheet(
-        template: MealTemplate(
-            name: "Work breakfast",
-            bucket: .breakfast,
-            lineItems: [
-                MealLineItem(
-                    name: "Oats",
-                    grams: 60,
-                    caloriesKcal: 230,
-                    proteinG: 8,
-                    carbsG: 40,
-                    fatG: 4,
-                    matchConfidence: .high
-                )
-            ],
-            updatedAt: Date()
-        ),
-        isSaving: false,
-        onConfirm: {},
-        onCancel: {}
     )
     .helmTheme()
 }

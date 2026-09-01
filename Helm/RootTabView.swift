@@ -1,5 +1,6 @@
 import DesignSystem
 import SwiftUI
+import UIKit
 
 enum AppTab: Hashable {
     case dashboard
@@ -33,6 +34,7 @@ enum AppTab: Hashable {
 struct RootTabView: View {
     @Bindable private var tabRouter = AppTabRouter.shared
     @Bindable private var chatController = ChatBootstrap.controller
+    @Environment(\.helmPalette) private var palette
 
     var body: some View {
         TabView(selection: $tabRouter.selectedTab) {
@@ -52,8 +54,12 @@ struct RootTabView: View {
                 SettingsView()
             }
         }
-        // Let system liquid glass own the tab bar. Opaque surface fill fights
-        // the morph and makes chrome lag behind tab content work.
+        .toolbarBackground(palette.canvas, for: .tabBar)
+        .toolbarBackground(.visible, for: .tabBar)
+        .onAppear { applyOpaqueTabBar(palette) }
+        .onChange(of: palette) { _, newPalette in
+            applyOpaqueTabBar(newPalette)
+        }
         .onChange(of: tabRouter.selectedTab) { oldValue, newValue in
             guard oldValue != newValue else { return }
             tabRouter.noteSelectionChanged()
@@ -70,6 +76,16 @@ struct RootTabView: View {
             guard chatController.pendingHandoffPrompt != nil else { return }
             tabRouter.selectedTab = .chat
         }
+    }
+
+    private func applyOpaqueTabBar(_ palette: HelmPalette) {
+        let appearance = UITabBarAppearance()
+        appearance.configureWithOpaqueBackground()
+        appearance.backgroundColor = UIColor(palette.canvas)
+        appearance.shadowColor = .clear
+        UITabBar.appearance().standardAppearance = appearance
+        UITabBar.appearance().scrollEdgeAppearance = appearance
+        UITabBar.appearance().isTranslucent = false
     }
 }
 

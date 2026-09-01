@@ -177,7 +177,6 @@ struct FoodSearchView: View {
             return
         }
 
-        isSearching = true
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
             guard !Task.isCancelled else { return }
@@ -189,7 +188,6 @@ struct FoodSearchView: View {
                 guard !Task.isCancelled else { return }
                 results = []
             }
-            isSearching = false
         }
     }
 

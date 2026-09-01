@@ -1,5 +1,6 @@
 import ActivityKit
 import AppIntents
+import Core
 import SwiftUI
 import WidgetKit
 
@@ -98,16 +99,7 @@ struct WorkoutLiveActivityWidget: Widget {
                 }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(alignment: .center, spacing: 8) {
-                        setProgressLabel(context.state)
-                        if let target = context.state.targetSummary, !target.isEmpty {
-                            Text("·")
-                                .font(WidgetType.monoTag)
-                                .foregroundStyle(WidgetPalette.fgMuted)
-                            Text(target)
-                                .font(WidgetType.compactNumber)
-                                .foregroundStyle(WidgetPalette.fgSecondary)
-                                .lineLimit(1)
-                        }
+                        setDescriptor(context.state, compact: true)
                         Spacer(minLength: 8)
                         doneControl(for: context.state)
                     }
@@ -158,18 +150,7 @@ struct WorkoutLiveActivityWidget: Widget {
 
             HStack(alignment: .center, spacing: 10) {
                 VStack(alignment: .leading, spacing: 6) {
-                    HStack(spacing: 6) {
-                        setProgressLabel(context.state)
-                        if let target = context.state.targetSummary, !target.isEmpty {
-                            Text("·")
-                                .font(WidgetType.monoTag)
-                                .foregroundStyle(WidgetPalette.fgMuted)
-                            Text(target)
-                                .font(WidgetType.number)
-                                .foregroundStyle(WidgetPalette.fgSecondary)
-                                .lineLimit(1)
-                        }
-                    }
+                    setDescriptor(context.state, compact: false)
                     if context.state.isResting {
                         restRow(context.state)
                     } else {
@@ -247,15 +228,31 @@ struct WorkoutLiveActivityWidget: Widget {
     }
 
     @ViewBuilder
-    private func setProgressLabel(_ state: WorkoutActivityAttributes.ContentState) -> some View {
-        if let number = state.currentSetNumber, let count = state.currentSetCount {
-            HStack(spacing: 4) {
-                monoTag("SET")
-                Text("\(number)/\(count)")
-                    .font(WidgetType.number)
-                    .foregroundStyle(WidgetPalette.fg)
+    private func setDescriptor(
+        _ state: WorkoutActivityAttributes.ContentState,
+        compact: Bool
+    ) -> some View {
+        let tokens = WatchCompanionSetLine.tokens(
+            setNumber: state.currentSetNumber,
+            setCount: state.currentSetCount,
+            targetSummary: state.targetSummary
+        )
+        if tokens.isEmpty {
+            EmptyView()
+        } else {
+            HStack(spacing: 0) {
+                ForEach(Array(tokens.enumerated()), id: \.offset) { _, token in
+                    Text(token.text)
+                        .font(token.isValue
+                            ? (compact ? WidgetType.compactNumber : WidgetType.number)
+                            : (compact ? WidgetType.caption : WidgetType.body))
+                        .fontWeight(token.isValue ? .bold : .regular)
+                        .foregroundStyle(token.isValue ? WidgetPalette.fg : WidgetPalette.fgSecondary)
+                }
             }
-            .accessibilityLabel("Set \(number) of \(count)")
+            .lineLimit(1)
+            .minimumScaleFactor(0.7)
+            .accessibilityLabel(tokens.map(\.text).joined())
         }
     }
 
@@ -355,7 +352,7 @@ private extension Color {
         currentExerciseName: "Bench Press (Barbell)",
         currentSetNumber: 3,
         currentSetCount: 5,
-        targetSummary: "90 kg × 5",
+        targetSummary: "90kg × 5 · RPE 8",
         restRemainingSeconds: nil,
         restEndsAt: nil,
         heartRateBPM: 128,
@@ -375,7 +372,7 @@ private extension Color {
         currentExerciseName: "Bench Press (Barbell)",
         currentSetNumber: 4,
         currentSetCount: 5,
-        targetSummary: "90 kg × 3",
+        targetSummary: "90kg × 3 · RPE 8",
         restRemainingSeconds: 95,
         restEndsAt: Date().addingTimeInterval(95),
         heartRateBPM: 118,
@@ -395,7 +392,7 @@ private extension Color {
         currentExerciseName: "Overhead Press (Barbell)",
         currentSetNumber: 1,
         currentSetCount: 4,
-        targetSummary: "50 kg × 5",
+        targetSummary: "50kg × 5 · RPE 7",
         restRemainingSeconds: nil,
         restEndsAt: nil,
         heartRateBPM: nil,

@@ -10,7 +10,7 @@ options:
 settings:
   base:
     MARKETING_VERSION: "1.0.0"
-    CURRENT_PROJECT_VERSION: "2"
+    CURRENT_PROJECT_VERSION: "3"
     SWIFT_VERSION: "6.0"
     SWIFT_STRICT_CONCURRENCY: complete
     DEVELOPMENT_TEAM: SXWJBD2V3V
@@ -146,7 +146,7 @@ targets:
         NSUbiquitousContainers:
           iCloud.com.cameronro.helm:
             NSUbiquitousContainerIsDocumentScopePublic: false
-            NSUbiquitousContainerName: Helm
+            NSUbiquitousContainerName: Signal
             NSUbiquitousContainerSupportedFolderLevels: Any
     entitlements:
       path: Helm/Helm.entitlements
@@ -229,6 +229,7 @@ targets:
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SKIP_INSTALL: YES
     dependencies:
+      - package: Core
       - sdk: WidgetKit.framework
       - sdk: SwiftUI.framework
       - sdk: AppIntents.framework
@@ -255,10 +256,13 @@ targets:
       path: HelmWatch/HelmWatch.entitlements
       properties:
         com.apple.developer.healthkit: true
+        com.apple.security.application-groups:
+          - group.com.cameronro.helm.watch
     dependencies:
       - package: Core
       - sdk: HealthKit.framework
       - sdk: WatchConnectivity.framework
+      - sdk: WidgetKit.framework
       - target: HelmWatchWidgets
         embed: true
   HelmWatchWidgets:
@@ -275,6 +279,11 @@ targets:
         INFOPLIST_FILE: HelmWatchWidgets/ExtensionInfo.plist
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         SKIP_INSTALL: YES
+    entitlements:
+      path: HelmWatchWidgets/HelmWatchWidgets.entitlements
+      properties:
+        com.apple.security.application-groups:
+          - group.com.cameronro.helm.watch
     dependencies:
       - package: Core
       - sdk: WatchConnectivity.framework

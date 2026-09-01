@@ -32,6 +32,8 @@ struct HelmSkinLayoutTests {
 
     @Test("signal uses quieter press and staggered appear")
     func signalMotionHints() {
+        #expect(HelmSkin.signal.pressScale == 0.97)
+        #expect(HelmSkin.instrument.pressScale == 0.96)
         #expect(HelmSkin.signal.pressScale > HelmSkin.instrument.pressScale)
         #expect(HelmSkin.signal.usesStaggeredAppear)
         #expect(!HelmSkin.instrument.usesStaggeredAppear)

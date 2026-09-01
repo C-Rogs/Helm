@@ -94,12 +94,13 @@ enum PrescriptionEngine {
             let catalogExercise = allocation.candidate.exercise
             let slot = allocation.candidate.slot
 
+            let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
             let progression = ProgressionEngine.progression(
                 for: catalogExercise.exerciseID,
                 history: history.loggedSets,
-                muscleMap: catalogExercise.muscleMap
+                muscleMap: catalogExercise.muscleMap,
+                targetRIR: RIRConsistency.rirFromRPE(targetRPE)
             )
-            let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
 
             var sets = allocation.sets
             // Phase multiplier is already applied to the allocator's session budget;
@@ -244,10 +245,12 @@ enum PrescriptionEngine {
 
             selected.insert(selection.exercise.exerciseID)
             exerciseRoles[selection.exercise.exerciseID] = .primary
+            let targetRPE = PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap)
             let progression = ProgressionEngine.progression(
                 for: selection.exercise.exerciseID,
                 history: history.loggedSets,
-                muscleMap: selection.exercise.muscleMap
+                muscleMap: selection.exercise.muscleMap,
+                targetRIR: RIRConsistency.rirFromRPE(targetRPE)
             )
             exercises.append(PrescribedExercise(
                 exerciseID: selection.exercise.exerciseID,
@@ -256,7 +259,7 @@ enum PrescriptionEngine {
                 targetRepMin: progression.targetRepMin,
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
-                targetRPE: PrescriptionBounds.clampRPE(gating.targetRPE, cap: gating.rpeCap),
+                targetRPE: targetRPE,
                 rationale: selection.rationale,
                 evidenceIDs: selection.evidenceIDs
             ))

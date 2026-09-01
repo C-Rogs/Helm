@@ -5,6 +5,8 @@ import SwiftUI
 struct NutritionNavigationFocus: Equatable {
     var helmDay: HelmDay
     var mealID: UUID?
+    var bucket: MealBucket?
+    var startSearch = false
 }
 
 @MainActor
@@ -17,6 +19,7 @@ final class AppTabRouter {
 
     /// Bumped on every tab selection change so deferred loads can follow the latest switch.
     private(set) var selectionEpoch: UInt64 = 0
+    private var lastSettledEpoch: UInt64 = 0
 
     func openNutrition(focus: NutritionNavigationFocus? = nil) {
         selectedTab = .nutrition
@@ -37,13 +40,16 @@ final class AppTabRouter {
 
     /// Yield MainActor until tab-bar liquid glass morph likely finished.
     /// Call before heavy tab content refresh so chrome stays smooth.
+    /// Skips the delay when this tab was not just selected.
     func preferChromeOverContentLoad() async {
-        var epoch = selectionEpoch
+        let epoch = selectionEpoch
+        guard epoch != lastSettledEpoch else { return }
         await Task.yield()
         try? await Task.sleep(for: .seconds(HelmMotion.standard))
         while !Task.isCancelled, epoch != selectionEpoch {
-            epoch = selectionEpoch
             try? await Task.sleep(for: .seconds(HelmMotion.standard))
         }
+        guard !Task.isCancelled else { return }
+        lastSettledEpoch = selectionEpoch
     }
 }

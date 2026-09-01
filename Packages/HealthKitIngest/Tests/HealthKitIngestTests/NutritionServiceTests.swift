@@ -264,4 +264,38 @@ struct NutritionServiceTests {
         #expect(snapshot.eatToKcal != 600)
         #expect(snapshot.remainingKcal == snapshot.eatToKcal - 600)
     }
+
+    @Test("snapshot reuses weekly budget for the same week")
+    func snapshotReusesWeeklyBudget() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
+
+        let day = HelmDay(year: 2026, month: 8, day: 25)
+        let engine = NutritionEngine(persistence: store)
+        let first = await engine.snapshot(for: day, prescriptionSummary: nil)
+        let reused = try #require(first.weeklyBudget)
+
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store)
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: 740,
+            bucket: .snacks,
+            loggedAt: Date(timeIntervalSince1970: 1_787_644_800),
+            helmDay: day,
+            mealID: "reuse-budget-meal"
+        )
+
+        let second = await engine.snapshot(
+            for: day,
+            prescriptionSummary: nil,
+            reuseWeeklyBudget: reused
+        )
+        #expect(second.weeklyBudget == reused)
+        #expect(second.eatToKcal == first.eatToKcal)
+        #expect(second.loggedKcal == 740)
+        #expect(second.remainingKcal == second.eatToKcal - 740)
+    }
 }

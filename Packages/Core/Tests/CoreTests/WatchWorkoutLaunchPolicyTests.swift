@@ -29,12 +29,11 @@ struct WatchWorkoutLaunchPolicyTests {
 
 @Suite("WatchCompanionLinkStatus")
 struct WatchCompanionLinkStatusTests {
-    @Test("unavailable when neither Watch nor phone HR session")
-    func unavailable() {
+    @Test("unavailable when Watch companion cannot run, even if phone HR session is live")
+    func unavailableWithoutWatchApp() {
         #expect(
             WatchCompanionLinkStatus.resolve(
                 canDriveWatch: false,
-                phoneHRActive: false,
                 liveBPM: nil
             ) == .unavailable
         )
@@ -45,14 +44,12 @@ struct WatchCompanionLinkStatusTests {
         #expect(
             WatchCompanionLinkStatus.resolve(
                 canDriveWatch: false,
-                phoneHRActive: false,
                 liveBPM: 140
             ) == .live(bpm: 140)
         )
         #expect(
             WatchCompanionLinkStatus.resolve(
                 canDriveWatch: true,
-                phoneHRActive: true,
                 liveBPM: 128
             ) == .live(bpm: 128)
         )
@@ -63,20 +60,8 @@ struct WatchCompanionLinkStatusTests {
         #expect(
             WatchCompanionLinkStatus.resolve(
                 canDriveWatch: true,
-                phoneHRActive: true,
                 liveBPM: nil
             ) == .connecting(.watch)
-        )
-    }
-
-    @Test("connecting phone when only phone HR session")
-    func connectingPhone() {
-        #expect(
-            WatchCompanionLinkStatus.resolve(
-                canDriveWatch: false,
-                phoneHRActive: true,
-                liveBPM: nil
-            ) == .connecting(.phone)
         )
     }
 }

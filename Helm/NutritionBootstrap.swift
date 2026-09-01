@@ -50,9 +50,15 @@ enum NutritionBootstrap {
         guard router.isAvailable else { return nil }
         return PhotoMealService(
             estimator: PhotoMacroEstimator(router: router),
-            localStore: PhotoMealLocalStore(store: PersistenceBootstrap.persistenceStore)
+            localStore: PhotoMealLocalStore(store: PersistenceBootstrap.persistenceStore),
+            hkWrites: manualMealService.hkWrites
         )
     }
+
+    @MainActor
+    static let usualMealScheduler = UsualMealNotificationScheduler(
+        persistence: PersistenceBootstrap.persistenceStore
+    )
 
     @MainActor
     static func start() {

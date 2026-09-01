@@ -385,7 +385,8 @@ public actor NutritionEngine {
     public func snapshot(
         for day: HelmDay,
         prescriptionSummary: PrescribedSessionSummary?,
-        now: Date = Date()
+        now: Date = Date(),
+        reuseWeeklyBudget: WeeklyNutritionBudget? = nil
     ) -> NutritionDaySnapshot {
         let settings = (try? persistence.trainingPlan.load()) ?? .default
         let storedDay = try? persistence.nutrition.fetchDay(helmDay: day)
@@ -430,7 +431,12 @@ public actor NutritionEngine {
             phase: settings.phaseGoal,
             trend: trend
         )
-        let resolvedWeeklyBudget = try? weeklyBudget(for: day, prescriptionSummary: prescriptionSummary, now: now)
+        let resolvedWeeklyBudget: WeeklyNutritionBudget?
+        if let reuseWeeklyBudget, reuseWeeklyBudget.days.contains(where: { $0.day == day }) {
+            resolvedWeeklyBudget = reuseWeeklyBudget
+        } else {
+            resolvedWeeklyBudget = try? weeklyBudget(for: day, prescriptionSummary: prescriptionSummary, now: now)
+        }
         let targets = Self.alignedTargets(seed: seedTargets, budgetDay: resolvedWeeklyBudget?.day(for: day))
         let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: day)) ?? false
         let activeEnergyKcal = dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }

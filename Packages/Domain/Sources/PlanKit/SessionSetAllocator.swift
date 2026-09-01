@@ -128,9 +128,10 @@ enum SessionSetAllocator {
             let muscle = candidate.slot.primaryMuscle
             let remaining = muscleRemaining[muscle, default: Double(bounds.max)]
             let affordable = safeInt(from: floor(remaining), fallback: 0)
+            // Floor only. Extra sets are added later up to the session budget.
             // A muscle with no headroom left earns no sets; the slot is dropped later
             // rather than forced up to its role floor.
-            let assigned = remaining <= 0 ? 0 : min(bounds.max, max(bounds.min, affordable))
+            let assigned = remaining <= 0 ? 0 : min(bounds.min, max(0, affordable))
             setsByIndex[index] = assigned
             muscleRemaining[muscle] = max(0, muscleRemaining[muscle, default: 0] - Double(assigned))
         }

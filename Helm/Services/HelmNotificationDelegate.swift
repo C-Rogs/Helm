@@ -1,4 +1,5 @@
 import Foundation
+import HealthKitIngest
 import Persistence
 import UIKit
 import UserNotifications
@@ -51,6 +52,9 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
 final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate {
     func configure() {
         UNUserNotificationCenter.current().delegate = self
+        Task { @MainActor in
+            await NutritionBootstrap.usualMealScheduler.registerCategories()
+        }
     }
 
     func userNotificationCenter(
@@ -70,6 +74,10 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
                 timerID: timerID,
                 sessionID: sessionID
             )
+            if UsualMealNotificationPlanner.isUsualMeal(categoryIdentifier: categoryIdentifier) {
+                finish([.banner, .list, .sound])
+                return
+            }
             finish(options)
         }
     }
@@ -81,6 +89,22 @@ final class HelmNotificationDelegate: NSObject, UNUserNotificationCenterDelegate
     ) {
         let content = response.notification.request.content
         let categoryIdentifier = content.categoryIdentifier
+
+        if UsualMealNotificationPlanner.isUsualMeal(categoryIdentifier: categoryIdentifier) {
+            let actionIdentifier = response.actionIdentifier
+            let dayRaw = content.userInfo[UsualMealNotificationPlanner.helmDayUserInfoKey] as? String
+            let bucketRaw = content.userInfo[UsualMealNotificationPlanner.bucketUserInfoKey] as? String
+            nonisolated(unsafe) let finish = completionHandler
+            Task { @MainActor in
+                await UsualMealNotificationRouter.handle(
+                    actionIdentifier: actionIdentifier,
+                    helmDayRaw: dayRaw,
+                    bucketRaw: bucketRaw
+                )
+                finish()
+            }
+            return
+        }
 
         // `storePendingSessionID` is nonisolated (UserDefaults only). Safe on this queue.
         // Do not run UI/recovery here - schedule the same deferred MainActor path used on

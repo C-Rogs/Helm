@@ -14,6 +14,11 @@ public struct LiftProgression: Sendable, Hashable, Codable {
     public let exerciseID: String
     public let estimatedOneRepMax: Mass?
     public let workingWeight: Mass?
+    /// Hypertrophy scheme floor (compound 8, isolation 10). Used after load changes.
+    public let schemeRepMin: Int
+    /// Hypertrophy scheme ceiling. Hitting this with spare RIR bumps load.
+    public let schemeRepMax: Int
+    /// Today's prescribed reps. Equal to `targetRepMax`. Engine fills the row, not a range.
     public let targetRepMin: Int
     public let targetRepMax: Int
     public let isStalledBackoff: Bool
@@ -24,6 +29,8 @@ public struct LiftProgression: Sendable, Hashable, Codable {
         exerciseID: String,
         estimatedOneRepMax: Mass? = nil,
         workingWeight: Mass? = nil,
+        schemeRepMin: Int = 8,
+        schemeRepMax: Int = 12,
         targetRepMin: Int = 8,
         targetRepMax: Int = 12,
         isStalledBackoff: Bool = false,
@@ -33,6 +40,8 @@ public struct LiftProgression: Sendable, Hashable, Codable {
         self.exerciseID = exerciseID
         self.estimatedOneRepMax = estimatedOneRepMax
         self.workingWeight = workingWeight
+        self.schemeRepMin = schemeRepMin
+        self.schemeRepMax = schemeRepMax
         self.targetRepMin = targetRepMin
         self.targetRepMax = targetRepMax
         self.isStalledBackoff = isStalledBackoff
@@ -74,6 +83,8 @@ enum ProgressionEngine {
     /// Sets above this rep count are excluded when picking a reference e1RM from history.
     static let referenceRepCap = 12
     static let stallBackoffFraction = 0.10
+    /// Balanced-day target (RPE 8). PrescriptionEngine overrides from readiness gating.
+    static let defaultTargetRIR = 2.0
 
     static func liftKind(exerciseID: String, muscleMap: ExerciseMuscleMap?) -> LiftKind {
         let id = exerciseID.lowercased()
@@ -120,12 +131,13 @@ enum ProgressionEngine {
         for exerciseID: String,
         history: [LoggedSet],
         muscleMap: ExerciseMuscleMap? = nil,
-        loadIncrement: LoadIncrement? = nil
+        loadIncrement: LoadIncrement? = nil,
+        targetRIR: Double = defaultTargetRIR
     ) -> LiftProgression {
         let kind = liftKind(exerciseID: exerciseID, muscleMap: muscleMap)
         let increment = loadIncrement ?? kind.loadIncrement
-        let repMin = kind.repRange.min
-        let repMax = kind.repRange.max
+        let schemeMin = kind.repRange.min
+        let schemeMax = kind.repRange.max
 
         let exerciseSets = history
             .filter { $0.exerciseID == exerciseID }
@@ -139,8 +151,10 @@ enum ProgressionEngine {
                 exerciseID: exerciseID,
                 estimatedOneRepMax: e1rm,
                 workingWeight: nil,
-                targetRepMin: repMin,
-                targetRepMax: repMax,
+                schemeRepMin: schemeMin,
+                schemeRepMax: schemeMax,
+                targetRepMin: schemeMin,
+                targetRepMax: schemeMin,
                 loadDecision: .coldStart,
                 lastSessionWeight: nil
             )
@@ -151,7 +165,7 @@ enum ProgressionEngine {
         let latestSessionSets = sessions.last ?? []
         let lastSessionWeight = sessionWorkingWeight(latestSessionSets) ?? currentWeight
 
-        let stalled = isStalled(sessions: sessions, repMax: repMax)
+        let stalled = isStalled(sessions: sessions, repMax: schemeMax)
 
         let nextWeight: Mass
         let isStalledBackoff: Bool
@@ -168,10 +182,10 @@ enum ProgressionEngine {
         } else {
             let hitTopOfRange = latestSessionSets.allSatisfy { set in
                 guard let reps = set.reps else { return false }
-                return reps >= repMax
+                return reps >= schemeMax
             }
             let recoveredEnough = latestSessionSets.allSatisfy { set in
-                guard let rir = set.rir else { return true }
+                guard let rir = proximityRIR(set) else { return true }
                 return rir >= 1
             }
 
@@ -190,16 +204,68 @@ enum ProgressionEngine {
             isStalledBackoff = false
         }
 
+        let prescribedReps = nextPrescribedReps(
+            latestSessionSets: latestSessionSets,
+            schemeMin: schemeMin,
+            schemeMax: schemeMax,
+            loadDecision: loadDecision,
+            targetRIR: targetRIR
+        )
+
         return LiftProgression(
             exerciseID: exerciseID,
             estimatedOneRepMax: e1rm,
             workingWeight: nextWeight,
-            targetRepMin: repMin,
-            targetRepMax: repMax,
+            schemeRepMin: schemeMin,
+            schemeRepMax: schemeMax,
+            targetRepMin: prescribedReps,
+            targetRepMax: prescribedReps,
             isStalledBackoff: isStalledBackoff,
             loadDecision: loadDecision,
             lastSessionWeight: lastSessionWeight
         )
+    }
+
+    /// Engine owns the next-session assignment. Rows get this number, not the scheme floor.
+    ///
+    /// Load bump / backoff / cold start reset to `schemeMin`. Otherwise climb from the
+    /// hardest set last time: easy (spare RIR >= 2) skips ahead; on-target adds 1;
+    /// failure or a clear RPE overshoot holds.
+    static func nextPrescribedReps(
+        latestSessionSets: [LoggedSet],
+        schemeMin: Int,
+        schemeMax: Int,
+        loadDecision: LoadDecision,
+        targetRIR: Double
+    ) -> Int {
+        switch loadDecision {
+        case .coldStart, .bump, .stallBackoff:
+            return schemeMin
+        case .hold:
+            break
+        }
+
+        let loggedReps = latestSessionSets.compactMap(\.reps)
+        guard let lastReps = loggedReps.min() else { return schemeMin }
+
+        let rirs = latestSessionSets.compactMap(proximityRIR)
+        let hardestRIR = rirs.min() ?? targetRIR
+        let climbed = lastReps + nextRepAdd(hardestRIR: hardestRIR, targetRIR: targetRIR)
+        return min(schemeMax, max(schemeMin, climbed))
+    }
+
+    static func nextRepAdd(hardestRIR: Double, targetRIR: Double) -> Int {
+        if hardestRIR < 1 { return 0 }
+        let spare = hardestRIR - targetRIR
+        if spare >= 2 { return Int(spare.rounded(.down)) }
+        if spare >= -0.5 { return 1 }
+        return 0
+    }
+
+    static func proximityRIR(_ set: LoggedSet) -> Double? {
+        if let rir = set.rir { return Double(rir) }
+        if let rpe = set.rpe { return RIRConsistency.rirFromRPE(rpe) }
+        return nil
     }
 
     private static func isStalled(sessions: [[LoggedSet]], repMax: Int) -> Bool {

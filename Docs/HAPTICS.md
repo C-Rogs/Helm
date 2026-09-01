@@ -14,7 +14,7 @@
 
 Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness `s`, relative time in seconds). They are the design intent; the build agent tunes exact curves on-device (DT1). Each row also names its `UIFeedbackGenerator` fallback.
 
-**Group 1 — signature and reading**
+**Group 1 - signature and reading**
 
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
@@ -22,7 +22,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `phaseChange` | evenly-spaced firm triple, the plan itself moved | transients `i 0.7 / s 0.5` @ 0, 0.12, 0.24 | `.notificationSuccess` |
 | `thresholdInsight` | faintest single swell, ambient | continuous `i 0.15->0.3` over 0.35s | `impact(.soft)` (min intensity) |
 
-**Group 2 — core loop**
+**Group 2 - core loop**
 
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
@@ -30,7 +30,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `restCountIn` | one rising tick per second for the final 5s | single transient per second: `i 0.35/0.45/0.55/0.7/0.85`, `s 0.45-0.6` | escalating `impact(.light/.medium/.rigid)` |
 | `restDone` | notification-grade completion, max amplitude | transient `i 1.0 / s 1.0 @ 0`, short swell `i 0.8->0` over 0.18s | `.notificationError` |
 
-**Group 3 — milestones and confirmations**
+**Group 3 - milestones and confirmations**
 
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
@@ -38,7 +38,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `sessionFinished` | firm transient decaying into a long settle | transient `i 0.9 / s 0.7 @ 0`, continuous `i 0.5->0` over 0.4s | `.notificationSuccess` |
 | `mealConfirmed` | one soft rounded bump | transient `i 0.5 / s 0.2 @ 0` | `impact(.soft)` |
 
-**Group 4 — guards and texture**
+**Group 4 - guards and texture**
 
 | Name | Feel | Events (i / s @ t) | Fallback |
 |---|---|---|---|
@@ -55,7 +55,7 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 | `readinessReveal` | first Dashboard appearance of the day, with the reveal animation; not on recompute | M2.3 (re-skin of M2.2) |
 | `phaseChange` | deload week begins, new mesocycle starts, or phase (cut/maintain/gain) changes | M5.6 / M5.2 |
 | `thresholdInsight` | a silent insight surfaces in-app (a trend crossed a threshold); off by default | M7.2 |
-| `setLogged` | a set row completes (checkmark), not on an already-complete row | M3.3 |
+| `setLogged` | a set row completes (checkmark), not on an already-complete row; fires as soon as the row persists, not after PR lookup | M3.3 |
 | `restCountIn` | one tick per second while rest timer counts down 5, 4, 3, 2, 1 in-foreground | M3.4 |
 | `restDone` | rest timer reaches zero, including while suspended (via the scheduled notification) | M3.4 |
 | `prHit` | a qualifying PR is detected, exactly once per record | M3.5 |
@@ -68,15 +68,16 @@ Values below are Core Haptics `CHHapticEvent` sketches (intensity `i`, sharpness
 ## Do not
 
 - Do not fire a haptic on scroll, on passive data arrival (background ingest), on a coach *message* (only on a plan *change*), or on navigation that is not a discrete selection.
-- Do not stack two patterns in the same moment; if two events coincide, the more meaningful one wins (a set that is also a PR fires `prHit`, not `setLogged` then `prHit`).
+- Do not stack two patterns in the same moment; if two events coincide, the more meaningful one wins. A set that later resolves as a PR still clicks `setLogged` when the row completes, then plays `prHit` when detection finishes. Do not delay the confirm click for PR lookup.
 - Do not use `restDone` intensity for anything non-urgent; it is deliberately the loudest and must stay rare enough to mean "move".
 
 ## Engine contract
 
 `HapticEngine` lives in `DesignSystem` and is the only haptics entry point (no view calls Core Haptics or `UIFeedbackGenerator` directly).
 
-- API surface: `play(_ pattern: HelmHaptic)`, one case per named pattern above.
-- Lifecycle: lazily start `CHHapticEngine`, restart on `.stoppedHandler` / `.resetHandler`, respect `CHHapticEngine.capabilitiesForHardware().supportsHaptics`. Never hold the engine running idle.
+- API surface: `play(_ pattern: HelmHaptic)`, one case per named pattern above. `prepare()` warms UIKit generators and starts Core Haptics so the first tap is not a cold start.
+- Lifecycle: start `CHHapticEngine` on `prepare()` / first non-immediate play, restart on `.stoppedHandler` / `.resetHandler`, respect `CHHapticEngine.capabilitiesForHardware().supportsHaptics`. Never hold the engine running idle after a stop/reset.
+- Same-frame ticks: `selection`, `setLogged`, `mealConfirmed`, `clampRejected`, and `restCountInStep` fire on the calling frame. `selection` uses a prepared `UISelectionFeedbackGenerator`. The others play Core Haptics synchronously when the engine is already running, otherwise the UIKit fallback, then warm the engine. Do not hop `DispatchQueue.main.async` or an extra `Task` before these ticks.
 - Settings: a single "Haptics" toggle (default on) read on every `play`. Independent of Reduce Motion (a user may want haptics with reduced motion, or the reverse).
 - Low power: skip continuous patterns (`readinessReveal` swell degrades to its crest transient only) under Low Power Mode.
 - Diagnostics: route engine start/stop/reset failures to the Diagnostics ring buffer per `Docs/DIAGNOSTICS.md`; never crash, never phone home.

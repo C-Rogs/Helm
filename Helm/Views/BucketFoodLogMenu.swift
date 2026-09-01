@@ -20,16 +20,16 @@ struct BucketFoodLogMenu: View {
 
     var body: some View {
         Menu {
-            if isDescribeAvailable {
-                Button("Describe") {
-                    onAction(.describe)
-                }
-            }
             Button("Search") {
                 onAction(.search)
             }
             Button("Barcode") {
                 onAction(.barcode)
+            }
+            if isDescribeAvailable {
+                Button("Describe") {
+                    onAction(.describe)
+                }
             }
             if isPhotoAvailable {
                 Button("Photo") {

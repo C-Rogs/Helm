@@ -163,6 +163,34 @@ struct ExerciseSeedMergerTests {
         #expect(merged.entries[0].coachingCues == overlay[0].coachingCues)
     }
 
+    @Test("overlay pickerRank wins over catalog")
+    func mergesPickerRank() {
+        let catalog = [
+            ExerciseSeedEntry(
+                id: "seed-bench-press",
+                canonicalName: "bench press (barbell)",
+                displayName: "Bench Press (Barbell)",
+                aliases: [],
+                exerciseMode: .weightReps,
+                pickerRank: 40
+            )
+        ]
+        let overlay = [
+            ExerciseSeedEntry(
+                id: "seed-bench-press",
+                canonicalName: "bench press (barbell)",
+                displayName: "Bench Press (Barbell)",
+                aliases: [],
+                exerciseMode: .weightReps,
+                isPickerDefault: true,
+                pickerRank: 4
+            )
+        ]
+
+        let merged = ExerciseSeedMerger.merge(catalog: catalog, overlay: overlay)
+        #expect(merged.entries[0].pickerRank == 4)
+    }
+
     @Test("overlay appends when no catalog match")
     func appendsUnmatchedOverlay() {
         let overlay = [

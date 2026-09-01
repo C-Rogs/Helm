@@ -10,6 +10,7 @@ struct NotificationsSettingsView: View {
     @State private var proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
     @State private var proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
     @State private var proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
+    @State private var usualMealNudgeEnabled = UsualMealPreferences.nudgeEnabled
 
     private let permissionService = NotificationPermissionService()
 
@@ -20,7 +21,7 @@ struct NotificationsSettingsView: View {
     var body: some View {
         List {
             Section {
-                Text("Signal delivers a morning brief, a pre-workout prime, and a post-workout summary. Morning briefs need HealthKit data; if the phone is locked, open Signal and the brief generates on the Dashboard.")
+                Text("Signal delivers a morning brief, a pre-workout prime, a post-workout summary, and usual-meal nudges when a meal slot is still empty. Morning briefs need HealthKit data; if the phone is locked, open Signal and the brief generates on the Dashboard.")
                     .helmType(.body, color: HelmColor.fgSecondary)
                     .helmListRowChrome()
             }
@@ -92,12 +93,33 @@ struct NotificationsSettingsView: View {
                     .helmType(.body, color: HelmColor.fgMuted)
             }
 
+            Section {
+                Toggle("Usual meal nudges", isOn: $usualMealNudgeEnabled)
+                    .helmListRowChrome()
+                    .onChange(of: usualMealNudgeEnabled) { _, newValue in
+                        UsualMealPreferences.nudgeEnabled = newValue
+                        HapticEngine.shared.play(.selection)
+                        Task {
+                            if newValue {
+                                await ProactiveBootstrap.rescheduleUsualMeals()
+                            } else {
+                                await NutritionBootstrap.usualMealScheduler.cancelAll()
+                            }
+                        }
+                    }
+            } header: {
+                Text("Food logging")
+            } footer: {
+                Text("Asks once per meal if that slot is still empty and you have a usual from recent logs. Yes logs it. Festival mode pauses these.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+            }
+
             Section("Morning brief automation") {
                 Label("Open Shortcuts and create a Personal Automation", systemImage: "1.circle")
                     .helmListRowChrome()
                 Label("Choose Alarm → Is Dismissed, or When I unlock my iPhone", systemImage: "2.circle")
                     .helmListRowChrome()
-                Label("Add Generate Morning Brief from Helm", systemImage: "3.circle")
+                Label("Add Generate Morning Brief from Signal", systemImage: "3.circle")
                     .helmListRowChrome()
                 Label("Turn off Ask Before Running so it fires automatically", systemImage: "4.circle")
                     .helmListRowChrome()
@@ -124,6 +146,7 @@ struct NotificationsSettingsView: View {
             proactiveAutoChatEnabled = ProactiveCoachPreferences.autoChatEnabled
             proactivePushEnabled = ProactiveCoachPreferences.pushEnabled
             proactiveMilestonesEnabled = ProactiveCoachPreferences.milestonesEnabled
+            usualMealNudgeEnabled = UsualMealPreferences.nudgeEnabled
         }
     }
 

@@ -6,6 +6,8 @@ struct ExerciseImageView: View {
     let url: URL?
     let fallbackLabel: String
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
         Group {
             if let url {
@@ -15,6 +17,7 @@ struct ExerciseImageView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
+                            .blendMode(colorScheme == .dark ? .multiply : .normal)
                     case .failure:
                         fallback
                     case .empty:
@@ -28,7 +31,6 @@ struct ExerciseImageView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(HelmColor.surfaceElevated)
         .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
     }
 
@@ -50,6 +52,14 @@ struct ExerciseImageView: View {
             HelmColor.surfaceElevated
             ProgressView()
                 .tint(HelmColor.fgMuted)
+        }
+    }
+}
+
+enum ExerciseImagePrefetcher {
+    static func prefetch(_ url: URL) {
+        Task.detached(priority: .utility) {
+            _ = try? await URLSession.shared.data(from: url)
         }
     }
 }

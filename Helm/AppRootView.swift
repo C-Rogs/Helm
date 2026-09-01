@@ -28,6 +28,7 @@ struct AppRootView: View {
                 SpotifyAppRemoteService.shared.handleAppBecomeActive()
                 Task { @MainActor in
                     await RestNotificationRouter.processPendingIfForeground()
+                    await UsualMealNotificationRouter.processPendingIfForeground()
                 }
             case .inactive, .background:
                 SpotifyAppRemoteService.shared.handleAppResignActive()
@@ -40,6 +41,7 @@ struct AppRootView: View {
         }
         .onAppear {
             AppLifecycleState.update(scenePhase: scenePhase)
+            HapticEngine.shared.prepare()
         }
         .onReceive(NotificationCenter.default.publisher(for: LiveActivityCompleteSetBridge.notificationName)) { note in
             guard
@@ -54,6 +56,20 @@ struct AppRootView: View {
                 )
                 if let eventID, !eventID.isEmpty {
                     WatchReadinessBootstrap.coordinator.acknowledgeCompleteSet(eventID: eventID)
+                }
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: WatchRestControlBridge.notificationName)) { note in
+            let action = note.userInfo?[WatchRestControlBridge.actionKey] as? String
+            Task { @MainActor in
+                switch action {
+                case WatchRestControlBridge.skipAction:
+                    await TrainBootstrap.sessionController.skipRest()
+                case WatchRestControlBridge.adjustAction:
+                    guard let delta = note.userInfo?[WatchRestControlBridge.deltaKey] as? Int else { return }
+                    await TrainBootstrap.sessionController.adjustRestTimer(deltaSeconds: delta)
+                default:
+                    break
                 }
             }
         }

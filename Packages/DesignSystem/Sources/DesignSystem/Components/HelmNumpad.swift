@@ -40,6 +40,7 @@ public struct HelmNumpad: UIViewRepresentable {
     }
 
     public func makeUIView(context: Context) -> HelmNumpadView {
+        HapticEngine.shared.prepare()
         let view = HelmNumpadView(allowsDecimal: allowsDecimal, actionTitle: actionTitle)
         view.onDigit = onDigit
         view.onBackspace = onBackspace
@@ -174,22 +175,67 @@ public final class HelmNumpadView: UIView {
             : UIColor(HelmColor.surfaceElevated)
         button.layer.cornerRadius = HelmRadius.sm
         button.heightAnchor.constraint(equalToConstant: prominent ? HelmNumpadMetrics.prominentKeyHeight : HelmNumpadMetrics.keyHeight).isActive = true
-        button.addAction(UIAction { [weak self] _ in
+        button.addAction(UIAction { [weak self, weak button] _ in
+            guard let button else { return }
+            self?.applyKeyPressed(button, pressed: true)
+            if !prominent {
+                HapticEngine.shared.play(.selection)
+            }
+        }, for: .touchDown)
+        button.addAction(UIAction { [weak self, weak button] _ in
+            guard let button else { return }
+            self?.applyKeyPressed(button, pressed: true)
+            if !prominent {
+                HapticEngine.shared.play(.selection)
+            }
+        }, for: .touchDragEnter)
+        button.addAction(UIAction { [weak self, weak button] _ in
+            guard let button else { return }
+            self?.applyKeyPressed(button, pressed: false)
+        }, for: [.touchDragExit, .touchCancel, .touchUpOutside])
+        button.addAction(UIAction { [weak self, weak button] _ in
             guard let self else { return }
+            if let button {
+                self.applyKeyPressed(button, pressed: false)
+            }
             switch title {
             case "⌫":
-                HapticEngine.shared.play(.selection)
                 self.onBackspace?()
             default:
                 if prominent {
                     self.onAction?()
                 } else {
-                    HapticEngine.shared.play(.selection)
                     self.onDigit?(title)
                 }
             }
         }, for: .touchUpInside)
         return button
+    }
+
+    private func applyKeyPressed(_ button: UIButton, pressed: Bool) {
+        let scale = pressed ? 0.96 : 1.0
+        let alpha: CGFloat = pressed ? 0.78 : 1
+        let animations = {
+            button.alpha = alpha
+            button.transform = CGAffineTransform(scaleX: scale, y: scale)
+        }
+        if pressed {
+            UIView.animate(
+                withDuration: HelmMotion.pressIn,
+                delay: 0,
+                options: [.curveEaseOut, .allowUserInteraction, .beginFromCurrentState],
+                animations: animations
+            )
+        } else {
+            UIView.animate(
+                withDuration: HelmMotion.pressResponse,
+                delay: 0,
+                usingSpringWithDamping: CGFloat(HelmMotion.pressDamping),
+                initialSpringVelocity: 0.4,
+                options: [.allowUserInteraction, .beginFromCurrentState],
+                animations: animations
+            )
+        }
     }
 }
 

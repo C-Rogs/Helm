@@ -1,12 +1,25 @@
 import SwiftUI
 
 public enum HelmMotion {
+    public static let pressIn: TimeInterval = 0.08
     public static let quick: TimeInterval = 0.18
     public static let standard: TimeInterval = 0.28
     public static let reveal: TimeInterval = 0.9
 
+    public static let pressResponse: Double = 0.28
+    public static let pressDamping: Double = 0.78
     public static let settleResponse: Double = 0.42
     public static let settleDamping: Double = 0.82
+
+    /// Finger-down squash: short ease-out so the surface moves with the touch.
+    public static var pressInAnimation: Animation {
+        .easeOut(duration: pressIn)
+    }
+
+    /// Finger-up release: snappy spring, not a 180ms ease.
+    public static var pressOutAnimation: Animation {
+        .spring(response: pressResponse, dampingFraction: pressDamping)
+    }
 
     public static var quickAnimation: Animation {
         .easeOut(duration: quick)
@@ -18,6 +31,11 @@ public enum HelmMotion {
 
     public static var settleAnimation: Animation {
         .spring(response: settleResponse, dampingFraction: settleDamping)
+    }
+
+    public static func pressAnimation(isPressed: Bool, reduceMotion: Bool) -> Animation? {
+        guard !reduceMotion else { return nil }
+        return isPressed ? pressInAnimation : pressOutAnimation
     }
 
     public static var revealAnimation: Animation {

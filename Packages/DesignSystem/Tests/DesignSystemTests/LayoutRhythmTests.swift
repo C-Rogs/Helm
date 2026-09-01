@@ -43,7 +43,7 @@ struct LayoutRhythmTests {
             "Helm/Views/Train/WorkoutTemplatesListView.swift",
             "Helm/Views/Train/WorkoutSessionDetailView.swift",
             "Helm/Views/Train/WorkoutImportPreviewView.swift",
-            "Helm/Views/Train/WorkoutImportPreviewView.swift",
+            "Helm/Views/Train/TodaysSessionPreviewSheet.swift",
             "Helm/Views/TrendsView.swift",
             "Helm/Views/Trends/TrendWeightChartCard.swift",
             "Helm/Views/Trends/ReadinessHistoryChartCard.swift",

@@ -4,13 +4,20 @@ import HealthKit
 import OSLog
 import WatchConnectivity
 #if os(watchOS)
-import WatchKit
+import WidgetKit
 #endif
 
 /// Carries a WCSession payload dictionary into the non-isolated WatchConnectivity callback queue.
 private struct UncheckedMessageBox: @unchecked Sendable {
     let message: [String: Any]
 }
+
+#if os(watchOS)
+private enum RestSuppress {
+    case skip(until: Date)
+    case adjust(expected: Date, until: Date)
+}
+#endif
 
 @MainActor
 @Observable
@@ -55,6 +62,12 @@ final class WatchSessionCoordinator: NSObject {
     var companionSaveWatchWorkout = false
     /// Phone session start for late Watch adoption elapsed display.
     var companionSessionStartedAt: Date?
+    /// Rest timer end for local Watch countdown. Nil when rest is not running.
+    var companionRestEndsAt: Date?
+    /// HealthKit activity type raw value for late Watch adoption.
+    var companionActivityTypeRawValue: UInt?
+    /// True while the Watch has a local HK workout (companion or Manual).
+    var watchWorkoutActive = false
     /// True while phone is receiving live HR via HealthKit workout mirroring.
     var isReceivingMirroredHeartRate = false
     /// True while phone `HKWorkoutSession` is publishing AirPods (or other) live HR.
@@ -85,10 +98,13 @@ final class WatchSessionCoordinator: NSObject {
         let setID: String?
         let saveWatchWorkout: Bool?
         let sessionStartedAt: Date?
+        let restEndsAt: Date?
+        let activityTypeRawValue: UInt?
         let helmDay: HelmDay?
     }
 
     private var pendingWorkoutCompanionPush: PendingWorkoutCompanionPush?
+    private var lastPushedCompanionKey: WatchCompanionPushKey?
     private var nextSequence = 1
     private var lastReadinessPushAt: TimeInterval?
     private var lastLiveHeartRatePushAt: TimeInterval?
@@ -102,6 +118,10 @@ final class WatchSessionCoordinator: NSObject {
     }()
     /// Set IDs with unacked complete-set outbox rows (Watch UI pending state).
     private(set) var pendingCompleteSetIDs: Set<String> = []
+    private var lastRestDoneEndsAt: TimeInterval?
+    private var lastRestCountInSecond: Int?
+    /// Ignore in-flight phone rest until skip/adjust lands (or timeout).
+    private var restSuppress: RestSuppress?
     #endif
 
     init(role: Role) {
@@ -174,7 +194,10 @@ final class WatchSessionCoordinator: NSObject {
         setID: String? = nil,
         saveWatchWorkout: Bool? = nil,
         sessionStartedAt: Date? = nil,
-        helmDay: HelmDay? = nil
+        restEndsAt: Date? = nil,
+        activityTypeRawValue: UInt? = nil,
+        helmDay: HelmDay? = nil,
+        force: Bool = false
     ) {
         guard role == .phone else { return }
 
@@ -187,12 +210,19 @@ final class WatchSessionCoordinator: NSObject {
                 lastHeartRateReceivedAt = nil
             }
             companionSessionStartedAt = nil
+            companionRestEndsAt = nil
+            companionActivityTypeRawValue = nil
             pendingWorkoutCompanionPush = nil
+            lastPushedCompanionKey = nil
         } else {
             // New companion session: clear Watch inbound watermark so a Watch
             // process restart (sequence reset to 1) is not treated as stale.
-            lastAcceptedByOrigin[.watch] = nil
+            if !workoutCompanionActive {
+                lastAcceptedByOrigin[.watch] = nil
+            }
             companionSessionStartedAt = sessionStartedAt
+            companionRestEndsAt = restEndsAt
+            companionActivityTypeRawValue = activityTypeRawValue
             pendingWorkoutCompanionPush = PendingWorkoutCompanionPush(
                 active: true,
                 exerciseName: exerciseName,
@@ -203,6 +233,8 @@ final class WatchSessionCoordinator: NSObject {
                 setID: setID,
                 saveWatchWorkout: saveWatchWorkout,
                 sessionStartedAt: sessionStartedAt,
+                restEndsAt: restEndsAt,
+                activityTypeRawValue: activityTypeRawValue,
                 helmDay: helmDay
             )
         }
@@ -218,7 +250,10 @@ final class WatchSessionCoordinator: NSObject {
             setID: setID,
             saveWatchWorkout: saveWatchWorkout,
             sessionStartedAt: sessionStartedAt,
-            helmDay: helmDay
+            restEndsAt: restEndsAt,
+            activityTypeRawValue: activityTypeRawValue,
+            helmDay: helmDay,
+            force: force
         )
     }
 
@@ -237,7 +272,10 @@ final class WatchSessionCoordinator: NSObject {
             setID: pending.setID,
             saveWatchWorkout: pending.saveWatchWorkout,
             sessionStartedAt: pending.sessionStartedAt,
-            helmDay: pending.helmDay
+            restEndsAt: pending.restEndsAt,
+            activityTypeRawValue: pending.activityTypeRawValue,
+            helmDay: pending.helmDay,
+            force: true
         )
     }
 
@@ -251,8 +289,26 @@ final class WatchSessionCoordinator: NSObject {
         setID: String?,
         saveWatchWorkout: Bool?,
         sessionStartedAt: Date?,
-        helmDay: HelmDay?
+        restEndsAt: Date?,
+        activityTypeRawValue: UInt?,
+        helmDay: HelmDay?,
+        force: Bool
     ) {
+        let key = WatchCompanionPushKey(
+            active: active,
+            exerciseName: exerciseName,
+            setNumber: setNumber,
+            setCount: setCount,
+            targetSummary: targetSummary,
+            sessionExerciseID: sessionExerciseID,
+            setID: setID,
+            restEndsAt: restEndsAt?.timeIntervalSince1970,
+            activityTypeRawValue: activityTypeRawValue
+        )
+        if !force, lastPushedCompanionKey == key {
+            return
+        }
+
         let payload = makePayload(
             origin: .phone,
             messageKind: .workoutCompanion,
@@ -265,9 +321,12 @@ final class WatchSessionCoordinator: NSObject {
             companionSessionExerciseID: sessionExerciseID,
             companionSetID: setID,
             companionSaveWatchWorkout: active ? nil : (saveWatchWorkout ?? false),
-            companionSessionStartedAt: sessionStartedAt?.timeIntervalSince1970
+            companionSessionStartedAt: sessionStartedAt?.timeIntervalSince1970,
+            companionRestEndsAt: restEndsAt?.timeIntervalSince1970,
+            companionActivityTypeRawValue: activityTypeRawValue
         )
         push(payload)
+        lastPushedCompanionKey = key
         guard active else { return }
         recordDiagnostic(
             .phoneCompanionPush,
@@ -295,7 +354,7 @@ final class WatchSessionCoordinator: NSObject {
         workoutCompanionActive && isReachable && latestLiveHeartRateBPM != nil
     }
 
-    /// Wakes Watch workout app via HealthKit. Always double-kicks (Apple cold-wake).
+    /// Wakes Watch workout app via HealthKit. Single best-effort `startWatchApp`.
     @discardableResult
     func launchWatchWorkoutCompanion() async -> Bool {
         guard role == .phone else { return false }
@@ -358,9 +417,13 @@ final class WatchSessionCoordinator: NSObject {
 
     #if os(iOS)
     private func startWatchAppOnce() async -> (Bool, String?) {
+        let kind = pendingWorkoutCompanionPush.flatMap { pending in
+            pending.activityTypeRawValue.map(WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue)
+        } ?? .traditionalStrengthTraining
         let configuration = HKWorkoutConfiguration()
-        configuration.activityType = .traditionalStrengthTraining
-        configuration.locationType = .indoor
+        configuration.activityType = HKWorkoutActivityType(rawValue: kind.healthKitActivityTypeRawValue)
+            ?? .traditionalStrengthTraining
+        configuration.locationType = kind.usesOutdoorLocation ? .outdoor : .indoor
         return await withCheckedContinuation { continuation in
             HKHealthStore().startWatchApp(with: configuration) { @Sendable (success: Bool, error: Error?) in
                 if let error {
@@ -480,7 +543,12 @@ final class WatchSessionCoordinator: NSObject {
 
     #if os(watchOS)
     private func refreshPendingCompleteSetIDs() {
+        let previous = pendingCompleteSetIDs
         pendingCompleteSetIDs = completeSetOutbox.unackedSetIDs()
+        let acked = previous.subtracting(pendingCompleteSetIDs)
+        if !acked.isEmpty {
+            WatchHaptic.setAck.play()
+        }
     }
     #endif
 
@@ -607,7 +675,8 @@ final class WatchSessionCoordinator: NSObject {
             origin: .watch,
             messageKind: .liveHeartRate,
             helmDay: helmDay,
-            liveHeartRateBPM: bpm
+            liveHeartRateBPM: bpm,
+            watchWorkoutActive: true
         )
         pushLiveHeartRatePayload(payload)
         lastLiveHeartRatePushAt = now
@@ -629,6 +698,73 @@ final class WatchSessionCoordinator: NSObject {
         sendWithQueuedFallback(message, via: session)
     }
 
+    func pushWatchWorkoutActive(_ active: Bool, helmDay: HelmDay? = nil) {
+        guard role == .watch else { return }
+        watchWorkoutActive = active
+        guard activationState == .activated else { return }
+
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .liveHeartRate,
+            helmDay: helmDay,
+            liveHeartRateBPM: active ? latestLiveHeartRateBPM : nil,
+            watchWorkoutActive: active
+        )
+        pushLiveHeartRatePayload(payload)
+    }
+
+    func requestRestSkip(helmDay: HelmDay? = nil) {
+        guard role == .watch else { return }
+        #if os(watchOS)
+        companionRestEndsAt = nil
+        lastRestCountInSecond = nil
+        restSuppress = .skip(until: Date().addingTimeInterval(20))
+        WatchHaptic.restSkip.play()
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .restSkip,
+            helmDay: helmDay
+        )
+        deliverRestControl(payload)
+        #endif
+    }
+
+    func requestRestAdjust(deltaSeconds: Int, helmDay: HelmDay? = nil) {
+        guard role == .watch else { return }
+        #if os(watchOS)
+        if let ends = companionRestEndsAt {
+            let next = ends.addingTimeInterval(TimeInterval(deltaSeconds))
+            if next <= Date() {
+                requestRestSkip(helmDay: helmDay)
+                return
+            }
+            companionRestEndsAt = next
+            lastRestCountInSecond = nil
+            restSuppress = .adjust(expected: next, until: Date().addingTimeInterval(8))
+        }
+        WatchHaptic.restAdjust.play()
+        let payload = makePayload(
+            origin: .watch,
+            messageKind: .restAdjust,
+            helmDay: helmDay,
+            companionRestDeltaSeconds: deltaSeconds
+        )
+        deliverRestControl(payload)
+        #endif
+    }
+
+    private func deliverRestControl(_ payload: WatchSyncPayload) {
+        let session = WCSession.default
+        let message = payload.applicationContext()
+        guard !message.isEmpty else {
+            lastError = "Could not encode rest control"
+            return
+        }
+        lastSent = payload
+        lastError = nil
+        deliverGuaranteed(message, via: session)
+    }
+
     private func makePayload(
         origin: WatchSyncPayload.Origin,
         messageKind: WatchSyncPayload.MessageKind,
@@ -647,6 +783,10 @@ final class WatchSessionCoordinator: NSObject {
         eventID: String? = nil,
         companionSaveWatchWorkout: Bool? = nil,
         companionSessionStartedAt: TimeInterval? = nil,
+        companionRestEndsAt: TimeInterval? = nil,
+        companionActivityTypeRawValue: UInt? = nil,
+        watchWorkoutActive: Bool? = nil,
+        companionRestDeltaSeconds: Int? = nil,
         diagnosticEvent: String? = nil,
         diagnosticDetail: String? = nil
     ) -> WatchSyncPayload {
@@ -672,6 +812,10 @@ final class WatchSessionCoordinator: NSObject {
             eventID: eventID,
             companionSaveWatchWorkout: companionSaveWatchWorkout,
             companionSessionStartedAt: companionSessionStartedAt,
+            companionRestEndsAt: companionRestEndsAt,
+            companionActivityTypeRawValue: companionActivityTypeRawValue,
+            watchWorkoutActive: watchWorkoutActive,
+            companionRestDeltaSeconds: companionRestDeltaSeconds,
             diagnosticEvent: diagnosticEvent,
             diagnosticDetail: diagnosticDetail
         )
@@ -736,6 +880,15 @@ final class WatchSessionCoordinator: NSObject {
             #endif
             return
         }
+        // Rest Skip / ±15 must not be dropped by HR sequence watermarks.
+        if payload.messageKind == .restSkip || payload.messageKind == .restAdjust {
+            lastReceived = payload
+            lastError = nil
+            if role == .phone {
+                postRestControlNotification(from: payload)
+            }
+            return
+        }
 
         let previous = lastAcceptedByOrigin[payload.origin]
         guard WatchSyncOrdering.shouldAccept(
@@ -787,6 +940,8 @@ final class WatchSessionCoordinator: NSObject {
             break
         case .completeSet:
             postCompleteSetNotification(from: payload)
+        case .restSkip, .restAdjust:
+            postRestControlNotification(from: payload)
         }
     }
 
@@ -800,12 +955,16 @@ final class WatchSessionCoordinator: NSObject {
             roundTripComplete = true
         case .readiness:
             roundTripComplete = false
-        case .liveHeartRate, .completeSet, .diagnostic:
+        case .liveHeartRate, .completeSet, .diagnostic, .restSkip, .restAdjust:
             break
         case .workoutCompanion:
             break
         case .restEnded:
-            playRestEndedHaptic()
+            if let ends = companionRestEndsAt {
+                playRestDoneIfNeeded(endsAt: ends)
+            } else {
+                playRestEndedHaptic()
+            }
         case .completeSetAck:
             break
         }
@@ -834,9 +993,64 @@ final class WatchSessionCoordinator: NSObject {
         #endif
     }
 
+    private func postRestControlNotification(from payload: WatchSyncPayload) {
+        #if os(iOS)
+        switch payload.messageKind {
+        case .restSkip:
+            NotificationCenter.default.post(
+                name: WatchRestControlBridge.notificationName,
+                object: nil,
+                userInfo: [WatchRestControlBridge.actionKey: WatchRestControlBridge.skipAction]
+            )
+        case .restAdjust:
+            guard let delta = payload.companionRestDeltaSeconds else { return }
+            NotificationCenter.default.post(
+                name: WatchRestControlBridge.notificationName,
+                object: nil,
+                userInfo: [
+                    WatchRestControlBridge.actionKey: WatchRestControlBridge.adjustAction,
+                    WatchRestControlBridge.deltaKey: delta
+                ]
+            )
+        default:
+            break
+        }
+        #endif
+    }
+
     private func playRestEndedHaptic() {
         #if os(watchOS)
-        WKInterfaceDevice.current().play(.notification)
+        WatchHaptic.restDone.play()
+        #endif
+    }
+
+    /// Watch-local rest countdown hit zero. Dedupes against the phone `restEnded` message.
+    func playRestDoneIfNeeded(endsAt: Date) {
+        #if os(watchOS)
+        let key = floor(endsAt.timeIntervalSince1970)
+        if lastRestDoneEndsAt == key { return }
+        lastRestDoneEndsAt = key
+        lastRestCountInSecond = nil
+        playRestEndedHaptic()
+        #endif
+    }
+
+    /// Rest ticks + restDone. Safe to call every second from TimelineView.
+    func tickRestHaptics(at date: Date) {
+        #if os(watchOS)
+        guard let ends = companionRestEndsAt else {
+            lastRestCountInSecond = nil
+            return
+        }
+        if ends <= date {
+            playRestDoneIfNeeded(endsAt: ends)
+            return
+        }
+        let remaining = max(0, Int(ceil(ends.timeIntervalSince(date))))
+        guard remaining >= 1, remaining <= 5 else { return }
+        if lastRestCountInSecond == remaining { return }
+        lastRestCountInSecond = remaining
+        WatchHaptic.restCountIn.play()
         #endif
     }
 
@@ -849,6 +1063,10 @@ final class WatchSessionCoordinator: NSObject {
         }
         if let briefSummary = payload.briefSummary {
             latestBriefSummary = briefSummary
+        }
+        persistReadinessFaceIfNeeded(from: payload)
+        if let watchWorkout = payload.watchWorkoutActive {
+            watchWorkoutActive = watchWorkout
         }
         if let liveHeartRateBPM = payload.liveHeartRateBPM {
             // Prefer fresh HealthKit mirror samples; otherwise accept WCSession HR.
@@ -874,6 +1092,10 @@ final class WatchSessionCoordinator: NSObject {
             if let started = payload.companionSessionStartedAt {
                 companionSessionStartedAt = Date(timeIntervalSince1970: started)
             }
+            applyCompanionRest(from: payload)
+            if let activity = payload.companionActivityTypeRawValue {
+                companionActivityTypeRawValue = activity
+            }
             if workoutCompanionActive == false {
                 isReceivingMirroredHeartRate = false
                 if !isReceivingPhoneHeartRate {
@@ -881,6 +1103,13 @@ final class WatchSessionCoordinator: NSObject {
                     lastHeartRateReceivedAt = nil
                 }
                 companionSessionStartedAt = nil
+                companionRestEndsAt = nil
+                companionActivityTypeRawValue = nil
+                #if os(watchOS)
+                lastRestDoneEndsAt = nil
+                lastRestCountInSecond = nil
+                restSuppress = nil
+                #endif
             }
             #if os(watchOS)
             if isActive && !wasActive {
@@ -896,6 +1125,65 @@ final class WatchSessionCoordinator: NSObject {
         }
     }
 
+    private func applyCompanionRest(from payload: WatchSyncPayload) {
+        let incoming = payload.companionRestEndsAt.map { Date(timeIntervalSince1970: $0) }
+
+        #if os(watchOS)
+        if applySuppressedCompanionRest(incoming) {
+            return
+        }
+        #endif
+
+        commitCompanionRest(incoming)
+    }
+
+    #if os(watchOS)
+    /// Returns true when a local skip/adjust is still in flight (stale phone rest ignored).
+    private func applySuppressedCompanionRest(_ incoming: Date?) -> Bool {
+        guard let suppress = restSuppress else { return false }
+        let until: Date = {
+            switch suppress {
+            case .skip(let deadline): deadline
+            case .adjust(_, let deadline): deadline
+            }
+        }()
+        if Date() > until {
+            restSuppress = nil
+            return false
+        }
+        switch suppress {
+        case .skip:
+            if incoming == nil {
+                commitCompanionRest(nil)
+                restSuppress = nil
+            }
+            return true
+        case .adjust(let expected, _):
+            if let incoming {
+                if abs(incoming.timeIntervalSince(expected)) < 2.5 {
+                    commitCompanionRest(incoming)
+                    restSuppress = nil
+                }
+                return true
+            }
+            commitCompanionRest(nil)
+            restSuppress = nil
+            return true
+        }
+    }
+    #endif
+
+    private func commitCompanionRest(_ next: Date?) {
+        #if os(watchOS)
+        let previousKey = companionRestEndsAt.map { floor($0.timeIntervalSince1970) }
+        let nextKey = next.map { floor($0.timeIntervalSince1970) }
+        if previousKey != nextKey {
+            lastRestCountInSecond = nil
+        }
+        #endif
+        companionRestEndsAt = next
+    }
+
     func refreshSessionFlags() {
         let session = WCSession.default
         #if os(iOS)
@@ -907,5 +1195,16 @@ final class WatchSessionCoordinator: NSObject {
         #endif
         isReachable = session.isReachable
         activationState = session.activationState
+    }
+
+    private func persistReadinessFaceIfNeeded(from payload: WatchSyncPayload) {
+        guard payload.readinessScore != nil || payload.readinessBand != nil else { return }
+        #if os(watchOS)
+        WatchReadinessFaceStore.save(
+            score: latestReadinessScore,
+            band: latestReadinessBand
+        )
+        WidgetCenter.shared.reloadAllTimelines()
+        #endif
     }
 }

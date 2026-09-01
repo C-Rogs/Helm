@@ -79,6 +79,25 @@ public struct MealRepeatService: Sendable {
     }
 
     @discardableResult
+    public func logProposal(
+        _ proposal: UsualMealProposal,
+        helmDay: HelmDay,
+        loggedAt: Date? = nil
+    ) async throws {
+        switch proposal.source {
+        case let .template(template):
+            _ = try await logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
+        case let .copy(sourceDay):
+            _ = try await copyBucket(
+                from: sourceDay,
+                bucket: proposal.bucket,
+                to: helmDay,
+                loggedAt: loggedAt
+            )
+        }
+    }
+
+    @discardableResult
     public func logTemplate(
         _ template: MealTemplate,
         loggedAt: Date? = nil,

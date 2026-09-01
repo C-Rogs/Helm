@@ -31,8 +31,9 @@ struct ManualMealServiceTests {
     @Test("fixture food logs to GRDB and fake HK writer")
     func logFoodPersistsLocally() async throws {
         let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
         let service = ManualMealService(
-            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            writer: MealHealthKitWriter(store: mockHK),
             localStore: ManualMealLocalStore(store: store)
         )
 
@@ -46,12 +47,6 @@ struct ManualMealServiceTests {
         )
 
         #expect(saved.mealID == "manual-food-meal")
-        #expect(
-            MealHealthKitWriter.shouldReIngest(
-                savedMeal: saved,
-                ownBundleID: HealthKitIngest.defaultOwnBundleID
-            ) == false
-        )
 
         let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
         let meals = try store.nutrition.fetchMeals(for: helmDay)
@@ -59,6 +54,15 @@ struct ManualMealServiceTests {
         #expect(meals[0].source == .manual)
         #expect(meals[0].bucket == .snacks)
         #expect(meals[0].energy?.kilocalories == 228)
+
+        await service.flushHealthKitWrites()
+        #expect(mockHK.savedMealIDs.contains("manual-food-meal"))
+        #expect(
+            IngestSampleFilter.shouldIngest(
+                sourceBundleID: HealthKitIngest.defaultOwnBundleID,
+                ownBundleID: HealthKitIngest.defaultOwnBundleID
+            ) == false
+        )
 
         let lineItems = try store.foodLog.fetchLineItems(for: meals[0].id)
         #expect(lineItems.count == 1)
@@ -147,28 +151,25 @@ struct ManualMealServiceTests {
     @Test("own HK writes are not re-ingested")
     func dedupOwnWrites() async throws {
         let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
         let service = ManualMealService(
-            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            writer: MealHealthKitWriter(store: mockHK),
             localStore: ManualMealLocalStore(store: store)
         )
 
-        let saved = try await service.logQuickAdd(
+        _ = try await service.logQuickAdd(
             kilocalories: 500,
             label: "Snack",
             bucket: .snacks,
             loggedAt: loggedAt,
             mealID: "dedup-meal"
         )
+        await service.flushHealthKitWrites()
 
-        #expect(
-            MealHealthKitWriter.shouldReIngest(
-                savedMeal: saved,
-                ownBundleID: HealthKitIngest.defaultOwnBundleID
-            ) == false
-        )
+        #expect(mockHK.savedMealIDs.contains("dedup-meal"))
         #expect(
             IngestSampleFilter.shouldIngest(
-                sourceBundleID: saved.energy.sourceBundleID,
+                sourceBundleID: HealthKitIngest.defaultOwnBundleID,
                 ownBundleID: HealthKitIngest.defaultOwnBundleID
             ) == false
         )
@@ -285,5 +286,116 @@ struct ManualMealServiceTests {
         #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
         #expect(try store.nutrition.fetchDay(helmDay: helmDay) == nil)
         #expect(mockHK.deletedMealIDs == [mealID.uuidString.lowercased()])
+    }
+
+    @Test("log returns after GRDB before delayed HealthKit write")
+    func logReturnsBeforeHealthKit() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        mockHK.mealSaveDelayNanoseconds = 200_000_000
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        _ = try await service.logQuickAdd(
+            kilocalories: 450,
+            label: "Snack",
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: "delayed-meal"
+        )
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).count == 1)
+        #expect(mockHK.savedMealIDs.isEmpty)
+
+        await service.flushHealthKitWrites()
+        #expect(mockHK.savedMealIDs.contains("delayed-meal"))
+    }
+
+    @Test("HealthKit failure still keeps the GRDB meal")
+    func healthKitFailureKeepsLocalMeal() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        mockHK.mealSaveShouldFail = true
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        _ = try await service.logQuickAdd(
+            kilocalories: 450,
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: "local-only-meal"
+        )
+        await service.flushHealthKitWrites()
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).count == 1)
+        #expect(mockHK.savedMealIDs.isEmpty)
+    }
+
+    @Test("edit waits for in-flight HealthKit save before rewrite")
+    func editWaitsForInFlightHealthKitSave() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        mockHK.mealSaveDelayNanoseconds = 150_000_000
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        let mealID = UUID()
+        _ = try await service.logFood(
+            product: grenadeProduct,
+            grams: 60,
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: mealID.uuidString
+        )
+
+        _ = try await service.updateMeal(
+            mealID: mealID,
+            name: "Grenade bar (edited)",
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            macros: FoodPortionMacros(energyKcal: 300, proteinG: 40, carbsG: 10, fatG: 8),
+            lineItems: [],
+            source: .manual
+        )
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(try store.nutrition.fetchDay(helmDay: helmDay)?.totalEnergy?.kilocalories == 300)
+        #expect(mockHK.deletedMealIDs.contains(mealID.uuidString.lowercased()))
+        #expect(mockHK.savedMealIDs.contains(mealID.uuidString.lowercased()))
+    }
+
+    @Test("delete waits for in-flight HealthKit save so samples are not orphaned")
+    func deleteWaitsForInFlightHealthKitSave() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
+        mockHK.mealSaveDelayNanoseconds = 150_000_000
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: mockHK),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        let mealID = UUID()
+        _ = try await service.logQuickAdd(
+            kilocalories: 450,
+            label: "Snack",
+            bucket: .snacks,
+            loggedAt: loggedAt,
+            mealID: mealID.uuidString
+        )
+
+        try await service.deleteMeal(mealID: mealID)
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
+        #expect(mockHK.savedMealIDs.isEmpty)
+        #expect(mockHK.deletedMealIDs.contains(mealID.uuidString.lowercased()))
     }
 }

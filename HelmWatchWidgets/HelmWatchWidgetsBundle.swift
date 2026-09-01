@@ -134,6 +134,14 @@ struct HelmComplicationProvider: TimelineProvider {
     }
 
     private func currentEntry() -> HelmComplicationEntry {
+        if let snapshot = WatchReadinessFaceStore.load(), snapshot.score != nil || snapshot.band != nil {
+            return HelmComplicationEntry(
+                date: .now,
+                score: snapshot.score,
+                band: snapshot.band
+            )
+        }
+
         guard WCSession.isSupported() else {
             return HelmComplicationEntry(date: .now, score: nil, band: nil)
         }
@@ -217,7 +225,7 @@ struct HelmComplicationView: View {
                 Text(entry.displayScore)
                     .font(WidgetType.rectangularScore)
                     .foregroundStyle(entry.score == nil ? WidgetPalette.fgMuted : WidgetPalette.fg)
-                Text(entry.stateLabel ?? "Waiting for Helm")
+                Text(entry.stateLabel ?? "Waiting for Signal")
                     .font(WidgetType.monoTag)
                     .tracking(WidgetType.monoTagTracking)
                     .foregroundStyle(WidgetPalette.fgMuted)
@@ -237,7 +245,7 @@ struct HelmComplicationView: View {
         if let score = entry.score, let stateLabel = entry.stateLabel {
             return "ARC \(score), \(stateLabel.lowercased())"
         }
-        return "ARC unavailable. Open Helm for your brief."
+        return "ARC unavailable. Open Signal for your brief."
     }
 }
 
@@ -248,7 +256,7 @@ struct HelmComplication: Widget {
         StaticConfiguration(kind: kind, provider: HelmComplicationProvider()) { entry in
             HelmComplicationView(entry: entry)
         }
-        .configurationDisplayName("Helm")
+        .configurationDisplayName("Signal")
         .description("Today's ARC readiness. Tap for your morning brief.")
         .supportedFamilies([
             .accessoryCircular,

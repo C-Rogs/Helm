@@ -34,10 +34,6 @@ struct FocusExerciseCard: View {
         currentSet?.status == .completed
     }
 
-    private var totalSets: Int {
-        exercise.sets.count
-    }
-
     private var setNumber: Int {
         currentSetIndex + 1
     }
@@ -74,8 +70,8 @@ struct FocusExerciseCard: View {
                     url: imageURL,
                     fallbackLabel: displayName
                 )
-                .frame(maxHeight: imageMaxHeight)
-                .aspectRatio(contentMode: .fit)
+                .frame(maxWidth: .infinity)
+                .frame(height: imageMaxHeight)
                 .clipped()
             }
         }
@@ -85,18 +81,7 @@ struct FocusExerciseCard: View {
 
     private var detailsSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            if imageURL == nil {
-                Text(displayName)
-                    .helmType(.title)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            } else {
-                Text(displayName)
-                    .helmType(.label)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.85)
-            }
-            setInfoRow
+            titleRow
             cueAndPrevious
             fieldRow
             logSetButton
@@ -105,16 +90,14 @@ struct FocusExerciseCard: View {
         .padding(.vertical, HelmSpacing.sm)
     }
 
-    // MARK: - Set info row
-
-    private var setInfoRow: some View {
+    private var titleRow: some View {
         HStack(spacing: HelmSpacing.xs) {
-            Text("Set \(setNumber) of \(totalSets)")
-                .helmType(.label)
+            Text(displayName)
+                .helmType(imageURL == nil ? .title : .label)
                 .lineLimit(1)
-                .minimumScaleFactor(0.9)
+                .minimumScaleFactor(0.85)
 
-            Spacer()
+            Spacer(minLength: 0)
 
             Button(action: onCycleSetType) {
                 Text(setTypeGlyph)
@@ -128,7 +111,9 @@ struct FocusExerciseCard: View {
                     )
             }
             .buttonStyle(.helmPressable)
-            .accessibilityLabel("Set type \(setTypeGlyph). Tap to change.")
+            .accessibilityLabel(
+                (currentSet?.setType ?? .normal).loggerSetTypeAccessibilityLabel(setNumber: setNumber)
+            )
 
             if isCompleted {
                 Image(systemName: "checkmark.circle.fill")
@@ -144,11 +129,7 @@ struct FocusExerciseCard: View {
     }
 
     private var setTypeGlyph: String {
-        guard let type = currentSet?.setType else { return "W" }
-        if let abbreviation = type.loggerAbbreviation {
-            return abbreviation
-        }
-        return "W"
+        (currentSet?.setType ?? .normal).loggerGlyph(setNumber: setNumber)
     }
 
     private var setTypeColor: Color {
@@ -166,7 +147,7 @@ struct FocusExerciseCard: View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             if let coachingCue, !coachingCue.isEmpty {
                 Text(coachingCue)
-                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .helmType(.body, color: HelmColor.fgSecondary)
                     .lineLimit(2)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -180,14 +161,15 @@ struct FocusExerciseCard: View {
     private func previousRow(_ previous: PreviousPerformance) -> some View {
         Button(action: onFillPrevious) {
             HStack(spacing: HelmSpacing.xxs) {
-                Text("Previous:")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                Text("Previous")
+                    .helmType(.body, color: HelmColor.fgMuted)
                 Text(previousLabel(previous))
-                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .helmType(.number, color: HelmColor.fgSecondary)
+                    .fontWeight(.bold)
                     .lineLimit(1)
                     .minimumScaleFactor(0.9)
                 Text("Tap to fill")
-                    .helmType(.monoTag, color: HelmColor.accent)
+                    .helmType(.body, color: HelmColor.accent)
             }
         }
         .buttonStyle(.helmPressable)
@@ -216,7 +198,7 @@ struct FocusExerciseCard: View {
         } label: {
             VStack(spacing: 2) {
                 Text(label)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .helmType(.body, color: HelmColor.fgMuted)
                 fieldValueText(kind, unit: unit)
             }
             .frame(maxWidth: .infinity)
@@ -241,16 +223,17 @@ struct FocusExerciseCard: View {
         return Group {
             if display.isEmpty {
                 Text("-")
-                    .helmType(.body, color: HelmColor.fgMuted)
+                    .helmType(.number, color: HelmColor.fgMuted)
             } else {
                 HStack(alignment: .firstTextBaseline, spacing: 2) {
                     Text(display)
-                        .helmType(.body, color: SetRowFieldValueStateResolver.textColor(for: state))
+                        .helmType(.number, color: SetRowFieldValueStateResolver.textColor(for: state))
+                        .fontWeight(.bold)
                         .lineLimit(1)
                         .minimumScaleFactor(0.9)
                     if !unit.isEmpty {
                         Text(unit)
-                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                            .helmType(.body, color: HelmColor.fgMuted)
                     }
                 }
             }
@@ -369,7 +352,7 @@ struct FocusExerciseCard: View {
         displayName: "Bench Press (Barbell)",
         coachingCue: "Drive through your heels and keep your chest proud.",
         imageURL: nil,
-        imageMaxHeight: 130,
+        imageMaxHeight: 220,
         currentSetIndex: 2,
         previous: PreviousPerformance(
             exerciseID: "bench",

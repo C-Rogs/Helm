@@ -23,7 +23,8 @@ public struct HelmActionExecutor: Sendable {
         self.mealRepeatService = mealRepeatService
         self.calendar = calendar
         self.photoPersister = photoPersister ?? PhotoMealPersister(
-            localStore: PhotoMealLocalStore(store: persistence, calendar: calendar)
+            localStore: PhotoMealLocalStore(store: persistence, calendar: calendar),
+            hkWrites: manualMealService.hkWrites
         )
     }
 
@@ -62,6 +63,13 @@ public struct HelmActionExecutor: Sendable {
                 helmDay: helmDay
             )
             return .nutrition(helmDay ?? HelmDay.day(for: timestamp, calendar: calendar))
+        case let .logUsual(bucket, helmDay, loggedAt, proposal):
+            return try await runLogUsual(
+                bucket: bucket,
+                helmDay: helmDay,
+                loggedAt: loggedAt,
+                proposal: proposal
+            )
         case let .applySessionAdjustment(session):
             let applied = try applySessionAdjustment(session)
             return HelmActionResult(
@@ -147,6 +155,37 @@ public struct HelmActionExecutor: Sendable {
             recommendationID: command.recommendationID,
             markActedOn: command.markActedOn
         )
+    }
+
+    private func runLogUsual(
+        bucket: MealBucket,
+        helmDay: HelmDay,
+        loggedAt: Date?,
+        proposal: UsualMealProposal?
+    ) async throws -> HelmActionResult {
+        let existing = try persistence.nutrition.fetchMeals(for: helmDay).filter { $0.bucket == bucket }
+        guard existing.isEmpty else { throw UsualMealLogError.alreadyLogged }
+
+        let resolved: UsualMealProposal
+        if let proposal, proposal.bucket == bucket {
+            resolved = proposal
+        } else {
+            let resolver = UsualMealResolver(store: persistence, calendar: calendar)
+            guard let fresh = try resolver.proposal(for: bucket, on: helmDay) else {
+                throw UsualMealLogError.noUsual
+            }
+            resolved = fresh
+        }
+
+        let today = HelmDay.day(for: loggedAt ?? Date(), calendar: calendar)
+        let timestamp = loggedAt ?? MealLogInstant.loggedAt(
+            for: helmDay,
+            bucket: bucket,
+            today: today,
+            calendar: calendar
+        )
+        try await mealRepeatService.logProposal(resolved, helmDay: helmDay, loggedAt: timestamp)
+        return .nutrition(helmDay)
     }
 
     private func runMeal(_ write: HelmMealWrite) async throws -> HelmActionResult {

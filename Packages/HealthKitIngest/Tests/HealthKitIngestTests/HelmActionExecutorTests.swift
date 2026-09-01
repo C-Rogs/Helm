@@ -379,6 +379,7 @@ struct HelmActionExecutorTests {
     }
 
     @Test("plan builder commit keeps methodology equipment lines")
+    @MainActor
     func planBuilderCommitKeepsMethodologyPreferences() throws {
         let store = try PersistenceStore.inMemory()
         try store.trainingPlan.save(.default)
@@ -447,9 +448,11 @@ struct HelmActionExecutorTests {
     }
 
     private func makeMealExecutor(store: PersistenceStore) -> HelmActionExecutor {
+        let hkWrites = MealHealthKitWriteQueue()
         let meals = ManualMealService(
             writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
-            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+            localStore: ManualMealLocalStore(store: store, calendar: calendar),
+            hkWrites: hkWrites
         )
         return HelmActionExecutor(
             manualMealService: meals,
@@ -458,7 +461,8 @@ struct HelmActionExecutorTests {
             calendar: calendar,
             photoPersister: PhotoMealPersister(
                 writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
-                localStore: PhotoMealLocalStore(store: store, calendar: calendar)
+                localStore: PhotoMealLocalStore(store: store, calendar: calendar),
+                hkWrites: hkWrites
             )
         )
     }

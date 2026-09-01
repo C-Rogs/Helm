@@ -107,9 +107,9 @@ struct SpotifySettingsView: View {
                 Section {
                     Text(
                         """
-                        Linking is one time. Helm connects silently when Spotify is already \
+                        Linking is one time. Signal connects silently when Spotify is already \
                         playing. Open Spotify (here or during a workout) only when you want \
-                        Helm to wake the Spotify app; that switch is intentional.
+                        Signal to wake the Spotify app; that switch is intentional.
                         """
                     )
                     .helmType(.body, color: HelmColor.fgMuted)

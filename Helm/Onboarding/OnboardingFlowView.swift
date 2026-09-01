@@ -37,6 +37,9 @@ struct OnboardingFlowView: View {
         let finish = {
             OnboardingStore.shared.markCompleted()
             HealthKitBootstrap.startAfterOnboarding()
+            Task { @MainActor in
+                await ProactiveBootstrap.refreshScheduling()
+            }
             onFinished()
         }
 
@@ -78,6 +81,14 @@ struct OnboardingFlowView: View {
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
+                onSkip: skip
+            )
+        case .hevyImport:
+            HevyImportOnboardingStepView(
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                onContinue: advance,
+                onBack: goBack,
                 onSkip: skip
             )
         case .backfill:

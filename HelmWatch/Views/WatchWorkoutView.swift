@@ -31,28 +31,31 @@ struct WatchWorkoutView: View {
     }
 
     private var idleView: some View {
-        VStack(spacing: 8) {
+        VStack(spacing: WatchSpacing.xs) {
             Spacer(minLength: 0)
 
             if let error = store.lastError {
                 WatchErrorState(message: error, retryTitle: nil)
             } else {
                 WatchEmptyState(
-                    title: "No session",
-                    message: "Start a workout on iPhone to track heart rate here."
+                    title: "Ready",
+                    message: "Start Train on iPhone for sets. Manual is HR only."
                 )
             }
 
             NavigationLink {
                 WatchActivityPickerView(store: store)
             } label: {
-                Text("Manual workout")
-                    .watchType(.label, color: WatchPalette.accent)
+                Text("Manual")
+                    .watchType(.label, color: WatchPalette.buttonPrimaryForeground)
+                    .frame(maxWidth: .infinity, minHeight: WatchLayout.hit)
             }
+            .buttonStyle(.borderedProminent)
+            .tint(WatchPalette.accent)
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 8)
+        .padding(.horizontal, WatchSpacing.xs)
         .frame(maxHeight: .infinity)
     }
 }

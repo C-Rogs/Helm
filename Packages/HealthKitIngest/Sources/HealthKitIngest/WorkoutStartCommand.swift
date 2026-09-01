@@ -292,7 +292,7 @@ public enum WorkoutStartPrescriptionResolver {
             }
 
             if let exerciseID = try persistence.exercises.resolveImportedTitle(label)?.exerciseID {
-                let template = base.exercises.first ?? PrescribedExercise(
+                let template = byID[exerciseID] ?? base.exercises.first ?? PrescribedExercise(
                     exerciseID: exerciseID,
                     order: index,
                     targetSets: 3,

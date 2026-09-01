@@ -2,46 +2,32 @@ import Core
 import SwiftUI
 
 struct WatchRootView: View {
-    @Environment(\.scenePhase) private var scenePhase
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @AppStorage("helm.watch.showsSyncTab") private var showsSyncTab = false
     private var coordinator: WatchSessionCoordinator { WatchCompanionBootstrap.coordinator }
     private var workoutStore: WatchWorkoutSessionStore { WatchCompanionBootstrap.workoutStore }
     @State private var selectedTab = 0
 
+    private var isSessionChrome: Bool {
+        coordinator.workoutCompanionActive
+            || workoutStore.phase == .preparing
+            || workoutStore.phase == .active
+            || workoutStore.phase == .paused
+            || workoutStore.phase == .ending
+    }
+
     var body: some View {
-        TabView(selection: $selectedTab) {
-            WatchWorkoutView(store: workoutStore, coordinator: coordinator) {
-                Task { await WatchCompanionBootstrap.startCompanionWorkoutIfNeeded(playHaptic: true) }
+        Group {
+            if isSessionChrome {
+                workoutPane
+            } else {
+                tabShell
             }
-                .tabItem {
-                    Label("Workout", systemImage: "heart.fill")
-                }
-                .tag(0)
-
-            NavigationStack {
-                WatchBriefView(coordinator: coordinator)
-            }
-            .tabItem {
-                Label("Brief", systemImage: "sun.max.fill")
-            }
-            .tag(1)
-
-            syncStatusTab
-                .tabItem {
-                    Label("Sync", systemImage: "arrow.triangle.2.circlepath")
-                }
-                .tag(2)
         }
         .onOpenURL { url in
             guard url.absoluteString == WatchSyncPayload.briefDeepLink else { return }
             selectedTab = 1
         }
-        .onAppear {
-            if coordinator.workoutCompanionActive {
-                selectedTab = 0
-                Task { await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState() }
-            }
-        }
+        .onAppear(perform: syncIfCompanionActive)
         .onChange(of: coordinator.workoutCompanionActive) { _, isActive in
             if isActive {
                 selectedTab = 0
@@ -62,11 +48,54 @@ struct WatchRootView: View {
                 WatchCompanionBootstrap.flushLiveHeartRateIfNeeded()
             }
         }
-        .opacity(scenePhase == .active ? 1 : 0.4)
-        .animation(
-            WatchMotion.animation(WatchMotion.standardAnimation, reduceMotion: reduceMotion),
-            value: scenePhase
-        )
+        .onChange(of: showsSyncTab) { _, visible in
+            if !visible, selectedTab == 2 {
+                selectedTab = 1
+            }
+        }
+    }
+
+    private var workoutPane: some View {
+        WatchWorkoutView(store: workoutStore, coordinator: coordinator) {
+            Task { await WatchCompanionBootstrap.startCompanionWorkoutIfNeeded(playHaptic: true) }
+        }
+    }
+
+    private var tabShell: some View {
+        TabView(selection: $selectedTab) {
+            NavigationStack {
+                WatchWorkoutView(store: workoutStore, coordinator: coordinator) {
+                    Task { await WatchCompanionBootstrap.startCompanionWorkoutIfNeeded(playHaptic: true) }
+                }
+            }
+            .tabItem {
+                Label("Workout", systemImage: "heart.fill")
+            }
+            .tag(0)
+
+            NavigationStack {
+                WatchBriefView(coordinator: coordinator, showsSyncTab: $showsSyncTab)
+            }
+            .tabItem {
+                Label("Brief", systemImage: "sun.max.fill")
+            }
+            .tag(1)
+
+            if showsSyncTab {
+                syncStatusTab
+                    .tabItem {
+                        Label("Sync", systemImage: "arrow.triangle.2.circlepath")
+                    }
+                    .tag(2)
+            }
+        }
+    }
+
+    private func syncIfCompanionActive() {
+        if coordinator.workoutCompanionActive {
+            selectedTab = 0
+            Task { await WatchCompanionBootstrap.syncCompanionWorkoutWithPhoneState() }
+        }
     }
 
     private var syncStatusTab: some View {
@@ -74,7 +103,7 @@ struct WatchRootView: View {
             Section {
                 helmContextRows
             } header: {
-                Text("Helm")
+                Text("Signal")
                     .watchType(.monoTag, color: WatchPalette.fgMuted)
             }
             .listRowBackground(WatchPalette.surface)
@@ -113,7 +142,7 @@ struct WatchRootView: View {
         } else {
             WatchEmptyState(
                 title: "Waiting for phone",
-                message: "Open Helm on iPhone to sync today's ARC."
+                message: "Open Signal on iPhone to sync today's ARC."
             )
         }
     }

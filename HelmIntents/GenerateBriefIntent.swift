@@ -36,5 +36,32 @@ struct HelmShortcuts: AppShortcutsProvider {
             shortTitle: "Morning Brief",
             systemImageName: "sun.max.fill"
         )
+        AppShortcut(
+            intent: LogUsualMealIntent(meal: .breakfast),
+            phrases: [
+                "Log my usual breakfast in \(.applicationName)",
+                "Log usual breakfast in \(.applicationName)"
+            ],
+            shortTitle: "Usual breakfast",
+            systemImageName: "fork.knife"
+        )
+        AppShortcut(
+            intent: LogUsualMealIntent(meal: .lunch),
+            phrases: [
+                "Log my usual lunch in \(.applicationName)",
+                "Log usual lunch in \(.applicationName)"
+            ],
+            shortTitle: "Usual lunch",
+            systemImageName: "fork.knife"
+        )
+        AppShortcut(
+            intent: LogUsualMealIntent(meal: .dinner),
+            phrases: [
+                "Log my usual dinner in \(.applicationName)",
+                "Log usual dinner in \(.applicationName)"
+            ],
+            shortTitle: "Usual dinner",
+            systemImageName: "fork.knife"
+        )
     }
 }

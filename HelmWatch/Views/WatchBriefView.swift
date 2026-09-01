@@ -3,6 +3,7 @@ import SwiftUI
 
 struct WatchBriefView: View {
     let coordinator: WatchSessionCoordinator
+    @Binding var showsSyncTab: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -25,6 +26,10 @@ struct WatchBriefView: View {
         }
         .navigationTitle("Brief")
         .helmWatchScreenBackground()
+        .onLongPressGesture {
+            WatchHaptic.selection.play()
+            showsSyncTab.toggle()
+        }
     }
 
     @ViewBuilder
@@ -39,6 +44,7 @@ struct WatchBriefView: View {
                 VStack(spacing: 2) {
                     Text("\(Int(display.rounded()))")
                         .watchType(.heroNumber, color: state.color)
+                        .watchNumericRoll(value: Int(display.rounded()), reduceMotion: reduceMotion)
                     Text(state.label)
                         .watchType(.monoTag, color: WatchPalette.fgMuted)
                 }
@@ -55,7 +61,7 @@ struct WatchBriefView: View {
         } else {
             WatchEmptyState(
                 title: "No ARC yet",
-                message: "Open Helm on iPhone for your full brief."
+                message: "Open Signal on iPhone for your full brief."
             )
         }
     }
@@ -70,13 +76,16 @@ struct WatchBriefView: View {
         } else {
             WatchEmptyState(
                 title: "No brief yet",
-                message: "Open Helm on iPhone for your full brief."
+                message: "Open Signal on iPhone for your full brief."
             )
         }
     }
 }
 
 #Preview {
-    WatchBriefView(coordinator: WatchSessionCoordinator(role: .watch))
+    WatchBriefView(
+        coordinator: WatchSessionCoordinator(role: .watch),
+        showsSyncTab: .constant(false)
+    )
         .helmWatchTheme()
 }

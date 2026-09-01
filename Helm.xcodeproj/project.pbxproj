@@ -11,6 +11,7 @@
 		0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */ = {isa = PBXBuildFile; fileRef = CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */; };
 		023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */; };
 		03A44EE5523957231B425BB5 /* SpotifyAuthClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E0537918F8ED3DBAE09E784 /* SpotifyAuthClient.swift */; };
+		03AB7936DD8B4E0A491CCCC7 /* TodaysSessionPreviewSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93B311DAE6E0E3BD141607B6 /* TodaysSessionPreviewSheet.swift */; };
 		04C0548C908F47918CB4872C /* PhaseGoalSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */; };
 		06E1FF6417AE2A1165178FEC /* TrendsModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 49AE07A1436E7283081C804B /* TrendsModels.swift */; };
 		073C227CB8D8FDDE004A2A86 /* TrendsDataBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2E57A102A907E43806E3B287 /* TrendsDataBuilder.swift */; };
@@ -22,7 +23,9 @@
 		0FA1C55AD9FB5D5BECD8E3D6 /* WorkoutStartCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 823521A478ECA1FC382C6F31 /* WorkoutStartCoordinator.swift */; };
 		11620AC21A77CCEF1F6D4EF3 /* HelmWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		11B467655485BDC248A9CEF0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9C352EF85CB40EE3730A712D /* Assets.xcassets */; };
+		121DF948E01B623B3935AF4B /* UsualMealStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = EF5096E0A50A5FBFAF3DB7F7 /* UsualMealStore.swift */; };
 		12BBF9DF0BCDEC9F44983B96 /* DescribeFoodSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FDC90C1367E4D301748CCEB /* DescribeFoodSheet.swift */; };
+		12F7FA9E700FAD4B4DE2E168 /* WatchRestControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F7AE37C05EFF5C78D9DBC0 /* WatchRestControlBridge.swift */; };
 		13716B523E70BC77E960E955 /* CalendarHintStatusView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */; };
 		14F7C9ABF48FC904F1152976 /* CompleteLiveActivitySetIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = AA0907580020AECBE2A60C03 /* CompleteLiveActivitySetIntent.swift */; };
 		157367B26A8654B73B1232EC /* MuscleVolumeBoardContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7B4957993AE0AB23C62288AC /* MuscleVolumeBoardContainer.swift */; };
@@ -88,6 +91,7 @@
 		4701F085097E7C9689C0AA16 /* NutritionDayMealsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7415F93EDE764C20C590FC55 /* NutritionDayMealsStore.swift */; };
 		47C7B6ADDB6957DC457978A7 /* SleepAnalysisContainer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 333AAB6C03ED25A61C1AF2C0 /* SleepAnalysisContainer.swift */; };
 		48BE721B79AC1E2FEA7A42BC /* WatchWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 212938823FAC6CF3F5483359 /* WatchWorkoutView.swift */; };
+		48F00EA4E9C293C5595CA648 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = F3D5884A090BE27DCC948B35 /* Core */; };
 		4A3583E9391C52D48D9F6E5E /* WatchWorkoutSessionManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = B85D6D155ADBDA484F612753 /* WatchWorkoutSessionManager.swift */; };
 		4B2221E4583B5F5BA14815FD /* BucketFoodLogMenu.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2CECB69DFC398C51E14B613 /* BucketFoodLogMenu.swift */; };
 		4D6D8E471D8269BB54E5FBC8 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 8051ED48FCAD89C1565B9440 /* Core */; };
@@ -106,6 +110,7 @@
 		59E8D622D7741851AB0A8D73 /* FriendsReleasePreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */; };
 		5A3C3560CF51F0BC7644C76A /* FocusExerciseCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 639D565DA13B004E67C23272 /* FocusExerciseCard.swift */; };
 		5A933EEBF3392510EB21211B /* MirroredWorkoutSessionBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */; };
+		5AC8ABDCA507BA58A753BBD3 /* UsualMealNotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410561537119D805499A1FB0 /* UsualMealNotificationRouter.swift */; };
 		5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */; };
 		5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */; };
 		5C2B69E21678550F1B29DC20 /* TrendWeightChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */; };
@@ -116,6 +121,7 @@
 		5FAEBACB5012754CA2E1EDDA /* OnboardingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21053A3537A7606568D37DEE /* OnboardingCoordinator.swift */; };
 		61490342EEFF814540F83166 /* DesignSystem in Frameworks */ = {isa = PBXBuildFile; productRef = 4C5F122E8B8E8B8B15661C4E /* DesignSystem */; };
 		62005AF753453C719724E671 /* WatchRootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E24380021D00B17F56D26F7 /* WatchRootView.swift */; };
+		648C3FA5C8EA2CF4E5523372 /* UsualMealPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 40E5E4EBDF2DE53D1195C50F /* UsualMealPreferences.swift */; };
 		64C36565E67479B17CC357BA /* SetRowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 69855AA731BBEA8518DD3238 /* SetRowView.swift */; };
 		695B49ABCADBF39EAA55BE2A /* PlanBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEA4D2E1FECDAF8007A22DF9 /* PlanBootstrap.swift */; };
 		6982BBA1C89D352832C4F24C /* WatchActiveWorkoutView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 92BE8998732A4FFA25A8DFA3 /* WatchActiveWorkoutView.swift */; };
@@ -128,6 +134,7 @@
 		6FBB8331D353C5DBCACDFF97 /* TrendsController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1B3185A05C2BDEE41B579ED9 /* TrendsController.swift */; };
 		6FFEBEDBE63BF0A3444F2349 /* HelmApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9D8E910325AFE50F60C36C51 /* HelmApp.swift */; };
 		712779AC39F318604425AA99 /* SecretsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = C6033D7C64CF817B8F57FE7F /* SecretsBootstrap.swift */; };
+		72B7CA2313E5F0B5D0E5298B /* UsualMealConfirmRow.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4C5B4CC6ACA26084694DB194 /* UsualMealConfirmRow.swift */; };
 		746A0331702A40F292951666 /* HelmNotificationDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = DD9DA56E1D9F8982E7FCCEBF /* HelmNotificationDelegate.swift */; };
 		74A1EDC9556A3EF68768E775 /* RestTimerSoundPlayer.swift in Sources */ = {isa = PBXBuildFile; fileRef = EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */; };
 		755DA63267A7F9A645B6D6D7 /* WorkoutSetMilestonePolicy.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63DBD2A9326DB846203B4B55 /* WorkoutSetMilestonePolicy.swift */; };
@@ -159,6 +166,7 @@
 		8884E8476FF347725C11DF96 /* WeekAheadScheduleSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */; };
 		891D1985DA38249DC795880E /* SpotifySettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CCD28AA9269832D4A65D0247 /* SpotifySettingsView.swift */; };
 		8A6F2C85260E33610F3FD3E9 /* ManualRestTimerPill.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB8D91C469EE391AE7E07CAE /* ManualRestTimerPill.swift */; };
+		8F73EAAEF70D30FB99707D56 /* WatchHaptic.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF3F0F497C776FE803E78B9 /* WatchHaptic.swift */; };
 		900D525ED75F7B9F39BBDEBA /* TrainBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */; };
 		9175B3430045AFE9D8DA30D7 /* CloudBackupPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */; };
 		928C4DB95D1B1D6E4398E7BA /* TrendsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2498C194C2470C24926D8786 /* TrendsBootstrap.swift */; };
@@ -188,6 +196,7 @@
 		AAAD78EFE1039A587E991A7F /* SpotifyAppRemoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F575612470963D7AE49C3B0 /* SpotifyAppRemoteService.swift */; };
 		AB97255CCFFA481F87CE420B /* HelmWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACF7EC588BCF81579B336F00 /* MealEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41276A961E6E89096F44D629 /* MealEditSheet.swift */; };
+		AD81353C0A9C0662F71D9084 /* LogUsualMealIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F4906AA5855EAC1B22C1E5D /* LogUsualMealIntent.swift */; };
 		AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */; };
 		AF0EB822FFD384CB41C00D85 /* WorkoutFinishSummaryAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */; };
 		AF8793383B6926457DFAED50 /* ExerciseHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED9EC9330DD1E9532DF79E /* ExerciseHistorySheet.swift */; };
@@ -196,6 +205,7 @@
 		B3178FF4A339A1224CD6B9CE /* AppTabRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9F77FF965ADF1B2CF2D76A21 /* AppTabRouter.swift */; };
 		B327C39E182515FFF27DA38F /* CalendarHintService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1310286B64E84B4928656B04 /* CalendarHintService.swift */; };
 		B3757B75AEF1321F214C6BBB /* CalendarEventClassifierService.swift in Sources */ = {isa = PBXBuildFile; fileRef = D90D6A16496154D0C13C849D /* CalendarEventClassifierService.swift */; };
+		B3F0D425606F68BE62644DDE /* UsualMealNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59DF877B21A0B1F70263B53F /* UsualMealNotificationScheduler.swift */; };
 		B46230415D97955B62FC1750 /* Core in Frameworks */ = {isa = PBXBuildFile; productRef = 84E2E9FFF85336E0D45DB8DF /* Core */; };
 		B4A2C1CF16ECEDA3C1343465 /* ProgressionDetailBuilder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 08E190D352AF84EAB945126A /* ProgressionDetailBuilder.swift */; };
 		B4DA8A5CE7E005CB7F2394FF /* ActivityKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 42DA3A67300FE32878B3F069 /* ActivityKit.framework */; };
@@ -205,6 +215,7 @@
 		B61BC607D7225F2E57D73EE8 /* InSessionCoachSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 44613FD77AC6EFDFD15431F6 /* InSessionCoachSheet.swift */; };
 		B7D2CA5D2EC4558904A38C49 /* WorkoutTemplatesListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32582A5A6C818C87A6475D72 /* WorkoutTemplatesListView.swift */; };
 		B89C937C327805027C4F7374 /* OnboardingFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1CA15866D39CB103E073703A /* OnboardingFlowView.swift */; };
+		BA7B376397CD083292C64BD4 /* WatchHaptic.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEF3F0F497C776FE803E78B9 /* WatchHaptic.swift */; };
 		BAEAE387BC5BB9E7E7E53AA9 /* HelmWatch.app in Embed Watch Content */ = {isa = PBXBuildFile; fileRef = 053F9ED9C33440FD2497E414 /* HelmWatch.app */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		BBB9E492C3D8368E8DDD7759 /* ThresholdInsightService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2AB49012A36B68F7B6092200 /* ThresholdInsightService.swift */; };
 		BCBC45C74396DF515AAD2CDD /* NutritionMealBucketSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DB8B6B91DA9F2AC1F59750B /* NutritionMealBucketSection.swift */; };
@@ -233,10 +244,12 @@
 		CC9DCB16ADC40564F3C61C04 /* ChatController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 23010DE8390547294FF5455D /* ChatController.swift */; };
 		CD224F2C51E85F87182F92E9 /* RestNotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */; };
 		CE7F0B4C4D4A0585BDD25B52 /* MealBucketPicker.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1C7802E4F05D00F683B7B10C /* MealBucketPicker.swift */; };
+		CF2CDB9330B9A7A473FB50F7 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A4745B71BAE1F957B073546A /* WidgetKit.framework */; };
 		CF59F55EDC2018BC7961579C /* ScreenshotTourTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3895957E57D5268906F78B79 /* ScreenshotTourTests.swift */; };
 		D0562786AF970E8AF6E16B85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6040B8736850EE4E57B62015 /* SettingsView.swift */; };
 		D22B8CA993A1A711BB7EA1BD /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E383F9ECBDA0F1876BF4946 /* ChatView.swift */; };
 		D3452D5F39BADC69B085669D /* NotificationOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */; };
+		D55A0D2CF8892EA40C067583 /* UsualMealIntentBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0426668B9FCC797B73F9D2C /* UsualMealIntentBootstrap.swift */; };
 		D5B3D7590F528C4E244A64C5 /* ProactiveCoachBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */; };
 		D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */; };
 		D5DFD49C2DE0A3F6418848C7 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */; };
@@ -271,6 +284,8 @@
 		E7D930A65EB05162ACC5A2BC /* HealthKitBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 003EAD8C95AB124772A7DD7E /* HealthKitBootstrap.swift */; };
 		E9B6F62B77A12C5002A5DB57 /* WorkoutMusicCaptureService.swift in Sources */ = {isa = PBXBuildFile; fileRef = B83E8014B49C4ECDC9513500 /* WorkoutMusicCaptureService.swift */; };
 		EAF7BC88C4538D88011AEFD8 /* ExportKit in Frameworks */ = {isa = PBXBuildFile; productRef = 505EB967FB99F06CAD91E7D3 /* ExportKit */; };
+		EB8499F780532DF4B6E0EE95 /* WatchRestControlBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = 17F7AE37C05EFF5C78D9DBC0 /* WatchRestControlBridge.swift */; };
+		EB9AC7824C857314248A6FC7 /* HevyImportOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F764077056ED079A576EB0FC /* HevyImportOnboardingStepView.swift */; };
 		EC06681EB0C067B01F8B950B /* ManualRestTimerSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 472C04C4FF83B33AA989EB20 /* ManualRestTimerSheet.swift */; };
 		ECDD7061104D9495C7911424 /* AddFoodFlowView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4A4C13E50DA8FCBB751E55C /* AddFoodFlowView.swift */; };
 		EEFBB1F3F0D26D7B9EEC72F7 /* WatchConnectivity.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2644E1F1B7A02676AB73D411 /* WatchConnectivity.framework */; };
@@ -399,6 +414,7 @@
 		136E6CD25E2A9CBD074928E0 /* CoachContextBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachContextBootstrap.swift; sourceTree = "<group>"; };
 		139C4D6F7BD4591C9CD1BD75 /* NutritionMealActionsController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionMealActionsController.swift; sourceTree = "<group>"; };
 		144C7FD182597E35BC239051 /* LiveWorkoutBuilderTeardownTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LiveWorkoutBuilderTeardownTracker.swift; sourceTree = "<group>"; };
+		17F7AE37C05EFF5C78D9DBC0 /* WatchRestControlBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchRestControlBridge.swift; sourceTree = "<group>"; };
 		189A2354C03106CBD2095C1B /* PlanOptionCardsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanOptionCardsView.swift; sourceTree = "<group>"; };
 		1A04B9CABC681571A01F3122 /* ChatFoodDictationController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatFoodDictationController.swift; sourceTree = "<group>"; };
 		1A615EA65AD0AC0D2E6284DB /* ManualFoodLogController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualFoodLogController.swift; sourceTree = "<group>"; };
@@ -410,6 +426,7 @@
 		1DB0B9EE4069C79CAA9C7A6C /* NutritionDiaryHeader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDiaryHeader.swift; sourceTree = "<group>"; };
 		1DCF8954E5359D5E52159A37 /* FocusCardLoggingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusCardLoggingView.swift; sourceTree = "<group>"; };
 		1F143BE76D9161B316CE8116 /* TrendChartFixtures.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendChartFixtures.swift; sourceTree = "<group>"; };
+		1F4906AA5855EAC1B22C1E5D /* LogUsualMealIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LogUsualMealIntent.swift; sourceTree = "<group>"; };
 		20018EF3589711177E54129C /* MealEditController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditController.swift; sourceTree = "<group>"; };
 		20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingPlanOnboardingStepView.swift; sourceTree = "<group>"; };
 		20ED97094D22CD1B52E5E2FA /* RecoveryDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailView.swift; sourceTree = "<group>"; };
@@ -450,6 +467,8 @@
 		3CD452125F7E39BD60465FA6 /* QuickAddFoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddFoodView.swift; sourceTree = "<group>"; };
 		3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationOnboardingStepView.swift; sourceTree = "<group>"; };
 		409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestNotificationRouter.swift; sourceTree = "<group>"; };
+		40E5E4EBDF2DE53D1195C50F /* UsualMealPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealPreferences.swift; sourceTree = "<group>"; };
+		410561537119D805499A1FB0 /* UsualMealNotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealNotificationRouter.swift; sourceTree = "<group>"; };
 		4120A46F396DDCFBF14FA586 /* ProactiveCoachPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProactiveCoachPreferences.swift; sourceTree = "<group>"; };
 		41276A961E6E89096F44D629 /* MealEditSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealEditSheet.swift; sourceTree = "<group>"; };
 		42DA3A67300FE32878B3F069 /* ActivityKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = ActivityKit.framework; path = System/Library/Frameworks/ActivityKit.framework; sourceTree = SDKROOT; };
@@ -460,7 +479,9 @@
 		480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealConfirmSheet.swift; sourceTree = "<group>"; };
 		49AE07A1436E7283081C804B /* TrendsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsModels.swift; sourceTree = "<group>"; };
 		4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHapticCoordinator.swift; sourceTree = "<group>"; };
+		4C5B4CC6ACA26084694DB194 /* UsualMealConfirmRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealConfirmRow.swift; sourceTree = "<group>"; };
 		4D36CDE418F2E6C69D9092AB /* ShareViewController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ShareViewController.swift; sourceTree = "<group>"; };
+		4DCD2233A9A77CE721D8489E /* HelmWatchWidgets.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HelmWatchWidgets.entitlements; sourceTree = "<group>"; };
 		4F4E43BE3C8ABC6AACFEC82C /* MemoryProfileEditorView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MemoryProfileEditorView.swift; sourceTree = "<group>"; };
 		50D084910C21986C54C36C64 /* NutritionDaySummaryCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDaySummaryCard.swift; sourceTree = "<group>"; };
 		50FACBBAFC84E813894234E8 /* MethodologyTopicDetailView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MethodologyTopicDetailView.swift; sourceTree = "<group>"; };
@@ -472,6 +493,7 @@
 		59423B745D49F066683F66BE /* TrainView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainView.swift; sourceTree = "<group>"; };
 		5966666B857671AC251ADB2C /* NotificationPermissionService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationPermissionService.swift; sourceTree = "<group>"; };
 		59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitOnboardingStepView.swift; sourceTree = "<group>"; };
+		59DF877B21A0B1F70263B53F /* UsualMealNotificationScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealNotificationScheduler.swift; sourceTree = "<group>"; };
 		5B39380396E36E6C50591424 /* GenerateBriefIntent.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GenerateBriefIntent.swift; sourceTree = "<group>"; };
 		5B9ADFA7FCA08B89DF936EC9 /* MuscleVolumeRecencyBuilder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MuscleVolumeRecencyBuilder.swift; sourceTree = "<group>"; };
 		5C5431C9025E5B20FFE07CAC /* HealthKitIngest */ = {isa = PBXFileReference; lastKnownFileType = folder; name = HealthKitIngest; path = Packages/HealthKitIngest; sourceTree = SOURCE_ROOT; };
@@ -541,6 +563,7 @@
 		91AE49C058C1BAA271BFB930 /* PersonalRecordsCelebrationView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PersonalRecordsCelebrationView.swift; sourceTree = "<group>"; };
 		92BE8998732A4FFA25A8DFA3 /* WatchActiveWorkoutView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchActiveWorkoutView.swift; sourceTree = "<group>"; };
 		93097CC5134C8A7014CAFB8F /* E1RMProgressionChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = E1RMProgressionChartCard.swift; sourceTree = "<group>"; };
+		93B311DAE6E0E3BD141607B6 /* TodaysSessionPreviewSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TodaysSessionPreviewSheet.swift; sourceTree = "<group>"; };
 		9461B78B1AE038AEA2C04D69 /* ExplainableMetricMappers.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExplainableMetricMappers.swift; sourceTree = "<group>"; };
 		9466BDAEA7FBBF340A244FC8 /* MealLineItemEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealLineItemEditor.swift; sourceTree = "<group>"; };
 		9486CCBB7963BC4373B4B2F2 /* ReadinessHistoryChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessHistoryChartCard.swift; sourceTree = "<group>"; };
@@ -606,6 +629,7 @@
 		CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionDayCompleteSection.swift; sourceTree = "<group>"; };
 		CEB49E94526778CBCD171A92 /* WatchWorkoutLaunchBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutLaunchBridge.swift; sourceTree = "<group>"; };
 		CED4BE7C9122933B3865B5E0 /* PhotoMealController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealController.swift; sourceTree = "<group>"; };
+		CEF3F0F497C776FE803E78B9 /* WatchHaptic.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchHaptic.swift; sourceTree = "<group>"; };
 		CF69FDF17A9AAEF9F3D2CEF8 /* BodyProfileSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BodyProfileSettingsView.swift; sourceTree = "<group>"; };
 		CFD8642DBA0484B2FCE13B47 /* AppIntents.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = AppIntents.framework; path = System/Library/Frameworks/AppIntents.framework; sourceTree = SDKROOT; };
 		D0107A85C757C33900AF165A /* HelmActionRuntime.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmActionRuntime.swift; sourceTree = "<group>"; };
@@ -635,13 +659,16 @@
 		E88D4929F04983C6C017C6C1 /* ChatBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ChatBootstrap.swift; sourceTree = "<group>"; };
 		EBD60514D5FD1E9C17759A42 /* RestTimerSoundPlayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestTimerSoundPlayer.swift; sourceTree = "<group>"; };
 		ED1B211D964D5382DF275D95 /* HelmShare.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HelmShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		EF5096E0A50A5FBFAF3DB7F7 /* UsualMealStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealStore.swift; sourceTree = "<group>"; };
 		F020A02859EF72C2D6EE8A23 /* CoachDisplayNameStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDisplayNameStore.swift; sourceTree = "<group>"; };
+		F0426668B9FCC797B73F9D2C /* UsualMealIntentBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealIntentBootstrap.swift; sourceTree = "<group>"; };
 		F1A5D1378F044AB92050869C /* Core */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Core; path = Packages/Core; sourceTree = SOURCE_ROOT; };
 		F26DFB1EE713608E968131D8 /* HelmWatchWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchWidgetsBundle.swift; sourceTree = "<group>"; };
 		F2CA1F21804E5C8A7EC7CBB4 /* CoachDiagnosticsStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachDiagnosticsStore.swift; sourceTree = "<group>"; };
 		F38DA34461728AFF4E32AC14 /* boxing-bell-notification.caf */ = {isa = PBXFileReference; path = "boxing-bell-notification.caf"; sourceTree = "<group>"; };
 		F4545C1493CC90839AA3B3FA /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainBootstrap.swift; sourceTree = "<group>"; };
+		F764077056ED079A576EB0FC /* HevyImportOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HevyImportOnboardingStepView.swift; sourceTree = "<group>"; };
 		F78F73BE82823EE26C6326F8 /* SaveMealTemplateSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SaveMealTemplateSheet.swift; sourceTree = "<group>"; };
 		F84E343F26F5C9F28D21C439 /* NutritionSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NutritionSettingsView.swift; sourceTree = "<group>"; };
 		F91EE0EB0580AB7B66529E4C /* OnboardingStep.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OnboardingStep.swift; sourceTree = "<group>"; };
@@ -659,6 +686,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				48F00EA4E9C293C5595CA648 /* Core in Frameworks */,
 				6B2005E3DCC4FE12EFA1464C /* WidgetKit.framework in Frameworks */,
 				98A21C60D95516C298BE5E03 /* SwiftUI.framework in Frameworks */,
 				A0306B6EF68BE7E8343EC7B4 /* AppIntents.framework in Frameworks */,
@@ -682,6 +710,7 @@
 				4D6D8E471D8269BB54E5FBC8 /* Core in Frameworks */,
 				D7901362865FCAFA02B63AE7 /* HealthKit.framework in Frameworks */,
 				EEFBB1F3F0D26D7B9EEC72F7 /* WatchConnectivity.framework in Frameworks */,
+				CF2CDB9330B9A7A473FB50F7 /* WidgetKit.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -736,6 +765,7 @@
 				7C130F98FF3FC996400A76B3 /* SessionTimelineChartGeometry.swift */,
 				88A669136FBF2DC90483B34E /* SessionTimelineChartView.swift */,
 				69855AA731BBEA8518DD3238 /* SetRowView.swift */,
+				93B311DAE6E0E3BD141607B6 /* TodaysSessionPreviewSheet.swift */,
 				8A940BDCCD8036FC02F7263C /* TrainSessionHeaderView.swift */,
 				8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */,
 				3344C8A09726B2C6A84C9472 /* WorkoutFinishSummaryView.swift */,
@@ -881,6 +911,7 @@
 				689477C008337405AA0AB4C3 /* SleepAnalysisBuilder.swift */,
 				F5D5258225B5E1DCFF4A57B6 /* TrainBootstrap.swift */,
 				FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */,
+				F0426668B9FCC797B73F9D2C /* UsualMealIntentBootstrap.swift */,
 				A9B69832027920890EDE745F /* WatchReadinessBootstrap.swift */,
 				276156A9C2905E234541F09E /* WeekAheadScheduleBuilder.swift */,
 				DCE82E32B7A51CFEAFAEDD21 /* WorkoutHistoryController.swift */,
@@ -974,6 +1005,7 @@
 			isa = PBXGroup;
 			children = (
 				9C352EF85CB40EE3730A712D /* Assets.xcassets */,
+				4DCD2233A9A77CE721D8489E /* HelmWatchWidgets.entitlements */,
 				F26DFB1EE713608E968131D8 /* HelmWatchWidgetsBundle.swift */,
 			);
 			path = HelmWatchWidgets;
@@ -1067,6 +1099,7 @@
 				59423B745D49F066683F66BE /* TrainView.swift */,
 				D0D9F4901EC4435E95CB6CA4 /* TrainViewPresentationLayer.swift */,
 				FC587134C8EB2C87F3B76479 /* TrendsView.swift */,
+				4C5B4CC6ACA26084694DB194 /* UsualMealConfirmRow.swift */,
 				95BFA7694930C9F929FCD15D /* WatchSyncStatusView.swift */,
 				C2D66D7C3E9FB3AD0994273A /* WeeklyRateCalculatorSheet.swift */,
 				DCD054FB657C8E613B07F365 /* Chat */,
@@ -1111,6 +1144,8 @@
 		CEE3DC554111B083A2614F1A /* WatchSync */ = {
 			isa = PBXGroup;
 			children = (
+				CEF3F0F497C776FE803E78B9 /* WatchHaptic.swift */,
+				17F7AE37C05EFF5C78D9DBC0 /* WatchRestControlBridge.swift */,
 				0B0F2C94514F42C09E80FA02 /* WatchSessionCoordinator.swift */,
 				0BA9E2D5DB28E856C536AE54 /* WatchSessionCoordinator+WCSession.swift */,
 			);
@@ -1200,6 +1235,10 @@
 				2AB49012A36B68F7B6092200 /* ThresholdInsightService.swift */,
 				C94B1BFCF261C13C4B0670F5 /* TrainingHistoryTransferController.swift */,
 				338546DBADC7E830F9B6B9D3 /* TrendsHistoryQueryService.swift */,
+				410561537119D805499A1FB0 /* UsualMealNotificationRouter.swift */,
+				59DF877B21A0B1F70263B53F /* UsualMealNotificationScheduler.swift */,
+				40E5E4EBDF2DE53D1195C50F /* UsualMealPreferences.swift */,
+				EF5096E0A50A5FBFAF3DB7F7 /* UsualMealStore.swift */,
 				281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */,
 				6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */,
 				4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */,
@@ -1235,6 +1274,7 @@
 				66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */,
 				0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */,
 				59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */,
+				F764077056ED079A576EB0FC /* HevyImportOnboardingStepView.swift */,
 				3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */,
 				20834759DADFC2B754EDE227 /* TrainingPlanOnboardingStepView.swift */,
 				BBF48AA231CAF609F9A593BB /* WelcomeOnboardingStepView.swift */,
@@ -1254,6 +1294,7 @@
 			isa = PBXGroup;
 			children = (
 				5B39380396E36E6C50591424 /* GenerateBriefIntent.swift */,
+				1F4906AA5855EAC1B22C1E5D /* LogUsualMealIntent.swift */,
 			);
 			path = HelmIntents;
 			sourceTree = "<group>";
@@ -1302,6 +1343,7 @@
 			);
 			name = HelmWidgets;
 			packageProductDependencies = (
+				F3D5884A090BE27DCC948B35 /* Core */,
 			);
 			productName = HelmWidgets;
 			productReference = DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */;
@@ -1612,6 +1654,8 @@
 				D7DC3FFB702C92E0A0823F8E /* WatchBriefView.swift in Sources */,
 				DEBF2EC4962903769585BB8B /* WatchCompanionBootstrap.swift in Sources */,
 				A70049987981B16E80788314 /* WatchCompanionView.swift in Sources */,
+				8F73EAAEF70D30FB99707D56 /* WatchHaptic.swift in Sources */,
+				12F7FA9E700FAD4B4DE2E168 /* WatchRestControlBridge.swift in Sources */,
 				62005AF753453C719724E671 /* WatchRootView.swift in Sources */,
 				215BA690EDC46E3C58A84978 /* WatchSessionCoordinator+WCSession.swift in Sources */,
 				87BB1B4620B2C261B66C50F6 /* WatchSessionCoordinator.swift in Sources */,
@@ -1712,8 +1756,10 @@
 				746A0331702A40F292951666 /* HelmNotificationDelegate.swift in Sources */,
 				7F67E85A97D11E8395A21FED /* HelmTextShareSheet.swift in Sources */,
 				078F622103CD14A93571BA39 /* HevyCSVImportPreviewView.swift in Sources */,
+				EB9AC7824C857314248A6FC7 /* HevyImportOnboardingStepView.swift in Sources */,
 				D6F0E27D96165DB60CAEC6CE /* InSessionCoachDebugView.swift in Sources */,
 				B61BC607D7225F2E57D73EE8 /* InSessionCoachSheet.swift in Sources */,
+				AD81353C0A9C0662F71D9084 /* LogUsualMealIntent.swift in Sources */,
 				F1A1326C4A9A148D5631DE42 /* ManualFoodLogController.swift in Sources */,
 				8A6F2C85260E33610F3FD3E9 /* ManualRestTimerPill.swift in Sources */,
 				EC06681EB0C067B01F8B950B /* ManualRestTimerSheet.swift in Sources */,
@@ -1816,6 +1862,7 @@
 				891D1985DA38249DC795880E /* SpotifySettingsView.swift in Sources */,
 				2431BF8A51FF01E5E086EED4 /* ThresholdInsightCard.swift in Sources */,
 				BBB9E492C3D8368E8DDD7759 /* ThresholdInsightService.swift in Sources */,
+				03AB7936DD8B4E0A491CCCC7 /* TodaysSessionPreviewSheet.swift in Sources */,
 				900D525ED75F7B9F39BBDEBA /* TrainBootstrap.swift in Sources */,
 				5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */,
 				26D57E4F48527FDC255BF963 /* TrainSessionController.swift in Sources */,
@@ -1834,7 +1881,15 @@
 				023769E3B8F3AA571707A523 /* TrendsHistoryQueryService.swift in Sources */,
 				06E1FF6417AE2A1165178FEC /* TrendsModels.swift in Sources */,
 				416FD0F98F027ED264E6CA55 /* TrendsView.swift in Sources */,
+				72B7CA2313E5F0B5D0E5298B /* UsualMealConfirmRow.swift in Sources */,
+				D55A0D2CF8892EA40C067583 /* UsualMealIntentBootstrap.swift in Sources */,
+				5AC8ABDCA507BA58A753BBD3 /* UsualMealNotificationRouter.swift in Sources */,
+				B3F0D425606F68BE62644DDE /* UsualMealNotificationScheduler.swift in Sources */,
+				648C3FA5C8EA2CF4E5523372 /* UsualMealPreferences.swift in Sources */,
+				121DF948E01B623B3935AF4B /* UsualMealStore.swift in Sources */,
+				BA7B376397CD083292C64BD4 /* WatchHaptic.swift in Sources */,
 				1FAF40B7879E7108B4B4965D /* WatchReadinessBootstrap.swift in Sources */,
+				EB8499F780532DF4B6E0EE95 /* WatchRestControlBridge.swift in Sources */,
 				7F2D891C75EBD0D1741B74D2 /* WatchSessionCoordinator+WCSession.swift in Sources */,
 				3ECE52579A49E058A2BD8320 /* WatchSessionCoordinator.swift in Sources */,
 				2FB23DFA4EF1E4378483F84B /* WatchSyncStatusView.swift in Sources */,
@@ -1986,7 +2041,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_NS_ASSERTIONS = NO;
@@ -2187,7 +2242,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				CODE_SIGN_STYLE = Automatic;
 				COPY_PHASE_STRIP = NO;
-				CURRENT_PROJECT_VERSION = 2;
+				CURRENT_PROJECT_VERSION = 3;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				DEVELOPMENT_TEAM = SXWJBD2V3V;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
@@ -2242,6 +2297,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HelmWatchWidgets/HelmWatchWidgets.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HelmWatchWidgets/ExtensionInfo.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2277,6 +2333,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HelmWatchWidgets/HelmWatchWidgets.entitlements;
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = HelmWatchWidgets/ExtensionInfo.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -2451,6 +2508,10 @@
 			productName = HealthKitIngest;
 		};
 		A311E705660C5C05DCD31CA5 /* Core */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = Core;
+		};
+		F3D5884A090BE27DCC948B35 /* Core */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = Core;
 		};

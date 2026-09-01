@@ -299,10 +299,12 @@ struct ExerciseSeedImporterTests {
 
         _ = try importer.importIfNeeded(manifestURL: manifestURL)
 
-        #expect(try store.exercises.fetchSummary(id: "seed-Bench_Press") != nil)
+        #expect(try store.exercises.fetchSummary(id: "seed-cam-bench") != nil)
+        #expect(try store.exercises.fetchSummary(id: "seed-Bench_Press") == nil)
         #expect(try store.exercises.fetchSummary(id: "seed-Sit_Up") == nil)
         let defaults = try store.exercises.listForPicker(search: nil)
-        #expect(defaults.contains { $0.id == "seed-Bench_Press" })
+        #expect(defaults.contains { $0.id == "seed-cam-bench" })
+        #expect(!defaults.contains { $0.id == "seed-Bench_Press" })
     }
 
     @Test("missing catalog still imports overlay exercises")
@@ -408,6 +410,44 @@ struct ExerciseSeedImporterTests {
         _ = try importer.importEntries([entry], seedVersion: 1, pickerCuration: .explicit, explicitPickerIDs: [])
         let defaults = try store.exercises.listForPicker(search: nil)
         #expect(defaults.contains { $0.id == "seed-bench-press" })
+    }
+
+    @Test("picker search orders by pickerRank then name")
+    func searchOrdersByPickerRank() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let high = ExerciseSeedEntry(
+            id: "seed-press-high",
+            canonicalName: "press high",
+            displayName: "Press High",
+            aliases: ["Press High"],
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true,
+            pickerRank: 20
+        )
+        let low = ExerciseSeedEntry(
+            id: "seed-press-low",
+            canonicalName: "press low",
+            displayName: "Press Low",
+            aliases: ["Press Low"],
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true,
+            pickerRank: 1
+        )
+        _ = try importer.importEntries(
+            [high, low],
+            seedVersion: 1,
+            pickerCuration: .explicit,
+            explicitPickerIDs: [high.id, low.id]
+        )
+
+        let search = try store.exercises.listForPicker(search: "press")
+        #expect(search.map(\.id) == ["seed-press-low", "seed-press-high"])
+
+        let browse = try store.exercises.listForPicker(search: nil)
+        #expect(browse.map(\.id) == ["seed-press-low", "seed-press-high"])
     }
 
     @Test("free-exercise-db catalog maps loggy-style entries")

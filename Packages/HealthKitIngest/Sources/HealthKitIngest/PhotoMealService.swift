@@ -21,10 +21,15 @@ public struct PhotoMealService: Sendable {
     public init(
         estimator: any MealMacroEstimating,
         writer: any MealHealthKitWriting = MealHealthKitWriter(),
-        localStore: PhotoMealLocalStore? = nil
+        localStore: PhotoMealLocalStore? = nil,
+        hkWrites: MealHealthKitWriteQueue = MealHealthKitWriteQueue()
     ) {
         self.estimator = estimator
-        persister = PhotoMealPersister(writer: writer, localStore: localStore)
+        persister = PhotoMealPersister(writer: writer, localStore: localStore, hkWrites: hkWrites)
+    }
+
+    public func flushHealthKitWrites() async {
+        await persister.flushHealthKitWrites()
     }
 
     public func estimate(

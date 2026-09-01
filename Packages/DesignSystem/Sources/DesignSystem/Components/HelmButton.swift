@@ -4,16 +4,7 @@ public struct HelmPrimaryButtonStyle: ButtonStyle {
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
-        configuration.label
-            .helmFont(.label)
-            .foregroundStyle(HelmColor.buttonPrimaryForeground)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, HelmSpacing.sm)
-            .padding(.horizontal, HelmSpacing.md)
-            .background(
-                HelmColor.buttonPrimaryBackground.opacity(configuration.isPressed ? 0.85 : 1),
-                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
-            )
+        StyledLabel(configuration: configuration, kind: .primary)
     }
 }
 
@@ -21,20 +12,59 @@ public struct HelmSecondaryButtonStyle: ButtonStyle {
     public init() {}
 
     public func makeBody(configuration: Configuration) -> some View {
+        StyledLabel(configuration: configuration, kind: .secondary)
+    }
+}
+
+private enum StyledKind {
+    case primary
+    case secondary
+}
+
+private struct StyledLabel: View {
+    @Environment(\.helmReduceMotion) private var reduceMotion
+    @Environment(\.helmSkin) private var skin
+
+    let configuration: ButtonStyleConfiguration
+    let kind: StyledKind
+
+    var body: some View {
         configuration.label
             .helmFont(.label)
-            .foregroundStyle(HelmColor.buttonSecondaryForeground)
+            .foregroundStyle(foreground)
             .frame(maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.sm)
             .padding(.horizontal, HelmSpacing.md)
             .background(
-                HelmColor.buttonSecondaryBackground.opacity(configuration.isPressed ? 0.85 : 1),
+                background.opacity(configuration.isPressed ? 0.85 : 1),
                 in: RoundedRectangle(cornerRadius: HelmRadius.sm)
             )
             .overlay {
-                RoundedRectangle(cornerRadius: HelmRadius.sm)
-                    .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+                if kind == .secondary {
+                    RoundedRectangle(cornerRadius: HelmRadius.sm)
+                        .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+                }
             }
+            .helmPressChrome(
+                isPressed: configuration.isPressed,
+                scale: skin.pressScale,
+                pressedOpacity: 1,
+                reduceMotion: reduceMotion
+            )
+    }
+
+    private var foreground: Color {
+        switch kind {
+        case .primary: HelmColor.buttonPrimaryForeground
+        case .secondary: HelmColor.buttonSecondaryForeground
+        }
+    }
+
+    private var background: Color {
+        switch kind {
+        case .primary: HelmColor.buttonPrimaryBackground
+        case .secondary: HelmColor.buttonSecondaryBackground
+        }
     }
 }
 

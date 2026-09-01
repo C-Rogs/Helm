@@ -41,9 +41,10 @@ struct PhotoMealServiceTests {
             confidence: .medium
         )
         let store = try PersistenceStore.inMemory()
+        let mockHK = MockHealthKitStoreClient()
         let service = PhotoMealService(
             estimator: StubMealMacroEstimator(estimate: estimate),
-            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            writer: MealHealthKitWriter(store: mockHK),
             localStore: PhotoMealLocalStore(store: store)
         )
 
@@ -67,12 +68,6 @@ struct PhotoMealServiceTests {
         )
 
         #expect(saved.mealID == "fixture-meal")
-        #expect(
-            MealHealthKitWriter.shouldReIngest(
-                savedMeal: saved,
-                ownBundleID: HealthKitIngest.defaultOwnBundleID
-            ) == false
-        )
 
         let loggedDay = HelmDay.day(for: Date(timeIntervalSince1970: 1_700_000_000), calendar: testCalendar)
         let nutritionDay = try store.nutrition.fetchDay(helmDay: loggedDay)
@@ -82,5 +77,14 @@ struct PhotoMealServiceTests {
         #expect(meals[0].source == .photo)
         #expect(meals[0].name == "Large chicken bowl")
         #expect(meals[0].bucket == .lunch)
+
+        await service.flushHealthKitWrites()
+        #expect(mockHK.savedMealIDs.contains("fixture-meal"))
+        #expect(
+            IngestSampleFilter.shouldIngest(
+                sourceBundleID: HealthKitIngest.defaultOwnBundleID,
+                ownBundleID: HealthKitIngest.defaultOwnBundleID
+            ) == false
+        )
     }
 }

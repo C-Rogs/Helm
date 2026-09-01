@@ -9,6 +9,11 @@ protocol NotificationScheduling: Sendable {
     func removeAllPendingNotificationRequests() async
     func removeDeliveredNotifications(withIdentifiers identifiers: [String]) async
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool
+    func pendingNotificationRequests() async -> [UNNotificationRequest]
+    func deliveredNotifications() async -> [UNNotification]
+    func setNotificationCategories(_ categories: Set<UNNotificationCategory>)
+    func notificationCategories() async -> Set<UNNotificationCategory>
+    func authorizationStatus() async -> NotificationAuthorizationStatus
 }
 
 struct LiveNotificationCenter: NotificationScheduling {
@@ -30,6 +35,22 @@ struct LiveNotificationCenter: NotificationScheduling {
 
     func requestAuthorization(options: UNAuthorizationOptions) async throws -> Bool {
         try await UNUserNotificationCenter.current().requestAuthorization(options: options)
+    }
+
+    func pendingNotificationRequests() async -> [UNNotificationRequest] {
+        await UNUserNotificationCenter.current().pendingNotificationRequests()
+    }
+
+    func deliveredNotifications() async -> [UNNotification] {
+        await UNUserNotificationCenter.current().deliveredNotifications()
+    }
+
+    func setNotificationCategories(_ categories: Set<UNNotificationCategory>) {
+        UNUserNotificationCenter.current().setNotificationCategories(categories)
+    }
+
+    func notificationCategories() async -> Set<UNNotificationCategory> {
+        await UNUserNotificationCenter.current().notificationCategories()
     }
 }
 

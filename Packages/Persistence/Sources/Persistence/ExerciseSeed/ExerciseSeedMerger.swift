@@ -82,6 +82,7 @@ enum ExerciseSeedMerger {
             coachingCues: mergedCoachingCues(base: base.coachingCues, overlay: overlay.coachingCues),
             imageURL: overlay.imageURL ?? catalogMedia?.imageURL ?? base.imageURL,
             isPickerDefault: overlay.isPickerDefault ?? base.isPickerDefault,
+            pickerRank: overlay.pickerRank ?? base.pickerRank,
             isHevyLibrary: overlay.isHevyLibrary ?? base.isHevyLibrary,
             evidence: overlay.evidence ?? base.evidence
         )

@@ -6,6 +6,7 @@ struct TrainSessionHeaderView: View {
     let startedAt: Date
     let progress: TrainSessionProgress
     var watchLinkStatus: WatchCompanionLinkStatus = .unavailable
+    var showsSetCount = true
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -17,15 +18,17 @@ struct TrainSessionHeaderView: View {
                     .helmType(.label, color: HelmColor.textPrimary)
                     .helmNumericRoll(value: elapsed)
 
-                Text("·")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                if showsSetCount {
+                    Text("·")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
 
-                Text(TrainSessionProgressFormatter.setCountLabel(
-                    completed: progress.completedSetCount,
-                    total: progress.totalSetCount
-                ))
-                .helmType(.monoTag, color: HelmColor.fgSecondary)
-                .helmNumericRoll(value: progress.completedSetCount)
+                    Text(TrainSessionProgressFormatter.setCountLabel(
+                        completed: progress.completedSetCount,
+                        total: progress.totalSetCount
+                    ))
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                    .helmNumericRoll(value: progress.completedSetCount)
+                }
 
                 Spacer(minLength: 0)
             }
@@ -81,7 +84,9 @@ struct TrainSessionHeaderView: View {
             parts.append("\(bpm) beats per minute")
         }
         parts.append("Elapsed \(minutes) minutes \(seconds) seconds")
-        parts.append("\(progress.completedSetCount) of \(progress.totalSetCount) sets completed")
+        if showsSetCount {
+            parts.append("\(progress.completedSetCount) of \(progress.totalSetCount) sets completed")
+        }
         return parts.joined(separator: ". ")
     }
 }

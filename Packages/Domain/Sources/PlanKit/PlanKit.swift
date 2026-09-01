@@ -118,13 +118,20 @@ public enum PlanKit {
 
     // MARK: - Progression
 
-    /// Per-lift progression from logged set history (Epley e1RM, working weight, rep targets).
+    /// Per-lift progression from logged set history (Epley e1RM, working weight, next prescribed reps).
+    /// `targetRIR` is today's intended proximity (RPE 8 → 2). Easy last sets climb more than 1 rep.
     public static func progression(
         for exerciseID: String,
         history: [LoggedSet],
-        muscleMap: ExerciseMuscleMap? = nil
+        muscleMap: ExerciseMuscleMap? = nil,
+        targetRIR: Double = 2.0
     ) -> LiftProgression {
-        ProgressionEngine.progression(for: exerciseID, history: history, muscleMap: muscleMap)
+        ProgressionEngine.progression(
+            for: exerciseID,
+            history: history,
+            muscleMap: muscleMap,
+            targetRIR: targetRIR
+        )
     }
 
     /// Epley estimated 1RM for a single set.

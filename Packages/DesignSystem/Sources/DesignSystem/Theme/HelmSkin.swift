@@ -49,11 +49,11 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
         }
     }
 
-    /// Soft press scale for Signal; slightly firmer for card skins.
+    /// Press squash. Signal is a hair quieter; other skins read as a physical tap.
     public var pressScale: CGFloat {
         switch self {
-        case .signal: 0.992
-        case .instrument, .dataSheet, .stateField, .blueprint: 0.985
+        case .signal: 0.97
+        case .instrument, .dataSheet, .stateField, .blueprint: 0.96
         }
     }
 

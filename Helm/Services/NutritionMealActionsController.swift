@@ -7,17 +7,6 @@ import Persistence
 @MainActor
 @Observable
 final class NutritionMealActionsController {
-    enum PendingAction: Equatable, Identifiable {
-        case logTemplate(MealTemplate)
-
-        var id: String {
-            switch self {
-            case let .logTemplate(template):
-                template.id.uuidString
-            }
-        }
-    }
-
     struct CopyEntryContext: Equatable {
         let sourceDay: HelmDay
         let sourceBucket: MealBucket
@@ -25,7 +14,6 @@ final class NutritionMealActionsController {
 
     private(set) var templates: [MealTemplate] = []
     private(set) var isSaving = false
-    var pendingAction: PendingAction?
     var saveTemplateBucket: MealBucket?
     var copyEntryContext: CopyEntryContext?
     var errorMessage: String?
@@ -77,14 +65,6 @@ final class NutritionMealActionsController {
         }
     }
 
-    func beginLogTemplate(_ template: MealTemplate) {
-        pendingAction = .logTemplate(template)
-    }
-
-    func cancelPendingAction() {
-        pendingAction = nil
-    }
-
     func confirmLogTemplate(_ template: MealTemplate, helmDay: HelmDay, today: HelmDay) async {
         isSaving = true
         defer { isSaving = false }
@@ -93,7 +73,6 @@ final class NutritionMealActionsController {
             _ = try await persist(
                 .logTemplate(template, loggedAt: loggedAt, helmDay: helmDay)
             )
-            pendingAction = nil
             HapticEngine.shared.play(.mealConfirmed)
         } catch {
             errorMessage = "Could not log template. Try again."

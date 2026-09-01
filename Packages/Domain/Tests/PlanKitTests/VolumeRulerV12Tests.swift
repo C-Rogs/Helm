@@ -31,7 +31,9 @@ struct ProgressionByLiftTests {
         ]
         let progression = PlanKit.progression(for: "bench_press", history: history)
         #expect(progression.targetRepMin == 8)
-        #expect(progression.targetRepMax == 12)
+        #expect(progression.targetRepMax == 8)
+        #expect(progression.schemeRepMin == 8)
+        #expect(progression.schemeRepMax == 12)
         #expect(progression.workingWeight!.kilograms > 80)
     }
 
@@ -47,7 +49,9 @@ struct ProgressionByLiftTests {
         ]
         let progression = PlanKit.progression(for: "dumbbell_curl", history: history, muscleMap: map)
         #expect(progression.targetRepMin == 10)
-        #expect(progression.targetRepMax == 15)
+        #expect(progression.targetRepMax == 10)
+        #expect(progression.schemeRepMin == 10)
+        #expect(progression.schemeRepMax == 15)
         // The old percentage bump asked for 0.3 kg on a 12 kg dumbbell, which does not exist.
         // Isolation now steps to the next real dumbbell, and that step stays smaller than
         // the barbell step a compound gets.

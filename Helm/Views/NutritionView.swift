@@ -23,6 +23,7 @@ struct NutritionView: View {
         }
     )
     @State private var mealsStore = NutritionDayMealsStore()
+    @State private var usualMealStore = UsualMealStore()
     @State private var mealActionsController = NutritionMealActionsController(
         mealRepeatService: NutritionBootstrap.mealRepeatService,
         actionExecutor: HelmActionRuntime.executor
@@ -347,6 +348,11 @@ struct NutritionView: View {
         AppTabRouter.shared.pendingNutritionFocus = nil
         await selectDay(focus.helmDay)
         mealsStore.reload(for: focus.helmDay)
+        usualMealStore.reload(for: focus.helmDay)
+        if focus.startSearch, let bucket = focus.bucket {
+            handleBucketAddFood(.search, bucket: bucket)
+            return
+        }
         guard let mealID = focus.mealID else { return }
         let displays = MealBucket.allCases.flatMap { mealsStore.mealsByBucket[$0] ?? [] }
         if let display = displays.first(where: { $0.id == mealID }) {
@@ -401,6 +407,7 @@ struct NutritionView: View {
         }
         let day = selectedHelmDay ?? snapshot.helmDay
         mealsStore.reload(for: day)
+        usualMealStore.reload(for: day)
     }
 
     @ViewBuilder
@@ -414,6 +421,8 @@ struct NutritionView: View {
                     meals: mealsStore.mealsByBucket[bucket] ?? [],
                     isPhotoAvailable: photoMealController.isAvailable,
                     isDescribeAvailable: chatController.isCoachAvailable,
+                    usualProposal: usualMealStore.proposal(for: bucket),
+                    isLoggingUsual: usualMealStore.loggingBucket == bucket,
                     onCopyEntry: {
                         guard let day = selectedHelmDay else { return }
                         mealActionsController.beginCopyEntry(sourceDay: day, sourceBucket: bucket)
@@ -426,6 +435,14 @@ struct NutritionView: View {
                     },
                     onAddFood: { action in
                         handleBucketAddFood(action, bucket: bucket)
+                    },
+                    onLogUsual: {
+                        guard let day = selectedHelmDay,
+                              let proposal = usualMealStore.proposal(for: bucket) else { return }
+                        Task {
+                            await usualMealStore.log(proposal, helmDay: day)
+                            mealsStore.reload(for: day)
+                        }
                     }
                 )
             }
@@ -621,21 +638,6 @@ private struct NutritionLoggingSheets: ViewModifier {
                     templates: mealActionsController.templates,
                     onLog: { template in
                         showsTemplates = false
-                        mealActionsController.beginLogTemplate(template)
-                    },
-                    onDelete: { template in
-                        mealActionsController.deleteTemplate(template)
-                    },
-                    onDismiss: {
-                        showsTemplates = false
-                    }
-                )
-            }
-            .sheet(item: logTemplateBinding) { template in
-                LogMealTemplateConfirmSheet(
-                    template: template,
-                    isSaving: mealActionsController.isSaving,
-                    onConfirm: {
                         Task {
                             guard let helmDay = currentHelmDay else { return }
                             let today = todayHelmDay ?? helmDay
@@ -647,8 +649,11 @@ private struct NutritionLoggingSheets: ViewModifier {
                             onMealsChanged()
                         }
                     },
-                    onCancel: {
-                        mealActionsController.cancelPendingAction()
+                    onDelete: { template in
+                        mealActionsController.deleteTemplate(template)
+                    },
+                    onDismiss: {
+                        showsTemplates = false
                     }
                 )
             }
@@ -725,22 +730,6 @@ private struct NutritionLoggingSheets: ViewModifier {
             set: { isPresented in
                 if !isPresented {
                     mealActionsController.cancelSaveTemplate()
-                }
-            }
-        )
-    }
-
-    private var logTemplateBinding: Binding<MealTemplate?> {
-        Binding(
-            get: {
-                if case let .logTemplate(template) = mealActionsController.pendingAction {
-                    return template
-                }
-                return nil
-            },
-            set: { isPresented in
-                if isPresented == nil {
-                    mealActionsController.cancelPendingAction()
                 }
             }
         )

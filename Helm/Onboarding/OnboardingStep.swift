@@ -6,6 +6,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
     case bodyProfile
     case notifications
     case trainingPlan
+    case hevyImport
     case backfill
 
     var id: Int { rawValue }
@@ -17,6 +18,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         case .bodyProfile: "Body profile"
         case .notifications: "Notifications"
         case .trainingPlan: "Training plan"
+        case .hevyImport: "Hevy import"
         case .backfill: "Import history"
         }
     }
@@ -33,6 +35,8 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
             "Rest timers and future briefs use local notifications."
         case .trainingPlan:
             "Draft plan options, ask for a different split, and preview an example session."
+        case .hevyImport:
+            "Import the last 90 days from a Hevy CSV so recents, previous weights, and PRs are already there."
         case .backfill:
             "Import the last six months to seed readiness baselines."
         }
@@ -45,6 +49,7 @@ enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
         case .bodyProfile: "Body Profile"
         case .notifications: "Notifications"
         case .trainingPlan: "Training Plan"
+        case .hevyImport: "Hevy Import"
         case .backfill: "Health Import"
         }
     }

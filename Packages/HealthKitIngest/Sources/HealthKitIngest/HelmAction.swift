@@ -9,6 +9,7 @@ public enum HelmActionCommand: Sendable {
     case copyMeal(HelmCopyMealCommand)
     case copyAllMeals(sourceDay: HelmDay, targetDay: HelmDay)
     case logTemplate(MealTemplate, loggedAt: Date?, helmDay: HelmDay?)
+    case logUsual(bucket: MealBucket, helmDay: HelmDay, loggedAt: Date?, proposal: UsualMealProposal?)
     case applySessionAdjustment(HelmSessionAdjustmentCommand)
     case persistAdjustedPrescription(HelmAdjustedPrescriptionCommand)
     case memory(HelmMemoryWrite)

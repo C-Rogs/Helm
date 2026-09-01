@@ -23,6 +23,8 @@ public final class NutritionService {
 
     private let engine: NutritionEngine
 
+    private var weeklyBudgetReconcileTask: Task<Void, Never>?
+
     public init(engine: NutritionEngine) {
         self.engine = engine
     }
@@ -32,11 +34,29 @@ public final class NutritionService {
     }
 
     public func refresh(for helmDay: HelmDay, prescriptionSummary: PrescribedSessionSummary?) async {
+        weeklyBudgetReconcileTask?.cancel()
+        let reuse: WeeklyNutritionBudget?
+        if let previous = state.snapshot?.weeklyBudget,
+           previous.days.contains(where: { $0.day == helmDay }) {
+            reuse = previous
+        } else {
+            reuse = nil
+        }
         let snapshot = await engine.snapshot(
             for: helmDay,
-            prescriptionSummary: prescriptionSummary
+            prescriptionSummary: prescriptionSummary,
+            reuseWeeklyBudget: reuse
         )
         state = .ready(snapshot)
+        if reuse != nil {
+            weeklyBudgetReconcileTask = Task { [engine] in
+                try? await Task.sleep(for: .milliseconds(800))
+                guard !Task.isCancelled else { return }
+                let full = await engine.snapshot(for: helmDay, prescriptionSummary: prescriptionSummary)
+                guard !Task.isCancelled else { return }
+                state = .ready(full)
+            }
+        }
     }
 
     public func recomputeAfterIngest(affectedFamilies: Set<HealthKitMetricFamily>) async {

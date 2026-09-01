@@ -71,4 +71,49 @@ struct HapticEngineTests {
             _ = HapticFallbackResolver.fallback(for: pattern)
         }
     }
+
+    @Test("Selection play skips Core Haptics hop")
+    func selectionIsImmediate() {
+        let defaults = UserDefaults(suiteName: "HapticEngineTests.selection")!
+        defaults.removePersistentDomain(forName: "HapticEngineTests.selection")
+        let coordinator = HelmThemeCoordinator(defaults: defaults)
+        coordinator.hapticsEnabled = true
+
+        let hardware = MockHapticHardware()
+        hardware.isEngineReadyValue = true
+        let engine = HapticEngine(hardware: hardware, preferences: coordinator)
+
+        engine.play(.selection)
+
+        #expect(hardware.playedImmediatePatterns.isEmpty)
+        #expect(hardware.playedPatterns.isEmpty)
+    }
+
+    @Test("Set logged plays immediately when engine is warm")
+    func setLoggedImmediateWhenWarm() {
+        let defaults = UserDefaults(suiteName: "HapticEngineTests.setLoggedWarm")!
+        defaults.removePersistentDomain(forName: "HapticEngineTests.setLoggedWarm")
+        let coordinator = HelmThemeCoordinator(defaults: defaults)
+        coordinator.hapticsEnabled = true
+
+        let hardware = MockHapticHardware()
+        hardware.isEngineReadyValue = true
+        let engine = HapticEngine(hardware: hardware, preferences: coordinator)
+
+        engine.play(.setLogged)
+
+        #expect(hardware.playedImmediatePatterns == [.setLogged])
+        #expect(hardware.playedPatterns.isEmpty)
+    }
+
+    @Test("Same-frame patterns are the tap ticks")
+    func sameFramePatterns() {
+        #expect(HelmHaptic.selection.playsOnSameFrame)
+        #expect(HelmHaptic.setLogged.playsOnSameFrame)
+        #expect(HelmHaptic.mealConfirmed.playsOnSameFrame)
+        #expect(HelmHaptic.clampRejected.playsOnSameFrame)
+        #expect(HelmHaptic.restCountInStep(remainingSeconds: 3).playsOnSameFrame)
+        #expect(!HelmHaptic.readinessReveal.playsOnSameFrame)
+        #expect(!HelmHaptic.prHit.playsOnSameFrame)
+    }
 }

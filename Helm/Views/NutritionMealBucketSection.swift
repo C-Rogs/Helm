@@ -1,5 +1,6 @@
 import Core
 import DesignSystem
+import HealthKitIngest
 import NutritionKit
 import SwiftUI
 
@@ -8,10 +9,13 @@ struct NutritionMealBucketSection: View {
     let meals: [LoggedMealDisplay]
     var isPhotoAvailable = false
     var isDescribeAvailable = true
+    var usualProposal: UsualMealProposal?
+    var isLoggingUsual = false
     var onCopyEntry: (() -> Void)?
     var onSaveTemplate: (() -> Void)?
     var onMealTap: ((LoggedMealDisplay) -> Void)?
     var onAddFood: ((BucketFoodLogAction) -> Void)?
+    var onLogUsual: (() -> Void)?
 
     var body: some View {
         Card {
@@ -65,7 +69,7 @@ struct NutritionMealBucketSection: View {
                     }
                 }
             }
-            .padding(.bottom, onAddFood == nil ? 0 : HelmSpacing.xl)
+            .padding(.bottom, onAddFood == nil ? 0 : HelmSpacing.xl + (meals.isEmpty && usualProposal != nil ? HelmSpacing.lg : 0))
         }
         .overlay(alignment: .bottomTrailing) {
             if let onAddFood {
@@ -81,10 +85,21 @@ struct NutritionMealBucketSection: View {
     }
 
     private var bucketEmptyState: some View {
-        Text("Nothing logged")
-            .helmType(.body, color: HelmColor.fgSecondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(.vertical, HelmSpacing.xs)
+        Group {
+            if let usualProposal, let onLogUsual {
+                UsualMealConfirmRow(
+                    proposal: usualProposal,
+                    isLogging: isLoggingUsual,
+                    onYes: onLogUsual
+                )
+                .padding(.vertical, HelmSpacing.xs)
+            } else {
+                Text("Nothing logged")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, HelmSpacing.xs)
+            }
+        }
     }
 
     @ViewBuilder

@@ -9,7 +9,7 @@ struct WatchSyncStatusView: View {
         List {
             Section {
                 Text(
-                    "Train always starts a phone workout session so HealthKit can pull heart rate from AirPods Pro or another paired sensor when available. If the Helm Watch app is installed, raising your wrist also joins the Watch companion for live HR and set controls. Wrist-down Watch will not run third-party workout code until you raise or open the app."
+                    "Train always starts a phone workout session so HealthKit can pull heart rate from AirPods Pro or another paired sensor when available. If the Signal Watch app is installed, raising your wrist also joins the Watch companion for live HR and set controls. Wrist-down Watch will not run third-party workout code until you raise or open the app."
                 )
                 .helmType(.body, color: HelmColor.fgMuted)
                 .helmListRowChrome()
@@ -35,8 +35,21 @@ struct WatchSyncStatusView: View {
             }
 
             Section("Companion") {
-                HelmStatusRow(label: "Active", value: coordinator.workoutCompanionActive ? "Yes" : "No")
-                    .helmListRowChrome()
+                HelmStatusRow(
+                    label: "Train companion",
+                    value: coordinator.workoutCompanionActive ? "Yes" : "No"
+                )
+                .helmListRowChrome()
+                HelmStatusRow(
+                    label: "Watch workout",
+                    value: coordinator.watchWorkoutActive ? "Yes" : "No"
+                )
+                .helmListRowChrome()
+                Text(
+                    "Watch workout is the wrist HealthKit session. Train companion is only when you start on iPhone. Heart rate can show from a Watch-only session."
+                )
+                .helmType(.body, color: HelmColor.fgMuted)
+                .helmListRowChrome()
                 if let bpm = coordinator.latestLiveHeartRateBPM {
                     HelmStatusRow(label: "Live HR", value: "\(bpm)")
                         .helmListRowChrome()

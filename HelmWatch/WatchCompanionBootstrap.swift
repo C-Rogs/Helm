@@ -1,7 +1,6 @@
 import Core
 import Foundation
 import HealthKit
-import WatchKit
 
 /// App-level Watch companion wiring. Must run at launch so `startWatchApp` background wake
 /// can start HK + WCSession before SwiftUI appears.
@@ -72,7 +71,7 @@ enum WatchCompanionBootstrap {
             )
             return
         }
-        WKInterfaceDevice.current().play(.start)
+        WatchHaptic.sessionStart.play()
         coordinator.recordDiagnostic(.watchSessionStart, detail: "fromPhoneConfiguration")
         await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
         if workoutStore.phase == .active || workoutStore.phase == .paused {
@@ -98,14 +97,19 @@ enum WatchCompanionBootstrap {
     static func startCompanionWorkoutIfNeeded(playHaptic: Bool) async {
         guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
         if playHaptic {
-            WKInterfaceDevice.current().play(.start)
+            WatchHaptic.sessionStart.play()
         }
         // Late adoption: if phone already pushed companion + start time, prefer that path.
         if coordinator.workoutCompanionActive,
            coordinator.companionSessionStartedAt != nil {
+            let kind = WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(
+                coordinator.companionActivityTypeRawValue
+                    ?? WatchWorkoutActivityKind.traditionalStrengthTraining.healthKitActivityTypeRawValue
+            )
             let configuration = HKWorkoutConfiguration()
-            configuration.activityType = .traditionalStrengthTraining
-            configuration.locationType = .indoor
+            configuration.activityType = HKWorkoutActivityType(rawValue: kind.healthKitActivityTypeRawValue)
+                ?? .traditionalStrengthTraining
+            configuration.locationType = kind.usesOutdoorLocation ? .outdoor : .indoor
             await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
             flushLiveHeartRateIfNeeded()
             return

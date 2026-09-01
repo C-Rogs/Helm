@@ -21,7 +21,7 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     private static let maxConnectAttempts = 4
     private static let connectRetryDelays: [Duration] = [.seconds(5), .seconds(15), .seconds(45)]
 
-    static let spotifyIdleMessage = "Open Spotify and start playing. Helm connects once music is running."
+    static let spotifyIdleMessage = "Open Spotify and start playing. Signal connects once music is running."
 
     private let authClient: SpotifyAuthClient
     private let logger = helmLogger(category: .ui)
@@ -216,7 +216,7 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         } else {
             // Without a persisted session the link silently dies at next launch, so say so now.
             isAuthorized = true
-            lastErrorMessage = "Spotify is linked for now, but Helm could not save it (Keychain error \(status))."
+            lastErrorMessage = "Spotify is linked for now, but Signal could not save it (Keychain error \(status))."
             logger.error("Spotify Keychain write failed with status \(status, privacy: .public)")
         }
     }

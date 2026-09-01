@@ -48,29 +48,31 @@ struct PrescriptionServiceTests {
     }
 
     private func seedCatalog(in store: PersistenceStore) throws {
-        try store.exercises.upsert(
-            id: "bench_press",
-            canonicalName: "Bench Press",
-            displayName: "Bench Press",
-            exerciseMode: .weightReps,
-            primaryMuscleGroup: "chest",
-            isPickerDefault: true
-        )
-        try store.exercises.upsert(
-            id: "squat",
-            canonicalName: "Squat",
-            displayName: "Squat",
-            exerciseMode: .weightReps,
-            primaryMuscleGroup: "quadriceps",
-            isPickerDefault: true
-        )
-        try store.exercises.upsert(
-            id: "lat_pulldown",
-            canonicalName: "Lat Pulldown",
-            displayName: "Lat Pulldown",
-            exerciseMode: .weightReps,
-            primaryMuscleGroup: "lats",
-            isPickerDefault: true
-        )
+        let rows: [(String, String, String)] = [
+            ("bench_press", "Bench Press", "chest"),
+            ("overhead_press", "Overhead Press", "shoulders"),
+            ("cable_fly", "Cable Fly", "chest"),
+            ("dumbbell_lateral_raise", "Dumbbell Lateral Raise", "shoulders"),
+            ("triceps_pushdown", "Triceps Pushdown", "triceps"),
+            ("lat_pulldown", "Lat Pulldown", "lats"),
+            ("seated_cable_row", "Seated Cable Row", "lats"),
+            ("dumbbell_curl", "Dumbbell Curl", "biceps"),
+            ("rear_delt_fly", "Rear Delt Fly", "shoulders"),
+            ("squat", "Squat", "quadriceps"),
+            ("romanian_deadlift", "Romanian Deadlift", "hamstrings"),
+            ("walking_lunge", "Walking Lunge", "quadriceps"),
+            ("lying_leg_curl", "Lying Leg Curl", "hamstrings"),
+            ("standing_calf_raise", "Standing Calf Raise", "calves")
+        ]
+        for (id, name, muscle) in rows {
+            try store.exercises.upsert(
+                id: id,
+                canonicalName: name,
+                displayName: name,
+                exerciseMode: .weightReps,
+                primaryMuscleGroup: muscle,
+                isPickerDefault: true
+            )
+        }
     }
 }

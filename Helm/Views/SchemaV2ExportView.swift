@@ -55,7 +55,7 @@ struct SchemaV2ExportView: View {
             }
 
             Section {
-                Text("Helm export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
+                Text("Signal export uses the bioharvest wire format (`app: bioharvest`, schema v2) for Gemini backwards compatibility. Copy pastes into Gemini with a short handoff header. Share Extension imports JSON shared from bioharvest or Files.")
                     .helmType(.body, color: HelmColor.fgMuted)
                     .helmListRowChrome()
             }

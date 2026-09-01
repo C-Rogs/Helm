@@ -9,6 +9,7 @@ public struct SessionDesignedCard<Content: View>: View {
     public let onLeadingChip: () -> Void
     public let onRegenerate: () -> Void
     public let showsRegenerate: Bool
+    public let onView: (() -> Void)?
     @ViewBuilder public let content: () -> Content
 
     public init(
@@ -18,6 +19,7 @@ public struct SessionDesignedCard<Content: View>: View {
         leadingChipTitle: String = "Discuss",
         onLeadingChip: @escaping () -> Void,
         onRegenerate: @escaping () -> Void,
+        onView: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.title = title
@@ -27,6 +29,7 @@ public struct SessionDesignedCard<Content: View>: View {
         self.onLeadingChip = onLeadingChip
         self.onRegenerate = onRegenerate
         self.showsRegenerate = true
+        self.onView = onView
         self.content = content
     }
 
@@ -37,6 +40,7 @@ public struct SessionDesignedCard<Content: View>: View {
         rationale: [String],
         leadingChipTitle: String = "Discuss",
         onLeadingChip: @escaping () -> Void,
+        onView: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.title = title
@@ -46,6 +50,7 @@ public struct SessionDesignedCard<Content: View>: View {
         self.onLeadingChip = onLeadingChip
         self.onRegenerate = {}
         self.showsRegenerate = false
+        self.onView = onView
         self.content = content
     }
 
@@ -56,6 +61,7 @@ public struct SessionDesignedCard<Content: View>: View {
         rationale: [String],
         onCoach: @escaping () -> Void,
         onRegenerate: @escaping () -> Void,
+        onView: (() -> Void)? = nil,
         @ViewBuilder content: @escaping () -> Content
     ) {
         self.init(
@@ -65,6 +71,7 @@ public struct SessionDesignedCard<Content: View>: View {
             leadingChipTitle: "Discuss",
             onLeadingChip: onCoach,
             onRegenerate: onRegenerate,
+            onView: onView,
             content: content
         )
     }
@@ -84,6 +91,9 @@ public struct SessionDesignedCard<Content: View>: View {
 
                     VStack(alignment: .trailing, spacing: HelmSpacing.xs) {
                         sessionChip(title: leadingChipTitle, action: onLeadingChip)
+                        if let onView {
+                            sessionChip(title: "View", action: onView)
+                        }
                         if showsRegenerate {
                             sessionChip(title: "Regenerate", action: onRegenerate)
                         }
@@ -157,17 +167,18 @@ public struct SessionExercisePreviewList: View {
     SessionDesignedCard(
         title: "Pull",
         summary: "Back + Biceps · 16 sets · week 3 accumulating",
-        rationale: [
-            "Back: 8/14 hard sets this week."
-        ],
-        onCoach: {},
-        onRegenerate: {}
+        rationale: [],
+        onLeadingChip: {},
+        onView: {}
     ) {
-        SessionExercisePreviewList(exercises: [
-            "Bent Over Row (Barbell)",
-            "Lat Pulldown (Cable)",
-            "Barbell Curl"
-        ])
+        SessionExercisePreviewList(
+            exercises: [
+                "Bent Over Row (Barbell)",
+                "Lat Pulldown (Cable)",
+                "Barbell Curl"
+            ],
+            collapsedVisibleCount: 3
+        )
     }
     .padding()
     .helmTheme()

@@ -40,6 +40,15 @@ struct HelmMotionTests {
         #expect(HelmMotion.usesShimmer(reduceMotion: true) == false)
         #expect(HelmMotion.usesShimmer(reduceMotion: false) == true)
     }
+
+    @Test("Press in is faster than quick, and reduce motion kills press motion")
+    func pressTokens() {
+        #expect(HelmMotion.pressIn < HelmMotion.quick)
+        #expect(HelmMotion.pressAnimation(isPressed: true, reduceMotion: true) == nil)
+        #expect(HelmMotion.pressAnimation(isPressed: false, reduceMotion: true) == nil)
+        #expect(HelmMotion.pressAnimation(isPressed: true, reduceMotion: false) != nil)
+        #expect(HelmMotion.pressAnimation(isPressed: false, reduceMotion: false) != nil)
+    }
 }
 
 @Suite("Helm theme mode")

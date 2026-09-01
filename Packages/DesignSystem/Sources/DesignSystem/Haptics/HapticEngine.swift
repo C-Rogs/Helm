@@ -16,27 +16,67 @@ public final class HapticEngine: HapticPlaying {
     private let hardware: HapticHardware
     private let preferences: HelmThemeCoordinator
     private let processInfo: ProcessInfo
+    private let feedbackPool: HapticFeedbackPool
 
     public var supportsHaptics: Bool { hardware.supportsHaptics }
 
     init(
         hardware: HapticHardware = SystemHapticHardware(),
         preferences: HelmThemeCoordinator = .shared,
-        processInfo: ProcessInfo = .processInfo
+        processInfo: ProcessInfo = .processInfo,
+        feedbackPool: HapticFeedbackPool = HapticFeedbackPool()
     ) {
         self.hardware = hardware
         self.preferences = preferences
         self.processInfo = processInfo
+        self.feedbackPool = feedbackPool
+    }
+
+    /// Warm UIKit generators and start Core Haptics so the first tap is not a cold start.
+    public func prepare() {
+        guard preferences.hapticsEnabled else { return }
+        feedbackPool.prepare()
+        Task { @MainActor in
+            try? await hardware.warmUp()
+        }
     }
 
     public func play(_ pattern: HelmHaptic) {
         guard preferences.hapticsEnabled else { return }
-        // Always schedule from the real main queue so we never inherit a confused executor.
+
+        if pattern.playsOnSameFrame {
+            if Thread.isMainThread {
+                playSameFrame(pattern)
+            } else {
+                DispatchQueue.main.async { [weak self] in
+                    MainActor.assumeIsolated {
+                        self?.playSameFrame(pattern)
+                    }
+                }
+            }
+            return
+        }
+
+        // CoreHaptics can resume off-main; hop to the real main queue.
         DispatchQueue.main.async { [weak self] in
             guard let self else { return }
             Task { @MainActor in
                 await self.play(pattern, lowPowerMode: self.processInfo.isLowPowerModeEnabled)
             }
+        }
+    }
+
+    private func playSameFrame(_ pattern: HelmHaptic) {
+        if pattern == .selection {
+            feedbackPool.fire(.selection)
+            return
+        }
+        if hardware.playBuiltPatternImmediately(pattern, lowPowerMode: processInfo.isLowPowerModeEnabled) {
+            return
+        }
+        feedbackPool.fire(HapticFallbackResolver.fallback(for: pattern))
+        Task { @MainActor in
+            try? await hardware.warmUp()
         }
     }
 
@@ -71,11 +111,11 @@ public final class HapticEngine: HapticPlaying {
         let fallback = HapticFallbackResolver.fallback(for: pattern)
         switch pattern {
         case .coachAdjust:
-            fallback.fire()
+            feedbackPool.fire(fallback)
             try? await Task.sleep(for: .milliseconds(100))
-            fallback.fire()
+            feedbackPool.fire(fallback)
         default:
-            fallback.fire()
+            feedbackPool.fire(fallback)
         }
     }
 
@@ -92,8 +132,11 @@ public final class HapticEngine: HapticPlaying {
 @MainActor
 protocol HapticHardware {
     var supportsHaptics: Bool { get }
+    var isEngineReady: Bool { get }
     func playBuiltPattern(_ pattern: HelmHaptic, lowPowerMode: Bool) async throws
     func playAHAP(at url: URL, lowPowerMode: Bool) async throws
+    func playBuiltPatternImmediately(_ pattern: HelmHaptic, lowPowerMode: Bool) -> Bool
+    func warmUp() async throws
     func invalidate()
 }
 
@@ -105,8 +148,22 @@ final class SystemHapticHardware: HapticHardware {
         CHHapticEngine.capabilitiesForHardware().supportsHaptics
     }
 
+    var isEngineReady: Bool { engine != nil }
+
     func invalidate() {
         engine = nil
+    }
+
+    func warmUp() async throws {
+        _ = try await preparedEngine()
+    }
+
+    func playBuiltPatternImmediately(_ pattern: HelmHaptic, lowPowerMode: Bool) -> Bool {
+        guard engine != nil else { return false }
+        guard let hapticPattern = try? HapticPatternBuilder.pattern(for: pattern, lowPowerMode: lowPowerMode) else {
+            return false
+        }
+        return start(hapticPattern)
     }
 
     func playBuiltPattern(_ pattern: HelmHaptic, lowPowerMode: Bool) async throws {
@@ -123,10 +180,25 @@ final class SystemHapticHardware: HapticHardware {
     }
 
     private func play(pattern: CHHapticPattern) async throws {
+        let needsReclaim = engine == nil
         let engine = try await preparedEngine()
-        await reclaimMainThread()
+        if needsReclaim {
+            await reclaimMainThread()
+        }
         let player = try engine.makePlayer(with: pattern)
         try player.start(atTime: 0)
+    }
+
+    private func start(_ pattern: CHHapticPattern) -> Bool {
+        guard let engine else { return false }
+        do {
+            let player = try engine.makePlayer(with: pattern)
+            try player.start(atTime: 0)
+            return true
+        } catch {
+            invalidate()
+            return false
+        }
     }
 
     private func preparedEngine() async throws -> CHHapticEngine {
@@ -213,18 +285,33 @@ enum HapticEngineError: Error {
 @MainActor
 public final class MockHapticHardware: HapticHardware {
     public private(set) var playedPatterns: [HelmHaptic] = []
+    public private(set) var playedImmediatePatterns: [HelmHaptic] = []
     public private(set) var playedAHAPs: [URL] = []
+    public private(set) var warmUpCount = 0
     public var supportsHapticsValue = true
+    public var isEngineReadyValue = false
     public var builtPatternError: Error?
     public var ahapError: Error?
 
     public var supportsHaptics: Bool { supportsHapticsValue }
+    public var isEngineReady: Bool { isEngineReadyValue }
 
     public init() {}
+
+    public func playBuiltPatternImmediately(_ pattern: HelmHaptic, lowPowerMode: Bool) -> Bool {
+        playedImmediatePatterns.append(pattern)
+        return isEngineReadyValue && supportsHapticsValue
+    }
+
+    public func warmUp() async throws {
+        warmUpCount += 1
+        isEngineReadyValue = supportsHapticsValue
+    }
 
     public func playBuiltPattern(_ pattern: HelmHaptic, lowPowerMode: Bool) async throws {
         if let builtPatternError { throw builtPatternError }
         playedPatterns.append(pattern)
+        isEngineReadyValue = true
     }
 
     public func playAHAP(at url: URL, lowPowerMode: Bool) async throws {

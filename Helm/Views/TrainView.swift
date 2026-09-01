@@ -2,7 +2,6 @@ import Core
 import DesignSystem
 import HealthKitIngest
 import SwiftUI
-import UIKit
 
 struct TrainView: View {
     @Bindable private var controller = TrainBootstrap.sessionController
@@ -18,9 +17,8 @@ struct TrainView: View {
     @State private var isShowingImport = false
     @State private var didTrackInitialRestRemaining = false
     @State private var restEditorExerciseID: String?
-    @State private var isShowingSavePrescriptionTemplate = false
-    @State private var prescriptionTemplateName = ""
-    @State private var didCopyPrescriptionExport = false
+    @State private var isShowingTodaysSession = false
+    @State private var discussAfterPreviewDismiss = false
     @State private var measuredChromeHeight: CGFloat = 0
     @State private var viewportHeight: CGFloat = 0
     @State private var suppressChromeAnimations = false
@@ -105,74 +103,82 @@ struct TrainView: View {
             && !controller.isReorderMode
             && !trainPreferences.cardLoggingModeEnabled
         let showNumpad = controller.numpadTarget != nil
+        let hasChrome = showRest || showCoach || showNumpad
 
         VStack(spacing: 0) {
-            VStack(spacing: HelmSpacing.xs) {
-                if showRest,
-                   let timer = controller.snapshot?.restTimer,
-                   let endsAt = timer.endsAt {
+            if hasChrome {
+                VStack(spacing: HelmSpacing.xs) {
+                    if showRest,
+                       let timer = controller.snapshot?.restTimer,
+                       let endsAt = timer.endsAt {
+                        if showNumpad {
+                            // Rest must stay glanceable while pre-logging the next set;
+                            // the full banner would stack too tall over the pad.
+                            CompactRestPill(
+                                endsAt: endsAt,
+                                totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                                onRemainingSecondsChange: { remaining in
+                                    handleRestTimerTick(remaining)
+                                }
+                            )
+                            .geometryGroup()
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        } else {
+                            RestTimerBanner(
+                                endsAt: endsAt,
+                                totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                                onSkip: {
+                                    Task { @MainActor in await controller.skipRest() }
+                                },
+                                onAdjust: { delta in
+                                    Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
+                                },
+                                onRemainingSecondsChange: { remaining in
+                                    handleRestTimerTick(remaining)
+                                },
+                                upNextName: controller.upNextExerciseName
+                            )
+                            .geometryGroup()
+                            .transition(.move(edge: .bottom).combined(with: .opacity))
+                        }
+                    }
+
+                    if showCoach {
+                        inSessionCoachBar
+                    }
+
                     if showNumpad {
-                        // Rest must stay glanceable while pre-logging the next set;
-                        // the full banner would stack too tall over the pad.
-                        CompactRestPill(
-                            endsAt: endsAt,
-                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                            onRemainingSecondsChange: { remaining in
-                                handleRestTimerTick(remaining)
-                            }
-                        )
-                        .geometryGroup()
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                    } else {
-                        RestTimerBanner(
-                            endsAt: endsAt,
-                            totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                            onSkip: {
-                                Task { @MainActor in await controller.skipRest() }
-                            },
-                            onAdjust: { delta in
-                                Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
-                            },
-                            onRemainingSecondsChange: { remaining in
-                                handleRestTimerTick(remaining)
-                            },
-                            upNextName: controller.upNextExerciseName
-                        )
-                        .geometryGroup()
-                        .transition(.opacity)
+                        numpadOverlay
                     }
                 }
-
-                if showCoach {
-                    inSessionCoachBar
-                }
-
-                if showNumpad {
-                    numpadOverlay
-                }
+                .frame(maxWidth: .infinity)
+                .background(HelmColor.canvas, in: Rectangle())
+                .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            .frame(maxWidth: .infinity)
-            .background(.regularMaterial, in: Rectangle())
-            // Numpad chrome uses standard (not settle) so rest banner layout
-            // lifts in lockstep with the pad. Settle left the dock behind.
-            .animation(
-                suppressChromeAnimations
-                    ? nil
-                    : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
-                value: controller.numpadTarget
-            )
-            .animation(
-                suppressChromeAnimations
-                    ? nil
-                    : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
-                value: controller.isRestTimerRunning
-            )
         }
+        .animation(
+            suppressChromeAnimations
+                ? nil
+                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
+            value: controller.numpadTarget
+        )
+        .animation(
+            suppressChromeAnimations
+                ? nil
+                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
+            value: controller.isRestTimerRunning
+        )
+        .animation(
+            suppressChromeAnimations
+                ? nil
+                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
+            value: hasChrome
+        )
         .background {
             GeometryReader { geometry in
                 Color.clear.preference(
                     key: TrainBottomChromeHeightKey.self,
-                    value: geometry.size.height
+                    value: hasChrome ? geometry.size.height : 0
                 )
             }
         }
@@ -181,7 +187,7 @@ struct TrainView: View {
                 transaction.animation = nil
             }
         }
-        .ignoresSafeArea(edges: .bottom)
+        .ignoresSafeArea(edges: hasChrome ? .bottom : [])
     }
 
     private var idleState: some View {
@@ -213,6 +219,26 @@ struct TrainView: View {
             .helmScreenPadding()
             .padding(.bottom, HelmLayout.trainScrollBottomInset)
         }
+        .sheet(isPresented: $isShowingTodaysSession, onDismiss: {
+            if discussAfterPreviewDismiss {
+                discussAfterPreviewDismiss = false
+                controller.discussTodaysSession()
+            }
+        }) {
+            if let summary = controller.prescriptionSummary {
+                TodaysSessionPreviewSheet(
+                    summary: summary,
+                    onStart: {
+                        isShowingTodaysSession = false
+                        Task { await controller.startTodaysPrescription() }
+                    },
+                    onDiscuss: {
+                        discussAfterPreviewDismiss = true
+                        isShowingTodaysSession = false
+                    }
+                )
+            }
+        }
     }
 
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
@@ -220,26 +246,15 @@ struct TrainView: View {
             SessionDesignedCard(
                 title: summary.title,
                 summary: summary.summary,
-                rationale: summary.rationale,
+                rationale: [],
                 leadingChipTitle: "Discuss",
                 onLeadingChip: { controller.discussTodaysSession() },
-                onRegenerate: {
-                    Task {
-                        await controller.regenerateTodaysPrescription()
-                        await weekAheadStore.refresh()
-                    }
-                }
+                onView: { isShowingTodaysSession = true }
             ) {
-                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    if summary.readinessAdjusted {
-                        Text("Volume trimmed for readiness")
-                            .helmType(.monoTag, color: HelmColor.depleted)
-                    }
-
-                    SessionExercisePreviewList(
-                        exercises: summary.exercises.map(\.displayName)
-                    )
-                }
+                SessionExercisePreviewList(
+                    exercises: summary.exercises.map(\.displayName),
+                    collapsedVisibleCount: summary.exercises.count
+                )
             }
 
             Button("Start today's session") {
@@ -247,53 +262,10 @@ struct TrainView: View {
             }
             .buttonStyle(.helmPrimary)
 
-            Button("Save as template") {
-                prescriptionTemplateName = summary.title
-                isShowingSavePrescriptionTemplate = true
-            }
-            .buttonStyle(.helmSecondary)
-
-            Button("Export") {
-                Task { @MainActor in
-                    if let text = await controller.exportPrescriptionText() {
-                        UIPasteboard.general.string = text
-                        didCopyPrescriptionExport = true
-                    }
-                }
-            }
-            .buttonStyle(.helmSecondary)
-
-            Button("Empty workout") {
-                Task { await controller.startWorkout() }
-            }
-            .buttonStyle(.helmSecondary)
-
-            Button("Paste workout plan") {
-                isShowingImport = true
-            }
-            .buttonStyle(.helmSecondary)
+            emptyAndPasteRow
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
-        .alert("Save as template", isPresented: $isShowingSavePrescriptionTemplate) {
-            TextField("Template name", text: $prescriptionTemplateName)
-            Button("Save") {
-                let name = prescriptionTemplateName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty else { return }
-                Task {
-                    await controller.saveTodaysPrescriptionAsTemplate(name: name)
-                    history.refresh()
-                }
-            }
-            Button("Cancel", role: .cancel) {}
-        } message: {
-            Text("Save today's engine prescription as a reusable workout template.")
-        }
-        .alert("Copied", isPresented: $didCopyPrescriptionExport) {
-            Button("OK", role: .cancel) {}
-        } message: {
-            Text("Prescription copied for Gemini verification.")
-        }
     }
 
     private func genericIdleCard(rest: RestDaySummary?) -> some View {
@@ -309,6 +281,8 @@ struct TrainView: View {
                     Text("Check week ahead for the next training day.")
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
+
+                emptyAndPasteRow
             } else {
                 HelmEmptyState(
                     title: "No active session",
@@ -318,19 +292,8 @@ struct TrainView: View {
                 ) {
                     Task { await controller.startWorkout() }
                 }
-            }
 
-            Button(rest != nil ? "Empty workout" : "Paste workout plan") {
-                if rest != nil {
-                    Task { await controller.startWorkout() }
-                } else {
-                    isShowingImport = true
-                }
-            }
-            .buttonStyle(.helmSecondary)
-
-            if rest != nil {
-                Button("Paste workout plan") {
+                Button("Paste") {
                     isShowingImport = true
                 }
                 .buttonStyle(.helmSecondary)
@@ -338,6 +301,20 @@ struct TrainView: View {
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
+    }
+
+    private var emptyAndPasteRow: some View {
+        HStack(spacing: HelmSpacing.sm) {
+            Button("Empty workout") {
+                Task { await controller.startWorkout() }
+            }
+            .buttonStyle(.helmSecondary)
+
+            Button("Paste") {
+                isShowingImport = true
+            }
+            .buttonStyle(.helmSecondary)
+        }
     }
 
     private var weekAheadSection: some View {
@@ -358,17 +335,6 @@ struct TrainView: View {
                 MuscleVolumeBoardView(model: model, showsHeader: true)
             }
         }
-    }
-
-    private func prescriptionTargetText(for exercise: PrescribedExerciseSummary) -> String {
-        var parts = ["\(exercise.targetSets)×\(exercise.targetRepRange)"]
-        if let load = exercise.targetLoad {
-            parts.append(load)
-        }
-        if let rpe = exercise.targetRPE {
-            parts.append(rpe)
-        }
-        return parts.joined(separator: " · ")
     }
 
     @ViewBuilder
@@ -517,9 +483,9 @@ struct TrainView: View {
                     progress: TrainSessionProgress.from(snapshot: snapshot),
                     watchLinkStatus: WatchCompanionLinkStatus.resolve(
                         canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                        phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
                         liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
-                    )
+                    ),
+                    showsSetCount: false
                 )
 
                 Spacer(minLength: 0)
@@ -573,24 +539,12 @@ struct TrainView: View {
             .buttonStyle(.helmPressable)
             .accessibilityLabel(controller.isCoachThinking ? "Coach thinking" : "Ask coach")
 
-            Menu {
-                Button("Discard workout", role: .destructive) {
-                    controller.isShowingDiscardConfirmation = true
-                }
-                .disabled(controller.isFinishingWorkout)
-
-                Button("Finish workout") {
-                    controller.isShowingFinishConfirmation = true
-                }
-                .disabled(controller.isFinishingWorkout)
-            } label: {
-                Image(systemName: "ellipsis.circle")
-                    .font(.body)
-                    .foregroundStyle(HelmColor.fgSecondary)
-                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
-                    .contentShape(Rectangle())
+            CardModeRestTimerButton(
+                isRunning: controller.isRestTimerRunning,
+                endsAt: controller.snapshot?.restTimer?.endsAt
+            ) {
+                controller.openManualRestTimer(expanded: controller.isRestTimerRunning)
             }
-            .accessibilityLabel("Workout actions")
 
             Button {
                 trainPreferences.cardLoggingModeEnabled = false
@@ -624,7 +578,6 @@ struct TrainView: View {
                             progress: TrainSessionProgress.from(snapshot: snapshot),
                             watchLinkStatus: WatchCompanionLinkStatus.resolve(
                                 canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                                phoneHRActive: WatchReadinessBootstrap.coordinator.isPhoneHeartRateSessionActive,
                                 liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
                             )
                         )
@@ -892,28 +845,11 @@ struct TrainView: View {
     }
 
     private var sessionActionBar: some View {
-        VStack(spacing: HelmSpacing.sm) {
-            Divider()
-                .overlay(HelmColor.hairline)
-                .padding(.top, HelmSpacing.md)
-
-            HStack(spacing: HelmSpacing.sm) {
-                Button("Discard") {
-                    controller.isShowingDiscardConfirmation = true
-                }
-                .buttonStyle(.helmSecondary)
-                .disabled(controller.isFinishingWorkout)
-
-                HelmActionButton(
-                    "Finish workout",
-                    phase: controller.isFinishingWorkout ? .loading : .idle,
-                    successTitle: "Done"
-                ) {
-                    controller.isShowingFinishConfirmation = true
-                }
-            }
-        }
-        .padding(.bottom, HelmSpacing.sm)
+        TrainSessionActionBar(
+            isFinishing: controller.isFinishingWorkout,
+            onDiscard: { controller.isShowingDiscardConfirmation = true },
+            onFinish: { controller.isShowingFinishConfirmation = true }
+        )
     }
 
     private var numpadOverlay: some View {
@@ -995,6 +931,79 @@ struct TrainView: View {
             ? String(format: "%.0f", magnitude)
             : String(format: "%.2f", magnitude).replacingOccurrences(of: "50", with: "5")
         return delta < 0 ? "−\(formatted)" : "+\(formatted)"
+    }
+}
+
+struct TrainSessionActionBar: View {
+    let isFinishing: Bool
+    let onDiscard: () -> Void
+    let onFinish: () -> Void
+
+    var body: some View {
+        VStack(spacing: HelmSpacing.sm) {
+            Divider()
+                .overlay(HelmColor.hairline)
+                .padding(.top, HelmSpacing.md)
+
+            HStack(spacing: HelmSpacing.sm) {
+                Button("Discard") {
+                    onDiscard()
+                }
+                .buttonStyle(.helmSecondary)
+                .disabled(isFinishing)
+
+                HelmActionButton(
+                    "Finish workout",
+                    phase: isFinishing ? .loading : .idle,
+                    successTitle: "Done"
+                ) {
+                    onFinish()
+                }
+            }
+        }
+        .padding(.bottom, HelmSpacing.sm)
+    }
+}
+
+private struct CardModeRestTimerButton: View {
+    let isRunning: Bool
+    let endsAt: Date?
+    let onTap: () -> Void
+
+    var body: some View {
+        Button(action: onTap) {
+            Group {
+                if isRunning, let endsAt {
+                    TimelineView(.periodic(from: .now, by: 1)) { context in
+                        let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.down)))
+                        label(seconds: remaining, emphasized: true)
+                            .accessibilityValue(RestTimerFormatting.mmss(remaining))
+                    }
+                } else {
+                    label(seconds: nil, emphasized: false)
+                }
+            }
+        }
+        .buttonStyle(.helmPressable)
+        .accessibilityLabel(isRunning ? "Rest timer" : "Open rest timer")
+        .accessibilityHint(isRunning ? "Opens timer controls" : "Opens rest timer")
+    }
+
+    private func label(seconds: Int?, emphasized: Bool) -> some View {
+        HStack(spacing: HelmSpacing.xxs) {
+            Image(systemName: "timer")
+                .font(.body)
+                .foregroundStyle(emphasized ? HelmColor.accent : HelmColor.fgSecondary)
+            if let seconds {
+                Text(RestTimerFormatting.mmss(seconds))
+                    .helmType(.monoTag, color: emphasized ? HelmColor.accent : HelmColor.fgSecondary)
+                    .helmNumericRoll(value: seconds)
+                    .lineLimit(1)
+            }
+        }
+        .frame(minWidth: HelmLayout.minTapTarget, minHeight: HelmLayout.minTapTarget)
+        .padding(.horizontal, seconds == nil ? 0 : HelmSpacing.xxs)
+        .contentShape(Rectangle())
     }
 }
 

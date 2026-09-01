@@ -53,7 +53,10 @@ struct PrescriptionEngineTests {
         )
     }
 
-    private func profile(phase: TrainingPhase = .maintain) -> PrescriptionProfile {
+    private func profile(
+        phase: TrainingPhase = .maintain,
+        durationBudget: SessionDurationBudget = .minutes60
+    ) -> PrescriptionProfile {
         PrescriptionProfile(
             helmDay: day,
             phaseGoal: PhaseGoal(phase: phase),
@@ -61,7 +64,8 @@ struct PrescriptionEngineTests {
             experience: .intermediate,
             targetMuscles: [.chest, .quads],
             exerciseCatalog: catalog(),
-            remainingSessionsThisWeek: 2
+            remainingSessionsThisWeek: 2,
+            durationBudget: durationBudget
         )
     }
 
@@ -122,13 +126,70 @@ struct PrescriptionEngineTests {
     @Test("changing phase re-plans volume")
     func phaseChangeReplans() {
         let history = PrescriptionHistory(loggedSets: [], sessions: [], weekStart: weekStart)
+        let pushCatalog = [
+            CatalogExercise(
+                exerciseID: "bench_press",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "bench_press",
+                    contributions: [ExerciseMuscleContribution(muscle: .chest, fraction: 1)]
+                ),
+                priority: 0
+            ),
+            CatalogExercise(
+                exerciseID: "overhead_press",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "overhead_press",
+                    contributions: [ExerciseMuscleContribution(muscle: .shoulders, fraction: 1)]
+                ),
+                priority: 0
+            ),
+            CatalogExercise(
+                exerciseID: "cable_fly",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "cable_fly",
+                    contributions: [ExerciseMuscleContribution(muscle: .chest, fraction: 1)]
+                ),
+                priority: 0
+            ),
+            CatalogExercise(
+                exerciseID: "dumbbell_lateral_raise",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "dumbbell_lateral_raise",
+                    contributions: [ExerciseMuscleContribution(muscle: .shoulders, fraction: 1)]
+                ),
+                priority: 0
+            ),
+            CatalogExercise(
+                exerciseID: "triceps_pushdown",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "triceps_pushdown",
+                    contributions: [ExerciseMuscleContribution(muscle: .triceps, fraction: 1)]
+                ),
+                priority: 0
+            )
+        ]
+        func pushProfile(phase: TrainingPhase) -> PrescriptionProfile {
+            PrescriptionProfile(
+                helmDay: day,
+                phaseGoal: PhaseGoal(phase: phase),
+                mesocycleState: PlanKit.makeInitialState(
+                    muscles: [.chest, .shoulders, .triceps],
+                    experience: .intermediate
+                ),
+                experience: .intermediate,
+                targetMuscles: [.chest, .shoulders, .triceps],
+                exerciseCatalog: pushCatalog,
+                remainingSessionsThisWeek: 2,
+                dayKind: .push
+            )
+        }
         let cutSession = PlanKit.prescription(
-            for: profile(phase: .cut),
+            for: pushProfile(phase: .cut),
             givenReadiness: nil,
             history: history
         )
         let gainSession = PlanKit.prescription(
-            for: profile(phase: .gain),
+            for: pushProfile(phase: .gain),
             givenReadiness: nil,
             history: history
         )
@@ -160,8 +221,8 @@ struct PrescriptionEngineTests {
         )
         let bench = session.exercises.first { $0.exerciseID == "bench_press" }
         #expect(bench?.targetMass?.kilograms == 80)
-        #expect(bench?.targetRepMin == 8)
-        #expect(bench?.targetRepMax == 12)
+        #expect(bench?.targetRepMin == 11)
+        #expect(bench?.targetRepMax == 11)
     }
 }
 

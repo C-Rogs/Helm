@@ -46,6 +46,7 @@ enum HelmActionRuntime {
             switch effect {
             case let .refreshNutrition(day):
                 NutritionBootstrap.refreshNutrition(for: day)
+                await ProactiveBootstrap.noteNutritionLogged(day: day)
             case .refreshPrescription:
                 await PlanBootstrap.refreshPrescriptionWithCalendar()
                 await ProactiveBootstrap.refreshScheduling()

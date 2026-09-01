@@ -50,4 +50,50 @@ public enum WatchWorkoutActivityKind: String, CaseIterable, Sendable, Identifiab
     public static func fromHealthKitActivityTypeRawValue(_ rawValue: UInt) -> WatchWorkoutActivityKind {
         Self.allCases.first { $0.healthKitActivityTypeRawValue == rawValue } ?? .traditionalStrengthTraining
     }
+
+    /// Infer HK activity from a Helm session title + exercise names/modes.
+    /// Mixed lift + cardio stays strength. Cardio-only sessions map run/cycle/walk/HIIT.
+    public static func inferred(
+        sessionTitle: String?,
+        exerciseNames: [String],
+        exerciseModes: [ExerciseMode] = []
+    ) -> WatchWorkoutActivityKind {
+        let joined = ([sessionTitle].compactMap { $0 } + exerciseNames)
+            .map { $0.lowercased() }
+            .joined(separator: " ")
+
+        let cardioModeCount = exerciseModes.filter { $0 == .duration || $0 == .distanceDuration }.count
+        let strengthModeCount = exerciseModes.filter { $0 == .weightReps || $0 == .bodyweightReps }.count
+        let allCardio = !exerciseModes.isEmpty && cardioModeCount == exerciseModes.count
+
+        if strengthModeCount > 0 && !allCardio {
+            return .traditionalStrengthTraining
+        }
+
+        func containsAny(_ needles: [String]) -> Bool {
+            needles.contains { joined.contains($0) }
+        }
+
+        let looksCardio = allCardio
+            || (strengthModeCount == 0 && (
+                containsAny(Self.runNeedles + Self.cycleNeedles + Self.walkNeedles + Self.hiitNeedles + Self.cardioNeedles)
+                    || cardioModeCount > strengthModeCount
+            ))
+
+        guard looksCardio else {
+            return .traditionalStrengthTraining
+        }
+
+        if containsAny(Self.runNeedles) { return .running }
+        if containsAny(Self.hiitNeedles) { return .highIntensityIntervalTraining }
+        if containsAny(Self.cycleNeedles) { return .cycling }
+        if containsAny(Self.walkNeedles) { return .walking }
+        return .mixedCardio
+    }
+
+    private static let runNeedles = ["run", "jog", "treadmill"]
+    private static let cycleNeedles = ["cycle", "bike", "ride", "cycling"]
+    private static let walkNeedles = ["walk", "hike"]
+    private static let hiitNeedles = ["hiit", "interval"]
+    private static let cardioNeedles = ["cardio", "row", "swim", "elliptical"]
 }

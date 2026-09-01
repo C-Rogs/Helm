@@ -17,9 +17,13 @@ public enum PreWorkoutNotificationPlanner {
         summary: PrescribedSessionSummary,
         readinessScore: Int?
     ) -> String {
-        var parts: [String] = [
-            "\(summary.title) · \(summary.totalSets) sets · \(summary.exercises.count) exercises"
-        ]
+        var parts: [String] = []
+        let title = summary.title.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !title.isEmpty {
+            parts.append(title)
+        }
+        parts.append("\(summary.totalSets) sets")
+        parts.append("\(summary.exercises.count) exercises")
 
         if summary.readinessAdjusted {
             parts.append("volume trimmed for readiness")

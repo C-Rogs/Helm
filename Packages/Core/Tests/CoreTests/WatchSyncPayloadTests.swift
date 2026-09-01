@@ -141,4 +141,64 @@ struct WatchSyncPayloadTests {
         let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
         #expect(restored?.companionSessionStartedAt == 1_723_456_000)
     }
+
+    @Test("companion rest end and activity type round-trip")
+    func companionRestAndActivityRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .phone,
+            sequence: 13,
+            helmDay: HelmDay(year: 2026, month: 9, day: 1),
+            sentAt: 1_723_456_789,
+            messageKind: .workoutCompanion,
+            workoutCompanionActive: true,
+            companionRestEndsAt: 1_723_457_000,
+            companionActivityTypeRawValue: 37
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored?.companionRestEndsAt == 1_723_457_000)
+        #expect(restored?.companionActivityTypeRawValue == 37)
+    }
+
+    @Test("legacy workoutCompanion without rest/activity still decodes")
+    func legacyCompanionWithoutRest() throws {
+        let json = """
+        {"origin":"phone","sequence":1,"helmDay":"2026-09-01","sentAt":1723456789,"messageKind":"workoutCompanion","workoutCompanionActive":true}
+        """
+        let data = try #require(json.data(using: .utf8))
+        let payload = try JSONDecoder().decode(WatchSyncPayload.self, from: data)
+        #expect(payload.companionRestEndsAt == nil)
+        #expect(payload.companionActivityTypeRawValue == nil)
+        #expect(payload.watchWorkoutActive == nil)
+        #expect(payload.companionRestDeltaSeconds == nil)
+    }
+
+    @Test("watch workout flag and rest adjust round-trip")
+    func watchWorkoutAndRestAdjustRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .watch,
+            sequence: 14,
+            helmDay: HelmDay(year: 2026, month: 9, day: 1),
+            sentAt: 1_723_456_789,
+            messageKind: .restAdjust,
+            watchWorkoutActive: true,
+            companionRestDeltaSeconds: 15
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored?.messageKind == .restAdjust)
+        #expect(restored?.watchWorkoutActive == true)
+        #expect(restored?.companionRestDeltaSeconds == 15)
+    }
+
+    @Test("restSkip round-trips")
+    func restSkipRoundTrip() {
+        let payload = WatchSyncPayload(
+            origin: .watch,
+            sequence: 15,
+            helmDay: HelmDay(year: 2026, month: 9, day: 1),
+            sentAt: 1_723_456_789,
+            messageKind: .restSkip
+        )
+        let restored = WatchSyncPayload.from(applicationContext: payload.applicationContext())
+        #expect(restored?.messageKind == .restSkip)
+    }
 }

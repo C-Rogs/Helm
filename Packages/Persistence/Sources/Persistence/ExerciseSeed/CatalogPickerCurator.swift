@@ -3,6 +3,7 @@ import GRDB
 
 /// Picks picker-default exercises for the manual exercise picker.
 enum CatalogPickerCurator {
+    static let unrankedPickerRank = 10_000
     private static let targetDefaultCount = 220
     private static let maxPerMuscleEquipment = 4
 

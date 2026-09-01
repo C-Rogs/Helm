@@ -110,4 +110,25 @@ public extension SetType {
         default: nil
         }
     }
+
+    /// Logger pill text: W/D/F for intensity techniques, otherwise the set number.
+    func loggerGlyph(setNumber: Int) -> String {
+        loggerAbbreviation ?? "\(setNumber)"
+    }
+
+    /// VoiceOver label for the logger set-type control.
+    func loggerSetTypeAccessibilityLabel(setNumber: Int) -> String {
+        switch self {
+        case .normal:
+            "Set \(setNumber), working set. Tap to change set type."
+        case .warmup:
+            "Set \(setNumber), warmup set. Tap to change set type."
+        case .dropSet:
+            "Set \(setNumber), drop set. Tap to change set type."
+        case .failure:
+            "Set \(setNumber), failure set. Tap to change set type."
+        default:
+            "Set \(setNumber). Tap to change set type."
+        }
+    }
 }

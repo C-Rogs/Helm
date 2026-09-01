@@ -12,6 +12,7 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     private(set) var authorizationRequested = false
     private(set) var savedMealIDs: [String] = []
     private(set) var deletedMealIDs: [String] = []
+    var mealSaveDelayNanoseconds: UInt64 = 0
     var mealSaveShouldFail = false
 
     func setAvailable(_ available: Bool) {
@@ -125,7 +126,11 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
     }
 
     func saveDietaryMeal(_ request: MealWriteRequest) async throws -> SavedMealSamples {
-        try lock.withLock {
+        let delay = lock.withLock { mealSaveDelayNanoseconds }
+        if delay > 0 {
+            try await Task.sleep(nanoseconds: delay)
+        }
+        return try lock.withLock {
             if mealSaveShouldFail {
                 throw NSError(domain: "MockHealthKitStoreClient", code: 1)
             }

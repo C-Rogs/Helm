@@ -32,12 +32,6 @@ struct FocusSessionLogSheet: View {
             .helmScreenBackground()
             .navigationTitle("Session Log")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
-                        .buttonStyle(.helmPrimary)
-                }
-            }
         }
         .presentationDetents([.medium, .large])
         .presentationDragIndicator(.visible)

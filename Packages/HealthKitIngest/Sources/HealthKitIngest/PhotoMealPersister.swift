@@ -9,13 +9,20 @@ private let photoMealPersistLog = Logger(subsystem: "com.cameronro.helm", catego
 public struct PhotoMealPersister: Sendable {
     private let writer: any MealHealthKitWriting
     private let localStore: PhotoMealLocalStore?
+    private let hkWrites: MealHealthKitWriteQueue
 
     public init(
         writer: any MealHealthKitWriting = MealHealthKitWriter(),
-        localStore: PhotoMealLocalStore? = nil
+        localStore: PhotoMealLocalStore? = nil,
+        hkWrites: MealHealthKitWriteQueue = MealHealthKitWriteQueue()
     ) {
         self.writer = writer
         self.localStore = localStore
+        self.hkWrites = hkWrites
+    }
+
+    public func flushHealthKitWrites() async {
+        await hkWrites.waitAll()
     }
 
     public func confirm(
@@ -29,7 +36,7 @@ public struct PhotoMealPersister: Sendable {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedName = trimmedName.isEmpty ? estimate.description : trimmedName
         let request = MealWriteRequest(
-            mealID: mealID,
+            mealID: mealID.lowercased(),
             name: resolvedName,
             loggedAt: loggedAt,
             helmDay: helmDay,
@@ -41,23 +48,66 @@ public struct PhotoMealPersister: Sendable {
             mealSource: HelmHealthKitMetadata.mealSourcePhoto
         )
 
+        guard let localStore else {
+            do {
+                let saved = try await writer.saveMeal(request)
+                photoMealPersistLog.debug("Photo meal saved mealID=\(saved.mealID, privacy: .public)")
+                return saved
+            } catch {
+                photoMealPersistLog.error(
+                    "Photo meal write failed: \(String(describing: type(of: error)), privacy: .public)"
+                )
+                Task {
+                    await DiagnosticsLog.shared.capture(
+                        error: error,
+                        category: .nutritionKit,
+                        message: "Photo meal HealthKit write failed"
+                    )
+                }
+                throw error
+            }
+        }
+
+        let localOnly = SavedMealSamples.localOnly(mealID: mealID)
+        try localStore.recordSavedMeal(request, saved: localOnly, bucket: bucket)
+        let mealUUID = UUID(uuidString: request.mealID) ?? localOnly.energy.id
+        let writer = self.writer
+        await hkWrites.enqueue(mealID: request.mealID) {
+            await Self.writeHealthKitInBackground(
+                writer: writer,
+                localStore: localStore,
+                request: request,
+                mealUUID: mealUUID
+            )
+        }
+        photoMealPersistLog.debug("Photo meal saved mealID=\(localOnly.mealID, privacy: .public) hk=deferred")
+        return localOnly
+    }
+
+    private static func writeHealthKitInBackground(
+        writer: any MealHealthKitWriting,
+        localStore: PhotoMealLocalStore,
+        request: MealWriteRequest,
+        mealUUID: UUID
+    ) async {
         do {
             let saved = try await writer.saveMeal(request)
-            try localStore?.recordSavedMeal(request, saved: saved, bucket: bucket)
-            photoMealPersistLog.debug("Photo meal saved mealID=\(saved.mealID, privacy: .public)")
-            return saved
+            if try localStore.fetchMeal(id: mealUUID) != nil {
+                try localStore.attachHealthKitSamples(mealID: mealUUID, saved: saved)
+            } else {
+                try await writer.deleteMeal(mealID: request.mealID.lowercased())
+            }
         } catch {
             photoMealPersistLog.error(
-                "Photo meal write failed: \(String(describing: type(of: error)), privacy: .public)"
+                "Photo meal HealthKit write failed: \(String(describing: type(of: error)), privacy: .public)"
             )
             Task {
                 await DiagnosticsLog.shared.capture(
                     error: error,
                     category: .nutritionKit,
-                    message: "Photo meal HealthKit write failed"
+                    message: "Photo meal HealthKit write failed; saving locally only"
                 )
             }
-            throw error
         }
     }
 }

@@ -363,12 +363,17 @@ final class WorkoutLiveActivityManager {
         let setID = current.flatMap { exercise in
             exercise.sets.first { $0.status != .completed }?.id
         }
+        let setCount = current?.sets.count
         return WorkoutActivityAttributes.ContentState(
             elapsedSeconds: elapsed,
             currentExerciseName: currentExerciseName,
             currentSetNumber: setNumber,
-            currentSetCount: current?.sets.count,
-            targetSummary: targetSummary,
+            currentSetCount: setCount,
+            targetSummary: WatchCompanionSetLine.make(
+                setNumber: setNumber,
+                setCount: setCount,
+                targetSummary: targetSummary
+            ),
             restRemainingSeconds: restRemainingSeconds,
             restEndsAt: restEndsAt,
             heartRateBPM: heartRateBPM,

@@ -95,6 +95,26 @@ public struct ManualMealLocalStore: Sendable {
         try nutrition.fetchMeal(id: id)
     }
 
+    /// Updates HealthKit sample identity after a background write. No-op if the meal is gone.
+    public func attachHealthKitSamples(mealID: UUID, saved: SavedMealSamples) throws {
+        guard let meal = try nutrition.fetchMeal(id: mealID) else { return }
+        try nutrition.upsertMeal(
+            MealRecord(
+                id: meal.id,
+                helmDay: meal.helmDay,
+                name: meal.name,
+                loggedAt: meal.loggedAt,
+                bucket: meal.bucket,
+                energy: meal.energy,
+                proteinGrams: meal.proteinGrams,
+                carbohydrateGrams: meal.carbohydrateGrams,
+                fatGrams: meal.fatGrams,
+                source: meal.source,
+                externalSampleID: saved.energy.id.uuidString
+            )
+        )
+    }
+
     public func updateSavedMeal(
         mealID: UUID,
         previousHelmDay: HelmDay,

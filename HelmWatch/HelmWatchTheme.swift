@@ -93,6 +93,21 @@ enum WatchZoneColor {
     }
 }
 
+struct WatchZoneCaption: View {
+    let zone: HeartRateZone?
+
+    var body: some View {
+        HStack(spacing: 3) {
+            Image(systemName: "heart.fill")
+                .font(.system(size: 11, weight: .semibold))
+                .foregroundStyle(WatchZoneColor.color(for: zone))
+            Text(zone?.displayName ?? "HR")
+                .watchType(.monoTag, color: WatchPalette.fgMuted)
+        }
+        .accessibilityHidden(true)
+    }
+}
+
 // MARK: - Type scale (watch-adjusted; numerals always mono tabular)
 
 enum WatchType {
@@ -130,6 +145,57 @@ enum WatchType {
 
 // MARK: - Motion (pairs with Docs/HAPTICS.md; WatchKit haptics stay separate)
 
+enum WatchSpacing {
+    static let xxs: CGFloat = 4
+    static let xs: CGFloat = 8
+    static let sm: CGFloat = 12
+    static let md: CGFloat = 16
+}
+
+enum WatchLayout {
+    static let hit: CGFloat = 44
+    static let heroArc: CGFloat = 108
+    static let heroArcAOD: CGFloat = 88
+    static let liveDot: CGFloat = 6
+    /// Keep content out from under the system time (top trailing).
+    static let clockClearance: CGFloat = 52
+}
+
+enum WatchTimeFormatting {
+    static func mmss(_ remainingSeconds: Int) -> String {
+        let clamped = max(0, remainingSeconds)
+        let minutes = clamped / 60
+        let seconds = clamped % 60
+        return String(format: "%d:%02d", minutes, seconds)
+    }
+}
+
+/// Digit-roll time. `Text(timerInterval:)` and whole-string `mmss` tick like the system clock.
+struct WatchRollingTime: View {
+    let seconds: Int
+    var style: WatchType = .heroNumber
+    var color: Color = WatchPalette.fg
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    var body: some View {
+        let clamped = max(0, seconds)
+        let minutes = clamped / 60
+        let secs = clamped % 60
+        HStack(spacing: 0) {
+            Text("\(minutes)")
+                .watchType(style, color: color)
+                .watchNumericRoll(value: minutes, reduceMotion: reduceMotion)
+            Text(":")
+                .watchType(style, color: color)
+            Text(String(format: "%02d", secs))
+                .watchType(style, color: color)
+                .watchNumericRoll(value: secs, reduceMotion: reduceMotion)
+        }
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(WatchTimeFormatting.mmss(seconds))
+    }
+}
+
 enum WatchMotion {
     static let quick: TimeInterval = 0.18
     static let standard: TimeInterval = 0.28
@@ -145,6 +211,60 @@ enum WatchMotion {
 
     static func shouldAnimateReveal(reduceMotion: Bool) -> Bool {
         !reduceMotion
+    }
+}
+
+struct WatchNumericText: View {
+    let text: String
+    var style: WatchType = .heroNumber
+    var color: Color = WatchPalette.fg
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    init(_ text: String, style: WatchType = .heroNumber, color: Color = WatchPalette.fg) {
+        self.text = text
+        self.style = style
+        self.color = color
+    }
+
+    init(_ value: Int, style: WatchType = .heroNumber, color: Color = WatchPalette.fg) {
+        self.init("\(value)", style: style, color: color)
+    }
+
+    var body: some View {
+        Text(text)
+            .watchType(style, color: color)
+            .watchNumericRoll(value: text, reduceMotion: reduceMotion)
+    }
+}
+
+private struct WatchNumericRollModifier<Value: Equatable>: ViewModifier {
+    let value: Value
+    let reduceMotion: Bool
+
+    func body(content: Content) -> some View {
+        content
+            .monospacedDigit()
+            .contentTransition(.numericText())
+            .transaction { transaction in
+                if reduceMotion {
+                    transaction.animation = nil
+                } else if transaction.animation == nil {
+                    transaction.animation = WatchMotion.quickAnimation
+                }
+            }
+            .animation(
+                WatchMotion.animation(WatchMotion.quickAnimation, reduceMotion: reduceMotion),
+                value: value
+            )
+    }
+}
+
+extension View {
+    func watchNumericRoll<Value: Equatable>(
+        value: Value,
+        reduceMotion: Bool
+    ) -> some View {
+        modifier(WatchNumericRollModifier(value: value, reduceMotion: reduceMotion))
     }
 }
 

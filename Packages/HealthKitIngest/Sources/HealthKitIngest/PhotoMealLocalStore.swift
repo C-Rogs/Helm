@@ -51,4 +51,27 @@ public struct PhotoMealLocalStore: Sendable {
         try nutrition.upsertDay(nutritionDay)
         try nutritionLogStatus.clearComplete(helmDay: helmDay)
     }
+
+    public func fetchMeal(id: UUID) throws -> MealRecord? {
+        try nutrition.fetchMeal(id: id)
+    }
+
+    public func attachHealthKitSamples(mealID: UUID, saved: SavedMealSamples) throws {
+        guard let meal = try nutrition.fetchMeal(id: mealID) else { return }
+        try nutrition.upsertMeal(
+            MealRecord(
+                id: meal.id,
+                helmDay: meal.helmDay,
+                name: meal.name,
+                loggedAt: meal.loggedAt,
+                bucket: meal.bucket,
+                energy: meal.energy,
+                proteinGrams: meal.proteinGrams,
+                carbohydrateGrams: meal.carbohydrateGrams,
+                fatGrams: meal.fatGrams,
+                source: meal.source,
+                externalSampleID: saved.energy.id.uuidString
+            )
+        )
+    }
 }

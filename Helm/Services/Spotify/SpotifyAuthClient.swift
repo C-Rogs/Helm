@@ -25,7 +25,7 @@ final class SpotifyAuthClient: NSObject {
             case let .server(status):
                 "Spotify rejected the token request (HTTP \(status))."
             case .malformedResponse:
-                "Spotify returned a token response Helm could not read."
+                "Spotify returned a token response Signal could not read."
             case let .transport(message):
                 message
             }

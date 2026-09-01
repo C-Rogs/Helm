@@ -32,13 +32,20 @@ public enum ManualMealError: Error, Sendable, Equatable, LocalizedError {
 public struct ManualMealService: Sendable {
     private let writer: any MealHealthKitWriting
     private let localStore: ManualMealLocalStore?
+    public let hkWrites: MealHealthKitWriteQueue
 
     public init(
         writer: any MealHealthKitWriting = MealHealthKitWriter(),
-        localStore: ManualMealLocalStore? = nil
+        localStore: ManualMealLocalStore? = nil,
+        hkWrites: MealHealthKitWriteQueue = MealHealthKitWriteQueue()
     ) {
         self.writer = writer
         self.localStore = localStore
+        self.hkWrites = hkWrites
+    }
+
+    public func flushHealthKitWrites() async {
+        await hkWrites.waitAll()
     }
 
     public func logFood(
@@ -203,6 +210,7 @@ public struct ManualMealService: Sendable {
         }
 
         let mealIDString = mealID.uuidString.lowercased()
+        await hkWrites.wait(for: mealIDString)
         try await writer.deleteMeal(mealID: mealIDString)
 
         let request = MealWriteRequest(
@@ -244,6 +252,7 @@ public struct ManualMealService: Sendable {
 
     public func deleteMeal(mealID: UUID) async throws {
         let mealIDString = mealID.uuidString.lowercased()
+        await hkWrites.wait(for: mealIDString)
         try await writer.deleteMeal(mealID: mealIDString)
         guard try localStore?.deleteMeal(id: mealID) != nil else {
             throw ManualMealError.mealNotFound
@@ -264,7 +273,7 @@ public struct ManualMealService: Sendable {
 
     private func persist(_ meal: PersistedManualMeal) async throws -> SavedMealSamples {
         let request = MealWriteRequest(
-            mealID: meal.mealID,
+            mealID: meal.mealID.lowercased(),
             name: meal.name,
             loggedAt: meal.loggedAt,
             helmDay: meal.helmDay,
@@ -275,24 +284,8 @@ public struct ManualMealService: Sendable {
             mealSource: HelmHealthKitMetadata.mealSourceValue(for: meal.source)
         )
 
-        var saved: SavedMealSamples?
         if let localStore {
-            do {
-                saved = try await writer.saveMeal(request)
-            } catch {
-                manualMealLog.error(
-                    "Manual meal HealthKit write failed: \(String(describing: type(of: error)), privacy: .public)"
-                )
-                Task {
-                    await DiagnosticsLog.shared.capture(
-                        error: error,
-                        category: .nutritionKit,
-                        message: "Manual meal HealthKit write failed; saving locally only"
-                    )
-                }
-            }
-
-            let resolvedSaved = saved ?? SavedMealSamples.localOnly(mealID: meal.mealID)
+            let resolvedSaved = SavedMealSamples.localOnly(mealID: meal.mealID)
             try localStore.recordSavedMeal(
                 request: request,
                 saved: resolvedSaved,
@@ -300,8 +293,18 @@ public struct ManualMealService: Sendable {
                 source: meal.source,
                 lineItems: meal.lineItems
             )
+            let mealUUID = UUID(uuidString: request.mealID) ?? resolvedSaved.energy.id
+            let writer = self.writer
+            await hkWrites.enqueue(mealID: request.mealID) {
+                await Self.writeHealthKitInBackground(
+                    writer: writer,
+                    localStore: localStore,
+                    request: request,
+                    mealUUID: mealUUID
+                )
+            }
             manualMealLog.debug(
-                "Manual meal saved mealID=\(resolvedSaved.mealID, privacy: .public) source=\(meal.source.rawValue, privacy: .public) hk=\(saved != nil, privacy: .public)"
+                "Manual meal saved mealID=\(resolvedSaved.mealID, privacy: .public) source=\(meal.source.rawValue, privacy: .public) hk=deferred"
             )
             return resolvedSaved
         }
@@ -320,6 +323,33 @@ public struct ManualMealService: Sendable {
                 )
             }
             throw error
+        }
+    }
+
+    private static func writeHealthKitInBackground(
+        writer: any MealHealthKitWriting,
+        localStore: ManualMealLocalStore,
+        request: MealWriteRequest,
+        mealUUID: UUID
+    ) async {
+        do {
+            let saved = try await writer.saveMeal(request)
+            if try localStore.fetchMeal(id: mealUUID) != nil {
+                try localStore.attachHealthKitSamples(mealID: mealUUID, saved: saved)
+            } else {
+                try await writer.deleteMeal(mealID: request.mealID.lowercased())
+            }
+        } catch {
+            manualMealLog.error(
+                "Manual meal HealthKit write failed: \(String(describing: type(of: error)), privacy: .public)"
+            )
+            Task {
+                await DiagnosticsLog.shared.capture(
+                    error: error,
+                    category: .nutritionKit,
+                    message: "Manual meal HealthKit write failed; saving locally only"
+                )
+            }
         }
     }
 }

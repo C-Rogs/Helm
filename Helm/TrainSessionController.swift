@@ -352,23 +352,6 @@ final class TrainSessionController {
         }
     }
 
-    func saveTodaysPrescriptionAsTemplate(name: String) async {
-        do {
-            let readiness = ReadinessBootstrap.readinessService.state.score
-            let prescription = try await prescriptionService.todaysPrescription(readiness: readiness)
-            guard !prescription.exercises.isEmpty else {
-                errorMessage = "No prescription available to save."
-                return
-            }
-            _ = try persistence.workoutTemplates.createFromPrescription(
-                prescription,
-                name: name
-            )
-        } catch {
-            errorMessage = error.localizedDescription
-        }
-    }
-
     /// Keeps Ask Coach bar single-line most of the time; peek text is brief.
     private static let proactiveCoachPeekDisplayDuration: Duration = .seconds(6)
     private static let proactiveCoachBannerDisplayDuration: Duration = .seconds(8)
@@ -738,13 +721,15 @@ final class TrainSessionController {
     }
 
     /// In-app Train toggle: complete ↔ uncomplete.
-    func completeSet(sessionExerciseID: String, setID: String) async {
-        guard !inFlightSetToggleIDs.contains(setID) else { return }
+    /// Returns `true` only when a planned set was newly completed.
+    @discardableResult
+    func completeSet(sessionExerciseID: String, setID: String) async -> Bool {
+        guard !inFlightSetToggleIDs.contains(setID) else { return false }
         inFlightSetToggleIDs.insert(setID)
         defer { inFlightSetToggleIDs.remove(setID) }
 
         do {
-            guard let existingSet = findSet(setID: setID) else { return }
+            guard let existingSet = findSet(setID: setID) else { return false }
 
             if existingSet.status == .completed {
                 try await store.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
@@ -759,12 +744,13 @@ final class TrainSessionController {
                 lastSetPersonalRecords = []
                 await refreshMetadata()
                 await syncSideEffects(force: true)
-                return
+                return false
             }
 
-            await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
+            return await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -775,17 +761,18 @@ final class TrainSessionController {
         await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
     }
 
-    private func performCompleteSet(sessionExerciseID: String, setID: String) async {
+    @discardableResult
+    private func performCompleteSet(sessionExerciseID: String, setID: String) async -> Bool {
         do {
             let completedBefore = store.snapshot.map {
                 TrainSessionProgress.from(snapshot: $0).completedSetCount
             } ?? 0
 
             if let target = numpadTarget, target.setID == setID {
-                guard await applyNumpadInput() else { return }
+                guard await applyNumpadInput() else { return false }
             }
 
-            guard let refreshedSet = findSet(setID: setID) else { return }
+            guard let refreshedSet = findSet(setID: setID) else { return false }
 
             if refreshedSet.mass == nil || refreshedSet.reps == nil,
                let previous = previousFor(set: refreshedSet, exerciseID: exerciseID(for: sessionExerciseID)) {
@@ -813,6 +800,7 @@ final class TrainSessionController {
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
             numpadTarget = nil
+            WorkoutHapticCoordinator.playSetCompletion(wasAlreadyCompleted: false)
 
             let completedSetForCarry = findSet(setID: setID) ?? refreshedSet
             await autoCarryNextSet(sessionExerciseID: sessionExerciseID, completedSet: completedSetForCarry)
@@ -829,7 +817,6 @@ final class TrainSessionController {
             lastSetPersonalRecords = personalRecords
 
             if personalRecords.isEmpty {
-                WorkoutHapticCoordinator.playSetCompletion(wasAlreadyCompleted: false)
                 registerEncouragementGlyphIfNeeded(
                     for: completedSet,
                     sessionExerciseID: sessionExerciseID,
@@ -843,8 +830,10 @@ final class TrainSessionController {
 
             await syncSideEffects(force: true)
             evaluateSessionMilestoneAfterSetComplete(previousCompleted: completedBefore)
+            return true
         } catch {
             errorMessage = error.localizedDescription
+            return false
         }
     }
 
@@ -920,6 +909,7 @@ final class TrainSessionController {
     }
 
     func skipRest() async {
+        guard isRestTimerRunning else { return }
         do {
             try await store.skipRest()
             await refreshMetadata()
@@ -943,6 +933,7 @@ final class TrainSessionController {
     }
 
     func adjustRestTimer(deltaSeconds: Int) async {
+        guard isRestTimerRunning else { return }
         do {
             try await store.adjustRestTimer(deltaSeconds: deltaSeconds)
             HapticEngine.shared.play(.selection)
@@ -1181,6 +1172,10 @@ final class TrainSessionController {
             guard let timer = snapshot.restTimer, timer.phase == .running else { return nil }
             return timer.endsAt
         }()
+
+        if WatchReadinessBootstrap.coordinator.canDriveWatchCompanion {
+            pushWatchCompanionState()
+        }
 
         // Keep notification armed even when Live Activity updates are throttled.
         await sideEffects.syncRestEndNotification(
@@ -2083,11 +2078,13 @@ final class TrainSessionController {
         // Watch companion is additive for wrist UI, not a gate on HR.
         let sessionID = store.snapshot?.session.id ?? UUID().uuidString
         let startedAt = store.snapshot?.session.startedAt
+        let activityKind = inferredWatchActivityKind()
         Task { @MainActor in
             do {
                 try await PhoneWorkoutSessionManager.shared.start(
                     sessionID: sessionID,
-                    activityStart: startedAt
+                    activityStart: startedAt,
+                    activityKind: activityKind
                 )
             } catch {
                 WatchReadinessBootstrap.coordinator.recordDiagnostic(
@@ -2133,6 +2130,7 @@ final class TrainSessionController {
                         )
                     }
                     coordinator.recordDiagnostic(.phoneLiveConfirmOK, detail: "reachable=\(coordinator.isReachable)")
+                    watchCompanionNotice = nil
                     return
                 }
                 try? await Task.sleep(for: .seconds(1))
@@ -2145,12 +2143,12 @@ final class TrainSessionController {
             ) {
                 return
             }
-            // Not a failure: wrist-down Watch simply has not executed yet. Keep
-            // companion pushes via heart-rate sampling; header shows connecting.
+            // Not a failure: wrist-down Watch simply has not executed yet.
             coordinator.recordDiagnostic(
                 .phoneLiveConfirmTimeout,
                 detail: "reachable=\(coordinator.isReachable) hr=\(coordinator.latestLiveHeartRateBPM.map(String.init) ?? "nil") launchError=\(coordinator.lastLaunchError ?? "none") lateAdoptionPending=true"
             )
+            watchCompanionNotice = "Watch still connecting. Raise wrist or tap to retry."
         }
     }
 
@@ -2166,9 +2164,6 @@ final class TrainSessionController {
             while !Task.isCancelled {
                 guard let self, self.store.snapshot != nil else { return }
                 self.recordLiveHeartRateSampleIfAvailable()
-                if WatchReadinessBootstrap.coordinator.canDriveWatchCompanion {
-                    self.pushWatchCompanionState()
-                }
                 try? await Task.sleep(for: .seconds(5))
             }
         }
@@ -2231,15 +2226,37 @@ final class TrainSessionController {
         let setNumber = currentExercise.flatMap { exercise in
             exercise.sets.firstIndex { $0.status != .completed }.map { $0 + 1 }
         }
+        let restEndsAt: Date? = {
+            guard let timer = snapshot.restTimer, timer.phase == .running else { return nil }
+            return timer.endsAt
+        }()
         WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
             active: true,
             exerciseName: displayName,
             setNumber: setNumber,
             setCount: currentExercise?.sets.count,
-            targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] },
+            targetSummary: WatchCompanionSetLine.make(
+                setNumber: setNumber,
+                setCount: currentExercise?.sets.count,
+                targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+            ),
             sessionExerciseID: currentExercise?.id,
             setID: currentSet?.id,
-            sessionStartedAt: snapshot.session.startedAt
+            sessionStartedAt: snapshot.session.startedAt,
+            restEndsAt: restEndsAt,
+            activityTypeRawValue: inferredWatchActivityKind().healthKitActivityTypeRawValue
+        )
+    }
+
+    private func inferredWatchActivityKind() -> WatchWorkoutActivityKind {
+        guard let snapshot = store.snapshot else { return .traditionalStrengthTraining }
+        let names = snapshot.session.exercises.map { exercise in
+            exerciseSummaries[exercise.exerciseID]?.displayName ?? exercise.exerciseID
+        }
+        return WatchWorkoutActivityKind.inferred(
+            sessionTitle: snapshot.session.title,
+            exerciseNames: names,
+            exerciseModes: snapshot.session.exercises.map(\.exerciseMode)
         )
     }
 

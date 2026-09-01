@@ -17,13 +17,12 @@ public enum WatchCompanionLinkStatus: Equatable, Sendable {
 
     public static func resolve(
         canDriveWatch: Bool,
-        phoneHRActive: Bool = false,
         liveBPM: Int?
     ) -> WatchCompanionLinkStatus {
         if let liveBPM { return .live(bpm: liveBPM) }
-        // Prefer Watch raise-wrist copy when companion expected; else phone sensors.
+        // Waiting chrome is Watch-only. Phone HKWorkoutSession still runs for
+        // AirPods / BLE, but with no Watch app that is not a "waiting for HR" state.
         if canDriveWatch { return .connecting(.watch) }
-        if phoneHRActive { return .connecting(.phone) }
         return .unavailable
     }
 }

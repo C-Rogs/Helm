@@ -131,13 +131,12 @@ private struct HelmActionPressStyle: ButtonStyle {
     @Environment(\.helmSkin) private var skin
 
     func makeBody(configuration: Configuration) -> some View {
-        let scale = reduceMotion ? 1.0 : skin.pressScale
         configuration.label
-            .opacity(configuration.isPressed ? 0.85 : 1)
-            .scaleEffect(configuration.isPressed ? scale : 1)
-            .animation(
-                reduceMotion ? nil : HelmMotion.quickAnimation,
-                value: configuration.isPressed
+            .helmPressChrome(
+                isPressed: configuration.isPressed,
+                scale: skin.pressScale,
+                pressedOpacity: 0.85,
+                reduceMotion: reduceMotion
             )
     }
 }

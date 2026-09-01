@@ -116,7 +116,9 @@ Build these in DesignSystem so screens compose, never re-invent.
 Motion serves reading, then confirmation. It pairs with haptics (`Docs/HAPTICS.md`): the arc sweeps as the reveal taps, the set row settles as completion clicks.
 
 Tokens:
-- `quick` 0.18s, ease-out: selection, taps, key presses.
+- `pressIn` 0.08s ease-out: finger-down squash. The surface must move with the touch, not after it.
+- `pressOut` spring (response 0.28, damping 0.78): finger-up release.
+- `quick` 0.18s, ease-out: numeric rolls, selection that is not a press-down.
 - `standard` 0.28s, ease-in-out: sheet and card transitions, banner in/out.
 - `settle` 0.42s spring (response 0.42, damping 0.82): set-row completion, adjustment applied.
 - `reveal` 0.9s: the readiness reveal only.

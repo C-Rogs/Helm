@@ -73,6 +73,9 @@ struct AppMigrator {
         if version >= 20 {
             NutritionDayDemandSchemaMigration.register(on: &migrator)
         }
+        if version >= 21 {
+            ExercisePickerRankSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

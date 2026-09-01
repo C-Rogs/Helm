@@ -207,7 +207,7 @@ struct ExercisePickerView: View {
                     )
                     .padding(.top, HelmSpacing.lg)
                 } else {
-                    if !recentExercises.isEmpty {
+                    if !pillExercises.isEmpty {
                         recentSection
                     }
                     muscleGridSection
@@ -218,13 +218,23 @@ struct ExercisePickerView: View {
         }
     }
 
+    private var pillExercises: [ExerciseSummary] {
+        if !recentExercises.isEmpty {
+            return recentExercises
+        }
+        return Array(pickerDefaults.prefix(recentPillLimit))
+    }
+
     private var recentSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            sectionEyebrow(title: "Recently Used", systemImage: "clock")
+            sectionEyebrow(
+                title: recentExercises.isEmpty ? "Suggested" : "Recently Used",
+                systemImage: recentExercises.isEmpty ? "star" : "clock"
+            )
 
             ScrollView(.horizontal, showsIndicators: false) {
                 HStack(spacing: HelmSpacing.xs) {
-                    ForEach(recentExercises) { exercise in
+                    ForEach(pillExercises) { exercise in
                         recentPill(exercise)
                     }
                 }
@@ -436,10 +446,15 @@ struct ExercisePickerView: View {
         pickerDefaults
             .filter { ExercisePickerCategory.category(for: $0) == category }
             .sorted { lhs, rhs in
-                let leftRank = recentOrderIDs.firstIndex(of: lhs.id) ?? Int.max
-                let rightRank = recentOrderIDs.firstIndex(of: rhs.id) ?? Int.max
-                if leftRank != rightRank {
-                    return leftRank < rightRank
+                let leftRecent = recentOrderIDs.firstIndex(of: lhs.id) ?? Int.max
+                let rightRecent = recentOrderIDs.firstIndex(of: rhs.id) ?? Int.max
+                if leftRecent != rightRecent {
+                    return leftRecent < rightRecent
+                }
+                let leftDefault = pickerDefaults.firstIndex(where: { $0.id == lhs.id }) ?? Int.max
+                let rightDefault = pickerDefaults.firstIndex(where: { $0.id == rhs.id }) ?? Int.max
+                if leftDefault != rightDefault {
+                    return leftDefault < rightDefault
                 }
                 return lhs.displayName.localizedCaseInsensitiveCompare(rhs.displayName) == .orderedAscending
             }
@@ -463,11 +478,24 @@ struct ExercisePickerView: View {
             return
         }
         do {
-            searchResults = try fetchExercises(searchText, nil)
+            searchResults = rankByRecents(try fetchExercises(searchText, nil))
             loadError = nil
         } catch {
             loadError = error.localizedDescription
         }
+    }
+
+    private func rankByRecents(_ items: [ExerciseSummary]) -> [ExerciseSummary] {
+        items.enumerated()
+            .sorted { lhs, rhs in
+                let leftRecent = recentOrderIDs.firstIndex(of: lhs.element.id) ?? Int.max
+                let rightRecent = recentOrderIDs.firstIndex(of: rhs.element.id) ?? Int.max
+                if leftRecent != rightRecent {
+                    return leftRecent < rightRecent
+                }
+                return lhs.offset < rhs.offset
+            }
+            .map(\.element)
     }
 }
 

@@ -56,4 +56,30 @@ struct SessionSetAllocatorTests {
 
         #expect(!allocations.isEmpty)
     }
+
+    @Test("volume multiplier caps total sets when remaining is plentiful")
+    func volumeMultiplierCapsSession() {
+        let candidates = [
+            candidate(muscle: .chest, role: .primary),
+            candidate(muscle: .shoulders, role: .primary),
+            candidate(muscle: .chest, role: .secondary)
+        ]
+        let full = SessionSetAllocator.allocate(
+            candidates: candidates,
+            budget: .minutes30,
+            thinSession: false,
+            volumeMultiplier: 1.0,
+            remainingByMuscle: [.chest: 20, .shoulders: 20]
+        )
+        let cut = SessionSetAllocator.allocate(
+            candidates: candidates,
+            budget: .minutes30,
+            thinSession: false,
+            volumeMultiplier: 0.85,
+            remainingByMuscle: [.chest: 20, .shoulders: 20]
+        )
+        let fullSets = full.reduce(0) { $0 + $1.sets }
+        let cutSets = cut.reduce(0) { $0 + $1.sets }
+        #expect(cutSets < fullSets)
+    }
 }

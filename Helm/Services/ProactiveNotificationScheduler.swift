@@ -20,6 +20,9 @@ final class ProactiveNotificationScheduler {
     }
 
     func requestPermissionIfNeeded() async {
+        let status = await center.authorizationStatus()
+        guard status == .notDetermined else { return }
+        guard UserDefaults.standard.bool(forKey: OnboardingStore.completedDefaultsKey) else { return }
         _ = try? await center.requestAuthorization(options: [.alert, .sound, .badge])
     }
 

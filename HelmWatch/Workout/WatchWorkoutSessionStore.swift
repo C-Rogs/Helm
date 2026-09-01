@@ -2,6 +2,7 @@ import Core
 import Foundation
 import HealthKit
 import Observation
+import SwiftUI
 
 @MainActor
 @Observable
@@ -49,6 +50,7 @@ final class WatchWorkoutSessionStore {
         startedAt = Date()
         apply(.sessionReady)
         startElapsedTimer()
+        WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
     }
 
     init(manager: WatchWorkoutSessionManaging = WatchWorkoutSessionManager()) {
@@ -85,6 +87,7 @@ final class WatchWorkoutSessionStore {
             startedAt = Date()
             apply(.sessionReady)
             startElapsedTimer()
+            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
         } catch {
             lastError = error.localizedDescription
             lifecycle.end()
@@ -110,6 +113,7 @@ final class WatchWorkoutSessionStore {
             }
             isMirroringToCompanion = manager.isMirroringToCompanion
             startElapsedTimer()
+            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
             Task { await prepareHealthKit() }
             return
         }
@@ -132,6 +136,7 @@ final class WatchWorkoutSessionStore {
             startedAt = phoneStart ?? Date()
             apply(.sessionReady)
             startElapsedTimer()
+            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
             // Warm auth/baselines in background for the next launch.
             Task { await prepareHealthKit() }
         } catch {
@@ -185,6 +190,7 @@ final class WatchWorkoutSessionStore {
             sessionID = nil
             startedAt = nil
             elapsedSeconds = 0
+            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(false)
         } catch {
             lastError = error.localizedDescription
             teardownTracker.end()
@@ -202,11 +208,24 @@ final class WatchWorkoutSessionStore {
 
     private func startElapsedTimer() {
         stopElapsedTimer()
+        applyElapsed(animated: false)
         elapsedTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { [weak self] _ in
             Task { @MainActor in
-                guard let self, let startedAt = self.startedAt else { return }
-                self.elapsedSeconds = max(0, Int(Date().timeIntervalSince(startedAt)))
+                self?.applyElapsed(animated: true)
             }
+        }
+    }
+
+    private func applyElapsed(animated: Bool) {
+        guard let startedAt else { return }
+        let next = max(0, Int(Date().timeIntervalSince(startedAt)))
+        guard next != elapsedSeconds else { return }
+        if animated {
+            withAnimation(WatchMotion.quickAnimation) {
+                elapsedSeconds = next
+            }
+        } else {
+            elapsedSeconds = next
         }
     }
 

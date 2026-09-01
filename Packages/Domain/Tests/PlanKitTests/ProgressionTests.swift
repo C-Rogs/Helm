@@ -197,6 +197,99 @@ struct ProgressionTests {
         let progression = PlanKit.progression(for: "squat", history: history)
         #expect(progression.isStalledBackoff == false)
         #expect(progression.workingWeight!.kilograms == 100)
+        #expect(progression.targetRepMin == 9)
+        #expect(progression.targetRepMax == 9)
+    }
+
+    @Test("easy last session raises prescribed reps instead of parking at scheme floor")
+    func easySessionClimbsPrescribedReps() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "dumbbell_curl",
+            contributions: [ExerciseMuscleContribution(muscle: .biceps, fraction: 1.0, tier: .primary)]
+        )
+        let history = [
+            set(exerciseID: "dumbbell_curl", kg: 28, reps: 10, rir: 4, at: 0),
+            set(exerciseID: "dumbbell_curl", kg: 28, reps: 10, rir: 4, at: 1),
+            set(exerciseID: "dumbbell_curl", kg: 28, reps: 10, rir: 4, at: 2)
+        ]
+        let progression = PlanKit.progression(
+            for: "dumbbell_curl",
+            history: history,
+            muscleMap: map
+        )
+        #expect(progression.loadDecision == .hold)
+        #expect(progression.workingWeight?.kilograms == 28)
+        #expect(progression.targetRepMin == 12)
+        #expect(progression.targetRepMax == 12)
+        #expect(progression.schemeRepMin == 10)
+        #expect(progression.schemeRepMax == 15)
+    }
+
+    @Test("easy last session at primed RIR skips further ahead")
+    func primedTargetSkipsMoreReps() {
+        let map = ExerciseMuscleMap(
+            exerciseID: "dumbbell_curl",
+            contributions: [ExerciseMuscleContribution(muscle: .biceps, fraction: 1.0, tier: .primary)]
+        )
+        let history = [
+            set(exerciseID: "dumbbell_curl", kg: 28, reps: 10, rir: 4, at: 0)
+        ]
+        let progression = PlanKit.progression(
+            for: "dumbbell_curl",
+            history: history,
+            muscleMap: map,
+            targetRIR: 1
+        )
+        #expect(progression.targetRepMin == 13)
+        #expect(progression.workingWeight?.kilograms == 28)
+    }
+
+    @Test("logged RPE without RIR still climbs prescribed reps")
+    func rpeOnlyClimbsPrescribedReps() {
+        let history = [
+            LoggedSet(
+                exerciseID: "bench_press",
+                sequence: 1,
+                mass: Mass(kilograms: 80),
+                reps: 10,
+                rpe: 6,
+                completedAt: Date(timeIntervalSince1970: 1_700_000_000)
+            )
+        ]
+        let progression = PlanKit.progression(for: "bench_press", history: history)
+        #expect(progression.targetRepMin == 12)
+        #expect(progression.workingWeight?.kilograms == 80)
+    }
+
+    @Test("on-target last session adds one prescribed rep")
+    func onTargetAddsOneRep() {
+        let history = [
+            set(exerciseID: "squat", kg: 120, reps: 8, rir: 2, at: 0),
+            set(exerciseID: "squat", kg: 120, reps: 8, rir: 2, at: 1)
+        ]
+        let progression = PlanKit.progression(for: "squat", history: history)
+        #expect(progression.loadDecision == .hold)
+        #expect(progression.targetRepMin == 9)
+        #expect(progression.workingWeight?.kilograms == 120)
+    }
+
+    @Test("failure last session holds prescribed reps")
+    func failureHoldsPrescribedReps() {
+        let history = [
+            set(exerciseID: "squat", kg: 120, reps: 8, rir: 0, at: 0)
+        ]
+        let progression = PlanKit.progression(for: "squat", history: history)
+        #expect(progression.targetRepMin == 8)
+        #expect(progression.workingWeight?.kilograms == 120)
+    }
+
+    @Test("cold start prescribes scheme floor not a range")
+    func coldStartExactFloor() {
+        let progression = PlanKit.progression(for: "bench_press", history: [])
+        #expect(progression.loadDecision == .coldStart)
+        #expect(progression.targetRepMin == 8)
+        #expect(progression.targetRepMax == 8)
+        #expect(progression.schemeRepMax == 12)
     }
 }
 

@@ -167,18 +167,7 @@ struct SetRowView: View {
     }
 
     private var setIndexAccessibilityLabel: String {
-        switch setEntry.setType {
-        case .normal:
-            "Set \(setNumber), working set. Tap to change set type."
-        case .warmup:
-            "Set \(setNumber), warmup set. Tap to change set type."
-        case .dropSet:
-            "Set \(setNumber), drop set. Tap to change set type."
-        case .failure:
-            "Set \(setNumber), failure set. Tap to change set type."
-        default:
-            "Set \(setNumber). Tap to change set type."
-        }
+        setEntry.setType.loggerSetTypeAccessibilityLabel(setNumber: setNumber)
     }
 
     private func previousLabel(_ previous: PreviousPerformance) -> String {

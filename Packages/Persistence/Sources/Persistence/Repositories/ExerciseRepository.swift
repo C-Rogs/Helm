@@ -204,7 +204,7 @@ public struct ExerciseRepository: Sendable {
         try pool.read { db in
             var sql = """
                 SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group,
-                       e.is_picker_default, e.sort_name, e.gif_url
+                       e.is_picker_default, e.picker_rank, e.sort_name, e.gif_url
                 FROM exercise e
                 LEFT JOIN exercise_alias a ON a.exercise_id = e.id
                 WHERE e.deleted_at IS NULL
@@ -235,17 +235,10 @@ public struct ExerciseRepository: Sendable {
                 arguments.append(muscleGroup)
             }
 
-            if isSearching {
-                sql += """
-                     ORDER BY e.sort_name ASC
-                     LIMIT ?
-                    """
-            } else {
-                sql += """
-                     ORDER BY e.is_picker_default DESC, e.is_custom ASC, e.sort_name ASC
-                     LIMIT ?
-                    """
-            }
+            sql += """
+                 ORDER BY e.is_picker_default DESC, e.picker_rank ASC, e.is_custom ASC, e.sort_name ASC
+                 LIMIT ?
+                """
             arguments.append(limit)
 
             return try Row.fetchAll(db, sql: sql, arguments: StatementArguments(arguments))
@@ -301,7 +294,7 @@ public struct ExerciseRepository: Sendable {
                            equipment_type, is_picker_default
                     FROM exercise
                     WHERE deleted_at IS NULL
-                    ORDER BY is_picker_default DESC, sort_name ASC
+                    ORDER BY is_picker_default DESC, picker_rank ASC, sort_name ASC
                     LIMIT ?
                     """,
                 arguments: [limit]

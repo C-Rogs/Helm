@@ -94,7 +94,6 @@ struct RestTimerBanner: View {
         .padding(.top, HelmSpacing.xs)
         .padding(.bottom, HelmSpacing.xs)
         .frame(maxWidth: .infinity)
-        .background(HelmColor.canvas)
     }
 }
 

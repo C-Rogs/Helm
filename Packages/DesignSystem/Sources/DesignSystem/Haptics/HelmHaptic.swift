@@ -62,4 +62,14 @@ public enum HelmHaptic: Sendable, Hashable, Equatable {
         case .selection: "selection"
         }
     }
+
+    /// Tick / confirm patterns that must land on the same frame as the tap.
+    var playsOnSameFrame: Bool {
+        switch self {
+        case .selection, .setLogged, .mealConfirmed, .clampRejected, .restCountInStep:
+            true
+        default:
+            false
+        }
+    }
 }

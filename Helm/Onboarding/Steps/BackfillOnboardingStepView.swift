@@ -5,7 +5,7 @@ import SwiftUI
 
 struct BackfillOnboardingStepView: View {
     var showsFlowControls: Bool = true
-    var stepIndex: Int = 6
+    var stepIndex: Int = 7
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
     var onBack: (() -> Void)? = nil
