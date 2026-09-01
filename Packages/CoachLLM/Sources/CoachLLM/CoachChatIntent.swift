@@ -274,10 +274,25 @@ public enum CoachChatIntent: Sendable {
             "calendar today",
             "calendar tomorrow",
             "my calendar",
+            "in the calendar",
+            "on the calendar",
             "meetings today",
             "meetings tomorrow"
         ]
         return needles.contains { lower.contains($0) }
+    }
+
+    public static func inferredCalendarSearchTerm(from text: String) -> String? {
+        let pattern = #"(?i)(?:yeah|yes|yep|ok|okay|but|so|well|and|hey|,|\s)*(.+?)\s+is\s+(?:in|on)\s+(?:the|my)\s+calendar"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsRange = NSRange(text.startIndex..., in: text)
+        guard let match = regex.firstMatch(in: text, range: nsRange),
+              match.numberOfRanges >= 2,
+              let capture = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        let stripped = stripCalendarSearchFillers(String(text[capture]))
+        return sanitizedCalendarSearchTerm(stripped)
     }
 
     public static func inferredCalendarQuery(
@@ -304,7 +319,57 @@ public enum CoachChatIntent: Sendable {
         if lower.contains("week") || lower.contains("ahead") {
             return CalendarQueryPayload(queryType: .weekAhead)
         }
+        if let term = inferredCalendarSearchTerm(from: text) {
+            return CalendarQueryPayload(
+                queryType: .range,
+                lookaheadDays: CalendarQueryPlanner.defaultSearchLookaheadDays,
+                search: term
+            )
+        }
+        if looksLikeForwardCalendarLookup(lower) {
+            return CalendarQueryPayload(
+                queryType: .range,
+                lookaheadDays: CalendarQueryPlanner.defaultSearchLookaheadDays
+            )
+        }
         return CalendarQueryPayload(queryType: .today)
+    }
+
+    private static func looksLikeForwardCalendarLookup(_ lower: String) -> Bool {
+        if lower.contains("tomorrow")
+            || lower.contains("this week")
+            || lower.contains("what events")
+            || lower.contains("why am i")
+            || lower.contains("what do i have today")
+            || lower.contains("what's on today")
+            || lower.contains("whats on today") {
+            return false
+        }
+        return lower.contains("in the calendar")
+            || lower.contains("on the calendar")
+            || lower.contains("in my calendar")
+            || lower.contains("see the dates")
+    }
+
+    private static func stripCalendarSearchFillers(_ raw: String) -> String {
+        var words = raw.split(whereSeparator: { $0.isWhitespace || $0 == "," }).map(String.init)
+        let fillers: Set<String> = [
+            "yeah", "yes", "yep", "ok", "okay", "but", "so", "well", "and", "hey", "hi", "just"
+        ]
+        while let first = words.first, fillers.contains(first.lowercased()) {
+            words.removeFirst()
+        }
+        return words.joined(separator: " ")
+    }
+
+    private static func sanitizedCalendarSearchTerm(_ raw: String) -> String? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard (2...40).contains(trimmed.count) else { return nil }
+        let banned: Set<String> = [
+            "it", "that", "this", "there", "something", "the event", "my trip", "my event"
+        ]
+        if banned.contains(trimmed.lowercased()) { return nil }
+        return trimmed
     }
 
     public static func looksLikeTrendsLookup(_ text: String) -> Bool {

@@ -34,6 +34,31 @@ public struct CalendarDayLoad: Sendable, Hashable, Equatable {
         self.hasAllDayEvent = hasAllDayEvent
         self.allDayEventTitles = allDayEventTitles
     }
+
+    public static func from(events: [CalendarEventDetail]) -> CalendarDayLoad {
+        var timedEventCount = 0
+        var scheduledSeconds: TimeInterval = 0
+        var allDayEventTitles: [String] = []
+        var hasAllDayEvent = false
+        for event in events {
+            if event.isAllDay {
+                hasAllDayEvent = true
+                let title = event.title.trimmingCharacters(in: .whitespacesAndNewlines)
+                if !title.isEmpty {
+                    allDayEventTitles.append(title)
+                }
+            } else {
+                timedEventCount += 1
+                scheduledSeconds += max(0, event.end.timeIntervalSince(event.start))
+            }
+        }
+        return CalendarDayLoad(
+            timedEventCount: timedEventCount,
+            scheduledSeconds: scheduledSeconds,
+            hasAllDayEvent: hasAllDayEvent,
+            allDayEventTitles: allDayEventTitles
+        )
+    }
 }
 
 /// Full day calendar detail for coach lookup (aggregates + event list).

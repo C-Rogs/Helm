@@ -260,4 +260,18 @@ struct GeminiChatToolsTests {
         #expect(payload.tab == "nutrition")
         #expect(payload.schemaVersion == CoachOutputSchemaVersion.navigateV1.rawValue)
     }
+
+    @Test("calendar_query declares search and lookaheadDays")
+    func calendarQuerySearchFields() throws {
+        let declaration = try #require(
+            GeminiChatTools.functionDeclarations().first { ($0["name"] as? String) == "calendar_query" }
+        )
+        let parameters = try #require(declaration["parameters"] as? [String: Any])
+        let properties = try #require(parameters["properties"] as? [String: Any])
+        #expect(properties["search"] != nil)
+        #expect(properties["lookaheadDays"] != nil)
+        let description = try #require(declaration["description"] as? String)
+        #expect(description.contains("search"))
+        #expect(description.contains("lookaheadDays"))
+    }
 }

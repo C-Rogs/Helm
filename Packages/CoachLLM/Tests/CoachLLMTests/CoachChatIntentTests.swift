@@ -40,6 +40,17 @@ struct CoachChatIntentTests {
         let tomorrow = CoachChatIntent.inferredCalendarQuery(from: "What do I have on tomorrow")
         #expect(tomorrow?.queryType == .day)
         #expect(tomorrow?.helmDay != nil)
+        let italy = CoachChatIntent.inferredCalendarQuery(
+            from: "Yeah but Italy is in the calendar so you can see the dates"
+        )
+        #expect(italy?.queryType == .range)
+        #expect(italy?.search == "Italy")
+        #expect(italy?.lookaheadDays == 180)
+        let unnamed = CoachChatIntent.inferredCalendarQuery(from: "You can see in my calendar right")
+        #expect(unnamed?.queryType == .range)
+        #expect(unnamed?.search == nil)
+        #expect(unnamed?.lookaheadDays == 180)
+        #expect(CoachChatIntent.inferredCalendarQuery(from: "What's on my calendar")?.queryType == .today)
         #expect(CoachChatIntent.inferredTrendsQuery(from: "TRIMP history")?.queryType == .trimp)
         #expect(CoachChatIntent.inferredTrendsQuery(from: "How has my weight trended")?.queryType == .weight)
         #expect(CoachChatIntent.inferredTrendsQuery(from: "My e1rm progression")?.queryType == .e1rm)

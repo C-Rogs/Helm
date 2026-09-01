@@ -1,0 +1,132 @@
+import Foundation
+import Testing
+@testable import Core
+
+@Suite("Calendar query planner")
+struct CalendarQueryPlannerTests {
+    private let today = HelmDay(year: 2026, month: 9, day: 1)
+    private var calendar: Calendar {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        return calendar
+    }
+
+    @Test("range without search stays lookback ending today")
+    func rangeLookback() {
+        let window = CalendarQueryPlanner.resolve(
+            kind: .range,
+            today: today,
+            weekAheadHorizon: 7,
+            calendar: calendar
+        )
+        #expect(window.startDay == HelmDay(year: 2026, month: 8, day: 26))
+        #expect(window.endDay == today)
+        #expect(window.queryLabel == "range lookback=7")
+        #expect(window.search == nil)
+        #expect(window.omitEmptyDays == false)
+    }
+
+    @Test("named search looks ahead 180 days from today")
+    func searchLookahead() {
+        let window = CalendarQueryPlanner.resolve(
+            kind: .range,
+            today: today,
+            search: "Italy",
+            weekAheadHorizon: 7,
+            calendar: calendar
+        )
+        #expect(window.startDay == today)
+        #expect(window.endDay == HelmDay(year: 2027, month: 2, day: 27))
+        #expect(window.search == "Italy")
+        #expect(window.omitEmptyDays)
+        #expect(window.queryLabel.contains("search=\"Italy\""))
+        #expect(window.queryLabel.contains("lookahead=180"))
+    }
+
+    @Test("clamps lookahead to 180")
+    func clampsLookahead() {
+        let window = CalendarQueryPlanner.resolve(
+            kind: .range,
+            today: today,
+            lookaheadDays: 400,
+            search: "Italy",
+            weekAheadHorizon: 7,
+            calendar: calendar
+        )
+        #expect(window.endDay == HelmDay(year: 2027, month: 2, day: 27))
+    }
+
+    @Test("today plus search expands into a lookahead window")
+    func todaySearchExpands() {
+        let window = CalendarQueryPlanner.resolve(
+            kind: .today,
+            today: today,
+            search: "Italy",
+            weekAheadHorizon: 7,
+            calendar: calendar
+        )
+        #expect(window.startDay == today)
+        #expect(window.endDay == HelmDay(year: 2027, month: 2, day: 27))
+        #expect(window.omitEmptyDays)
+    }
+
+    @Test("title match is case insensitive and filters other events")
+    func titleSearchFilter() {
+        let italyDay = HelmDay(year: 2026, month: 11, day: 10)
+        let footballDay = HelmDay(year: 2026, month: 9, day: 1)
+        let start = calendar.date(from: DateComponents(timeZone: calendar.timeZone, year: 2026, month: 9, day: 1, hour: 19))!
+        let days = [
+            CalendarDayDetail(
+                helmDay: footballDay,
+                load: CalendarDayLoad(timedEventCount: 1, scheduledSeconds: 3_600, hasAllDayEvent: false),
+                events: [
+                    CalendarEventDetail(title: "Football", start: start, end: start.addingTimeInterval(3_600), isAllDay: false)
+                ]
+            ),
+            CalendarDayDetail(
+                helmDay: italyDay,
+                load: CalendarDayLoad(
+                    timedEventCount: 0,
+                    scheduledSeconds: 0,
+                    hasAllDayEvent: true,
+                    allDayEventTitles: ["Trip to Italy"]
+                ),
+                events: [
+                    CalendarEventDetail(title: "Trip to Italy", start: start, end: start, isAllDay: true)
+                ]
+            )
+        ]
+        let matched = CalendarQueryPlanner.applySearch(days, search: "italy")
+        #expect(matched.count == 1)
+        #expect(matched.first?.helmDay == italyDay)
+        #expect(matched.first?.load.hasAllDayEvent == true)
+        #expect(CalendarQueryPlanner.titleMatches("Trip to Italy", search: "ITALY"))
+    }
+
+    @Test("load rebuilds from matched events only")
+    func loadFromEvents() {
+        let start = calendar.date(from: DateComponents(timeZone: calendar.timeZone, year: 2026, month: 9, day: 1, hour: 9))!
+        let load = CalendarDayLoad.from(events: [
+            CalendarEventDetail(title: "Standup", start: start, end: start.addingTimeInterval(3_600), isAllDay: false),
+            CalendarEventDetail(title: "Italy", start: start, end: start, isAllDay: true)
+        ])
+        #expect(load.timedEventCount == 1)
+        #expect(load.scheduledSeconds == 3_600)
+        #expect(load.hasAllDayEvent)
+        #expect(load.allDayEventTitles == ["Italy"])
+    }
+
+    @Test("week ahead without search stays the engine horizon")
+    func weekAheadUnchanged() {
+        let window = CalendarQueryPlanner.resolve(
+            kind: .weekAhead,
+            today: today,
+            weekAheadHorizon: 7,
+            calendar: calendar
+        )
+        #expect(window.endDay == HelmDay(year: 2026, month: 9, day: 7))
+        #expect(window.search == nil)
+        #expect(window.omitEmptyDays == false)
+        #expect(window.queryLabel == "weekAhead")
+    }
+}

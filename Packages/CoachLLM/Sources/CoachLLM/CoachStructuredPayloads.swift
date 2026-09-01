@@ -612,10 +612,16 @@ private extension KeyedDecodingContainer where Key: CoachQueryPayloadCodingKeys 
     }
 
     func decodeLenientLookbackDays() -> Int? {
-        if let intValue = try? decodeIfPresent(Int.self, forKey: .lookbackDaysKey) {
+        decodeLenientIntIfPresent(forKey: .lookbackDaysKey)
+    }
+}
+
+private extension KeyedDecodingContainer {
+    func decodeLenientIntIfPresent(forKey key: Key) -> Int? {
+        if let intValue = try? decodeIfPresent(Int.self, forKey: key) {
             return intValue
         }
-        if let raw = try? decodeIfPresent(String.self, forKey: .lookbackDaysKey),
+        if let raw = try? decodeIfPresent(String.self, forKey: key),
            let intValue = Int(raw) {
             return intValue
         }
@@ -904,7 +910,7 @@ public struct CalendarQueryPayload: Codable, Sendable, Equatable {
                 self = .today
             case "day", "onday", "on_day":
                 self = .day
-            case "range", "history", "week":
+            case "range", "history", "week", "search", "lookup", "find":
                 self = .range
             case "weekahead", "week_ahead", "ahead", "schedule":
                 self = .weekAhead
@@ -918,17 +924,23 @@ public struct CalendarQueryPayload: Codable, Sendable, Equatable {
     public let queryType: QueryType
     public let helmDay: String?
     public let lookbackDays: Int?
+    public let lookaheadDays: Int?
+    public let search: String?
 
     public init(
         schemaVersion: String = CoachOutputSchemaVersion.calendarQueryV1.rawValue,
         queryType: QueryType,
         helmDay: String? = nil,
-        lookbackDays: Int? = nil
+        lookbackDays: Int? = nil,
+        lookaheadDays: Int? = nil,
+        search: String? = nil
     ) {
         self.schemaVersion = schemaVersion
         self.queryType = queryType
         self.helmDay = helmDay
         self.lookbackDays = lookbackDays
+        self.lookaheadDays = lookaheadDays
+        self.search = CalendarQueryPlanner.normalizedSearch(search)
     }
 
     public init(from decoder: any Decoder) throws {
@@ -941,6 +953,10 @@ public struct CalendarQueryPayload: Codable, Sendable, Equatable {
         )
         helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
         lookbackDays = container.decodeLenientLookbackDays()
+        lookaheadDays = container.decodeLenientIntIfPresent(forKey: .lookaheadDays)
+        search = CalendarQueryPlanner.normalizedSearch(
+            try container.decodeIfPresent(String.self, forKey: .search)
+        )
     }
 
     private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
@@ -948,6 +964,8 @@ public struct CalendarQueryPayload: Codable, Sendable, Equatable {
         case queryType
         case helmDay
         case lookbackDays
+        case lookaheadDays
+        case search
 
         static var schemaVersionKey: CodingKeys { .schemaVersion }
         static var queryTypeKey: CodingKeys { .queryType }

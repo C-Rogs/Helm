@@ -42,6 +42,8 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("recovery_query"))
         #expect(prompt.contains("Readiness Baselines dates for weight and body fat"))
         #expect(prompt.contains("calendar_query"))
+        #expect(prompt.contains("lookaheadDays"))
+        #expect(prompt.contains("optional search"))
         #expect(prompt.contains("trends_query"))
         #expect(prompt.contains("call the workout_query tool"))
         #expect(prompt.contains("call the trends_query tool"))
@@ -74,5 +76,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("current heart rate") || prompt.contains("logged sets"))
         #expect(prompt.contains("Available gym exercises") || prompt.contains("triceps_dip"))
         #expect(prompt.contains("exact display names") || prompt.contains("fromExerciseID must copy the archetypeId"))
+        #expect(prompt.contains("does not need to already be in the active session"))
+        #expect(prompt.contains("Never claim the swap already happened"))
     }
 }
