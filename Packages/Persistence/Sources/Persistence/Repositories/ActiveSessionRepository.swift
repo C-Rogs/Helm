@@ -956,6 +956,13 @@ public struct ActiveSessionRepository: Sendable {
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
                     )
+                    try Self.syncPlannedWorkingLoad(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        previousSets: matched.sets,
+                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        now: now
+                    )
                 } else if index < existingSorted.count {
                     let sessionExercise = existingSorted[index]
                     let sessionExerciseID = sessionExercise.id
@@ -1001,6 +1008,13 @@ public struct ActiveSessionRepository: Sendable {
                         templateMassKg: prescribed.targetMass?.kilograms,
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
+                    )
+                    try Self.syncPlannedWorkingLoad(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        previousSets: sessionExercise.sets,
+                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        now: now
                     )
                 } else {
                     try Self.insertPrescribedExercise(
@@ -1488,6 +1502,48 @@ extension ActiveSessionRepository {
             )
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
         }
+    }
+
+    /// Coach `adjustLoad` updates `PrescribedExercise.targetMass`, but composition
+    /// only uses that mass when inserting new rows. Write the new working weight
+    /// onto remaining planned working sets when it actually changed.
+    private static func syncPlannedWorkingLoad(
+        db: Database,
+        sessionExerciseID: String,
+        previousSets: [SetEntryDraft],
+        prescribedMassKg: Double?,
+        now: String
+    ) throws {
+        guard let prescribedMassKg else { return }
+        let previousPlannedWorking = previousSets.filter {
+            $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
+        }
+        if let currentKg = previousPlannedWorking.first?.mass?.kilograms,
+           abs(currentKg - prescribedMassKg) < 0.001 {
+            return
+        }
+
+        let types = SetType.allCases.filter(\.countsAsPrescribedWorkingSet).map(\.rawValue)
+        guard !types.isEmpty else { return }
+        let placeholders = Array(repeating: "?", count: types.count).joined(separator: ", ")
+        var arguments: [DatabaseValueConvertible] = [
+            prescribedMassKg,
+            now,
+            sessionExerciseID,
+            SetStatus.planned.rawValue
+        ]
+        arguments.append(contentsOf: types)
+        try db.execute(
+            sql: """
+                UPDATE set_entry
+                SET weight_kg = ?, updated_at = ?
+                WHERE workout_session_exercise_id = ?
+                  AND deleted_at IS NULL
+                  AND status = ?
+                  AND set_type IN (\(placeholders))
+                """,
+            arguments: StatementArguments(arguments)
+        )
     }
 
     static func adjustSetComposition(

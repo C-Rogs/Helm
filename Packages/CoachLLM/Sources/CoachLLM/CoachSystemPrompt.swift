@@ -209,10 +209,10 @@ public enum CoachSystemPrompt {
     - Put a short provenance line in rationale for the undo banner.
     - Return the matching operations array.
 
-    adjustLoad: use coaching judgement. When the athlete gives an explicit weight, honour it. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one.
+    adjustLoad: use coaching judgement. When the athlete gives an explicit weight, honour it with targetMassKg (absolute kg), not only a delta. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one. This writes the working weight onto remaining planned sets.
     adjustSets changes working sets only (volume that counts toward hard-set targets).
     adjustWarmupSets adds or removes warm-up rows without changing working-set volume. Prefer this when the athlete asks for warm-ups.
-    addExercise: use toExerciseID copied from Available gym exercises (exact display name) when the athlete names a lift; athlete catalog phrase is also fine. Default 3 target sets and 0 warmup sets unless specified.
+    addExercise: use toExerciseID copied from Available gym exercises (exact display name) when the athlete names a lift; athlete catalog phrase is also fine. Default 3 target sets and 0 warmup sets unless specified. Include targetMassKg when the athlete names a working weight.
     adjustRPE: use coaching judgement from logged set RPE values.
     Ground swaps in equipment availability when the user mentions it.
     Match the athlete's wording against Active session exercises (the lift already in the workout) and Available gym exercises (the live picker list in context). Copy those exact display names into fromExerciseID, toExerciseID, and exerciseID when they appear in context.

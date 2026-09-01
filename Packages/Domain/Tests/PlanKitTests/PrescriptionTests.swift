@@ -541,4 +541,29 @@ struct PrescriptionAdjustmentTests {
         }
         #expect(adjusted.exercises[0].targetRPE == 8.5)
     }
+
+    @Test("add exercise keeps a named working weight")
+    func addExerciseKeepsTargetMass() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: "cable_fly",
+                    targetMassKg: 15,
+                    targetSets: 2
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected add exercise to apply")
+            return
+        }
+        let added = adjusted.exercises.first { $0.exerciseID == "cable_fly" }
+        #expect(added?.targetSets == 2)
+        #expect(added?.targetMass?.kilograms == 15)
+    }
 }

@@ -365,6 +365,7 @@ enum PrescriptionAdjustmentEngine {
 
         let setCount = max(1, operation.targetSets ?? 3)
         let warmupCount = max(0, operation.warmupSets ?? 0)
+        let targetMass = operation.targetMassKg.map { Mass(kilograms: PrescriptionBounds.clampedLoadKg($0)) }
         exercises.append(
             PrescribedExercise(
                 exerciseID: exerciseID,
@@ -373,8 +374,8 @@ enum PrescriptionAdjustmentEngine {
                 warmupSets: warmupCount,
                 targetRepMin: nil,
                 targetRepMax: nil,
-                targetMass: nil,
-                targetRPE: nil
+                targetMass: targetMass,
+                targetRPE: operation.targetRPE.map { PrescriptionBounds.clampRPE($0) }
             )
         )
         return .success
