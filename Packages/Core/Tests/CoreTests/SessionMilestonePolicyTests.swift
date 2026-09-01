@@ -47,4 +47,13 @@ struct SessionMilestonePolicyTests {
         )
         #expect(q == nil)
     }
+
+    @Test("skips empty workouts built as-you-go")
+    func skipsManualSource() {
+        #expect(SessionMilestonePolicy.applies(to: .manual) == false)
+        #expect(SessionMilestonePolicy.applies(to: .healthKit) == false)
+        #expect(SessionMilestonePolicy.applies(to: .prescription) == true)
+        #expect(SessionMilestonePolicy.applies(to: .template) == true)
+        #expect(SessionMilestonePolicy.applies(to: .importSource) == true)
+    }
 }

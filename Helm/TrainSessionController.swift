@@ -880,6 +880,7 @@ final class TrainSessionController {
     private func evaluateSessionMilestoneAfterSetComplete(previousCompleted: Int) {
         guard ProactiveCoachPreferences.milestonesEnabled else { return }
         guard let snapshot = store.snapshot else { return }
+        guard SessionMilestonePolicy.applies(to: snapshot.session.source) else { return }
         let progress = TrainSessionProgress.from(snapshot: snapshot)
         guard let quartile = SessionMilestonePolicy.crossedMilestone(
             previousCompleted: previousCompleted,

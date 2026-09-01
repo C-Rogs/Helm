@@ -4,6 +4,16 @@ import Foundation
 public enum SessionMilestonePolicy {
     public static let maxFiresPerSession = 4
 
+    /// Empty / ad-hoc sessions grow as the athlete adds lifts. Quartiles against a moving total are noise.
+    public static func applies(to source: WorkoutSessionSource) -> Bool {
+        switch source {
+        case .prescription, .template, .importSource:
+            return true
+        case .manual, .healthKit:
+            return false
+        }
+    }
+
     /// Returns the quartile (1...4) just crossed, or nil if none / already recorded / cap hit.
     public static func crossedMilestone(
         previousCompleted: Int,
