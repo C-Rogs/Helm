@@ -79,6 +79,9 @@ struct AppMigrator {
         if version >= 22 {
             ChatSurfaceSchemaMigration.register(on: &migrator)
         }
+        if version >= 23 {
+            ExerciseSelectionMetadataSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

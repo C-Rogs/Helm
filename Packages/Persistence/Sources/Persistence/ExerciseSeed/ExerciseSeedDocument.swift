@@ -183,7 +183,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
 }
 
 /// Per-exercise evidence ratings and citations from the seed library.
-public struct ExerciseSeedEvidence: Codable, Sendable, Equatable {
+public struct ExerciseSeedEvidence: Codable, Sendable, Equatable, Hashable {
     public let effectivenessRating: Double?
     public let stretchPositionBias: Double?
     public let stimulusToFatigue: Double?

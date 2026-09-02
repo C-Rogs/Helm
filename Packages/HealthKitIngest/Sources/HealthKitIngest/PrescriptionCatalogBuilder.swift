@@ -23,9 +23,22 @@ enum PrescriptionCatalogBuilder {
                 exerciseID: row.id,
                 muscleMap: muscleMap,
                 priority: priority,
-                equipment: normalizedEquipment(row.equipment)
+                equipment: normalizedEquipment(row.equipment),
+                evidence: evidenceRatings(from: row.evidence),
+                movementClass: CatalogMovementClass.parse(row.movementPattern)
             )
         }
+    }
+
+    private static func evidenceRatings(from evidence: ExerciseSeedEvidence?) -> ExerciseEvidenceRatings? {
+        guard let evidence else { return nil }
+        guard let effectiveness = evidence.effectivenessRating else { return nil }
+        return ExerciseEvidenceRatings.clamped(
+            effectiveness: effectiveness,
+            stretchPositionBias: evidence.stretchPositionBias ?? 0.5,
+            stimulusToFatigue: evidence.stimulusToFatigue ?? 0.5,
+            citationIDs: evidence.citationIDs
+        )
     }
 
     private static func muscleMap(for row: ExerciseCatalogRow) -> ExerciseMuscleMap? {

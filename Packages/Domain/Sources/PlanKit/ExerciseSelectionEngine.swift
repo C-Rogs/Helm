@@ -86,12 +86,32 @@ enum ExerciseSelectionEngine {
                 && exercise.muscleMap.contributions.contains { $0.muscle == muscle }
         }
 
+        let preferredClassMatches = candidates.filter { exercise in
+            SlotClassFit.matchesPreferredClass(exercise, slot: slot)
+        }
+        let untypedKeywordHits = candidates.filter { exercise in
+            let untyped = exercise.movementClass == nil || exercise.movementClass == .other
+            return untyped
+                && MovementPatternMatcher.patternScore(
+                    exerciseID: exercise.exerciseID,
+                    pattern: slot.pattern
+                ) > 0
+        }
         let patterned = candidates.filter {
             MovementPatternMatcher.patternScore(exerciseID: $0.exerciseID, pattern: slot.pattern) > 0
         }
-        let pool = patterned.isEmpty ? candidates.filter {
-            MovementPatternMatcher.softMuscleFallback(exercise: $0, slot: slot)
-        } : patterned
+        let pool: [CatalogExercise]
+        if !preferredClassMatches.isEmpty {
+            pool = preferredClassMatches
+        } else if !untypedKeywordHits.isEmpty {
+            pool = untypedKeywordHits
+        } else if !patterned.isEmpty {
+            pool = patterned
+        } else {
+            pool = candidates.filter {
+                MovementPatternMatcher.softMuscleFallback(exercise: $0, slot: slot)
+            }
+        }
 
         guard
             let best = pool.max(by: { lhs, rhs in
@@ -200,6 +220,8 @@ enum ExerciseSelectionEngine {
         }
 
         if let slot {
+            total += SlotClassFit.classScore(exercise, slot: slot)
+            total += SlotClassFit.loadabilityScore(exercise, slot: slot)
             total += MovementPatternMatcher.patternScore(
                 exerciseID: exercise.exerciseID,
                 pattern: slot.pattern

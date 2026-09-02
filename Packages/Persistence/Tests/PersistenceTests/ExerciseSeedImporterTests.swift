@@ -474,6 +474,35 @@ struct ExerciseSeedImporterTests {
         #expect(entry.primaryMuscleGroup == "chest")
         #expect(entry.aliases.contains("Bench Press (Barbell)"))
     }
+
+    @Test("seed movementPattern and evidence persist onto catalog rows")
+    func movementPatternAndEvidenceRoundTrip() throws {
+        let store = try PersistenceStore.inMemory()
+        let importer = ExerciseSeedImporter(pool: store.poolForTesting)
+        let entry = ExerciseSeedEntry(
+            id: "seed-cam-bench-dip",
+            canonicalName: "bench dip",
+            displayName: "Bench Dip",
+            aliases: ["Bench Dip"],
+            exerciseMode: .weightReps,
+            equipment: "bodyweight",
+            primaryMuscleGroup: "chest",
+            movementPattern: "isolation",
+            isPickerDefault: true,
+            evidence: ExerciseSeedEvidence(
+                effectivenessRating: 0.4,
+                stretchPositionBias: 0.2,
+                stimulusToFatigue: 0.3,
+                citationIDs: ["ev-test"]
+            )
+        )
+        _ = try importer.importEntries([entry], seedVersion: 1)
+        let rows = try store.exercises.fetchCatalogRows()
+        let dip = rows.first { $0.id == "seed-cam-bench-dip" }
+        #expect(dip?.movementPattern == "isolation")
+        #expect(dip?.evidence?.effectivenessRating == 0.4)
+        #expect(dip?.evidence?.citationIDs == ["ev-test"])
+    }
 }
 
 private enum FixtureError: Error {

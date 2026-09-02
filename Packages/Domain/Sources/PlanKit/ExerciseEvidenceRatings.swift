@@ -21,4 +21,21 @@ public struct ExerciseEvidenceRatings: Sendable, Hashable, Codable {
         self.stimulusToFatigue = stimulusToFatigue
         self.citationIDs = citationIDs
     }
+
+    public static func clamped(
+        effectiveness: Double,
+        stretchPositionBias: Double,
+        stimulusToFatigue: Double,
+        citationIDs: [String]
+    ) -> ExerciseEvidenceRatings {
+        func unit(_ value: Double) -> Double {
+            min(1, max(0, value))
+        }
+        return ExerciseEvidenceRatings(
+            effectiveness: unit(effectiveness),
+            stretchPositionBias: unit(stretchPositionBias),
+            stimulusToFatigue: unit(stimulusToFatigue),
+            citationIDs: citationIDs
+        )
+    }
 }

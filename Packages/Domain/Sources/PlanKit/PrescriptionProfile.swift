@@ -13,19 +13,23 @@ public struct CatalogExercise: Sendable, Hashable, Codable {
     /// Normalized equipment tag (for example `barbell`, `dumbbell`). Nil means bodyweight/unspecified.
     public let equipment: String?
     public let evidence: ExerciseEvidenceRatings?
+    /// Coarse seed class. Nil when the catalog never stored a pattern.
+    public let movementClass: CatalogMovementClass?
 
     public init(
         exerciseID: String,
         muscleMap: ExerciseMuscleMap,
         priority: Int,
         equipment: String? = nil,
-        evidence: ExerciseEvidenceRatings? = nil
+        evidence: ExerciseEvidenceRatings? = nil,
+        movementClass: CatalogMovementClass? = nil
     ) {
         self.exerciseID = exerciseID
         self.muscleMap = muscleMap
         self.priority = priority
         self.equipment = equipment
         self.evidence = evidence
+        self.movementClass = movementClass
     }
 }
 

@@ -291,7 +291,7 @@ public struct ExerciseRepository: Sendable {
                 db,
                 sql: """
                     SELECT id, display_name, primary_muscle_group, secondary_muscle_groups_json,
-                           equipment_type, is_picker_default
+                           equipment_type, is_picker_default, movement_pattern, evidence_json
                     FROM exercise
                     WHERE deleted_at IS NULL
                     ORDER BY is_picker_default DESC, picker_rank ASC, sort_name ASC
@@ -303,13 +303,16 @@ public struct ExerciseRepository: Sendable {
             return try rows.map { row in
                 let secondaryJSON: String = row["secondary_muscle_groups_json"] ?? "[]"
                 let secondaries = try Self.decodeStringArray(from: secondaryJSON)
+                let evidenceJSON: String? = row["evidence_json"]
                 return ExerciseCatalogRow(
                     id: row["id"],
                     displayName: row["display_name"],
                     primaryMuscleGroup: row["primary_muscle_group"],
                     secondaryMuscleGroups: secondaries,
                     equipment: row["equipment_type"],
-                    isPickerDefault: (row["is_picker_default"] as Int?) == 1
+                    isPickerDefault: (row["is_picker_default"] as Int?) == 1,
+                    movementPattern: row["movement_pattern"],
+                    evidence: Self.decodeEvidence(from: evidenceJSON)
                 )
             }
         }
@@ -514,6 +517,11 @@ public struct ExerciseRepository: Sendable {
     private static func decodeStringArray(from json: String) throws -> [String] {
         guard let data = json.data(using: .utf8) else { return [] }
         return try JSONDecoder().decode([String].self, from: data)
+    }
+
+    private static func decodeEvidence(from json: String?) -> ExerciseSeedEvidence? {
+        guard let json, let data = json.data(using: .utf8) else { return nil }
+        return try? JSONDecoder().decode(ExerciseSeedEvidence.self, from: data)
     }
 
     private static func summary(from row: Row) throws -> ExerciseSummary {

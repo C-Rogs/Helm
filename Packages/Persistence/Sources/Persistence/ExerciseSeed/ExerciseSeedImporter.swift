@@ -132,6 +132,7 @@ public struct ExerciseSeedImporter: Sendable {
     private func upsertSeedEntry(_ entry: ExerciseSeedEntry, now: String, in db: Database) throws {
         let secondaryJSON = try encodeJSON(entry.secondaryMuscleGroups)
         let coachingCuesJSON = try encodeJSON(entry.coachingCues ?? [])
+        let evidenceJSON = try encodeEvidence(entry.evidence)
         let isCustom = 0
         let isPickerDefault = (entry.isPickerDefault ?? false) ? 1 : 0
         let isHevyLibrary = (entry.isHevyLibrary ?? false) ? 1 : 0
@@ -143,8 +144,8 @@ public struct ExerciseSeedImporter: Sendable {
                     id, canonical_name, display_name, exercise_mode, equipment_type,
                     primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name,
                     instruction_text, coaching_cues_json, gif_url, source_dataset_id, is_hevy_library, is_picker_default,
-                    picker_rank, created_at, updated_at, deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                    picker_rank, movement_pattern, evidence_json, created_at, updated_at, deleted_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 ON CONFLICT(id) DO UPDATE SET
                     canonical_name = excluded.canonical_name,
                     display_name = excluded.display_name,
@@ -162,6 +163,8 @@ public struct ExerciseSeedImporter: Sendable {
                     is_hevy_library = MAX(exercise.is_hevy_library, excluded.is_hevy_library),
                     sort_name = excluded.sort_name,
                     picker_rank = excluded.picker_rank,
+                    movement_pattern = excluded.movement_pattern,
+                    evidence_json = excluded.evidence_json,
                     deleted_at = NULL,
                     updated_at = excluded.updated_at
                 WHERE exercise.is_custom = 0
@@ -183,6 +186,8 @@ public struct ExerciseSeedImporter: Sendable {
                 isHevyLibrary,
                 isPickerDefault,
                 pickerRank,
+                entry.movementPattern,
+                evidenceJSON,
                 now,
                 now,
             ]
@@ -221,5 +226,11 @@ public struct ExerciseSeedImporter: Sendable {
     private func encodeJSON(_ values: [String]) throws -> String {
         let data = try JSONSerialization.data(withJSONObject: values)
         return String(data: data, encoding: .utf8) ?? "[]"
+    }
+
+    private func encodeEvidence(_ evidence: ExerciseSeedEvidence?) throws -> String? {
+        guard let evidence else { return nil }
+        let data = try JSONEncoder().encode(evidence)
+        return String(data: data, encoding: .utf8)
     }
 }
