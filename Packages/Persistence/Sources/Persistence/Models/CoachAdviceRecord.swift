@@ -55,7 +55,19 @@ public struct CoachAdviceRecord: Codable, FetchableRecord, MutablePersistableRec
 // MARK: - Table definition
 
 extension CoachAdviceRecord {
-    public static let databaseTableName = "coachAdviceRecord"
+    public static let databaseTableName = "coach_advice_record"
+
+    enum CodingKeys: String, CodingKey {
+        case id
+        case messageID = "message_id"
+        case adviceType = "advice_type"
+        case schemaVersion = "schema_version"
+        case prescribedPayload = "prescribed_payload"
+        case state
+        case linkedSessionID = "linked_session_id"
+        case helmDay = "helm_day"
+        case createdAt = "created_at"
+    }
 
     enum Columns {
         static let id = Column(CodingKeys.id)
@@ -67,5 +79,41 @@ extension CoachAdviceRecord {
         static let linkedSessionID = Column(CodingKeys.linkedSessionID)
         static let helmDay = Column(CodingKeys.helmDay)
         static let createdAt = Column(CodingKeys.createdAt)
+    }
+
+    public func encode(to container: inout PersistenceContainer) {
+        container[Columns.id.name] = id.uuidString
+        container[Columns.messageID.name] = messageID
+        container[Columns.adviceType.name] = adviceType.rawValue
+        container[Columns.schemaVersion.name] = schemaVersion
+        container[Columns.prescribedPayload.name] = prescribedPayload
+        container[Columns.state.name] = state.rawValue
+        container[Columns.linkedSessionID.name] = linkedSessionID
+        container[Columns.helmDay.name] = helmDay
+        container[Columns.createdAt.name] = ISO8601Coding.string(from: createdAt)
+    }
+
+    public init(row: Row) throws {
+        let idString: String = row[Columns.id]
+        guard let parsedID = UUID(uuidString: idString) else {
+            throw PersistenceError.migrationFailed("invalid coach advice id: \(idString)")
+        }
+        id = parsedID
+        messageID = row[Columns.messageID]
+        let typeRaw: String = row[Columns.adviceType]
+        guard let parsedType = AdviceType(rawValue: typeRaw) else {
+            throw PersistenceError.migrationFailed("unknown coach advice type: \(typeRaw)")
+        }
+        adviceType = parsedType
+        schemaVersion = row[Columns.schemaVersion]
+        prescribedPayload = row[Columns.prescribedPayload]
+        let stateRaw: String = row[Columns.state]
+        guard let parsedState = AdviceState(rawValue: stateRaw) else {
+            throw PersistenceError.migrationFailed("unknown coach advice state: \(stateRaw)")
+        }
+        state = parsedState
+        linkedSessionID = row[Columns.linkedSessionID]
+        helmDay = row[Columns.helmDay]
+        createdAt = try ISO8601Coding.date(from: row[Columns.createdAt])
     }
 }

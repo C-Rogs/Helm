@@ -381,11 +381,15 @@ final class ChatController {
                     state: .pending,
                     helmDay: today.formatted
                 )
-                try persistence.coachAdviceRecords.insert(record)
-                try persistence.coachAdviceRecords.supersedePending(
-                    type: .workoutStart,
-                    excluding: messageID
-                )
+                do {
+                    try persistence.coachAdviceRecords.insert(record)
+                    try persistence.coachAdviceRecords.supersedePending(
+                        type: .workoutStart,
+                        excluding: messageID
+                    )
+                } catch {
+                    CoachDiagnosticsStore.shared.recordFailure(surface: "coachAdviceRecord", error: error)
+                }
             case let .settingsAdjustment(payload):
                 applyProgressStep = "Updating plan…"
                 _ = try await HelmActionRuntime.perform(

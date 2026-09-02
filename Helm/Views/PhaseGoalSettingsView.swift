@@ -161,9 +161,9 @@ struct PhaseGoalSettingsView: View {
                         .foregroundStyle(HelmColor.fgSecondary)
                 }
             }
-            .onChange(of: settings.daysPerWeek) { _, _ in
+            .onChange(of: settings.daysPerWeek) { oldValue, newValue in
                 HapticEngine.shared.play(.selection)
-                syncRotationToTemplate()
+                adjustRotationForDaysChange(from: oldValue, to: newValue)
             }
             Text("Sets how many sessions land this week. Plan builder can pick hybrid rotations.")
                 .font(HelmTypography.caption)
@@ -393,6 +393,27 @@ struct PhaseGoalSettingsView: View {
         settings.dayKindRotationRaw = template
             .defaultDayKindRotation(daysPerWeek: settings.daysPerWeek)
             .map(\.rawValue)
+    }
+
+    /// Keep a plan-builder hybrid. Only reset to the template cycle when the stored
+    /// rotation was still that template's canonical week for the previous day count.
+    private func adjustRotationForDaysChange(from oldDays: Int, to newDays: Int) {
+        let template = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
+        let oldCanonical = template.defaultDayKindRotation(daysPerWeek: oldDays).map(\.rawValue)
+        if settings.dayKindRotationRaw.isEmpty || settings.dayKindRotationRaw == oldCanonical {
+            syncRotationToTemplate()
+            return
+        }
+        var rotation = settings.dayKindRotationRaw
+        if rotation.count > newDays {
+            settings.dayKindRotationRaw = Array(rotation.prefix(newDays))
+            return
+        }
+        let seed = rotation
+        while rotation.count < newDays {
+            rotation.append(seed[rotation.count % seed.count])
+        }
+        settings.dayKindRotationRaw = rotation
     }
 }
 

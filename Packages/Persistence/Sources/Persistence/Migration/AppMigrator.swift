@@ -82,6 +82,9 @@ struct AppMigrator {
         if version >= 23 {
             ExerciseSelectionMetadataSchemaMigration.register(on: &migrator)
         }
+        if version >= 24 {
+            CoachAdviceRecordSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 
