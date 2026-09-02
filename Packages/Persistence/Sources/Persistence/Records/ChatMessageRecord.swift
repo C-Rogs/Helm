@@ -12,6 +12,7 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
         case schemaVersion = "schema_version"
         case createdAt = "created_at"
         case sortIndex = "sort_index"
+        case surface
     }
 
     var id: String
@@ -21,4 +22,5 @@ struct ChatMessageRecord: Codable, FetchableRecord, PersistableRecord {
     var schemaVersion: String?
     var createdAt: String
     var sortIndex: Int
+    var surface: String
 }

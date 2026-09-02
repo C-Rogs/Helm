@@ -73,4 +73,34 @@ struct ChatStoreTests {
         try store.chat.clear()
         #expect(try store.chat.fetchAll().isEmpty)
     }
+
+    @Test("train surface does not mix into chat fetch or clear")
+    func trainSurfaceStaysSeparate() throws {
+        let store = try PersistenceStore.inMemory()
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "Chat only",
+                promptVersion: CoachPromptVersion.chatV1.rawValue,
+                surface: .chat
+            )
+        )
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "Train only",
+                promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                surface: .train
+            )
+        )
+
+        let chat = try store.chat.fetchAll(surface: .chat)
+        let train = try store.chat.fetchAll(surface: .train)
+        #expect(chat.map(\.text) == ["Chat only"])
+        #expect(train.map(\.text) == ["Train only"])
+
+        try store.chat.clear(surface: .chat)
+        #expect(try store.chat.fetchAll(surface: .chat).isEmpty)
+        #expect(try store.chat.fetchAll(surface: .train).map(\.text) == ["Train only"])
+    }
 }

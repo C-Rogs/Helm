@@ -2,6 +2,11 @@ import CoachLLM
 import Foundation
 import GRDB
 
+public enum ChatSurface: String, Sendable, Hashable, Equatable {
+    case chat
+    case train
+}
+
 public struct StoredChatMessage: Sendable, Hashable, Identifiable, Equatable {
     public let id: String
     public let role: CoachMessage.Role
@@ -10,6 +15,7 @@ public struct StoredChatMessage: Sendable, Hashable, Identifiable, Equatable {
     public let schemaVersion: String?
     public let createdAt: Date
     public let sortIndex: Int
+    public let surface: ChatSurface
 
     public init(
         id: String,
@@ -18,7 +24,8 @@ public struct StoredChatMessage: Sendable, Hashable, Identifiable, Equatable {
         promptVersion: String,
         schemaVersion: String?,
         createdAt: Date,
-        sortIndex: Int
+        sortIndex: Int,
+        surface: ChatSurface = .chat
     ) {
         self.id = id
         self.role = role
@@ -27,6 +34,7 @@ public struct StoredChatMessage: Sendable, Hashable, Identifiable, Equatable {
         self.schemaVersion = schemaVersion
         self.createdAt = createdAt
         self.sortIndex = sortIndex
+        self.surface = surface
     }
 }
 
@@ -35,17 +43,20 @@ public struct ChatMessageInsert: Sendable, Equatable {
     public let text: String
     public let promptVersion: String
     public let schemaVersion: String?
+    public let surface: ChatSurface
 
     public init(
         role: CoachMessage.Role,
         text: String,
         promptVersion: String,
-        schemaVersion: String? = nil
+        schemaVersion: String? = nil,
+        surface: ChatSurface = .chat
     ) {
         self.role = role
         self.text = text
         self.promptVersion = promptVersion
         self.schemaVersion = schemaVersion
+        self.surface = surface
     }
 }
 
@@ -56,9 +67,10 @@ public struct ChatStore: Sendable {
         self.pool = pool
     }
 
-    public func fetchAll() throws -> [StoredChatMessage] {
+    public func fetchAll(surface: ChatSurface = .chat) throws -> [StoredChatMessage] {
         try pool.read { db in
             let records = try ChatMessageRecord
+                .filter(Column("surface") == surface.rawValue)
                 .order(Column("sort_index"))
                 .fetchAll(db)
             return try records.map { try $0.toValue() }
@@ -66,10 +78,11 @@ public struct ChatStore: Sendable {
     }
 
     /// Loads the most recent messages, oldest first.
-    public func fetchRecent(limit: Int) throws -> [StoredChatMessage] {
+    public func fetchRecent(limit: Int, surface: ChatSurface = .chat) throws -> [StoredChatMessage] {
         let cappedLimit = max(1, limit)
         return try pool.read { db in
             let records = try ChatMessageRecord
+                .filter(Column("surface") == surface.rawValue)
                 .order(Column("sort_index").desc)
                 .limit(cappedLimit)
                 .fetchAll(db)
@@ -81,7 +94,8 @@ public struct ChatStore: Sendable {
         try pool.write { db in
             let nextSortIndex = try Int.fetchOne(
                 db,
-                sql: "SELECT COALESCE(MAX(sort_index), -1) + 1 FROM chat_message"
+                sql: "SELECT COALESCE(MAX(sort_index), -1) + 1 FROM chat_message WHERE surface = ?",
+                arguments: [message.surface.rawValue]
             ) ?? 0
             let record = ChatMessageRecord(
                 id: UUID().uuidString.lowercased(),
@@ -90,16 +104,19 @@ public struct ChatStore: Sendable {
                 promptVersion: message.promptVersion,
                 schemaVersion: message.schemaVersion,
                 createdAt: ISO8601Coding.string(from: createdAt),
-                sortIndex: nextSortIndex
+                sortIndex: nextSortIndex,
+                surface: message.surface.rawValue
             )
             try record.insert(db)
             return try record.toValue()
         }
     }
 
-    public func clear() throws {
+    public func clear(surface: ChatSurface = .chat) throws {
         _ = try pool.write { db in
-            try ChatMessageRecord.deleteAll(db)
+            try ChatMessageRecord
+                .filter(Column("surface") == surface.rawValue)
+                .deleteAll(db)
         }
     }
 }
@@ -109,6 +126,7 @@ private extension ChatMessageRecord {
         guard let role = CoachMessage.Role(rawValue: role) else {
             throw PersistenceError.migrationFailed("unknown chat role: \(role)")
         }
+        let resolvedSurface = ChatSurface(rawValue: self.surface) ?? .chat
         return StoredChatMessage(
             id: id,
             role: role,
@@ -116,7 +134,8 @@ private extension ChatMessageRecord {
             promptVersion: promptVersion,
             schemaVersion: schemaVersion,
             createdAt: try ISO8601Coding.date(from: createdAt),
-            sortIndex: sortIndex
+            sortIndex: sortIndex,
+            surface: resolvedSurface
         )
     }
 }
