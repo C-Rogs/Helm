@@ -3,6 +3,7 @@ import SwiftUI
 
 struct ExerciseHistorySheet: View {
     let model: ExerciseHistoryModel
+    var imageURL: URL? = nil
 
     @Environment(\.dismiss) private var dismiss
 
@@ -10,6 +11,16 @@ struct ExerciseHistorySheet: View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                    if let imageURL {
+                        ExerciseImageView(
+                            url: imageURL,
+                            fallbackLabel: model.exerciseName
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: HelmLayout.exerciseHistoryImageHeight)
+                        .accessibilityLabel("\(model.exerciseName) demonstration")
+                    }
+
                     if let currentE1RM = model.currentE1RMKilograms {
                         Card {
                             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {

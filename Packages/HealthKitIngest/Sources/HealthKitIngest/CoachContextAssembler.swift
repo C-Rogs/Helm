@@ -213,7 +213,9 @@ public enum CoachContextAssembler {
                 emphasis: settings.phaseGoal.emphasis,
                 history: history,
                 muscleMaps: muscleMaps,
-                calendar: calendar
+                calendar: calendar,
+                sessionsPerWeek: settings.daysPerWeek,
+                dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
             )
             todaySplit = schedule.splitKind
         }
@@ -236,11 +238,14 @@ public enum CoachContextAssembler {
                 mesocycleState: mesocycleState,
                 experience: experience,
                 remainingSessionsThisWeek: SessionSplitPlanner.remainingSessionsThisWeek(
-                    completedThisWeek: completedThisWeek
+                    completedThisWeek: completedThisWeek,
+                    plannedPerWeek: settings.daysPerWeek
                 ),
                 pendingReactiveDeload: mesocycleState?.pendingReactiveDeload ?? false,
                 sessionDurationMinutes: settings.sessionDurationMinutes,
                 programTemplate: settings.programTemplateRaw,
+                daysPerWeek: settings.daysPerWeek,
+                weekRotation: TrainingPlanShape.dayKindRotation(from: settings).map(\.label),
                 allowedEquipment: MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences).preferences.allowedEquipment
             )
         )

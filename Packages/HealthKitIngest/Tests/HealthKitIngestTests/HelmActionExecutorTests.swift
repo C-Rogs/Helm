@@ -413,6 +413,38 @@ struct HelmActionExecutorTests {
         #expect(parsed.freeform.contains("progressionGoal=strength"))
     }
 
+    @Test("plan builder commit persists day kind rotation")
+    @MainActor
+    func planBuilderCommitPersistsRotation() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        let service = PlanBuilderService(persistence: store, provider: nil)
+        let candidate = CandidatePlan(
+            id: "upperlower_4day",
+            headline: "Four-day upper / lower",
+            programTemplateRaw: "upper_lower",
+            daysPerWeek: 4,
+            sessionDurationMinutes: 60,
+            weeklyPeakSetsByMuscle: [.chest: 12],
+            frequencyByMuscle: [.chest: 2],
+            deloadCadenceWeeks: 5,
+            availabilityFitScore: 1.0,
+            leverNotes: [],
+            dayKindRotation: [.upper, .lower, .upper, .lower]
+        )
+        let option = PlanBuilderOption(
+            candidate: candidate,
+            copy: PlanBuilderService.fallbackCopy(for: candidate)
+        )
+        let next = try service.makeUpdatedSettings(
+            option: option,
+            interview: PlanBuilderInterview(daysPerWeek: 4)
+        )
+        #expect(next.programTemplateRaw == "upper_lower")
+        #expect(next.daysPerWeek == 4)
+        #expect(next.dayKindRotationRaw == ["upper", "lower", "upper", "lower"])
+    }
+
     @Test("adjusted prescription persist through run() requests a re-plan")
     func adjustedPrescriptionWriteThroughRun() async throws {
         let store = try PersistenceStore.inMemory()

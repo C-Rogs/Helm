@@ -66,28 +66,21 @@ struct TrainView: View {
 
     private var navigationRoot: some View {
         NavigationStack {
-            ZStack(alignment: .bottom) {
-                Group {
-                    if controller.hasActiveSession, let snapshot = controller.snapshot {
-                        activeSessionView(snapshot)
-                    } else {
-                        idleState
-                    }
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                if controller.hasActiveSession, controller.numpadTarget != nil {
-                    // No full-screen overlay. Field hops (weight -> reps -> RPE)
-                    // must pass through to the session scroll below. Dismiss via
-                    // chevron or swipe-down on the pad itself.
-                }
-
-                if controller.hasActiveSession {
-                    bottomSessionChrome
+            Group {
+                if controller.hasActiveSession, let snapshot = controller.snapshot {
+                    activeSessionView(snapshot)
+                } else {
+                    idleState
                 }
             }
-            .onPreferenceChange(TrainBottomChromeHeightKey.self) { height in
-                measuredChromeHeight = height
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                bottomSessionChrome
+            }
+            .onChange(of: controller.numpadTarget) { _, target in
+                if target == nil {
+                    measuredChromeHeight = 0
+                }
             }
             .helmScreenBackground()
             .navigationBarTitleDisplayMode(.inline)
@@ -95,99 +88,52 @@ struct TrainView: View {
         }
     }
 
+    private var showsSessionAccessory: Bool {
+        TrainSessionAccessoryBar.isEnabled(
+            selectedTab: .train,
+            controller: controller,
+            cardLoggingModeEnabled: trainPreferences.cardLoggingModeEnabled
+        )
+    }
+
     @ViewBuilder
     private var bottomSessionChrome: some View {
-        let showRest = controller.isRestTimerRunning
-            && controller.snapshot?.restTimer?.endsAt != nil
-        let showCoach = controller.numpadTarget == nil
-            && !controller.isReorderMode
-            && !trainPreferences.cardLoggingModeEnabled
-        let showNumpad = controller.numpadTarget != nil
-        let hasChrome = showRest || showCoach || showNumpad
-
-        VStack(spacing: 0) {
-            if hasChrome {
-                VStack(spacing: HelmSpacing.xs) {
-                    if showRest,
-                       let timer = controller.snapshot?.restTimer,
-                       let endsAt = timer.endsAt {
-                        if showNumpad {
-                            // Rest must stay glanceable while pre-logging the next set;
-                            // the full banner would stack too tall over the pad.
-                            CompactRestPill(
-                                endsAt: endsAt,
-                                totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                                onRemainingSecondsChange: { remaining in
-                                    handleRestTimerTick(remaining)
-                                }
-                            )
-                            .geometryGroup()
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        } else {
-                            RestTimerBanner(
-                                endsAt: endsAt,
-                                totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                                onSkip: {
-                                    Task { @MainActor in await controller.skipRest() }
-                                },
-                                onAdjust: { delta in
-                                    Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
-                                },
-                                onRemainingSecondsChange: { remaining in
-                                    handleRestTimerTick(remaining)
-                                },
-                                upNextName: controller.upNextExerciseName
-                            )
-                            .geometryGroup()
-                            .transition(.move(edge: .bottom).combined(with: .opacity))
-                        }
-                    }
-
-                    if showCoach {
-                        inSessionCoachBar
-                    }
-
-                    if showNumpad {
-                        numpadOverlay
-                    }
-                }
+        if controller.hasActiveSession, controller.numpadTarget != nil {
+            numpadSessionChrome
+        } else if controller.hasActiveSession, showsSessionAccessory {
+            TrainSessionAccessoryBar()
                 .frame(maxWidth: .infinity)
-                .background(HelmColor.canvas, in: Rectangle())
-                .transition(.move(edge: .bottom).combined(with: .opacity))
-            }
+                .fixedSize(horizontal: false, vertical: true)
+                .background(HelmColor.canvas)
         }
-        .animation(
-            suppressChromeAnimations
-                ? nil
-                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
-            value: controller.numpadTarget
-        )
-        .animation(
-            suppressChromeAnimations
-                ? nil
-                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
-            value: controller.isRestTimerRunning
-        )
-        .animation(
-            suppressChromeAnimations
-                ? nil
-                : HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion),
-            value: hasChrome
-        )
-        .background {
-            GeometryReader { geometry in
-                Color.clear.preference(
-                    key: TrainBottomChromeHeightKey.self,
-                    value: hasChrome ? geometry.size.height : 0
+    }
+
+    @ViewBuilder
+    private var numpadSessionChrome: some View {
+        VStack(spacing: HelmSpacing.xs) {
+            if controller.isRestTimerRunning,
+               let timer = controller.snapshot?.restTimer,
+               let endsAt = timer.endsAt {
+                CompactRestPill(
+                    endsAt: endsAt,
+                    totalSeconds: controller.restTimerTotalSeconds(for: timer),
+                    onRemainingSecondsChange: { remaining in
+                        handleRestTimerTick(remaining)
+                    }
                 )
+                .geometryGroup()
             }
+
+            numpadOverlay
         }
-        .transaction { transaction in
-            if suppressChromeAnimations {
-                transaction.animation = nil
-            }
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(HelmColor.canvas)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { height in
+            measuredChromeHeight = height
         }
-        .ignoresSafeArea(edges: hasChrome ? .bottom : [])
     }
 
     private var idleState: some View {
@@ -472,7 +418,6 @@ struct TrainView: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.bottom, cardModeBottomInset)
     }
 
     private func cardModeHeader(_ snapshot: ActiveSessionSnapshot) -> some View {
@@ -558,14 +503,6 @@ struct TrainView: View {
             .buttonStyle(.helmPressable)
             .accessibilityLabel("Switch to table view")
         }
-    }
-
-    /// Card mode is a fixed viewport: only pad for the floating bottom chrome, not scroll inset.
-    private var cardModeBottomInset: CGFloat {
-        if measuredChromeHeight > 0 {
-            return measuredChromeHeight
-        }
-        return HelmSpacing.lg * 2
     }
 
     private func tableLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {
@@ -682,8 +619,6 @@ struct TrainView: View {
                     if controller.isReorderMode {
                         reorderActionBar
                     }
-
-                    Spacer(minLength: bottomContentInset)
                 }
                 .padding(HelmSpacing.screenGutter)
                 .padding(.bottom, HelmSpacing.md)
@@ -791,64 +726,11 @@ struct TrainView: View {
         .padding(.bottom, HelmSpacing.sm)
     }
 
-    private var bottomContentInset: CGFloat {
-        if measuredChromeHeight > 0 {
-            return measuredChromeHeight + HelmSpacing.sm
-        }
-
-        if controller.numpadTarget != nil {
-            if controller.numpadTarget?.field == .rpe {
-                return HelmLayout.trainScrollBottomInsetWithRPE
-            }
-            return HelmLayout.trainScrollBottomInsetWithNumpad
-        }
-
-        var inset = HelmLayout.trainScrollBottomInset
-        if controller.isRestTimerRunning {
-            inset += HelmLayout.trainRestBannerScrollInset
-        }
-        return inset
-    }
-
-    private var inSessionCoachBar: some View {
-        let restTimer = controller.snapshot?.restTimer
-        let coachBar = AskCoachBar(
-            prompt: controller.isCoachThinking ? "Coach thinking" : "Ask coach",
-            peekSnippet: ProactiveCoachPreferences.peekEnabled ? controller.coachPeekSnippet : nil,
-            isLoading: controller.isCoachThinking
-        ) {
-            controller.isShowingCoachPrompt = true
-        }
-
-        return Group {
-            if trainPreferences.manualRestTimerEnabled {
-                HStack(spacing: HelmSpacing.xs) {
-                    coachBar
-                        .layoutPriority(1)
-
-                    ManualRestTimerPill(
-                        isRunning: controller.isRestTimerRunning,
-                        endsAt: restTimer?.endsAt
-                    ) {
-                        controller.openManualRestTimer(expanded: controller.isRestTimerRunning)
-                    }
-                    .fixedSize(horizontal: true, vertical: false)
-                }
-                .padding(.horizontal, HelmSpacing.screenGutter)
-                .padding(.bottom, HelmSpacing.xs)
-            } else {
-                coachBar
-                    .padding(.horizontal, HelmSpacing.screenGutter)
-                    .padding(.bottom, HelmSpacing.xs)
-            }
-        }
-    }
-
     private var sessionActionBar: some View {
         TrainSessionActionBar(
             isFinishing: controller.isFinishingWorkout,
-            onDiscard: { controller.isShowingDiscardConfirmation = true },
-            onFinish: { controller.isShowingFinishConfirmation = true }
+            onDiscard: { controller.requestDiscardConfirmation() },
+            onFinish: { controller.requestFinishConfirmation() }
         )
     }
 
@@ -1050,6 +932,7 @@ private struct CompactRestPill: View {
             .accessibilityElement(children: .combine)
             .accessibilityLabel("Rest remaining \(RestTimerFormatting.mmss(remaining))")
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 }
 
@@ -1102,14 +985,6 @@ private struct CompactRestPill: View {
         .helmScreenPadding()
     }
     .helmTheme()
-}
-
-private struct TrainBottomChromeHeightKey: PreferenceKey {
-    static let defaultValue: CGFloat = 0
-
-    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
-        value = max(value, nextValue())
-    }
 }
 
 private struct TrainViewportHeightKey: PreferenceKey {

@@ -91,5 +91,34 @@ struct CandidatePlanGeneratorTests {
             preferredTemplateRaw: "upper_lower"
         )
         #expect(candidates.first?.programTemplateRaw == "upper_lower")
+        #expect(candidates.first?.dayKindRotation == [.upper, .lower, .upper, .lower])
+    }
+
+    @Test("template default rotation cycles by days per week")
+    func templateDefaultRotation() {
+        #expect(ProgramTemplate.ppl.defaultDayKindRotation(daysPerWeek: 3) == [.push, .pull, .legs])
+        #expect(ProgramTemplate.ppl.defaultDayKindRotation(daysPerWeek: 6) == [
+            .push, .pull, .legs, .push, .pull, .legs
+        ])
+        #expect(ProgramTemplate.upperLower.defaultDayKindRotation(daysPerWeek: 4) == [
+            .upper, .lower, .upper, .lower
+        ])
+        #expect(ProgramTemplate.fullBody.defaultDayKindRotation(daysPerWeek: 2) == [.full, .full])
+    }
+
+    @Test("day kind match prefers tighter slot over superset")
+    func tighterSlotWins() {
+        #expect(
+            TrainingDayKind.bestMatch(
+                muscles: [.chest, .shoulders, .triceps],
+                among: [.push, .upper, .full]
+            ) == .push
+        )
+        #expect(
+            TrainingDayKind.bestMatch(
+                muscles: [.chest, .back, .shoulders, .biceps, .triceps],
+                among: [.push, .pull, .upper]
+            ) == .upper
+        )
     }
 }

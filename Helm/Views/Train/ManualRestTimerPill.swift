@@ -15,6 +15,7 @@ struct ManualRestTimerPill: View {
                         pillLabel(seconds: remaining, emphasized: true)
                             .accessibilityValue(RestTimerFormatting.mmss(remaining))
                     }
+                    .fixedSize()
                 } else {
                     pillLabel(seconds: nil, emphasized: false)
                 }

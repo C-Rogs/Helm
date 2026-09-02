@@ -830,6 +830,8 @@ final class ChatController {
             presentOrDeferNavigate(navigate)
             lastFailedUserMessage = nil
             CoachDiagnosticsStore.shared.clearTurnState()
+            finishStreamingPresentation()
+            clearChatProgress()
 
             maybeTriggerMemoryRefinementExtraction(profile: profile)
 
@@ -1154,12 +1156,9 @@ final class ChatController {
                     }
                 }
             } catch is CancellationError {
-                isStreaming = false
-                streamingText = nil
+                finishStreamingPresentation()
                 throw CancellationError()
             }
-            isStreaming = false
-            streamingText = nil
             let turn = AssembledCoachTurn(text: assembled, functionCalls: functionCalls)
             if !turn.isEmpty {
                 return turn
@@ -1233,8 +1232,6 @@ final class ChatController {
             userMessage: toolMessage,
             thread: thread
         )
-        isStreaming = false
-        streamingText = nil
         guard !artefact.payload.exercises.isEmpty else {
             throw CoachWorkoutStartAdjuster.StartError.emptySession
         }
@@ -1579,6 +1576,11 @@ final class ChatController {
         isPreparingFoodMealConfirm = false
     }
 
+    private func finishStreamingPresentation() {
+        isStreaming = false
+        streamingText = nil
+    }
+
     private func clearChatProgress() {
         chatProgressTitle = nil
         chatProgressCompletedSteps = []
@@ -1689,8 +1691,7 @@ final class ChatController {
         streamingText = ""
         chatProgressStep = "Checking today's session…"
         defer {
-            isStreaming = false
-            streamingText = nil
+            finishStreamingPresentation()
             clearChatProgress()
         }
 
@@ -1702,16 +1703,9 @@ final class ChatController {
             thread: thread
         )
         let pendingAction = CoachChatActionParser.proposal(fromSession: sessionProposal)
-        var storedText = sessionProposal.reply.trimmingCharacters(in: .whitespacesAndNewlines)
+        var storedText = sessionProposal.displayedAssistantText.trimmingCharacters(in: .whitespacesAndNewlines)
         if storedText.isEmpty, let pendingAction {
             storedText = CoachChatDisplayText.assistantText(from: "", pendingAction: pendingAction)
-        }
-        if let failure = sessionProposal.failureNotice {
-            if storedText.isEmpty {
-                storedText = failure
-            } else if !storedText.contains(failure) {
-                storedText += "\n\n" + failure
-            }
         }
         guard !storedText.isEmpty || pendingAction != nil else {
             throw CoachStructuredOutputError.emptyResponse
@@ -1733,6 +1727,9 @@ final class ChatController {
             messages.append(assistantMessage)
             trimVisibleChatHistory()
         }
+
+        finishStreamingPresentation()
+        clearChatProgress()
 
         maybeTriggerMemoryRefinementExtraction(profile: profile)
         await logTurn(

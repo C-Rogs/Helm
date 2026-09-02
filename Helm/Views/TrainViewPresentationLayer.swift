@@ -32,54 +32,48 @@ extension View {
       )
     }
     .confirmationDialog(
-      "Finish workout?",
+      controller.sessionPrompt?.dialogTitle ?? "Confirm",
       isPresented: Binding(
-        get: { controller.isShowingFinishConfirmation },
-        set: { controller.isShowingFinishConfirmation = $0 }
-      ),
-      titleVisibility: .visible
-    ) {
-      Button("Finish workout", role: .none) {
-        Task { await controller.finishWorkout() }
-      }
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text("This saves your logged sets.")
-    }
-    .confirmationDialog(
-      "Discard workout?",
-      isPresented: Binding(
-        get: { controller.isShowingDiscardConfirmation },
-        set: { controller.isShowingDiscardConfirmation = $0 }
-      ),
-      titleVisibility: .visible
-    ) {
-      Button("Discard", role: .destructive) {
-        Task { await controller.discardWorkout() }
-      }
-      Button("Cancel", role: .cancel) {}
-    } message: {
-      Text("All progress in this session will be lost.")
-    }
-    .confirmationDialog(
-      "Remove exercise?",
-      isPresented: Binding(
-        get: { controller.pendingDeleteExerciseID != nil },
-        set: { if !$0 { controller.cancelRemoveExercise() } }
+        get: { controller.sessionPrompt != nil },
+        set: { if !$0 { controller.dismissSessionPrompt() } }
       ),
       titleVisibility: .visible,
-      presenting: controller.pendingDeleteExerciseID
-    ) { sessionExerciseID in
-      Button("Remove exercise", role: .destructive) {
-        Task { await controller.confirmRemoveExercise(presentingID: sessionExerciseID) }
+      presenting: controller.sessionPrompt
+    ) { prompt in
+      switch prompt {
+      case .finish:
+        Button("Finish workout") {
+          controller.queueConfirmedPrompt(.finish)
+        }
+      case .discard:
+        Button("Discard", role: .destructive) {
+          controller.queueConfirmedPrompt(.discard)
+        }
+      case .removeExercise:
+        Button("Remove exercise", role: .destructive) {
+          controller.queueConfirmedPrompt(prompt)
+        }
       }
       Button("Cancel", role: .cancel) {
-        controller.cancelRemoveExercise()
+        controller.dismissSessionPrompt()
       }
-    } message: { sessionExerciseID in
-      Text(
-        "Remove \(controller.displayName(forExerciseSessionID: sessionExerciseID))? Logged sets for this exercise will be deleted."
-      )
+    } message: { prompt in
+      switch prompt {
+      case .finish:
+        Text("This saves your logged sets.")
+      case .discard:
+        Text("All progress in this session will be lost.")
+      case .removeExercise(let sessionExerciseID):
+        Text(
+          "Remove \(controller.displayName(forExerciseSessionID: sessionExerciseID))? Logged sets for this exercise will be deleted."
+        )
+      }
+    }
+    .onChange(of: controller.queuedConfirmedPrompt) { _, prompt in
+      guard prompt != nil else { return }
+      Task { @MainActor in
+        await controller.performQueuedPrompt()
+      }
     }
     .sheet(isPresented: Binding(
       get: { restEditorExerciseID.wrappedValue != nil },
@@ -148,7 +142,10 @@ extension View {
     )) {
       if let sessionExerciseID = controller.historyExerciseSessionID,
          let model = controller.exerciseHistoryModel(for: sessionExerciseID) {
-        ExerciseHistorySheet(model: model)
+        ExerciseHistorySheet(
+          model: model,
+          imageURL: controller.exerciseImageURL(forSessionExerciseID: sessionExerciseID)
+        )
       }
     }
   }

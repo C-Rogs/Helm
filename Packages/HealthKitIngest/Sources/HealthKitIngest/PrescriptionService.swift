@@ -371,7 +371,7 @@ public actor PlanPrescriptionEngine {
 
         try persistPlannedWorkouts(
             startingAt: day,
-            emphasis: settings.phaseGoal.emphasis,
+            settings: settings,
             history: history,
             muscleMaps: muscleMaps,
             avoidDays: busyDays
@@ -392,7 +392,9 @@ public actor PlanPrescriptionEngine {
             emphasis: settings.phaseGoal.emphasis,
             history: history,
             muscleMaps: muscleMaps,
-            calendar: calendar
+            calendar: calendar,
+            sessionsPerWeek: settings.daysPerWeek,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
         )
         let targetMuscles = schedule.targetMuscles
         let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
@@ -425,7 +427,8 @@ public actor PlanPrescriptionEngine {
             targetMuscles: targetMuscles,
             exerciseCatalog: catalog,
             remainingSessionsThisWeek: SessionSplitPlanner.remainingSessionsThisWeek(
-                completedThisWeek: completedThisWeek
+                completedThisWeek: completedThisWeek,
+                plannedPerWeek: settings.daysPerWeek
             ),
             availableEquipment: methodology.availableEquipmentFilter,
             selectionBias: methodology.selectionBias,
@@ -455,6 +458,7 @@ public actor PlanPrescriptionEngine {
             readiness: readiness,
             scheduleNotes: schedule.scheduleNotes + driftNotesForToday(
                 day: day,
+                settings: settings,
                 history: history,
                 muscleMaps: muscleMaps,
                 avoidDays: busyDays
@@ -520,7 +524,9 @@ public actor PlanPrescriptionEngine {
             emphasis: settings.phaseGoal.emphasis,
             history: history,
             muscleMaps: muscleMaps,
-            calendar: calendar
+            calendar: calendar,
+            sessionsPerWeek: settings.daysPerWeek,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
         )
         let mesocycleState = try loadOrCreateMesocycleState(
             targetMuscles: schedule.targetMuscles,
@@ -553,19 +559,22 @@ public actor PlanPrescriptionEngine {
 
     private func persistPlannedWorkouts(
         startingAt day: HelmDay,
-        emphasis: String?,
+        settings: StoredTrainingPlanSettings,
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap],
         avoidDays: Set<HelmDay> = []
     ) throws {
+        let rotation = TrainingPlanShape.dayKindRotation(from: settings)
         var records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: day,
             dayCount: 7,
-            emphasis: emphasis,
+            emphasis: settings.phaseGoal.emphasis,
             history: history,
             muscleMaps: muscleMaps,
             calendar: calendar,
-            avoidDays: avoidDays
+            sessionsPerWeek: settings.daysPerWeek,
+            avoidDays: avoidDays,
+            dayKindRotation: rotation
         )
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,
@@ -579,6 +588,7 @@ public actor PlanPrescriptionEngine {
 
     private func driftNotesForToday(
         day: HelmDay,
+        settings: StoredTrainingPlanSettings,
         history: PrescriptionHistory,
         muscleMaps: [String: ExerciseMuscleMap],
         avoidDays: Set<HelmDay> = []
@@ -586,11 +596,13 @@ public actor PlanPrescriptionEngine {
         let records = SchedulePlanner.plannedWorkoutRecords(
             startingAt: history.weekStart,
             dayCount: 7,
-            emphasis: nil,
+            emphasis: settings.phaseGoal.emphasis,
             history: history,
             muscleMaps: muscleMaps,
             calendar: calendar,
-            avoidDays: avoidDays
+            sessionsPerWeek: settings.daysPerWeek,
+            avoidDays: avoidDays,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
         )
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,

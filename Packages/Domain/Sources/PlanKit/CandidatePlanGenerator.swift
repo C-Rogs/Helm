@@ -23,6 +23,8 @@ public struct CandidatePlan: Sendable, Hashable, Codable, Identifiable {
     public let availabilityFitScore: Double
     /// Deterministic rationale notes derived from levers.
     public let leverNotes: [String]
+    /// Ordered training-day kinds for one week. Persisted on commit so the scheduler can leave PPL.
+    public let dayKindRotation: [TrainingDayKind]
 
     public init(
         id: String,
@@ -34,7 +36,8 @@ public struct CandidatePlan: Sendable, Hashable, Codable, Identifiable {
         frequencyByMuscle: [MuscleGroup: Int],
         deloadCadenceWeeks: Int,
         availabilityFitScore: Double,
-        leverNotes: [String]
+        leverNotes: [String],
+        dayKindRotation: [TrainingDayKind] = [.push, .pull, .legs]
     ) {
         self.id = id
         self.headline = headline
@@ -46,6 +49,34 @@ public struct CandidatePlan: Sendable, Hashable, Codable, Identifiable {
         self.deloadCadenceWeeks = deloadCadenceWeeks
         self.availabilityFitScore = availabilityFitScore
         self.leverNotes = leverNotes
+        self.dayKindRotation = dayKindRotation
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case id, headline, programTemplateRaw, daysPerWeek, sessionDurationMinutes
+        case weeklyPeakSetsByMuscle, frequencyByMuscle, deloadCadenceWeeks
+        case availabilityFitScore, leverNotes, dayKindRotation
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        headline = try container.decode(String.self, forKey: .headline)
+        programTemplateRaw = try container.decode(String.self, forKey: .programTemplateRaw)
+        daysPerWeek = try container.decode(Int.self, forKey: .daysPerWeek)
+        sessionDurationMinutes = try container.decode(Int.self, forKey: .sessionDurationMinutes)
+        weeklyPeakSetsByMuscle = try container.decode([MuscleGroup: Int].self, forKey: .weeklyPeakSetsByMuscle)
+        frequencyByMuscle = try container.decode([MuscleGroup: Int].self, forKey: .frequencyByMuscle)
+        deloadCadenceWeeks = try container.decode(Int.self, forKey: .deloadCadenceWeeks)
+        availabilityFitScore = try container.decode(Double.self, forKey: .availabilityFitScore)
+        leverNotes = try container.decode([String].self, forKey: .leverNotes)
+        if let stored = try container.decodeIfPresent([TrainingDayKind].self, forKey: .dayKindRotation),
+           stored.count >= 2 {
+            dayKindRotation = stored
+        } else {
+            let template = ProgramTemplate(rawValue: programTemplateRaw) ?? .ppl
+            dayKindRotation = template.defaultDayKindRotation(daysPerWeek: daysPerWeek)
+        }
     }
 }
 
@@ -183,11 +214,7 @@ public enum CandidatePlanGenerator {
 
     /// First session of the week for an example-workout preview.
     public static func exampleDayKind(for candidate: CandidatePlan) -> TrainingDayKind {
-        switch candidate.programTemplateRaw {
-        case "upper_lower": .upper
-        case "full_body": .full
-        default: .push
-        }
+        candidate.dayKindRotation.first ?? .push
     }
 
     static func makeCandidate(
@@ -252,20 +279,13 @@ public enum CandidatePlanGenerator {
             frequencyByMuscle: frequency.filter { $0.value > 0 },
             deloadCadenceWeeks: CandidatePlanGenerator.defaultBlockLengthWeeks,
             availabilityFitScore: min(1.0, blueprint.fitScore),
-            leverNotes: notes
+            leverNotes: notes,
+            dayKindRotation: blueprint.dayKindRotation
         )
     }
 
     static func dayKindMuscles(_ kind: TrainingDayKind) -> Set<MuscleGroup> {
-        switch kind {
-        case .push: [.chest, .shoulders, .triceps]
-        case .pull: [.back, .biceps]
-        case .legs: [.quads, .hamstrings, .glutes, .calves, .abs]
-        case .upper: [.chest, .back, .shoulders, .biceps, .triceps]
-        case .lower: [.quads, .hamstrings, .glutes, .calves, .abs]
-        case .full: Set(MuscleGroup.allCases)
-        case .arms: [.biceps, .triceps, .shoulders]
-        }
+        Set(kind.targetMuscles)
     }
 }
 

@@ -7,7 +7,21 @@ enum SessionExerciseIDResolver {
     struct Result: Sendable, Equatable {
         let payload: SessionAdjustmentPayload
         let unresolvedExerciseIDs: [String]
+        let unresolvedCatalogIDs: [String]
         let catalogCandidates: [String]
+    }
+
+    private struct UnresolvedIDs {
+        var session: [String] = []
+        var catalog: [String] = []
+
+        mutating func record(_ id: String, isCatalog: Bool) {
+            if isCatalog {
+                catalog.append(id)
+            } else {
+                session.append(id)
+            }
+        }
     }
 
     static func normalize(
@@ -21,7 +35,7 @@ enum SessionExerciseIDResolver {
         phraseHint: String? = nil,
         orderedSessionExerciseIDs: [String] = []
     ) throws -> Result {
-        var unresolved: [String] = []
+        var unresolved = UnresolvedIDs()
         var catalogCandidates: [String] = []
         let addPhrases = SessionSwapPhrase.parseAddList(phraseHint)
         var addPhraseIndex = 0
@@ -128,7 +142,8 @@ enum SessionExerciseIDResolver {
 
         return Result(
             payload: normalized,
-            unresolvedExerciseIDs: Array(Set(unresolved)).sorted(),
+            unresolvedExerciseIDs: Array(Set(unresolved.session + unresolved.catalog)).sorted(),
+            unresolvedCatalogIDs: Array(Set(unresolved.catalog)).sorted(),
             catalogCandidates: Array(Set(catalogCandidates)).sorted()
         )
     }
@@ -145,7 +160,7 @@ enum SessionExerciseIDResolver {
         replyHint: String?,
         addSpan: String? = nil,
         restrictAddHintsToSpan: Bool = false,
-        unresolved: inout [String],
+        unresolved: inout UnresolvedIDs,
         catalogCandidates: inout [String]
     ) -> SessionAdjustmentOperation {
         switch operation.kind {
@@ -392,7 +407,7 @@ enum SessionExerciseIDResolver {
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
         recentExerciseIDs: Set<String>,
-        unresolved: inout [String],
+        unresolved: inout UnresolvedIDs,
         catalogCandidates: inout [String]
     ) -> String? {
         if let athleteFrom, !SessionSwapPhrase.isPronoun(athleteFrom) {
@@ -439,9 +454,10 @@ enum SessionExerciseIDResolver {
         recentExerciseIDs: Set<String>,
         phraseHint: String?,
         mustBeInSession: Bool,
-        unresolved: inout [String],
+        unresolved: inout UnresolvedIDs,
         catalogCandidates: inout [String],
-        recordUnresolved: Bool = true
+        recordUnresolved: Bool = true,
+        isCatalog: Bool = false
     ) -> String? {
         guard let rawID, !rawID.isEmpty else { return rawID }
 
@@ -460,7 +476,7 @@ enum SessionExerciseIDResolver {
         }
 
         if recordUnresolved {
-            unresolved.append(rawID)
+            unresolved.record(rawID, isCatalog: isCatalog)
             catalogCandidates.append(contentsOf: resolved.catalogCandidates)
         }
         if mustBeInSession {
@@ -479,16 +495,19 @@ enum SessionExerciseIDResolver {
         excludedExerciseIDs: Set<String>,
         familiarExerciseIDs: Set<String>,
         recentExerciseIDs: Set<String>,
-        unresolved: inout [String],
+        unresolved: inout UnresolvedIDs,
         catalogCandidates: inout [String]
     ) -> String? {
+        _ = sessionExerciseIDs
+        _ = exerciseDisplayNames
         for hint in hints {
             guard let hint, looksLikeExerciseHint(hint),
                   ExerciseResolver.isEquipmentOnlyPhrase(hint) == false
             else { continue }
+            // Catalog targets must not bind to a live session row ("bench press" ≠ Bench Dip).
             let context = ExerciseResolver.Context(
-                sessionExerciseIDs: sessionExerciseIDs,
-                exerciseDisplayNames: exerciseDisplayNames,
+                sessionExerciseIDs: [],
+                exerciseDisplayNames: [:],
                 excludedExerciseIDs: excludedExerciseIDs,
                 familiarExerciseIDs: familiarExerciseIDs,
                 recentExerciseIDs: recentExerciseIDs,
@@ -503,9 +522,20 @@ enum SessionExerciseIDResolver {
             catalogCandidates.append(contentsOf: result.catalogCandidates)
             let isShortSpan = hint.split(whereSeparator: { $0.isWhitespace }).count <= 8
             if isShortSpan {
-                // Athlete named a lift; do not fall through to a conflicting model ID.
+                if let modelID,
+                   let compatible = compatibleCatalogModelID(
+                    modelID,
+                    hint: hint,
+                    hintCandidateLabels: result.catalogCandidates,
+                    excludedExerciseIDs: excludedExerciseIDs,
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    recentExerciseIDs: recentExerciseIDs,
+                    persistence: persistence
+                   ) {
+                    return compatible
+                }
                 if let modelID, !modelID.isEmpty {
-                    unresolved.append(modelID)
+                    unresolved.record(modelID, isCatalog: true)
                 }
                 return nil
             }
@@ -513,8 +543,8 @@ enum SessionExerciseIDResolver {
 
         return resolve(
             modelID,
-            sessionExerciseIDs: sessionExerciseIDs,
-            exerciseDisplayNames: exerciseDisplayNames,
+            sessionExerciseIDs: [],
+            exerciseDisplayNames: [:],
             persistence: persistence,
             excludedExerciseIDs: excludedExerciseIDs,
             familiarExerciseIDs: familiarExerciseIDs,
@@ -522,7 +552,65 @@ enum SessionExerciseIDResolver {
             phraseHint: hints.compactMap { $0 }.first,
             mustBeInSession: false,
             unresolved: &unresolved,
-            catalogCandidates: &catalogCandidates
+            catalogCandidates: &catalogCandidates,
+            isCatalog: true
+        )
+    }
+
+    /// When "bench press" is ambiguous, keep a model pick that is still that lift
+    /// (`Bench Press (Barbell)`). Refuse a different movement (Face Pull vs hammer).
+    private static func compatibleCatalogModelID(
+        _ modelID: String,
+        hint: String,
+        hintCandidateLabels: [String],
+        excludedExerciseIDs: Set<String>,
+        familiarExerciseIDs: Set<String>,
+        recentExerciseIDs: Set<String>,
+        persistence: PersistenceStore
+    ) -> String? {
+        let context = ExerciseResolver.Context(
+            sessionExerciseIDs: [],
+            excludedExerciseIDs: excludedExerciseIDs,
+            familiarExerciseIDs: familiarExerciseIDs,
+            recentExerciseIDs: recentExerciseIDs,
+            mustBeInSession: false
+        )
+        guard let resolved = ExerciseResolver.resolve(
+            modelID,
+            context: context,
+            persistence: persistence
+        ).exerciseID else { return nil }
+        guard catalogTargetAgreesWithHint(
+            resolvedID: resolved,
+            hint: hint,
+            hintCandidateLabels: hintCandidateLabels,
+            persistence: persistence
+        ) else { return nil }
+        return resolved
+    }
+
+    private static func catalogTargetAgreesWithHint(
+        resolvedID: String,
+        hint: String,
+        hintCandidateLabels: [String],
+        persistence: PersistenceStore
+    ) -> Bool {
+        let label = (try? persistence.exercises.fetchSummary(id: resolvedID)?.displayName) ?? resolvedID
+        let labels = hintCandidateLabels.map { $0.lowercased() }
+        if labels.contains(label.lowercased()) || labels.contains(resolvedID.lowercased()) {
+            return true
+        }
+        let hintTokens = phraseTokenSet(hint)
+        let labelTokens = phraseTokenSet(label)
+        return !hintTokens.isEmpty && hintTokens.isSubset(of: labelTokens)
+    }
+
+    private static func phraseTokenSet(_ value: String) -> Set<String> {
+        Set(
+            ExerciseSearchNormalizer.normalizeKeepingEquipment(value)
+                .split(separator: " ")
+                .map(String.init)
+                .filter { $0.count >= 2 }
         )
     }
 

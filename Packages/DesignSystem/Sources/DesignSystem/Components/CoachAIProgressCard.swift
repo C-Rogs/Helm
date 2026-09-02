@@ -9,9 +9,6 @@ public struct CoachAIProgressCard: View {
     private let footnote: String?
     private let isImpactful: Bool
 
-    @Environment(\.helmReduceMotion) private var reduceMotion
-    @State private var pulsePhase = false
-
     public init(
         eyebrow: String,
         title: String,
@@ -61,25 +58,7 @@ public struct CoachAIProgressCard: View {
         }
         .padding(HelmSpacing.md)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
-        .overlay {
-            RoundedRectangle(cornerRadius: HelmRadius.md)
-                .strokeBorder(
-                    isImpactful ? HelmColor.accent.opacity(pulsePhase ? 0.65 : 0.25) : HelmColor.hairline,
-                    lineWidth: isImpactful ? 1.5 : 1
-                )
-        }
-        .shadow(
-            color: isImpactful ? HelmColor.accent.opacity(pulsePhase ? 0.22 : 0.08) : .clear,
-            radius: isImpactful ? 12 : 0,
-            y: isImpactful ? 4 : 0
-        )
-        .onAppear {
-            guard isImpactful, !reduceMotion else { return }
-            withAnimation(HelmMotion.pulseAnimation.repeatForever(autoreverses: true)) {
-                pulsePhase = true
-            }
-        }
+        .helmPanelChrome(.accentQuiet, isLive: isImpactful)
     }
 }
 
@@ -109,6 +88,22 @@ public struct CoachAIProgressCard: View {
     .helmScreenPadding()
     .padding()
     .helmTheme()
+    .environment(\.helmSkin, .instrument)
+    .helmScreenBackground()
+}
+
+#Preview("Coach AI progress signal light") {
+    CoachAIProgressCard(
+        eyebrow: "COACH",
+        title: "Working on it",
+        completedSteps: [],
+        currentStep: "Please wait…",
+        isImpactful: true
+    )
+    .helmScreenPadding()
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .signal)
     .helmScreenBackground()
 }
 #endif

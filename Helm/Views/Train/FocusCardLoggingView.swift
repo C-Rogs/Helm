@@ -22,18 +22,16 @@ struct FocusCardLoggingView: View {
     // MARK: - Body
 
     var body: some View {
-        GeometryReader { geometry in
-            VStack(spacing: 0) {
-                exerciseStrip
-                    .frame(height: exerciseStripHeight)
+        VStack(spacing: 0) {
+            exerciseStrip
+                .frame(height: exerciseStripHeight)
 
-                ScrollView {
-                    VStack(spacing: HelmSpacing.sm) {
-                        cardArea(maxHeight: max(0, geometry.size.height - exerciseStripHeight))
-                    }
-                    .padding(.horizontal, HelmSpacing.md)
-                    .padding(.bottom, HelmSpacing.md)
+            ScrollView {
+                VStack(spacing: HelmSpacing.sm) {
+                    cardArea
                 }
+                .padding(.horizontal, HelmSpacing.md)
+                .padding(.bottom, HelmSpacing.md)
             }
         }
         .onAppear {
@@ -140,7 +138,7 @@ struct FocusCardLoggingView: View {
 
     // MARK: - Card area
 
-    private func cardArea(maxHeight: CGFloat) -> some View {
+    private var cardArea: some View {
         Group {
             if let currentExercise = exercises[safe: currentExerciseIndex] {
                 VStack(spacing: HelmSpacing.sm) {
@@ -149,7 +147,7 @@ struct FocusCardLoggingView: View {
                         displayName: controller.displayName(for: currentExercise.exerciseID),
                         coachingCue: controller.coachingCue(for: currentExercise.exerciseID),
                         imageURL: exerciseImageURL(for: currentExercise.exerciseID),
-                        imageMaxHeight: max(0, maxHeight * 0.5),
+                        imageMaxHeight: HelmLayout.exerciseHistoryImageHeight,
                         currentSetIndex: currentSetIndex,
                         previous: controller.previousFor(
                             set: currentExercise.sets[safe: currentSetIndex] ?? SetEntryDraft(setIndex: currentSetIndex),
@@ -222,8 +220,8 @@ struct FocusCardLoggingView: View {
                     if currentExerciseIndex == exercises.count - 1 {
                         TrainSessionActionBar(
                             isFinishing: controller.isFinishingWorkout,
-                            onDiscard: { controller.isShowingDiscardConfirmation = true },
-                            onFinish: { controller.isShowingFinishConfirmation = true }
+                            onDiscard: { controller.requestDiscardConfirmation() },
+                            onFinish: { controller.requestFinishConfirmation() }
                         )
                     }
                 }
@@ -490,13 +488,11 @@ struct FocusCardLoggingView: View {
     }
 
     private func exerciseImageURL(for exerciseID: String) -> URL? {
-        guard let summary = controller.exerciseSummaries[exerciseID],
-              let gifURL = summary.gifURL else { return nil }
-        return URL(string: gifURL)
+        controller.exerciseImageURL(for: exerciseID)
     }
 
     private func prefetchNeighborImages() {
-        for offset in [-1, 1] {
+        for offset in [-1, 0, 1] {
             let index = currentExerciseIndex + offset
             guard let exercise = exercises[safe: index],
                   let url = exerciseImageURL(for: exercise.exerciseID) else { continue }
@@ -505,7 +501,7 @@ struct FocusCardLoggingView: View {
     }
 
     private var neighborImagePrefetchKey: String {
-        let neighborIDs = [currentExerciseIndex - 1, currentExerciseIndex + 1]
+        let neighborIDs = [currentExerciseIndex - 1, currentExerciseIndex, currentExerciseIndex + 1]
             .compactMap { exercises[safe: $0]?.exerciseID }
         let urls = neighborIDs.compactMap { exerciseImageURL(for: $0)?.absoluteString }
         return "\(currentExerciseIndex)|\(urls.joined(separator: ","))"

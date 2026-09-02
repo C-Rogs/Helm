@@ -112,6 +112,22 @@ public struct CoachActionConfirmationCard: View {
     .helmTheme()
 }
 
+#Preview("Coach action confirmation instrument") {
+    CoachActionConfirmationCard(
+        title: "Log lunch",
+        detail: "Chicken rice bowl · 450 kcal",
+        reason: "Matches what you described.",
+        confirmLabel: "Log meal",
+        cancelLabel: "Cancel",
+        onConfirm: {},
+        onCancel: {}
+    )
+    .helmScreenPadding()
+    .padding()
+    .helmTheme()
+    .environment(\.helmSkin, .instrument)
+}
+
 #Preview("Coach action failure") {
     CoachActionConfirmationCard(
         title: "Start workout",

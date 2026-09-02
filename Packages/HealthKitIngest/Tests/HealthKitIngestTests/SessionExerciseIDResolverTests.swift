@@ -442,6 +442,112 @@ struct SessionExerciseIDResolverTests {
         #expect(result.payload.operations.first?.fromExerciseID == benchDipID)
         #expect(result.payload.operations.first?.toExerciseID == benchPressID)
     }
+
+    @Test("ambiguous bench press keeps model barbell variant, not a session miss")
+    func ambiguousBenchPressKeepsModelBarbell() throws {
+        let store = try PersistenceStore.inMemory()
+        let benchDipID = "seed-cam-bench-dip"
+        let barbellPressID = "seed-bench-press-barbell"
+        let dumbbellPressID = "seed-bench-press-dumbbell"
+        let inclinePressID = "seed-incline-bench-press"
+        try store.exercises.upsert(
+            id: benchDipID,
+            canonicalName: "bench dip",
+            displayName: "Bench Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "triceps",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: barbellPressID,
+            canonicalName: "bench press barbell",
+            displayName: "Bench Press (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: dumbbellPressID,
+            canonicalName: "bench press dumbbell",
+            displayName: "Bench Press (Dumbbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: inclinePressID,
+            canonicalName: "incline bench press",
+            displayName: "Incline Bench Press (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true
+        )
+        try store.exercises.addAlias(id: "bp-bb", exerciseID: barbellPressID, alias: "bench press")
+        try store.exercises.addAlias(id: "bp-db", exerciseID: dumbbellPressID, alias: "bench press")
+        try store.exercises.addAlias(id: "bp-inc", exerciseID: inclinePressID, alias: "bench press")
+        try store.exercises.addAlias(id: "bp-name", exerciseID: barbellPressID, alias: "Bench Press (Barbell)")
+        CoachArchetypeSupport.configure(
+            with: CoachArchetypeCatalog(
+                schemaVersion: "coach_archetype_catalog.v1",
+                generatedAt: "2026-09-01T00:00:00Z",
+                archetypes: [
+                    CoachArchetype(
+                        id: "triceps_dip",
+                        displayName: "Triceps Dip",
+                        priority: "core",
+                        coachAliases: ["bench dip"]
+                    ),
+                    CoachArchetype(
+                        id: "bench_press",
+                        displayName: "Bench Press",
+                        priority: "core",
+                        coachAliases: ["bench press", "flat bench"]
+                    )
+                ],
+                mapping: [
+                    benchDipID: "triceps_dip",
+                    barbellPressID: "bench_press",
+                    dumbbellPressID: "bench_press",
+                    inclinePressID: "incline_press"
+                ],
+                variants: [
+                    "triceps_dip": CoachArchetypeVariants(
+                        members: [benchDipID],
+                        preferredDefaultExerciseId: benchDipID
+                    ),
+                    "bench_press": CoachArchetypeVariants(
+                        members: [barbellPressID, dumbbellPressID],
+                        preferredDefaultExerciseId: barbellPressID
+                    )
+                ]
+            )
+        )
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: "session_adjustment.v2",
+            reply: "Swapped Bench Dip for Bench Press (Barbell). Let us get those pressing mechanics locked in.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .swap,
+                    fromExerciseID: "Bench Dip",
+                    toExerciseID: "Bench Press (Barbell)"
+                )
+            ]
+        )
+
+        let result = try SessionExerciseIDResolver.normalize(
+            payload: payload,
+            sessionExerciseIDs: [benchDipID],
+            exerciseDisplayNames: [benchDipID: "Bench Dip"],
+            persistence: store,
+            phraseHint: "Swap bench dip for bench press"
+        )
+
+        #expect(result.unresolvedExerciseIDs.isEmpty)
+        #expect(result.unresolvedCatalogIDs.isEmpty)
+        #expect(result.payload.operations.first?.fromExerciseID == benchDipID)
+        #expect(result.payload.operations.first?.toExerciseID == barbellPressID)
+    }
 }
 
 @Suite("In-session coach proposal status", .serialized)
@@ -511,6 +617,8 @@ struct InSessionCoachProposalStatusTests {
         }
         #expect(proposal.failureNotice?.contains("Available exercises") == true)
         #expect(proposal.failureNotice?.contains("Bench Press") == true)
+        #expect(proposal.displayedAssistantText == proposal.failureNotice)
+        #expect(!proposal.displayedAssistantText.contains("I'll bump"))
     }
 
     @Test("resolved load proposal is confirmable")
@@ -545,6 +653,117 @@ struct InSessionCoachProposalStatusTests {
         } else {
             Issue.record("Expected confirmable status")
         }
+    }
+
+    @Test("swap bench dip for bench press with listed barbell variant is confirmable")
+    func screenshotSwapIsConfirmable() async throws {
+        let store = try PersistenceStore.inMemory()
+        let benchDipID = "seed-cam-bench-dip"
+        let barbellPressID = "seed-bench-press-barbell"
+        let dumbbellPressID = "seed-bench-press-dumbbell"
+        try store.exercises.upsert(
+            id: benchDipID,
+            canonicalName: "bench dip",
+            displayName: "Bench Dip",
+            exerciseMode: .bodyweightReps,
+            primaryMuscleGroup: "triceps",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: barbellPressID,
+            canonicalName: "bench press barbell",
+            displayName: "Bench Press (Barbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true
+        )
+        try store.exercises.upsert(
+            id: dumbbellPressID,
+            canonicalName: "bench press dumbbell",
+            displayName: "Bench Press (Dumbbell)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest",
+            isPickerDefault: true
+        )
+        try store.exercises.addAlias(id: "ss-bp", exerciseID: barbellPressID, alias: "bench press")
+        try store.exercises.addAlias(id: "ss-db", exerciseID: dumbbellPressID, alias: "bench press")
+        try store.exercises.addAlias(id: "ss-name", exerciseID: barbellPressID, alias: "Bench Press (Barbell)")
+        CoachArchetypeSupport.configure(
+            with: CoachArchetypeCatalog(
+                schemaVersion: "coach_archetype_catalog.v1",
+                generatedAt: "2026-09-01T00:00:00Z",
+                archetypes: [
+                    CoachArchetype(
+                        id: "triceps_dip",
+                        displayName: "Triceps Dip",
+                        priority: "core",
+                        coachAliases: ["bench dip"]
+                    ),
+                    CoachArchetype(
+                        id: "bench_press",
+                        displayName: "Bench Press",
+                        priority: "core",
+                        coachAliases: ["bench press"]
+                    )
+                ],
+                mapping: [
+                    benchDipID: "triceps_dip",
+                    barbellPressID: "bench_press",
+                    dumbbellPressID: "bench_press"
+                ],
+                variants: [
+                    "triceps_dip": CoachArchetypeVariants(
+                        members: [benchDipID],
+                        preferredDefaultExerciseId: benchDipID
+                    ),
+                    "bench_press": CoachArchetypeVariants(
+                        members: [barbellPressID, dumbbellPressID],
+                        preferredDefaultExerciseId: barbellPressID
+                    )
+                ]
+            )
+        )
+
+        let engine = ActiveSessionEngine(repository: store.activeSessions)
+        let snapshot = try await engine.startFromPrescription(
+            SessionPrescription(
+                helmDay: HelmDay(year: 2026, month: 9, day: 1),
+                exercises: [
+                    PrescribedExercise(
+                        exerciseID: benchDipID,
+                        order: 0,
+                        targetSets: 3,
+                        targetRepMin: 8,
+                        targetRepMax: 12
+                    )
+                ]
+            )
+        )
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Swapped Bench Dip for Bench Press (Barbell). Let us get those pressing mechanics locked in.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .swap,
+                    fromExerciseID: "Bench Dip",
+                    toExerciseID: "Bench Press (Barbell)"
+                )
+            ]
+        )
+
+        let proposal = try service.buildProposal(
+            payload: payload,
+            userMessage: "Swap bench dip for bench press",
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            modelVersion: payload.schemaVersion
+        )
+
+        #expect(proposal.failureNotice?.contains("doesn't match any exercise in this session") != true)
+        #expect(proposal.requiresConfirmation)
+        #expect(proposal.payload.operations.first?.toExerciseID == barbellPressID)
+        #expect(proposal.displayedAssistantText.contains("Bench Press"))
     }
 
     @Test("addExercise prefers hammer curl wording over a Face Pull operation ID")

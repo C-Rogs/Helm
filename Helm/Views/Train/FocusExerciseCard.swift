@@ -64,17 +64,13 @@ struct FocusExerciseCard: View {
     // MARK: - Image
 
     private var imageSection: some View {
-        Group {
-            if imageURL != nil {
-                ExerciseImageView(
-                    url: imageURL,
-                    fallbackLabel: displayName
-                )
-                .frame(maxWidth: .infinity)
-                .frame(height: imageMaxHeight)
-                .clipped()
-            }
-        }
+        ExerciseImageView(
+            url: imageURL,
+            fallbackLabel: displayName
+        )
+        .frame(maxWidth: .infinity)
+        .frame(height: min(imageMaxHeight, HelmLayout.exerciseHistoryImageHeight))
+        .clipped()
     }
 
     // MARK: - Details
@@ -93,7 +89,7 @@ struct FocusExerciseCard: View {
     private var titleRow: some View {
         HStack(spacing: HelmSpacing.xs) {
             Text(displayName)
-                .helmType(imageURL == nil ? .title : .label)
+                .helmType(.label)
                 .lineLimit(1)
                 .minimumScaleFactor(0.85)
 

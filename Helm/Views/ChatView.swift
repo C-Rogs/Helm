@@ -8,6 +8,7 @@ struct ChatView: View {
     @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
     @Environment(\.helmPalette) private var palette
+    @Environment(\.helmReduceMotion) private var reduceMotion
 
     private var coachName: String { CoachDisplayNameStore.name }
 
@@ -27,7 +28,7 @@ struct ChatView: View {
                     ScrollView {
                         VStack(alignment: .leading, spacing: HelmSpacing.md) {
                             if controller.messages.isEmpty,
-                               !controller.isStreaming,
+                               !showsWorkingSlot,
                                controller.lastTurnError == nil,
                                controller.pendingChatAction == nil {
                                 emptyState
@@ -45,9 +46,14 @@ struct ChatView: View {
                                     .id("last-turn-error")
                             }
 
-                            if showsCoachProgress {
-                                chatProgressCard
-                                    .id("chat-progress")
+                            if showsWorkingSlot {
+                                chatWorkingSlot
+                                    .id("chat-working")
+                                    .transition(coachSlotTransition)
+                                    .animation(
+                                        slotAnimation,
+                                        value: shouldShowStreamingBubble(controller.streamingText ?? "")
+                                    )
                             }
 
                             if let proposal = controller.pendingChatAction {
@@ -64,6 +70,7 @@ struct ChatView: View {
                                     onRetry: { controller.confirmChatAction() }
                                 )
                                 .id("chat-confirmation")
+                                .transition(coachSlotTransition)
                             }
 
                             if !controller.pendingMemoryRefinements.isEmpty {
@@ -73,13 +80,7 @@ struct ChatView: View {
                                     onDismiss: { controller.dismissMemoryRefinements() }
                                 )
                                 .id("memory-refinements")
-                            }
-
-                            if controller.isStreaming, let streamingText = controller.streamingText {
-                                if shouldShowStreamingBubble(streamingText) {
-                                    assistantBubble(streamingText, isStreaming: true)
-                                        .id("streaming")
-                                }
+                                .transition(coachSlotTransition)
                             }
 
                             Color.clear
@@ -88,6 +89,9 @@ struct ChatView: View {
                         }
                         .padding(HelmSpacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .animation(slotAnimation, value: showsWorkingSlot)
+                        .animation(slotAnimation, value: controller.pendingChatAction?.id)
+                        .animation(slotAnimation, value: controller.pendingMemoryRefinements.count)
                     }
                     .defaultScrollAnchor(controller.messages.isEmpty ? .top : .bottom)
                     .scrollDismissesKeyboard(.interactively)
@@ -100,19 +104,15 @@ struct ChatView: View {
                     .onChange(of: controller.messages.count) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
-                    .onChange(of: controller.streamingText) { _, _ in
-                        scrollToBottom(proxy: proxy)
+                    .onChange(of: showsWorkingSlot) { wasShowing, isShowing in
+                        if isShowing, !wasShowing {
+                            scrollToBottom(proxy: proxy)
+                        }
                     }
                     .onChange(of: controller.pendingChatAction?.id) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
                     .onChange(of: controller.pendingMemoryRefinements.count) { _, _ in
-                        scrollToBottom(proxy: proxy)
-                    }
-                    .onChange(of: controller.isPreparingFoodMealConfirm) { _, _ in
-                        scrollToBottom(proxy: proxy)
-                    }
-                    .onChange(of: controller.chatProgressStep) { _, _ in
                         scrollToBottom(proxy: proxy)
                     }
                     .onChange(of: isInputFocused) { _, focused in
@@ -442,8 +442,7 @@ struct ChatView: View {
                 )
                 .helmScreenPadding()
                 .padding(.vertical, HelmSpacing.sm)
-                .helmPanelChrome(.surface)
-                .transition(.opacity)
+                .transition(coachSlotTransition)
             }
 
             composer
@@ -452,6 +451,7 @@ struct ChatView: View {
                 citationWarningPill
             }
         }
+        .animation(slotAnimation, value: controller.isApplyingChatAction)
     }
 
     private var composer: some View {
@@ -501,24 +501,37 @@ struct ChatView: View {
         .helmPanelChrome(.surface)
     }
 
-    private var showsCoachProgress: Bool {
-        controller.isPreparingFoodMealConfirm
-            || (controller.isStreaming
-                && !shouldShowStreamingBubble(controller.streamingText ?? ""))
-            || (controller.chatProgressStep != nil && controller.isStreaming)
+    private var showsWorkingSlot: Bool {
+        controller.isStreaming
+            || controller.isPreparingFoodMealConfirm
+            || controller.chatProgressStep != nil
     }
 
-    private var chatProgressCard: some View {
-        CoachAIProgressCard(
-            eyebrow: "COACH",
-            title: controller.chatProgressTitle ?? "Working on it",
-            completedSteps: controller.chatProgressCompletedSteps,
-            currentStep: controller.chatProgressStep ?? "Please wait…",
-            footnote: controller.isPreparingFoodMealConfirm
-                ? "Signal matches each ingredient to CoFID on your phone."
-                : nil,
-            isImpactful: true
-        )
+    private var slotAnimation: Animation? {
+        HelmMotion.animation(HelmMotion.standardAnimation, reduceMotion: reduceMotion)
+    }
+
+    private var coachSlotTransition: AnyTransition {
+        .opacity.combined(with: .scale(scale: 0.98, anchor: .bottom))
+    }
+
+    @ViewBuilder
+    private var chatWorkingSlot: some View {
+        let streaming = controller.streamingText ?? ""
+        if shouldShowStreamingBubble(streaming) {
+            assistantBubble(streaming, isStreaming: true)
+        } else {
+            CoachAIProgressCard(
+                eyebrow: "COACH",
+                title: controller.chatProgressTitle ?? "Working on it",
+                completedSteps: controller.chatProgressCompletedSteps,
+                currentStep: controller.chatProgressStep ?? "Please wait…",
+                footnote: controller.isPreparingFoodMealConfirm
+                    ? "Signal matches each ingredient to CoFID on your phone."
+                    : nil,
+                isImpactful: true
+            )
+        }
     }
 
     private var isComposerDisabled: Bool {

@@ -147,8 +147,25 @@ struct PhaseGoalSettingsView: View {
             }
             .onChange(of: settings.programTemplateRaw) { _, _ in
                 HapticEngine.shared.play(.selection)
+                syncRotationToTemplate()
             }
             Text(ProgramTemplate(rawValue: settings.programTemplateRaw)?.detail ?? "")
+                .font(HelmTypography.caption)
+                .foregroundStyle(HelmColor.fgMuted)
+
+            Stepper(value: $settings.daysPerWeek, in: 2 ... 6) {
+                HStack {
+                    Text("Days per week")
+                    Spacer()
+                    Text("\(settings.daysPerWeek)")
+                        .foregroundStyle(HelmColor.fgSecondary)
+                }
+            }
+            .onChange(of: settings.daysPerWeek) { _, _ in
+                HapticEngine.shared.play(.selection)
+                syncRotationToTemplate()
+            }
+            Text("Sets how many sessions land this week. Plan builder can pick hybrid rotations.")
                 .font(HelmTypography.caption)
                 .foregroundStyle(HelmColor.fgMuted)
 
@@ -369,6 +386,13 @@ struct PhaseGoalSettingsView: View {
             targetMass: settings.phaseGoal.targetMass,
             emphasis: trimmed.isEmpty ? nil : trimmed
         )
+    }
+
+    private func syncRotationToTemplate() {
+        let template = ProgramTemplate(rawValue: settings.programTemplateRaw) ?? .ppl
+        settings.dayKindRotationRaw = template
+            .defaultDayKindRotation(daysPerWeek: settings.daysPerWeek)
+            .map(\.rawValue)
     }
 }
 

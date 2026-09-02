@@ -6,6 +6,10 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
     case push
     case pull
     case legs
+    case upper
+    case lower
+    case full
+    case arms
     case vTaper = "v_taper"
     case armFocus = "arm_focus"
     case custom
@@ -15,6 +19,10 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
         case .push: "Push"
         case .pull: "Pull"
         case .legs: "Legs"
+        case .upper: "Upper"
+        case .lower: "Lower"
+        case .full: "Full Body"
+        case .arms: "Arms"
         case .vTaper: "V-Taper"
         case .armFocus: "Arm Focus"
         case .custom: "Custom"
@@ -23,13 +31,8 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
 
     public var muscles: [MuscleGroup] {
         switch self {
-        case .push:
-            [.chest, .shoulders, .triceps]
-        case .pull:
-            // Shoulders included for rear-delt pattern slots on composed Pull days.
-            [.back, .biceps, .shoulders]
-        case .legs:
-            [.quads, .hamstrings, .glutes, .calves]
+        case .push, .pull, .legs, .upper, .lower, .full, .arms:
+            trainingDayKind.targetMuscles
         case .vTaper:
             [.shoulders, .back, .chest]
         case .armFocus:
@@ -44,7 +47,22 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
         case .push, .vTaper: .push
         case .pull, .armFocus: .pull
         case .legs: .legs
-        case .custom: .full
+        case .upper: .upper
+        case .lower: .lower
+        case .full, .custom: .full
+        case .arms: .arms
+        }
+    }
+
+    public init(trainingDayKind: TrainingDayKind) {
+        switch trainingDayKind {
+        case .push: self = .push
+        case .pull: self = .pull
+        case .legs: self = .legs
+        case .upper: self = .upper
+        case .lower: self = .lower
+        case .full: self = .full
+        case .arms: self = .arms
         }
     }
 }
@@ -93,25 +111,22 @@ public enum SessionSplitPlanner {
     }
 
     public static func inferSplitKind(from muscles: Set<MuscleGroup>) -> SessionSplitKind? {
+        inferSplitKind(
+            from: muscles,
+            among: [.push, .pull, .legs, .upper, .lower, .full, .arms]
+        )
+    }
+
+    public static func inferSplitKind(
+        from muscles: Set<MuscleGroup>,
+        among candidates: [SessionSplitKind]
+    ) -> SessionSplitKind? {
         guard !muscles.isEmpty else { return nil }
-        let legMuscles: Set<MuscleGroup> = [.quads, .hamstrings, .glutes, .calves]
-        let pushMuscles: Set<MuscleGroup> = [.chest, .shoulders, .triceps]
-        let pullMuscles: Set<MuscleGroup> = [.back, .biceps, .shoulders]
-
-        let legOverlap = muscles.intersection(legMuscles).count
-        let pushOverlap = muscles.intersection(pushMuscles).count
-        let pullOverlap = muscles.intersection(pullMuscles).count
-
-        if legOverlap >= 2 || (legOverlap >= 1 && pushOverlap == 0 && pullOverlap == 0) {
-            return .legs
+        let dayKinds = candidates.map(\.trainingDayKind)
+        guard let match = TrainingDayKind.bestMatch(muscles: muscles, among: dayKinds) else {
+            return matchSplitKind(for: Array(muscles))
         }
-        if pullOverlap >= 1 && pullOverlap >= pushOverlap {
-            return .pull
-        }
-        if pushOverlap >= 1 {
-            return .push
-        }
-        return matchSplitKind(for: Array(muscles))
+        return SessionSplitKind(trainingDayKind: match)
     }
 
     public static func remainingSessionsThisWeek(completedThisWeek: Int, plannedPerWeek: Int = 3) -> Int {

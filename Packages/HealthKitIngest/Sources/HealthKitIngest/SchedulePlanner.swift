@@ -25,35 +25,29 @@ public enum SchedulePlanner {
         muscleMaps: [String: ExerciseMuscleMap],
         calendar: Calendar = .current,
         sessionsPerWeek: Int = defaultSessionsPerWeek,
-        additionalCompletedSplits: [SessionSplitKind] = []
+        additionalCompletedSplits: [SessionSplitKind] = [],
+        dayKindRotation: [TrainingDayKind] = [.push, .pull, .legs]
     ) -> SchedulePlanResult {
-        let rotation = SessionSplitPlanner.rotationSplits(emphasis: emphasis)
-
-        let loggedSplits = completedSplitKinds(
-            in: history,
-            through: day,
-            muscleMaps: muscleMaps,
-            calendar: calendar
-        )
-        let completedSplits = completedSplitKinds(
+        _ = emphasis
+        let rotation = dayKindRotation.isEmpty ? [.push, .pull, .legs] : dayKindRotation
+        let loggedKinds = completedDayKinds(
             in: history,
             through: day,
             muscleMaps: muscleMaps,
             calendar: calendar,
-            additionalCompletedSplits: additionalCompletedSplits
+            rotation: rotation
         )
-        let pending = rotation.filter { !completedSplits.contains($0) }
-        var notes: [String] = []
+        let additionalKinds = additionalCompletedSplits.map(\.trainingDayKind)
+        let consumed = loggedKinds + additionalKinds
+        let nextKind = nextDayKind(rotation: rotation, consumed: consumed)
+        let splitKind = SessionSplitKind(trainingDayKind: nextKind)
 
-        let splitKind: SessionSplitKind
-        if let next = pending.first {
-            splitKind = next
-            if loggedSplits.isEmpty == false, pending.count < rotation.count {
-                let doneLabels = loggedSplits.map(\.label).joined(separator: ", ")
-                notes.append("\(doneLabels) already logged this week - \(next.label) is next.")
-            }
-        } else {
-            splitKind = SessionSplitPlanner.splitKind(for: day, emphasis: emphasis, calendar: calendar)
+        var notes: [String] = []
+        if loggedKinds.isEmpty == false, consumed.count < rotation.count {
+            let doneLabels = loggedKinds.map(\.label).joined(separator: ", ")
+            notes.append("\(doneLabels) already logged this week - \(nextKind.label) is next.")
+        }
+        if consumed.count >= rotation.count {
             notes.append("Weekly split rotation complete - repeating \(splitKind.label) from schedule.")
         }
 
@@ -64,7 +58,7 @@ public enum SchedulePlanner {
 
         return SchedulePlanResult(
             splitKind: splitKind,
-            targetMuscles: splitKind.muscles,
+            targetMuscles: nextKind.targetMuscles,
             scheduleNotes: notes
         )
     }
@@ -77,7 +71,8 @@ public enum SchedulePlanner {
         muscleMaps: [String: ExerciseMuscleMap],
         calendar: Calendar = .current,
         sessionsPerWeek: Int = defaultSessionsPerWeek,
-        avoidDays: Set<HelmDay> = []
+        avoidDays: Set<HelmDay> = [],
+        dayKindRotation: [TrainingDayKind] = [.push, .pull, .legs]
     ) -> [PlannedWorkoutRecord] {
         var records: [PlannedWorkoutRecord] = []
         var plannedSplitsThisWeek: [SessionSplitKind] = []
@@ -106,7 +101,8 @@ public enum SchedulePlanner {
                 muscleMaps: muscleMaps,
                 calendar: calendar,
                 sessionsPerWeek: sessionsPerWeek,
-                additionalCompletedSplits: plannedSplitsThisWeek
+                additionalCompletedSplits: plannedSplitsThisWeek,
+                dayKindRotation: dayKindRotation
             )
             plannedSplitsThisWeek.append(result.splitKind)
             var notes = result.scheduleNotes
@@ -278,27 +274,43 @@ public enum SchedulePlanner {
         return history.sessions.filter { weekDaySet.contains($0.helmDay) && $0.helmDay <= endDay }.count
     }
 
-    private static func completedSplitKinds(
+    static func nextDayKind(
+        rotation: [TrainingDayKind],
+        consumed: [TrainingDayKind]
+    ) -> TrainingDayKind {
+        let cycle = rotation.isEmpty ? [.push, .pull, .legs] : rotation
+        var remaining = cycle
+        for kind in consumed {
+            if let index = remaining.firstIndex(of: kind) {
+                remaining.remove(at: index)
+            } else if remaining.isEmpty == false {
+                remaining.removeFirst()
+            }
+        }
+        if let next = remaining.first {
+            return next
+        }
+        return cycle[consumed.count % cycle.count]
+    }
+
+    private static func completedDayKinds(
         in history: PrescriptionHistory,
         through endDay: HelmDay,
         muscleMaps: [String: ExerciseMuscleMap],
         calendar: Calendar,
-        additionalCompletedSplits: [SessionSplitKind] = []
-    ) -> [SessionSplitKind] {
+        rotation: [TrainingDayKind]
+    ) -> [TrainingDayKind] {
         let weekStart = PrescriptionHistoryBuilder.weekStart(containing: endDay, calendar: calendar)
         let weekDays = (0 ..< 7).map { weekStart.adding(days: $0, calendar: calendar) }
         let weekDaySet = Set(weekDays)
-        var completed: [SessionSplitKind] = []
+        var completed: [TrainingDayKind] = []
 
         for session in history.sessions where weekDaySet.contains(session.helmDay) && session.helmDay <= endDay {
             let muscleSet = musclesTrained(in: session, muscleMaps: muscleMaps)
-            if let kind = SessionSplitPlanner.inferSplitKind(from: muscleSet), !completed.contains(kind) {
+            let among = rotation.isEmpty ? Array(TrainingDayKind.allCases) : rotation
+            if let kind = TrainingDayKind.bestMatch(muscles: muscleSet, among: among) {
                 completed.append(kind)
             }
-        }
-
-        for split in additionalCompletedSplits where !completed.contains(split) {
-            completed.append(split)
         }
 
         return completed

@@ -249,6 +249,7 @@
 		D0562786AF970E8AF6E16B85 /* SettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6040B8736850EE4E57B62015 /* SettingsView.swift */; };
 		D22B8CA993A1A711BB7EA1BD /* ChatView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E383F9ECBDA0F1876BF4946 /* ChatView.swift */; };
 		D3452D5F39BADC69B085669D /* NotificationOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */; };
+		D51BE3C3F5C6D07255DE1090 /* TrainSessionAccessoryBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6313858BF9B9DA609221F7DB /* TrainSessionAccessoryBar.swift */; };
 		D55A0D2CF8892EA40C067583 /* UsualMealIntentBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = F0426668B9FCC797B73F9D2C /* UsualMealIntentBootstrap.swift */; };
 		D5B3D7590F528C4E244A64C5 /* ProactiveCoachBanner.swift in Sources */ = {isa = PBXBuildFile; fileRef = 75823FC17D8932D3DBD4093B /* ProactiveCoachBanner.swift */; };
 		D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */; };
@@ -506,6 +507,7 @@
 		6040B8736850EE4E57B62015 /* SettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsView.swift; sourceTree = "<group>"; };
 		618BEB910286D2A493ECF63B /* Sounds */ = {isa = PBXFileReference; lastKnownFileType = folder; name = Sounds; path = Helm/Resources/Sounds; sourceTree = SOURCE_ROOT; };
 		61C402747732369E2B89A5F4 /* BriefIntentBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BriefIntentBootstrap.swift; sourceTree = "<group>"; };
+		6313858BF9B9DA609221F7DB /* TrainSessionAccessoryBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainSessionAccessoryBar.swift; sourceTree = "<group>"; };
 		63468E7D96CE782EFC0B9DFE /* CoachBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachBootstrap.swift; sourceTree = "<group>"; };
 		639D565DA13B004E67C23272 /* FocusExerciseCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusExerciseCard.swift; sourceTree = "<group>"; };
 		63DBD2A9326DB846203B4B55 /* WorkoutSetMilestonePolicy.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSetMilestonePolicy.swift; sourceTree = "<group>"; };
@@ -766,6 +768,7 @@
 				88A669136FBF2DC90483B34E /* SessionTimelineChartView.swift */,
 				69855AA731BBEA8518DD3238 /* SetRowView.swift */,
 				93B311DAE6E0E3BD141607B6 /* TodaysSessionPreviewSheet.swift */,
+				6313858BF9B9DA609221F7DB /* TrainSessionAccessoryBar.swift */,
 				8A940BDCCD8036FC02F7263C /* TrainSessionHeaderView.swift */,
 				8267E20D18B326B3B6A1A509 /* WeekAheadScheduleSection.swift */,
 				3344C8A09726B2C6A84C9472 /* WorkoutFinishSummaryView.swift */,
@@ -1865,6 +1868,7 @@
 				03AB7936DD8B4E0A491CCCC7 /* TodaysSessionPreviewSheet.swift in Sources */,
 				900D525ED75F7B9F39BBDEBA /* TrainBootstrap.swift in Sources */,
 				5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */,
+				D51BE3C3F5C6D07255DE1090 /* TrainSessionAccessoryBar.swift in Sources */,
 				26D57E4F48527FDC255BF963 /* TrainSessionController.swift in Sources */,
 				9F415BB16F3B4364BEFF1F62 /* TrainSessionHeaderView.swift in Sources */,
 				DDD4F55CFE81BFF0CA284C1C /* TrainView.swift in Sources */,

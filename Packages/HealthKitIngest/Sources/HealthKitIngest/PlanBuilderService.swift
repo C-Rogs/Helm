@@ -193,6 +193,7 @@ public final class PlanBuilderService {
         var next = settings
         next.programTemplateRaw = option.candidate.programTemplateRaw
         next.daysPerWeek = option.candidate.daysPerWeek
+        next.dayKindRotationRaw = option.candidate.dayKindRotation.map(\.rawValue)
         next.sessionDurationMinutes = interview.sessionDurationMinutes
         next.experienceRaw = interview.experienceRaw
         // Interview emphasis replaces any prior value; the maintenance note is

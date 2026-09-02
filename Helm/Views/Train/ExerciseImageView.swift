@@ -6,8 +6,6 @@ struct ExerciseImageView: View {
     let url: URL?
     let fallbackLabel: String
 
-    @Environment(\.colorScheme) private var colorScheme
-
     var body: some View {
         Group {
             if let url {
@@ -17,7 +15,8 @@ struct ExerciseImageView: View {
                         image
                             .resizable()
                             .aspectRatio(contentMode: .fit)
-                            .blendMode(colorScheme == .dark ? .multiply : .normal)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
+                            .background(Color.white)
                     case .failure:
                         fallback
                     case .empty:

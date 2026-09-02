@@ -96,6 +96,11 @@ public struct CoachSessionProposal: Sendable, Equatable {
         return failure.userMessage
     }
 
+    /// Failed turns must not keep an optimistic "Swapped..." reply as the athlete-facing line.
+    public var displayedAssistantText: String {
+        failureNotice ?? reply
+    }
+
     public init(
         reply: String,
         payload: SessionAdjustmentPayload,
@@ -435,17 +440,16 @@ public struct InSessionCoachService: Sendable {
         }
 
         if !normalized.unresolvedExerciseIDs.isEmpty {
-            let isCatalogLookup = payload.operations.contains {
-                $0.kind == .addExercise
-            }
-            if isCatalogLookup {
+            let sessionUnresolved = Set(normalized.unresolvedExerciseIDs)
+                .subtracting(normalized.unresolvedCatalogIDs)
+            if sessionUnresolved.isEmpty {
                 return CoachSessionProposal(
                     reply: payload.reply,
                     payload: normalized.payload,
                     recommendationID: recommendation.id,
                     previewBanner: nil,
                     status: .failed(.unresolvedCatalogExerciseIDs(
-                        ids: normalized.unresolvedExerciseIDs,
+                        ids: normalized.unresolvedCatalogIDs,
                         catalogLabels: normalized.catalogCandidates
                     )),
                     requestID: requestID,

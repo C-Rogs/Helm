@@ -44,24 +44,34 @@ public struct LandmarkVolumeBar: View {
         max(safeMRV * 1.15, projectedSets, safeMRV, 1)
     }
 
+    /// One hue for both pills, from where the week lands. Avoids a colour break at MEV.
+    private var fillState: HelmState {
+        if safeScheduled > 0.05 {
+            return HelmState.volumeWeekly(sets: projectedSets, mev: mev, mrv: mrv)
+        }
+        return state
+    }
+
+    private var fillColor: Color { HelmColor.color(for: fillState) }
+
     private var volumeStatus: VolumeLandmarkStatus {
         VolumeLandmarkStatus.resolve(sets: safeWeekly, mev: mev, mrv: mrv)
     }
 
-    private var setsReadout: String {
-        let logged = Int(safeWeekly.rounded())
-        if safeScheduled > 0.05 {
-            return "\(logged)+\(Int(safeScheduled.rounded())) / \(mev)-\(mrv)"
-        }
-        return "\(logged) / \(mev)-\(mrv)"
+    private var loggedReadout: String {
+        "\(Int(safeWeekly.rounded()))"
     }
 
     private var drawProgress: CGFloat {
         reduceMotion ? 1 : appearProgress
     }
 
+    private var stackHeight: CGFloat {
+        HelmLayout.landmarkVolumeTrackHeight + HelmSpacing.xxs + HelmLayout.landmarkVolumeScaleHeight
+    }
+
     public var body: some View {
-        HStack(spacing: HelmSpacing.sm) {
+        HStack(alignment: .top, spacing: HelmSpacing.sm) {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text(label)
                     .helmType(.label)
@@ -80,30 +90,18 @@ public struct LandmarkVolumeBar: View {
                 let loggedWidth = width * CGFloat(safeWeekly / scaleMax) * drawProgress
                 let projectedWidth = width * CGFloat(projectedSets / scaleMax) * drawProgress
 
-                ZStack(alignment: .leading) {
-                    Capsule()
-                        .fill(HelmColor.gaugeTrack)
-
-                    Capsule()
-                        .fill(HelmColor.ready.opacity(0.22))
-                        .frame(width: max(mrvX - mevX, 0))
-                        .offset(x: mevX)
-
-                    if safeScheduled > 0.05 {
-                        Capsule()
-                            .fill(HelmColor.color(for: state).opacity(0.35))
-                            .frame(width: min(max(0, projectedWidth), width))
-                    }
-
-                    Capsule()
-                        .fill(HelmColor.color(for: state))
-                        .frame(width: min(max(0, loggedWidth), width))
-
-                    tick(at: mevX, height: geometry.size.height)
-                    tick(at: mrvX, height: geometry.size.height)
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    barStack(
+                        width: width,
+                        mevX: mevX,
+                        mrvX: mrvX,
+                        loggedWidth: loggedWidth,
+                        projectedWidth: projectedWidth
+                    )
+                    scaleStack(width: width, mevX: mevX, mrvX: mrvX)
                 }
             }
-            .frame(height: 8)
+            .frame(height: stackHeight)
             .animation(
                 HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                 value: safeWeekly
@@ -112,18 +110,6 @@ public struct LandmarkVolumeBar: View {
                 HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
                 value: safeScheduled
             )
-
-            VStack(alignment: .trailing, spacing: 0) {
-                Text(setsReadout)
-                    .helmType(.number, color: HelmColor.color(for: state))
-                    .helmNumericRoll(value: setsReadout)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                Text(volumeStatus.label)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                    .lineLimit(1)
-            }
-            .frame(width: HelmSpacing.xl * 3.4, alignment: .trailing)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityCopy)
@@ -133,6 +119,91 @@ public struct LandmarkVolumeBar: View {
                 appearProgress = 1
             }
         }
+    }
+
+    private func barStack(
+        width: CGFloat,
+        mevX: CGFloat,
+        mrvX: CGFloat,
+        loggedWidth: CGFloat,
+        projectedWidth: CGFloat
+    ) -> some View {
+        ZStack(alignment: .leading) {
+            ZStack(alignment: .leading) {
+                Rectangle()
+                    .fill(HelmColor.gaugeTrack)
+
+                if projectedWidth > 0.5, safeScheduled > 0.05 {
+                    Rectangle()
+                        .fill(fillColor.opacity(0.45))
+                        .frame(width: min(max(0, projectedWidth), width), height: HelmLayout.landmarkVolumeTrackHeight)
+                }
+
+                if loggedWidth > 0.5 {
+                    Rectangle()
+                        .fill(fillColor)
+                        .frame(width: min(loggedWidth, width), height: HelmLayout.landmarkVolumeTrackHeight)
+                }
+            }
+            .frame(width: width, height: HelmLayout.landmarkVolumeTrackHeight)
+            .clipShape(Capsule())
+
+            tick(at: mevX)
+            tick(at: mrvX)
+
+            if loggedWidth > 0.5 {
+                loggedCountLabel(loggedWidth: min(loggedWidth, width), width: width)
+            }
+        }
+        .frame(width: width, height: HelmLayout.landmarkVolumeTrackHeight)
+    }
+
+    private func scaleStack(width: CGFloat, mevX: CGFloat, mrvX: CGFloat) -> some View {
+        let marks = visibleScaleMarks(
+            zero: ScaleMark(id: "zero", text: "0", x: 0),
+            mev: ScaleMark(id: "mev", text: "\(mev)", x: mevX),
+            mrv: ScaleMark(id: "mrv", text: "\(mrv)", x: mrvX)
+        )
+
+        return ZStack(alignment: .topLeading) {
+            ForEach(marks) { mark in
+                VStack(spacing: HelmSpacing.xxs / 2) {
+                    Rectangle()
+                        .fill(HelmColor.fgSecondary.opacity(0.85))
+                        .frame(width: 1, height: HelmSpacing.xxs)
+                    Text(mark.text)
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                        .lineLimit(1)
+                }
+                .position(
+                    x: clampedCenterX(for: mark, width: width),
+                    y: HelmLayout.landmarkVolumeScaleHeight / 2
+                )
+            }
+        }
+        .frame(width: width, height: HelmLayout.landmarkVolumeScaleHeight)
+    }
+
+    @ViewBuilder
+    private func loggedCountLabel(loggedWidth: CGFloat, width: CGFloat) -> some View {
+        let mark = ScaleMark(id: "logged", text: loggedReadout, x: loggedWidth / 2)
+        let fitsInside = loggedWidth >= mark.estimatedWidth + HelmSpacing.xxs
+        let x = fitsInside
+            ? loggedWidth / 2
+            : min(loggedWidth + HelmSpacing.xxs + mark.estimatedWidth / 2, width - HelmSpacing.xxs)
+        Text(loggedReadout)
+            .helmType(.monoTag, color: fitsInside ? HelmColor.canvas : fillColor)
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+            .helmNumericRoll(value: loggedReadout)
+            .position(x: x, y: HelmLayout.landmarkVolumeTrackHeight / 2)
+    }
+
+    private func tick(at x: CGFloat) -> some View {
+        Rectangle()
+            .fill(HelmColor.fgSecondary.opacity(0.85))
+            .frame(width: 1, height: HelmLayout.landmarkVolumeTrackHeight - HelmSpacing.xxs)
+            .offset(x: x - 0.5)
     }
 
     private func beginAppearDraw() {
@@ -146,11 +217,23 @@ public struct LandmarkVolumeBar: View {
         }
     }
 
-    private func tick(at x: CGFloat, height: CGFloat) -> some View {
-        Rectangle()
-            .fill(HelmColor.fgSecondary.opacity(0.85))
-            .frame(width: 1, height: max(height + 4, 10))
-            .offset(x: x - 0.5, y: -2)
+    private func visibleScaleMarks(zero: ScaleMark, mev: ScaleMark, mrv: ScaleMark) -> [ScaleMark] {
+        var kept: [ScaleMark] = []
+        for mark in [mev, mrv, zero] {
+            let overlaps = kept.contains { existing in
+                abs(existing.x - mark.x) < (existing.estimatedWidth + mark.estimatedWidth) / 2 + HelmSpacing.xxs
+            }
+            if !overlaps {
+                kept.append(mark)
+            }
+        }
+        return kept
+    }
+
+    private func clampedCenterX(for mark: ScaleMark, width: CGFloat) -> CGFloat {
+        let half = mark.estimatedWidth / 2
+        let pad = HelmSpacing.xxs
+        return min(max(mark.x, pad + half), max(pad + half, width - pad - half))
     }
 
     private var accessibilityCopy: String {
@@ -161,14 +244,67 @@ public struct LandmarkVolumeBar: View {
     }
 }
 
+private struct ScaleMark: Identifiable {
+    let id: String
+    let text: String
+    let x: CGFloat
+
+    var estimatedWidth: CGFloat {
+        CGFloat(max(text.count, 1)) * HelmSpacing.sm
+    }
+}
+
 #if DEBUG
 #Preview("Landmark volume bars") {
     VStack(spacing: HelmSpacing.md) {
-        LandmarkVolumeBar(label: "Quads", weeklySets: 4, scheduledSets: 6, mev: 8, mrv: 18, state: .ready)
-        LandmarkVolumeBar(label: "Chest", weeklySets: 12, mev: 10, mrv: 20, state: .ready)
-        LandmarkVolumeBar(label: "Back", weeklySets: 18, scheduledSets: 4, mev: 10, mrv: 18, state: .compromised)
-        LandmarkVolumeBar(label: "Hams", weeklySets: 22, mev: 8, mrv: 16, state: .compromised)
-        LandmarkVolumeBar(label: "Abs", weeklySets: 6, mev: 4, mrv: 12, state: .ready)
+        LandmarkVolumeBar(
+            label: "Chest",
+            weeklySets: 0,
+            scheduledSets: 8,
+            mev: 9,
+            mrv: 22,
+            state: .depleted,
+            daysSinceTrained: 4,
+            showsRecency: true
+        )
+        LandmarkVolumeBar(
+            label: "Shoulders",
+            weeklySets: 3,
+            scheduledSets: 5,
+            mev: 8,
+            mrv: 20,
+            state: .depleted,
+            daysSinceTrained: 1,
+            showsRecency: true
+        )
+        LandmarkVolumeBar(
+            label: "Triceps",
+            weeklySets: 0,
+            scheduledSets: 6,
+            mev: 6,
+            mrv: 16,
+            state: .depleted,
+            daysSinceTrained: 3,
+            showsRecency: true
+        )
+        LandmarkVolumeBar(
+            label: "Back",
+            weeklySets: 2,
+            mev: 9,
+            mrv: 22,
+            state: .depleted,
+            daysSinceTrained: 2,
+            showsRecency: true
+        )
+        LandmarkVolumeBar(
+            label: "Hams",
+            weeklySets: 22,
+            mev: 8,
+            mrv: 16,
+            state: .compromised,
+            daysSinceTrained: 1,
+            showsRecency: true
+        )
     }
     .padding()
     .helmTheme()

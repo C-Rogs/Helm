@@ -40,6 +40,28 @@ struct NumpadTarget: Hashable, Sendable {
     let field: NumpadFieldKind
 }
 
+enum TrainSessionPrompt: Equatable, Hashable, Identifiable {
+    case finish
+    case discard
+    case removeExercise(sessionExerciseID: String)
+
+    var id: String {
+        switch self {
+        case .finish: "finish"
+        case .discard: "discard"
+        case .removeExercise(let id): "remove-\(id)"
+        }
+    }
+
+    var dialogTitle: String {
+        switch self {
+        case .finish: "Finish workout?"
+        case .discard: "Discard workout?"
+        case .removeExercise: "Remove exercise?"
+        }
+    }
+}
+
 @MainActor
 @Observable
 final class TrainSessionController {
@@ -72,8 +94,9 @@ final class TrainSessionController {
     var numpadDraftRPE = 8.0
 
     var isShowingExercisePicker = false
-    var isShowingFinishConfirmation = false
-    var isShowingDiscardConfirmation = false
+    var sessionPrompt: TrainSessionPrompt?
+    /// Set synchronously from a confirmation button so dialog dismiss cannot drop the action.
+    var queuedConfirmedPrompt: TrainSessionPrompt?
     var pendingDeleteExerciseID: String? {
         pendingExerciseRemoval.pendingID
     }
@@ -496,7 +519,7 @@ final class TrainSessionController {
             let skipPhoneEnergy = sessionDeliveredHeartRate
             let finishedID = try await store.finish()
             await deactivateHeartRateCompanion(saveWorkout: true)
-            isShowingFinishConfirmation = false
+            sessionPrompt = nil
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
@@ -579,7 +602,7 @@ final class TrainSessionController {
             let sessionID = store.snapshot?.session.id
             try await store.discard()
             await deactivateHeartRateCompanion(saveWorkout: false)
-            isShowingDiscardConfirmation = false
+            sessionPrompt = nil
             numpadTarget = nil
             exerciseTargets = [:]
             resetCoachSessionState()
@@ -642,12 +665,49 @@ final class TrainSessionController {
         }
     }
 
+    func requestFinishConfirmation() {
+        sessionPrompt = .finish
+    }
+
+    func requestDiscardConfirmation() {
+        sessionPrompt = .discard
+    }
+
     func requestRemoveExercise(sessionExerciseID: String) {
         pendingExerciseRemoval.request(sessionExerciseID)
+        sessionPrompt = .removeExercise(sessionExerciseID: sessionExerciseID)
     }
 
     func cancelRemoveExercise() {
         pendingExerciseRemoval.cancel()
+        if case .removeExercise = sessionPrompt {
+            sessionPrompt = nil
+        }
+    }
+
+    func dismissSessionPrompt() {
+        if case .removeExercise = sessionPrompt {
+            pendingExerciseRemoval.cancel()
+        }
+        sessionPrompt = nil
+    }
+
+    func queueConfirmedPrompt(_ prompt: TrainSessionPrompt) {
+        queuedConfirmedPrompt = prompt
+        sessionPrompt = nil
+    }
+
+    func performQueuedPrompt() async {
+        guard let prompt = queuedConfirmedPrompt else { return }
+        queuedConfirmedPrompt = nil
+        switch prompt {
+        case .finish:
+            await finishWorkout()
+        case .discard:
+            await discardWorkout()
+        case .removeExercise(let sessionExerciseID):
+            await confirmRemoveExercise(presentingID: sessionExerciseID)
+        }
     }
 
     func confirmRemoveExercise(presentingID: String? = nil) async {
@@ -1323,6 +1383,20 @@ final class TrainSessionController {
         exerciseSummaries[exerciseID]?.displayName ?? exerciseID
     }
 
+    func exerciseImageURL(for exerciseID: String) -> URL? {
+        guard let gifURL = exerciseSummaries[exerciseID]?.gifURL, !gifURL.isEmpty else {
+            return nil
+        }
+        return URL(string: gifURL)
+    }
+
+    func exerciseImageURL(forSessionExerciseID sessionExerciseID: String) -> URL? {
+        guard let exercise = snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
+            return nil
+        }
+        return exerciseImageURL(for: exercise.exerciseID)
+    }
+
     /// Next incomplete exercise after the one tied to the running rest timer (or current work).
     var upNextExerciseName: String? {
         guard let snapshot else { return nil }
@@ -1732,8 +1806,8 @@ final class TrainSessionController {
             )
 
             appendCoachThread(role: .user, text: trimmed)
-            appendCoachThread(role: .assistant, text: proposal.reply)
-            appendTrainCoachMessage(role: .assistant, text: proposal.reply)
+            appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
+            appendTrainCoachMessage(role: .assistant, text: proposal.displayedAssistantText)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
@@ -1743,10 +1817,6 @@ final class TrainSessionController {
                 isShowingCoachPrompt = true
             } else {
                 pendingCoachProposal = nil
-                if let failureNotice = proposal.failureNotice {
-                    appendTrainCoachMessage(role: .assistant, text: failureNotice)
-                    appendCoachThread(role: .assistant, text: failureNotice)
-                }
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
             coachTurnError = message
@@ -1823,8 +1893,8 @@ final class TrainSessionController {
             )
 
             appendCoachThread(role: .user, text: trimmed)
-            appendCoachThread(role: .assistant, text: proposal.reply)
-            appendTrainCoachMessage(role: .assistant, text: proposal.reply)
+            appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
+            appendTrainCoachMessage(role: .assistant, text: proposal.displayedAssistantText)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
@@ -1834,10 +1904,6 @@ final class TrainSessionController {
                 isShowingCoachPrompt = true
             } else {
                 pendingCoachProposal = nil
-                if let failureNotice = proposal.failureNotice {
-                    appendTrainCoachMessage(role: .assistant, text: failureNotice)
-                    appendCoachThread(role: .assistant, text: failureNotice)
-                }
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
             coachTurnError = message
@@ -1908,7 +1974,7 @@ final class TrainSessionController {
             )
         }
         appendCoachThread(role: .user, text: userMessage)
-        appendCoachThread(role: .assistant, text: proposal.reply)
+        appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
         return proposal
     }
 

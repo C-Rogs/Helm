@@ -13,19 +13,23 @@ public struct StoredTrainingPlanSettings: Sendable, Hashable, Codable {
     public var sessionDurationMinutes: Int
     /// Training days available per week (2...6). Defaults to the legacy 3-day rotation.
     public var daysPerWeek: Int
+    /// Ordered `TrainingDayKind` raw values for one week. Empty means derive from template + daysPerWeek.
+    public var dayKindRotationRaw: [String]
 
     public init(
         phaseGoal: PhaseGoal = PhaseGoal(phase: .maintain),
         experienceRaw: String = "intermediate",
         programTemplateRaw: String = "ppl",
         sessionDurationMinutes: Int = 60,
-        daysPerWeek: Int = SchedulePlannerConstants.defaultSessionsPerWeek
+        daysPerWeek: Int = SchedulePlannerConstants.defaultSessionsPerWeek,
+        dayKindRotationRaw: [String] = []
     ) {
         self.phaseGoal = phaseGoal
         self.experienceRaw = experienceRaw
         self.programTemplateRaw = programTemplateRaw
         self.sessionDurationMinutes = sessionDurationMinutes
         self.daysPerWeek = min(max(daysPerWeek, 2), 6)
+        self.dayKindRotationRaw = dayKindRotationRaw
     }
 
     public static let `default` = StoredTrainingPlanSettings()
@@ -36,6 +40,7 @@ public struct StoredTrainingPlanSettings: Sendable, Hashable, Codable {
         case programTemplateRaw
         case sessionDurationMinutes
         case daysPerWeek
+        case dayKindRotationRaw
     }
 
     public init(from decoder: Decoder) throws {
@@ -46,6 +51,7 @@ public struct StoredTrainingPlanSettings: Sendable, Hashable, Codable {
         sessionDurationMinutes = try container.decodeIfPresent(Int.self, forKey: .sessionDurationMinutes) ?? 60
         daysPerWeek = try container.decodeIfPresent(Int.self, forKey: .daysPerWeek)
             ?? SchedulePlannerConstants.defaultSessionsPerWeek
+        dayKindRotationRaw = try container.decodeIfPresent([String].self, forKey: .dayKindRotationRaw) ?? []
     }
 }
 

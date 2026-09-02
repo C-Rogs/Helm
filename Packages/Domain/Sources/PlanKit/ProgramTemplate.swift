@@ -31,6 +31,18 @@ public enum ProgramTemplate: String, Sendable, Hashable, Codable, CaseIterable, 
             true
         }
     }
+
+    /// Canonical week rotation when the athlete picks a template without a hybrid from plan builder.
+    public func defaultDayKindRotation(daysPerWeek: Int) -> [TrainingDayKind] {
+        let days = min(max(daysPerWeek, 2), 6)
+        let cycle: [TrainingDayKind]
+        switch self {
+        case .ppl: cycle = [.push, .pull, .legs]
+        case .upperLower: cycle = [.upper, .lower]
+        case .fullBody: cycle = [.full]
+        }
+        return (0 ..< days).map { cycle[$0 % cycle.count] }
+    }
 }
 
 /// Session time budget that caps pattern slots and total working sets.
@@ -98,21 +110,59 @@ public enum TrainingDayKind: String, Sendable, Hashable, Codable, CaseIterable {
     case arms
 
     public var label: String {
-        rawValue.capitalized
+        switch self {
+        case .push: "Push"
+        case .pull: "Pull"
+        case .legs: "Legs"
+        case .upper: "Upper"
+        case .lower: "Lower"
+        case .full: "Full Body"
+        case .arms: "Arms"
+        }
+    }
+
+    /// Muscles the composer treats as this day's targets.
+    public var targetMuscles: [MuscleGroup] {
+        switch self {
+        case .push: [.chest, .shoulders, .triceps]
+        case .pull: [.back, .biceps, .shoulders]
+        case .legs: [.quads, .hamstrings, .glutes, .calves]
+        case .upper: [.chest, .back, .shoulders, .biceps, .triceps]
+        case .lower: [.quads, .hamstrings, .glutes, .calves]
+        case .full: MuscleGroup.allCases
+        case .arms: [.biceps, .triceps, .shoulders]
+        }
     }
 
     /// Infer from legacy muscle lists when an explicit kind is absent.
     public static func infer(from muscles: [MuscleGroup]) -> TrainingDayKind {
-        let set = Set(muscles)
-        let leg: Set<MuscleGroup> = [.quads, .hamstrings, .glutes, .calves]
-        let push: Set<MuscleGroup> = [.chest, .shoulders, .triceps]
-        let pull: Set<MuscleGroup> = [.back, .biceps, .shoulders]
-        let legOverlap = set.intersection(leg).count
-        let pushOverlap = set.intersection(push).count
-        let pullOverlap = set.intersection(pull).count
-        if legOverlap >= 2 { return .legs }
-        if pullOverlap >= 1, pullOverlap >= pushOverlap { return .pull }
-        if pushOverlap >= 1 { return .push }
-        return .full
+        bestMatch(muscles: Set(muscles), among: Array(allCases)) ?? .full
+    }
+
+    /// Tightest Jaccard match among `candidates`. Prefers smaller target sets on ties.
+    public static func bestMatch(
+        muscles: Set<MuscleGroup>,
+        among candidates: [TrainingDayKind]
+    ) -> TrainingDayKind? {
+        guard !muscles.isEmpty else { return nil }
+        var best: (kind: TrainingDayKind, score: Double, size: Int)?
+        for kind in candidates {
+            let target = Set(kind.targetMuscles)
+            guard !target.isEmpty else { continue }
+            let intersection = muscles.intersection(target).count
+            guard intersection > 0 else { continue }
+            let union = muscles.union(target).count
+            let score = Double(intersection) / Double(union)
+            let size = target.count
+            if let current = best {
+                if score > current.score + 0.001
+                    || (abs(score - current.score) <= 0.001 && size < current.size) {
+                    best = (kind, score, size)
+                }
+            } else {
+                best = (kind, score, size)
+            }
+        }
+        return best?.kind
     }
 }

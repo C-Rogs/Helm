@@ -5,6 +5,7 @@ public struct HelmPanelChromeModifier: ViewModifier {
     public enum Emphasis {
         case surface
         case elevated
+        /// Rounded accent wash. Matches `AdjustmentBanner` on every skin, including Signal.
         case accentQuiet
     }
 
@@ -13,13 +14,35 @@ public struct HelmPanelChromeModifier: ViewModifier {
 
     private let emphasis: Emphasis
     private let cornerRadius: CGFloat
+    private let isLive: Bool
 
-    public init(emphasis: Emphasis = .elevated, cornerRadius: CGFloat = HelmRadius.md) {
+    public init(
+        emphasis: Emphasis = .elevated,
+        cornerRadius: CGFloat = HelmRadius.md,
+        isLive: Bool = false
+    ) {
         self.emphasis = emphasis
         self.cornerRadius = cornerRadius
+        self.isLive = isLive
     }
 
     public func body(content: Content) -> some View {
+        if isAccentQuiet {
+            content
+                .background(
+                    palette.accent.opacity(0.12),
+                    in: RoundedRectangle(cornerRadius: accentQuietRadius)
+                )
+                .overlay {
+                    HelmBrushedAccentRim(radius: accentQuietRadius, isLive: isLive)
+                }
+        } else {
+            skinnedChrome(content)
+        }
+    }
+
+    @ViewBuilder
+    private func skinnedChrome(_ content: Content) -> some View {
         switch skin {
         case .signal:
             content
@@ -28,14 +51,11 @@ public struct HelmPanelChromeModifier: ViewModifier {
                         .fill(SignalChrome.panelFill(palette: palette))
                 }
                 .overlay {
-                    SignalHUDFrame(emphasized: emphasis == .accentQuiet)
+                    SignalHUDFrame(emphasized: false)
                 }
                 .shadow(
-                    color: SignalChrome.glow(
-                        palette: palette,
-                        intensity: emphasis == .accentQuiet ? 0.32 : 0.16
-                    ),
-                    radius: emphasis == .accentQuiet ? 8 : 5,
+                    color: SignalChrome.glow(palette: palette, intensity: 0.16),
+                    radius: 5,
                     y: 0
                 )
         case .dataSheet:
@@ -55,27 +75,93 @@ public struct HelmPanelChromeModifier: ViewModifier {
         }
     }
 
+    private var isAccentQuiet: Bool { emphasis == .accentQuiet }
+
+    private var accentQuietRadius: CGFloat { HelmRadius.card }
+
     private var fillColor: Color {
         switch emphasis {
         case .surface: palette.surface
         case .elevated: palette.surfaceElevated
-        case .accentQuiet: palette.accent.opacity(0.08)
+        case .accentQuiet: palette.accent.opacity(0.12)
         }
     }
 
     private var strokeColor: Color {
         switch emphasis {
         case .surface, .elevated: palette.hairline
-        case .accentQuiet: palette.accent.opacity(0.25)
+        case .accentQuiet: palette.accent.opacity(0.35)
         }
+    }
+}
+
+/// Brushed accent rim: one hue, specular tick, tight bloom. Traveling catch-light stands in for AI sparkle.
+private struct HelmBrushedAccentRim: View {
+    var radius: CGFloat
+    var isLive: Bool
+
+    @Environment(\.helmPalette) private var palette
+    @Environment(\.helmReduceMotion) private var reduceMotion
+
+    var body: some View {
+        if reduceMotion {
+            rim(angle: 0, glowOpacity: 0.16)
+        } else {
+            TimelineView(.animation) { context in
+                let period = isLive ? 4.2 : 12.0
+                let t = context.date.timeIntervalSinceReferenceDate
+                let phase = t.truncatingRemainder(dividingBy: period) / period
+                let glow: Double = {
+                    guard isLive else { return 0.2 }
+                    return 0.18 + 0.2 * (0.5 + 0.5 * sin(phase * 2 * .pi))
+                }()
+                rim(angle: phase * 360, glowOpacity: glow)
+            }
+        }
+    }
+
+    private func rim(angle: Double, glowOpacity: Double) -> some View {
+        let shape = RoundedRectangle(cornerRadius: radius)
+        let bright = palette.accentFill ?? palette.accent
+        return ZStack {
+            shape
+                .stroke(bright.opacity(glowOpacity), lineWidth: 4)
+                .blur(radius: 4)
+            shape
+                .stroke(metalGradient(angle: angle), lineWidth: 1.25)
+        }
+        .allowsHitTesting(false)
+    }
+
+    private func metalGradient(angle: Double) -> AngularGradient {
+        let bright = palette.accentFill ?? palette.accent
+        return AngularGradient(
+            colors: [
+                bright,
+                palette.accent.opacity(0.35),
+                palette.fg.opacity(0.55),
+                bright.opacity(0.8),
+                palette.accent.opacity(0.28),
+                bright
+            ],
+            center: .center,
+            angle: .degrees(angle)
+        )
     }
 }
 
 public extension View {
     func helmPanelChrome(
         _ emphasis: HelmPanelChromeModifier.Emphasis = .elevated,
-        cornerRadius: CGFloat = HelmRadius.md
+        cornerRadius: CGFloat = HelmRadius.md,
+        isLive: Bool = false
     ) -> some View {
-        modifier(HelmPanelChromeModifier(emphasis: emphasis, cornerRadius: cornerRadius))
+        modifier(
+            HelmPanelChromeModifier(
+                emphasis: emphasis,
+                cornerRadius: cornerRadius,
+                isLive: isLive
+            )
+        )
     }
 }

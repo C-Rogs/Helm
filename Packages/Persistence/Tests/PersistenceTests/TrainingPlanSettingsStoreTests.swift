@@ -39,5 +39,6 @@ struct TrainingPlanSettingsStoreTests {
         #expect(decoded.experienceRaw == "novice")
         #expect(decoded.programTemplateRaw == "ppl")
         #expect(decoded.sessionDurationMinutes == 60)
+        #expect(decoded.dayKindRotationRaw.isEmpty)
     }
 }

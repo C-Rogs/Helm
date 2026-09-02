@@ -382,3 +382,92 @@ struct PrescriptionDayStoreTests {
         #expect(decoded.exercises.first?.warmupSets == 0)
     }
 }
+
+@Suite("Program shape rotation")
+struct ProgramShapeRotationTests {
+    @Test("four day upper lower projection repeats upper")
+    func fourDayUpperLowerProjection() {
+        let start = HelmDay(year: 2026, month: 7, day: 27)
+        let history = PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: start
+        )
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: start,
+            dayCount: 7,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:],
+            sessionsPerWeek: 4,
+            dayKindRotation: [.upper, .lower, .upper, .lower]
+        )
+        let labels = records.compactMap { PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitLabel }
+        #expect(records.count == 4)
+        #expect(labels == ["Upper", "Lower", "Upper", "Lower"])
+    }
+
+    @Test("next slot after first upper is lower")
+    func nextAfterUpper() {
+        let weekStart = HelmDay(year: 2026, month: 7, day: 27)
+        let history = PrescriptionHistory(
+            loggedSets: [
+                LoggedSet(
+                    exerciseID: "bench_press",
+                    sequence: 1,
+                    mass: Mass(kilograms: 80),
+                    reps: 8,
+                    completedAt: Date()
+                )
+            ],
+            sessions: [
+                WorkoutSession(
+                    id: UUID(),
+                    helmDay: weekStart,
+                    startedAt: Date(),
+                    finishedAt: Date(),
+                    sets: [
+                        LoggedSet(
+                            exerciseID: "bench_press",
+                            sequence: 1,
+                            mass: Mass(kilograms: 80),
+                            reps: 8,
+                            completedAt: Date()
+                        )
+                    ]
+                )
+            ],
+            weekStart: weekStart
+        )
+        let muscleMaps: [String: ExerciseMuscleMap] = [
+            "bench_press": ExerciseMuscleMap(exerciseID: "bench_press", contributions: [
+                ExerciseMuscleContribution(muscle: .chest, fraction: 0.7),
+                ExerciseMuscleContribution(muscle: .shoulders, fraction: 0.15),
+                ExerciseMuscleContribution(muscle: .triceps, fraction: 0.15)
+            ]),
+            "row": ExerciseMuscleMap(exerciseID: "row", contributions: [
+                ExerciseMuscleContribution(muscle: .back, fraction: 0.8)
+            ])
+        ]
+        // Upper days also train back. A chest-only log still matches the first Upper slot
+        // more tightly than Lower.
+        let result = SchedulePlanner.plan(
+            for: weekStart.adding(days: 1),
+            emphasis: nil,
+            history: history,
+            muscleMaps: muscleMaps,
+            sessionsPerWeek: 4,
+            dayKindRotation: [.upper, .lower, .upper, .lower]
+        )
+        #expect(result.splitKind == .lower)
+    }
+
+    @Test("empty stored rotation synthesizes from full body template")
+    func synthesizeFullBody() {
+        let settings = StoredTrainingPlanSettings(
+            programTemplateRaw: "full_body",
+            daysPerWeek: 3
+        )
+        #expect(TrainingPlanShape.dayKindRotation(from: settings) == [.full, .full, .full])
+    }
+}

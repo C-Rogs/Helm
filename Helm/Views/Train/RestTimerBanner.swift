@@ -24,6 +24,7 @@ struct RestTimerBanner: View {
                     onRemainingSecondsChange?(remaining)
                 }
         }
+        .fixedSize(horizontal: false, vertical: true)
     }
 
     @ViewBuilder

@@ -95,16 +95,25 @@ enum ScheduleDriftResolver {
             .filter { weekDays.contains($0.helmDay) }
             .sorted { $0.startedAt < $1.startedAt }
 
+        let plannedKinds = records.compactMap { row -> SessionSplitKind? in
+            guard let json = PlannedWorkoutSessionDecoder.decode(from: row.sessionJSON) else {
+                return nil
+            }
+            return SessionSplitKind(rawValue: json.splitKind)
+        }
+
         for session in weekSessions {
             let muscles = musclesTrained(in: session, muscleMaps: muscleMaps)
-            guard let split = SessionSplitPlanner.inferSplitKind(from: muscles) else { continue }
+            let inferred = SessionSplitPlanner.inferSplitKind(from: muscles, among: plannedKinds)
+                ?? SessionSplitPlanner.inferSplitKind(from: muscles)
+            guard let inferred else { continue }
 
             let candidate = records.first { record in
                 guard !claimedPlannedIDs.contains(record.id) else { return false }
                 guard let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) else {
                     return false
                 }
-                guard payload.splitKind == split.rawValue else { return false }
+                guard payload.splitKind == inferred.rawValue else { return false }
                 let status = PlannedSessionStatus(rawValue: record.status) ?? .pending
                 return status == .pending || status == .shifted
             } ?? records.first { record in
@@ -112,7 +121,7 @@ enum ScheduleDriftResolver {
                 guard let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) else {
                     return false
                 }
-                return payload.splitKind == split.rawValue
+                return payload.splitKind == inferred.rawValue
             }
 
             guard let candidate else { continue }

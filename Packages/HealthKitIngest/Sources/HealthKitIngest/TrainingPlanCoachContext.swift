@@ -15,6 +15,8 @@ public enum TrainingPlanCoachContext {
         public let pendingReactiveDeload: Bool
         public let sessionDurationMinutes: Int
         public let programTemplate: String
+        public let daysPerWeek: Int
+        public let weekRotation: [String]
         public let allowedEquipment: Set<String>
 
         public init(
@@ -27,6 +29,8 @@ public enum TrainingPlanCoachContext {
             pendingReactiveDeload: Bool = false,
             sessionDurationMinutes: Int = 60,
             programTemplate: String = "ppl",
+            daysPerWeek: Int = 3,
+            weekRotation: [String] = ["Push", "Pull", "Legs"],
             allowedEquipment: Set<String> = []
         ) {
             self.emphasis = emphasis
@@ -38,17 +42,21 @@ public enum TrainingPlanCoachContext {
             self.pendingReactiveDeload = pendingReactiveDeload
             self.sessionDurationMinutes = sessionDurationMinutes
             self.programTemplate = programTemplate
+            self.daysPerWeek = min(max(daysPerWeek, 2), 6)
+            self.weekRotation = weekRotation
             self.allowedEquipment = allowedEquipment
         }
     }
 
     public static func build(from input: Input) -> String {
         var lines: [String] = [
-            "engine_note=split_rotation_only; emphasis is athlete intent for coach interpretation",
+            "engine_note=split_rotation_only; week follows saved program rotation; emphasis is athlete intent for coach interpretation",
             "today_split=\(input.todaySplit?.label ?? "Rest")",
             "remaining_sessions_this_week=\(input.remainingSessionsThisWeek)",
             "session_duration_min=\(input.sessionDurationMinutes)",
-            "program_template=\(input.programTemplate)"
+            "program_template=\(input.programTemplate)",
+            "days_per_week=\(input.daysPerWeek)",
+            "week_rotation=\(input.weekRotation.isEmpty ? "default" : input.weekRotation.joined(separator: ","))"
         ]
 
         if input.pendingReactiveDeload {

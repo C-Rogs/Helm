@@ -55,11 +55,17 @@ struct InSessionCoachSheet: View {
                                     coachName: coachName
                                 )
                                 .id("coach-thinking")
+                                .transition(
+                                    .opacity.combined(with: .scale(scale: 0.98, anchor: .bottom))
+                                )
                             }
 
                             if let proposal = controller.pendingCoachProposal {
                                 confirmationRow(proposal)
                                     .id("coach-confirmation")
+                                    .transition(
+                                        .opacity.combined(with: .scale(scale: 0.98, anchor: .bottom))
+                                    )
                             }
 
                             Color.clear
@@ -68,6 +74,20 @@ struct InSessionCoachSheet: View {
                         }
                         .padding(HelmSpacing.md)
                         .frame(maxWidth: .infinity, alignment: .leading)
+                        .animation(
+                            HelmMotion.animation(
+                                HelmMotion.standardAnimation,
+                                reduceMotion: reduceMotion
+                            ),
+                            value: controller.isCoachThinking
+                        )
+                        .animation(
+                            HelmMotion.animation(
+                                HelmMotion.standardAnimation,
+                                reduceMotion: reduceMotion
+                            ),
+                            value: controller.pendingCoachProposal?.recommendationID
+                        )
                     }
                     .defaultScrollAnchor(controller.coachMessages.isEmpty ? .top : .bottom)
                     .onAppear {

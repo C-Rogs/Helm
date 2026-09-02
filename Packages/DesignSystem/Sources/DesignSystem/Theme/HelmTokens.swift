@@ -77,8 +77,12 @@ public enum HelmLayout {
     /// Apple HIG minimum touch target.
     public static let minTapTarget: CGFloat = 44
     public static let chartHeight: CGFloat = HelmSpacing.sm * 15
+    public static let exerciseHistoryImageHeight: CGFloat = HelmSpacing.xl * 5
     public static let emptyChartMinHeight: CGFloat = HelmSpacing.sm * 10
     public static let progressTrackHeight: CGFloat = HelmSpacing.xs - 2
+    /// Volume track; logged overlay sits inset so the projected pill stays one shape.
+    public static let landmarkVolumeTrackHeight: CGFloat = HelmSpacing.lg
+    public static let landmarkVolumeScaleHeight: CGFloat = HelmSpacing.md
     public static let arcReadoutMaxWidth: CGFloat = HelmSpacing.lg * 10
     public static let trainScrollBottomInset: CGFloat = HelmSpacing.lg * 5
     public static let numpadHeight: CGFloat = HelmNumpadMetrics.preferredHeight
