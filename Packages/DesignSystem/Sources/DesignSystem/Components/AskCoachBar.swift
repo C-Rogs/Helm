@@ -37,11 +37,18 @@ public struct AskCoachBar: View {
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
-            .background(HelmColor.surfaceElevated, in: Capsule())
-            .overlay(
-                Capsule()
-                    .stroke(HelmColor.hairline, lineWidth: 1)
+            .background(
+                (isLoading ? HelmColor.accent.opacity(0.12) : HelmColor.surfaceElevated),
+                in: Capsule()
             )
+            .overlay {
+                if isLoading {
+                    HelmBrushedAccentRim(shape: Capsule(), isLive: true)
+                } else {
+                    Capsule()
+                        .stroke(HelmColor.hairline, lineWidth: 1)
+                }
+            }
         }
         .buttonStyle(.helmPressable)
         .disabled(isLoading)

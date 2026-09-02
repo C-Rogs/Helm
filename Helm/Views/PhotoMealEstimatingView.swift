@@ -26,7 +26,8 @@ struct PhotoMealEstimatingView: View {
                         title: "Analysing meal",
                         completedSteps: completedSteps,
                         currentStep: currentStep,
-                        footnote: footnote
+                        footnote: footnote,
+                        isImpactful: true
                     )
                     .helmScreenPadding()
                     .padding(.top, HelmSpacing.xl)

@@ -34,7 +34,10 @@ public struct HelmPanelChromeModifier: ViewModifier {
                     in: RoundedRectangle(cornerRadius: accentQuietRadius)
                 )
                 .overlay {
-                    HelmBrushedAccentRim(radius: accentQuietRadius, isLive: isLive)
+                    HelmBrushedAccentRim(
+                        shape: RoundedRectangle(cornerRadius: accentQuietRadius),
+                        isLive: isLive
+                    )
                 }
         } else {
             skinnedChrome(content)
@@ -96,14 +99,19 @@ public struct HelmPanelChromeModifier: ViewModifier {
 }
 
 /// Brushed accent rim: one hue, specular tick, tight bloom. Traveling catch-light stands in for AI sparkle.
-private struct HelmBrushedAccentRim: View {
-    var radius: CGFloat
-    var isLive: Bool
+public struct HelmBrushedAccentRim<S: Shape>: View {
+    private let shape: S
+    private let isLive: Bool
 
     @Environment(\.helmPalette) private var palette
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    var body: some View {
+    public init(shape: S, isLive: Bool = false) {
+        self.shape = shape
+        self.isLive = isLive
+    }
+
+    public var body: some View {
         if reduceMotion {
             rim(angle: 0, glowOpacity: 0.16)
         } else {
@@ -121,7 +129,6 @@ private struct HelmBrushedAccentRim: View {
     }
 
     private func rim(angle: Double, glowOpacity: Double) -> some View {
-        let shape = RoundedRectangle(cornerRadius: radius)
         let bright = palette.accentFill ?? palette.accent
         return ZStack {
             shape

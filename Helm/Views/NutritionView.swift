@@ -233,6 +233,8 @@ struct NutritionView: View {
                 describeProgressBanner
             }
         }
+        .animation(HelmMotion.standardAnimation, value: chatController.isStreaming)
+        .animation(HelmMotion.standardAnimation, value: chatController.isPreparingFoodMealConfirm)
     }
 
     private func sendDescribeFood(_ text: String, bucket: MealBucket) {
@@ -247,14 +249,14 @@ struct NutritionView: View {
     }
 
     private var describeProgressBanner: some View {
-        HStack(spacing: HelmSpacing.sm) {
-            ProgressView()
-            Text("Estimating your meal…")
-                .helmType(.body, color: HelmColor.fgSecondary)
-        }
-        .padding(.horizontal, HelmSpacing.md)
-        .padding(.vertical, HelmSpacing.sm)
-        .background(.ultraThinMaterial, in: Capsule())
+        CoachAIProgressCard(
+            eyebrow: "COACH",
+            title: chatController.chatProgressTitle ?? "Estimating meal",
+            completedSteps: chatController.chatProgressCompletedSteps,
+            currentStep: chatController.chatProgressStep ?? "Estimating your meal…",
+            isImpactful: true
+        )
+        .helmScreenPadding()
         .padding(.bottom, HelmSpacing.lg)
         .transition(.opacity)
     }
