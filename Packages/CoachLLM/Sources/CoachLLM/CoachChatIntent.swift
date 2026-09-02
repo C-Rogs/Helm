@@ -294,10 +294,13 @@ public enum CoachChatIntent: Sendable {
     }
 
     public static func looksLikeNamedTripDateAsk(_ text: String) -> Bool {
+        if looksLikeTrainingScheduleAsk(text) {
+            return false
+        }
         let lower = text.lowercased()
         return lower.contains("what date do i go")
-            || lower.contains("when do i go")
-            || lower.contains("when am i going")
+            || lower.contains("when do i go to")
+            || lower.contains("when am i going to")
             || lower.contains("how many days till")
             || lower.contains("how many days until")
             || lower.contains("days till i go")
@@ -319,7 +322,8 @@ public enum CoachChatIntent: Sendable {
         for pattern in patterns {
             if let captured = firstRegexCapture(in: text, pattern: pattern) {
                 let stripped = stripCalendarSearchFillers(captured)
-                if let term = sanitizedCalendarSearchTerm(stripped) {
+                if let term = sanitizedCalendarSearchTerm(stripped),
+                   !isTrainingCalendarSearchTerm(term) {
                     return term
                 }
             }
@@ -424,7 +428,40 @@ public enum CoachChatIntent: Sendable {
             "it", "that", "this", "there", "something", "the event", "my trip", "my event"
         ]
         if banned.contains(trimmed.lowercased()) { return nil }
+        if isTrainingCalendarSearchTerm(trimmed) { return nil }
         return trimmed
+    }
+
+    private static func looksLikeTrainingScheduleAsk(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "gym",
+            "workout",
+            "training",
+            " session",
+            "lift",
+            " to train",
+            "the train tab",
+            "cardio"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    private static func isTrainingCalendarSearchTerm(_ term: String) -> Bool {
+        let tokens = Set(
+            term.lowercased()
+                .split(whereSeparator: { $0.isWhitespace || $0.isPunctuation })
+                .map(String.init)
+        )
+        if tokens.contains("gym")
+            || tokens.contains("workout")
+            || tokens.contains("training")
+            || tokens.contains("session")
+            || tokens.contains("lift")
+            || tokens.contains("cardio") {
+            return true
+        }
+        return tokens.contains("train") && !tokens.contains("station")
     }
 
     public static func looksLikeTrendsLookup(_ text: String) -> Bool {
