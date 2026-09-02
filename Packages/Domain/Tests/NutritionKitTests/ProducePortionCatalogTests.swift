@@ -35,4 +35,16 @@ struct ProducePortionCatalogTests {
         #expect(options.first?.label == "1 bar")
         #expect(options.first?.grams == 60)
     }
+
+    @Test("weight-only serving still offers one whole unit")
+    func wholeUnitChipForGramServing() {
+        let options = PortionOptionCatalog.options(
+            for: "Tesco avocado",
+            origin: .openFoodFacts,
+            suggestedGrams: 170,
+            servingLabel: "170 g"
+        )
+        #expect(options.first?.label == "1 whole")
+        #expect(options.first?.grams == 170)
+    }
 }

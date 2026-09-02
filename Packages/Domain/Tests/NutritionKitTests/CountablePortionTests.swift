@@ -3,6 +3,24 @@ import Testing
 
 @Suite("Countable portion")
 struct CountablePortionTests {
+    @Test("serving labelled whole becomes a one-unit countable")
+    func detectsWholeServing() {
+        let config = CountablePortion.detect(
+            for: "Tesco avocado",
+            suggestedGrams: 170,
+            servingLabel: "1 whole"
+        )
+        #expect(config?.kind == .serving)
+        #expect(config?.unitNoun == "whole")
+        #expect(config?.fixedUnitGrams == 170)
+        let label = CountablePortion.formatServingLabel(
+            quantity: 1,
+            sizeLabel: "1 whole",
+            config: config!
+        )
+        #expect(label == "1 whole")
+    }
+
     @Test("detects egg products")
     func detectsEggs() {
         let config = CountablePortion.detect(for: "Coop 6 large free range eggs")

@@ -29,6 +29,9 @@ public enum PortionOptionCatalog {
         if let suggestedGrams, suggestedGrams > 0 {
             let label = trimmed(servingLabel) ?? defaultServingLabel(origin: origin)
             options.append(ProducePortionOption(label: label, grams: suggestedGrams))
+            if !looksLikeWholeUnit(label) {
+                options.insert(ProducePortionOption(label: "1 whole", grams: suggestedGrams), at: 0)
+            }
         }
 
         if let id = cofidID, let byID = byCofidID[id] {
@@ -71,6 +74,12 @@ public enum PortionOptionCatalog {
         case .cofid, .custom, .none:
             "1 portion"
         }
+    }
+
+    private static func looksLikeWholeUnit(_ label: String) -> Bool {
+        let lowered = label.lowercased()
+        let unitNeedles = ["whole", "bar", "pot", "scoop", "slice", "egg", "can", "fillet"]
+        return unitNeedles.contains(where: lowered.contains)
     }
 
     private static func trimmed(_ value: String?) -> String? {

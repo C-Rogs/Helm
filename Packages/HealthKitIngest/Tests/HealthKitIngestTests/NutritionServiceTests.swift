@@ -217,6 +217,37 @@ struct NutritionServiceTests {
         #expect(freshness == .unavailable)
     }
 
+    @Test("stale training prescription does not fuel a rest day")
+    func stalePrescriptionIgnoredWithoutPlannedSession() async throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        try saveDefaultBodyProfile(in: store)
+
+        let day = HelmDay(year: 2026, month: 8, day: 26)
+        let stale = PrescribedSessionSummary(
+            phase: .maintain,
+            emphasis: nil,
+            exercises: [
+                PrescribedExerciseSummary(
+                    id: "bench-press",
+                    displayName: "Bench press",
+                    targetSets: 4,
+                    targetRepRange: "8-12",
+                    targetLoad: "60kg",
+                    targetRPE: nil
+                )
+            ],
+            totalSets: 16,
+            readinessAdjusted: false
+        )
+
+        let engine = NutritionEngine(persistence: store)
+        let snapshot = await engine.snapshot(for: day, prescriptionSummary: stale)
+
+        #expect(snapshot.dayType == .rest)
+        #expect(snapshot.budgetDay?.demand == .rest)
+    }
+
     @Test("snapshot calorie target matches weekly-budget eat-to")
     func snapshotUsesWeeklyBudgetEatTo() async throws {
         let store = try PersistenceStore.inMemory()

@@ -174,10 +174,10 @@ struct FoodPortionStepView: View {
 
         Stepper(value: $quantity, in: 1 ... 24) {
             HStack {
-                Text("Quantity")
+                Text(config.kind == .serving && config.unitNoun == "whole" ? "Whole" : "Quantity")
                     .helmType(.body)
                 Spacer()
-                Text("\(quantity)")
+                Text(config.kind == .serving && config.unitNoun == "whole" && quantity == 1 ? "1 whole" : "\(quantity)")
                     .helmType(.number)
             }
         }

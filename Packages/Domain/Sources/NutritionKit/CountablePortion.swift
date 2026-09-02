@@ -50,6 +50,17 @@ public enum CountablePortion {
         let normalized = NutritionLookup.normalize(productName)
         let trimmedServing = trimmed(servingLabel)?.lowercased()
 
+        if let trimmedServing, trimmedServing.contains("whole"),
+           let grams = positive(suggestedGrams) {
+            return CountablePortionConfig(
+                kind: .serving,
+                sizeOptions: [ProducePortionOption(label: "1 whole", grams: grams)],
+                unitNoun: "whole",
+                pluralNoun: "whole",
+                fixedUnitGrams: grams
+            )
+        }
+
         if normalized.contains("egg") {
             return CountablePortionConfig(
                 kind: .egg,

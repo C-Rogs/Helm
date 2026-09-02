@@ -257,6 +257,10 @@ public actor NutritionEngine {
         let monday = day.mondayOfSameWeek(calendar: calendar)
         let weekEnd = monday.adding(days: 6)
         let sessionDays = completedSessionDemandDays(from: monday, through: weekEnd)
+        let plannedAsOf = (try? persistence.plan.fetchPlannedWorkouts(from: day, through: day)) ?? []
+        let livePrescription = plannedAsOf.contains(where: { $0.status != "skipped" })
+            ? prescriptionSummary
+            : nil
 
         let inputs: [WeeklyNutritionBudgetDayInput] = try (0 ..< 7).map { offset in
             let d = monday.adding(days: offset)
@@ -269,7 +273,7 @@ public actor NutritionEngine {
                 demand = weeklyTrainingDemand(
                     for: d,
                     asOf: day,
-                    prescriptionSummary: prescriptionSummary,
+                    prescriptionSummary: livePrescription,
                     emphasis: settings.phaseGoal.emphasis,
                     mesocycleState: mesocycleState
                 )
@@ -277,7 +281,7 @@ public actor NutritionEngine {
                 demand = weeklyTrainingDemand(
                     for: d,
                     asOf: day,
-                    prescriptionSummary: prescriptionSummary,
+                    prescriptionSummary: livePrescription,
                     emphasis: settings.phaseGoal.emphasis,
                     mesocycleState: mesocycleState
                 )
@@ -340,6 +344,7 @@ public actor NutritionEngine {
                 mesocycleState: mesocycleState
             )
             if dayType == .deload { return .lightLift }
+            if dayType == .rest { return .rest }
             return .heavyLift
         }
         if let mesocycleState,
@@ -405,8 +410,10 @@ public actor NutritionEngine {
 
         let targetMuscles = targetMuscles(for: day, emphasis: settings.phaseGoal.emphasis)
         let mesocycleState = loadMesocycleState()
+        let plannedToday = (try? persistence.plan.fetchPlannedWorkouts(from: day, through: day)) ?? []
+        let hasPlannedSession = plannedToday.contains { $0.status != "skipped" }
         let dayType = NutritionDayTypeResolver.resolve(
-            prescriptionSummary: prescriptionSummary,
+            prescriptionSummary: hasPlannedSession ? prescriptionSummary : nil,
             targetMuscles: targetMuscles,
             mesocycleState: mesocycleState
         )

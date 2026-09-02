@@ -263,10 +263,10 @@ struct MealLineItemEditor: View {
 
         Stepper(value: quantityBinding(for: entry.id, config: config), in: 1 ... 24) {
             HStack {
-                Text("Quantity")
+                Text(config.unitNoun == "whole" ? "Whole" : "Quantity")
                     .helmType(.body)
                 Spacer()
-                Text("\(state.quantity)")
+                Text(wholeQuantityLabel(state.quantity, config: config))
                     .helmType(.number)
             }
         }
@@ -345,8 +345,19 @@ struct MealLineItemEditor: View {
         }
     }
 
+    private func wholeQuantityLabel(_ quantity: Int, config: CountablePortionConfig) -> String {
+        if config.unitNoun == "whole", quantity == 1 {
+            return "1 whole"
+        }
+        return "\(quantity)"
+    }
+
     private func countableConfig(for entry: EditableLineItem) -> CountablePortionConfig? {
-        CountablePortion.detect(for: entry.item.name, servingLabel: entry.servingLabel)
+        CountablePortion.detect(
+            for: entry.item.name,
+            suggestedGrams: entry.item.grams,
+            servingLabel: entry.servingLabel
+        )
     }
 
     private func seedCountableStatesIfNeeded() {
@@ -367,9 +378,19 @@ struct MealLineItemEditor: View {
     ) -> CountableEditorState {
         let parsed = entry.servingLabel.flatMap { CountablePortion.parseServingLabel($0, config: config) }
         let unitGrams = bootstrapUnitGrams(for: entry, config: config, parsed: parsed)
+        let inferred = max(Int((entry.item.grams / max(unitGrams, 1)).rounded()), 1)
+        let quantity: Int
+        if let parsedQuantity = parsed?.quantity {
+            quantity = parsedQuantity
+        } else if CountablePortion.isLikelyPackWeight(entry.item.grams, config: config) {
+            quantity = 1
+        } else {
+            quantity = inferred
+        }
         return CountableEditorState(
-            quantity: parsed?.quantity ?? max(Int((entry.item.grams / max(unitGrams, 1)).rounded()), 1),
+            quantity: quantity,
             selectedSizeLabel: parsed?.sizeOption?.label
+                ?? (config.unitNoun == "whole" ? "1 whole" : nil)
                 ?? CountablePortion.inferDefaultSize(from: entry.item.name, config: config)?.label
         )
     }

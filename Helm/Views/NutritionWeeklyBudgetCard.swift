@@ -9,7 +9,7 @@ struct NutritionWeeklyBudgetCard: View {
 
     var body: some View {
         Card {
-            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                 HelmSectionEyebrow("WEEK")
 
                 summaryRow
