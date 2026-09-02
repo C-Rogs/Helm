@@ -32,4 +32,12 @@ public enum StandingConstraintPatternPolicy: Sendable {
             []
         }
     }
+
+    /// Shoulder recovery also drops dip-like IDs even though dips are not a vertical-press pattern.
+    public static func shouldExcludeExercise(
+        _ exerciseID: String,
+        excludedPatterns: Set<MovementPatternKind>
+    ) -> Bool {
+        excludedPatterns.contains(.verticalPress) && exerciseID.lowercased().contains("dip")
+    }
 }

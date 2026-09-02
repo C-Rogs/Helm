@@ -35,7 +35,7 @@ enum MovementPatternMatcher {
     private static func keywords(for pattern: MovementPatternKind) -> [String] {
         switch pattern {
         case .horizontalPress:
-            ["bench", "chest_press", "push_up", "pushup", "floor_press", "dip"]
+            ["bench", "chest_press", "push_up", "pushup", "floor_press"]
         case .verticalPress:
             ["overhead", "shoulder_press", "military", "ohp", "landmine_press"]
         case .lengthenedChest:
@@ -43,7 +43,7 @@ enum MovementPatternMatcher {
         case .lateralRaise:
             ["lateral_raise", "side_raise", "lateral_delt"]
         case .tricepsIsolation:
-            ["triceps", "pushdown", "skull", "extension", "kickback", "close_grip"]
+            ["triceps", "pushdown", "skull", "extension", "kickback", "close_grip", "dip"]
         case .verticalPull:
             ["pulldown", "pull_up", "pullup", "chin_up", "chinup", "lat_pull"]
         case .horizontalPull:

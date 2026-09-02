@@ -271,7 +271,13 @@ enum PrescriptionEngine {
 
     private static func filteredCatalog(for profile: PrescriptionProfile) -> [CatalogExercise] {
         profile.exerciseCatalog.filter { exercise in
-            !profile.excludedPatterns.contains { pattern in
+            if StandingConstraintPatternPolicy.shouldExcludeExercise(
+                exercise.exerciseID,
+                excludedPatterns: profile.excludedPatterns
+            ) {
+                return false
+            }
+            return !profile.excludedPatterns.contains { pattern in
                 MovementPatternMatcher.patternScore(exerciseID: exercise.exerciseID, pattern: pattern) > 0
             }
         }

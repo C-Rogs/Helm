@@ -164,6 +164,42 @@ struct SlotClassFitTests {
         #expect(selection?.exercise.exerciseID == "seed-cam-bench-dip")
     }
 
+    @Test("dip keyword is isolation not a horizontal press")
+    func dipKeywordLeavesHorizontalPress() {
+        #expect(MovementPatternMatcher.patternScore(exerciseID: "seed-cam-bench-dip", pattern: .horizontalPress) == 0)
+        #expect(MovementPatternMatcher.patternScore(exerciseID: "seed-cam-bench-dip", pattern: .tricepsIsolation) > 0)
+    }
+
+    @Test("opener slot hard-excludes familiar isolation dip when a loadable press exists")
+    func openerExcludesIsolationWhenPressExists() {
+        let catalog = [
+            chest(
+                id: "seed-cam-bench-dip",
+                equipment: "bodyweight",
+                movementClass: .isolation,
+                priority: 0
+            ),
+            chest(
+                id: "seed-cam-bench-press",
+                equipment: "barbell",
+                movementClass: .horizontalPush,
+                priority: 2
+            )
+        ]
+        let slot = PatternSlot(
+            index: 0,
+            pattern: .horizontalPress,
+            primaryMuscle: .chest,
+            role: .primary
+        )
+        let selection = PlanKit.selectExercise(
+            for: slot,
+            catalog: catalog,
+            familiarExerciseIDs: ["seed-cam-bench-dip"]
+        )
+        #expect(selection?.exercise.exerciseID == "seed-cam-bench-press")
+    }
+
     @Test("missing class still uses keyword matching")
     func unknownClassKeepsKeywordFallback() {
         let catalog = [

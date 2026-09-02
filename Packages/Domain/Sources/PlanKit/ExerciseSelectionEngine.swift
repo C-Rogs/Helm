@@ -113,8 +113,10 @@ enum ExerciseSelectionEngine {
             }
         }
 
+        let openerPool = applyOpenerPolicy(slot: slot, pool: pool, candidates: candidates)
+
         guard
-            let best = pool.max(by: { lhs, rhs in
+            let best = openerPool.max(by: { lhs, rhs in
                 let lhsScore = score(
                     lhs,
                     for: muscle,
@@ -235,6 +237,28 @@ enum ExerciseSelectionEngine {
             total += 0.15
         }
         return total
+    }
+
+    /// Slot 0 compound overloads skip isolation and unloaded bodyweight when a loadable option exists.
+    private static func applyOpenerPolicy(
+        slot: PatternSlot,
+        pool: [CatalogExercise],
+        candidates: [CatalogExercise]
+    ) -> [CatalogExercise] {
+        guard slot.index == 0, slot.role == .primary, SlotClassFit.isCompoundOverload(slot.pattern) else {
+            return pool
+        }
+        func isOpenerEligible(_ exercise: CatalogExercise) -> Bool {
+            exercise.movementClass != .isolation
+                && SlotClassFit.isProgressivelyLoadable(exercise.equipment)
+        }
+        let fromPool = pool.filter(isOpenerEligible)
+        if !fromPool.isEmpty { return fromPool }
+        let fromPreferred = candidates.filter {
+            SlotClassFit.matchesPreferredClass($0, slot: slot) && isOpenerEligible($0)
+        }
+        if !fromPreferred.isEmpty { return fromPreferred }
+        return pool
     }
 
     private static func isPrimaryTarget(_ exercise: CatalogExercise, muscle: MuscleGroup) -> Bool {

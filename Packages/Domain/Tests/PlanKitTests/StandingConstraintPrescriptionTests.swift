@@ -63,6 +63,16 @@ struct StandingConstraintPrescriptionTests {
                 priority: 0
             ),
             CatalogExercise(
+                exerciseID: "seed-cam-bench-dip",
+                muscleMap: ExerciseMuscleMap(
+                    exerciseID: "seed-cam-bench-dip",
+                    contributions: [ExerciseMuscleContribution(muscle: .chest, fraction: 1)]
+                ),
+                priority: 0,
+                equipment: "bodyweight",
+                movementClass: .isolation
+            ),
+            CatalogExercise(
                 exerciseID: "triceps_pushdown",
                 muscleMap: ExerciseMuscleMap(
                     exerciseID: "triceps_pushdown",
@@ -144,6 +154,7 @@ struct StandingConstraintPrescriptionTests {
         )
         let ids = Set(session.exercises.map(\.exerciseID))
         #expect(!ids.contains("overhead_press"))
+        #expect(!ids.contains("seed-cam-bench-dip"))
         #expect(ids.contains("bench_press") || ids.contains("cable_fly"))
     }
 

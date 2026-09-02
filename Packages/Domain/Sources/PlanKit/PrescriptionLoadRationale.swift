@@ -42,7 +42,10 @@ public enum PrescriptionLoadRationale {
     ) -> Bool {
         excludedPatterns.contains { pattern in
             MovementPatternMatcher.patternScore(exerciseID: exerciseID, pattern: pattern) > 0
-        }
+        } || StandingConstraintPatternPolicy.shouldExcludeExercise(
+            exerciseID,
+            excludedPatterns: excludedPatterns
+        )
     }
 
     private static func line(for exercise: ExerciseInput) -> String {

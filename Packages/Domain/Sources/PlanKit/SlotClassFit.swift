@@ -52,7 +52,11 @@ enum SlotClassFit {
 
     static func loadabilityScore(_ exercise: CatalogExercise, slot: PatternSlot) -> Double {
         guard isCompoundOverload(slot.pattern) else { return 0 }
-        return isProgressivelyLoadable(exercise.equipment) ? 0.45 : -0.55
+        let loadable = isProgressivelyLoadable(exercise.equipment)
+        if slot.role == .primary {
+            return loadable ? 0.85 : -1.1
+        }
+        return loadable ? 0.45 : -0.55
     }
 
     static func isProgressivelyLoadable(_ equipment: String?) -> Bool {
