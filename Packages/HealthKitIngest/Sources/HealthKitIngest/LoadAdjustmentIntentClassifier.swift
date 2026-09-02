@@ -56,7 +56,10 @@ enum LoadAdjustmentIntentClassifier {
             targetMassKg: operation.targetMassKg,
             rpeDelta: operation.rpeDelta,
             targetRPE: operation.targetRPE,
-            loadAdjustmentIntent: resolvedIntent
+            loadAdjustmentIntent: resolvedIntent,
+            targetSets: operation.targetSets,
+            warmupSets: operation.warmupSets,
+            targetReps: operation.targetReps
         )
     }
 

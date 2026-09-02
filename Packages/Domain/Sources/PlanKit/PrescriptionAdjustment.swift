@@ -34,6 +34,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
     public let loadAdjustmentIntent: LoadAdjustmentIntent
     public let targetSets: Int?
     public let warmupSets: Int?
+    public let targetReps: Int?
 
     public init(
         kind: Kind,
@@ -49,7 +50,8 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         targetRPE: Double? = nil,
         loadAdjustmentIntent: LoadAdjustmentIntent = .coachSuggested,
         targetSets: Int? = nil,
-        warmupSets: Int? = nil
+        warmupSets: Int? = nil,
+        targetReps: Int? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -65,6 +67,7 @@ public struct PrescriptionAdjustmentOperation: Sendable, Hashable, Codable {
         self.loadAdjustmentIntent = loadAdjustmentIntent
         self.targetSets = targetSets
         self.warmupSets = warmupSets
+        self.targetReps = targetReps
     }
 }
 
@@ -298,7 +301,7 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.exerciseNotFound(exerciseID: exerciseID))
         }
 
-        let proposedKg: Double
+        let proposedKg: Double?
         if let targetMassKg = operation.targetMassKg {
             proposedKg = targetMassKg
         } else if let delta = operation.massDeltaKg {
@@ -308,13 +311,20 @@ enum PrescriptionAdjustmentEngine {
             }
             proposedKg = currentMass.kilograms + delta
         } else {
+            proposedKg = nil
+        }
+
+        let proposedReps = operation.targetReps.map { max(1, $0) }
+        if proposedKg == nil, proposedReps == nil {
             return .failure(.loadMissing(exerciseID: exerciseID))
         }
 
-        let boundedKg = PrescriptionBounds.clampedLoadKg(proposedKg)
+        let boundedKg = proposedKg.map { PrescriptionBounds.clampedLoadKg($0) }
         exercises[index] = replacing(
             exercises[index],
-            targetMass: Mass(kilograms: boundedKg)
+            targetRepMin: proposedReps ?? exercises[index].targetRepMin,
+            targetRepMax: proposedReps ?? exercises[index].targetRepMax,
+            targetMass: boundedKg.map { Mass(kilograms: $0) }
         )
         return .success
     }
@@ -366,14 +376,15 @@ enum PrescriptionAdjustmentEngine {
         let setCount = max(1, operation.targetSets ?? 3)
         let warmupCount = max(0, operation.warmupSets ?? 0)
         let targetMass = operation.targetMassKg.map { Mass(kilograms: PrescriptionBounds.clampedLoadKg($0)) }
+        let targetReps = operation.targetReps.map { max(1, $0) }
         exercises.append(
             PrescribedExercise(
                 exerciseID: exerciseID,
                 order: exercises.count,
                 targetSets: setCount,
                 warmupSets: warmupCount,
-                targetRepMin: nil,
-                targetRepMax: nil,
+                targetRepMin: targetReps,
+                targetRepMax: targetReps,
                 targetMass: targetMass,
                 targetRPE: operation.targetRPE.map { PrescriptionBounds.clampRPE($0) }
             )
@@ -387,6 +398,8 @@ enum PrescriptionAdjustmentEngine {
         order: Int? = nil,
         targetSets: Int? = nil,
         warmupSets: Int? = nil,
+        targetRepMin: Int? = nil,
+        targetRepMax: Int? = nil,
         targetMass: Mass? = nil,
         targetRPE: Double? = nil,
         rationale: String? = nil,
@@ -398,8 +411,8 @@ enum PrescriptionAdjustmentEngine {
             order: order ?? exercise.order,
             targetSets: targetSets ?? exercise.targetSets,
             warmupSets: warmupSets ?? exercise.warmupSets,
-            targetRepMin: exercise.targetRepMin,
-            targetRepMax: exercise.targetRepMax,
+            targetRepMin: targetRepMin ?? exercise.targetRepMin,
+            targetRepMax: targetRepMax ?? exercise.targetRepMax,
             targetMass: targetMass ?? exercise.targetMass,
             targetRPE: targetRPE ?? exercise.targetRPE,
             rationale: rationale ?? exercise.rationale,

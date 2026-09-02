@@ -23,7 +23,8 @@ enum SessionAdjustmentMapper {
             targetRPE: operation.targetRPE,
             loadAdjustmentIntent: operation.loadAdjustmentIntent ?? .coachSuggested,
             targetSets: operation.targetSets,
-            warmupSets: operation.warmupSets
+            warmupSets: operation.warmupSets,
+            targetReps: operation.targetReps
         )
     }
 

@@ -458,6 +458,7 @@ public enum GeminiRequestBuilder {
                 "setDelta": ["type": "integer"],
                 "massDeltaKg": ["type": "number"],
                 "targetMassKg": ["type": "number"],
+                "targetReps": ["type": "integer"],
                 "loadAdjustmentIntent": [
                     "type": "string",
                     "enum": ["userDirected", "coachSuggested"]

@@ -455,6 +455,54 @@ struct ActiveSessionEngineTests {
         #expect(working.allSatisfy { $0.mass?.kilograms == 100 })
     }
 
+    @Test("sync from prescription writes a new rep target onto planned sets")
+    func syncFromPrescriptionWritesPlannedReps() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        let snapshot = try await engine.startFromPrescription(prescription)
+        let adjusted = SessionPrescription(
+            helmDay: prescription.helmDay,
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetRepMin: 10,
+                    targetRepMax: 10,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        try persistence.activeSessions.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: adjusted,
+            timestamp: Date()
+        )
+
+        let refreshed = try #require(try persistence.activeSessions.fetchActiveSnapshot(at: Date()))
+        let working = try #require(refreshed.session.exercises.first).sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet
+        }
+        #expect(working.allSatisfy { $0.reps == 10 })
+        #expect(working.allSatisfy { $0.mass?.kilograms == 80 })
+    }
+
     @Test("sync from prescription does not homogenize planned loads when target is unchanged")
     func syncFromPrescriptionKeepsMixedPlannedLoads() async throws {
         let (persistence, engine, _) = try makeHarness()
