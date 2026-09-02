@@ -34,6 +34,9 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "HRV this week")?.queryType == .range)
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "How did I sleep last night")?.queryType == .sleepDetail)
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "How is my HRV today") == nil)
+        #expect(CoachChatIntent.inferredHealthSync(from: "How up to date is that measurement") != nil)
+        #expect(CoachChatIntent.inferredHealthSync(from: "Yes", lastAssistant: "Would you like me to refresh your HRV?") != nil)
+        #expect(CoachChatIntent.inferredHealthSync(from: "Yes", lastAssistant: "How are the arms feeling?") == nil)
         #expect(CoachChatIntent.inferredCalendarQuery(from: "What events do I have today")?.queryType == .today)
         #expect(CoachChatIntent.inferredCalendarQuery(from: "Why am I marked busy")?.queryType == .today)
         #expect(CoachChatIntent.inferredCalendarQuery(from: "What's on my calendar this week")?.queryType == .weekAhead)
@@ -157,6 +160,7 @@ struct CoachChatIntentTests {
     @Test("open train and open snack entry infer navigate tabs")
     func infersNavigateTab() {
         #expect(CoachChatIntent.inferredNavigateTab(from: "Open train") == "train")
+        #expect(CoachChatIntent.inferredNavigateTab(from: "Open settings") == "settings")
         #expect(CoachChatIntent.inferredNavigateTab(from: "open the entry of the snack I just logged") == "nutrition")
         #expect(CoachChatIntent.inferredNavigateTab(from: "I am open to swapping bench") == nil)
     }

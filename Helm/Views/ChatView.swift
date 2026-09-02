@@ -35,8 +35,26 @@ struct ChatView: View {
                             }
 
                             ForEach(controller.messages) { message in
-                                messageBubble(message)
-                                    .id(message.id)
+                                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                                    messageBubble(message)
+                                    if message.id == controller.memoryRefinementSourceMessageID,
+                                       !controller.pendingMemoryRefinements.isEmpty,
+                                       controller.pendingChatAction == nil {
+                                        MemoryRefinementConfirmationCard(
+                                            refinements: controller.pendingMemoryRefinements,
+                                            onAcceptAll: { controller.acceptMemoryRefinements() },
+                                            onDismiss: { controller.dismissMemoryRefinements() }
+                                        )
+                                    }
+                                    if let action = controller.undoableAction(for: message.id) {
+                                        Button("Undo") {
+                                            controller.undoAppliedAction(id: action.id)
+                                        }
+                                        .buttonStyle(.helmSecondary)
+                                        .accessibilityLabel("Undo coach action")
+                                    }
+                                }
+                                .id(message.id)
                             }
 
                             if let lastTurnError = controller.lastTurnError,
@@ -70,16 +88,6 @@ struct ChatView: View {
                                     onRetry: { controller.confirmChatAction() }
                                 )
                                 .id("chat-confirmation")
-                                .transition(coachSlotTransition)
-                            }
-
-                            if !controller.pendingMemoryRefinements.isEmpty {
-                                MemoryRefinementConfirmationCard(
-                                    refinements: controller.pendingMemoryRefinements,
-                                    onAcceptAll: { controller.acceptMemoryRefinements() },
-                                    onDismiss: { controller.dismissMemoryRefinements() }
-                                )
-                                .id("memory-refinements")
                                 .transition(coachSlotTransition)
                             }
 
@@ -290,6 +298,10 @@ struct ChatView: View {
             return "Coach ran a calendar query."
         case CoachOutputSchemaVersion.trendsQueryV1.rawValue:
             return "Coach ran a trends query."
+        case CoachOutputSchemaVersion.healthSyncV1.rawValue:
+            return "Coach synced Health."
+        case CoachOutputSchemaVersion.workoutDiscardV1.rawValue:
+            return "Coach discarded a workout."
         case CoachOutputSchemaVersion.calendarEventClassifyV1.rawValue:
             return "Coach classified calendar events."
         default:
@@ -414,7 +426,7 @@ struct ChatView: View {
         switch pending.kind {
         case .workoutStart:
             return "Could not start. \(message)"
-        case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment:
+        case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment, .workoutDiscard:
             return "Could not apply. \(message)"
         }
     }

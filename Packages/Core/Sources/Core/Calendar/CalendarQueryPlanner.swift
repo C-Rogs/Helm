@@ -41,7 +41,36 @@ public enum CalendarQueryPlanner: Sendable {
     }
 
     public static func titleMatches(_ title: String, search: String) -> Bool {
-        title.range(of: search, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        expandedSearchTerms(search).contains { needle in
+            title.range(of: needle, options: [.caseInsensitive, .diacriticInsensitive]) != nil
+        }
+    }
+
+    /// English/local name pairs so "Italy" matches an EventKit title "Italia".
+    static func expandedSearchTerms(_ search: String) -> [String] {
+        let trimmed = search.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return [] }
+        var terms: Set<String> = [trimmed]
+        let key = trimmed.lowercased()
+        let aliases: [String: [String]] = [
+            "italy": ["italia", "italian"],
+            "italia": ["italy", "italian"],
+            "spain": ["españa", "espana", "spanish"],
+            "españa": ["spain", "espana"],
+            "espana": ["spain", "españa"],
+            "germany": ["deutschland", "german"],
+            "deutschland": ["germany", "german"],
+            "france": ["français", "francais", "french"],
+            "greece": ["hellas", "ελλάδα"]
+        ]
+        if let extras = aliases[key] {
+            extras.forEach { terms.insert($0) }
+        }
+        for (canonical, extras) in aliases where extras.contains(where: { $0.lowercased() == key }) {
+            terms.insert(canonical)
+            extras.forEach { terms.insert($0) }
+        }
+        return Array(terms)
     }
 
     public static func eventMatches(_ event: CalendarEventDetail, search: String) -> Bool {

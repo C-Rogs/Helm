@@ -25,6 +25,7 @@ public actor PersistenceStore {
     public nonisolated let nutritionLogStatus: NutritionLogStatusRepository
     public nonisolated let workoutMusicSamples: WorkoutMusicSampleRepository
     public nonisolated let coachAdviceRecords: CoachAdviceRecordStore
+    public nonisolated let coachAppliedActions: CoachAppliedActionStore
     public nonisolated let nutritionDayDemandOverrides: NutritionDayDemandOverrideRepository
 
     public let databaseURL: URL
@@ -58,6 +59,7 @@ public actor PersistenceStore {
         nutritionLogStatus = NutritionLogStatusRepository(pool: pool)
         workoutMusicSamples = WorkoutMusicSampleRepository(pool: pool)
         coachAdviceRecords = CoachAdviceRecordStore(pool: pool)
+        coachAppliedActions = CoachAppliedActionStore(pool: pool)
         nutritionDayDemandOverrides = NutritionDayDemandOverrideRepository(pool: pool)
     }
 

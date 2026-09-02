@@ -12,6 +12,7 @@ enum CoachChatActionKind: Sendable, Equatable {
     case reactiveDeload(ReactiveDeloadPayload)
     case planRegenerate(PlanRegeneratePayload)
     case sessionAdjustment(CoachSessionProposal)
+    case workoutDiscard(WorkoutDiscardPayload)
 }
 
 struct CoachChatActionProposal: Sendable, Equatable, Identifiable {
@@ -140,8 +141,16 @@ enum CoachChatActionParser {
                 return nil
             }
             return proposal(fromPlanRegenerate: payload)
-        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .chart, .navigate:
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .healthSync, .chart, .navigate:
             return nil
+        case .workoutDiscard:
+            guard let payload = try? call.decode(
+                WorkoutDiscardPayload.self,
+                schemaVersion: .workoutDiscardV1
+            ) else {
+                return nil
+            }
+            return proposal(fromWorkoutDiscard: payload, visibleText: visibleText)
         case nil:
             return nil
         }
@@ -222,6 +231,10 @@ enum CoachChatActionParser {
 
         if let payload = PlanRegeneratePayloadParser.parse(from: text) {
             return proposal(fromPlanRegenerate: payload)
+        }
+
+        if let payload = WorkoutDiscardPayloadParser.parse(from: text) {
+            return proposal(fromWorkoutDiscard: payload, visibleText: text)
         }
 
         return nil
@@ -345,6 +358,23 @@ enum CoachChatActionParser {
             cancelLabel: "Cancel"
         )
     }
+
+    private static func proposal(
+        fromWorkoutDiscard payload: WorkoutDiscardPayload,
+        visibleText: String
+    ) -> CoachChatActionProposal {
+        let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
+        let reply = stripped.isEmpty ? (payload.reply.isEmpty ? "Discard this workout without saving." : payload.reply) : stripped
+        return CoachChatActionProposal(
+            reply: reply,
+            kind: .workoutDiscard(payload),
+            title: "Discard workout",
+            detail: "Ends the live session without saving sets.",
+            reason: reply,
+            confirmLabel: "Discard",
+            cancelLabel: "Keep workout"
+        )
+    }
 }
 
 enum CoachChatDisplayText {
@@ -362,7 +392,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment:
+            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment, .workoutDiscard:
                 return pendingAction.title
             }
         }

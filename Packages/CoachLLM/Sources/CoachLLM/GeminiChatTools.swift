@@ -32,8 +32,10 @@ public enum GeminiChatTools {
             workoutQueryDeclaration(),
             nutritionQueryDeclaration(),
             contextRefreshDeclaration(),
+            healthSyncDeclaration(),
             chartDeclaration(),
-            navigateDeclaration()
+            navigateDeclaration(),
+            workoutDiscardDeclaration()
         ]
     }
 
@@ -331,6 +333,37 @@ public enum GeminiChatTools {
                             ]
                         ]
                     ]
+                ]
+            ]
+        ]
+    }
+
+    private static func healthSyncDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.healthSync.rawValue,
+            "description": """
+            Sync HealthKit vitals and sleep now, recompute readiness, then answer with \
+            timestamps. Call this instead of promising a wearable refresh in prose. \
+            Use for "refresh HRV", "pull latest", "how up to date", or a yes after offering a sync.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [:]
+            ]
+        ]
+    }
+
+    private static func workoutDiscardDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.workoutDiscard.rawValue,
+            "description": """
+            Discard the live workout without saving. The app shows a confirm card. \
+            Use when the athlete says discard, cancel, or throw away this session.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "reply": stringProperty("Short athlete-facing line.")
                 ]
             ]
         ]

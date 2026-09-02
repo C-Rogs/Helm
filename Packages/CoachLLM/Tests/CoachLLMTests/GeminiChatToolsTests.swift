@@ -117,6 +117,10 @@ struct GeminiChatToolsTests {
         #expect(!CoachCatalogToolName.chart.isWrite)
         #expect(!CoachCatalogToolName.navigate.isWrite)
         #expect(!CoachCatalogToolName.chart.isQuery)
+        #expect(CoachCatalogToolName.healthSync.isQuery)
+        #expect(!CoachCatalogToolName.healthSync.isWrite)
+        #expect(CoachCatalogToolName.workoutDiscard.isWrite)
+        #expect(!CoachCatalogToolName.workoutDiscard.isQuery)
     }
 
     @Test("malformed query tool still falls back to JSON")

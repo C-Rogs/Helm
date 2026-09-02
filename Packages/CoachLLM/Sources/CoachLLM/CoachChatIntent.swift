@@ -240,9 +240,52 @@ public enum CoachChatIntent: Sendable {
             "recovery trend",
             "sleep trend",
             "weight trend",
-            "rhr trend"
+            "rhr trend",
+            "refresh hrv",
+            "latest hrv",
+            "pull latest",
+            "up to date"
         ]
         return needles.contains { lower.contains($0) }
+    }
+
+    public static func looksLikeHealthSync(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "refresh hrv",
+            "refresh my hrv",
+            "latest hrv",
+            "pull the latest",
+            "pull latest",
+            "sync from wearable",
+            "wearable sync",
+            "how up to date",
+            "up to date is that",
+            "refresh recovery",
+            "update it"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    public static func looksLikeHealthSyncConfirm(_ text: String, lastAssistant: String?) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        let affirms = ["yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead"]
+        guard affirms.contains(trimmed) else { return false }
+        guard let lastAssistant else { return false }
+        let hay = lastAssistant.lowercased()
+        return hay.contains("sync")
+            || hay.contains("refresh")
+            || hay.contains("wearable")
+            || hay.contains("up to date")
+            || hay.contains("latest")
+            || hay.contains("update")
+    }
+
+    public static func inferredHealthSync(from text: String, lastAssistant: String? = nil) -> HealthSyncPayload? {
+        if looksLikeHealthSync(text) || looksLikeHealthSyncConfirm(text, lastAssistant: lastAssistant) {
+            return HealthSyncPayload()
+        }
+        return nil
     }
 
     public static func inferredRecoveryQuery(from text: String) -> RecoveryQueryPayload? {

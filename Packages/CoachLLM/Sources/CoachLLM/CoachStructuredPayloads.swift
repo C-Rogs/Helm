@@ -1343,3 +1343,73 @@ public enum ContextRefreshPayloadParser: Sendable {
         return payload
     }
 }
+
+// MARK: - health_sync.v1
+
+public struct HealthSyncPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+
+    public init(schemaVersion: String = CoachOutputSchemaVersion.healthSyncV1.rawValue) {
+        self.schemaVersion = schemaVersion
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.healthSyncV1.rawValue
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion
+    }
+}
+
+public enum HealthSyncPayloadParser: Sendable {
+    public static func parse(from text: String) -> HealthSyncPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .healthSyncV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(HealthSyncPayload.self, from: data)
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+// MARK: - workout_discard.v1
+
+public struct WorkoutDiscardPayload: Codable, Sendable, Equatable {
+    public let schemaVersion: String
+    public let reply: String
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.workoutDiscardV1.rawValue,
+        reply: String = ""
+    ) {
+        self.schemaVersion = schemaVersion
+        self.reply = reply
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.workoutDiscardV1.rawValue
+        reply = try container.decodeIfPresent(String.self, forKey: .reply) ?? ""
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, reply
+    }
+}
+
+public enum WorkoutDiscardPayloadParser: Sendable {
+    public static func parse(from text: String) -> WorkoutDiscardPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .workoutDiscardV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(WorkoutDiscardPayload.self, from: data)
+        else {
+            return nil
+        }
+        return payload
+    }
+}

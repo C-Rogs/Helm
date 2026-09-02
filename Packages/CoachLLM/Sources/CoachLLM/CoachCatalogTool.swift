@@ -17,8 +17,10 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     case workoutQuery = "workout_query"
     case nutritionQuery = "nutrition_query"
     case contextRefresh = "context_refresh"
+    case healthSync = "health_sync"
     case chart = "chart"
     case navigate = "navigate"
+    case workoutDiscard = "workout_discard"
 
     public var schemaVersion: CoachOutputSchemaVersion {
         switch self {
@@ -36,15 +38,17 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         case .workoutQuery: .workoutQueryV1
         case .nutritionQuery: .nutritionQueryV1
         case .contextRefresh: .contextRefreshV1
+        case .healthSync: .healthSyncV1
         case .chart: .chartV1
         case .navigate: .navigateV1
+        case .workoutDiscard: .workoutDiscardV1
         }
     }
 
     /// Writes become confirm cards. Queries run immediately and feed a follow-up turn.
     public var isQuery: Bool {
         switch self {
-        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh:
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .healthSync:
             true
         default:
             false
@@ -53,7 +57,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
 
     public var isWrite: Bool {
         switch self {
-        case .foodLog, .mealCopy, .workoutStart, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate:
+        case .foodLog, .mealCopy, .workoutStart, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .workoutDiscard:
             true
         default:
             false
@@ -93,6 +97,10 @@ public enum CoachCatalogQueryDecoder {
 
     public static func contextRefresh(from calls: [CoachLLMFunctionCall]) -> ContextRefreshPayload? {
         decode(ContextRefreshPayload.self, named: .contextRefresh, from: calls)
+    }
+
+    public static func healthSync(from calls: [CoachLLMFunctionCall]) -> HealthSyncPayload? {
+        decode(HealthSyncPayload.self, named: .healthSync, from: calls)
     }
 
     public static func chart(from calls: [CoachLLMFunctionCall]) -> ChartPayload? {

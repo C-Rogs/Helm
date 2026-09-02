@@ -37,6 +37,10 @@ final class ChatController {
     private(set) var pendingPlanBuilderLaunch = false
     /// Memory refinements extracted from the most recent session, awaiting confirmation.
     private(set) var pendingMemoryRefinements: [MemoryRefinementEntry] = []
+    /// Assistant message the background extraction was taken from.
+    private(set) var memoryRefinementSourceMessageID: String?
+    /// Applied coach writes keyed by the assistant message that confirmed them.
+    private(set) var undoableActionsByMessageID: [String: CoachAppliedAction] = [:]
     /// Date of the last refinement extraction for debouncing.
     private var lastRefinementExtractionDate: Date?
     /// `navigate` held until the athlete confirms a same-turn write.
@@ -73,6 +77,7 @@ final class ChatController {
     func loadHistory() {
         do {
             messages = try persistence.chat.fetchRecent(limit: ChatStore.chatUILimit)
+            reloadUndoableActions()
         } catch {
             degradedState = CoachFailurePolicy.degradedState(for: error)
         }
@@ -93,6 +98,8 @@ final class ChatController {
             streamingText = nil
             citationValidation = nil
             pendingMemoryRefinements = []
+            memoryRefinementSourceMessageID = nil
+            undoableActionsByMessageID = [:]
             lastRefinementExtractionDate = nil
             clearChatProgress()
             CoachDiagnosticsStore.shared.clear()
@@ -240,6 +247,7 @@ final class ChatController {
                     after: .coach
                 )
                 pendingMemoryRefinements = []
+                memoryRefinementSourceMessageID = nil
             } catch {
                 lastTurnError = error.localizedDescription
             }
@@ -248,6 +256,31 @@ final class ChatController {
 
     func dismissMemoryRefinements() {
         pendingMemoryRefinements = []
+        memoryRefinementSourceMessageID = nil
+    }
+
+    func undoableAction(for messageID: String) -> CoachAppliedAction? {
+        undoableActionsByMessageID[messageID]
+    }
+
+    func undoAppliedAction(id: UUID) {
+        Task { @MainActor in
+            do {
+                guard let action = try persistence.coachAppliedActions.fetch(id: id),
+                      action.isUndoable
+                else { return }
+                switch action.kind {
+                case .mealDelete:
+                    let data = Data(action.snapshotJSON.utf8)
+                    let snapshot = try JSONDecoder().decode(MealDeleteSnapshot.self, from: data)
+                    try await restoreDeletedMeals(snapshot)
+                }
+                try persistence.coachAppliedActions.markUndone(id: id)
+                undoableActionsByMessageID[action.messageID] = nil
+            } catch {
+                lastTurnError = error.localizedDescription
+            }
+        }
     }
 
     func reportSurfaceError(_ message: String) {
@@ -336,10 +369,14 @@ final class ChatController {
             switch proposal.kind {
             case let .foodLog(payload):
                 applyProgressStep = "Writing to diary…"
+                let deleteSnapshot = payload.action == .delete ? try snapshotMeals(for: payload) : nil
                 _ = try await HelmActionRuntime.perform(
                     .meal(.fromCoachPayload(payload, now: Date())),
                     after: .coach
                 )
+                if let deleteSnapshot {
+                    persistMealDeleteUndo(snapshot: deleteSnapshot)
+                }
             case let .mealCopy(payload):
                 applyProgressStep = "Copying meal…"
                 guard let resolved = MealCopyCommandApplier.resolvedDays(payload) else {
@@ -413,6 +450,9 @@ final class ChatController {
             case let .sessionAdjustment(sessionProposal):
                 applyProgressStep = "Updating session…"
                 _ = try await TrainBootstrap.sessionController.applySessionProposal(sessionProposal)
+            case .workoutDiscard:
+                applyProgressStep = "Discarding workout…"
+                await TrainBootstrap.sessionController.discardWorkout()
             }
             pendingChatAction = nil
             lastTurnError = nil
@@ -616,6 +656,15 @@ final class ChatController {
                 parseJSON: ContextRefreshPayloadParser.parse,
                 infer: { _ in nil }
             )
+            let lastAssistant = messages.last(where: { $0.role == .assistant })?.text
+            let healthSync = catalogQuery(
+                named: .healthSync,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.healthSync,
+                parseJSON: HealthSyncPayloadParser.parse,
+                infer: { CoachChatIntent.inferredHealthSync(from: $0, lastAssistant: lastAssistant) }
+            )
 
             let explicitQueries = CoachCatalogQueryResolver.explicitQueryNames(
                 in: querySource.functionCalls
@@ -626,7 +675,18 @@ final class ChatController {
                 }
                 return TrendsQueryPayload(queryType: .bodyFat, lookbackDays: 90)
             }()
-            if let inferredBodyFatQuery {
+            if CoachCatalogQueryResolver.shouldFollowUp(.healthSync, explicitQueries: explicitQueries),
+               let healthSync {
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runHealthSyncFollowUp(
+                        payload: healthSync,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
+                }
+            } else if let inferredBodyFatQuery {
                 assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
                     try await runTrendsQueryFollowUp(
                         query: inferredBodyFatQuery,
@@ -655,7 +715,8 @@ final class ChatController {
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
-                        priorAssembled: assembledTurn.text
+                        priorAssembled: assembledTurn.text,
+                        cachedContextDays: contextDays
                     )
                 }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.calendarQuery, explicitQueries: explicitQueries),
@@ -710,7 +771,8 @@ final class ChatController {
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
-                        priorAssembled: assembledTurn.text
+                        priorAssembled: assembledTurn.text,
+                        cachedContextDays: contextDays
                     )
                 }
             }
@@ -1293,7 +1355,8 @@ final class ChatController {
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
         endDay: HelmDay,
-        priorAssembled: String
+        priorAssembled: String,
+        cachedContextDays: CoachContextDays
     ) async throws -> AssembledCoachTurn {
         let service = RecoveryHistoryQueryService(store: persistence)
         let results = try await service.run(query)
@@ -1307,7 +1370,8 @@ final class ChatController {
         isStreaming = true
         streamingText = "Looking up recovery…"
 
-        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        _ = endDay
+        let contextDays = cachedContextDays
         let thread = CoachThreadState(
             messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
@@ -1490,7 +1554,8 @@ final class ChatController {
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
         endDay: HelmDay,
-        priorAssembled: String
+        priorAssembled: String,
+        cachedContextDays: CoachContextDays
     ) async throws -> AssembledCoachTurn {
         let labels = payload.blocks.joined(separator: ", ")
         let toolMessage = """
@@ -1501,7 +1566,8 @@ final class ChatController {
         isStreaming = true
         streamingText = "Refreshing context…"
 
-        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        _ = endDay
+        let contextDays = cachedContextDays
         let thread = CoachThreadState(
             messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
                 + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
@@ -1523,6 +1589,70 @@ final class ChatController {
             allowEmptyRetry: true,
             freshnessSuffix: prompt.freshnessSuffix
         )
+    }
+
+    private func runHealthSyncFollowUp(
+        payload: HealthSyncPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> AssembledCoachTurn {
+        _ = payload
+        isStreaming = true
+        streamingText = "Syncing Health…"
+
+        let outcome = await HealthKitBootstrap.healthKitIngest.syncKinds([
+            .hrvSDNN, .restingHeartRate, .sleep, .respiratoryRate, .wristTemperature
+        ])
+        await ReadinessBootstrap.readinessService.refresh()
+        let status = await HealthKitBootstrap.healthKitIngest.currentStatus()
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        let metrics = try? persistence.dailyMetrics.fetch(helmDay: today)
+        let syncAt = status.lastSyncFinishedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "unknown"
+        let hrv = metrics?.hrvSDNN.map { "\($0.milliseconds)ms" } ?? "none"
+        let rhr = metrics?.restingHeartRate.map { "\($0) bpm" } ?? "none"
+        let results = """
+        synced_at=\(syncAt)
+        samples_ingested=\(outcome.samplesIngested)
+        samples_deleted=\(outcome.samplesDeleted)
+        hrv_sdnn=\(hrv)
+        resting_hr=\(rhr)
+        """
+        let fallback = "HealthKit sync finished at \(syncAt). HRV \(hrv), resting HR \(rhr)."
+        let toolMessage = """
+        # Health sync results
+        \(results)
+
+        Answer using these timestamps and numbers. Do not invent metrics. If samples_ingested is 0, say Health had nothing new.
+        """
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = makeCoachPrompt(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        let streamed = try await streamAssistantTurn(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
+        )
+        if streamed.isEmpty {
+            return AssembledCoachTurn(text: fallback, functionCalls: [])
+        }
+        return streamed
     }
 
     private func runMealQueryFollowUp(
@@ -1745,6 +1875,7 @@ final class ChatController {
     }
 
     private func maybeTriggerMemoryRefinementExtraction(profile: MemoryProfile) {
+        guard pendingChatAction == nil, pendingFoodMealConfirm == nil else { return }
         let substantiveTurns = messages.filter {
             $0.role == .user && $0.text.count > 50
         }
@@ -1754,6 +1885,7 @@ final class ChatController {
         else { return }
 
         let recentMessages = messages.suffix(20)
+        let sourceID = messages.last(where: { $0.role == .assistant })?.id
         let conversationText = recentMessages.map { msg in
             "\(msg.role == .user ? "Athlete" : "Coach"): \(msg.text)"
         }.joined(separator: "\n\n")
@@ -1779,7 +1911,15 @@ final class ChatController {
                 guard let payload = MemoryRefinementExtractor.parse(fullResponse) else { return }
                 await MainActor.run { [weak self] in
                     guard let self, !payload.refinements.isEmpty else { return }
+                    if self.pendingChatAction != nil || self.pendingFoodMealConfirm != nil { return }
+                    if let sourceID,
+                       let sourceIndex = self.messages.firstIndex(where: { $0.id == sourceID })
+                    {
+                        let movedOn = self.messages[(sourceIndex + 1)...].contains { $0.role == .user }
+                        if movedOn { return }
+                    }
                     self.pendingMemoryRefinements = payload.refinements
+                    self.memoryRefinementSourceMessageID = sourceID
                     self.lastRefinementExtractionDate = .now
                 }
             } catch {
@@ -1822,5 +1962,89 @@ final class ChatController {
             message: "Chat turn \(status)",
             context: context
         )
+    }
+
+    private func reloadUndoableActions() {
+        var map: [String: CoachAppliedAction] = [:]
+        for message in messages where message.role == .assistant {
+            if let action = try? persistence.coachAppliedActions.fetchUndoable(messageID: message.id) {
+                map[message.id] = action
+            }
+        }
+        undoableActionsByMessageID = map
+    }
+
+    private func snapshotMeals(for payload: FoodLogPayload) throws -> MealDeleteSnapshot? {
+        var meals: [MealRecord] = []
+        if let idString = payload.mealID, let id = UUID(uuidString: idString),
+           let meal = try persistence.nutrition.fetchMeal(id: id) {
+            meals = [meal]
+        } else if let dayRaw = payload.helmDay,
+                  let helmDay = CalendarQueryPlanner.parseHelmDay(dayRaw) {
+            meals = try persistence.nutrition.fetchMeals(for: helmDay)
+            if let bucketRaw = payload.bucket,
+               let bucket = MealBucket(rawValue: bucketRaw.lowercased()) {
+                meals = meals.filter { $0.bucket == bucket }
+            }
+        }
+        guard !meals.isEmpty else { return nil }
+        let items = try meals.map { meal in
+            MealDeleteSnapshot.Item(
+                meal: meal,
+                lineItems: try persistence.foodLog.fetchLineItems(for: meal.id)
+            )
+        }
+        return MealDeleteSnapshot(items: items)
+    }
+
+    private func persistMealDeleteUndo(snapshot: MealDeleteSnapshot) {
+        let messageID = messages.last(where: { $0.role == .assistant })?.id ?? UUID().uuidString
+        let json = (try? JSONEncoder().encode(snapshot)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let action = CoachAppliedAction(
+            messageID: messageID,
+            kind: .mealDelete,
+            snapshotJSON: json
+        )
+        do {
+            try persistence.coachAppliedActions.insert(action)
+            undoableActionsByMessageID[messageID] = action
+        } catch {
+            CoachDiagnosticsStore.shared.recordFailure(surface: "coachAppliedAction", error: error)
+        }
+    }
+
+    private func restoreDeletedMeals(_ snapshot: MealDeleteSnapshot) async throws {
+        for item in snapshot.items {
+            let meal = item.meal
+            if item.lineItems.isEmpty {
+                _ = try await HelmActionRuntime.perform(
+                    .meal(.logQuickAdd(
+                        kilocalories: meal.energy?.kilocalories ?? 0,
+                        proteinG: meal.proteinGrams ?? 0,
+                        carbsG: meal.carbohydrateGrams ?? 0,
+                        fatG: meal.fatGrams ?? 0,
+                        label: meal.name,
+                        bucket: meal.bucket,
+                        loggedAt: meal.loggedAt,
+                        helmDay: meal.helmDay,
+                        mealID: meal.id.uuidString
+                    )),
+                    after: .coach
+                )
+            } else {
+                _ = try await HelmActionRuntime.perform(
+                    .meal(.logComposite(
+                        name: meal.name,
+                        bucket: meal.bucket,
+                        lineItems: item.lineItems,
+                        loggedAt: meal.loggedAt,
+                        helmDay: meal.helmDay,
+                        mealID: meal.id.uuidString,
+                        source: meal.source
+                    )),
+                    after: .coach
+                )
+            }
+        }
     }
 }

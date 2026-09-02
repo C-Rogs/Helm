@@ -130,6 +130,8 @@ struct CalendarQueryPlannerTests {
         #expect(matched.first?.helmDay == italyDay)
         #expect(matched.first?.load.hasAllDayEvent == true)
         #expect(CalendarQueryPlanner.titleMatches("Trip to Italy", search: "ITALY"))
+        #expect(CalendarQueryPlanner.titleMatches("Italia", search: "Italy"))
+        #expect(CalendarQueryPlanner.titleMatches("Trip to Italy", search: "Italia"))
     }
 
     @Test("search matches location and notes")
