@@ -42,6 +42,12 @@ public enum PortionOptionCatalog {
         for (key, keywordOptions) in byKeyword where normalized.contains(key) {
             options.append(contentsOf: keywordOptions)
         }
+        let wholeProduce = ["avocado", "apple", "pear", "orange", "tomato", "potato"]
+        if wholeProduce.contains(where: { normalized.contains($0) }),
+           let medium = options.first(where: { $0.label.localizedCaseInsensitiveContains("medium") }),
+           !options.contains(where: { $0.label.localizedCaseInsensitiveContains("whole") }) {
+            options.insert(ProducePortionOption(label: "1 whole", grams: medium.grams), at: 0)
+        }
 
         options.append(contentsOf: heuristicOptions(for: productName))
 
@@ -59,6 +65,42 @@ public enum PortionOptionCatalog {
     /// Size variants for a countable keyword (no gram presets).
     public static func unitSizeOptions(forKeyword keyword: String) -> [ProducePortionOption] {
         byKeyword[keyword] ?? []
+    }
+
+    /// MFP-style serving-size menu: household units plus `1 g` and `100 g` for scale logging.
+    public static func servingMenu(
+        for productName: String,
+        cofidID: String? = nil,
+        origin: FoodProductOrigin? = nil,
+        suggestedGrams: Double? = nil,
+        servingLabel: String? = nil,
+        defaultGrams: Double = 100,
+        extra: [ProducePortionOption] = []
+    ) -> [ProducePortionOption] {
+        var result: [ProducePortionOption] = []
+        var seen = Set<String>()
+
+        func append(_ option: ProducePortionOption) {
+            guard option.grams > 0 else { return }
+            let key = option.label.lowercased()
+            guard seen.insert(key).inserted else { return }
+            result.append(option)
+        }
+
+        for option in extra { append(option) }
+        for option in options(
+            for: productName,
+            cofidID: cofidID,
+            origin: origin,
+            suggestedGrams: suggestedGrams,
+            servingLabel: servingLabel,
+            defaultGrams: defaultGrams
+        ) {
+            append(option)
+        }
+        append(ProducePortionOption(label: "1 g", grams: 1))
+        append(ProducePortionOption(label: "100 g", grams: 100))
+        return result
     }
 
     public enum FoodProductOrigin: Sendable, Equatable {
@@ -196,10 +238,10 @@ public enum PortionOptionCatalog {
     }
 
     private static func deduplicated(_ options: [ProducePortionOption], limit: Int) -> [ProducePortionOption] {
-        var seen = Set<Int>()
+        var seen = Set<String>()
         var result: [ProducePortionOption] = []
         for option in options where option.grams > 0 {
-            let key = Int(option.grams.rounded())
+            let key = option.label.lowercased()
             guard seen.insert(key).inserted else { continue }
             result.append(option)
             if result.count >= limit { break }
@@ -214,6 +256,11 @@ public enum PortionOptionCatalog {
             ProducePortionOption(label: "1 small", grams: 130),
             ProducePortionOption(label: "1 medium", grams: 182),
             ProducePortionOption(label: "1 large", grams: 223)
+        ],
+        "avocado": [
+            ProducePortionOption(label: "1 small", grams: 130),
+            ProducePortionOption(label: "1 medium", grams: 170),
+            ProducePortionOption(label: "1 large", grams: 200)
         ],
         "banana": [
             ProducePortionOption(label: "1 small", grams: 80),

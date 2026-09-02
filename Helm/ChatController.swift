@@ -587,16 +587,34 @@ final class ChatController {
                 chatProgressStep = "Coach is estimating your meal…"
             }
 
-            let providerUserMessage = coachUserMessage ?? text
-            var assembledTurn = try await streamAssistantTurn(
-                provider: provider,
-                systemInstructions: prompt.systemInstructions,
-                contextBlock: prompt.contextBlock,
-                userMessage: providerUserMessage,
-                thread: thread,
-                allowEmptyRetry: true,
-                freshnessSuffix: prompt.freshnessSuffix
+            let lastAssistant = messages.last(where: { $0.role == .assistant })?.text
+            let inferredHealthSync = CoachChatIntent.inferredHealthSync(
+                from: text,
+                lastAssistant: lastAssistant
             )
+            if inferredHealthSync != nil {
+                streamingText = "Syncing Health…"
+            }
+
+            let providerUserMessage = coachUserMessage ?? text
+            var assembledTurn: AssembledCoachTurn
+            do {
+                assembledTurn = try await streamAssistantTurn(
+                    provider: provider,
+                    systemInstructions: prompt.systemInstructions,
+                    contextBlock: prompt.contextBlock,
+                    userMessage: providerUserMessage,
+                    thread: thread,
+                    allowEmptyRetry: true,
+                    freshnessSuffix: prompt.freshnessSuffix
+                )
+            } catch let error as CoachStructuredOutputError where error == .emptyResponse {
+                if inferredHealthSync != nil {
+                    assembledTurn = AssembledCoachTurn(text: "", functionCalls: [])
+                } else {
+                    throw error
+                }
+            }
 
             // Food dictation must stay on food_log.v1 - do not hijack into diary query follow-ups.
             let querySource = assembledTurn
@@ -656,7 +674,6 @@ final class ChatController {
                 parseJSON: ContextRefreshPayloadParser.parse,
                 infer: { _ in nil }
             )
-            let lastAssistant = messages.last(where: { $0.role == .assistant })?.text
             let healthSync = catalogQuery(
                 named: .healthSync,
                 from: querySource,
@@ -664,7 +681,7 @@ final class ChatController {
                 decode: CoachCatalogQueryDecoder.healthSync,
                 parseJSON: HealthSyncPayloadParser.parse,
                 infer: { CoachChatIntent.inferredHealthSync(from: $0, lastAssistant: lastAssistant) }
-            )
+            ) ?? inferredHealthSync
 
             let explicitQueries = CoachCatalogQueryResolver.explicitQueryNames(
                 in: querySource.functionCalls
@@ -675,8 +692,10 @@ final class ChatController {
                 }
                 return TrendsQueryPayload(queryType: .bodyFat, lookbackDays: 90)
             }()
-            if CoachCatalogQueryResolver.shouldFollowUp(.healthSync, explicitQueries: explicitQueries),
-               let healthSync {
+            if CoachCatalogQueryResolver.shouldRunHealthSyncFollowUp(
+                inferred: inferredHealthSync != nil,
+                explicitQueries: explicitQueries
+            ), let healthSync {
                 assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
                     try await runHealthSyncFollowUp(
                         payload: healthSync,
@@ -1200,7 +1219,7 @@ final class ChatController {
     ) async throws -> AssembledCoachTurn {
         for attempt in 0 ... (allowEmptyRetry ? 1 : 0) {
             isStreaming = true
-            streamingText = attempt == 0 ? "" : "Retrying…"
+            streamingText = attempt == 0 ? (streamingText ?? "") : "Retrying…"
             var assembled = ""
             var functionCalls: [CoachLLMFunctionCall] = []
             do {
@@ -1640,15 +1659,20 @@ final class ChatController {
             turn: .followUp
         )
 
-        let streamed = try await streamAssistantTurn(
-            provider: provider,
-            systemInstructions: prompt.systemInstructions,
-            contextBlock: prompt.contextBlock,
-            userMessage: toolMessage,
-            thread: thread,
-            allowEmptyRetry: true,
-            freshnessSuffix: prompt.freshnessSuffix
-        )
+        let streamed: AssembledCoachTurn
+        do {
+            streamed = try await streamAssistantTurn(
+                provider: provider,
+                systemInstructions: prompt.systemInstructions,
+                contextBlock: prompt.contextBlock,
+                userMessage: toolMessage,
+                thread: thread,
+                allowEmptyRetry: true,
+                freshnessSuffix: prompt.freshnessSuffix
+            )
+        } catch let error as CoachStructuredOutputError where error == .emptyResponse {
+            return AssembledCoachTurn(text: fallback, functionCalls: [])
+        }
         if streamed.isEmpty {
             return AssembledCoachTurn(text: fallback, functionCalls: [])
         }

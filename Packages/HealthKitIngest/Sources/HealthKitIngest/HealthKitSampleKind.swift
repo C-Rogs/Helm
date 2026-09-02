@@ -18,6 +18,16 @@ public enum HealthKitSampleKind: String, Sendable, CaseIterable, Codable {
     case basalEnergy
     case workout
 
+    /// Totals that Health reports as a day sum. Anchored deltas must not replace these.
+    public var isCumulativeDailyTotal: Bool {
+        switch self {
+        case .stepCount, .activeEnergy, .basalEnergy:
+            true
+        default:
+            false
+        }
+    }
+
     public var metricFamily: HealthKitMetricFamily {
         switch self {
         case .hrvSDNN, .restingHeartRate, .respiratoryRate, .wristTemperature:

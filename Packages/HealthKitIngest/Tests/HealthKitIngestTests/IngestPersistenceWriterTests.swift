@@ -255,4 +255,39 @@ struct IngestPersistenceWriterTests {
         #expect(stored.bodyFatPercentage == 24.4)
         #expect(stored.measuredAt == end)
     }
+
+    @Test("step sample delta does not overwrite a stored daily total")
+    func stepDeltaKeepsExistingTotal() throws {
+        let store = try PersistenceStore.inMemory()
+        let writer = IngestPersistenceWriter(store: store, calendar: calendar)
+        try store.dailyMetrics.upsert(DailyMetrics(helmDay: day, stepCount: 12_320))
+        let loggedAt = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 16))
+        )
+        _ = try writer.apply(
+            delta: IngestDelta(
+                kind: .stepCount,
+                addedQuantitySamples: [
+                    IngestQuantitySample(
+                        id: UUID(),
+                        start: loggedAt,
+                        end: loggedAt,
+                        value: 67,
+                        unitSymbol: "count",
+                        sourceBundleID: "com.apple.health"
+                    )
+                ]
+            )
+        )
+        #expect(try store.dailyMetrics.fetch(helmDay: day)?.stepCount == 12_320)
+    }
+
+    @Test("authoritative cumulative total replaces a stale delta")
+    func authoritativeStepsWin() throws {
+        let store = try PersistenceStore.inMemory()
+        let writer = IngestPersistenceWriter(store: store, calendar: calendar)
+        try store.dailyMetrics.upsert(DailyMetrics(helmDay: day, stepCount: 67))
+        try writer.applyAuthoritativeCumulative(helmDay: day, stepCount: 12_320)
+        #expect(try store.dailyMetrics.fetch(helmDay: day)?.stepCount == 12_320)
+    }
 }

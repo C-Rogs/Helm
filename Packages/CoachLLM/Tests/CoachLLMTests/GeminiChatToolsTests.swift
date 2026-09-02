@@ -152,6 +152,26 @@ struct GeminiChatToolsTests {
         #expect(CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: []))
     }
 
+    @Test("refresh HRV still syncs when recovery_query was the explicit tool")
+    func healthSyncFollowUpIgnoresRecoveryGate() {
+        let recovery = CoachLLMFunctionCall(name: "recovery_query", arguments: ["queryType": "today"])
+        let explicit = CoachCatalogQueryResolver.explicitQueryNames(in: [recovery])
+        #expect(explicit == [.recoveryQuery])
+        #expect(!CoachCatalogQueryResolver.shouldFollowUp(.healthSync, explicitQueries: explicit))
+        #expect(
+            CoachCatalogQueryResolver.shouldRunHealthSyncFollowUp(
+                inferred: true,
+                explicitQueries: explicit
+            )
+        )
+        #expect(
+            !CoachCatalogQueryResolver.shouldRunHealthSyncFollowUp(
+                inferred: false,
+                explicitQueries: explicit
+            )
+        )
+    }
+
     @Test("chart and navigate survive a follow-up that drops the original tools")
     func mergeNonQueryPayloadPrefersFollowUpThenOriginal() {
         let originalChart = CoachLLMFunctionCall(

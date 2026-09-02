@@ -169,7 +169,7 @@ struct PhotoMealConfirmSheet: View {
             Text("Direct vision comparison")
                 .helmType(.label)
             Text(
-                "Vision-only: \(Int(direct.caloriesKcal.rounded())) kcal · P \(Self.format(direct.proteinG)) · C \(Self.format(direct.carbsG)) · F \(Self.format(direct.fatG))"
+                "Vision-only: \(FoodLogDisplayFormatter.formatNumber(direct.caloriesKcal)) kcal · P \(FoodLogDisplayFormatter.formatNumber(direct.proteinG)) · C \(FoodLogDisplayFormatter.formatNumber(direct.carbsG)) · F \(FoodLogDisplayFormatter.formatNumber(direct.fatG))"
             )
             .helmType(.body, color: HelmColor.fgSecondary)
             Text("CoFID grounded totals are shown below. Use ingredient rows to fix weak matches.")
@@ -178,12 +178,5 @@ struct PhotoMealConfirmSheet: View {
         .padding(HelmSpacing.sm)
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-    }
-
-    private static func format(_ value: Double) -> String {
-        if value.rounded() == value {
-            return String(Int(value.rounded()))
-        }
-        return String(format: "%.1f", value)
     }
 }

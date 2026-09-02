@@ -58,6 +58,8 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("constraint_affected=true"))
         #expect(prompt.contains("load_decision"))
         #expect(prompt.contains("call the food_log tool"))
+        #expect(prompt.contains("health_sync"))
+        #expect(prompt.contains("history and trends only"))
         #expect(prompt.contains("Do not embed those as JSON"))
         #expect(prompt.contains("App State"))
         #expect(prompt.contains("nutrition_day"))

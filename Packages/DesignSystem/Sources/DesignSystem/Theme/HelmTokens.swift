@@ -1,58 +1,84 @@
 import SwiftUI
+import UIKit
 
 /// Single source of truth for Helm colours. No other file may define raw colours.
+///
+/// Tokens wrap `UIColor` trait callbacks so Light/Dark flips (including
+/// `overrideUserInterfaceStyle`) re-resolve without a process restart.
 public enum HelmColor {
-    private static var palette: HelmPalette { HelmActivePalette.current }
+    private static func token(_ pick: @escaping @Sendable (HelmPalette) -> Color) -> Color {
+        Color(uiColor: UIColor { traits in
+            let appearance: HelmPaletteAppearance
+            switch traits.userInterfaceStyle {
+            case .light: appearance = .light
+            case .dark: appearance = .dark
+            default:
+                appearance = HelmActivePalette.appearance
+            }
+            let palette = HelmPalette.resolved(
+                appearance: appearance,
+                accent: HelmActivePalette.accentSource
+            )
+            return UIColor(pick(palette))
+        })
+    }
 
-    public static var canvas: Color { palette.canvas }
-    public static var background: Color { palette.canvas }
-    public static var surface: Color { palette.surface }
-    public static var surfaceElevated: Color { palette.surfaceElevated }
-    public static var hairline: Color { palette.hairline }
-    public static var border: Color { palette.hairline }
-    public static var surfaceEngineTag: Color { palette.surfaceEngineTag }
-    public static var scrim: Color { palette.scrim }
+    public static var canvas: Color { token(\.canvas) }
+    public static var background: Color { token(\.canvas) }
+    public static var surface: Color { token(\.surface) }
+    public static var surfaceElevated: Color { token(\.surfaceElevated) }
+    public static var hairline: Color { token(\.hairline) }
+    public static var border: Color { token(\.hairline) }
+    public static var surfaceEngineTag: Color { token(\.surfaceEngineTag) }
+    public static var scrim: Color { token(\.scrim) }
 
-    public static var fg: Color { palette.fg }
-    public static var textPrimary: Color { palette.fg }
-    public static var fgSecondary: Color { palette.fgSecondary }
-    public static var textSecondary: Color { palette.fgSecondary }
-    public static var fgMuted: Color { palette.fgMuted }
-    public static var textTertiary: Color { palette.fgMuted }
+    public static var fg: Color { token(\.fg) }
+    public static var textPrimary: Color { token(\.fg) }
+    public static var fgSecondary: Color { token(\.fgSecondary) }
+    public static var textSecondary: Color { token(\.fgSecondary) }
+    public static var fgMuted: Color { token(\.fgMuted) }
+    public static var textTertiary: Color { token(\.fgMuted) }
 
-    public static var accent: Color { palette.accent }
-    public static var accentFill: Color { palette.accentFill ?? palette.accent }
-    public static var accentMuted: Color { palette.accent.opacity(0.35) }
+    public static var accent: Color { token(\.accent) }
+    public static var accentFill: Color { token { $0.accentFill ?? $0.accent } }
+    public static var accentMuted: Color { accent.opacity(0.35) }
 
-    public static var depleted: Color { palette.depleted }
-    public static var compromised: Color { palette.compromised }
-    public static var ready: Color { palette.ready }
-    public static var primed: Color { palette.primed }
-    public static var positive: Color { palette.primed }
-    public static var warning: Color { palette.compromised }
-    public static var destructive: Color { palette.depleted }
+    public static var depleted: Color { token(\.depleted) }
+    public static var compromised: Color { token(\.compromised) }
+    public static var ready: Color { token(\.ready) }
+    public static var primed: Color { token(\.primed) }
+    public static var positive: Color { token(\.primed) }
+    public static var warning: Color { token(\.compromised) }
+    public static var destructive: Color { token(\.depleted) }
 
-    public static var gaugeTrack: Color { palette.hairline }
-    public static var gaugeFillStart: Color { palette.accent }
-    public static var gaugeFillEnd: Color { palette.primed }
+    public static var gaugeTrack: Color { token(\.hairline) }
+    public static var gaugeFillStart: Color { token(\.accent) }
+    public static var gaugeFillEnd: Color { token(\.primed) }
 
-    public static var chartGrid: Color { palette.chartGrid }
-    public static var chartLine: Color { palette.chartLine }
-    public static var chartAreaFill: Color { palette.chartAreaFill }
+    public static var chartGrid: Color { token(\.chartGrid) }
+    public static var chartLine: Color { token(\.chartLine) }
+    public static var chartAreaFill: Color { token(\.chartAreaFill) }
 
-    public static var buttonPrimaryBackground: Color { palette.accentFill ?? palette.accent }
-    public static var buttonPrimaryForeground: Color { palette.buttonPrimaryForeground }
-    public static var buttonSecondaryBackground: Color { palette.surface }
-    public static var buttonSecondaryForeground: Color { palette.fg }
-    public static var buttonSecondaryBorder: Color { palette.hairline }
+    public static var buttonPrimaryBackground: Color { token { $0.accentFill ?? $0.accent } }
+    public static var buttonPrimaryForeground: Color { token(\.buttonPrimaryForeground) }
+    public static var buttonSecondaryBackground: Color { token(\.surface) }
+    public static var buttonSecondaryForeground: Color { token(\.fg) }
+    public static var buttonSecondaryBorder: Color { token(\.hairline) }
 
     public static func color(for state: HelmState) -> Color {
-        palette.color(for: state)
+        switch state {
+        case .depleted: depleted
+        case .compromised: compromised
+        case .ready: ready
+        case .primed: primed
+        }
     }
 }
 
 enum HelmActivePalette {
     nonisolated(unsafe) static var current: HelmPalette = .dark
+    nonisolated(unsafe) static var accentSource: HelmAccentSource = .default
+    nonisolated(unsafe) static var appearance: HelmPaletteAppearance = .dark
 }
 
 public enum HelmSpacing {

@@ -43,6 +43,38 @@ struct CountablePortionTests {
     func bananaNotCountable() {
         let config = CountablePortion.detect(for: "Banana, flesh only")
         #expect(config == nil)
+        let withMedium = CountablePortion.detect(
+            for: "Banana, flesh only",
+            suggestedGrams: 118,
+            servingLabel: "1 medium"
+        )
+        #expect(withMedium == nil)
+    }
+
+    @Test("gram-style serving becomes one whole unit")
+    func detectsGramServingAsWhole() {
+        let config = CountablePortion.detect(
+            for: "Tesco avocado",
+            suggestedGrams: 170,
+            servingLabel: "170 g"
+        )
+        #expect(config?.kind == .serving)
+        #expect(config?.unitNoun == "whole")
+        #expect(config?.fixedUnitGrams == 170)
+    }
+
+    @Test("apple produce is countable as one whole")
+    func detectsAppleAsWhole() {
+        let config = CountablePortion.detect(for: "Apple, eating")
+        #expect(config?.kind == .serving)
+        #expect(config?.unitNoun == "whole")
+        #expect(config?.fixedUnitGrams == 182)
+        let label = CountablePortion.formatServingLabel(
+            quantity: 1,
+            sizeLabel: "1 whole",
+            config: config!
+        )
+        #expect(label == "1 whole")
     }
 
     @Test("formats serving label for multiple eggs")
@@ -96,5 +128,94 @@ struct CountablePortionTests {
         )
         #expect(CountablePortion.isLikelyPackWeight(300, config: config))
         #expect(CountablePortion.isLikelyPackWeight(50, config: config) == false)
+    }
+
+    @Test("gram serving size is one unit not a portion count")
+    func gramServingIsNotQuantity() {
+        let config = CountablePortion.detect(
+            for: "PhD Smart Protein Bar",
+            suggestedGrams: 35,
+            servingLabel: "35 g"
+        )
+        #expect(config?.kind == .bar)
+        #expect(config?.fixedUnitGrams == 35)
+
+        let parsed = CountablePortion.parseServingLabel("35 g", config: config!)
+        #expect(parsed?.quantity == 1)
+
+        let parenthetical = CountablePortion.parseServingLabel("60 g (1 bar)", config: config!)
+        #expect(parenthetical?.quantity == 1)
+    }
+
+    @Test("packaged gram serving is one whole not a count")
+    func packagedGramServingIsOneWhole() {
+        let config = CountablePortion.detect(
+            for: "Grenade Carb Killa",
+            suggestedGrams: 35,
+            servingLabel: "35 g"
+        )
+        #expect(config?.kind == .serving)
+        #expect(config?.fixedUnitGrams == 35)
+        let parsed = CountablePortion.parseServingLabel("35 g", config: config!)
+        #expect(parsed?.quantity == 1)
+    }
+
+    @Test("count in serving label divides total grams into unit grams")
+    func servingCountDividesTotalGrams() {
+        let bar = CountablePortion.detect(
+            for: "PhD Smart Protein Bar",
+            suggestedGrams: 1190,
+            servingLabel: "34 bars"
+        )
+        #expect(bar?.fixedUnitGrams == 35)
+
+        let whole = CountablePortion.detect(
+            for: "Grenade Carb Killa",
+            suggestedGrams: 1190,
+            servingLabel: "34 whole"
+        )
+        #expect(whole?.kind == .serving)
+        #expect(whole?.fixedUnitGrams == 35)
+
+        let scoop = CountablePortion.detect(
+            for: "Whey protein",
+            suggestedGrams: 90,
+            servingLabel: "3 scoops"
+        )
+        #expect(scoop?.kind == .scoop)
+        #expect(scoop?.fixedUnitGrams == 30)
+
+        let apple = CountablePortion.detect(
+            for: "Apple, eating",
+            suggestedGrams: 546,
+            servingLabel: "3 whole"
+        )
+        #expect(apple?.fixedUnitGrams == 182)
+    }
+
+    @Test("gram serving is one unit for yogurt and packaged food")
+    func gramServingIsOneUnitAcrossKinds() {
+        let yogurt = CountablePortion.detect(
+            for: "Fage Total yoghurt",
+            suggestedGrams: 125,
+            servingLabel: "125 g"
+        )
+        #expect(yogurt?.kind == .pot)
+        #expect(CountablePortion.parseServingLabel("125 g", config: yogurt!)?.quantity == 1)
+
+        let scoop = CountablePortion.detect(
+            for: "Impact Whey",
+            suggestedGrams: 30,
+            servingLabel: "30 g scoop"
+        )
+        #expect(scoop?.kind == .scoop)
+        #expect(CountablePortion.parseServingLabel("30 g scoop", config: scoop!)?.quantity == 1)
+    }
+
+    @Test("stepper range expands to hold an oversized count")
+    func stepperRangeHoldsOversizedCount() {
+        #expect(CountablePortion.quantityStepperRange(for: 1) == 1 ... 24)
+        #expect(CountablePortion.quantityStepperRange(for: 35) == 1 ... 35)
+        #expect(CountablePortion.clampedQuantity(fromDouble: .infinity) == 1)
     }
 }

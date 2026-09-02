@@ -42,6 +42,27 @@ public enum PortionInputMode: Sendable, Equatable {
 }
 
 public enum CountablePortion {
+    /// Preferred stepper ceiling. The live value may be higher so an out-of-range
+    /// count can still be reduced without trapping SwiftUI's Stepper.
+    public static let preferredQuantityMax = 24
+    public static let quantityHardCap = 99
+
+    public static func clampedQuantity(_ value: Int) -> Int {
+        min(max(value, 1), quantityHardCap)
+    }
+
+    public static func clampedQuantity(fromDouble value: Double) -> Int {
+        guard value.isFinite else { return 1 }
+        let rounded = value.rounded()
+        if rounded < 1 { return 1 }
+        if rounded > Double(quantityHardCap) { return quantityHardCap }
+        return Int(rounded)
+    }
+
+    public static func quantityStepperRange(for quantity: Int) -> ClosedRange<Int> {
+        1 ... max(preferredQuantityMax, clampedQuantity(quantity))
+    }
+
     public static func detect(
         for productName: String,
         suggestedGrams: Double? = nil,
@@ -52,12 +73,17 @@ public enum CountablePortion {
 
         if let trimmedServing, trimmedServing.contains("whole"),
            let grams = positive(suggestedGrams) {
+            let unitGrams = unitGramsFromServing(
+                suggestedGrams: grams,
+                servingLabel: servingLabel,
+                fallback: grams
+            )
             return CountablePortionConfig(
                 kind: .serving,
-                sizeOptions: [ProducePortionOption(label: "1 whole", grams: grams)],
+                sizeOptions: [ProducePortionOption(label: "1 whole", grams: unitGrams)],
                 unitNoun: "whole",
                 pluralNoun: "whole",
-                fixedUnitGrams: grams
+                fixedUnitGrams: unitGrams
             )
         }
 
@@ -76,7 +102,11 @@ public enum CountablePortion {
                 sizeOptions: [],
                 unitNoun: "bar",
                 pluralNoun: "bars",
-                fixedUnitGrams: positive(suggestedGrams) ?? 60
+                fixedUnitGrams: unitGramsFromServing(
+                    suggestedGrams: suggestedGrams,
+                    servingLabel: servingLabel,
+                    fallback: 60
+                )
             )
         }
 
@@ -98,12 +128,41 @@ public enum CountablePortion {
                 sizeOptions: [],
                 unitNoun: "scoop",
                 pluralNoun: "scoops",
-                fixedUnitGrams: positive(suggestedGrams) ?? 30
+                fixedUnitGrams: unitGramsFromServing(
+                    suggestedGrams: suggestedGrams,
+                    servingLabel: servingLabel,
+                    fallback: 30
+                )
             )
         }
 
         if let trimmedServing, let config = detectFromServingLabel(trimmedServing, suggestedGrams: suggestedGrams) {
             return config
+        }
+
+        if let serving = trimmedServing, let grams = positive(suggestedGrams),
+           isGramStyleServing(serving), !normalized.contains("banana") {
+            let unitGrams = unitGramsFromServing(
+                suggestedGrams: grams,
+                servingLabel: servingLabel,
+                fallback: grams
+            )
+            return CountablePortionConfig(
+                kind: .serving,
+                sizeOptions: [ProducePortionOption(label: "1 whole", grams: unitGrams)],
+                unitNoun: "whole",
+                pluralNoun: "whole",
+                fixedUnitGrams: unitGrams
+            )
+        }
+
+        if !normalized.contains("banana"),
+           let produce = produceWholeConfig(
+            normalized,
+            suggestedGrams: suggestedGrams,
+            servingLabel: servingLabel
+           ) {
+            return produce
         }
 
         return nil
@@ -180,13 +239,18 @@ public enum CountablePortion {
     public static func gramsPerUnit(
         sizeOption: ProducePortionOption?,
         config: CountablePortionConfig,
-        fallbackGrams: Double
+        fallbackGrams: Double,
+        quantity: Int = 1
     ) -> Double {
         if let sizeOption {
             return sizeOption.grams
         }
         if let fixed = config.fixedUnitGrams {
             return fixed
+        }
+        let count = max(quantity, 1)
+        if count > 1, fallbackGrams > 0 {
+            return fallbackGrams / Double(count)
         }
         return fallbackGrams
     }
@@ -205,6 +269,38 @@ public enum CountablePortion {
 
     // MARK: - Private
 
+    private static func isGramStyleServing(_ serving: String) -> Bool {
+        serving.contains("g")
+            || serving.contains("serving")
+            || serving.contains("portion")
+            || serving.contains("whole")
+    }
+
+    private static func produceWholeConfig(
+        _ normalized: String,
+        suggestedGrams: Double?,
+        servingLabel: String?
+    ) -> CountablePortionConfig? {
+        let keys = ["avocado", "apple", "pear", "orange", "tomato", "potato"]
+        guard let key = keys.first(where: { normalized.contains($0) }) else { return nil }
+        let sizes = unitSizeOptions(forKeyword: key)
+        let catalogGrams = sizes.first { $0.label.localizedCaseInsensitiveContains("medium") }?.grams
+            ?? sizes.first?.grams
+        let wholeGrams = unitGramsFromServing(
+            suggestedGrams: suggestedGrams,
+            servingLabel: servingLabel,
+            fallback: catalogGrams ?? 0
+        )
+        guard wholeGrams > 0 else { return nil }
+        return CountablePortionConfig(
+            kind: .serving,
+            sizeOptions: [ProducePortionOption(label: "1 whole", grams: wholeGrams)],
+            unitNoun: "whole",
+            pluralNoun: "whole",
+            fixedUnitGrams: wholeGrams
+        )
+    }
+
     private static func detectFromServingLabel(
         _ servingLabel: String,
         suggestedGrams: Double?
@@ -215,7 +311,11 @@ public enum CountablePortion {
                 sizeOptions: [],
                 unitNoun: "bar",
                 pluralNoun: "bars",
-                fixedUnitGrams: positive(suggestedGrams) ?? 60
+                fixedUnitGrams: unitGramsFromServing(
+                    suggestedGrams: suggestedGrams,
+                    servingLabel: servingLabel,
+                    fallback: 60
+                )
             )
         }
         if servingLabel.contains("pot") {
@@ -235,7 +335,11 @@ public enum CountablePortion {
                 sizeOptions: [],
                 unitNoun: "scoop",
                 pluralNoun: "scoops",
-                fixedUnitGrams: positive(suggestedGrams) ?? 30
+                fixedUnitGrams: unitGramsFromServing(
+                    suggestedGrams: suggestedGrams,
+                    servingLabel: servingLabel,
+                    fallback: 30
+                )
             )
         }
         return nil
@@ -255,10 +359,39 @@ public enum CountablePortion {
         return trimmed
     }
 
+    /// Grams for one countable unit. If the serving label already encodes a count
+    /// (`34 bars`) and `suggestedGrams` is the current total, divide so re-detect
+    /// does not treat the total as one unit (that explosion overflowed `Int`).
+    private static func unitGramsFromServing(
+        suggestedGrams: Double?,
+        servingLabel: String?,
+        fallback: Double
+    ) -> Double {
+        let grams = positive(suggestedGrams) ?? fallback
+        guard let label = trimmed(servingLabel), let quantity = leadingQuantity(in: label), quantity > 1 else {
+            return grams
+        }
+        return grams / Double(quantity)
+    }
+
+    /// Leading count in labels like `3 large eggs` or `2 bars`.
+    /// Gram weights (`35 g`, `60g (1 bar)`) are not portion counts.
     private static func leadingQuantity(in label: String) -> Int? {
-        guard let match = label.range(of: #"^(\d+)"#, options: .regularExpression) else { return nil }
-        let digits = String(label[match])
-        return Int(digits)
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let match = trimmed.range(of: #"^\d+(?:\.\d+)?"#, options: .regularExpression) else {
+            return nil
+        }
+        let numberText = String(trimmed[match])
+        let rest = trimmed[match.upperBound...]
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if rest.range(of: #"^(g|grams?)\b"#, options: .regularExpression) != nil {
+            return nil
+        }
+        guard let value = Double(numberText), value >= 1, value == value.rounded() else {
+            return nil
+        }
+        return Int(value)
     }
 
     private static func trimmed(_ value: String?) -> String? {

@@ -97,6 +97,31 @@ public struct IngestPersistenceWriter: Sendable {
         }
     }
 
+    func applyAuthoritativeCumulative(
+        helmDay: HelmDay,
+        stepCount: Int? = nil,
+        activeEnergy: Energy? = nil,
+        restingEnergyKcal: Double? = nil
+    ) throws {
+        let existing = try store.dailyMetrics.fetch(helmDay: helmDay)
+        let merged = DailyMetrics(
+            helmDay: helmDay,
+            hrvSDNN: existing?.hrvSDNN,
+            restingHeartRate: existing?.restingHeartRate,
+            respiratoryRate: existing?.respiratoryRate,
+            wristTemperatureDeltaCelsius: existing?.wristTemperatureDeltaCelsius,
+            activeEnergy: activeEnergy ?? existing?.activeEnergy,
+            dietaryEnergy: existing?.dietaryEnergy,
+            dietaryProteinGrams: existing?.dietaryProteinGrams,
+            dietaryCarbohydrateGrams: existing?.dietaryCarbohydrateGrams,
+            dietaryFatGrams: existing?.dietaryFatGrams,
+            priorDayTRIMP: existing?.priorDayTRIMP,
+            stepCount: stepCount ?? existing?.stepCount,
+            restingEnergyKcal: restingEnergyKcal ?? existing?.restingEnergyKcal
+        )
+        try store.dailyMetrics.upsert(merged)
+    }
+
     private func applyNutritionMeals(_ delta: IngestDelta) throws {
         guard [.dietaryEnergy, .dietaryProtein, .dietaryCarbohydrate, .dietaryFat].contains(delta.kind) else {
             return

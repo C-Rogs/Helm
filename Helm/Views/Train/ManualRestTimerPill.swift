@@ -5,8 +5,10 @@ struct ManualRestTimerPill: View {
     let isRunning: Bool
     let endsAt: Date?
     let onTap: () -> Void
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     var body: some View {
+        let _ = typographyEpoch
         Button(action: onTap) {
             Group {
                 if isRunning, let endsAt {

@@ -80,6 +80,22 @@ final class MockHealthKitStoreClient: @unchecked Sendable, HealthKitStoreClient 
         }
     }
 
+    var cumulativeSums: [String: Double] = [:]
+
+    func setCumulativeSum(_ value: Double, identifier: HKQuantityTypeIdentifier) {
+        lock.withLock { cumulativeSums[identifier.rawValue] = value }
+    }
+
+    func fetchCumulativeSum(
+        identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double? {
+        _ = (unit, start, end)
+        return lock.withLock { cumulativeSums[identifier.rawValue] }
+    }
+
     func enableBackgroundDelivery(
         for sampleType: HKSampleType,
         frequency: HKUpdateFrequency

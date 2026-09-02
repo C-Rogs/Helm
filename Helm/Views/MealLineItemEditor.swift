@@ -17,10 +17,9 @@ struct MealLineItemEditor: View {
         }
     }
 
-    private struct CountableEditorState {
-        var quantity: Int
-        var selectedSizeLabel: String?
-        var showsGramsOverride = false
+    private struct PortionEditorState {
+        var servingsText: String
+        var selectedLabel: String
     }
 
     private enum Field: Hashable {
@@ -37,7 +36,7 @@ struct MealLineItemEditor: View {
     @Bindable private var focusModePreferences = FocusModePreferences.shared
     @State private var expandedItemIDs: Set<String> = []
     @State private var nameQueryItemID: String?
-    @State private var countableStates: [String: CountableEditorState] = [:]
+    @State private var portionStates: [String: PortionEditorState] = [:]
     @FocusState private var focusedField: Field?
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -97,13 +96,13 @@ struct MealLineItemEditor: View {
             if expandedItemIDs.isEmpty {
                 expandedItemIDs = Set(lineItems.map(\.id))
             }
-            seedCountableStatesIfNeeded()
+            seedPortionStatesIfNeeded()
         }
         .onChange(of: lineItems.count) { _, _ in
             for entry in lineItems where !expandedItemIDs.contains(entry.id) {
                 expandedItemIDs.insert(entry.id)
             }
-            seedCountableStatesIfNeeded()
+            seedPortionStatesIfNeeded()
         }
         .onChange(of: focusedField) { _, newValue in
             let scrollID = scrollID(for: newValue)
@@ -144,14 +143,14 @@ struct MealLineItemEditor: View {
                     expandedItemIDs.remove(entry.id)
                 } else {
                     expandedItemIDs.insert(entry.id)
-                    seedCountableStateIfNeeded(for: entry)
+                    seedPortionStateIfNeeded(for: entry)
                 }
             } label: {
                 HStack {
                     VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                         Text(title)
                             .helmType(.body)
-                        Text("\(detail) · \(Self.format(item.caloriesKcal)) kcal")
+                        Text("\(detail) · \(FoodLogDisplayFormatter.formatNumber(item.caloriesKcal)) kcal")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
                         Text(cofidMatchLabel(for: item))
                             .helmType(.monoTag, color: cofidMatchColor(for: item))
@@ -185,11 +184,11 @@ struct MealLineItemEditor: View {
                         suggestionList(for: entry)
                     }
 
-                    if let config = countableConfig(for: entry) {
-                        countableEditor(for: entry, config: config)
-                    } else {
-                        gramsEditor(for: entry)
-                    }
+                    ServingQuantityFields(
+                        options: servingOptions(for: entry),
+                        servingsText: portionServingsBinding(for: entry.id),
+                        selectedLabel: portionSizeBinding(for: entry.id)
+                    )
                 }
             }
         }
@@ -227,80 +226,6 @@ struct MealLineItemEditor: View {
     }
 
     private static let descriptionScrollID = "meal-description"
-
-    @ViewBuilder
-    private func countableEditor(for entry: EditableLineItem, config: CountablePortionConfig) -> some View {
-        let state = countableStates[entry.id] ?? defaultCountableState(for: entry, config: config)
-
-        if config.hasSizeVariants {
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("Size")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                ScrollView(.horizontal, showsIndicators: false) {
-                    HStack(spacing: HelmSpacing.xs) {
-                        ForEach(config.sizeOptions, id: \.label) { option in
-                            Button {
-                                updateCountableState(for: entry.id) { $0.selectedSizeLabel = option.label }
-                                applyCountableUpdate(for: entry.id, config: config)
-                            } label: {
-                                Text(sizeDisplayLabel(from: option.label))
-                                    .helmType(.monoTag)
-                                    .padding(.horizontal, HelmSpacing.sm)
-                                    .padding(.vertical, HelmSpacing.xxs)
-                                    .background(
-                                        state.selectedSizeLabel == option.label
-                                            ? HelmColor.buttonPrimaryBackground.opacity(0.25)
-                                            : HelmColor.gaugeTrack.opacity(0.35),
-                                        in: Capsule()
-                                    )
-                            }
-                            .buttonStyle(.helmPressable)
-                        }
-                    }
-                }
-            }
-        }
-
-        Stepper(value: quantityBinding(for: entry.id, config: config), in: 1 ... 24) {
-            HStack {
-                Text(config.unitNoun == "whole" ? "Whole" : "Quantity")
-                    .helmType(.body)
-                Spacer()
-                Text(wholeQuantityLabel(state.quantity, config: config))
-                    .helmType(.number)
-            }
-        }
-
-        Button {
-            updateCountableState(for: entry.id) { $0.showsGramsOverride.toggle() }
-        } label: {
-            HStack {
-                Text("Adjust weight")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                Spacer()
-                HelmIconView(state.showsGramsOverride ? .chevronUp : .chevronDown, context: .inline)
-                    .foregroundStyle(HelmColor.fgMuted)
-            }
-        }
-        .buttonStyle(.helmPressable)
-
-        if state.showsGramsOverride {
-            gramsEditor(for: entry)
-        }
-    }
-
-    private func gramsEditor(for entry: EditableLineItem) -> some View {
-        HStack {
-            Text("Grams")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
-            TextField("Grams", text: gramsBinding(for: entry))
-                .focused($focusedField, equals: .grams(entry.id))
-                .keyboardType(.decimalPad)
-                .helmType(.body)
-                .padding(HelmSpacing.sm)
-                .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-        }
-    }
 
     @ViewBuilder
     private func suggestionList(for entry: EditableLineItem) -> some View {
@@ -345,124 +270,98 @@ struct MealLineItemEditor: View {
         }
     }
 
-    private func wholeQuantityLabel(_ quantity: Int, config: CountablePortionConfig) -> String {
-        if config.unitNoun == "whole", quantity == 1 {
-            return "1 whole"
-        }
-        return "\(quantity)"
-    }
-
-    private func countableConfig(for entry: EditableLineItem) -> CountablePortionConfig? {
-        CountablePortion.detect(
+    private func servingOptions(for entry: EditableLineItem) -> [ProducePortionOption] {
+        let state = portionStates[entry.id]
+        let unitGramsHint: Double = {
+            if let state, let servings = PortionServings.parse(state.servingsText), servings > 0 {
+                return entry.item.grams / servings
+            }
+            return entry.item.grams
+        }()
+        let labelHint = state?.selectedLabel ?? entry.servingLabel
+        var extras: [ProducePortionOption] = []
+        if let config = CountablePortion.detect(
             for: entry.item.name,
-            suggestedGrams: entry.item.grams,
-            servingLabel: entry.servingLabel
+            suggestedGrams: unitGramsHint,
+            servingLabel: labelHint
+        ) {
+            extras.append(contentsOf: config.sizeOptions)
+            if let fixed = config.fixedUnitGrams {
+                let label = config.unitNoun == "whole" ? "1 whole" : "1 \(config.unitNoun)"
+                extras.insert(ProducePortionOption(label: label, grams: fixed), at: 0)
+            }
+        }
+        return PortionOptionCatalog.servingMenu(
+            for: entry.item.name,
+            suggestedGrams: unitGramsHint,
+            servingLabel: labelHint,
+            extra: extras
         )
     }
 
-    private func seedCountableStatesIfNeeded() {
+    private func seedPortionStatesIfNeeded() {
         for entry in lineItems {
-            seedCountableStateIfNeeded(for: entry)
+            seedPortionStateIfNeeded(for: entry)
         }
     }
 
-    private func seedCountableStateIfNeeded(for entry: EditableLineItem) {
-        guard countableStates[entry.id] == nil else { return }
-        guard let config = countableConfig(for: entry) else { return }
-        countableStates[entry.id] = defaultCountableState(for: entry, config: config)
-    }
-
-    private func defaultCountableState(
-        for entry: EditableLineItem,
-        config: CountablePortionConfig
-    ) -> CountableEditorState {
-        let parsed = entry.servingLabel.flatMap { CountablePortion.parseServingLabel($0, config: config) }
-        let unitGrams = bootstrapUnitGrams(for: entry, config: config, parsed: parsed)
-        let inferred = max(Int((entry.item.grams / max(unitGrams, 1)).rounded()), 1)
-        let quantity: Int
-        if let parsedQuantity = parsed?.quantity {
-            quantity = parsedQuantity
-        } else if CountablePortion.isLikelyPackWeight(entry.item.grams, config: config) {
-            quantity = 1
-        } else {
-            quantity = inferred
-        }
-        return CountableEditorState(
-            quantity: quantity,
-            selectedSizeLabel: parsed?.sizeOption?.label
-                ?? (config.unitNoun == "whole" ? "1 whole" : nil)
-                ?? CountablePortion.inferDefaultSize(from: entry.item.name, config: config)?.label
+    private func seedPortionStateIfNeeded(for entry: EditableLineItem) {
+        guard portionStates[entry.id] == nil else { return }
+        let options = servingOptions(for: entry)
+        let selected = options.first { $0.label == entry.servingLabel }
+            ?? options.first
+        let unitGrams = selected?.grams ?? max(entry.item.grams, 1)
+        portionStates[entry.id] = PortionEditorState(
+            servingsText: PortionServings.format(
+                PortionServings.servings(grams: entry.item.grams, unitGrams: unitGrams)
+            ),
+            selectedLabel: selected?.label ?? "1 g"
         )
     }
 
-    private func quantityBinding(for entryID: String, config: CountablePortionConfig) -> Binding<Int> {
+    private func portionServingsBinding(for entryID: String) -> Binding<String> {
         Binding(
-            get: { countableStates[entryID]?.quantity ?? 1 },
+            get: { portionStates[entryID]?.servingsText ?? "1" },
             set: { newValue in
-                updateCountableState(for: entryID) { $0.quantity = newValue }
-                applyCountableUpdate(for: entryID, config: config)
+                if portionStates[entryID] == nil, let entry = lineItems.first(where: { $0.id == entryID }) {
+                    seedPortionStateIfNeeded(for: entry)
+                }
+                portionStates[entryID]?.servingsText = newValue
+                applyPortionUpdate(for: entryID)
             }
         )
     }
 
-    private func applyCountableUpdate(for entryID: String, config: CountablePortionConfig) {
+    private func portionSizeBinding(for entryID: String) -> Binding<String> {
+        Binding(
+            get: { portionStates[entryID]?.selectedLabel ?? "1 g" },
+            set: { newValue in
+                if portionStates[entryID] == nil, let entry = lineItems.first(where: { $0.id == entryID }) {
+                    seedPortionStateIfNeeded(for: entry)
+                }
+                portionStates[entryID]?.selectedLabel = newValue
+                applyPortionUpdate(for: entryID)
+            }
+        )
+    }
+
+    private func applyPortionUpdate(for entryID: String) {
         guard let index = lineItems.firstIndex(where: { $0.id == entryID }) else { return }
-        guard let state = countableStates[entryID] else { return }
-
+        guard let state = portionStates[entryID] else { return }
         let entry = lineItems[index]
-        let sizeOption = config.sizeOptions.first { $0.label == state.selectedSizeLabel }
-        let unitGrams = CountablePortion.gramsPerUnit(
-            sizeOption: sizeOption,
-            config: config,
-            fallbackGrams: entry.item.grams
-        )
-        let totalGrams = unitGrams * Double(state.quantity)
-        let label = CountablePortion.formatServingLabel(
-            quantity: state.quantity,
-            sizeLabel: state.selectedSizeLabel,
-            config: config
-        )
-
+        let options = servingOptions(for: entry)
+        let option = options.first { $0.label == state.selectedLabel } ?? options.first
+        guard let option, let servings = PortionServings.parse(state.servingsText) else { return }
+        let totalGrams = PortionServings.totalGrams(servings: servings, unitGrams: option.grams)
         lineItems[index].item = recomputeLineItem(
             name: entry.item.name,
             grams: totalGrams,
             from: entry.item
         )
-        lineItems[index].servingLabel = label
-    }
-
-    private func unitGrams(for entry: EditableLineItem, config: CountablePortionConfig) -> Double {
-        if let state = countableStates[entry.id] {
-            let sizeOption = config.sizeOptions.first { $0.label == state.selectedSizeLabel }
-            return CountablePortion.gramsPerUnit(
-                sizeOption: sizeOption,
-                config: config,
-                fallbackGrams: entry.item.grams
-            )
-        }
-
-        let parsed = entry.servingLabel.flatMap { CountablePortion.parseServingLabel($0, config: config) }
-        return bootstrapUnitGrams(for: entry, config: config, parsed: parsed)
-    }
-
-    private func bootstrapUnitGrams(
-        for entry: EditableLineItem,
-        config: CountablePortionConfig,
-        parsed: (quantity: Int, sizeOption: ProducePortionOption?)?
-    ) -> Double {
-        let sizeOption = parsed?.sizeOption
-            ?? CountablePortion.inferDefaultSize(from: entry.item.name, config: config)
-        return CountablePortion.gramsPerUnit(
-            sizeOption: sizeOption,
-            config: config,
-            fallbackGrams: entry.item.grams
+        lineItems[index].servingLabel = PortionServings.displayLabel(
+            servings: servings,
+            servingSize: option.label
         )
-    }
-
-    private func updateCountableState(for entryID: String, update: (inout CountableEditorState) -> Void) {
-        var state = countableStates[entryID] ?? CountableEditorState(quantity: 1, selectedSizeLabel: nil)
-        update(&state)
-        countableStates[entryID] = state
     }
 
     private func recomputeLineItem(name: String, grams: Double, from item: MealLineItem) -> MealLineItem {
@@ -504,24 +403,6 @@ struct MealLineItemEditor: View {
         )
     }
 
-    private func gramsBinding(for entry: EditableLineItem) -> Binding<String> {
-        Binding(
-            get: {
-                Self.format(entry.item.grams)
-            },
-            set: { newValue in
-                guard let grams = Double(newValue.trimmingCharacters(in: .whitespacesAndNewlines)) else { return }
-                guard let index = lineItems.firstIndex(where: { $0.id == entry.id }) else { return }
-                let current = lineItems[index].item
-                lineItems[index].item = MacroAggregator.recomputeLineItem(
-                    current,
-                    grams: grams,
-                    lookup: lookup
-                )
-            }
-        )
-    }
-
     private func applyFoodName(_ name: String, to entryID: String) {
         guard let index = lineItems.firstIndex(where: { $0.id == entryID }) else { return }
         let current = lineItems[index].item
@@ -531,14 +412,6 @@ struct MealLineItemEditor: View {
             from: current
         )
         nameQueryItemID = nil
-        focusedField = .grams(entryID)
-    }
-
-    private func sizeDisplayLabel(from label: String) -> String {
-        if let range = label.range(of: #"^\d+\s+"#, options: .regularExpression) {
-            return String(label[range.upperBound...]).capitalized
-        }
-        return label.capitalized
     }
 
     private func macroField(
@@ -562,7 +435,7 @@ struct MealLineItemEditor: View {
             Text(label)
                 .helmType(.body)
             Spacer()
-            Text("\(Self.format(value)) \(unit)")
+            Text("\(FoodLogDisplayFormatter.formatNumber(value)) \(unit)")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
         .padding(HelmSpacing.sm)
@@ -592,13 +465,6 @@ struct MealLineItemEditor: View {
             return HelmColor.fgSecondary
         }
         return HelmColor.fgMuted
-    }
-
-    private static func format(_ value: Double) -> String {
-        if value.rounded() == value {
-            return String(Int(value.rounded()))
-        }
-        return String(format: "%.1f", value)
     }
 }
 

@@ -32,7 +32,7 @@ public enum FoodLogDisplayFormatter {
         }
 
         if grams > 0 {
-            parts.append("\(formatGrams(grams)) g")
+            parts.append("\(formatNumber(grams)) g")
         }
 
         if let brand = parseBrand(from: displayName) {
@@ -40,7 +40,7 @@ public enum FoodLogDisplayFormatter {
         }
 
         if parts.isEmpty {
-            return "\(formatGrams(grams)) g"
+            return "\(formatNumber(grams)) g"
         }
         return parts.joined(separator: " · ")
     }
@@ -120,11 +120,17 @@ public enum FoodLogDisplayFormatter {
         serving.caseInsensitiveCompare(displayName) == .orderedSame
     }
 
-    private static func formatGrams(_ grams: Double) -> String {
-        if grams.rounded() == grams {
-            return String(Int(grams.rounded()))
+    /// Display grams / macros. Never converts non-finite values to `Int` (that traps).
+    public static func formatNumber(_ value: Double) -> String {
+        guard value.isFinite else { return "0" }
+        let nearest = value.rounded()
+        if abs(value - nearest) < 1e-6 {
+            guard nearest >= Double(Int.min), nearest <= Double(Int.max) else {
+                return String(format: "%.1f", value)
+            }
+            return String(Int(nearest))
         }
-        return String(format: "%.1f", grams)
+        return String(format: "%.1f", value)
     }
 
     private static func trimmed(_ value: String?) -> String? {

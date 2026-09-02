@@ -24,13 +24,18 @@ public struct FoodPortionDefaults: Sendable, Equatable {
         self.servingLabel = servingLabel
         self.prefersServingLabel = prefersServingLabel
         self.inputMode = inputMode
-        self.defaultQuantity = max(defaultQuantity, 1)
+        self.defaultQuantity = CountablePortion.clampedQuantity(defaultQuantity)
         self.defaultSizeLabel = defaultSizeLabel
     }
 }
 
 public enum FoodPortionDefaultsResolver {
     public static let produceDefaultGrams: Double = 100
+
+    /// Scan and search always land on the portion step (1 whole / serving chips).
+    public static func shouldSkipPortionStep(for _: ResolvedFoodProduct) -> Bool {
+        false
+    }
 
     public static func defaults(
         for product: ResolvedFoodProduct,
@@ -81,13 +86,19 @@ public enum FoodPortionDefaultsResolver {
                 defaultGrams: produceDefaultGrams
             )
             let medium = portionOptions.first { $0.label == "1 medium" }
+                ?? portionOptions.first { $0.label == "1 whole" }
                 ?? portionOptions.first { !$0.label.hasSuffix(" g") }
                 ?? portionOptions.first
+            let resolvedCountable = CountablePortion.detect(
+                for: product.ref.displayName,
+                suggestedGrams: product.suggestedGrams ?? medium?.grams,
+                servingLabel: product.servingLabel ?? medium?.label
+            )
             return buildDefaults(
                 product: product,
                 grams: medium?.grams ?? produceDefaultGrams,
                 servingLabel: medium?.label,
-                countableConfig: countableConfig
+                countableConfig: resolvedCountable
             )
         }
     }
@@ -116,7 +127,9 @@ public enum FoodPortionDefaultsResolver {
             config: config,
             fallbackGrams: grams
         )
-        let quantity = parsed?.quantity ?? inferredQuantity(from: grams, unitGrams: unitGrams)
+        let quantity = CountablePortion.clampedQuantity(
+            parsed?.quantity ?? inferredQuantity(from: grams, unitGrams: unitGrams)
+        )
         let resolvedGrams = unitGrams * Double(quantity)
         let label = CountablePortion.formatServingLabel(
             quantity: quantity,
@@ -152,8 +165,8 @@ public enum FoodPortionDefaultsResolver {
 
     private static func inferredQuantity(from grams: Double, unitGrams: Double) -> Int {
         guard unitGrams > 0 else { return 1 }
-        let raw = Int((grams / unitGrams).rounded())
-        return max(raw, 1)
+        let raw = (grams / unitGrams).rounded()
+        return CountablePortion.clampedQuantity(fromDouble: raw)
     }
 
     private static func prefersServingLabel(

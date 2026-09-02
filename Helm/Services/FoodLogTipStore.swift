@@ -21,3 +21,25 @@ final class FoodLogTipStore {
         defaults.set(true, forKey: Self.dismissedDefaultsKey)
     }
 }
+
+/// One-time Chat composer tip: speak with the system keyboard Dictate button.
+@MainActor
+@Observable
+final class ChatDictateTipStore {
+    nonisolated static let dismissedDefaultsKey = "helm.chat.dictateTipDismissed"
+    static let shared = ChatDictateTipStore()
+
+    private let defaults: UserDefaults
+
+    private(set) var isVisible: Bool
+
+    init(defaults: UserDefaults = .standard) {
+        self.defaults = defaults
+        isVisible = !defaults.bool(forKey: Self.dismissedDefaultsKey)
+    }
+
+    func dismiss() {
+        isVisible = false
+        defaults.set(true, forKey: Self.dismissedDefaultsKey)
+    }
+}

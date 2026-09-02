@@ -9,8 +9,10 @@ struct MemoryRefinementConfirmationCard: View {
     let refinements: [MemoryRefinementEntry]
     let onAcceptAll: () -> Void
     let onDismiss: () -> Void
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     var body: some View {
+        let _ = typographyEpoch
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
             HelmSectionEyebrow("COACH LEARNED")
 

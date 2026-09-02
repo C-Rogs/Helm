@@ -25,6 +25,7 @@ public struct CalorieArcGauge: View {
 
             legend
         }
+        .clipped()
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(model.accessibilityLabel)
         .animation(
@@ -317,7 +318,9 @@ private struct CalorieArcLegendChip: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.75)
             }
+            .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
         }
+        .frame(minWidth: 0, maxWidth: .infinity, alignment: .leading)
     }
 
     @ViewBuilder

@@ -11,6 +11,7 @@ public struct HelmPanelChromeModifier: ViewModifier {
 
     @Environment(\.helmSkin) private var skin
     @Environment(\.helmPalette) private var palette
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     private let emphasis: Emphasis
     private let cornerRadius: CGFloat
@@ -27,6 +28,7 @@ public struct HelmPanelChromeModifier: ViewModifier {
     }
 
     public func body(content: Content) -> some View {
+        let _ = typographyEpoch
         if isAccentQuiet {
             content
                 .background(

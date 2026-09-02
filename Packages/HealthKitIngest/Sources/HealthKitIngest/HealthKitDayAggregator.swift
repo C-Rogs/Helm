@@ -35,7 +35,7 @@ public enum HealthKitDayAggregator {
                 let values = daySamples.map(\.value)
                 patch.wristTemperatureDeltaCelsius = values.reduce(0, +) / Double(values.count)
             case .activeEnergy:
-                patch.activeEnergy = Energy(kilocalories: sumKilocalories(daySamples))
+                break
             case .dietaryEnergy:
                 patch.dietaryEnergy = Energy(kilocalories: sumKilocalories(daySamples))
             case .dietaryProtein:
@@ -45,9 +45,9 @@ public enum HealthKitDayAggregator {
             case .dietaryFat:
                 patch.dietaryFatGrams = sumGrams(daySamples)
             case .stepCount:
-                patch.stepCount = Int(daySamples.reduce(0) { $0 + $1.value })
+                break
             case .basalEnergy:
-                patch.restingEnergyKcal = sumKilocalories(daySamples)
+                break
             case .bodyMass, .bodyFatPercentage, .sleep, .workout:
                 break
             }

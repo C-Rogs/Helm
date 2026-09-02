@@ -120,6 +120,8 @@ public final class HelmThemeCoordinator {
         let palette = themeMode.resolvedPalette(colorScheme: colorScheme, accent: accentSource)
         activePalette = palette
         HelmActivePalette.current = palette
+        HelmActivePalette.accentSource = accentSource
+        HelmActivePalette.appearance = themeMode.resolvedAppearance(colorScheme: colorScheme)
     }
 
     /// Re-read window appearance after resume or after a system calendar sheet.
@@ -130,7 +132,23 @@ public final class HelmThemeCoordinator {
             windowStyle: HelmWindowAppearance.keyWindowStyle(),
             fallback: fallback
         ))
+        applyWindowInterfaceStyle()
         bumpTypographyEpoch()
+    }
+
+    private func applyWindowInterfaceStyle() {
+        let style: UIUserInterfaceStyle
+        switch themeMode {
+        case .auto: style = .unspecified
+        case .dark: style = .dark
+        case .light: style = .light
+        }
+        for scene in UIApplication.shared.connectedScenes {
+            guard let windowScene = scene as? UIWindowScene else { continue }
+            for window in windowScene.windows {
+                window.overrideUserInterfaceStyle = style
+            }
+        }
     }
 
     public func bumpTypographyEpoch() {
@@ -206,9 +224,11 @@ public extension View {
 private struct HelmScreenBackgroundModifier: ViewModifier {
     @Environment(\.helmSkin) private var skin
     @Environment(\.helmPalette) private var palette
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
     var ignoreKeyboard: Bool = true
 
     func body(content: Content) -> some View {
+        let _ = typographyEpoch
         content
             .scrollContentBackground(.hidden)
             .background {
@@ -260,7 +280,7 @@ private struct HelmThemeContainer<Content: View>: View {
             .background(palette.canvas)
             .onAppear {
                 HelmFontPreferences.prefersSystemFonts = coordinator.prefersSystemFonts
-                coordinator.update(colorScheme: scheme)
+                coordinator.refreshPresentation(fallback: scheme)
             }
             .onChange(of: colorScheme) { _, newValue in
                 coordinator.refreshPresentation(fallback: newValue)

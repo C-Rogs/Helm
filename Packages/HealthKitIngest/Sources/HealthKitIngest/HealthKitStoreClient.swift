@@ -29,6 +29,13 @@ public protocol HealthKitStoreClient: Sendable {
         sampleType: HKSampleType,
         anchor: HKQueryAnchor?
     ) async throws -> AnchoredFetchResult
+    /// Daily cumulative total for one HelmDay window (steps, active/basal energy).
+    func fetchCumulativeSum(
+        identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double?
     func enableBackgroundDelivery(
         for sampleType: HKSampleType,
         frequency: HKUpdateFrequency
@@ -142,6 +149,32 @@ public struct LiveHealthKitStore: HealthKitStoreClient {
                         newAnchor: newAnchor
                     )
                 )
+            }
+            store.execute(query)
+        }
+    }
+
+    public func fetchCumulativeSum(
+        identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        start: Date,
+        end: Date
+    ) async -> Double? {
+        guard let type = HKQuantityType.quantityType(forIdentifier: identifier) else { return nil }
+        // Match SchemaV2 export: include samples that overlap the HelmDay window.
+        let predicate = HKQuery.predicateForSamples(
+            withStart: start,
+            end: end,
+            options: []
+        )
+        return await withCheckedContinuation { continuation in
+            let query = HKStatisticsQuery(
+                quantityType: type,
+                quantitySamplePredicate: predicate,
+                options: .cumulativeSum
+            ) { _, statistics, _ in
+                let value = statistics?.sumQuantity()?.doubleValue(for: unit)
+                continuation.resume(returning: value)
             }
             store.execute(query)
         }

@@ -302,6 +302,17 @@ public actor BackfillService {
                 + delta.addedWorkouts.count
 
             _ = try writer.apply(delta: delta)
+
+            if kind.isCumulativeDailyTotal {
+                let extraDays = Set(delta.addedQuantitySamples.map {
+                    HelmDay.day(for: $0.start, cutoff: .default, calendar: calendar)
+                })
+                try await CumulativeDailyTotalsOverlay(
+                    store: store,
+                    writer: writer,
+                    calendar: calendar
+                ).refresh(kind: kind, extraDays: extraDays)
+            }
         }
 
         return sampleCount

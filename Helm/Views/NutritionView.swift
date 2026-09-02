@@ -4,6 +4,7 @@ import HealthKitIngest
 import NutritionKit
 import PhotosUI
 import SwiftUI
+import UIKit
 
 struct NutritionView: View {
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
@@ -46,72 +47,14 @@ struct NutritionView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView(.vertical) {
-                HelmScreenStack {
-                    switch nutritionService.state {
-                    case .loading:
-                        loadingCard
-                    case let .ready(snapshot):
-                        if let selectedHelmDay, let todayHelmDay {
-                            NutritionDiaryHeader(
-                                selectedDay: selectedHelmDay,
-                                today: todayHelmDay,
-                                budget: snapshot.weeklyBudget,
-                                onSelectDay: { day in
-                                    Task { await selectDay(day) }
-                                },
-                                onSetDemand: { day, demand in
-                                    Task { await setDayDemand(demand, for: day) }
-                                }
-                            )
-                        }
-
-                        NutritionDaySummaryCard(
-                            snapshot: snapshot,
-                            showTrend: false,
-                            explainMetric: ExplainableMetricMappers.nutrition(
-                                snapshot,
-                                coachAvailable: chatController.isCoachAvailable
-                            ),
-                            onAskCoach: chatController.requestCoachHandoff(prompt:)
-                        )
-
-                        if let budget = snapshot.weeklyBudget {
-                            NutritionWeeklyBudgetCard(
-                                budget: budget,
-                                today: todayHelmDay ?? snapshot.helmDay
-                            )
-                        }
-
-                        if foodLogTipStore.isVisible {
-                            foodLogTipCard
-                        }
-
-                        mealBucketsSection(snapshot: snapshot)
-
-                        NutritionDayCompleteSection(
-                            loggingComplete: snapshot.loggingComplete,
-                            isSaving: isDayCompleteSaving,
-                            onMarkComplete: {
-                                Task { await markDayComplete() }
-                            },
-                            onReopen: {
-                                Task { await reopenDay() }
-                            }
-                        )
-                    }
+            diaryScroll
+                .helmScreenBackground()
+                .refreshable {
+                    await refreshTargets()
                 }
-                .helmScreenPadding()
-                .frame(maxWidth: .infinity)
-            }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            .helmScreenBackground()
-            .refreshable {
-                await refreshTargets()
-            }
-            .navigationTitle("Nutrition")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar { nutritionToolbar }
+                .navigationTitle("Nutrition")
+                .navigationBarTitleDisplayMode(.inline)
+                .toolbar { nutritionToolbar }
         }
         .task {
             await AppTabRouter.shared.preferChromeOverContentLoad()
@@ -237,6 +180,72 @@ struct NutritionView: View {
         }
         .animation(HelmMotion.standardAnimation, value: chatController.isStreaming)
         .animation(HelmMotion.standardAnimation, value: chatController.isPreparingFoodMealConfirm)
+    }
+
+    @ViewBuilder
+    private var diaryScroll: some View {
+        GeometryReader { geo in
+            ScrollView(.vertical) {
+                HelmScreenStack {
+                    switch nutritionService.state {
+                    case .loading:
+                        loadingCard
+                    case let .ready(snapshot):
+                        diaryReadyContent(snapshot)
+                    }
+                }
+                .helmScreenPadding()
+                .frame(width: geo.size.width, alignment: .leading)
+                .clipped()
+            }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+            .contentShape(Rectangle())
+            .background(NutritionHorizontalScrollLock())
+        }
+    }
+
+    @ViewBuilder
+    private func diaryReadyContent(_ snapshot: NutritionDaySnapshot) -> some View {
+        if let selectedHelmDay, let todayHelmDay {
+            NutritionDiaryHeader(
+                selectedDay: selectedHelmDay,
+                today: todayHelmDay,
+                budget: snapshot.weeklyBudget,
+                onSelectDay: { day in
+                    Task { await selectDay(day) }
+                },
+                onSetDemand: { day, demand in
+                    Task { await setDayDemand(demand, for: day) }
+                }
+            )
+        }
+
+        NutritionDaySummaryCard(
+            snapshot: snapshot,
+            showTrend: false,
+            explainMetric: ExplainableMetricMappers.nutrition(
+                snapshot,
+                coachAvailable: chatController.isCoachAvailable
+            ),
+            onAskCoach: chatController.requestCoachHandoff(prompt:)
+        )
+
+        if foodLogTipStore.isVisible {
+            foodLogTipCard
+        }
+
+        mealBucketsSection(snapshot: snapshot)
+
+        NutritionDayCompleteSection(
+            loggingComplete: snapshot.loggingComplete,
+            isSaving: isDayCompleteSaving,
+            onMarkComplete: {
+                Task { await markDayComplete() }
+            },
+            onReopen: {
+                Task { await reopenDay() }
+            }
+        )
     }
 
     private func sendDescribeFood(_ text: String, bucket: MealBucket) {
@@ -504,6 +513,53 @@ struct NutritionView: View {
 
     private var loadingCard: some View {
         HelmLoadingState(rowCount: 3)
+    }
+}
+
+/// Hard-locks horizontal pan/bounce on the diary ScrollView. SwiftUI has no `.never` bounce mode.
+private final class NutritionScrollLockView: UIView {
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        lock()
+    }
+
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        lock()
+    }
+
+    private func lock() {
+        var ancestor: UIView? = superview
+        while let current = ancestor {
+            if let scroll = current as? UIScrollView {
+                scroll.alwaysBounceHorizontal = false
+                scroll.showsHorizontalScrollIndicator = false
+                scroll.isDirectionalLockEnabled = true
+                scroll.bouncesHorizontally = false
+                let inset = scroll.adjustedContentInset
+                let maxWidth = max(scroll.bounds.width - inset.left - inset.right, 0)
+                if maxWidth > 0, scroll.contentSize.width > maxWidth + 0.5 {
+                    scroll.contentSize.width = maxWidth
+                }
+                if abs(scroll.contentOffset.x + inset.left) > 0.5 {
+                    scroll.contentOffset.x = -inset.left
+                }
+            }
+            ancestor = current.superview
+        }
+    }
+}
+
+private struct NutritionHorizontalScrollLock: UIViewRepresentable {
+    func makeUIView(context: Context) -> NutritionScrollLockView {
+        let view = NutritionScrollLockView()
+        view.isUserInteractionEnabled = false
+        view.backgroundColor = .clear
+        return view
+    }
+
+    func updateUIView(_ uiView: NutritionScrollLockView, context: Context) {
+        uiView.setNeedsLayout()
     }
 }
 

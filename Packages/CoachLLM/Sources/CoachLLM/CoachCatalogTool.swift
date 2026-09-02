@@ -158,6 +158,14 @@ public enum CoachCatalogQueryResolver {
         explicitQueries.isEmpty || explicitQueries.contains(name)
     }
 
+    /// Live wearable refresh always runs, even if the model called recovery_query instead.
+    public static func shouldRunHealthSyncFollowUp(
+        inferred: Bool,
+        explicitQueries: Set<CoachCatalogToolName>
+    ) -> Bool {
+        inferred || shouldFollowUp(.healthSync, explicitQueries: explicitQueries)
+    }
+
     /// Chart/navigate from the follow-up stream, else the original turn (tools then JSON).
     public static func mergeNonQueryPayload<Payload>(
         currentCalls: [CoachLLMFunctionCall],

@@ -12,8 +12,10 @@ struct RestTimerBanner: View {
     var upNextName: String?
 
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     var body: some View {
+        let _ = typographyEpoch
         TimelineView(.periodic(from: .now, by: 1)) { context in
             let remaining = max(0, Int(endsAt.timeIntervalSince(context.date).rounded(.down)))
             bannerContent(remainingSeconds: remaining)

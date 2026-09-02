@@ -6,13 +6,16 @@ import SwiftUI
 struct ChatView: View {
     @Bindable private var controller = ChatBootstrap.controller
     @Bindable private var activityGate = CoachActivityGate.shared
+    @State private var dictateTipStore = ChatDictateTipStore.shared
     @FocusState private var isInputFocused: Bool
     @Environment(\.helmPalette) private var palette
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     private var coachName: String { CoachDisplayNameStore.name }
 
     var body: some View {
+        let _ = typographyEpoch
         NavigationStack {
             VStack(spacing: 0) {
                 if let degradedState = controller.degradedState,
@@ -467,24 +470,17 @@ struct ChatView: View {
     }
 
     private var composer: some View {
-        HStack(spacing: HelmSpacing.sm) {
-            Button {
-                HapticEngine.shared.play(.selection)
-                isInputFocused = true
-            } label: {
-                HelmIconView(.mic, context: .action)
-                    .foregroundStyle(canUseMic ? HelmColor.fgSecondary : HelmColor.fgMuted)
+        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            if dictateTipStore.isVisible {
+                dictateTip
             }
-            .buttonStyle(.helmPressable)
-            .disabled(!canUseMic)
-            .accessibilityLabel("Show keyboard dictation")
-            .accessibilityHint("Opens the keyboard. Use its Dictation button to speak.")
 
-            TextField(
-                "Ask the coach",
-                text: $controller.draftText,
-                axis: .vertical
-            )
+            HStack(spacing: HelmSpacing.sm) {
+                TextField(
+                    "Ask the coach",
+                    text: $controller.draftText,
+                    axis: .vertical
+                )
                 .textFieldStyle(.plain)
                 .foregroundStyle(palette.fg)
                 .tint(palette.accent)
@@ -495,22 +491,43 @@ struct ChatView: View {
                 .focused($isInputFocused)
                 .disabled(isComposerDisabled)
 
-            Button {
-                HapticEngine.shared.play(.selection)
-                controller.send()
-                isInputFocused = false
-            } label: {
-                HelmIconView(.send, context: .action)
-                    .foregroundStyle(
-                        canSend ? HelmColor.accent : HelmColor.fgMuted
-                    )
+                Button {
+                    HapticEngine.shared.play(.selection)
+                    controller.send()
+                    isInputFocused = false
+                } label: {
+                    HelmIconView(.send, context: .action)
+                        .foregroundStyle(
+                            canSend ? HelmColor.accent : HelmColor.fgMuted
+                        )
+                }
+                .buttonStyle(.helmPressable)
+                .disabled(!canSend)
+                .accessibilityLabel("Send")
             }
-            .buttonStyle(.helmPressable)
-            .disabled(!canSend)
-            .accessibilityLabel("Send")
         }
         .padding(HelmSpacing.md)
         .helmPanelChrome(.surface)
+    }
+
+    private var dictateTip: some View {
+        HStack(alignment: .top, spacing: HelmSpacing.sm) {
+            Text("Talk with the keyboard Dictate button.")
+                .helmType(.body, color: HelmColor.fgSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: HelmSpacing.xs)
+            Button("Got it") {
+                HapticEngine.shared.play(.selection)
+                dictateTipStore.dismiss()
+            }
+            .buttonStyle(.helmPressable)
+            .helmType(.monoTag, color: HelmColor.accent)
+            .accessibilityLabel("Dismiss dictation tip")
+        }
+        .padding(.horizontal, HelmSpacing.sm)
+        .padding(.vertical, HelmSpacing.xs)
+        .background(HelmColor.surfaceElevated, in: RoundedRectangle(cornerRadius: HelmRadius.sm, style: .continuous))
+        .accessibilityElement(children: .contain)
     }
 
     private var showsWorkingSlot: Bool {
@@ -554,12 +571,12 @@ struct ChatView: View {
             || activityGate.isBlocked(for: .chat)
     }
 
-    private var canUseMic: Bool {
+    private var canCompose: Bool {
         !isComposerDisabled && !controller.isApplyingChatAction
     }
 
     private var canSend: Bool {
-        canUseMic
+        canCompose
             && !controller.draftText.trimmingCharacters(in: CharacterSet.whitespacesAndNewlines).isEmpty
     }
 

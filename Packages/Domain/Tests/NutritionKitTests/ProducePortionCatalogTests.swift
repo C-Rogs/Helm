@@ -47,4 +47,24 @@ struct ProducePortionCatalogTests {
         #expect(options.first?.label == "1 whole")
         #expect(options.first?.grams == 170)
     }
+
+    @Test("apple produce offers one whole before size chips")
+    func appleWholeChipFirst() {
+        let options = PortionOptionCatalog.options(for: "Apple, eating")
+        #expect(options.first?.label == "1 whole")
+        #expect(options.contains { $0.label == "1 medium" })
+    }
+
+    @Test("serving menu always includes 1 g for scale logging")
+    func servingMenuIncludesGram() {
+        let menu = PortionOptionCatalog.servingMenu(
+            for: "Grenade Carb Killa",
+            origin: .openFoodFacts,
+            suggestedGrams: 60,
+            servingLabel: "1 bar"
+        )
+        #expect(menu.contains { $0.label == "1 bar" && $0.grams == 60 })
+        #expect(menu.contains { $0.label == "1 g" && $0.grams == 1 })
+        #expect(menu.contains { $0.label == "100 g" && $0.grams == 100 })
+    }
 }

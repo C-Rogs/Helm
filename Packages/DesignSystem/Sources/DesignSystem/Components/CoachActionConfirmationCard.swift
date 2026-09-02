@@ -14,6 +14,8 @@ public struct CoachActionConfirmationCard: View {
     private let onCancel: () -> Void
     private let onRetry: (() -> Void)?
 
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
+
     public init(
         title: String,
         detail: String,
@@ -48,6 +50,7 @@ public struct CoachActionConfirmationCard: View {
     private var hasError: Bool { resolvedError != nil }
 
     public var body: some View {
+        let _ = typographyEpoch
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
             HelmSectionEyebrow(hasError ? "COULD NOT APPLY" : "CONFIRM CHANGE")
 

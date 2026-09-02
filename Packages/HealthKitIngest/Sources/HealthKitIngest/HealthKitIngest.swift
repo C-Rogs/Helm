@@ -337,6 +337,15 @@ public actor HealthKitIngest {
 
             var families = try writer.apply(delta: delta)
 
+            if kind.isCumulativeDailyTotal {
+                let extraDays = Set(delta.addedQuantitySamples.map {
+                    HelmDay.day(for: $0.start, cutoff: .default, calendar: .current)
+                })
+                try await CumulativeDailyTotalsOverlay(store: store, writer: writer)
+                    .refresh(kind: kind, extraDays: extraDays)
+                families.insert(kind.metricFamily)
+            }
+
             if kind == .bodyFatPercentage {
                 do {
                     let overlay = try await ingestNewestBodyFatSamples()

@@ -16,8 +16,8 @@ struct CoachFoodMealConfirmSheet: View {
     @State private var description: String
     @State private var lineItems: [MealLineItemEditor.EditableLineItem]
     @State private var bucket: MealBucket
-
     @Environment(\.helmReduceMotion) private var reduceMotion
+    @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
     init(
         state: CoachFoodMealConfirmState,
@@ -63,6 +63,7 @@ struct CoachFoodMealConfirmSheet: View {
     }
 
     var body: some View {
+        let _ = typographyEpoch
         NavigationStack {
             ZStack {
                 ScrollViewReader { proxy in

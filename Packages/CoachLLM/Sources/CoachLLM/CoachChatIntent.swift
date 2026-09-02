@@ -240,11 +240,7 @@ public enum CoachChatIntent: Sendable {
             "recovery trend",
             "sleep trend",
             "weight trend",
-            "rhr trend",
-            "refresh hrv",
-            "latest hrv",
-            "pull latest",
-            "up to date"
+            "rhr trend"
         ]
         return needles.contains { lower.contains($0) }
     }
@@ -261,8 +257,7 @@ public enum CoachChatIntent: Sendable {
             "wearable sync",
             "how up to date",
             "up to date is that",
-            "refresh recovery",
-            "update it"
+            "refresh recovery"
         ]
         return needles.contains { lower.contains($0) }
     }
@@ -273,12 +268,14 @@ public enum CoachChatIntent: Sendable {
         guard affirms.contains(trimmed) else { return false }
         guard let lastAssistant else { return false }
         let hay = lastAssistant.lowercased()
-        return hay.contains("sync")
-            || hay.contains("refresh")
+        return hay.contains("hrv")
             || hay.contains("wearable")
+            || hay.contains("healthkit")
+            || hay.contains("health kit")
+            || hay.contains("recovery baseline")
             || hay.contains("up to date")
-            || hay.contains("latest")
-            || hay.contains("update")
+            || hay.contains("pull the latest")
+            || hay.contains("sync from")
     }
 
     public static func inferredHealthSync(from text: String, lastAssistant: String? = nil) -> HealthSyncPayload? {

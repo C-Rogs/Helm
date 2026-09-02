@@ -106,6 +106,11 @@ struct DashboardView: View {
                 muscleVolumeStore.refresh()
                 loadTodaySteps()
             }
+            .task {
+                for await _ in HealthKitBootstrap.healthKitIngest.updates(for: .activity) {
+                    loadTodaySteps()
+                }
+            }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
                     await loadSleepSummary()

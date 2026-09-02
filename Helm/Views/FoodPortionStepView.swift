@@ -14,19 +14,11 @@ struct FoodPortionStepView: View {
     let onLog: (Double, String?, MealBucket) -> Void
     let onCancel: () -> Void
 
-    @State private var gramsText: String
-    @State private var servingLabel: String
+    @State private var servingsText: String
+    @State private var selectedServingLabel: String
     @State private var bucket: MealBucket
-    @State private var selectedChipLabel: String?
-    @State private var quantity: Int
-    @State private var selectedSizeLabel: String?
-    @State private var showsGramsOverride = false
-    @FocusState private var gramsFocused: Bool
-    @Environment(\.helmReduceMotion) private var reduceMotion
 
-    private let produceOptions: [ProducePortionOption]
-    private let inputMode: PortionInputMode
-    private let countableConfig: CountablePortionConfig?
+    private let servingOptions: [ProducePortionOption]
 
     init(
         product: ResolvedFoodProduct,
@@ -41,30 +33,40 @@ struct FoodPortionStepView: View {
         self.isSaving = isSaving
         self.onLog = onLog
         self.onCancel = onCancel
-        inputMode = defaults.inputMode
-        if case let .countable(config) = defaults.inputMode {
-            countableConfig = config
-        } else {
-            countableConfig = nil
-        }
-        produceOptions = PortionOptionCatalog.options(
+        let extras = Self.countableMenuExtras(from: defaults.inputMode)
+        let options = PortionOptionCatalog.servingMenu(
             for: product.ref.displayName,
             cofidID: product.ref.origin == .cofid ? product.ref.externalID : nil,
             origin: Self.mapOrigin(product.ref.origin),
             suggestedGrams: product.suggestedGrams ?? defaults.grams,
             servingLabel: product.servingLabel ?? defaults.servingLabel,
-            defaultGrams: defaults.grams
+            defaultGrams: defaults.grams,
+            extra: extras
         )
-        _gramsText = State(initialValue: Self.format(defaults.grams))
-        _servingLabel = State(initialValue: defaults.servingLabel ?? "")
+        servingOptions = options
+        let initial = Self.initialServing(
+            in: options,
+            servingLabel: defaults.servingLabel,
+            sizeLabel: defaults.defaultSizeLabel
+        )
+        _selectedServingLabel = State(initialValue: initial?.label ?? "1 g")
+        let unitGrams = initial?.grams ?? 1
+        _servingsText = State(
+            initialValue: PortionServings.format(
+                PortionServings.servings(grams: defaults.grams, unitGrams: unitGrams)
+            )
+        )
         _bucket = State(initialValue: initialBucket)
-        _selectedChipLabel = State(initialValue: defaults.servingLabel)
-        _quantity = State(initialValue: defaults.defaultQuantity)
-        _selectedSizeLabel = State(initialValue: defaults.defaultSizeLabel)
+    }
+
+    private var selectedServing: ProducePortionOption? {
+        servingOptions.first { $0.label == selectedServingLabel } ?? servingOptions.first
     }
 
     private var grams: Double? {
-        Double(gramsText.trimmingCharacters(in: .whitespacesAndNewlines))
+        guard let servings = PortionServings.parse(servingsText),
+              let unitGrams = selectedServing?.grams else { return nil }
+        return PortionServings.totalGrams(servings: servings, unitGrams: unitGrams)
     }
 
     private var macros: FoodPortionMacros? {
@@ -77,24 +79,15 @@ struct FoodPortionStepView: View {
     }
 
     private var resolvedServingLabel: String? {
-        if let config = countableConfig {
-            return CountablePortion.formatServingLabel(
-                quantity: quantity,
-                sizeLabel: selectedSizeLabel,
-                config: config
-            )
-        }
-        let trimmedServing = servingLabel.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !trimmedServing.isEmpty {
-            return trimmedServing
-        }
-        return selectedChipLabel
+        guard let servings = PortionServings.parse(servingsText),
+              let size = selectedServing?.label else { return nil }
+        return PortionServings.displayLabel(servings: servings, servingSize: size)
     }
 
     private var portionSummary: String? {
         guard let grams, let macros else { return nil }
-        let gramsPart = "\(Self.format(grams)) g"
-        let kcalPart = "\(Self.format(macros.energyKcal)) kcal"
+        let gramsPart = "\(FoodLogDisplayFormatter.formatNumber(grams)) g"
+        let kcalPart = "\(FoodLogDisplayFormatter.formatNumber(macros.energyKcal)) kcal"
         if let label = resolvedServingLabel {
             return "\(label) · \(gramsPart) · \(kcalPart)"
         }
@@ -113,12 +106,11 @@ struct FoodPortionStepView: View {
 
                 bucketPicker
 
-                switch inputMode {
-                case let .countable(config):
-                    countablePortionSection(config: config)
-                case .weight:
-                    weightPortionSection
-                }
+                ServingQuantityFields(
+                    options: servingOptions,
+                    servingsText: $servingsText,
+                    selectedLabel: $selectedServingLabel
+                )
 
                 if let portionSummary {
                     Text(portionSummary)
@@ -156,148 +148,6 @@ struct FoodPortionStepView: View {
                 }
             }
         }
-        .onChange(of: quantity) { _, _ in
-            syncCountableGramsFromSelection()
-        }
-        .onChange(of: selectedSizeLabel) { _, _ in
-            syncCountableGramsFromSelection()
-        }
-    }
-
-    // MARK: - Countable mode
-
-    @ViewBuilder
-    private func countablePortionSection(config: CountablePortionConfig) -> some View {
-        if config.hasSizeVariants {
-            sizeVariantSection(options: config.sizeOptions)
-        }
-
-        Stepper(value: $quantity, in: 1 ... 24) {
-            HStack {
-                Text(config.kind == .serving && config.unitNoun == "whole" ? "Whole" : "Quantity")
-                    .helmType(.body)
-                Spacer()
-                Text(config.kind == .serving && config.unitNoun == "whole" && quantity == 1 ? "1 whole" : "\(quantity)")
-                    .helmType(.number)
-            }
-        }
-
-        gramsOverrideSection
-    }
-
-    private func sizeVariantSection(options: [ProducePortionOption]) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Size")
-                .helmType(.label)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: HelmSpacing.xs) {
-                    ForEach(sizeChips, id: \.label) { chip in
-                        Button {
-                            selectedSizeLabel = chip.label
-                        } label: {
-                            Text(chip.displayLabel)
-                                .helmType(.monoTag)
-                                .padding(.horizontal, HelmSpacing.sm)
-                                .padding(.vertical, HelmSpacing.xs)
-                                .background(
-                                    selectedSizeLabel == chip.label
-                                        ? HelmColor.buttonPrimaryBackground.opacity(0.25)
-                                        : HelmColor.gaugeTrack.opacity(0.35),
-                                    in: Capsule()
-                                )
-                        }
-                        .buttonStyle(.helmPressable)
-                    }
-                }
-            }
-        }
-    }
-
-    private var sizeChips: [SizeChip] {
-        guard let config = countableConfig else { return [] }
-        return config.sizeOptions.map { option in
-            SizeChip(
-                label: option.label,
-                displayLabel: sizeDisplayLabel(from: option.label),
-                grams: option.grams
-            )
-        }
-    }
-
-    private var gramsOverrideSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Button {
-                withAnimation(
-                    HelmMotion.animation(
-                        HelmMotion.quickAnimation,
-                        reduceMotion: reduceMotion
-                    )
-                ) {
-                    showsGramsOverride.toggle()
-                }
-            } label: {
-                HStack {
-                    Text(showsGramsOverride ? "Adjust weight" : "Adjust weight")
-                        .helmType(.label)
-                    Spacer()
-                    HelmIconView(showsGramsOverride ? .chevronUp : .chevronDown, context: .inline)
-                        .foregroundStyle(HelmColor.fgMuted)
-                }
-            }
-            .buttonStyle(.helmPressable)
-
-            if showsGramsOverride {
-                gramsSection
-            }
-        }
-    }
-
-    // MARK: - Weight mode
-
-    private var weightPortionSection: some View {
-        Group {
-            if !portionChips.isEmpty {
-                portionChipSection
-            }
-
-            if defaults.prefersServingLabel {
-                servingSection
-            }
-
-            gramsSection
-        }
-    }
-
-    private var portionChips: [PortionChip] {
-        produceOptions.map { PortionChip(label: $0.label, grams: $0.grams) }
-    }
-
-    private var portionChipSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Quick portions")
-                .helmType(.label)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: HelmSpacing.xs) {
-                    ForEach(portionChips, id: \.label) { chip in
-                        Button {
-                            applyChip(chip)
-                        } label: {
-                            Text(chip.label)
-                                .helmType(.monoTag)
-                                .padding(.horizontal, HelmSpacing.sm)
-                                .padding(.vertical, HelmSpacing.xs)
-                                .background(
-                                    selectedChipLabel == chip.label
-                                        ? HelmColor.buttonPrimaryBackground.opacity(0.25)
-                                        : HelmColor.gaugeTrack.opacity(0.35),
-                                    in: Capsule()
-                                )
-                        }
-                        .buttonStyle(.helmPressable)
-                    }
-                }
-            }
-        }
     }
 
     private var sourceLabel: String {
@@ -313,64 +163,6 @@ struct FoodPortionStepView: View {
 
     private var bucketPicker: some View {
         MealBucketPicker(selection: $bucket)
-    }
-
-    private var servingSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text("Serving label")
-                .helmType(.label)
-            TextField("e.g. 1 medium apple", text: $servingLabel)
-                .textInputAutocapitalization(.words)
-                .helmType(.body)
-                .padding(HelmSpacing.sm)
-                .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-                .onChange(of: servingLabel) { _, _ in
-                    selectedChipLabel = nil
-                }
-        }
-    }
-
-    private var gramsSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            Text("Grams")
-                .helmType(.label)
-            TextField("Grams", text: $gramsText)
-                .focused($gramsFocused)
-                .keyboardType(.decimalPad)
-                .helmType(.body)
-                .padding(HelmSpacing.sm)
-                .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-                .onChange(of: gramsText) { _, _ in
-                    if countableConfig == nil {
-                        selectedChipLabel = nil
-                    }
-                }
-        }
-    }
-
-    private func applyChip(_ chip: PortionChip) {
-        gramsText = Self.format(chip.grams)
-        servingLabel = chip.label
-        selectedChipLabel = chip.label
-    }
-
-    private func syncCountableGramsFromSelection() {
-        guard let config = countableConfig else { return }
-        let sizeOption = config.sizeOptions.first { $0.label == selectedSizeLabel }
-            ?? CountablePortion.inferDefaultSize(from: product.ref.displayName, config: config)
-        let unitGrams = CountablePortion.gramsPerUnit(
-            sizeOption: sizeOption,
-            config: config,
-            fallbackGrams: defaults.grams
-        )
-        gramsText = Self.format(unitGrams * Double(quantity))
-    }
-
-    private func sizeDisplayLabel(from label: String) -> String {
-        if let range = label.range(of: #"^\d+\s+"#, options: .regularExpression) {
-            return String(label[range.upperBound...]).capitalized
-        }
-        return label.capitalized
     }
 
     private func macroSummary(_ macros: FoodPortionMacros) -> some View {
@@ -389,18 +181,11 @@ struct FoodPortionStepView: View {
             Text(label)
                 .helmType(.body)
             Spacer()
-            Text("\(Self.format(value)) \(unit)")
+            Text("\(FoodLogDisplayFormatter.formatNumber(value)) \(unit)")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
         .padding(HelmSpacing.sm)
         .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-    }
-
-    private static func format(_ value: Double) -> String {
-        if value.rounded() == value {
-            return String(Int(value.rounded()))
-        }
-        return String(format: "%.1f", value)
     }
 
     private static func mapOrigin(_ origin: FoodProductRef.Origin) -> PortionOptionCatalog.FoodProductOrigin {
@@ -410,17 +195,80 @@ struct FoodPortionStepView: View {
         case .custom: .custom
         }
     }
+
+    private static func countableMenuExtras(from mode: PortionInputMode) -> [ProducePortionOption] {
+        guard case let .countable(config) = mode else { return [] }
+        var extras = config.sizeOptions
+        if let fixed = config.fixedUnitGrams {
+            let label = config.unitNoun == "whole" ? "1 whole" : "1 \(config.unitNoun)"
+            extras.insert(ProducePortionOption(label: label, grams: fixed), at: 0)
+        }
+        return extras
+    }
+
+    private static func initialServing(
+        in options: [ProducePortionOption],
+        servingLabel: String?,
+        sizeLabel: String?
+    ) -> ProducePortionOption? {
+        if let servingLabel, let match = options.first(where: { $0.label == servingLabel }) {
+            return match
+        }
+        if let sizeLabel, let match = options.first(where: { $0.label == sizeLabel }) {
+            return match
+        }
+        return options.first
+    }
 }
 
-private struct PortionChip: Hashable {
-    let label: String
-    let grams: Double
-}
+/// MFP-style servings × serving-size controls.
+struct ServingQuantityFields: View {
+    let options: [ProducePortionOption]
+    @Binding var servingsText: String
+    @Binding var selectedLabel: String
 
-private struct SizeChip: Hashable {
-    let label: String
-    let displayLabel: String
-    let grams: Double
+    var body: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text("Servings")
+                    .helmType(.label)
+                TextField("1", text: $servingsText)
+                    .keyboardType(.decimalPad)
+                    .helmType(.number)
+                    .padding(HelmSpacing.sm)
+                    .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                    .accessibilityLabel("Number of servings")
+            }
+
+            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                Text("Serving size")
+                    .helmType(.label)
+                Menu {
+                    ForEach(options, id: \.label) { option in
+                        Button(option.label) {
+                            HapticEngine.shared.play(.selection)
+                            selectedLabel = option.label
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Text(selectedOption?.label ?? "Serving")
+                            .helmType(.body)
+                        Spacer()
+                        HelmIconView(.chevronDown, context: .inline)
+                            .foregroundStyle(HelmColor.fgMuted)
+                    }
+                    .padding(HelmSpacing.sm)
+                    .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
+                }
+                .accessibilityLabel("Serving size")
+            }
+        }
+    }
+
+    private var selectedOption: ProducePortionOption? {
+        options.first { $0.label == selectedLabel } ?? options.first
+    }
 }
 
 #Preview("Portion packaged bar") {

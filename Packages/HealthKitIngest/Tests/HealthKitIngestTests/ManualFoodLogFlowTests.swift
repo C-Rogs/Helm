@@ -68,6 +68,46 @@ struct FoodPortionDefaultsTests {
         }
     }
 
+    @Test("barcode products still show the portion step")
+    func neverSkipsPortionStep() {
+        let product = ResolvedFoodProduct(
+            ref: grenadeRef,
+            per100gKcal: 380,
+            per100gProteinG: 35,
+            per100gCarbsG: 18,
+            per100gFatG: 12,
+            confidence: .branded,
+            suggestedGrams: 60,
+            servingLabel: "1 bar",
+            source: .openFoodFacts
+        )
+        #expect(!FoodPortionDefaultsResolver.shouldSkipPortionStep(for: product))
+    }
+
+    @Test("apple defaults to one whole countable unit")
+    func appleDefaultsToWhole() {
+        let product = ResolvedFoodProduct(
+            ref: FoodProductRef(
+                origin: .cofid,
+                externalID: "14-018",
+                displayName: "Apple, eating"
+            ),
+            per100gKcal: 47,
+            per100gProteinG: 0.4,
+            per100gCarbsG: 11.8,
+            per100gFatG: 0.1,
+            confidence: .exact,
+            source: .cofid
+        )
+        let defaults = FoodPortionDefaultsResolver.defaults(for: product, storedPreference: nil)
+        #expect(defaults.servingLabel == "1 whole")
+        if case .countable(let config) = defaults.inputMode {
+            #expect(config.unitNoun == "whole")
+        } else {
+            Issue.record("Apple should use countable whole")
+        }
+    }
+
     @Test("egg pack avoids whole-pack default grams")
     func eggPackUsesPerEggDefault() {
         let product = ResolvedFoodProduct(
@@ -95,6 +135,52 @@ struct FoodPortionDefaultsTests {
         } else {
             Issue.record("Egg pack should use countable input mode")
         }
+    }
+
+    @Test("barcode bar with gram serving defaults to one unit")
+    func barGramServingIsOneUnit() {
+        let product = ResolvedFoodProduct(
+            ref: FoodProductRef(
+                origin: .openFoodFacts,
+                externalID: "5055040001234",
+                displayName: "PhD Smart Protein Bar"
+            ),
+            per100gKcal: 380,
+            per100gProteinG: 35,
+            per100gCarbsG: 18,
+            per100gFatG: 12,
+            confidence: .branded,
+            suggestedGrams: 35,
+            servingLabel: "35 g",
+            source: .openFoodFacts
+        )
+
+        let defaults = FoodPortionDefaultsResolver.defaults(for: product, storedPreference: nil)
+
+        #expect(defaults.defaultQuantity == 1)
+        #expect(defaults.grams == 35)
+        #expect(defaults.servingLabel == "1 bar")
+    }
+
+    @Test("gram serving on packaged food is not a portion count")
+    func packagedGramServingIsOneWhole() {
+        let product = ResolvedFoodProduct(
+            ref: grenadeRef,
+            per100gKcal: 380,
+            per100gProteinG: 35,
+            per100gCarbsG: 18,
+            per100gFatG: 12,
+            confidence: .branded,
+            suggestedGrams: 35,
+            servingLabel: "35 g",
+            source: .openFoodFacts
+        )
+
+        let defaults = FoodPortionDefaultsResolver.defaults(for: product, storedPreference: nil)
+
+        #expect(defaults.defaultQuantity == 1)
+        #expect(defaults.grams == 35)
+        #expect(defaults.servingLabel == "1 whole")
     }
 }
 

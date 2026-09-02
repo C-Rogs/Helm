@@ -325,4 +325,38 @@ struct HealthKitIngestActorTests {
         #expect(trace.skippedOutOfRange == 1)
         #expect(trace.newestHkDay == "2026-08-31")
     }
+
+    @Test("step ingest writes HealthKit cumulative total not the delta batch")
+    func stepSyncUsesCumulativeTotal() async throws {
+        let store = try PersistenceStore.inMemory()
+        let mockStore = MockHealthKitStoreClient()
+        let anchorDirectory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: anchorDirectory, withIntermediateDirectories: true)
+
+        let loggedAt = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 16))
+        )
+        let sample = HKQuantitySample(
+            type: HKQuantityType(.stepCount),
+            quantity: HKQuantity(unit: .count(), doubleValue: 67),
+            start: loggedAt,
+            end: loggedAt
+        )
+        mockStore.setFetchResult(
+            AnchoredFetchResult(addedSamples: [sample], deletedObjectIDs: [], newAnchor: nil),
+            for: HKQuantityType(.stepCount)
+        )
+        mockStore.setCumulativeSum(12_320, identifier: .stepCount)
+
+        let ingest = HealthKitIngest(
+            persistence: store,
+            anchorDirectoryURL: anchorDirectory,
+            store: mockStore
+        )
+        _ = await ingest.syncKinds([.stepCount])
+
+        let metrics = try store.dailyMetrics.fetch(helmDay: day)
+        #expect(metrics?.stepCount == 12_320)
+    }
 }

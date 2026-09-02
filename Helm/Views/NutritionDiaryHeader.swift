@@ -43,10 +43,10 @@ struct NutritionDiaryHeader: View {
                         dayChip(day)
                     }
                 }
-                .frame(maxWidth: .infinity)
+                .frame(minWidth: 0, maxWidth: .infinity)
                 .clipped()
                 .contentShape(Rectangle())
-                .gesture(weekSwipeGesture)
+                .highPriorityGesture(weekSwipeGesture)
 
                 Button {
                     goToNextDay()
@@ -112,8 +112,14 @@ struct NutritionDiaryHeader: View {
                     .helmType(.monoTag, color: muted)
                 Text("\(day.day)")
                     .helmType(.label, color: foreground)
+                if let eatTo = budgetDay?.eatToCaloriesKcal, eatTo > 0 {
+                    HelmNumericText(eatTo)
+                        .helmType(.monoTag, color: isSelected ? muted : chipKcalColor(budgetDay))
+                        .minimumScaleFactor(0.7)
+                        .lineLimit(1)
+                }
             }
-            .frame(maxWidth: .infinity)
+            .frame(minWidth: 0, maxWidth: .infinity)
             .padding(.vertical, HelmSpacing.xs)
             .background(chipBackground(isSelected: isSelected, state: budgetDay?.state), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
             .overlay {
@@ -151,6 +157,15 @@ struct NutritionDiaryHeader: View {
         case .remaining: return HelmColor.accent.opacity(0.10)
         case .provisional: return HelmColor.gaugeTrack.opacity(0.18)
         case nil: return HelmColor.gaugeTrack.opacity(0.25)
+        }
+    }
+
+    private func chipKcalColor(_ budgetDay: WeeklyNutritionBudgetDay?) -> Color {
+        guard let budgetDay else { return HelmColor.fgMuted }
+        switch budgetDay.state {
+        case .consumed: return HelmColor.ready
+        case .remaining: return HelmColor.accent
+        case .provisional: return HelmColor.fgSecondary
         }
     }
 

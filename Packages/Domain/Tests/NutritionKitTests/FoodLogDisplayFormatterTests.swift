@@ -75,4 +75,12 @@ struct FoodLogDisplayFormatterTests {
         #expect(FoodLogDisplayFormatter.parseBrand(from: "Coop 6 large free range eggs") == "Coop")
         #expect(FoodLogDisplayFormatter.parseBrand(from: "Egg, whole, raw") == nil)
     }
+
+    @Test("formatNumber does not trap on non-finite values")
+    func formatNumberIsSafe() {
+        #expect(FoodLogDisplayFormatter.formatNumber(35) == "35")
+        #expect(FoodLogDisplayFormatter.formatNumber(34.9) == "34.9")
+        #expect(FoodLogDisplayFormatter.formatNumber(.infinity) == "0")
+        #expect(FoodLogDisplayFormatter.formatNumber(.nan) == "0")
+    }
 }
