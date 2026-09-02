@@ -103,4 +103,31 @@ struct ChatStoreTests {
         #expect(try store.chat.fetchAll(surface: .chat).isEmpty)
         #expect(try store.chat.fetchAll(surface: .train).map(\.text) == ["Train only"])
     }
+
+    @Test("train append drops oldest rows past the retention window")
+    func trainAppendTrimsOldest() throws {
+        let store = try PersistenceStore.inMemory()
+        for index in 1...5 {
+            _ = try store.chat.append(
+                ChatMessageInsert(
+                    role: .user,
+                    text: "t\(index)",
+                    promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                    surface: .train
+                ),
+                keepingNewest: 3
+            )
+        }
+        #expect(try store.chat.fetchAll(surface: .train).map(\.text) == ["t3", "t4", "t5"])
+
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "chat stays",
+                promptVersion: CoachPromptVersion.chatV1.rawValue,
+                surface: .chat
+            )
+        )
+        #expect(try store.chat.fetchAll(surface: .chat).map(\.text) == ["chat stays"])
+    }
 }

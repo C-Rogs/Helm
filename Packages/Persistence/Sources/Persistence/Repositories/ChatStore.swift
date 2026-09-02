@@ -61,6 +61,9 @@ public struct ChatMessageInsert: Sendable, Equatable {
 }
 
 public struct ChatStore: Sendable {
+    /// Train Ask Coach has no "clear chat". Keep a rolling window so SQLite does not grow without bound.
+    public static let trainRetentionLimit = 200
+
     private let pool: DatabasePool
 
     init(pool: DatabasePool) {
@@ -90,7 +93,11 @@ public struct ChatStore: Sendable {
         }
     }
 
-    public func append(_ message: ChatMessageInsert, createdAt: Date = Date()) throws -> StoredChatMessage {
+    public func append(
+        _ message: ChatMessageInsert,
+        createdAt: Date = Date(),
+        keepingNewest: Int? = nil
+    ) throws -> StoredChatMessage {
         try pool.write { db in
             let nextSortIndex = try Int.fetchOne(
                 db,
@@ -108,6 +115,10 @@ public struct ChatStore: Sendable {
                 surface: message.surface.rawValue
             )
             try record.insert(db)
+            let retention = keepingNewest ?? (message.surface == .train ? Self.trainRetentionLimit : nil)
+            if let retention {
+                try Self.trimOldest(db: db, surface: message.surface, keepingNewest: retention)
+            }
             return try record.toValue()
         }
     }
@@ -118,6 +129,29 @@ public struct ChatStore: Sendable {
                 .filter(Column("surface") == surface.rawValue)
                 .deleteAll(db)
         }
+    }
+
+    private static func trimOldest(db: Database, surface: ChatSurface, keepingNewest: Int) throws {
+        let keep = max(1, keepingNewest)
+        let count = try Int.fetchOne(
+            db,
+            sql: "SELECT COUNT(*) FROM chat_message WHERE surface = ?",
+            arguments: [surface.rawValue]
+        ) ?? 0
+        let excess = count - keep
+        guard excess > 0 else { return }
+        try db.execute(
+            sql: """
+                DELETE FROM chat_message
+                WHERE id IN (
+                    SELECT id FROM chat_message
+                    WHERE surface = ?
+                    ORDER BY sort_index ASC
+                    LIMIT ?
+                )
+                """,
+            arguments: [surface.rawValue, excess]
+        )
     }
 }
 
