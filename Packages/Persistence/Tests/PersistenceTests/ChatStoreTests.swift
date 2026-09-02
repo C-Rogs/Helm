@@ -73,4 +73,78 @@ struct ChatStoreTests {
         try store.chat.clear()
         #expect(try store.chat.fetchAll().isEmpty)
     }
+
+    @Test("train surface does not mix into chat fetch or clear")
+    func trainSurfaceStaysSeparate() throws {
+        let store = try PersistenceStore.inMemory()
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "Chat only",
+                promptVersion: CoachPromptVersion.chatV1.rawValue,
+                surface: .chat
+            )
+        )
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "Train only",
+                promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                surface: .train
+            )
+        )
+
+        let chat = try store.chat.fetchAll(surface: .chat)
+        let train = try store.chat.fetchAll(surface: .train)
+        #expect(chat.map(\.text) == ["Chat only"])
+        #expect(train.map(\.text) == ["Train only"])
+
+        try store.chat.clear(surface: .chat)
+        #expect(try store.chat.fetchAll(surface: .chat).isEmpty)
+        #expect(try store.chat.fetchAll(surface: .train).map(\.text) == ["Train only"])
+    }
+
+    @Test("train append drops oldest rows past the retention window")
+    func trainAppendTrimsOldest() throws {
+        let store = try PersistenceStore.inMemory()
+        for index in 1...5 {
+            _ = try store.chat.append(
+                ChatMessageInsert(
+                    role: .user,
+                    text: "t\(index)",
+                    promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                    surface: .train
+                ),
+                keepingNewest: 3
+            )
+        }
+        #expect(try store.chat.fetchAll(surface: .train).map(\.text) == ["t3", "t4", "t5"])
+
+        _ = try store.chat.append(
+            ChatMessageInsert(
+                role: .user,
+                text: "chat stays",
+                promptVersion: CoachPromptVersion.chatV1.rawValue,
+                surface: .chat
+            )
+        )
+        #expect(try store.chat.fetchAll(surface: .chat).map(\.text) == ["chat stays"])
+    }
+
+    @Test("chat append drops oldest rows past the retention window")
+    func chatAppendTrimsOldest() throws {
+        let store = try PersistenceStore.inMemory()
+        for index in 1...5 {
+            _ = try store.chat.append(
+                ChatMessageInsert(
+                    role: .user,
+                    text: "c\(index)",
+                    promptVersion: CoachPromptVersion.chatV1.rawValue,
+                    surface: .chat
+                ),
+                keepingNewest: 3
+            )
+        }
+        #expect(try store.chat.fetchAll(surface: .chat).map(\.text) == ["c3", "c4", "c5"])
+    }
 }

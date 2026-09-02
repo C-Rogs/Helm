@@ -94,6 +94,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
     public let loadAdjustmentIntent: LoadAdjustmentIntent?
     public let targetSets: Int?
     public let warmupSets: Int?
+    public let targetReps: Int?
 
     public init(
         kind: Kind,
@@ -109,7 +110,8 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         targetRPE: Double? = nil,
         loadAdjustmentIntent: LoadAdjustmentIntent? = nil,
         targetSets: Int? = nil,
-        warmupSets: Int? = nil
+        warmupSets: Int? = nil,
+        targetReps: Int? = nil
     ) {
         self.kind = kind
         self.fromExerciseID = fromExerciseID
@@ -125,6 +127,7 @@ public struct SessionAdjustmentOperation: Codable, Sendable, Equatable {
         self.loadAdjustmentIntent = loadAdjustmentIntent
         self.targetSets = targetSets
         self.warmupSets = warmupSets
+        self.targetReps = targetReps
     }
 }
 

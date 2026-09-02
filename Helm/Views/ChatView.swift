@@ -7,6 +7,7 @@ struct ChatView: View {
     @Bindable private var controller = ChatBootstrap.controller
     @Bindable private var activityGate = CoachActivityGate.shared
     @FocusState private var isInputFocused: Bool
+    @Environment(\.helmPalette) private var palette
 
     private var coachName: String { CoachDisplayNameStore.name }
 
@@ -473,6 +474,8 @@ struct ChatView: View {
                 axis: .vertical
             )
                 .textFieldStyle(.plain)
+                .foregroundStyle(palette.fg)
+                .tint(palette.accent)
                 .lineLimit(1 ... 4)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)

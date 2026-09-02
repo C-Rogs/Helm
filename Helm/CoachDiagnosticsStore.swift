@@ -11,7 +11,8 @@ final class CoachDiagnosticsStore {
     private(set) var lastRejectReason: String?
     private(set) var lastSurface: String?
 
-    /// Accumulated citation-validation failures for the current turn.
+    /// Citation-validation failures for debug UI. Capped; `clearTurnState` keeps them.
+    private static let citationFailureLimit = 50
     private(set) var citationFailures: [CitationFailure] = []
 
     struct CitationFailure: Sendable, Equatable {
@@ -72,5 +73,9 @@ final class CoachDiagnosticsStore {
 
     func recordCitationFailure(type: CitationFailureType, rawTag: String) {
         citationFailures.append(CitationFailure(type: type, rawTag: rawTag, timestamp: .now))
+        let limit = Self.citationFailureLimit
+        if citationFailures.count > limit {
+            citationFailures = Array(citationFailures.suffix(limit))
+        }
     }
 }

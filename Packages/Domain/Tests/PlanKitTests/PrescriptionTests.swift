@@ -541,4 +541,58 @@ struct PrescriptionAdjustmentTests {
         }
         #expect(adjusted.exercises[0].targetRPE == 8.5)
     }
+
+    @Test("add exercise keeps a named working weight")
+    func addExerciseKeepsTargetMass() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: "cable_fly",
+                    targetMassKg: 15,
+                    targetSets: 2,
+                    targetReps: 12
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected add exercise to apply")
+            return
+        }
+        let added = adjusted.exercises.first { $0.exerciseID == "cable_fly" }
+        #expect(added?.targetSets == 2)
+        #expect(added?.targetMass?.kilograms == 15)
+        #expect(added?.targetRepMin == 12)
+        #expect(added?.targetRepMax == 12)
+    }
+
+    @Test("load adjustment can seed reps without a mass delta")
+    func adjustLoadSeedsReps() {
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    targetReps: 10
+                )
+            ]),
+            to: session,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected load adjustment to apply")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass?.kilograms == 80)
+        #expect(adjusted.exercises[0].targetRepMin == 10)
+        #expect(adjusted.exercises[0].targetRepMax == 10)
+        #expect(PrescriptionDiff.exercisesChanged(from: session, to: adjusted))
+        #expect(!PrescriptionDiff.exercisesChanged(from: adjusted, to: adjusted))
+    }
 }

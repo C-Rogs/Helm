@@ -956,6 +956,14 @@ public struct ActiveSessionRepository: Sendable {
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
                     )
+                    try Self.syncPlannedWorkingTargets(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        previousSets: matched.sets,
+                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        prescribedReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
+                        now: now
+                    )
                 } else if index < existingSorted.count {
                     let sessionExercise = existingSorted[index]
                     let sessionExerciseID = sessionExercise.id
@@ -1001,6 +1009,14 @@ public struct ActiveSessionRepository: Sendable {
                         templateMassKg: prescribed.targetMass?.kilograms,
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
+                    )
+                    try Self.syncPlannedWorkingTargets(
+                        db: db,
+                        sessionExerciseID: sessionExerciseID,
+                        previousSets: sessionExercise.sets,
+                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        prescribedReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
+                        now: now
                     )
                 } else {
                     try Self.insertPrescribedExercise(
@@ -1488,6 +1504,68 @@ extension ActiveSessionRepository {
             )
             try Self.touchActiveState(db: db, sessionID: sessionID, now: now)
         }
+    }
+
+    /// Coach load/rep fills update `PrescribedExercise` targets, but composition
+    /// only uses those values when inserting new rows. Write them onto remaining
+    /// planned working sets when they actually changed.
+    private static func syncPlannedWorkingTargets(
+        db: Database,
+        sessionExerciseID: String,
+        previousSets: [SetEntryDraft],
+        prescribedMassKg: Double?,
+        prescribedReps: Int?,
+        now: String
+    ) throws {
+        let previousPlannedWorking = previousSets.filter {
+            $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
+        }
+        let shouldWriteMass: Bool = {
+            guard let prescribedMassKg else { return false }
+            if let currentKg = previousPlannedWorking.first?.mass?.kilograms,
+               abs(currentKg - prescribedMassKg) < 0.001 {
+                return false
+            }
+            return true
+        }()
+        let shouldWriteReps: Bool = {
+            guard let prescribedReps else { return false }
+            return previousPlannedWorking.first?.reps != prescribedReps
+        }()
+        guard shouldWriteMass || shouldWriteReps else { return }
+
+        let types = SetType.allCases.filter(\.countsAsPrescribedWorkingSet).map(\.rawValue)
+        guard !types.isEmpty else { return }
+        let placeholders = Array(repeating: "?", count: types.count).joined(separator: ", ")
+        let assignments: [String]
+        var arguments: [DatabaseValueConvertible] = []
+        if shouldWriteMass, let prescribedMassKg {
+            assignments = shouldWriteReps ? ["weight_kg = ?", "reps = ?", "updated_at = ?"] : ["weight_kg = ?", "updated_at = ?"]
+            arguments.append(prescribedMassKg)
+            if shouldWriteReps, let prescribedReps {
+                arguments.append(prescribedReps)
+            }
+        } else {
+            assignments = ["reps = ?", "updated_at = ?"]
+            if let prescribedReps {
+                arguments.append(prescribedReps)
+            }
+        }
+        arguments.append(now)
+        arguments.append(sessionExerciseID)
+        arguments.append(SetStatus.planned.rawValue)
+        arguments.append(contentsOf: types)
+        try db.execute(
+            sql: """
+                UPDATE set_entry
+                SET \(assignments.joined(separator: ", "))
+                WHERE workout_session_exercise_id = ?
+                  AND deleted_at IS NULL
+                  AND status = ?
+                  AND set_type IN (\(placeholders))
+                """,
+            arguments: StatementArguments(arguments)
+        )
     }
 
     static func adjustSetComposition(

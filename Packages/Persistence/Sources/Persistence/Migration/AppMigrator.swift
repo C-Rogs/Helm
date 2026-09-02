@@ -76,6 +76,9 @@ struct AppMigrator {
         if version >= 21 {
             ExercisePickerRankSchemaMigration.register(on: &migrator)
         }
+        if version >= 22 {
+            ChatSurfaceSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

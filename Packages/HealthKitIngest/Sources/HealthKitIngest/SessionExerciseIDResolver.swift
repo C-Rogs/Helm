@@ -223,7 +223,9 @@ enum SessionExerciseIDResolver {
                 rpeDelta: operation.rpeDelta,
                 targetRPE: operation.targetRPE,
                 loadAdjustmentIntent: operation.loadAdjustmentIntent,
-                targetSets: operation.targetSets
+                targetSets: operation.targetSets,
+                warmupSets: operation.warmupSets,
+                targetReps: operation.targetReps
             )
         case .reorder:
             let ordered = operation.orderedExerciseIDs?.map { id in
@@ -268,7 +270,10 @@ enum SessionExerciseIDResolver {
                 targetMassKg: operation.targetMassKg,
                 rpeDelta: operation.rpeDelta,
                 targetRPE: operation.targetRPE,
-                loadAdjustmentIntent: operation.loadAdjustmentIntent
+                loadAdjustmentIntent: operation.loadAdjustmentIntent,
+                targetSets: operation.targetSets,
+                warmupSets: operation.warmupSets,
+                targetReps: operation.targetReps
             )
         case .addExercise:
             let hints: [String?]
@@ -292,7 +297,13 @@ enum SessionExerciseIDResolver {
             return SessionAdjustmentOperation(
                 kind: operation.kind,
                 toExerciseID: to,
-                targetSets: operation.targetSets
+                massDeltaKg: operation.massDeltaKg,
+                targetMassKg: operation.targetMassKg,
+                rpeDelta: operation.rpeDelta,
+                targetRPE: operation.targetRPE,
+                targetSets: operation.targetSets,
+                warmupSets: operation.warmupSets,
+                targetReps: operation.targetReps
             )
         }
     }

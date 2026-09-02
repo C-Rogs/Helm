@@ -71,7 +71,7 @@ struct SettingsView: View {
                 FeedbackView()
             }
         } footer: {
-            Text("Bug or idea. Lands with Cam. Optionally attach coach chat.")
+            Text("Bug or idea. Lands with Cam. Optionally attach Chat and Train coach.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
     }

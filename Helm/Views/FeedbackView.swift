@@ -45,7 +45,7 @@ struct FeedbackView: View {
 
                 Section {
                     Toggle("Include coach history", isOn: $includeCoachHistory)
-                    Text("Attaches your coach chat so Cam can see the thread.")
+                    Text("Attaches Chat and Train coach threads so Cam can see both.")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
 
@@ -80,8 +80,10 @@ struct FeedbackView: View {
 
         var history: String?
         if includeCoachHistory {
-            let messages = (try? PersistenceBootstrap.persistenceStore.chat.fetchAll()) ?? []
-            let markdown = CoachHistoryExport.markdown(from: messages)
+            let store = PersistenceBootstrap.persistenceStore
+            let chat = (try? store.chat.fetchRecent(limit: ChatStore.feedbackChatLimit, surface: .chat)) ?? []
+            let train = (try? store.chat.fetchRecent(limit: ChatStore.trainRetentionLimit, surface: .train)) ?? []
+            let markdown = CoachHistoryExport.markdown(chat: chat, train: train)
             if !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
                 history = markdown
             }

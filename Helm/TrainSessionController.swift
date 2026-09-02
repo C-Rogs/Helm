@@ -334,6 +334,7 @@ final class TrainSessionController {
                 context: context
             )
             coachMessages = [InSessionCoachMessage(role: .assistant, text: intro.text)]
+            persistTrainCoachTranscript(role: .assistant, text: intro.text)
             coachThread = CoachThreadState(messages: [CoachMessage(role: .assistant, text: intro.text)])
             coachTurnError = nil
             CoachDiagnosticsStore.shared.clear()
@@ -379,8 +380,8 @@ final class TrainSessionController {
     }
 
     func insertProactiveCoachMessage(_ message: String) {
-        coachMessages.append(InSessionCoachMessage(role: .assistant, text: message))
-        coachThread.messages.append(CoachMessage(role: .assistant, text: message))
+        appendTrainCoachMessage(role: .assistant, text: message)
+        appendCoachThread(role: .assistant, text: message)
     }
 
     func handleRestExpiredProactiveCoach() {
@@ -1698,7 +1699,7 @@ final class TrainSessionController {
     private func performSendPreStartCoachMessage(_ trimmed: String) async {
         guard !Task.isCancelled else { return }
 
-        coachMessages.append(InSessionCoachMessage(role: .user, text: trimmed))
+        appendTrainCoachMessage(role: .user, text: trimmed)
         coachPromptText = ""
         pendingCoachProposal = nil
         coachTurnError = nil
@@ -1727,12 +1728,12 @@ final class TrainSessionController {
                 provider: provider,
                 profile: profile,
                 context: context,
-                thread: coachThread
+                thread: coachThread.windowed()
             )
 
-            coachThread.messages.append(CoachMessage(role: .user, text: trimmed))
-            coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
-            coachMessages.append(InSessionCoachMessage(role: .assistant, text: proposal.reply))
+            appendCoachThread(role: .user, text: trimmed)
+            appendCoachThread(role: .assistant, text: proposal.reply)
+            appendTrainCoachMessage(role: .assistant, text: proposal.reply)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
@@ -1743,8 +1744,8 @@ final class TrainSessionController {
             } else {
                 pendingCoachProposal = nil
                 if let failureNotice = proposal.failureNotice {
-                    coachMessages.append(InSessionCoachMessage(role: .assistant, text: failureNotice))
-                    coachThread.messages.append(CoachMessage(role: .assistant, text: failureNotice))
+                    appendTrainCoachMessage(role: .assistant, text: failureNotice)
+                    appendCoachThread(role: .assistant, text: failureNotice)
                 }
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
@@ -1786,7 +1787,7 @@ final class TrainSessionController {
             return
         }
 
-        coachMessages.append(InSessionCoachMessage(role: .user, text: trimmed))
+        appendTrainCoachMessage(role: .user, text: trimmed)
         coachPromptText = ""
         pendingCoachProposal = nil
         coachTurnError = nil
@@ -1813,7 +1814,7 @@ final class TrainSessionController {
                 provider: provider,
                 profile: profile,
                 context: context,
-                thread: coachThread,
+                thread: coachThread.windowed(),
                 liveVitals: InSessionLiveVitals.from(
                     buffer: sessionHeartRateBuffer,
                     currentBPM: WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM,
@@ -1821,9 +1822,9 @@ final class TrainSessionController {
                 )
             )
 
-            coachThread.messages.append(CoachMessage(role: .user, text: trimmed))
-            coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
-            coachMessages.append(InSessionCoachMessage(role: .assistant, text: proposal.reply))
+            appendCoachThread(role: .user, text: trimmed)
+            appendCoachThread(role: .assistant, text: proposal.reply)
+            appendTrainCoachMessage(role: .assistant, text: proposal.reply)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
@@ -1834,8 +1835,8 @@ final class TrainSessionController {
             } else {
                 pendingCoachProposal = nil
                 if let failureNotice = proposal.failureNotice {
-                    coachMessages.append(InSessionCoachMessage(role: .assistant, text: failureNotice))
-                    coachThread.messages.append(CoachMessage(role: .assistant, text: failureNotice))
+                    appendTrainCoachMessage(role: .assistant, text: failureNotice)
+                    appendCoachThread(role: .assistant, text: failureNotice)
                 }
             }
         } catch InSessionCoachError.providerUnavailable(let message) {
@@ -1886,7 +1887,7 @@ final class TrainSessionController {
                 provider: provider,
                 profile: profile,
                 context: context,
-                thread: thread,
+                thread: thread.windowed(),
                 liveVitals: InSessionLiveVitals.from(
                     buffer: sessionHeartRateBuffer,
                     currentBPM: WatchReadinessBootstrap.coordinator.latestLiveHeartRateBPM,
@@ -1903,11 +1904,11 @@ final class TrainSessionController {
                 provider: provider,
                 profile: profile,
                 context: context,
-                thread: thread
+                thread: thread.windowed()
             )
         }
-        coachThread.messages.append(CoachMessage(role: .user, text: userMessage))
-        coachThread.messages.append(CoachMessage(role: .assistant, text: proposal.reply))
+        appendCoachThread(role: .user, text: userMessage)
+        appendCoachThread(role: .assistant, text: proposal.reply)
         return proposal
     }
 
@@ -1962,8 +1963,8 @@ final class TrainSessionController {
             if !hadLiveSession, let adjusted {
                 let names = try persistence.exercises.displayNames(for: adjusted.exercises.map(\.exerciseID))
                 let acknowledgement = "Updated today's plan: \(adjusted.exercises.map { names[$0.exerciseID] ?? $0.exerciseID }.joined(separator: ", "))."
-                coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
-                coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
+                appendTrainCoachMessage(role: .assistant, text: acknowledgement)
+                appendCoachThread(role: .assistant, text: acknowledgement)
             }
         } catch InSessionCoachError.adjustmentRejected(let reason) {
             WorkoutHapticCoordinator.play(.clampRejected)
@@ -1979,8 +1980,35 @@ final class TrainSessionController {
     }
 
     private func appendCoachFailureNotice(_ text: String) {
-        coachMessages.append(InSessionCoachMessage(role: .assistant, text: text))
-        coachThread.messages.append(CoachMessage(role: .assistant, text: text))
+        appendTrainCoachMessage(role: .assistant, text: text)
+        appendCoachThread(role: .assistant, text: text)
+    }
+
+    private func appendTrainCoachMessage(role: InSessionCoachMessage.Role, text: String) {
+        coachMessages.append(InSessionCoachMessage(role: role, text: text))
+        let limit = ChatStore.trainRetentionLimit
+        if coachMessages.count > limit {
+            coachMessages = Array(coachMessages.suffix(limit))
+        }
+        persistTrainCoachTranscript(role: role, text: text)
+    }
+
+    private func appendCoachThread(role: CoachMessage.Role, text: String) {
+        coachThread.messages.append(CoachMessage(role: role, text: text))
+        coachThread = coachThread.windowed()
+    }
+
+    private func persistTrainCoachTranscript(role: InSessionCoachMessage.Role, text: String) {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        _ = try? persistence.chat.append(
+            ChatMessageInsert(
+                role: role == .user ? .user : .assistant,
+                text: trimmed,
+                promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                surface: .train
+            )
+        )
     }
 
     func dismissCoachProposal() async {
@@ -1990,8 +2018,8 @@ final class TrainSessionController {
             try inSessionCoach.dismissProposal(recommendationID: proposal.recommendationID)
             pendingCoachProposal = nil
             let acknowledgement = "Keeping the current plan."
-            coachMessages.append(InSessionCoachMessage(role: .assistant, text: acknowledgement))
-            coachThread.messages.append(CoachMessage(role: .assistant, text: acknowledgement))
+            appendTrainCoachMessage(role: .assistant, text: acknowledgement)
+            appendCoachThread(role: .assistant, text: acknowledgement)
         } catch {
             errorMessage = error.localizedDescription
         }

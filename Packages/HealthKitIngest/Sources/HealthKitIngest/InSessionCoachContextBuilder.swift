@@ -78,6 +78,12 @@ public enum InSessionCoachContextBuilder {
             lines.append("- slot \(index + 1) | \(archetypeID) | \(label)")
 
             let sortedSets = exercise.sets.sorted { $0.setIndex < $1.setIndex }
+            let plannedWorking = sortedSets.filter {
+                $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
+            }
+            if plannedWorking.contains(where: { $0.mass == nil }) {
+                lines.append("  working_load=unset")
+            }
             for set in sortedSets {
                 lines.append("  \(setLine(set))")
             }

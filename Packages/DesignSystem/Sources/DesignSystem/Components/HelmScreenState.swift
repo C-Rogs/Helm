@@ -2,13 +2,15 @@ import SwiftUI
 
 /// Mini arc-plus-trace mark for section eyebrows and tab-adjacent labels.
 public struct HelmArcTraceMark: View {
+    @Environment(\.helmPalette) private var palette
+
     public init() {}
 
     public var body: some View {
         ZStack {
             Circle()
                 .trim(from: 0, to: 0.75)
-                .stroke(HelmColor.hairline, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
+                .stroke(palette.hairline, style: StrokeStyle(lineWidth: 1.5, lineCap: .round))
                 .rotationEffect(.degrees(135))
 
             Path { path in
@@ -16,7 +18,7 @@ public struct HelmArcTraceMark: View {
                 path.addLine(to: CGPoint(x: 5, y: 5))
                 path.addLine(to: CGPoint(x: 9, y: 7))
             }
-            .stroke(HelmColor.accent, style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round))
+            .stroke(palette.accent, style: StrokeStyle(lineWidth: 1.2, lineCap: .round, lineJoin: .round))
         }
         .frame(width: 12, height: 12)
         .accessibilityHidden(true)
@@ -27,6 +29,7 @@ public struct HelmArcTraceMark: View {
 public struct HelmSectionEyebrow: View {
     private let text: String
     private let showsArcMark: Bool
+    @Environment(\.helmPalette) private var palette
 
     public init(_ text: String, showsArcMark: Bool = true) {
         self.text = text
@@ -39,7 +42,7 @@ public struct HelmSectionEyebrow: View {
                 HelmArcTraceMark()
             }
             Text(text)
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+                .helmType(.monoTag, color: palette.fgMuted)
         }
         .accessibilityAddTraits(.isHeader)
     }

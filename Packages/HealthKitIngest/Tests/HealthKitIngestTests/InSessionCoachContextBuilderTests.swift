@@ -50,6 +50,33 @@ struct InSessionCoachContextBuilderTests {
         #expect(block.contains("completed"))
     }
 
+    @Test("empty planned working load is marked unset")
+    func unsetWorkingLoad() {
+        let snapshot = ActiveSessionSnapshot(
+            session: WorkoutSessionDraft(
+                startedAt: Date(),
+                status: .active,
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        exerciseID: "cable_fly",
+                        displayOrder: 0,
+                        exerciseMode: .weightReps,
+                        sets: [
+                            SetEntryDraft(setIndex: 0, status: .planned, reps: 12)
+                        ]
+                    )
+                ]
+            ),
+            recoveryState: .active
+        )
+
+        let block = InSessionCoachContextBuilder.sessionExerciseBlock(
+            snapshot: snapshot,
+            displayNames: ["cable_fly": "Cable Fly"]
+        )
+        #expect(block.contains("working_load=unset"))
+    }
+
     @Test("set lines include RIR when logged")
     func loggedRIR() {
         let snapshot = ActiveSessionSnapshot(

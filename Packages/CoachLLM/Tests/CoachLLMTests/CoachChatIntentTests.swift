@@ -75,11 +75,17 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.looksLikeSessionAdjustment("Swap bench for dumbbell press"))
         #expect(CoachChatIntent.looksLikeSessionAdjustment("Add a set to RDL"))
         #expect(CoachChatIntent.looksLikeSessionAdjustment("Take 5kg off the squat"))
+        #expect(CoachChatIntent.looksLikeSessionAdjustment("Fill in the weights"))
+        #expect(CoachChatIntent.looksLikeSessionAdjustment("Add weights to the new lifts"))
+        #expect(CoachChatIntent.looksLikeWorkingLoadFill("Estimate working weights for these"))
+        #expect(!CoachChatIntent.looksLikeWorkingLoadFill("How has my weight trended"))
         #expect(!CoachChatIntent.looksLikeSessionAdjustment("Start the workout"))
         #expect(!CoachChatIntent.looksLikeSessionAdjustment("How was my workout earlier"))
         #expect(!CoachChatIntent.looksLikeSessionAdjustment("What's my TDEE"))
         #expect(!CoachChatIntent.looksLikeSessionAdjustment("Swap my training plan to 4 days"))
         #expect(CoachChatIntent.shouldRouteChatToSessionCoach("Swap bench for incline", sessionIsLive: true))
+        #expect(CoachChatIntent.shouldRouteChatToSessionCoach("Fill in the weights", sessionIsLive: true))
+        #expect(!CoachChatIntent.shouldRouteChatToSessionCoach("Fill in the weights", sessionIsLive: false))
         #expect(!CoachChatIntent.shouldRouteChatToSessionCoach("Swap bench for incline", sessionIsLive: false))
         #expect(CoachChatIntent.shouldRouteChatToSessionCoach(
             "Swap bench for incline on today's session",

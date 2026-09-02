@@ -64,6 +64,38 @@ struct HelmThemeModeTests {
         #expect(HelmThemeMode.dark.resolvedPalette(colorScheme: .light) == .dark)
         #expect(HelmThemeMode.light.resolvedPalette(colorScheme: .dark) == .light)
     }
+
+    @Test("Window appearance wins over a stale SwiftUI color scheme in auto")
+    func windowAppearanceWinsInAuto() {
+        #expect(
+            HelmWindowAppearance.resolvedColorScheme(
+                themeMode: .auto,
+                windowStyle: .dark,
+                fallback: .light
+            ) == .dark
+        )
+        #expect(
+            HelmWindowAppearance.resolvedColorScheme(
+                themeMode: .auto,
+                windowStyle: .light,
+                fallback: .dark
+            ) == .light
+        )
+        #expect(
+            HelmWindowAppearance.resolvedColorScheme(
+                themeMode: .auto,
+                windowStyle: .unspecified,
+                fallback: .dark
+            ) == .dark
+        )
+        #expect(
+            HelmWindowAppearance.resolvedColorScheme(
+                themeMode: .dark,
+                windowStyle: .light,
+                fallback: .light
+            ) == .dark
+        )
+    }
 }
 
 @Suite("Daily reveal gate")

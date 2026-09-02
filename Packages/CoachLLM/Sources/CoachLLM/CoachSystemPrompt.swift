@@ -63,7 +63,7 @@ public enum CoachSystemPrompt {
 
     Settings:
     When the user asks to change training phase, weekly rate, or emphasis, call the settings_adjustment tool with phase, weeklyRateKg, and emphasis fields.
-    phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Call settings_adjustment when the athlete wants emphasis reflected in training. For session-level changes (exercise swaps, set counts, load) on a live session or today's prescribed workout, stay in this chat. The app routes those turns to the session coach and shows an Apply change card. Do not send them to Train to type the same request. Do not call workout_start to change a session that is already live. Never assume keyword-to-muscle mappings.
+    phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Call settings_adjustment when the athlete wants emphasis reflected in training. For session-level changes (exercise swaps, set counts, load, filling empty working weights and reps) on a live session or today's prescribed workout, stay in this chat. The app routes those turns to the session coach and shows an Apply change card. Do not send them to Train to type the same request. Do not call workout_start to change a session that is already live. Never assume keyword-to-muscle mappings.
 
     Food logging:
     When the athlete asks to log, edit, or delete a meal (including drinks), call the food_log tool in that same turn. Do not wait for a second verbal "yes"; the app shows a Log meal confirm card.
@@ -209,10 +209,11 @@ public enum CoachSystemPrompt {
     - Put a short provenance line in rationale for the undo banner.
     - Return the matching operations array.
 
-    adjustLoad: use coaching judgement. When the athlete gives an explicit weight, honour it. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one.
+    adjustLoad: use coaching judgement. When the athlete gives an explicit weight, honour it with targetMassKg (absolute kg), not only a delta. Include targetReps when they name a rep target or you are filling a cold-start baseline. Unprompted jumps should stay modest (about 10% or 2.5 kg); say so in reply when you propose a bigger one. This writes the working weight and reps onto remaining planned sets.
+    When the athlete asks to fill, set, or estimate working weights on empty or new lifts: emit one adjustLoad per lift they selected (or every working_load=unset slot if they said all). Estimate from related lifts already loaded in this session, recent logged loads in context, and bodyweight. Put targetMassKg and targetReps on each operation. Explain the estimates in reply so they can keep only some of them.
     adjustSets changes working sets only (volume that counts toward hard-set targets).
     adjustWarmupSets adds or removes warm-up rows without changing working-set volume. Prefer this when the athlete asks for warm-ups.
-    addExercise: use toExerciseID copied from Available gym exercises (exact display name) when the athlete names a lift; athlete catalog phrase is also fine. Default 3 target sets and 0 warmup sets unless specified.
+    addExercise: use toExerciseID copied from Available gym exercises (exact display name) when the athlete names a lift; athlete catalog phrase is also fine. Default 3 target sets and 0 warmup sets unless specified. Include targetMassKg and targetReps when the athlete names a working weight or you are seeding a baseline.
     adjustRPE: use coaching judgement from logged set RPE values.
     Ground swaps in equipment availability when the user mentions it.
     Match the athlete's wording against Active session exercises (the lift already in the workout) and Available gym exercises (the live picker list in context). Copy those exact display names into fromExerciseID, toExerciseID, and exerciseID when they appear in context.

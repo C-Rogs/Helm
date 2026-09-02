@@ -587,6 +587,183 @@ struct InSessionCoachServiceTests {
         )
 
         #expect(applied.banner.toLabel == "100 kg")
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let working = try #require(refreshed?.session.exercises.first).sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet
+        }
+        #expect(working.allSatisfy { $0.mass?.kilograms == 100 })
+    }
+
+    @Test("load adjustment writes remaining planned set weights")
+    func adjustLoadWritesPlannedSetWeights() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Bench to 100 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 100
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let exercise = try #require(refreshed?.session.exercises.first)
+        let working = exercise.sets.filter { $0.setType.countsAsPrescribedWorkingSet }
+        #expect(working.count == 3)
+        #expect(working.allSatisfy { $0.mass?.kilograms == 100 })
+        #expect(working.allSatisfy { $0.status == .planned })
+    }
+
+    @Test("load adjustment fills empty planned weights")
+    func adjustLoadFillsEmptyPlannedWeights() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let engine = ActiveSessionEngine(repository: store.activeSessions)
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 7, day: 23),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 8,
+                    targetRepMax: 8
+                )
+            ]
+        )
+        let snapshot = try await engine.startFromPrescription(prescription)
+        #expect(snapshot.session.exercises.first?.sets.allSatisfy { $0.mass == nil } == true)
+
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Let's start bench at 80 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 80
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let working = try #require(refreshed?.session.exercises.first).sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet
+        }
+        #expect(working.allSatisfy { $0.mass?.kilograms == 80 })
+    }
+
+    @Test("load adjustment does not overwrite completed sets or warm-ups")
+    func adjustLoadPreservesCompletedAndWarmupLoads() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let engine = ActiveSessionEngine(repository: store.activeSessions)
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 7, day: 23),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 2,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 80),
+                    targetRPE: 8
+                )
+            ]
+        )
+        var snapshot = try await engine.startFromPrescription(prescription)
+        let exercise = try #require(snapshot.session.exercises.first)
+        let firstWorking = try #require(
+            exercise.sets.first { $0.setType.countsAsPrescribedWorkingSet }
+        )
+        snapshot = try await engine.logSet(
+            setID: firstWorking.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 82.5), reps: 8)
+        )
+        snapshot = try await engine.completeSet(
+            sessionExerciseID: exercise.id,
+            setID: firstWorking.id
+        )
+
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Take remaining bench sets to 100 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: benchPressID,
+                    targetMassKg: 100
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let sets = try #require(refreshed?.session.exercises.first?.sets)
+        let warmups = sets.filter { $0.setType.isWarmup }
+        let completed = sets.filter { $0.status == .completed }
+        let plannedWorking = sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
+        }
+        #expect(warmups.count == 2)
+        #expect(warmups.allSatisfy { $0.mass?.kilograms == 80 })
+        #expect(completed.count == 1)
+        #expect(completed.first?.mass?.kilograms == 82.5)
+        #expect(plannedWorking.count == 2)
+        #expect(plannedWorking.allSatisfy { $0.mass?.kilograms == 100 })
+    }
+
+    @Test("add exercise with a named weight writes it onto new sets")
+    func addExerciseWritesNamedWeight() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        try store.exercises.upsert(
+            id: cableFlyID,
+            canonicalName: "cable fly",
+            displayName: "Cable Fly",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding cable fly at 15 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: cableFlyID,
+                    targetMassKg: 15,
+                    targetSets: 2
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(payload: payload, snapshot: snapshot, excludedExerciseIDs: [])
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let fly = try #require(
+            refreshed?.session.exercises.first { $0.exerciseID == cableFlyID }
+        )
+        #expect(fly.sets.filter { $0.setType.countsAsPrescribedWorkingSet }.count == 2)
+        #expect(fly.sets.allSatisfy { $0.mass?.kilograms == 15 })
     }
 
     @Test("set adds past the engine cap apply")

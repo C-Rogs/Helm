@@ -719,11 +719,21 @@ public struct InSessionCoachService: Sendable {
         case .adjustLoad:
             let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
             let toExercise = adjusted.exercises.first { $0.exerciseID == exerciseID }
+            let fromExercise = previous.exercises.first { $0.exerciseID == exerciseID }
             let fromLabel = ExerciseDisplayFormatter.friendlyName(for: exerciseID, displayNames: names)
-            guard let toMass = toExercise?.targetMass?.kilograms else {
+            var parts: [String] = []
+            if let toMass = toExercise?.targetMass?.kilograms {
+                parts.append(formatMass(toMass))
+            }
+            let toReps = toExercise?.targetRepMin ?? toExercise?.targetRepMax
+            let fromReps = fromExercise?.targetRepMin ?? fromExercise?.targetRepMax
+            if let toReps, toReps != fromReps || parts.isEmpty {
+                parts.append("x \(toReps)")
+            }
+            guard !parts.isEmpty else {
                 throw InSessionCoachError.noApplicableChange
             }
-            return (fromLabel, formatMass(toMass))
+            return (fromLabel, parts.joined(separator: " "))
         case .adjustRPE:
             let exerciseID = operation.exerciseID ?? previous.exercises.first?.exerciseID ?? "Exercise"
             let toExercise = adjusted.exercises.first { $0.exerciseID == exerciseID }

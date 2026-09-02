@@ -411,6 +411,137 @@ struct ActiveSessionEngineTests {
         #expect(sets.filter { $0.setType == .dropSet }.count == 1)
     }
 
+    @Test("sync from prescription writes a new working weight onto planned sets")
+    func syncFromPrescriptionWritesPlannedLoad() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        let snapshot = try await engine.startFromPrescription(prescription)
+        let adjusted = SessionPrescription(
+            helmDay: prescription.helmDay,
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetMass: Mass(kilograms: 100)
+                )
+            ]
+        )
+        try persistence.activeSessions.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: adjusted,
+            timestamp: Date()
+        )
+
+        let refreshed = try #require(try persistence.activeSessions.fetchActiveSnapshot(at: Date()))
+        let working = try #require(refreshed.session.exercises.first).sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet
+        }
+        #expect(working.count == 3)
+        #expect(working.allSatisfy { $0.mass?.kilograms == 100 })
+    }
+
+    @Test("sync from prescription writes a new rep target onto planned sets")
+    func syncFromPrescriptionWritesPlannedReps() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        let snapshot = try await engine.startFromPrescription(prescription)
+        let adjusted = SessionPrescription(
+            helmDay: prescription.helmDay,
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetRepMin: 10,
+                    targetRepMax: 10,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        try persistence.activeSessions.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: adjusted,
+            timestamp: Date()
+        )
+
+        let refreshed = try #require(try persistence.activeSessions.fetchActiveSnapshot(at: Date()))
+        let working = try #require(refreshed.session.exercises.first).sets.filter {
+            $0.setType.countsAsPrescribedWorkingSet
+        }
+        #expect(working.allSatisfy { $0.reps == 10 })
+        #expect(working.allSatisfy { $0.mass?.kilograms == 80 })
+    }
+
+    @Test("sync from prescription does not homogenize planned loads when target is unchanged")
+    func syncFromPrescriptionKeepsMixedPlannedLoads() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        let prescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 8, day: 5),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: benchPressID,
+                    order: 0,
+                    targetSets: 3,
+                    warmupSets: 0,
+                    targetMass: Mass(kilograms: 80)
+                )
+            ]
+        )
+        var snapshot = try await engine.startFromPrescription(prescription)
+        let exercise = try #require(snapshot.session.exercises.first)
+        let second = try #require(exercise.sets.dropFirst().first)
+        snapshot = try await engine.logSet(
+            setID: second.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 85), reps: 8)
+        )
+
+        let unchanged = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
+        try persistence.activeSessions.syncFromPrescription(
+            sessionID: snapshot.session.id,
+            prescription: unchanged,
+            timestamp: Date()
+        )
+
+        let refreshed = try #require(try persistence.activeSessions.fetchActiveSnapshot(at: Date()))
+        let sets = try #require(refreshed.session.exercises.first?.sets.sorted { $0.setIndex < $1.setIndex })
+        #expect(sets[0].mass?.kilograms == 80)
+        #expect(sets[1].mass?.kilograms == 85)
+        #expect(sets[2].mass?.kilograms == 80)
+    }
+
     @Test("reorder exercises preserves sets on each exercise")
     func reorderExercisesPreservesSets() async throws {
         let (persistence, engine, _) = try makeHarness()
