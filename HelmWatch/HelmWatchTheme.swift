@@ -191,6 +191,8 @@ struct WatchRollingTime: View {
                 .watchType(style, color: color)
                 .watchNumericRoll(value: secs, reduceMotion: reduceMotion)
         }
+        .lineLimit(1)
+        .minimumScaleFactor(0.6)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(WatchTimeFormatting.mmss(seconds))
     }

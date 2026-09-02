@@ -75,11 +75,11 @@ struct WatchActiveWorkoutView: View {
                 VStack(spacing: 1) {
                     if let bpm {
                         Text("\(bpm)")
-                            .watchType(.heroNumber, color: WatchZoneColor.color(for: zone))
+                            .watchType(isLuminanceReduced ? .bigNumber : .heroNumber, color: WatchZoneColor.color(for: zone))
                             .watchNumericRoll(value: bpm, reduceMotion: reduceMotion)
                     } else {
                         Text("--")
-                            .watchType(.heroNumber, color: WatchPalette.fgSecondary)
+                            .watchType(isLuminanceReduced ? .bigNumber : .heroNumber, color: WatchPalette.fgSecondary)
                     }
                     if !isLuminanceReduced {
                         WatchZoneCaption(zone: zone)

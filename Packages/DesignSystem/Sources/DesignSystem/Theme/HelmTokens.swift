@@ -42,7 +42,7 @@ public enum HelmColor {
 
     public static var buttonPrimaryBackground: Color { palette.accentFill ?? palette.accent }
     public static var buttonPrimaryForeground: Color { palette.buttonPrimaryForeground }
-    public static var buttonSecondaryBackground: Color { palette.surfaceElevated }
+    public static var buttonSecondaryBackground: Color { palette.surface }
     public static var buttonSecondaryForeground: Color { palette.fg }
     public static var buttonSecondaryBorder: Color { palette.hairline }
 

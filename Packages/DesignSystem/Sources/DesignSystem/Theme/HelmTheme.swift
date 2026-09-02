@@ -270,13 +270,13 @@ private struct HelmThemeContainer<Content: View>: View {
                 coordinator.refreshPresentation(fallback: colorScheme)
             }
             .onChange(of: coordinator.themeMode) { _, _ in
-                coordinator.update(colorScheme: scheme)
+                coordinator.refreshPresentation(fallback: colorScheme)
             }
             .onChange(of: coordinator.skin) { _, _ in
-                coordinator.update(colorScheme: scheme)
+                coordinator.refreshPresentation(fallback: colorScheme)
             }
             .onChange(of: coordinator.accentSource) { _, _ in
-                coordinator.update(colorScheme: scheme)
+                coordinator.refreshPresentation(fallback: colorScheme)
             }
             .onChange(of: coordinator.prefersSystemFonts) { _, newValue in
                 HelmFontPreferences.prefersSystemFonts = newValue

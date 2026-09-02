@@ -79,6 +79,7 @@ public struct CalorieArcGauge: View {
                 y: origin.y + drawable / 2
             )
         }
+        .clipped()
         .aspectRatio(1, contentMode: .fit)
     }
 

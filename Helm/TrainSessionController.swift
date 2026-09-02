@@ -728,6 +728,7 @@ final class TrainSessionController {
     }
 
     func addSet(sessionExerciseID: String) async {
+        _ = await applyNumpadInput(persistEmptyClear: false)
         guard let exercise = store.snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID }) else {
             return
         }

@@ -24,6 +24,7 @@ private enum StyledKind {
 private struct StyledLabel: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
     @Environment(\.helmSkin) private var skin
+    @Environment(\.helmPalette) private var palette
 
     let configuration: ButtonStyleConfiguration
     let kind: StyledKind
@@ -42,7 +43,7 @@ private struct StyledLabel: View {
             .overlay {
                 if kind == .secondary {
                     RoundedRectangle(cornerRadius: HelmRadius.sm)
-                        .strokeBorder(HelmColor.buttonSecondaryBorder, lineWidth: 1)
+                        .strokeBorder(palette.hairline, lineWidth: 1)
                 }
             }
             .helmPressChrome(
@@ -55,15 +56,15 @@ private struct StyledLabel: View {
 
     private var foreground: Color {
         switch kind {
-        case .primary: HelmColor.buttonPrimaryForeground
-        case .secondary: HelmColor.buttonSecondaryForeground
+        case .primary: palette.buttonPrimaryForeground
+        case .secondary: palette.fg
         }
     }
 
     private var background: Color {
         switch kind {
-        case .primary: HelmColor.buttonPrimaryBackground
-        case .secondary: HelmColor.buttonSecondaryBackground
+        case .primary: palette.accentFill ?? palette.accent
+        case .secondary: palette.surface
         }
     }
 }

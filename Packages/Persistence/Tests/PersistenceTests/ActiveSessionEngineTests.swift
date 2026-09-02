@@ -321,6 +321,38 @@ struct ActiveSessionEngineTests {
         #expect(Set(sets.map(\.setIndex)).count == 3)
     }
 
+    @Test("add set copies mass and reps from the last working set")
+    func addSetCopiesPriorWorkingLoad() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedBenchPress(in: persistence)
+
+        _ = try await engine.start()
+        let withExercise = try await engine.addExercise(exerciseID: benchPressID)
+        let exercise = try #require(withExercise.session.exercises.first)
+        let firstSet = try #require(exercise.sets.sorted { $0.setIndex < $1.setIndex }.first)
+
+        _ = try await engine.logSet(
+            setID: firstSet.id,
+            update: SetLogUpdate(mass: Mass(kilograms: 72.5), reps: 9, rpe: 7.5)
+        )
+
+        let afterAdd = try await engine.adjustExerciseSetCount(
+            sessionExerciseID: exercise.id,
+            targetSetCount: 4
+        )
+        let working = try #require(
+            afterAdd.session.exercises.first?.sets
+                .filter { $0.setType.countsAsPrescribedWorkingSet }
+                .sorted { $0.setIndex < $1.setIndex }
+        )
+        #expect(working.count == 4)
+        let added = try #require(working.last)
+        #expect(added.mass?.kilograms == 72.5)
+        #expect(added.reps == 9)
+        #expect(added.rpe == 7.5)
+        #expect(added.status == .planned)
+    }
+
     @Test("adjustExerciseSetCount targets working sets when warmups exist")
     func adjustSetCountIgnoresWarmupsInTarget() async throws {
         let (persistence, engine, _) = try makeHarness()

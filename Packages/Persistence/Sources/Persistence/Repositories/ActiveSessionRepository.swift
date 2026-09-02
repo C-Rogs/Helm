@@ -1646,6 +1646,12 @@ extension ActiveSessionRepository {
         templateRPE: Double?
     ) throws {
         if existingWorking.count < desiredCount {
+            let seed = Self.workingSetInsertTemplate(
+                existingWorking: existingWorking,
+                templateMassKg: templateMassKg,
+                templateReps: templateReps,
+                templateRPE: templateRPE
+            )
             try adjustTypedSetCount(
                 db: db,
                 sessionExerciseID: sessionExerciseID,
@@ -1654,9 +1660,9 @@ extension ActiveSessionRepository {
                 desiredCount: desiredCount,
                 existingOfType: existingWorking,
                 now: now,
-                templateMassKg: templateMassKg,
-                templateReps: templateReps,
-                templateRPE: templateRPE
+                templateMassKg: seed.massKg,
+                templateReps: seed.reps,
+                templateRPE: seed.rpe
             )
             return
         }
@@ -1679,6 +1685,23 @@ extension ActiveSessionRepository {
                 toRemove -= 1
             }
         }
+    }
+
+    /// Prefer the last working set that already has load/reps so “Add set”
+    /// copies the row the athlete just typed, not an empty prescription slot.
+    private static func workingSetInsertTemplate(
+        existingWorking: [SetEntryDraft],
+        templateMassKg: Double?,
+        templateReps: Int?,
+        templateRPE: Double?
+    ) -> (massKg: Double?, reps: Int?, rpe: Double?) {
+        let ordered = existingWorking.sorted { $0.setIndex < $1.setIndex }
+        let seed = ordered.last { $0.mass != nil || $0.reps != nil } ?? ordered.last
+        return (
+            seed?.mass?.kilograms ?? templateMassKg,
+            seed?.reps ?? templateReps,
+            seed?.rpe ?? templateRPE
+        )
     }
 
     private static func adjustTypedSetCount(

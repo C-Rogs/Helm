@@ -46,7 +46,7 @@ struct NutritionView: View {
 
     var body: some View {
         NavigationStack {
-            ScrollView {
+            ScrollView(.vertical) {
                 HelmScreenStack {
                     switch nutritionService.state {
                     case .loading:
@@ -102,7 +102,9 @@ struct NutritionView: View {
                     }
                 }
                 .helmScreenPadding()
+                .frame(maxWidth: .infinity)
             }
+            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
             .helmScreenBackground()
             .refreshable {
                 await refreshTargets()

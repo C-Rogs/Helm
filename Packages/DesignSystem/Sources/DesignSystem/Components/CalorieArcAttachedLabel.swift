@@ -20,7 +20,10 @@ struct CalorieArcAttachedLabelView: View {
         }
         .multilineTextAlignment(dock.textAlignment)
         .padding(dock.padding)
-        .fixedSize()
+        .frame(
+            maxWidth: HelmSpacing.lg * 2,
+            alignment: dock.frameAlignment
+        )
         .accessibilityHidden(true)
     }
 
@@ -100,6 +103,14 @@ enum CalorieArcLabelDock: Equatable {
     }
 
     var textAlignment: TextAlignment {
+        switch self {
+        case .gapEnd, .left, .topLeft: .trailing
+        case .top: .center
+        case .gapStart, .right, .topRight: .leading
+        }
+    }
+
+    var frameAlignment: Alignment {
         switch self {
         case .gapEnd, .left, .topLeft: .trailing
         case .top: .center

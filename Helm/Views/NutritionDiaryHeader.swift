@@ -44,6 +44,7 @@ struct NutritionDiaryHeader: View {
                     }
                 }
                 .frame(maxWidth: .infinity)
+                .clipped()
                 .contentShape(Rectangle())
                 .gesture(weekSwipeGesture)
 
