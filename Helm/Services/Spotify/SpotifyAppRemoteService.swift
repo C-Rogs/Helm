@@ -293,7 +293,12 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     private func scheduleReconnect() {
         guard workoutCaptureActive, isAuthorized else { return }
         guard connectAttempts < Self.maxConnectAttempts else { return }
-        let delay = Self.connectRetryDelays[min(connectAttempts - 1, Self.connectRetryDelays.count - 1)]
+        let delay = Self.connectRetryDelays[
+            SpotifyReconnectBackoff.delayIndex(
+                attempts: connectAttempts,
+                delayCount: Self.connectRetryDelays.count
+            )
+        ]
         Task {
             try? await Task.sleep(for: delay)
             guard workoutCaptureActive, !isConnected else { return }
