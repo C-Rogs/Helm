@@ -15,6 +15,15 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     @Published private(set) var isConnected = false
     @Published private(set) var isAuthorizing = false
     @Published private(set) var lastErrorMessage: String?
+    @Published private(set) var isConnecting = false
+
+    var isReconnecting: Bool { isConnecting || disconnectingForLifecycle }
+
+    var workoutMusicChipTitle: String {
+        if isConnected { return "Spotify connected" }
+        if isReconnecting { return "Reconnecting Spotify" }
+        return "Tap to wake Spotify"
+    }
 
     /// App Remote only connects while the Spotify app is running and playing, so a workout that
     /// starts before the music does keeps retrying rather than silently capturing nothing.
@@ -233,6 +242,7 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         }
 
         guard !remote.isConnected else { return }
+        isConnecting = true
         connectAttempts += 1
         remote.connect()
     }
@@ -275,6 +285,11 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
+    func nudgeReconnectIfCapturing() {
+        guard workoutCaptureActive, isAuthorized, !isConnected else { return }
+        Task { await connectUsingFreshToken() }
+    }
+
     private func scheduleReconnect() {
         guard workoutCaptureActive, isAuthorized else { return }
         guard connectAttempts < Self.maxConnectAttempts else { return }
@@ -288,17 +303,12 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
 
     private func handleConnectionFailure(_ error: Error?) {
         isConnected = false
+        isConnecting = false
         if let error {
             logger.error("Spotify App Remote connect failed: \(String(describing: error), privacy: .public)")
         }
 
-        // Asleep Spotify during a workout is expected; the Open Spotify CTA covers it.
-        // Keep Settings errors for verify/link flows and non-idle failures.
-        if workoutCaptureActive, Self.isAsleepStyleFailure(error) {
-            lastErrorMessage = nil
-        } else {
-            lastErrorMessage = Self.connectionFailureMessage(error)
-        }
+        lastErrorMessage = Self.connectionFailureMessage(error)
 
         // A rejected token can survive our expiry check (revoked, scope change), so force one refresh.
         if !didRetryAfterAuthFailure, appRemoteToken == nil, let session {
@@ -311,12 +321,6 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         }
 
         scheduleReconnect()
-    }
-
-    private static func isAsleepStyleFailure(_ error: Error?) -> Bool {
-        guard let error else { return true }
-        let nsError = error as NSError
-        return nsError.domain.hasPrefix("com.spotify.app-remote")
     }
 
     /// The SDK reports "Connection attempt failed." for the common case of Spotify being asleep,
@@ -357,6 +361,7 @@ extension SpotifyAppRemoteService: SPTAppRemoteDelegate {
         Task { @MainActor in
             guard let appRemote = self.appRemote else { return }
             self.isConnected = true
+            self.isConnecting = false
             self.connectAttempts = 0
             self.didRetryAfterAuthFailure = false
             self.lastErrorMessage = nil

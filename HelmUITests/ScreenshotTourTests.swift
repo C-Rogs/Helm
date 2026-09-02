@@ -34,7 +34,7 @@ final class ScreenshotTourTests: XCTestCase {
         openTab("Chat")
         capture("04-chat")
 
-        openTab("Settings")
+        openSettings()
         capture("05-settings")
 
         for (index, title) in Self.settingsDestinations.enumerated() {
@@ -44,7 +44,7 @@ final class ScreenshotTourTests: XCTestCase {
             dismissSettingsDestination(title)
         }
 
-        openTab("Dashboard")
+        dismissSettingsToDashboard()
         tryOpenDashboardDetail(matching: "Sleep", name: "07-sleep-analysis")
         tryOpenDashboardDetail(matching: "Muscle", name: "08-muscle-volume")
         tryOpenDashboardDetail(matching: "TODAY", name: "09-progression-detail")
@@ -79,6 +79,30 @@ final class ScreenshotTourTests: XCTestCase {
         }
         tab.tap()
         RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+    }
+
+    private func openSettings() {
+        openTab("Dashboard")
+        let settings = app.navigationBars["Dashboard"].buttons["Settings"]
+        guard settings.waitForExistence(timeout: 8) else {
+            XCTFail("Settings toolbar button missing")
+            return
+        }
+        settings.tap()
+        _ = app.navigationBars["Settings"].waitForExistence(timeout: 4)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+    }
+
+    private func dismissSettingsToDashboard() {
+        if app.navigationBars["Dashboard"].waitForExistence(timeout: 1) {
+            return
+        }
+        let back = app.navigationBars.buttons.firstMatch
+        if back.exists {
+            back.tap()
+        }
+        _ = app.navigationBars["Dashboard"].waitForExistence(timeout: 4)
+        RunLoop.current.run(until: Date().addingTimeInterval(0.4))
     }
 
     private func openSettingsDestination(_ title: String) {
@@ -178,8 +202,10 @@ final class ScreenshotTourTests: XCTestCase {
     private func scrollSettingsToward(_ title: String) {
         let list: XCUIElement = {
             if app.collectionViews.firstMatch.exists { return app.collectionViews.firstMatch }
-            return app.tables.firstMatch
+            if app.tables.firstMatch.exists { return app.tables.firstMatch }
+            return app.scrollViews.firstMatch
         }()
+        guard list.exists else { return }
         for _ in 0..<8 {
             if contentLink(title).exists { return }
             list.swipeUp()

@@ -27,41 +27,39 @@ struct SettingsView: View {
     @State private var advancedTapCount = 0
 
     var body: some View {
-        NavigationStack {
-            List {
-                feedbackSection
-                trainingSection
-                nutritionSection
-                coachSection
-                connectionsSection
-                notificationsSection
-                trainSessionSection
-                restTimerSection
-                appearanceSection
-                if friendsRelease.showsAdvanced {
-                    batterySection
-                }
-                dataSection
-                if friendsRelease.showsAdvanced {
-                    advancedSection
-                }
-                versionSection
+        List {
+            feedbackSection
+            trainingSection
+            nutritionSection
+            coachSection
+            connectionsSection
+            notificationsSection
+            trainSessionSection
+            restTimerSection
+            appearanceSection
+            if friendsRelease.showsAdvanced {
+                batterySection
             }
-            .helmSettingsListChrome()
-            .navigationTitle("Settings")
-            .sheet(isPresented: $showPlanBuilder) {
-                PlanBuilderFlowView(hidesMaintenanceField: false)
+            dataSection
+            if friendsRelease.showsAdvanced {
+                advancedSection
             }
-            .task {
-                await AppTabRouter.shared.preferChromeOverContentLoad()
-            }
-            .onAppear {
-                Task { await refreshStatusSummaries() }
-            }
-            .onChange(of: scenePhase) { _, phase in
-                guard phase == .active else { return }
-                Task { await refreshStatusSummaries() }
-            }
+            versionSection
+        }
+        .helmSettingsListChrome()
+        .navigationTitle("Settings")
+        .sheet(isPresented: $showPlanBuilder) {
+            PlanBuilderFlowView(hidesMaintenanceField: false)
+        }
+        .task {
+            await AppTabRouter.shared.preferChromeOverContentLoad()
+        }
+        .onAppear {
+            Task { await refreshStatusSummaries() }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            guard phase == .active else { return }
+            Task { await refreshStatusSummaries() }
         }
     }
 
@@ -503,25 +501,33 @@ struct SettingsView: View {
 }
 
 #Preview("Settings signal") {
-    SettingsView()
-        .helmTheme()
-        .environment(\.helmSkin, .signal)
+    NavigationStack {
+        SettingsView()
+    }
+    .helmTheme()
+    .environment(\.helmSkin, .signal)
 }
 
 #Preview("Settings instrument") {
-    SettingsView()
-        .helmTheme()
-        .environment(\.helmSkin, .instrument)
+    NavigationStack {
+        SettingsView()
+    }
+    .helmTheme()
+    .environment(\.helmSkin, .instrument)
 }
 
 #Preview("Settings data sheet") {
-    SettingsView()
-        .helmTheme()
-        .environment(\.helmSkin, .dataSheet)
+    NavigationStack {
+        SettingsView()
+    }
+    .helmTheme()
+    .environment(\.helmSkin, .dataSheet)
 }
 
 #Preview("Settings accessibility") {
-    SettingsView()
-        .helmTheme()
-        .dynamicTypeSize(.accessibility5)
+    NavigationStack {
+        SettingsView()
+    }
+    .helmTheme()
+    .dynamicTypeSize(.accessibility5)
 }

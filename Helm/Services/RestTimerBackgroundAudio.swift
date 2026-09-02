@@ -44,6 +44,7 @@ final class RestTimerBackgroundAudio {
                 return
             }
             player = loop
+            SpotifyAppRemoteService.shared.nudgeReconnectIfCapturing()
         } catch {
             Self.logger.error("Rest keep-alive start failed: \(error.localizedDescription, privacy: .public)")
         }

@@ -21,6 +21,9 @@ struct DashboardView: View {
     @State private var usualMealStore = UsualMealStore()
     @State private var contributorDetailsVisible = true
     @State private var sleepSummary: SleepNightSummary?
+    @State private var showSettings = false
+    @State private var todayStepCount: Int?
+    @Bindable private var tabRouter = AppTabRouter.shared
     @Namespace private var readinessNamespace
     @Namespace private var muscleVolumeNamespace
 
@@ -64,6 +67,24 @@ struct DashboardView: View {
             .helmScreenBackground()
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.large)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        showSettings = true
+                    } label: {
+                        Label("Settings", systemImage: HelmIcon.settings.rawValue)
+                    }
+                    .accessibilityLabel("Settings")
+                }
+            }
+            .navigationDestination(isPresented: $showSettings) {
+                SettingsView()
+            }
+            .onChange(of: tabRouter.pendingOpenSettings) { _, pending in
+                guard pending else { return }
+                showSettings = true
+                tabRouter.consumePendingOpenSettings()
+            }
             .environment(\.helmStaggerBaseDelay, HelmMotion.standard)
             .task {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
@@ -83,6 +104,7 @@ struct DashboardView: View {
                 )
                 await ProactiveBootstrap.refreshThresholdInsights()
                 muscleVolumeStore.refresh()
+                loadTodaySteps()
             }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
@@ -256,7 +278,17 @@ struct DashboardView: View {
                 .helmType(.title)
             Text("Today's readiness")
                 .helmType(.body, color: HelmColor.fgSecondary)
+            if let todayStepCount {
+                Text("\(todayStepCount) steps")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .accessibilityLabel("\(todayStepCount) steps today")
+            }
         }
+    }
+
+    private func loadTodaySteps() {
+        let day = HelmDay.day(for: .now, calendar: .current)
+        todayStepCount = try? PersistenceBootstrap.persistenceStore.dailyMetrics.fetch(helmDay: day)?.stepCount
     }
 
     @ViewBuilder

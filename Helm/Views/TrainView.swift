@@ -535,22 +535,24 @@ struct TrainView: View {
                     }
                     .padding(.horizontal, HelmSpacing.xs)
 
-                    if spotify.isAuthorized, !spotify.isConnected {
+                    if controller.hasActiveSession, spotify.isAuthorized {
                         Button {
-                            spotify.wakeSpotifyAndConnect()
+                            if !spotify.isConnected {
+                                spotify.wakeSpotifyAndConnect()
+                            }
                         } label: {
                             HStack(spacing: HelmSpacing.xxs) {
                                 Image(systemName: "music.note")
                                     .font(.caption)
-                                Text("Open Spotify")
+                                Text(spotify.workoutMusicChipTitle)
                                     .helmType(.monoTag, color: HelmColor.fgSecondary)
                             }
                             .padding(.horizontal, HelmSpacing.xs)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Open Spotify")
-                        .accessibilityHint("Switches to Spotify so Signal can read now playing")
+                        .accessibilityLabel(spotify.workoutMusicChipTitle)
+                        .accessibilityHint(spotify.isConnected ? "Spotify is linked" : "Switches to Spotify so Helm can read now playing")
                     }
 
                     if let notice = controller.watchCompanionNotice {

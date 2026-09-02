@@ -16,6 +16,7 @@ final class AppTabRouter {
 
     var selectedTab: AppTab = .dashboard
     var pendingNutritionFocus: NutritionNavigationFocus?
+    var pendingOpenSettings = false
 
     /// Bumped on every tab selection change so deferred loads can follow the latest switch.
     private(set) var selectionEpoch: UInt64 = 0
@@ -31,7 +32,16 @@ final class AppTabRouter {
     }
 
     func open(_ tab: AppTab) {
-        selectedTab = tab
+        if tab == .settings {
+            selectedTab = .dashboard
+            pendingOpenSettings = true
+        } else {
+            selectedTab = tab
+        }
+    }
+
+    func consumePendingOpenSettings() {
+        pendingOpenSettings = false
     }
 
     func noteSelectionChanged() {
