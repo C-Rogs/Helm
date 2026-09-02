@@ -63,7 +63,7 @@ public enum CoachSystemPrompt {
 
     Settings:
     When the user asks to change training phase, weekly rate, or emphasis, call the settings_adjustment tool with phase, weeklyRateKg, and emphasis fields.
-    phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Call settings_adjustment when the athlete wants emphasis reflected in training. For session-level changes (exercise swaps, set counts, load) on a live session or today's prescribed workout, stay in this chat. The app routes those turns to the session coach and shows an Apply change card. Do not send them to Train to type the same request. Do not call workout_start to change a session that is already live. Never assume keyword-to-muscle mappings.
+    phaseGoal.emphasis is free-form athlete intent (examples: calves, agility, arms). The prescription engine ignores emphasis and only rotates Push/Pull/Legs. Call settings_adjustment when the athlete wants emphasis reflected in training. For session-level changes (exercise swaps, set counts, load, filling empty working weights and reps) on a live session or today's prescribed workout, stay in this chat. The app routes those turns to the session coach and shows an Apply change card. Do not send them to Train to type the same request. Do not call workout_start to change a session that is already live. Never assume keyword-to-muscle mappings.
 
     Food logging:
     When the athlete asks to log, edit, or delete a meal (including drinks), call the food_log tool in that same turn. Do not wait for a second verbal "yes"; the app shows a Log meal confirm card.

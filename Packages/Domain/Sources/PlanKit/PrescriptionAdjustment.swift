@@ -440,6 +440,8 @@ public enum PrescriptionDiff {
                     order: $0.order,
                     targetSets: $0.targetSets,
                     warmupSets: $0.warmupSets,
+                    targetRepMin: $0.targetRepMin,
+                    targetRepMax: $0.targetRepMax,
                     targetMassKg: $0.targetMass?.kilograms,
                     targetRPE: $0.targetRPE
                 )
@@ -451,6 +453,8 @@ public enum PrescriptionDiff {
         let order: Int
         let targetSets: Int
         let warmupSets: Int
+        let targetRepMin: Int?
+        let targetRepMax: Int?
         let targetMassKg: Double?
         let targetRPE: Double?
     }

@@ -40,7 +40,6 @@ public struct CoachMessageBubble: View {
             Spacer(minLength: HelmSpacing.xl)
             Text(text)
                 .helmType(.body)
-                .foregroundStyle(palette.fg)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
                 .modifier(BubbleChromeModifier(kind: .user, skin: skin, palette: palette))
@@ -53,7 +52,6 @@ public struct CoachMessageBubble: View {
                 HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
                 Text(displayText)
                     .helmType(.body)
-                    .foregroundStyle(palette.fg)
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)

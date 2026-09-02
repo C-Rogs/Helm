@@ -162,7 +162,13 @@ public enum HelmTypography {
 }
 
 public extension View {
-    func helmType(_ style: HelmType, color: Color = HelmColor.fg) -> some View {
+    /// Ink comes from `helmPalette` so chat history and other off-tab views
+    /// re-resolve after resume instead of keeping a snapshot of `HelmColor.fg`.
+    func helmType(_ style: HelmType) -> some View {
+        modifier(HelmTypeModifier(style: style, color: nil))
+    }
+
+    func helmType(_ style: HelmType, color: Color) -> some View {
         modifier(HelmTypeModifier(style: style, color: color))
     }
 
@@ -175,7 +181,8 @@ public extension View {
 
 private struct HelmTypeModifier: ViewModifier {
     let style: HelmType
-    let color: Color
+    let color: Color?
+    @Environment(\.helmPalette) private var palette
     @Environment(\.helmPrefersSystemFonts) private var prefersSystemFonts
     @Environment(\.helmTypographyEpoch) private var typographyEpoch
 
@@ -183,9 +190,14 @@ private struct HelmTypeModifier: ViewModifier {
         HelmFontPreferences.prefersSystemFonts = prefersSystemFonts
         return content
             .font(resolvedFont)
-            .foregroundStyle(color)
+            .foregroundStyle(resolvedColor)
             .tracking(trackingValue)
             .textCase(style.isUppercase ? .uppercase : nil)
+    }
+
+    private var resolvedColor: Color {
+        _ = typographyEpoch
+        return color ?? palette.fg
     }
 
     private var resolvedFont: Font {

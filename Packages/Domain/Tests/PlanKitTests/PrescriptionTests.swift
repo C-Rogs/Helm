@@ -592,5 +592,7 @@ struct PrescriptionAdjustmentTests {
         #expect(adjusted.exercises[0].targetMass?.kilograms == 80)
         #expect(adjusted.exercises[0].targetRepMin == 10)
         #expect(adjusted.exercises[0].targetRepMax == 10)
+        #expect(PrescriptionDiff.exercisesChanged(from: session, to: adjusted))
+        #expect(!PrescriptionDiff.exercisesChanged(from: adjusted, to: adjusted))
     }
 }

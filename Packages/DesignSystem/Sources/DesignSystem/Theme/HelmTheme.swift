@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 public enum HelmThemeMode: String, Sendable, CaseIterable, Identifiable {
     case auto
@@ -121,6 +122,17 @@ public final class HelmThemeCoordinator {
         HelmActivePalette.current = palette
     }
 
+    /// Re-read window appearance after resume or after a system calendar sheet.
+    /// SwiftUI's `colorScheme` can stay inverted while the key window is already correct.
+    public func refreshPresentation(fallback: ColorScheme) {
+        update(colorScheme: HelmWindowAppearance.resolvedColorScheme(
+            themeMode: themeMode,
+            windowStyle: HelmWindowAppearance.keyWindowStyle(),
+            fallback: fallback
+        ))
+        bumpTypographyEpoch()
+    }
+
     public func bumpTypographyEpoch() {
         typographyEpoch += 1
     }
@@ -214,6 +226,7 @@ private struct HelmScreenBackgroundModifier: ViewModifier {
 private struct HelmThemeContainer<Content: View>: View {
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.scenePhase) private var scenePhase
 
     private let content: Content
     @State private var coordinator = HelmThemeCoordinator.shared
@@ -223,11 +236,16 @@ private struct HelmThemeContainer<Content: View>: View {
     }
 
     var body: some View {
+        let scheme = HelmWindowAppearance.resolvedColorScheme(
+            themeMode: coordinator.themeMode,
+            windowStyle: HelmWindowAppearance.keyWindowStyle(),
+            fallback: colorScheme
+        )
         let palette = coordinator.themeMode.resolvedPalette(
-            colorScheme: colorScheme,
+            colorScheme: scheme,
             accent: coordinator.accentSource
         )
-        let preferredScheme = coordinator.themeMode.preferredColorScheme(colorScheme: colorScheme)
+        let preferredScheme = coordinator.themeMode.preferredColorScheme(colorScheme: scheme)
 
         content
             .environment(\.helmTheme, HelmTheme())
@@ -236,28 +254,63 @@ private struct HelmThemeContainer<Content: View>: View {
             .environment(\.helmPrefersSystemFonts, coordinator.prefersSystemFonts)
             .environment(\.helmTypographyEpoch, coordinator.typographyEpoch)
             .environment(\.helmReduceMotion, reduceMotion)
+            .environment(\.colorScheme, scheme)
             .preferredColorScheme(preferredScheme)
             .tint(palette.accent)
             .background(palette.canvas)
             .onAppear {
                 HelmFontPreferences.prefersSystemFonts = coordinator.prefersSystemFonts
-                coordinator.update(colorScheme: colorScheme)
+                coordinator.update(colorScheme: scheme)
             }
             .onChange(of: colorScheme) { _, newValue in
-                coordinator.update(colorScheme: newValue)
+                coordinator.refreshPresentation(fallback: newValue)
+            }
+            .onChange(of: scenePhase) { _, newPhase in
+                guard newPhase == .active else { return }
+                coordinator.refreshPresentation(fallback: colorScheme)
             }
             .onChange(of: coordinator.themeMode) { _, _ in
-                coordinator.update(colorScheme: colorScheme)
+                coordinator.update(colorScheme: scheme)
             }
             .onChange(of: coordinator.skin) { _, _ in
-                coordinator.update(colorScheme: colorScheme)
+                coordinator.update(colorScheme: scheme)
             }
             .onChange(of: coordinator.accentSource) { _, _ in
-                coordinator.update(colorScheme: colorScheme)
+                coordinator.update(colorScheme: scheme)
             }
             .onChange(of: coordinator.prefersSystemFonts) { _, newValue in
                 HelmFontPreferences.prefersSystemFonts = newValue
             }
+    }
+}
+
+enum HelmWindowAppearance {
+    static func resolvedColorScheme(
+        themeMode: HelmThemeMode,
+        windowStyle: UIUserInterfaceStyle?,
+        fallback: ColorScheme
+    ) -> ColorScheme {
+        switch themeMode {
+        case .dark:
+            .dark
+        case .light:
+            .light
+        case .auto:
+            switch windowStyle {
+            case .dark: .dark
+            case .light: .light
+            default: fallback
+            }
+        }
+    }
+
+    @MainActor
+    static func keyWindowStyle() -> UIUserInterfaceStyle? {
+        let scenes = UIApplication.shared.connectedScenes.compactMap { $0 as? UIWindowScene }
+        let window = scenes
+            .flatMap(\.windows)
+            .first { $0.isKeyWindow } ?? scenes.first?.windows.first
+        return window?.traitCollection.userInterfaceStyle
     }
 }
 

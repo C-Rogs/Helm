@@ -484,6 +484,8 @@ public enum CoachChatIntent: Sendable {
         let lower = text.lowercased()
         if looksLikePlanLevelChange(lower) { return false }
 
+        if looksLikeWorkingLoadFill(text) { return true }
+
         let needles = [
             "swap ",
             " swap",
@@ -506,12 +508,50 @@ public enum CoachChatIntent: Sendable {
             "lighter on",
             "heavier on",
             "kg off",
+            "kg on",
             "kilos off",
+            "kilos on",
             "warmup set",
             "warm-up set",
             "drop the weight",
             "bump the weight",
             "take weight off"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Fill / estimate working loads on empty or new lifts. Not body-weight or trend questions.
+    public static func looksLikeWorkingLoadFill(_ text: String) -> Bool {
+        if looksLikeTrendsLookup(text) { return false }
+        if looksLikeNutritionLookup(text) { return false }
+        let lower = text.lowercased()
+        let needles = [
+            "fill in the weight",
+            "fill in the weights",
+            "fill in weights",
+            "fill in my weights",
+            "fill the weights",
+            "fill the weight",
+            "set the weights",
+            "set my weights",
+            "set working weight",
+            "working weights",
+            "add weights to",
+            "add weight to",
+            "put weights on",
+            "put the weights",
+            "estimate the weight",
+            "estimate weights",
+            "estimate a weight",
+            "baseline weight",
+            "baseline weights",
+            "write the weight",
+            "write weights",
+            "enter the weight",
+            "enter weights",
+            "missing weights",
+            "empty weights",
+            "no weights on"
         ]
         return needles.contains { lower.contains($0) }
     }
