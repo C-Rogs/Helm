@@ -130,4 +130,21 @@ struct ChatStoreTests {
         )
         #expect(try store.chat.fetchAll(surface: .chat).map(\.text) == ["chat stays"])
     }
+
+    @Test("chat append drops oldest rows past the retention window")
+    func chatAppendTrimsOldest() throws {
+        let store = try PersistenceStore.inMemory()
+        for index in 1...5 {
+            _ = try store.chat.append(
+                ChatMessageInsert(
+                    role: .user,
+                    text: "c\(index)",
+                    promptVersion: CoachPromptVersion.chatV1.rawValue,
+                    surface: .chat
+                ),
+                keepingNewest: 3
+            )
+        }
+        #expect(try store.chat.fetchAll(surface: .chat).map(\.text) == ["c3", "c4", "c5"])
+    }
 }

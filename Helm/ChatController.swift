@@ -72,7 +72,7 @@ final class ChatController {
 
     func loadHistory() {
         do {
-            messages = try persistence.chat.fetchRecent(limit: 100)
+            messages = try persistence.chat.fetchRecent(limit: ChatStore.chatUILimit)
         } catch {
             degradedState = CoachFailurePolicy.degradedState(for: error)
         }
@@ -471,6 +471,7 @@ final class ChatController {
                 )
             )
             messages.append(userMessage)
+            trimVisibleChatHistory()
             navigateIfRequested(from: text)
 
             // Update coach style profile from this athlete message.
@@ -823,6 +824,7 @@ final class ChatController {
                     )
                 )
                 messages.append(assistantMessage)
+                trimVisibleChatHistory()
             }
 
             presentOrDeferNavigate(navigate)
@@ -920,6 +922,7 @@ final class ChatController {
                 )
             )
             messages.append(assistantMessage)
+            trimVisibleChatHistory()
             CoachDiagnosticsStore.shared.clearTurnState()
             await logTurn(
                 status: "completed",
@@ -1583,6 +1586,12 @@ final class ChatController {
         isPreparingFoodMealConfirm = false
     }
 
+    private func trimVisibleChatHistory() {
+        let limit = ChatStore.chatUILimit
+        guard messages.count > limit else { return }
+        messages = Array(messages.suffix(limit))
+    }
+
     /// Triggered when the thread exceeds 20 messages and at least 5 turns
     /// have elapsed since the last compaction. Compresses old messages into
     /// a ThreadContextSummary, preserving the last 10 verbatim.
@@ -1722,6 +1731,7 @@ final class ChatController {
                 )
             )
             messages.append(assistantMessage)
+            trimVisibleChatHistory()
         }
 
         maybeTriggerMemoryRefinementExtraction(profile: profile)

@@ -61,8 +61,19 @@ public struct ChatMessageInsert: Sendable, Equatable {
 }
 
 public struct ChatStore: Sendable {
+    /// Chat tab UI window. Persistence keeps a slightly larger rolling buffer for feedback dumps.
+    public static let chatUILimit = 100
+    public static let chatRetentionLimit = 200
     /// Train Ask Coach has no "clear chat". Keep a rolling window so SQLite does not grow without bound.
     public static let trainRetentionLimit = 200
+    public static let feedbackChatLimit = 150
+
+    public static func retentionLimit(for surface: ChatSurface) -> Int {
+        switch surface {
+        case .chat: chatRetentionLimit
+        case .train: trainRetentionLimit
+        }
+    }
 
     private let pool: DatabasePool
 
@@ -115,10 +126,8 @@ public struct ChatStore: Sendable {
                 surface: message.surface.rawValue
             )
             try record.insert(db)
-            let retention = keepingNewest ?? (message.surface == .train ? Self.trainRetentionLimit : nil)
-            if let retention {
-                try Self.trimOldest(db: db, surface: message.surface, keepingNewest: retention)
-            }
+            let retention = keepingNewest ?? Self.retentionLimit(for: message.surface)
+            try Self.trimOldest(db: db, surface: message.surface, keepingNewest: retention)
             return try record.toValue()
         }
     }

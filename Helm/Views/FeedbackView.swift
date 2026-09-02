@@ -81,7 +81,7 @@ struct FeedbackView: View {
         var history: String?
         if includeCoachHistory {
             let store = PersistenceBootstrap.persistenceStore
-            let chat = (try? store.chat.fetchRecent(limit: 150, surface: .chat)) ?? []
+            let chat = (try? store.chat.fetchRecent(limit: ChatStore.feedbackChatLimit, surface: .chat)) ?? []
             let train = (try? store.chat.fetchRecent(limit: ChatStore.trainRetentionLimit, surface: .train)) ?? []
             let markdown = CoachHistoryExport.markdown(chat: chat, train: train)
             if !markdown.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
