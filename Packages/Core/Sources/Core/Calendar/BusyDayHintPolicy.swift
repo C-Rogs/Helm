@@ -6,12 +6,23 @@ public struct CalendarEventDetail: Sendable, Hashable, Equatable {
     public let start: Date
     public let end: Date
     public let isAllDay: Bool
+    public let location: String
+    public let notes: String
 
-    public init(title: String, start: Date, end: Date, isAllDay: Bool) {
+    public init(
+        title: String,
+        start: Date,
+        end: Date,
+        isAllDay: Bool,
+        location: String = "",
+        notes: String = ""
+    ) {
         self.title = title
         self.start = start
         self.end = end
         self.isAllDay = isAllDay
+        self.location = location
+        self.notes = notes
     }
 }
 
@@ -159,11 +170,12 @@ public enum CalendarQueryResultFormatter {
             }
             for event in day.events.sorted(by: { $0.start < $1.start }) {
                 let title = event.title.isEmpty ? "(untitled)" : event.title
+                let locationPart = event.location.isEmpty ? "" : " location=\"\(event.location)\""
                 if event.isAllDay {
-                    lines.append("  event all_day title=\"\(title)\"")
+                    lines.append("  event all_day title=\"\(title)\"\(locationPart)")
                 } else {
                     lines.append(
-                        "  event title=\"\(title)\" start=\(timeFormatter.string(from: event.start)) end=\(timeFormatter.string(from: event.end))"
+                        "  event title=\"\(title)\" start=\(timeFormatter.string(from: event.start)) end=\(timeFormatter.string(from: event.end))\(locationPart)"
                     )
                 }
             }

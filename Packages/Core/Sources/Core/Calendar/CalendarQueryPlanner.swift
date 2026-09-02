@@ -10,8 +10,8 @@ public enum CalendarQueryWindowKind: String, Sendable, Equatable {
 
 public enum CalendarQueryPlanner: Sendable {
     public static let maxLookbackDays = 14
-    public static let maxLookaheadDays = 180
-    public static let defaultSearchLookaheadDays = 180
+    public static let maxLookaheadDays = 365
+    public static let defaultSearchLookaheadDays = 365
 
     public struct ResolvedWindow: Sendable, Equatable {
         public let startDay: HelmDay
@@ -44,10 +44,16 @@ public enum CalendarQueryPlanner: Sendable {
         title.range(of: search, options: [.caseInsensitive, .diacriticInsensitive]) != nil
     }
 
+    public static func eventMatches(_ event: CalendarEventDetail, search: String) -> Bool {
+        titleMatches(event.title, search: search)
+            || titleMatches(event.location, search: search)
+            || titleMatches(event.notes, search: search)
+    }
+
     public static func applySearch(_ days: [CalendarDayDetail], search: String?) -> [CalendarDayDetail] {
         guard let search else { return days }
         return days.compactMap { day in
-            let matched = day.events.filter { titleMatches($0.title, search: search) }
+            let matched = day.events.filter { eventMatches($0, search: search) }
             guard !matched.isEmpty else { return nil }
             return CalendarDayDetail(
                 helmDay: day.helmDay,
@@ -71,13 +77,13 @@ public enum CalendarQueryPlanner: Sendable {
         switch kind {
         case .today:
             if let search {
-                let ahead = clamp(lookaheadDays ?? defaultSearchLookaheadDays, min: 1, max: maxLookaheadDays)
-                return ResolvedWindow(
-                    startDay: today,
-                    endDay: today.adding(days: ahead - 1, calendar: calendar),
-                    queryLabel: queryLabel(kind: "today", search: search, lookback: nil, lookahead: ahead),
+                return namedSearchWindow(
+                    today: today,
+                    kindLabel: "today",
                     search: search,
-                    omitEmptyDays: true
+                    lookbackDays: lookbackDays,
+                    lookaheadDays: lookaheadDays,
+                    calendar: calendar
                 )
             }
             return ResolvedWindow(
@@ -88,6 +94,16 @@ public enum CalendarQueryPlanner: Sendable {
                 omitEmptyDays: false
             )
         case .day:
+            if let search, parseHelmDay(helmDay) == nil {
+                return namedSearchWindow(
+                    today: today,
+                    kindLabel: "day",
+                    search: search,
+                    lookbackDays: lookbackDays,
+                    lookaheadDays: lookaheadDays,
+                    calendar: calendar
+                )
+            }
             let day = parseHelmDay(helmDay) ?? today
             return ResolvedWindow(
                 startDay: day,
@@ -98,21 +114,13 @@ public enum CalendarQueryPlanner: Sendable {
             )
         case .range:
             if let search {
-                let back = clamp(lookbackDays ?? 0, min: 0, max: maxLookbackDays)
-                let ahead = clamp(lookaheadDays ?? defaultSearchLookaheadDays, min: 1, max: maxLookaheadDays)
-                let startDay = today.adding(days: -max(back - 1, 0), calendar: calendar)
-                let endDay = today.adding(days: ahead - 1, calendar: calendar)
-                return ResolvedWindow(
-                    startDay: startDay,
-                    endDay: endDay,
-                    queryLabel: queryLabel(
-                        kind: "range",
-                        search: search,
-                        lookback: back == 0 ? nil : back,
-                        lookahead: ahead
-                    ),
+                return namedSearchWindow(
+                    today: today,
+                    kindLabel: "range",
                     search: search,
-                    omitEmptyDays: true
+                    lookbackDays: lookbackDays,
+                    lookaheadDays: lookaheadDays,
+                    calendar: calendar
                 )
             }
             if let lookaheadDays {
@@ -138,13 +146,13 @@ public enum CalendarQueryPlanner: Sendable {
             )
         case .weekAhead:
             if let search {
-                let ahead = clamp(lookaheadDays ?? defaultSearchLookaheadDays, min: 1, max: maxLookaheadDays)
-                return ResolvedWindow(
-                    startDay: today,
-                    endDay: today.adding(days: ahead - 1, calendar: calendar),
-                    queryLabel: queryLabel(kind: "weekAhead", search: search, lookback: nil, lookahead: ahead),
+                return namedSearchWindow(
+                    today: today,
+                    kindLabel: "weekAhead",
                     search: search,
-                    omitEmptyDays: true
+                    lookbackDays: lookbackDays,
+                    lookaheadDays: lookaheadDays,
+                    calendar: calendar
                 )
             }
             let horizon = max(weekAheadHorizon, 1)
@@ -156,6 +164,32 @@ public enum CalendarQueryPlanner: Sendable {
                 omitEmptyDays: false
             )
         }
+    }
+
+    private static func namedSearchWindow(
+        today: HelmDay,
+        kindLabel: String,
+        search: String,
+        lookbackDays: Int?,
+        lookaheadDays: Int?,
+        calendar: Calendar
+    ) -> ResolvedWindow {
+        let back = clamp(lookbackDays ?? 0, min: 0, max: maxLookbackDays)
+        let ahead = clamp(lookaheadDays ?? defaultSearchLookaheadDays, min: 1, max: maxLookaheadDays)
+        let startDay = today.adding(days: -max(back - 1, 0), calendar: calendar)
+        let endDay = today.adding(days: ahead - 1, calendar: calendar)
+        return ResolvedWindow(
+            startDay: startDay,
+            endDay: endDay,
+            queryLabel: queryLabel(
+                kind: kindLabel,
+                search: search,
+                lookback: back == 0 ? nil : back,
+                lookahead: ahead
+            ),
+            search: search,
+            omitEmptyDays: true
+        )
     }
 
     private static func clamp(_ value: Int, min minValue: Int, max maxValue: Int) -> Int {

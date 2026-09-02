@@ -83,55 +83,64 @@ final class LiveCalendarEventAccess: CalendarEventAccessProviding {
         var loads: [HelmDay: CalendarDayLoad] = [:]
         var eventLists: [HelmDay: [CalendarEventDetail]] = [:]
         for event in events {
-            let helmDay: HelmDay
-            if event.isAllDay {
-                // All-day events start at midnight; the 04:00 cutoff would
-                // shift them to the previous logical day. Use calendar day.
-                helmDay = HelmDay.calendarDay(for: event.startDate, calendar: calendar)
-            } else {
-                helmDay = HelmDay.day(for: event.startDate, cutoff: cutoff, calendar: calendar)
-            }
-            guard helmDay >= startDay, helmDay <= endDay else { continue }
-
-            var load = loads[helmDay] ?? CalendarDayLoad(
-                timedEventCount: 0,
-                scheduledSeconds: 0,
-                hasAllDayEvent: false
-            )
             let title = event.title?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
-
+            let location = event.location?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+            let notes = String((event.notes ?? "").prefix(500))
+            let detail = CalendarEventDetail(
+                title: title,
+                start: event.startDate,
+                end: event.endDate,
+                isAllDay: event.isAllDay,
+                location: location,
+                notes: notes
+            )
+            let days: [HelmDay]
             if event.isAllDay {
-                var titles = load.allDayEventTitles
-                if !title.isEmpty {
-                    titles.append(title)
-                }
-                load = CalendarDayLoad(
-                    timedEventCount: load.timedEventCount,
-                    scheduledSeconds: load.scheduledSeconds,
-                    hasAllDayEvent: true,
-                    allDayEventTitles: titles
-                )
-            } else {
-                let duration = max(0, event.endDate.timeIntervalSince(event.startDate))
-                load = CalendarDayLoad(
-                    timedEventCount: load.timedEventCount + 1,
-                    scheduledSeconds: load.scheduledSeconds + duration,
-                    hasAllDayEvent: load.hasAllDayEvent,
-                    allDayEventTitles: load.allDayEventTitles
-                )
-            }
-
-            loads[helmDay] = load
-            var list = eventLists[helmDay] ?? []
-            list.append(
-                CalendarEventDetail(
-                    title: title,
+                days = CalendarEventDaySpan.helmDays(
                     start: event.startDate,
                     end: event.endDate,
-                    isAllDay: event.isAllDay
+                    isAllDay: true,
+                    windowStart: startDay,
+                    windowEnd: endDay,
+                    calendar: calendar,
+                    cutoff: cutoff
                 )
-            )
-            eventLists[helmDay] = list
+            } else {
+                let helmDay = HelmDay.day(for: event.startDate, cutoff: cutoff, calendar: calendar)
+                days = (helmDay >= startDay && helmDay <= endDay) ? [helmDay] : []
+            }
+
+            for helmDay in days {
+                var load = loads[helmDay] ?? CalendarDayLoad(
+                    timedEventCount: 0,
+                    scheduledSeconds: 0,
+                    hasAllDayEvent: false
+                )
+                if event.isAllDay {
+                    var titles = load.allDayEventTitles
+                    if !title.isEmpty {
+                        titles.append(title)
+                    }
+                    load = CalendarDayLoad(
+                        timedEventCount: load.timedEventCount,
+                        scheduledSeconds: load.scheduledSeconds,
+                        hasAllDayEvent: true,
+                        allDayEventTitles: titles
+                    )
+                } else {
+                    let duration = max(0, event.endDate.timeIntervalSince(event.startDate))
+                    load = CalendarDayLoad(
+                        timedEventCount: load.timedEventCount + 1,
+                        scheduledSeconds: load.scheduledSeconds + duration,
+                        hasAllDayEvent: load.hasAllDayEvent,
+                        allDayEventTitles: load.allDayEventTitles
+                    )
+                }
+                loads[helmDay] = load
+                var list = eventLists[helmDay] ?? []
+                list.append(detail)
+                eventLists[helmDay] = list
+            }
         }
 
         return Dictionary(uniqueKeysWithValues: loads.map { day, load in

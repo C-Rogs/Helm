@@ -282,17 +282,49 @@ public enum CoachChatIntent: Sendable {
         return needles.contains { lower.contains($0) }
     }
 
+    public static func looksLikeCalendarMetaQuestion(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("look ahead window")
+            || lower.contains("lookahead window")
+            || lower.contains("look-ahead")
+            || lower.contains("how long is the look")
+            || lower.contains("search up future")
+            || lower.contains("search future dates")
+            || lower.contains("can you search up future")
+    }
+
+    public static func looksLikeNamedTripDateAsk(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("what date do i go")
+            || lower.contains("when do i go")
+            || lower.contains("when am i going")
+            || lower.contains("how many days till")
+            || lower.contains("how many days until")
+            || lower.contains("days till i go")
+            || lower.contains("when do i leave")
+            || lower.contains("when is my trip")
+    }
+
     public static func inferredCalendarSearchTerm(from text: String) -> String? {
-        let pattern = #"(?i)(?:yeah|yes|yep|ok|okay|but|so|well|and|hey|,|\s)*(.+?)\s+is\s+(?:in|on)\s+(?:the|my)\s+calendar"#
-        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
-        let nsRange = NSRange(text.startIndex..., in: text)
-        guard let match = regex.firstMatch(in: text, range: nsRange),
-              match.numberOfRanges >= 2,
-              let capture = Range(match.range(at: 1), in: text) else {
-            return nil
+        let patterns = [
+            #"(?i)what date do i go to\s+(.+)"#,
+            #"(?i)when do i go to\s+(.+)"#,
+            #"(?i)when am i going to\s+(.+)"#,
+            #"(?i)how many days (?:till|until) i go to\s+(.+)"#,
+            #"(?i)how many days (?:till|until)\s+(?!i go\b)(.+)"#,
+            #"(?i)thinking about\s+(.+?)\s+how many days"#,
+            #"(?i)when do i leave (?:for\s+)?(.+)"#,
+            #"(?i)(?:yeah|yes|yep|ok|okay|but|so|well|and|hey|,|\s)*(.+?)\s+is\s+(?:in|on)\s+(?:the|my)\s+calendar"#
+        ]
+        for pattern in patterns {
+            if let captured = firstRegexCapture(in: text, pattern: pattern) {
+                let stripped = stripCalendarSearchFillers(captured)
+                if let term = sanitizedCalendarSearchTerm(stripped) {
+                    return term
+                }
+            }
         }
-        let stripped = stripCalendarSearchFillers(String(text[capture]))
-        return sanitizedCalendarSearchTerm(stripped)
+        return nil
     }
 
     public static func inferredCalendarQuery(
@@ -300,7 +332,25 @@ public enum CoachChatIntent: Sendable {
         now: Date = Date(),
         calendar: Calendar = .current
     ) -> CalendarQueryPayload? {
-        guard looksLikeCalendarLookup(text) else { return nil }
+        if looksLikeCalendarMetaQuestion(text) {
+            return nil
+        }
+        guard looksLikeCalendarLookup(text) || looksLikeNamedTripDateAsk(text) else {
+            return nil
+        }
+        if let term = inferredCalendarSearchTerm(from: text) {
+            return CalendarQueryPayload(
+                queryType: .range,
+                lookaheadDays: CalendarQueryPlanner.defaultSearchLookaheadDays,
+                search: term
+            )
+        }
+        if looksLikeNamedTripDateAsk(text) {
+            return CalendarQueryPayload(
+                queryType: .range,
+                lookaheadDays: CalendarQueryPlanner.defaultSearchLookaheadDays
+            )
+        }
         let lower = text.lowercased()
         if lower.contains("tomorrow") {
             guard let tomorrow = calendar.date(byAdding: .day, value: 1, to: now) else {
@@ -319,13 +369,6 @@ public enum CoachChatIntent: Sendable {
         if lower.contains("week") || lower.contains("ahead") {
             return CalendarQueryPayload(queryType: .weekAhead)
         }
-        if let term = inferredCalendarSearchTerm(from: text) {
-            return CalendarQueryPayload(
-                queryType: .range,
-                lookaheadDays: CalendarQueryPlanner.defaultSearchLookaheadDays,
-                search: term
-            )
-        }
         if looksLikeForwardCalendarLookup(lower) {
             return CalendarQueryPayload(
                 queryType: .range,
@@ -333,6 +376,17 @@ public enum CoachChatIntent: Sendable {
             )
         }
         return CalendarQueryPayload(queryType: .today)
+    }
+
+    private static func firstRegexCapture(in text: String, pattern: String) -> String? {
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let nsRange = NSRange(text.startIndex..., in: text)
+        guard let match = regex.firstMatch(in: text, range: nsRange),
+              match.numberOfRanges >= 2,
+              let capture = Range(match.range(at: 1), in: text) else {
+            return nil
+        }
+        return String(text[capture])
     }
 
     private static func looksLikeForwardCalendarLookup(_ lower: String) -> Bool {
@@ -364,6 +418,7 @@ public enum CoachChatIntent: Sendable {
 
     private static func sanitizedCalendarSearchTerm(_ raw: String) -> String? {
         let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
         guard (2...40).contains(trimmed.count) else { return nil }
         let banned: Set<String> = [
             "it", "that", "this", "there", "something", "the event", "my trip", "my event"

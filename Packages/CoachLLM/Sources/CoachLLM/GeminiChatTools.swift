@@ -263,12 +263,13 @@ public enum GeminiChatTools {
             description: """
             Fetch EventKit events and why a day is marked busy. \
             Week Ahead busy= lines are not an agenda. \
-            For a named trip or event, set search to a title substring and lookaheadDays \
-            (default 180, max 180). Do not use today when the date is unknown.
+            For a named trip or event, set search to a title or location substring and lookaheadDays \
+            (default 365, max 365). Do not use today when the date is unknown. \
+            Do not use day unless helmDay is a known YYYY-MM-DD.
             """,
             queryTypes: ["today", "day", "range", "weekAhead"],
             extraProperties: [
-                "search": stringProperty("Case-insensitive EventKit title substring."),
+                "search": stringProperty("Case-insensitive EventKit title, location, or notes substring."),
                 "lookaheadDays": ["type": "integer"]
             ]
         )

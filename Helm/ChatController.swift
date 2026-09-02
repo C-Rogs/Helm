@@ -1343,7 +1343,7 @@ final class ChatController {
         # Calendar query results
         \(results)
 
-        Answer from these EventKit results. List real event titles and times. If the query header includes search=, only those matches matter: give dates and duration. If events=none for a search, say that title was not found in the look-ahead window. If engine_busy=true, explain the reason line (all-day, scheduled-hours threshold, or event-count threshold). If engine_busy=false, say the day is below the busy thresholds even if some events exist. Never invent events. If calendar_status is not authorized, tell the athlete to enable calendar access in Settings.
+        Answer from these EventKit results. List real event titles, locations, and times. If the query header includes search=, only those matches matter: give dates and duration. lookahead=N is the search window in days; if the athlete asked how long the window is, answer N. If events=none for a search, say that title was not found in the next N days. If engine_busy=true, explain the reason line (all-day, scheduled-hours threshold, or event-count threshold). If engine_busy=false, say the day is below the busy thresholds even if some events exist. Never invent events. If calendar_status is not authorized, tell the athlete to enable calendar access in Settings.
         """
 
         isStreaming = true
