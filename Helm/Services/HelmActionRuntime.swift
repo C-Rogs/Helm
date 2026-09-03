@@ -49,6 +49,7 @@ enum HelmActionRuntime {
                 await ProactiveBootstrap.noteNutritionLogged(day: day)
             case .refreshPrescription:
                 await PlanBootstrap.refreshPrescriptionWithCalendar()
+                await WeekAheadScheduleBootstrap.store.refresh()
                 await ProactiveBootstrap.refreshScheduling()
                 NutritionBootstrap.refreshNutrition()
             }

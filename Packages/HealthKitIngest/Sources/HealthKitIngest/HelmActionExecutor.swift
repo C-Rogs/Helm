@@ -115,6 +115,16 @@ public struct HelmActionExecutor: Sendable {
             PrescriptionDayStore.clear(for: today)
             return replanned()
 
+        case let .scheduleAdjustment(payload):
+            try ScheduleOverrideApplier.apply(
+                payload,
+                persistence: persistence,
+                today: today,
+                calendar: calendar
+            )
+            PrescriptionDayStore.clear(for: today)
+            return replanned()
+
         case let .reactiveDeload(action):
             switch action {
             case .confirm:

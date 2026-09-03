@@ -23,6 +23,7 @@ public enum GeminiChatTools {
             workoutStartDeclaration(),
             memoryAdjustmentDeclaration(),
             settingsAdjustmentDeclaration(),
+            scheduleAdjustmentDeclaration(),
             reactiveDeloadDeclaration(),
             planRegenerateDeclaration(),
             mealQueryDeclaration(),
@@ -183,7 +184,7 @@ public enum GeminiChatTools {
     private static func settingsAdjustmentDeclaration() -> [String: Any] {
         [
             "name": CoachCatalogToolName.settingsAdjustment.rawValue,
-            "description": "Propose changing training phase, weekly rate, or emphasis. App shows a confirm card.",
+            "description": "Propose changing training phase, weekly rate, or long-term emphasis bias. Never use for sore/recovery body parts or swapping Week Ahead days (use schedule_adjustment).",
             "parameters": [
                 "type": "object",
                 "properties": [
@@ -193,9 +194,43 @@ public enum GeminiChatTools {
                         "enum": ["cut", "gain", "maintain"]
                     ],
                     "weeklyRateKg": ["type": "number"],
-                    "emphasis": stringProperty("Free-form athlete intent."),
+                    "emphasis": stringProperty("Free-form long-term athlete intent."),
                     "rationale": stringProperty()
                 ]
+            ]
+        ]
+    }
+
+    private static func scheduleAdjustmentDeclaration() -> [String: Any] {
+        [
+            "name": CoachCatalogToolName.scheduleAdjustment.rawValue,
+            "description": """
+            Propose week-ahead schedule changes: defer a day-kind after sore/recovery work, \
+            pin a split on a calendar day, or swap two Week Ahead days (including Rest). \
+            App shows a confirm card. Prefer this over settings_adjustment for rest arms / \
+            swap push / do legs today.
+            """,
+            "parameters": [
+                "type": "object",
+                "properties": [
+                    "reply": stringProperty("Short athlete-facing negotiation line."),
+                    "action": [
+                        "type": "string",
+                        "enum": ["defer_kinds", "pin_day", "swap_days", "clear"]
+                    ],
+                    "region": stringProperty("Recovery region, e.g. arms, chest, legs."),
+                    "kinds": [
+                        "type": "array",
+                        "items": ["type": "string"],
+                        "description": "Day kinds to defer: push, pull, legs, upper, lower, full, arms."
+                    ],
+                    "pinKind": stringProperty("Day kind to pin (legs, pull, push, ...)."),
+                    "helmDay": stringProperty("YYYY-MM-DD for pin_day. Defaults to today."),
+                    "dayA": stringProperty("YYYY-MM-DD for swap_days."),
+                    "dayB": stringProperty("YYYY-MM-DD for swap_days."),
+                    "reason": stringProperty("Short note shown in Week Ahead.")
+                ],
+                "required": ["action"]
             ]
         ]
     }

@@ -88,6 +88,9 @@ struct AppMigrator {
         if version >= 25 {
             CoachAppliedActionSchemaMigration.register(on: &migrator)
         }
+        if version >= 26 {
+            ScheduleOverrideSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

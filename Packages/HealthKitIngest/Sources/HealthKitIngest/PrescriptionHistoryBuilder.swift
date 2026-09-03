@@ -83,17 +83,11 @@ public enum PrescriptionHistoryBuilder {
         return Set(ids)
     }
 
-    static func weekStart(containing day: HelmDay, calendar: Calendar) -> HelmDay {
-        var iso = calendar
-        iso.firstWeekday = 2
-        let components = day.dateComponents()
-        guard
-            let date = iso.date(from: components),
-            let interval = iso.dateInterval(of: .weekOfYear, for: date)
-        else {
-            return day
-        }
-        return HelmDay.day(for: interval.start, cutoff: .default, calendar: iso)
+    public static func weekStart(containing day: HelmDay, calendar: Calendar) -> HelmDay {
+        // Calendar Monday of the week. Do not run through HelmDay.day(for:cutoff:):
+        // week interval starts at midnight, which the 04:00 cutoff would shift to Sunday
+        // and break ISO Mon-Sun validation (e.g. rejecting Sunday as outside this week).
+        day.mondayOfSameWeek(calendar: calendar)
     }
 
     /// Fingerprint of completed training this week; used to invalidate stale day-cache prescriptions.
@@ -101,7 +95,8 @@ public enum PrescriptionHistoryBuilder {
         _ history: PrescriptionHistory,
         through endDay: HelmDay,
         muscleMaps: [String: ExerciseMuscleMap],
-        calendar: Calendar = .current
+        calendar: Calendar = .current,
+        dayKindRotation: [TrainingDayKind]? = nil
     ) -> String {
         let weekStart = history.weekStart
         let weekDays = Set((0 ..< 7).map { weekStart.adding(days: $0, calendar: calendar) })
@@ -112,9 +107,15 @@ public enum PrescriptionHistoryBuilder {
                 return lhs.startedAt < rhs.startedAt
             }
 
+        let among = dayKindRotation?.map(SessionSplitKind.init(trainingDayKind:))
         let sessionTokens = weekSessions.map { session in
             let muscles = musclesTrained(in: session, muscleMaps: muscleMaps)
-            let split = SessionSplitPlanner.inferSplitKind(from: muscles)?.rawValue ?? "custom"
+            let split: String
+            if let among, let kind = SessionSplitPlanner.inferSplitKind(from: muscles, among: among) {
+                split = kind.rawValue
+            } else {
+                split = SessionSplitPlanner.inferSplitKind(from: muscles)?.rawValue ?? "custom"
+            }
             return "\(session.helmDay.formatted):\(split):\(session.sets.count)"
         }
         return "\(engineVersion)|\(weekSessions.count)|\(sessionTokens.joined(separator: ";"))"
@@ -125,7 +126,7 @@ public enum PrescriptionHistoryBuilder {
     /// The cached plan is keyed on training history alone, so without this an upgrade
     /// keeps serving a plan the previous engine produced until the athlete happens to log
     /// something new. That is exactly the day a corrected prescription matters most.
-    static let engineVersion = "e2"
+    static let engineVersion = "e3"
 
     /// Build a week fingerprint from persisted history (for prescription cache invalidation).
     public static func historyFingerprint(
@@ -139,7 +140,14 @@ public enum PrescriptionHistoryBuilder {
         let familiar = familiarExerciseIDs(from: history)
         let catalog = PrescriptionCatalogBuilder.build(from: rows, familiarExerciseIDs: familiar)
         let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0.muscleMap) })
-        return historyFingerprint(history, through: endDay, muscleMaps: muscleMaps, calendar: calendar)
+        let settings = try store.trainingPlan.load()
+        return historyFingerprint(
+            history,
+            through: endDay,
+            muscleMaps: muscleMaps,
+            calendar: calendar,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
+        )
     }
 
     private static func musclesTrained(

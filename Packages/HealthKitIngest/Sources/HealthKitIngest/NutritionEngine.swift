@@ -261,6 +261,18 @@ public actor NutritionEngine {
         let livePrescription = plannedAsOf.contains(where: { $0.status != "skipped" })
             ? prescriptionSummary
             : nil
+        let history = (try? PrescriptionHistoryBuilder.history(
+            from: persistence,
+            endingAt: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )) ?? PrescriptionHistory(loggedSets: [], sessions: [], weekStart: monday)
+        let muscleMaps = loadMuscleMaps(history: history)
+        let overrides = ScheduleWeekOverrides.fromStored(
+            (try? persistence.scheduleOverrides.load()) ?? .empty,
+            weekStart: PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+        )
+        let plannedByDay = plannedMusclesByDay(from: monday, through: weekEnd)
 
         let inputs: [WeeklyNutritionBudgetDayInput] = try (0 ..< 7).map { offset in
             let d = monday.adding(days: offset)
@@ -274,16 +286,24 @@ public actor NutritionEngine {
                     for: d,
                     asOf: day,
                     prescriptionSummary: livePrescription,
-                    emphasis: settings.phaseGoal.emphasis,
-                    mesocycleState: mesocycleState
+                    settings: settings,
+                    mesocycleState: mesocycleState,
+                    history: history,
+                    muscleMaps: muscleMaps,
+                    plannedSessionJSON: plannedByDay[d],
+                    overrides: overrides
                 )
             } else if resolved.demand == .training {
                 demand = weeklyTrainingDemand(
                     for: d,
                     asOf: day,
                     prescriptionSummary: livePrescription,
-                    emphasis: settings.phaseGoal.emphasis,
-                    mesocycleState: mesocycleState
+                    settings: settings,
+                    mesocycleState: mesocycleState,
+                    history: history,
+                    muscleMaps: muscleMaps,
+                    plannedSessionJSON: plannedByDay[d],
+                    overrides: overrides
                 )
             }
             var lock: Int?
@@ -333,10 +353,22 @@ public actor NutritionEngine {
         for day: HelmDay,
         asOf: HelmDay,
         prescriptionSummary: PrescribedSessionSummary?,
-        emphasis: String?,
-        mesocycleState: MesocycleState?
+        settings: StoredTrainingPlanSettings,
+        mesocycleState: MesocycleState?,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        plannedSessionJSON: String?,
+        overrides: ScheduleWeekOverrides
     ) -> WeeklyNutritionDemand {
-        let muscles = targetMuscles(for: day, emphasis: emphasis)
+        let muscles = SchedulePlanner.targetMuscles(
+            for: day,
+            settings: settings,
+            history: history,
+            muscleMaps: muscleMaps,
+            plannedSessionJSON: plannedSessionJSON,
+            calendar: calendar,
+            overrides: overrides
+        )
         if day == asOf {
             let dayType = NutritionDayTypeResolver.resolve(
                 prescriptionSummary: prescriptionSummary,
@@ -408,10 +440,33 @@ public actor NutritionEngine {
             .flatMap { BodyProfileTDEE.seedTDEEKcal(profile: $0) }
             .map { Int($0.rounded()) }
 
-        let targetMuscles = targetMuscles(for: day, emphasis: settings.phaseGoal.emphasis)
         let mesocycleState = loadMesocycleState()
         let plannedToday = (try? persistence.plan.fetchPlannedWorkouts(from: day, through: day)) ?? []
         let hasPlannedSession = plannedToday.contains { $0.status != "skipped" }
+        let history = (try? PrescriptionHistoryBuilder.history(
+            from: persistence,
+            endingAt: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )) ?? PrescriptionHistory(
+            loggedSets: [],
+            sessions: [],
+            weekStart: PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+        )
+        let muscleMaps = loadMuscleMaps(history: history)
+        let overrides = ScheduleWeekOverrides.fromStored(
+            (try? persistence.scheduleOverrides.load()) ?? .empty,
+            weekStart: history.weekStart
+        )
+        let targetMuscles = SchedulePlanner.targetMuscles(
+            for: day,
+            settings: settings,
+            history: history,
+            muscleMaps: muscleMaps,
+            plannedSessionJSON: plannedToday.first(where: { $0.status != "skipped" })?.sessionJSON,
+            calendar: calendar,
+            overrides: overrides
+        )
         let dayType = NutritionDayTypeResolver.resolve(
             prescriptionSummary: hasPlannedSession ? prescriptionSummary : nil,
             targetMuscles: targetMuscles,
@@ -542,8 +597,23 @@ public actor NutritionEngine {
         return profile
     }
 
-    private func targetMuscles(for day: HelmDay, emphasis: String?) -> [MuscleGroup] {
-        SessionSplitPlanner.targetMuscles(for: day, emphasis: emphasis, calendar: calendar)
+    private func plannedMusclesByDay(from start: HelmDay, through end: HelmDay) -> [HelmDay: String] {
+        guard let records = try? persistence.plan.fetchPlannedWorkouts(from: start, through: end) else {
+            return [:]
+        }
+        var mapped: [HelmDay: String] = [:]
+        for record in records where record.status != "skipped" {
+            guard let day = try? record.decodedHelmDay() else { continue }
+            mapped[day] = record.sessionJSON
+        }
+        return mapped
+    }
+
+    private func loadMuscleMaps(history: PrescriptionHistory) -> [String: ExerciseMuscleMap] {
+        let rows = (try? persistence.exercises.fetchCatalogRows()) ?? []
+        let familiar = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(from: rows, familiarExerciseIDs: familiar)
+        return Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0.muscleMap) })
     }
 
     private func loadMesocycleState() -> MesocycleState? {

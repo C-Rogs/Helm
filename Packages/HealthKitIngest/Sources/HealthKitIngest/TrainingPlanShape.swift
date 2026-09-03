@@ -2,8 +2,8 @@ import Persistence
 import PlanKit
 
 /// Resolves the live week rotation from persisted plan settings.
-enum TrainingPlanShape {
-    static func dayKindRotation(from settings: StoredTrainingPlanSettings) -> [TrainingDayKind] {
+public enum TrainingPlanShape {
+    public static func dayKindRotation(from settings: StoredTrainingPlanSettings) -> [TrainingDayKind] {
         let parsed = settings.dayKindRotationRaw.compactMap(TrainingDayKind.init(rawValue:))
         if parsed.count >= 2 {
             return parsed

@@ -31,6 +31,9 @@ enum WeekAheadScheduleBuilder {
             cutoff: cutoff
         )
         let completedDays = Set(history.sessions.map(\.helmDay))
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: calendar)
+        let storedOverrides = (try? store.scheduleOverrides.load()) ?? .empty
+        let overrides = ScheduleWeekOverrides.fromStored(storedOverrides, weekStart: weekStart)
 
         var rows: [WeekAheadScheduleRow] = []
         for offset in 0 ..< horizonDays {
@@ -58,13 +61,28 @@ enum WeekAheadScheduleBuilder {
                         isPartiallyBlocked: partiallyBlockedDays.contains(helmDay)
                     )
                 )
+            } else if completedDays.contains(helmDay) {
+                rows.append(
+                    WeekAheadScheduleRow(
+                        id: helmDay.formatted,
+                        dayLabel: dayLabel(for: helmDay, today: today, calendar: calendar),
+                        splitLabel: "Session",
+                        note: "Logged outside planned slot",
+                        status: .completed,
+                        driftNote: nil,
+                        busyDayHint: busyDayHints[helmDay],
+                        isToday: helmDay == today,
+                        isPartiallyBlocked: partiallyBlockedDays.contains(helmDay)
+                    )
+                )
             } else {
+                let restNote = restOverrideNote(day: helmDay, overrides: overrides)
                 rows.append(
                     WeekAheadScheduleRow(
                         id: helmDay.formatted,
                         dayLabel: dayLabel(for: helmDay, today: today, calendar: calendar),
                         splitLabel: "Rest",
-                        note: nil,
+                        note: restNote,
                         status: .rest,
                         driftNote: nil,
                         busyDayHint: busyDayHints[helmDay],
@@ -76,6 +94,16 @@ enum WeekAheadScheduleBuilder {
         }
 
         return WeekAheadScheduleModel(rows: rows)
+    }
+
+    private static func restOverrideNote(
+        day: HelmDay,
+        overrides: ScheduleWeekOverrides
+    ) -> String? {
+        if overrides.restDays.contains(day) {
+            return overrides.reason ?? "Moved for schedule swap"
+        }
+        return nil
     }
 
     private static func resolvedStatus(

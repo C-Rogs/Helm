@@ -1,0 +1,842 @@
+{
+  "generated_at": "2026-09-03T23:19:01.031019+01:00",
+  "inputs": {
+    "apple_health_csv": "/Users/cameronro/Downloads/apple_health_export 2/apple_health_out/daily_features.csv",
+    "helm_db": "/Users/cameronro/Downloads/helm-2026-08-24T18-35-50Z.sqlite",
+    "helm_nutrition_db": "/Users/cameronro/Downloads/helm-2026-08-04T14-25-49Z.sqlite",
+    "hevy_csv": "/Users/cameronro/Downloads/HevyExport 4.csv",
+    "hevy_days": 260,
+    "nutrition_stats": {
+      "breakfast_days": 6,
+      "alcohol_name_days": 2,
+      "alcohol_source_days": 0,
+      "meal_days": 157,
+      "nutrition_day_rows": 157
+    },
+    "nutrition_stats_primary_db": {
+      "breakfast_days": 0,
+      "alcohol_name_days": 0,
+      "alcohol_source_days": 0,
+      "meal_days": 149,
+      "nutrition_day_rows": 149
+    }
+  },
+  "coverage": {
+    "days": 925,
+    "date_min": "2023-12-30",
+    "date_max": "2026-08-24",
+    "diet_energy": 160,
+    "diet_protein": 159,
+    "sleep": 850,
+    "hrv": 478,
+    "rhr": 468,
+    "weight": 123,
+    "workout_min": 725,
+    "alcohol_days": 2,
+    "breakfast_true": 6,
+    "breakfast_false": 152,
+    "arc": 12,
+    "hevy_days": 260,
+    "office_days": 0
+  },
+  "gates": {
+    "min_n_arm": 12,
+    "min_cliffs_delta_ship": 0.15,
+    "fdr_q": 0.1,
+    "shuffle_n": 500
+  },
+  "contrasts": [
+    {
+      "id": "alcohol_lower_kcal",
+      "hypothesis": "Alcohol day \u2192 lower total dietary kcal",
+      "exposure": "alcohol",
+      "outcome": "diet_energy_kcal",
+      "lag_days": 0,
+      "n_exposure": 2,
+      "n_control": 158,
+      "median_exposure": 1884.43,
+      "median_control": 1730.8150100708008,
+      "median_delta": 153.61498992919928,
+      "cliffs_delta": 0.22151898734177214,
+      "p_mannwhitney": null,
+      "shuffle_p": null,
+      "fdr_q": null,
+      "verdict": "kill_sample",
+      "notes": "Alcohol labeling sparse historically.Need \u226512/arm.",
+      "source": "helm_meal_heuristic"
+    },
+    {
+      "id": "alcohol_worse_sleep",
+      "hypothesis": "Alcohol day \u2192 less REM / asleep",
+      "exposure": "alcohol",
+      "outcome": "sleep_rem_or_asleep",
+      "lag_days": 0,
+      "n_exposure": 2,
+      "n_control": 890,
+      "median_exposure": 86.96130864322186,
+      "median_control": 52.56405808031559,
+      "median_delta": 34.397250562906265,
+      "cliffs_delta": 0.34831460674157305,
+      "p_mannwhitney": null,
+      "shuffle_p": null,
+      "fdr_q": null,
+      "verdict": "kill_sample",
+      "notes": "Need \u226512/arm.",
+      "source": "helm_meal_heuristic"
+    },
+    {
+      "id": "alcohol_next_weight_down",
+      "hypothesis": "Alcohol day \u2192 lower next-morning weight",
+      "exposure": "alcohol",
+      "outcome": "bodymass_kg",
+      "lag_days": 1,
+      "n_exposure": 1,
+      "n_control": 121,
+      "median_exposure": 71.05,
+      "median_control": 69.0,
+      "median_delta": 2.049999999999997,
+      "cliffs_delta": 0.19008264462809918,
+      "p_mannwhitney": null,
+      "shuffle_p": null,
+      "fdr_q": null,
+      "verdict": "kill_sample",
+      "notes": "Need \u226512/arm.",
+      "source": "helm_meal_heuristic"
+    },
+    {
+      "id": "breakfast_lower_protein",
+      "hypothesis": "Breakfast logged \u2192 lower day protein",
+      "exposure": "breakfast_logged",
+      "outcome": "diet_protein_g",
+      "lag_days": 0,
+      "n_exposure": 6,
+      "n_control": 151,
+      "median_exposure": 187.45520588000002,
+      "median_control": 132.8064479827881,
+      "median_delta": 54.64875789721194,
+      "cliffs_delta": 0.6578366445916115,
+      "p_mannwhitney": 0.006363486300758003,
+      "shuffle_p": 0.088,
+      "fdr_q": 0.10057142857142856,
+      "verdict": "kill_sample",
+      "notes": "Need \u226512/arm.",
+      "source": "helm_meal_bucket"
+    },
+    {
+      "id": "low_sleep_higher_rhr",
+      "hypothesis": "Low-sleep tertile \u2192 higher next-day resting HR",
+      "exposure": "low_sleep_tertile",
+      "outcome": "resting_hr",
+      "lag_days": 1,
+      "n_exposure": 110,
+      "n_control": 181,
+      "median_exposure": 60.0,
+      "median_control": 58.0,
+      "median_delta": 2.0,
+      "cliffs_delta": 0.3334505273731793,
+      "p_mannwhitney": 1.7755294845489544e-06,
+      "shuffle_p": 0.002,
+      "fdr_q": 0.004,
+      "verdict": "ship",
+      "notes": "",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "low_sleep_lower_hrv",
+      "hypothesis": "Low-sleep tertile \u2192 lower next-day HRV",
+      "exposure": "low_sleep_tertile",
+      "outcome": "hrv_sdnn",
+      "lag_days": 1,
+      "n_exposure": 112,
+      "n_control": 184,
+      "median_exposure": 67.0,
+      "median_control": 70.0,
+      "median_delta": -3.0,
+      "cliffs_delta": -0.1859472049689441,
+      "p_mannwhitney": 0.007273714361043737,
+      "shuffle_p": 0.044,
+      "fdr_q": 0.058666666666666666,
+      "verdict": "ship",
+      "notes": "",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "workout_day_more_sleep",
+      "hypothesis": "Workout day \u2192 more sleep that night (often false)",
+      "exposure": "workout_day",
+      "outcome": "sleep_asleep_min",
+      "lag_days": 0,
+      "n_exposure": 331,
+      "n_control": 519,
+      "median_exposure": 461.63948222994804,
+      "median_control": 415.71476720273495,
+      "median_delta": 45.9247150272131,
+      "cliffs_delta": 0.23230241750053846,
+      "p_mannwhitney": 1.0859704024923644e-08,
+      "shuffle_p": 0.0,
+      "fdr_q": 0.0,
+      "verdict": "ship",
+      "notes": "",
+      "source": "ah_plus_helm_hevy"
+    },
+    {
+      "id": "high_kcal_next_weight_up",
+      "hypothesis": "High-kcal tertile \u2192 higher next-morning weight",
+      "exposure": "high_kcal_tertile",
+      "outcome": "bodymass_kg",
+      "lag_days": 1,
+      "n_exposure": 28,
+      "n_control": 16,
+      "median_exposure": 72.49993950430894,
+      "median_control": 67.825,
+      "median_delta": 4.674939504308938,
+      "cliffs_delta": 0.7566964285714286,
+      "p_mannwhitney": 3.514591646069931e-05,
+      "shuffle_p": 0.0,
+      "fdr_q": 0.0,
+      "verdict": "ship",
+      "notes": "",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "low_hrv_fewer_workout_min",
+      "hypothesis": "Low-HRV tertile \u2192 fewer same-day workout minutes",
+      "exposure": "low_hrv_tertile",
+      "outcome": "workout_minutes",
+      "lag_days": 0,
+      "n_exposure": 108,
+      "n_control": 105,
+      "median_exposure": 8.737766928970814,
+      "median_control": 64.4903502613306,
+      "median_delta": -55.75258333235979,
+      "cliffs_delta": -0.3619047619047619,
+      "p_mannwhitney": 3.7780210639937195e-06,
+      "shuffle_p": 0.0,
+      "fdr_q": 0.0,
+      "verdict": "ship",
+      "notes": "Confounded if readiness gating already cuts sessions.",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "prior_workout_lower_protein",
+      "hypothesis": "Prior-day workout \u2192 lower next-day protein",
+      "exposure": "prior_workout",
+      "outcome": "diet_protein_g",
+      "lag_days": 1,
+      "n_exposure": 102,
+      "n_control": 57,
+      "median_exposure": 135.68377113342285,
+      "median_control": 132.75140500068665,
+      "median_delta": 2.932366132736206,
+      "cliffs_delta": 0.03371173030615755,
+      "p_mannwhitney": 0.7248525281472924,
+      "shuffle_p": 0.876,
+      "fdr_q": 0.876,
+      "verdict": "kill_null",
+      "notes": "Survived N but not FDR/shuffle.",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "high_protein_more_workouts",
+      "hypothesis": "High-protein tertile \u2192 more workout minutes (distractor)",
+      "exposure": "high_protein_tertile",
+      "outcome": "workout_minutes",
+      "lag_days": 0,
+      "n_exposure": 48,
+      "n_control": 50,
+      "median_exposure": 57.49169144779444,
+      "median_control": 36.368007995188236,
+      "median_delta": 21.1236834526062,
+      "cliffs_delta": 0.24666666666666667,
+      "p_mannwhitney": 0.03390201887901667,
+      "shuffle_p": 0.01,
+      "fdr_q": 0.016,
+      "verdict": "ship",
+      "notes": "",
+      "source": "ah_plus_helm"
+    },
+    {
+      "id": "office_better_gym",
+      "hypothesis": "Office demand \u2192 higher Hevy volume",
+      "exposure": "office",
+      "outcome": "hevy_volume",
+      "lag_days": 0,
+      "n_exposure": 0,
+      "n_control": 0,
+      "median_exposure": null,
+      "median_control": null,
+      "median_delta": null,
+      "cliffs_delta": null,
+      "p_mannwhitney": null,
+      "shuffle_p": null,
+      "fdr_q": null,
+      "verdict": "kill_sample",
+      "notes": "No office demand overrides in export.Need \u226512/arm.",
+      "source": "demand_override"
+    },
+    {
+      "id": "arc_depleted_less_volume",
+      "hypothesis": "ARC depleted \u2192 lower same-day Hevy volume",
+      "exposure": "arc_depleted",
+      "outcome": "volume_or_minutes",
+      "lag_days": 0,
+      "n_exposure": 5,
+      "n_control": 2,
+      "median_exposure": 56.105182841420174,
+      "median_control": 38.34893334656954,
+      "median_delta": 17.756249494850636,
+      "cliffs_delta": 0.4,
+      "p_mannwhitney": null,
+      "shuffle_p": null,
+      "fdr_q": null,
+      "verdict": "kill_sample",
+      "notes": "Tautology risk vs readiness gating.Need \u226512/arm.",
+      "source": "helm_readiness"
+    }
+  ],
+  "analogous_days": {
+    "feature_keys": [
+      "diet_energy_kcal",
+      "diet_protein_g",
+      "sleep_asleep_min",
+      "hrv_sdnn",
+      "resting_hr",
+      "workout_minutes"
+    ],
+    "query_count": 53,
+    "examples": [
+      {
+        "query": "2025-01-02",
+        "neighbors": [
+          {
+            "date": "2025-01-08",
+            "dist": 0.186,
+            "diet_energy_kcal": 2020.56005859375,
+            "diet_protein_g": 180.80419731140137,
+            "sleep_asleep_min": 386.1266329139471,
+            "hrv_sdnn": null,
+            "workout_minutes": 44.950000271201134
+          },
+          {
+            "date": "2025-03-10",
+            "dist": 0.511,
+            "diet_energy_kcal": 2123.0264892578125,
+            "diet_protein_g": 149.32644653320312,
+            "sleep_asleep_min": 456.77421659231186,
+            "hrv_sdnn": null,
+            "workout_minutes": 29.083333164453506
+          },
+          {
+            "date": "2025-02-25",
+            "dist": 0.561,
+            "diet_energy_kcal": 1931.3700561523438,
+            "diet_protein_g": 170.96324825286865,
+            "sleep_asleep_min": 337.6002502441406,
+            "hrv_sdnn": null,
+            "workout_minutes": 0.0
+          },
+          {
+            "date": "2026-07-23",
+            "dist": 0.564,
+            "diet_energy_kcal": 2399.6500244140625,
+            "diet_protein_g": 163.2554988861084,
+            "sleep_asleep_min": 416.01406686007977,
+            "hrv_sdnn": 68.0,
+            "workout_minutes": 55.30468359589577
+          },
+          {
+            "date": "2026-07-17",
+            "dist": 0.568,
+            "diet_energy_kcal": 1991.3500366210938,
+            "diet_protein_g": 165.99549865722656,
+            "sleep_asleep_min": 429.0417994558811,
+            "hrv_sdnn": 69.0,
+            "workout_minutes": 67.64449998736382
+          }
+        ]
+      },
+      {
+        "query": "2025-01-03",
+        "neighbors": [
+          {
+            "date": "2025-01-22",
+            "dist": 0.32,
+            "diet_energy_kcal": 1865.9049682617188,
+            "diet_protein_g": 149.78949737548828,
+            "sleep_asleep_min": 484.78680051863194,
+            "hrv_sdnn": null,
+            "workout_minutes": 76.28333330154419
+          },
+          {
+            "date": "2025-03-07",
+            "dist": 0.468,
+            "diet_energy_kcal": 1773.2925415039062,
+            "diet_protein_g": 137.65164947509766,
+            "sleep_asleep_min": 483.07199992239475,
+            "hrv_sdnn": null,
+            "workout_minutes": 101.06666699051857
+          },
+          {
+            "date": "2026-07-17",
+            "dist": 0.547,
+            "diet_energy_kcal": 1991.3500366210938,
+            "diet_protein_g": 165.99549865722656,
+            "sleep_asleep_min": 429.0417994558811,
+            "hrv_sdnn": 69.0,
+            "workout_minutes": 67.64449998736382
+          },
+          {
+            "date": "2026-03-27",
+            "dist": 0.573,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 447.09636591374874,
+            "hrv_sdnn": 67.0,
+            "workout_minutes": 84.46986705064774
+          },
+          {
+            "date": "2026-06-16",
+            "dist": 0.58,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 445.0888169556856,
+            "hrv_sdnn": 71.0,
+            "workout_minutes": 73.86260010302067
+          }
+        ]
+      },
+      {
+        "query": "2025-01-05",
+        "neighbors": [
+          {
+            "date": "2025-01-12",
+            "dist": 0.746,
+            "diet_energy_kcal": 2173.0846557617188,
+            "diet_protein_g": 162.6540641784668,
+            "sleep_asleep_min": 444.9471339583397,
+            "hrv_sdnn": null,
+            "workout_minutes": 0.0
+          },
+          {
+            "date": "2026-08-02",
+            "dist": 0.76,
+            "diet_energy_kcal": 1937.0,
+            "diet_protein_g": 205.0,
+            "sleep_asleep_min": 512.2581991553307,
+            "hrv_sdnn": 73.0,
+            "workout_minutes": 4.116817340254784
+          },
+          {
+            "date": "2025-01-28",
+            "dist": 0.776,
+            "diet_energy_kcal": 1911.0599365234375,
+            "diet_protein_g": 191.01949882507324,
+            "sleep_asleep_min": 484.0308165550232,
+            "hrv_sdnn": null,
+            "workout_minutes": 54.03333328664303
+          },
+          {
+            "date": "2026-07-05",
+            "dist": 0.857,
+            "diet_energy_kcal": 2331.25,
+            "diet_protein_g": 156.02950191497803,
+            "sleep_asleep_min": 559.3718824535608,
+            "hrv_sdnn": 70.0,
+            "workout_minutes": 7.447616681456566
+          },
+          {
+            "date": "2025-03-06",
+            "dist": 0.935,
+            "diet_energy_kcal": 1905.6941833496094,
+            "diet_protein_g": 194.36391258239746,
+            "sleep_asleep_min": 644.9673834443092,
+            "hrv_sdnn": null,
+            "workout_minutes": 67.13333263993263
+          }
+        ]
+      },
+      {
+        "query": "2025-01-08",
+        "neighbors": [
+          {
+            "date": "2025-01-02",
+            "dist": 0.186,
+            "diet_energy_kcal": 2089.4224853515625,
+            "diet_protein_g": 171.29322814941406,
+            "sleep_asleep_min": 380.29619984328747,
+            "hrv_sdnn": null,
+            "workout_minutes": 42.75000013411045
+          },
+          {
+            "date": "2025-01-28",
+            "dist": 0.478,
+            "diet_energy_kcal": 1911.0599365234375,
+            "diet_protein_g": 191.01949882507324,
+            "sleep_asleep_min": 484.0308165550232,
+            "hrv_sdnn": null,
+            "workout_minutes": 54.03333328664303
+          },
+          {
+            "date": "2025-01-27",
+            "dist": 0.54,
+            "diet_energy_kcal": 1903.8099517822266,
+            "diet_protein_g": 196.395898103714,
+            "sleep_asleep_min": 281.37549988925457,
+            "hrv_sdnn": null,
+            "workout_minutes": 53.03333334624767
+          },
+          {
+            "date": "2026-07-21",
+            "dist": 0.572,
+            "diet_energy_kcal": 1855.7750244140625,
+            "diet_protein_g": 168.0885009765625,
+            "sleep_asleep_min": 440.57486571371555,
+            "hrv_sdnn": 70.0,
+            "workout_minutes": 51.417866349220276
+          },
+          {
+            "date": "2025-01-14",
+            "dist": 0.575,
+            "diet_energy_kcal": 1793.8900146484375,
+            "diet_protein_g": 185.8008975982666,
+            "sleep_asleep_min": 479.2360997200012,
+            "hrv_sdnn": null,
+            "workout_minutes": 69.6833335608244
+          }
+        ]
+      },
+      {
+        "query": "2025-01-10",
+        "neighbors": [
+          {
+            "date": "2026-06-01",
+            "dist": 0.567,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 485.1798339933157,
+            "hrv_sdnn": 69.0,
+            "workout_minutes": 9.23386663198471
+          },
+          {
+            "date": "2025-03-09",
+            "dist": 0.589,
+            "diet_energy_kcal": 2097.4500122070312,
+            "diet_protein_g": 109.6985023021698,
+            "sleep_asleep_min": 433.73476669192314,
+            "hrv_sdnn": null,
+            "workout_minutes": 0.0
+          },
+          {
+            "date": "2025-10-10",
+            "dist": 0.655,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 488.70063230395317,
+            "hrv_sdnn": 72.0,
+            "workout_minutes": 1.4595166593790054
+          },
+          {
+            "date": "2026-01-09",
+            "dist": 0.666,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 478.1773513555527,
+            "hrv_sdnn": 70.0,
+            "workout_minutes": 28.611250296235085
+          },
+          {
+            "date": "2026-05-05",
+            "dist": 0.679,
+            "diet_energy_kcal": null,
+            "diet_protein_g": null,
+            "sleep_asleep_min": 527.3056183755398,
+            "hrv_sdnn": 63.0,
+            "workout_minutes": 0.8234167098999023
+          }
+        ]
+      },
+      {
+        "query": "2025-01-12",
+        "neighbors": [
+          {
+            "date": "2025-03-10",
+            "dist": 0.407,
+            "diet_energy_kcal": 2123.0264892578125,
+            "diet_protein_g": 149.32644653320312,
+            "sleep_asleep_min": 456.77421659231186,
+            "hrv_sdnn": null,
+            "workout_minutes": 29.083333164453506
+          },
+          {
+            "date": "2025-02-25",
+            "dist": 0.571,
+            "diet_energy_kcal": 1931.3700561523438,
+            "diet_protein_g": 170.96324825286865,
+            "sleep_asleep_min": 337.6002502441406,
+            "hrv_sdnn": null,
+            "workout_minutes": 0.0
+          },
+          {
+            "date": "2025-01-02",
+            "dist": 0.586,
+            "diet_energy_kcal": 2089.4224853515625,
+            "diet_protein_g": 171.29322814941406,
+            "sleep_asleep_min": 380.29619984328747,
+            "hrv_sdnn": null,
+            "workout_minutes": 42.75000013411045
+          },
+          {
+            "date": "2025-01-08",
+            "dist": 0.675,
+            "diet_energy_kcal": 2020.56005859375,
+            "diet_protein_g": 180.80419731140137,
+            "sleep_asleep_min": 386.1266329139471,
+            "hrv_sdnn": null,
+            "workout_minutes": 44.950000271201134
+          },
+          {
+            "date": "2026-07-05",
+            "dist": 0.692,
+            "diet_energy_kcal": 2331.25,
+            "diet_protein_g": 156.02950191497803,
+            "sleep_asleep_min": 559.3718824535608,
+            "hrv_sdnn": 70.0,
+            "workout_minutes": 7.447616681456566
+          }
+        ]
+      },
+      {
+        "query": "2025-01-23",
+        "neighbors": [
+          {
+            "date": "2025-03-10",
+            "dist": 0.545,
+            "diet_energy_kcal": 2123.0264892578125,
+            "diet_protein_g": 149.32644653320312,
+            "sleep_asleep_min": 456.77421659231186,
+            "hrv_sdnn": null,
+            "workout_minutes": 29.083333164453506
+          },
+          {
+            "date": "2025-02-03",
+            "dist": 0.677,
+            "diet_energy_kcal": 1692.1900634765625,
+            "diet_protein_g": 136.08250427246094,
+            "sleep_asleep_min": 526.0428162664175,
+            "hrv_sdnn": null,
+            "workout_minutes": 52.34999969601631
+          },
+          {
+            "date": "2025-01-22",
+            "dist": 0.702,
+            "diet_energy_kcal": 1865.9049682617188,
+            "diet_protein_g": 149.78949737548828,
+            "sleep_asleep_min": 484.78680051863194,
+            "hrv_sdnn": null,
+            "workout_minutes": 76.28333330154419
+          },
+          {
+            "date": "2026-07-05",
+            "dist": 0.758,
+            "diet_energy_kcal": 2331.25,
+            "diet_protein_g": 156.02950191497803,
+            "sleep_asleep_min": 559.3718824535608,
+            "hrv_sdnn": 70.0,
+            "workout_minutes": 7.447616681456566
+          },
+          {
+            "date": "2026-07-19",
+            "dist": 0.796,
+            "diet_energy_kcal": 2042.0,
+            "diet_protein_g": 132.98399925231934,
+            "sleep_asleep_min": 499.2327182739973,
+            "hrv_sdnn": 69.0,
+            "workout_minutes": null
+          }
+        ]
+      },
+      {
+        "query": "2025-01-29",
+        "neighbors": [
+          {
+            "date": "2025-01-27",
+            "dist": 0.415,
+            "diet_energy_kcal": 1903.8099517822266,
+            "diet_protein_g": 196.395898103714,
+            "sleep_asleep_min": 281.37549988925457,
+            "hrv_sdnn": null,
+            "workout_minutes": 53.03333334624767
+          },
+          {
+            "date": "2025-01-06",
+            "dist": 0.588,
+            "diet_energy_kcal": 1814.525032043457,
+            "diet_protein_g": 176.60490202903748,
+            "sleep_asleep_min": 193.936066031456,
+            "hrv_sdnn": null,
+            "workout_minutes": 56.04999974370003
+          },
+          {
+            "date": "2026-06-30",
+            "dist": 0.853,
+            "diet_energy_kcal": 2571.60107421875,
+            "diet_protein_g": 198.78589630126953,
+            "sleep_asleep_min": 204.50095005333424,
+            "hrv_sdnn": 64.0,
+            "workout_minutes": 77.41015009582043
+          },
+          {
+            "date": "2025-01-08",
+            "dist": 0.889,
+            "diet_energy_kcal": 2020.56005859375,
+            "diet_protein_g": 180.80419731140137,
+            "sleep_asleep_min": 386.1266329139471,
+            "hrv_sdnn": null,
+            "workout_minutes": 44.950000271201134
+          },
+          {
+            "date": "2026-07-22",
+            "dist": 0.897,
+            "diet_energy_kcal": 2360.961151123047,
+            "diet_protein_g": 196.75986099243164,
+            "sleep_asleep_min": 369.90481719374657,
+            "hrv_sdnn": 65.0,
+            "workout_minutes": 53.18341702222824
+          }
+        ]
+      }
+    ]
+  },
+  "propose_then_test": {
+    "proposals": [
+      "alcohol_lower_kcal",
+      "alcohol_worse_sleep",
+      "alcohol_next_weight_down",
+      "breakfast_lower_protein",
+      "low_sleep_higher_rhr",
+      "workout_day_more_sleep",
+      "high_kcal_next_weight_up",
+      "low_hrv_fewer_workout_min",
+      "high_protein_more_workouts",
+      "prior_workout_lower_protein",
+      "moon_phase_hrv",
+      "office_better_gym"
+    ],
+    "evaluated": [
+      {
+        "id": "alcohol_lower_kcal",
+        "status": "kill_sample",
+        "in_catalog": true,
+        "n_exposure": 2,
+        "n_control": 158,
+        "cliffs_delta": 0.22151898734177214,
+        "shuffle_p": null
+      },
+      {
+        "id": "alcohol_worse_sleep",
+        "status": "kill_sample",
+        "in_catalog": true,
+        "n_exposure": 2,
+        "n_control": 890,
+        "cliffs_delta": 0.34831460674157305,
+        "shuffle_p": null
+      },
+      {
+        "id": "alcohol_next_weight_down",
+        "status": "kill_sample",
+        "in_catalog": true,
+        "n_exposure": 1,
+        "n_control": 121,
+        "cliffs_delta": 0.19008264462809918,
+        "shuffle_p": null
+      },
+      {
+        "id": "breakfast_lower_protein",
+        "status": "kill_sample",
+        "in_catalog": true,
+        "n_exposure": 6,
+        "n_control": 151,
+        "cliffs_delta": 0.6578366445916115,
+        "shuffle_p": 0.088
+      },
+      {
+        "id": "low_sleep_higher_rhr",
+        "status": "ship",
+        "in_catalog": true,
+        "n_exposure": 110,
+        "n_control": 181,
+        "cliffs_delta": 0.3334505273731793,
+        "shuffle_p": 0.002
+      },
+      {
+        "id": "workout_day_more_sleep",
+        "status": "ship",
+        "in_catalog": false,
+        "n_exposure": 331,
+        "n_control": 519,
+        "cliffs_delta": 0.23230241750053846,
+        "shuffle_p": 0.0
+      },
+      {
+        "id": "high_kcal_next_weight_up",
+        "status": "ship",
+        "in_catalog": true,
+        "n_exposure": 28,
+        "n_control": 16,
+        "cliffs_delta": 0.7566964285714286,
+        "shuffle_p": 0.0
+      },
+      {
+        "id": "low_hrv_fewer_workout_min",
+        "status": "ship",
+        "in_catalog": true,
+        "n_exposure": 108,
+        "n_control": 105,
+        "cliffs_delta": -0.3619047619047619,
+        "shuffle_p": 0.0
+      },
+      {
+        "id": "high_protein_more_workouts",
+        "status": "ship",
+        "in_catalog": false,
+        "n_exposure": 48,
+        "n_control": 50,
+        "cliffs_delta": 0.24666666666666667,
+        "shuffle_p": 0.01
+      },
+      {
+        "id": "prior_workout_lower_protein",
+        "status": "kill_null",
+        "in_catalog": true,
+        "n_exposure": 102,
+        "n_control": 57,
+        "cliffs_delta": 0.03371173030615755,
+        "shuffle_p": 0.876
+      },
+      {
+        "id": "moon_phase_hrv",
+        "status": "untestable_or_missing",
+        "in_catalog": false
+      },
+      {
+        "id": "office_better_gym",
+        "status": "kill_sample",
+        "in_catalog": true,
+        "n_exposure": 0,
+        "n_control": 0,
+        "cliffs_delta": null,
+        "shuffle_p": null
+      }
+    ],
+    "precision_among_testable": 0.8333333333333334,
+    "note": "Simulated proposer (no live Gemini). Real coach loop would emit constrained JSON only."
+  },
+  "data_gaps": {
+    "alcohol_source_days": 0,
+    "alcohol_name_days": 2,
+    "breakfast_days": 6,
+    "office_days": 0,
+    "arc_days": 12,
+    "hk_alcoholic_beverages": "absent from Jun 2025 Apple Health export types"
+  }
+}

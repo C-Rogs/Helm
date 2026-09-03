@@ -8,6 +8,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     case workoutStart = "workout_start"
     case memoryAdjustment = "memory_adjustment"
     case settingsAdjustment = "settings_adjustment"
+    case scheduleAdjustment = "schedule_adjustment"
     case reactiveDeload = "reactive_deload"
     case planRegenerate = "plan_regenerate"
     case mealQuery = "meal_query"
@@ -29,6 +30,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         case .workoutStart: .workoutStartV2
         case .memoryAdjustment: .memoryAdjustmentV1
         case .settingsAdjustment: .settingsAdjustmentV1
+        case .scheduleAdjustment: .scheduleAdjustmentV1
         case .reactiveDeload: .reactiveDeloadV1
         case .planRegenerate: .planRegenerateV1
         case .mealQuery: .mealQueryV1
@@ -57,7 +59,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
 
     public var isWrite: Bool {
         switch self {
-        case .foodLog, .mealCopy, .workoutStart, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .workoutDiscard:
+        case .foodLog, .mealCopy, .workoutStart, .memoryAdjustment, .settingsAdjustment, .scheduleAdjustment, .reactiveDeload, .planRegenerate, .workoutDiscard:
             true
         default:
             false

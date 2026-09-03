@@ -180,7 +180,7 @@ enum TrendsDataBuilder {
             logged: ledger.totals,
             mesocycle: mesocycle,
             muscleMaps: muscleMaps,
-            emphasis: settings.phaseGoal.emphasis,
+            settings: settings,
             calendar: calendar,
             cutoff: cutoff
         )
@@ -217,7 +217,7 @@ enum TrendsDataBuilder {
         logged: [MuscleGroup: Double],
         mesocycle: MesocycleState?,
         muscleMaps: [String: ExerciseMuscleMap],
-        emphasis: String?,
+        settings: StoredTrainingPlanSettings,
         calendar: Calendar,
         cutoff: DayCutoff
     ) throws -> [MuscleGroup: Double] {
@@ -229,34 +229,36 @@ enum TrendsDataBuilder {
             calendar: calendar,
             cutoff: cutoff
         )
-        let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
-            in: history,
-            through: day
-        )
-        // Trends must allow zero remaining; prescription clamp (max 1) would invent phantom volume.
-        let plannedPerWeek = 3
-        let remainingByPlan = max(0, plannedPerWeek - completedThisWeek)
-        guard remainingByPlan > 0 else { return [:] }
-
         let weekEnd = history.weekStart.adding(days: 6, calendar: calendar)
         guard day <= weekEnd else { return [:] }
-        var calendarSlotsLeft = 0
-        var cursor = day
-        while cursor <= weekEnd {
-            calendarSlotsLeft += 1
-            cursor = cursor.adding(days: 1, calendar: calendar)
-        }
-        let remainingSessions = min(remainingByPlan, calendarSlotsLeft)
-        guard remainingSessions > 0 else { return [:] }
 
-        let upcoming = upcomingSessionMuscles(
-            history: history,
-            through: day,
-            muscleMaps: muscleMaps,
-            emphasis: emphasis,
-            remainingSessions: remainingSessions,
-            calendar: calendar
+        // Same planner as live Train / prescription: saved daysPerWeek + rotation, not frozen 3-day PPL.
+        // Trends keeps zero remaining (no max-1 clamp) so we do not invent phantom tint.
+        let dayCount = max(1, day.days(to: weekEnd, calendar: calendar) + 1)
+        let weekStart = history.weekStart
+        let overrides = ScheduleWeekOverrides.fromStored(
+            (try? store.scheduleOverrides.load()) ?? .empty,
+            weekStart: weekStart
         )
+        let records = SchedulePlanner.plannedWorkoutRecords(
+            startingAt: day,
+            dayCount: dayCount,
+            emphasis: settings.phaseGoal.emphasis,
+            history: history,
+            muscleMaps: muscleMaps,
+            calendar: calendar,
+            sessionsPerWeek: settings.daysPerWeek,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+            overrides: overrides
+        )
+        let upcoming = records.compactMap { record -> [MuscleGroup]? in
+            guard let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) else {
+                return nil
+            }
+            let muscles = payload.targetMuscles.compactMap(MuscleGroup.init(rawValue:))
+            return muscles.isEmpty ? nil : muscles
+        }
+        guard !upcoming.isEmpty else { return [:] }
 
         var weeklyTargets: [MuscleGroup: Int] = [:]
         for (muscle, state) in mesocycle.muscles {
@@ -268,67 +270,6 @@ enum TrendsDataBuilder {
             loggedSets: logged,
             upcomingTargetMuscles: upcoming
         )
-    }
-
-    /// Next remaining training sessions this week (not every calendar day).
-    private static func upcomingSessionMuscles(
-        history: PrescriptionHistory,
-        through day: HelmDay,
-        muscleMaps: [String: ExerciseMuscleMap],
-        emphasis: String?,
-        remainingSessions: Int,
-        calendar: Calendar
-    ) -> [[MuscleGroup]] {
-        let rotation = SessionSplitPlanner.rotationSplits(emphasis: emphasis)
-        let completedSplits = completedSplitKinds(
-            in: history,
-            through: day,
-            muscleMaps: muscleMaps,
-            calendar: calendar
-        )
-        var pending = rotation.filter { !completedSplits.contains($0) }
-        // Only recycle the full rotation when sessions remain and every split was already hit.
-        if pending.isEmpty, remainingSessions > 0 {
-            pending = rotation
-        }
-        guard !pending.isEmpty else { return [] }
-
-        var upcoming: [[MuscleGroup]] = []
-        var source = pending
-        while upcoming.count < remainingSessions {
-            for split in source {
-                upcoming.append(split.muscles)
-                if upcoming.count >= remainingSessions { break }
-            }
-            source = rotation
-        }
-        return upcoming
-    }
-
-    private static func completedSplitKinds(
-        in history: PrescriptionHistory,
-        through endDay: HelmDay,
-        muscleMaps: [String: ExerciseMuscleMap],
-        calendar: Calendar
-    ) -> [SessionSplitKind] {
-        let weekDays = (0 ..< 7).map { history.weekStart.adding(days: $0, calendar: calendar) }
-        let weekDaySet = Set(weekDays)
-        var completed: [SessionSplitKind] = []
-
-        for session in history.sessions where weekDaySet.contains(session.helmDay) && session.helmDay <= endDay {
-            var muscles = Set<MuscleGroup>()
-            let exerciseIDs = Set(session.sets.map(\.exerciseID))
-            for exerciseID in exerciseIDs {
-                guard let map = muscleMaps[exerciseID] else { continue }
-                for contribution in map.contributions where contribution.fraction >= 0.25 {
-                    muscles.insert(contribution.muscle)
-                }
-            }
-            if let kind = SessionSplitPlanner.inferSplitKind(from: muscles), !completed.contains(kind) {
-                completed.append(kind)
-            }
-        }
-        return completed
     }
 
     static func buildE1RMPage(

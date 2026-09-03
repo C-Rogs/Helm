@@ -362,7 +362,8 @@ public actor PlanPrescriptionEngine {
             history,
             through: day,
             muscleMaps: muscleMaps,
-            calendar: calendar
+            calendar: calendar,
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
         )
         PrescriptionDayStore.invalidateIfHistoryChanged(
             currentFingerprint: historyFingerprint,
@@ -394,7 +395,8 @@ public actor PlanPrescriptionEngine {
             muscleMaps: muscleMaps,
             calendar: calendar,
             sessionsPerWeek: settings.daysPerWeek,
-            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+            overrides: loadScheduleOverrides(for: day)
         )
         let targetMuscles = schedule.targetMuscles
         let completedThisWeek = PrescriptionHistoryBuilder.completedSessionsThisWeek(
@@ -526,7 +528,8 @@ public actor PlanPrescriptionEngine {
             muscleMaps: muscleMaps,
             calendar: calendar,
             sessionsPerWeek: settings.daysPerWeek,
-            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+            overrides: loadScheduleOverrides(for: day)
         )
         let mesocycleState = try loadOrCreateMesocycleState(
             targetMuscles: schedule.targetMuscles,
@@ -557,6 +560,12 @@ public actor PlanPrescriptionEngine {
         return StandingConstraintNotes.evaluate(text, on: day)
     }
 
+    private func loadScheduleOverrides(for day: HelmDay) -> ScheduleWeekOverrides {
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+        let stored = (try? persistence.scheduleOverrides.load()) ?? .empty
+        return ScheduleWeekOverrides.fromStored(stored, weekStart: weekStart)
+    }
+
     private func persistPlannedWorkouts(
         startingAt day: HelmDay,
         settings: StoredTrainingPlanSettings,
@@ -565,17 +574,24 @@ public actor PlanPrescriptionEngine {
         avoidDays: Set<HelmDay> = []
     ) throws {
         let rotation = TrainingPlanShape.dayKindRotation(from: settings)
+        let overrides = loadScheduleOverrides(for: day)
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+        let horizonEnd = day.adding(days: 6, calendar: calendar)
+        let dayCount = max(7, weekStart.days(to: horizonEnd, calendar: calendar) + 1)
         var records = SchedulePlanner.plannedWorkoutRecords(
-            startingAt: day,
-            dayCount: 7,
+            startingAt: weekStart,
+            dayCount: dayCount,
             emphasis: settings.phaseGoal.emphasis,
             history: history,
             muscleMaps: muscleMaps,
             calendar: calendar,
             sessionsPerWeek: settings.daysPerWeek,
             avoidDays: avoidDays,
-            dayKindRotation: rotation
+            dayKindRotation: rotation,
+            overrides: overrides
         )
+        // Keep only rows from today forward for Train/Week Ahead (history overlay covers past Done).
+        records = records.filter { (try? $0.decodedHelmDay()).map { $0 >= day } ?? false }
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,
             history: history,
@@ -602,7 +618,8 @@ public actor PlanPrescriptionEngine {
             calendar: calendar,
             sessionsPerWeek: settings.daysPerWeek,
             avoidDays: avoidDays,
-            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
+            dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+            overrides: loadScheduleOverrides(for: day)
         )
         let drifted = ScheduleDriftResolver.resolveAndApply(
             records: records,

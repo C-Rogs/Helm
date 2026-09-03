@@ -11,8 +11,9 @@ enum CoachContextBootstrap {
         endingAt endDay: HelmDay,
         lookbackDays: Int = CoachContextAssembler.defaultLookbackDays
     ) async throws -> CoachContextDays {
+        let weekStart = endDay.mondayOfSameWeek()
         let weekEnd = endDay.adding(days: WeekAheadScheduleBuilder.horizonDays - 1)
-        let loads = await CalendarHintBootstrap.service.dayLoads(from: endDay, through: weekEnd)
+        let loads = await CalendarHintBootstrap.service.dayLoads(from: weekStart, through: weekEnd)
         let classifications = await CalendarHintBootstrap.eventClassifier.classify(loads: loads)
         let prescriptionSummary = await MainActor.run {
             PlanBootstrap.prescriptionService.state.summary

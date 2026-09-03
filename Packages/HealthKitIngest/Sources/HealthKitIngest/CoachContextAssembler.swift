@@ -102,9 +102,11 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
+        let weekAheadStart = endDay.mondayOfSameWeek(calendar: calendar)
         let weekAheadSchedule = try weekAheadScheduleBlock(
             from: store,
-            startingAt: endDay,
+            startingAt: weekAheadStart,
+            through: endDay.adding(days: 6, calendar: calendar),
             calendar: calendar,
             busyDayHints: busyDayHints
         )
@@ -200,6 +202,9 @@ public enum CoachContextAssembler {
             ($0.exerciseID, $0.muscleMap)
         })
         let plannedToday = try store.plan.fetchPlannedWorkouts(from: endDay, through: endDay)
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: endDay, calendar: calendar)
+        let storedOverrides = (try? store.scheduleOverrides.load()) ?? .empty
+        let overrides = ScheduleWeekOverrides.fromStored(storedOverrides, weekStart: weekStart)
         let todaySplit: SessionSplitKind?
         if let record = plannedToday.first,
            let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON),
@@ -215,7 +220,8 @@ public enum CoachContextAssembler {
                 muscleMaps: muscleMaps,
                 calendar: calendar,
                 sessionsPerWeek: settings.daysPerWeek,
-                dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
+                dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+                overrides: overrides
             )
             todaySplit = schedule.splitKind
         }
@@ -229,6 +235,28 @@ public enum CoachContextAssembler {
             muscleMaps: muscleMaps,
             endingAt: endDay
         )
+
+        var overrideNote: String?
+        if overrides.isEmpty == false {
+            var parts: [String] = []
+            if overrides.deferredKinds.isEmpty == false {
+                parts.append("deferred=\(overrides.deferredKinds.map(\.label).sorted().joined(separator: ","))")
+            }
+            if overrides.pinnedByDay.isEmpty == false {
+                let pins = overrides.pinnedByDay
+                    .map { "\($0.key.formatted):\($0.value.label)" }
+                    .sorted()
+                    .joined(separator: ",")
+                parts.append("pins=\(pins)")
+            }
+            if overrides.restDays.isEmpty == false {
+                parts.append("rest=\(overrides.restDays.map(\.formatted).sorted().joined(separator: ","))")
+            }
+            if let reason = overrides.reason {
+                parts.append("reason=\(reason)")
+            }
+            overrideNote = parts.joined(separator: "; ")
+        }
 
         return TrainingPlanCoachContext.build(
             from: TrainingPlanCoachContext.Input(
@@ -246,7 +274,8 @@ public enum CoachContextAssembler {
                 programTemplate: settings.programTemplateRaw,
                 daysPerWeek: settings.daysPerWeek,
                 weekRotation: TrainingPlanShape.dayKindRotation(from: settings).map(\.label),
-                allowedEquipment: MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences).preferences.allowedEquipment
+                allowedEquipment: MethodologyPreferences.parse(from: try store.memoryProfile.load().preferences).preferences.allowedEquipment,
+                scheduleOverrideNote: overrideNote
             )
         )
     }
@@ -254,36 +283,100 @@ public enum CoachContextAssembler {
     private static func weekAheadScheduleBlock(
         from store: PersistenceStore,
         startingAt startDay: HelmDay,
+        through endDay: HelmDay,
         calendar: Calendar,
         busyDayHints: [HelmDay: String]
     ) throws -> String {
-        let horizon = 7
-        let endDay = startDay.adding(days: horizon - 1, calendar: calendar)
+        let dayCount = max(1, startDay.days(to: endDay, calendar: calendar) + 1)
         let records = try store.plan.fetchPlannedWorkouts(from: startDay, through: endDay)
         let recordsByDay = Dictionary(
             uniqueKeysWithValues: try records.map { record in
                 (try record.decodedHelmDay(), record)
             }
         )
+        let history = try PrescriptionHistoryBuilder.history(
+            from: store,
+            endingAt: endDay,
+            calendar: calendar
+        )
+        let completedDays = Set(history.sessions.map(\.helmDay))
+        let settings = try store.trainingPlan.load()
+        let rotation = TrainingPlanShape.dayKindRotation(from: settings)
+        let catalogRows = try store.exercises.fetchCatalogRows()
+        let familiar = PrescriptionHistoryBuilder.familiarExerciseIDs(from: history)
+        let catalog = PrescriptionCatalogBuilder.build(
+            from: catalogRows,
+            familiarExerciseIDs: familiar
+        )
+        let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
+            ($0.exerciseID, $0.muscleMap)
+        })
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
+        let storedOverrides = (try? store.scheduleOverrides.load()) ?? .empty
+        let overrides = ScheduleWeekOverrides.fromStored(storedOverrides, weekStart: weekStart)
 
-        var lines = ["horizon_days=\(horizon)"]
-        for offset in 0 ..< horizon {
+        var lines = [
+            "horizon_days=\(dayCount)",
+            "iso_week_start=\(weekStart.formatted)"
+        ]
+        if overrides.isEmpty == false {
+            if let reason = overrides.reason {
+                lines.append("schedule_override=\(reason)")
+            }
+            if overrides.deferredKinds.isEmpty == false {
+                lines.append(
+                    "deferred_kinds=\(overrides.deferredKinds.map(\.label).sorted().joined(separator: ","))"
+                )
+            }
+        }
+        for offset in 0 ..< dayCount {
             let day = startDay.adding(days: offset, calendar: calendar)
             let busy = busyDayHints[day].map { " busy=\($0)" } ?? ""
+            let pin = overrides.pinnedByDay[day].map { " pin=\($0.label)" } ?? ""
+            let forcedRest = overrides.restDays.contains(day) ? " override=rest" : ""
             if let record = recordsByDay[day],
                let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) {
                 let note = payload.primaryNote.map { " note=\($0)" } ?? ""
+                let done = completedDays.contains(day) ? " logged=true" : ""
                 lines.append(
-                    "- \(day.formatted): \(payload.splitLabel) status=\(record.status)\(note)\(busy)"
+                    "- \(day.formatted): \(payload.splitLabel) status=\(record.status)\(note)\(done)\(pin)\(busy)"
                 )
+            } else if completedDays.contains(day) {
+                let label = inferredSplitLabel(
+                    day: day,
+                    history: history,
+                    muscleMaps: muscleMaps,
+                    rotation: rotation
+                )
+                lines.append("- \(day.formatted): \(label) status=completed note=logged_off_slot\(busy)")
             } else {
-                lines.append("- \(day.formatted): Rest\(busy)")
+                lines.append("- \(day.formatted): Rest\(forcedRest)\(pin)\(busy)")
             }
         }
         if busyDayHints.isEmpty {
             lines.append("calendar_busy=none_or_unavailable")
         }
         return lines.joined(separator: "\n")
+    }
+
+    private static func inferredSplitLabel(
+        day: HelmDay,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        rotation: [TrainingDayKind]
+    ) -> String {
+        guard let session = history.sessions.first(where: { $0.helmDay == day }) else {
+            return "Session"
+        }
+        var muscles = Set<MuscleGroup>()
+        for exerciseID in Set(session.sets.map(\.exerciseID)) {
+            guard let map = muscleMaps[exerciseID] else { continue }
+            for contribution in map.contributions where contribution.fraction >= 0.25 {
+                muscles.insert(contribution.muscle)
+            }
+        }
+        let among = rotation.isEmpty ? Array(TrainingDayKind.allCases) : rotation
+        return TrainingDayKind.bestMatch(muscles: muscles, among: among)?.label ?? "Session"
     }
 
     private static func decodeMesocycleState(from json: String?) -> MesocycleState? {

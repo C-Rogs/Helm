@@ -1207,6 +1207,99 @@ public enum PlanRegeneratePayloadParser: Sendable {
     }
 }
 
+/// Week-ahead day rotation: defer recovery conflicts, pin a day kind, or swap two days.
+public struct ScheduleAdjustmentPayload: Codable, Sendable, Equatable {
+    public enum Action: String, Codable, Sendable, Equatable {
+        case deferKinds = "defer_kinds"
+        case pinDay = "pin_day"
+        case swapDays = "swap_days"
+        case clear
+
+        public init?(rawFlexible value: String) {
+            switch value.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() {
+            case "defer_kinds", "defer", "deferkinds", "avoid":
+                self = .deferKinds
+            case "pin_day", "pin", "pinday", "set_today", "set_day":
+                self = .pinDay
+            case "swap_days", "swap", "swapdays", "reorder":
+                self = .swapDays
+            case "clear", "reset":
+                self = .clear
+            default:
+                return nil
+            }
+        }
+    }
+
+    public let schemaVersion: String
+    public let action: Action
+    public let reply: String?
+    public let region: String?
+    public let kinds: [String]?
+    public let pinKind: String?
+    public let helmDay: String?
+    public let dayA: String?
+    public let dayB: String?
+    public let reason: String?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.scheduleAdjustmentV1.rawValue,
+        action: Action,
+        reply: String? = nil,
+        region: String? = nil,
+        kinds: [String]? = nil,
+        pinKind: String? = nil,
+        helmDay: String? = nil,
+        dayA: String? = nil,
+        dayB: String? = nil,
+        reason: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.action = action
+        self.reply = reply
+        self.region = region
+        self.kinds = kinds
+        self.pinKind = pinKind
+        self.helmDay = helmDay
+        self.dayA = dayA
+        self.dayB = dayB
+        self.reason = reason
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeIfPresent(String.self, forKey: .schemaVersion)
+            ?? CoachOutputSchemaVersion.scheduleAdjustmentV1.rawValue
+        if let raw = try container.decodeIfPresent(String.self, forKey: .action),
+           let parsed = Action(rawFlexible: raw) {
+            action = parsed
+        } else {
+            action = try container.decode(Action.self, forKey: .action)
+        }
+        reply = try container.decodeIfPresent(String.self, forKey: .reply)
+        region = try container.decodeIfPresent(String.self, forKey: .region)
+        kinds = try container.decodeIfPresent([String].self, forKey: .kinds)
+        pinKind = try container.decodeIfPresent(String.self, forKey: .pinKind)
+        helmDay = try container.decodeIfPresent(String.self, forKey: .helmDay)
+        dayA = try container.decodeIfPresent(String.self, forKey: .dayA)
+        dayB = try container.decodeIfPresent(String.self, forKey: .dayB)
+        reason = try container.decodeIfPresent(String.self, forKey: .reason)
+    }
+}
+
+public enum ScheduleAdjustmentPayloadParser: Sendable {
+    public static func parse(from text: String) -> ScheduleAdjustmentPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .scheduleAdjustmentV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(ScheduleAdjustmentPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.scheduleAdjustmentV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
 public struct CalendarEventClassifyPayload: Codable, Sendable, Equatable {
     public struct Entry: Codable, Sendable, Equatable {
         public let title: String

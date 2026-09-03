@@ -31,8 +31,19 @@ enum ProgressionDetailBuilder {
         let ledger = PlanKit.weeklyHardSetTotals(
             sessions: history.sessions, muscleMaps: muscleMaps, weekStart: history.weekStart
         )
-        let targetMuscles = SessionSplitPlanner.targetMuscles(
-            for: today, emphasis: settings.phaseGoal.emphasis, calendar: calendar
+        let overrides = ScheduleWeekOverrides.fromStored(
+            (try? store.scheduleOverrides.load()) ?? .empty,
+            weekStart: history.weekStart
+        )
+        let plannedToday = (try? store.plan.fetchPlannedWorkouts(from: today, through: today)) ?? []
+        let targetMuscles = SchedulePlanner.targetMuscles(
+            for: today,
+            settings: settings,
+            history: history,
+            muscleMaps: muscleMaps,
+            plannedSessionJSON: plannedToday.first(where: { $0.status != "skipped" })?.sessionJSON,
+            calendar: calendar,
+            overrides: overrides
         )
         let muscles = buildMuscleRows(
             mesocycle: mesocycle, ledger: ledger, targetMuscles: targetMuscles, experience: experience

@@ -14,12 +14,14 @@ struct SessionSplitPlannerTests {
         #expect(SessionSplitPlanner.splitLabel(for: [.quads, .hamstrings, .glutes], emphasis: nil) == "Legs")
     }
 
-    @Test("emphasis does not override weekday split rotation")
-    func emphasisDoesNotOverrideSplit() {
-        let day = HelmDay(year: 2026, month: 7, day: 28)
-        let muscles = SessionSplitPlanner.targetMuscles(for: day, emphasis: "Arms")
-        #expect(muscles.contains(.chest) || muscles.contains(.back) || muscles.contains(.quads))
-        #expect(SessionSplitPlanner.splitKind(for: day, emphasis: "Arms") != .armFocus)
+    @Test("infer prefers candidates from saved rotation")
+    func inferPrefersSavedRotation() {
+        let muscles: Set<MuscleGroup> = [.chest, .shoulders, .triceps]
+        let kind = SessionSplitPlanner.inferSplitKind(
+            from: muscles,
+            among: [.upper, .lower, .push]
+        )
+        #expect(kind == .push || kind == .upper)
     }
 }
 
@@ -469,5 +471,31 @@ struct ProgramShapeRotationTests {
             daysPerWeek: 3
         )
         #expect(TrainingPlanShape.dayKindRotation(from: settings) == [.full, .full, .full])
+    }
+
+    @Test("targetMuscles prefers planned workout payload over weekday guess")
+    func targetMusclesPrefersPlannedPayload() {
+        let day = HelmDay(year: 2026, month: 7, day: 28)
+        let settings = StoredTrainingPlanSettings(
+            programTemplateRaw: "upper_lower",
+            daysPerWeek: 4,
+            dayKindRotationRaw: ["upper", "lower", "upper", "lower"]
+        )
+        let history = PrescriptionHistory(loggedSets: [], sessions: [], weekStart: day)
+        let payload = PlannedWorkoutSessionPayload(
+            splitLabel: "Lower",
+            splitKind: "lower",
+            targetMuscles: ["quads", "hamstrings", "glutes"],
+            scheduleNotes: []
+        )
+        let json = String(data: try! JSONEncoder().encode(payload), encoding: .utf8)!
+        let muscles = SchedulePlanner.targetMuscles(
+            for: day,
+            settings: settings,
+            history: history,
+            muscleMaps: [:],
+            plannedSessionJSON: json
+        )
+        #expect(Set(muscles) == Set([.quads, .hamstrings, .glutes]))
     }
 }

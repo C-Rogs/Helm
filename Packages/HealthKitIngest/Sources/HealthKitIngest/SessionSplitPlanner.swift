@@ -68,18 +68,8 @@ public enum SessionSplitKind: String, Sendable, Hashable, Codable, CaseIterable 
 }
 
 public enum SessionSplitPlanner {
-    private static let rotation: [SessionSplitKind] = [.push, .pull, .legs]
-
-    public static func targetMuscles(for day: HelmDay, emphasis: String?, calendar: Calendar = .current) -> [MuscleGroup] {
-        splitKind(for: day, emphasis: emphasis, calendar: calendar).muscles
-    }
-
-    public static func splitKind(for day: HelmDay, emphasis: String?, calendar: Calendar = .current) -> SessionSplitKind {
-        let weekdayIndex = weekdayIndex(for: day, calendar: calendar)
-        return rotation[weekdayIndex % rotation.count]
-    }
-
     public static func splitLabel(for muscles: [MuscleGroup], emphasis: String?) -> String {
+        _ = emphasis
         if let matched = matchSplitKind(for: muscles) {
             return matched.label
         }
@@ -88,10 +78,6 @@ public enum SessionSplitPlanner {
 
     public static func muscleSummary(for muscles: [MuscleGroup]) -> String {
         muscles.map(muscleLabel).joined(separator: " + ")
-    }
-
-    public static func rotationSplits(emphasis: String?) -> [SessionSplitKind] {
-        rotation
     }
 
     public static func matchSplitKind(for muscles: [MuscleGroup]) -> SessionSplitKind? {
@@ -129,26 +115,9 @@ public enum SessionSplitPlanner {
         return SessionSplitKind(trainingDayKind: match)
     }
 
-    public static func remainingSessionsThisWeek(completedThisWeek: Int, plannedPerWeek: Int = 3) -> Int {
+    /// Remaining planned sessions this week. Callers must pass saved `daysPerWeek` (no silent 3-day default).
+    public static func remainingSessionsThisWeek(completedThisWeek: Int, plannedPerWeek: Int) -> Int {
         max(1, plannedPerWeek - completedThisWeek)
-    }
-
-    private static func emphasisSplitKind(_ emphasis: String?) -> SessionSplitKind? {
-        guard let emphasis = emphasis?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
-              !emphasis.isEmpty
-        else {
-            return nil
-        }
-        if emphasis.contains("v-taper") || emphasis.contains("vtaper") {
-            return .vTaper
-        }
-        if emphasis.contains("leg") {
-            return .legs
-        }
-        if emphasis.contains("arm") {
-            return .armFocus
-        }
-        return nil
     }
 
     private static func muscleLabel(_ muscle: MuscleGroup) -> String {
@@ -164,12 +133,5 @@ public enum SessionSplitPlanner {
         case .calves: "Calves"
         case .abs: "Abs"
         }
-    }
-
-    private static func weekdayIndex(for day: HelmDay, calendar: Calendar) -> Int {
-        let components = day.dateComponents()
-        guard let date = calendar.date(from: components) else { return 0 }
-        let weekday = calendar.component(.weekday, from: date)
-        return (weekday + 5) % 7
     }
 }

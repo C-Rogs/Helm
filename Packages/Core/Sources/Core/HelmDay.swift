@@ -84,7 +84,7 @@ public extension HelmDay {
     }
 
     /// Signed calendar-day distance from this day to `other` (`other` minus `self`).
-    func days(to other: HelmDay, calendar: Calendar = Calendar(identifier: .gregorian)) -> Int {
+    public func days(to other: HelmDay, calendar: Calendar = Calendar(identifier: .gregorian)) -> Int {
         guard
             let fromDate = calendar.date(from: dateComponents()),
             let toDate = calendar.date(from: other.dateComponents())

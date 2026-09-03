@@ -18,6 +18,7 @@ public enum TrainingPlanCoachContext {
         public let daysPerWeek: Int
         public let weekRotation: [String]
         public let allowedEquipment: Set<String>
+        public let scheduleOverrideNote: String?
 
         public init(
             emphasis: String?,
@@ -31,26 +32,28 @@ public enum TrainingPlanCoachContext {
             programTemplate: String = "ppl",
             daysPerWeek: Int = 3,
             weekRotation: [String] = ["Push", "Pull", "Legs"],
-            allowedEquipment: Set<String> = []
+            allowedEquipment: Set<String> = [],
+            scheduleOverrideNote: String? = nil
         ) {
             self.emphasis = emphasis
             self.todaySplit = todaySplit
             self.weeklyLedger = weeklyLedger
             self.mesocycleState = mesocycleState
             self.experience = experience
-            self.remainingSessionsThisWeek = max(1, remainingSessionsThisWeek)
+            self.remainingSessionsThisWeek = max(0, remainingSessionsThisWeek)
             self.pendingReactiveDeload = pendingReactiveDeload
             self.sessionDurationMinutes = sessionDurationMinutes
             self.programTemplate = programTemplate
             self.daysPerWeek = min(max(daysPerWeek, 2), 6)
             self.weekRotation = weekRotation
             self.allowedEquipment = allowedEquipment
+            self.scheduleOverrideNote = scheduleOverrideNote
         }
     }
 
     public static func build(from input: Input) -> String {
         var lines: [String] = [
-            "engine_note=split_rotation_only; week follows saved program rotation; emphasis is athlete intent for coach interpretation",
+            "engine_note=split_rotation_only; week follows saved program rotation unless schedule overrides are active; emphasis is athlete intent for coach interpretation, not day swaps",
             "today_split=\(input.todaySplit?.label ?? "Rest")",
             "remaining_sessions_this_week=\(input.remainingSessionsThisWeek)",
             "session_duration_min=\(input.sessionDurationMinutes)",
@@ -59,6 +62,9 @@ public enum TrainingPlanCoachContext {
             "week_rotation=\(input.weekRotation.isEmpty ? "default" : input.weekRotation.joined(separator: ","))"
         ]
 
+        if let note = input.scheduleOverrideNote, note.isEmpty == false {
+            lines.append("schedule_override=\(note)")
+        }
         if input.pendingReactiveDeload {
             lines.append("pending_reactive_deload=true (engine proposes full-week deload; needs athlete confirm)")
         }

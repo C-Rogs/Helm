@@ -433,6 +433,12 @@ final class ChatController {
                     .trainingPlan(.fromCoachPayload(payload)),
                     after: .coach
                 )
+            case let .scheduleAdjustment(payload):
+                applyProgressStep = "Updating week…"
+                _ = try await HelmActionRuntime.perform(
+                    .trainingPlan(.scheduleAdjustment(payload)),
+                    after: .coach
+                )
             case let .reactiveDeload(payload):
                 applyProgressStep = "Updating plan…"
                 let action: HelmReactiveDeloadAction = payload.action == .confirm ? .confirm : .dismiss

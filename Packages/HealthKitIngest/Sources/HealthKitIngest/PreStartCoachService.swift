@@ -196,10 +196,12 @@ public struct PreStartCoachService: Sendable {
             let muscleMaps = Dictionary(uniqueKeysWithValues: catalog.map {
                 ($0.exerciseID, $0.muscleMap)
             })
+            let settings = try persistence.trainingPlan.load()
             let fingerprint = PrescriptionHistoryBuilder.historyFingerprint(
                 history,
                 through: day,
-                muscleMaps: muscleMaps
+                muscleMaps: muscleMaps,
+                dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings)
             )
             let persist = try await HelmActionExecutor(persistence: persistence).run(
                 .persistAdjustedPrescription(HelmAdjustedPrescriptionCommand(

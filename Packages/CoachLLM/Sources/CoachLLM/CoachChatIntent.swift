@@ -862,7 +862,16 @@ public enum CoachChatIntent: Sendable {
             "my program",
             "my programme",
             "the program",
-            "the programme"
+            "the programme",
+            "swap days",
+            "swap my days",
+            "week ahead",
+            "rest my arms",
+            "rest arms",
+            "defer",
+            "do legs today",
+            "do pull today",
+            "do push today"
         ]
         return planNeedles.contains { lower.contains($0) }
     }

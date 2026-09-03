@@ -9,6 +9,7 @@ enum CoachChatActionKind: Sendable, Equatable {
     case mealCopy(MealCopyPayload)
     case memoryAdjustment(MemoryAdjustmentPayload)
     case settingsAdjustment(SettingsAdjustmentPayload)
+    case scheduleAdjustment(ScheduleAdjustmentPayload)
     case reactiveDeload(ReactiveDeloadPayload)
     case planRegenerate(PlanRegeneratePayload)
     case sessionAdjustment(CoachSessionProposal)
@@ -125,6 +126,14 @@ enum CoachChatActionParser {
                 return nil
             }
             return proposal(fromSettings: payload, visibleText: visibleText)
+        case .scheduleAdjustment:
+            guard let payload = try? call.decode(
+                ScheduleAdjustmentPayload.self,
+                schemaVersion: .scheduleAdjustmentV1
+            ) else {
+                return nil
+            }
+            return proposal(fromSchedule: payload, visibleText: visibleText)
         case .reactiveDeload:
             guard let payload = try? call.decode(
                 ReactiveDeloadPayload.self,
@@ -223,6 +232,10 @@ enum CoachChatActionParser {
 
         if let payload = SettingsAdjustmentPayloadParser.parse(from: text) {
             return proposal(fromSettings: payload, visibleText: text)
+        }
+
+        if let payload = ScheduleAdjustmentPayloadParser.parse(from: text) {
+            return proposal(fromSchedule: payload, visibleText: text)
         }
 
         if let payload = ReactiveDeloadPayloadParser.parse(from: text) {
@@ -330,6 +343,32 @@ enum CoachChatActionParser {
         )
     }
 
+    private static func proposal(
+        fromSchedule payload: ScheduleAdjustmentPayload,
+        visibleText: String
+    ) -> CoachChatActionProposal {
+        let preview = ScheduleAdjustmentPreview.preview(for: payload)
+        let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
+        let reply: String
+        if let payloadReply = payload.reply?.trimmingCharacters(in: .whitespacesAndNewlines),
+           payloadReply.isEmpty == false {
+            reply = payloadReply
+        } else if stripped.isEmpty == false {
+            reply = stripped
+        } else {
+            reply = preview.detail
+        }
+        return CoachChatActionProposal(
+            reply: reply,
+            kind: .scheduleAdjustment(payload),
+            title: preview.title,
+            detail: preview.detail,
+            reason: payload.reason ?? payload.reply,
+            confirmLabel: "Apply schedule",
+            cancelLabel: "Keep week"
+        )
+    }
+
     private static func proposal(fromDeload payload: ReactiveDeloadPayload) -> CoachChatActionProposal {
         let label = payload.action == .confirm ? "Confirm deload" : "Dismiss deload"
         let title = payload.action == .confirm ? "Take a deload week" : "Skip deload"
@@ -392,7 +431,7 @@ enum CoachChatDisplayText {
             switch pendingAction.kind {
             case .workoutStart:
                 return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment, .workoutDiscard:
+            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .scheduleAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment, .workoutDiscard:
                 return pendingAction.title
             }
         }
@@ -450,5 +489,53 @@ enum SettingsAdjustmentPreview {
             detail: detail.isEmpty ? "No changes" : detail,
             reason: payload.rationale ?? payload.reply
         )
+    }
+}
+
+enum ScheduleAdjustmentPreview {
+    static func preview(for payload: ScheduleAdjustmentPayload) -> (title: String, detail: String) {
+        switch payload.action {
+        case .deferKinds:
+            let skipped = deferredLabels(for: payload)
+            let pin = payload.pinKind.map { " · train \($0.capitalized)" } ?? ""
+            let day = payload.helmDay.map { " on \($0)" } ?? " today"
+            if skipped.isEmpty == false {
+                return ("Reorder week for recovery", "Skip \(skipped)\(pin)\(day)")
+            }
+            return ("Reorder week for recovery", "Defer overlapping days\(pin)\(day)")
+        case .pinDay:
+            let day = payload.helmDay ?? "today"
+            let kind = payload.pinKind?.capitalized ?? "session"
+            return ("Pin training day", "\(kind) on \(day)")
+        case .swapDays:
+            let a = payload.dayA ?? "?"
+            let b = payload.dayB ?? "?"
+            return ("Swap week days", "\(a) ↔ \(b) (splits + Rest)")
+        case .clear:
+            return ("Clear schedule overrides", "Back to engine week rotation")
+        }
+    }
+
+    private static func deferredLabels(for payload: ScheduleAdjustmentPayload) -> String {
+        var labels: [String] = []
+        if let kinds = payload.kinds {
+            labels.append(contentsOf: kinds.map { $0.capitalized })
+        }
+        if let region = payload.region, region.isEmpty == false {
+            // Approximate without PlanKit import in app target: show region + common mapping.
+            let lower = region.lowercased()
+            if lower.contains("arm") {
+                labels.append(contentsOf: ["Push", "Pull"])
+            } else if lower.contains("chest") || lower.contains("shoulder") {
+                labels.append("Push")
+            } else if lower.contains("back") || lower.contains("bicep") {
+                labels.append("Pull")
+            } else if lower.contains("leg") || lower.contains("knee") || lower.contains("quad") {
+                labels.append("Legs")
+            } else {
+                labels.append(region)
+            }
+        }
+        return Array(Set(labels)).sorted().joined(separator: "/")
     }
 }

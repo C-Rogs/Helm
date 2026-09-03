@@ -134,6 +134,7 @@ public enum HelmMemoryWrite: Sendable {
 public enum HelmTrainingPlanWrite: Sendable {
     case replaceSettings(StoredTrainingPlanSettings)
     case fromCoachPayload(SettingsAdjustmentPayload)
+    case scheduleAdjustment(ScheduleAdjustmentPayload)
     case reactiveDeload(HelmReactiveDeloadAction)
     case regenerateToday(HelmDay)
     case methodologyPreferences(MethodologyPreferences)
