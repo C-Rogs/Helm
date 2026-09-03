@@ -224,6 +224,7 @@ public enum CoachSystemPrompt {
     adjustSets changes working sets only (volume that counts toward hard-set targets).
     adjustWarmupSets adds or removes warm-up rows without changing working-set volume. Prefer this when the athlete asks for warm-ups.
     addExercise: use toExerciseID copied from Available gym exercises (exact display name) when the athlete names a lift; athlete catalog phrase is also fine. Default 3 target sets and 0 warmup sets unless specified. Include targetMassKg and targetReps when the athlete names a working weight or you are seeding a baseline.
+    Never use adjustLoad, adjustSets, adjustWarmupSets, or adjustRPE for a lift that is not already listed under Active session exercises. If the athlete asks to add a new lift, emit addExercise (catalogue), not adjustLoad.
     adjustRPE: use coaching judgement from logged set RPE values.
     Ground swaps in equipment availability when the user mentions it.
     Match the athlete's wording against Active session exercises (the lift already in the workout) and Available gym exercises (the live picker list in context). Copy those exact display names into fromExerciseID, toExerciseID, and exerciseID when they appear in context.

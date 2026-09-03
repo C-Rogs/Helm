@@ -952,7 +952,7 @@ public struct ActiveSessionRepository: Sendable {
                         targetWarmupSets: max(prescribed.warmupSets, 0),
                         existingSets: matched.sets,
                         now: now,
-                        templateMassKg: prescribed.targetMass?.kilograms,
+                        templateMassKg: prescribed.targetMass?.meaningfulWorkingKilograms,
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
                     )
@@ -960,7 +960,7 @@ public struct ActiveSessionRepository: Sendable {
                         db: db,
                         sessionExerciseID: sessionExerciseID,
                         previousSets: matched.sets,
-                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        prescribedMassKg: prescribed.targetMass?.meaningfulWorkingKilograms,
                         prescribedReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         now: now
                     )
@@ -1006,7 +1006,7 @@ public struct ActiveSessionRepository: Sendable {
                         targetWarmupSets: max(prescribed.warmupSets, 0),
                         existingSets: sessionExercise.sets,
                         now: now,
-                        templateMassKg: prescribed.targetMass?.kilograms,
+                        templateMassKg: prescribed.targetMass?.meaningfulWorkingKilograms,
                         templateReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         templateRPE: prescribed.targetRPE
                     )
@@ -1014,7 +1014,7 @@ public struct ActiveSessionRepository: Sendable {
                         db: db,
                         sessionExerciseID: sessionExerciseID,
                         previousSets: sessionExercise.sets,
-                        prescribedMassKg: prescribed.targetMass?.kilograms,
+                        prescribedMassKg: prescribed.targetMass?.meaningfulWorkingKilograms,
                         prescribedReps: prescribed.targetRepMin ?? prescribed.targetRepMax,
                         now: now
                     )
@@ -1387,7 +1387,7 @@ extension ActiveSessionRepository {
                     sessionExerciseID,
                     prescribed.exerciseID,
                     setIndex,
-                    prescribed.targetMass?.kilograms ?? preset?.mass?.kilograms,
+                    prescribed.targetMass?.meaningfulWorkingKilograms ?? preset?.mass?.meaningfulWorkingKilograms,
                     targetReps ?? preset?.reps,
                     prescribed.targetRPE ?? preset?.rpe,
                     now,
@@ -1410,7 +1410,7 @@ extension ActiveSessionRepository {
                     sessionExerciseID,
                     prescribed.exerciseID,
                     setIndex,
-                    prescribed.targetMass?.kilograms ?? preset?.mass?.kilograms,
+                    prescribed.targetMass?.meaningfulWorkingKilograms ?? preset?.mass?.meaningfulWorkingKilograms,
                     targetReps ?? preset?.reps,
                     prescribed.targetRPE ?? preset?.rpe,
                     now,
@@ -1521,8 +1521,8 @@ extension ActiveSessionRepository {
             $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
         }
         let shouldWriteMass: Bool = {
-            guard let prescribedMassKg else { return false }
-            if let currentKg = previousPlannedWorking.first?.mass?.kilograms,
+            guard let prescribedMassKg, prescribedMassKg > 0 else { return false }
+            if let currentKg = previousPlannedWorking.first?.mass?.meaningfulWorkingKilograms,
                abs(currentKg - prescribedMassKg) < 0.001 {
                 return false
             }
@@ -1696,9 +1696,13 @@ extension ActiveSessionRepository {
         templateRPE: Double?
     ) -> (massKg: Double?, reps: Int?, rpe: Double?) {
         let ordered = existingWorking.sorted { $0.setIndex < $1.setIndex }
-        let seed = ordered.last { $0.mass != nil || $0.reps != nil } ?? ordered.last
+        let seed = ordered.last {
+            $0.mass.hasMeaningfulWorkingLoad || $0.reps != nil
+        } ?? ordered.last
+        let seedMass = seed?.mass?.meaningfulWorkingKilograms
+        let templateMass = templateMassKg.flatMap { $0 > 0 ? $0 : nil }
         return (
-            seed?.mass?.kilograms ?? templateMassKg,
+            seedMass ?? templateMass,
             seed?.reps ?? templateReps,
             seed?.rpe ?? templateRPE
         )

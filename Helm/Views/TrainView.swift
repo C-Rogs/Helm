@@ -535,11 +535,11 @@ struct TrainView: View {
                     }
                     .padding(.horizontal, HelmSpacing.xs)
 
-                    if controller.hasActiveSession, spotify.isAuthorized {
+                    // Only show the reconnect CTA when authorized but App Remote is down.
+                    // Connected sessions drop the chip so it doesn't eat table space (CAM-30).
+                    if controller.hasActiveSession, spotify.isAuthorized, !spotify.isConnected {
                         Button {
-                            if !spotify.isConnected {
-                                spotify.wakeSpotifyAndConnect()
-                            }
+                            spotify.wakeSpotifyAndConnect()
                         } label: {
                             HStack(spacing: HelmSpacing.xxs) {
                                 Image(systemName: "music.note")
@@ -552,7 +552,7 @@ struct TrainView: View {
                         }
                         .buttonStyle(.plain)
                         .accessibilityLabel(spotify.workoutMusicChipTitle)
-                        .accessibilityHint(spotify.isConnected ? "Spotify is linked" : "Switches to Spotify so Helm can read now playing")
+                        .accessibilityHint("Switches to Spotify so Helm can read now playing")
                     }
 
                     if let notice = controller.watchCompanionNotice {

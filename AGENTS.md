@@ -12,6 +12,8 @@ Do **not** follow:
 
 Those belong to other workspaces.
 
+GitHub: **C-Rogs** only in this repo. Never camronday. Origin is HTTPS.
+
 ## Default mode: app-first
 
 Improve from live app + code. Do not walk `PLAN.md` / `PROGRESS.md` section queues unless Cameron says `build M#.#` or `build F-*`.

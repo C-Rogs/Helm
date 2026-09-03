@@ -64,8 +64,8 @@ private enum LiveActivityMetrics {
     static let compactGlyphSize: CGFloat = 20
     /// Upper bound for count-up elapsed `timerInterval` (system-rendered, no 1Hz updates).
     static let elapsedWindow: TimeInterval = 60 * 60 * 12
-    /// `Text(timerInterval:)` otherwise reserves room for the widest value in the range,
-    /// which stretches the compact pill. Pin it to digit-clock width instead.
+    /// Pin timer width so `timerInterval` does not reserve hours-wide space.
+    /// Compact leading + trailing must be large enough that SpringBoard hides cellular.
     static let compactTimerWidth: CGFloat = 46
 }
 
@@ -111,11 +111,13 @@ struct WorkoutLiveActivityWidget: Widget {
                     color: context.state.isResting ? WidgetPalette.accent : WidgetPalette.fg
                 )
                 .frame(width: LiveActivityMetrics.compactGlyphSize, height: LiveActivityMetrics.compactGlyphSize)
+                .frame(minWidth: 44, minHeight: 36)
             } compactTrailing: {
                 compactRestOrElapsed(
                     state: context.state,
                     startedAt: context.attributes.startedAt
                 )
+                .frame(minWidth: 44, minHeight: 36)
             } minimal: {
                 WidgetArc(
                     progress: context.state.isResting ? 1 : 0.67,

@@ -301,30 +301,42 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.exerciseNotFound(exerciseID: exerciseID))
         }
 
-        let proposedKg: Double?
+        let current = exercises[index]
+        var newMass = current.targetMass
+        var didChangeMass = false
+
         if let targetMassKg = operation.targetMassKg {
-            proposedKg = targetMassKg
+            // Explicit 0 (or negative after clamp) clears a stuck unset-as-zero load.
+            didChangeMass = true
+            newMass = Mass.workingLoad(kilograms: PrescriptionBounds.clampedLoadKg(targetMassKg))
         } else if let delta = operation.massDeltaKg {
             // A relative move needs something to move from.
-            guard let currentMass = exercises[index].targetMass else {
+            guard let currentMass = current.targetMass, !currentMass.isUnsetWorkingLoad else {
                 return .failure(.loadMissing(exerciseID: exerciseID))
             }
-            proposedKg = currentMass.kilograms + delta
-        } else {
-            proposedKg = nil
+            didChangeMass = true
+            newMass = Mass.workingLoad(
+                kilograms: PrescriptionBounds.clampedLoadKg(currentMass.kilograms + delta)
+            )
         }
 
         let proposedReps = operation.targetReps.map { max(1, $0) }
-        if proposedKg == nil, proposedReps == nil {
+        if !didChangeMass, proposedReps == nil {
             return .failure(.loadMissing(exerciseID: exerciseID))
         }
 
-        let boundedKg = proposedKg.map { PrescriptionBounds.clampedLoadKg($0) }
-        exercises[index] = replacing(
-            exercises[index],
-            targetRepMin: proposedReps ?? exercises[index].targetRepMin,
-            targetRepMax: proposedReps ?? exercises[index].targetRepMax,
-            targetMass: boundedKg.map { Mass(kilograms: $0) }
+        exercises[index] = PrescribedExercise(
+            id: current.id,
+            exerciseID: current.exerciseID,
+            order: current.order,
+            targetSets: current.targetSets,
+            warmupSets: current.warmupSets,
+            targetRepMin: proposedReps ?? current.targetRepMin,
+            targetRepMax: proposedReps ?? current.targetRepMax,
+            targetMass: didChangeMass ? newMass : current.targetMass,
+            targetRPE: current.targetRPE,
+            rationale: current.rationale,
+            evidenceIDs: current.evidenceIDs
         )
         return .success
     }
@@ -375,7 +387,9 @@ enum PrescriptionAdjustmentEngine {
 
         let setCount = max(1, operation.targetSets ?? 3)
         let warmupCount = max(0, operation.warmupSets ?? 0)
-        let targetMass = operation.targetMassKg.map { Mass(kilograms: PrescriptionBounds.clampedLoadKg($0)) }
+        let targetMass = operation.targetMassKg.flatMap {
+            Mass.workingLoad(kilograms: PrescriptionBounds.clampedLoadKg($0))
+        }
         let targetReps = operation.targetReps.map { max(1, $0) }
         exercises.append(
             PrescribedExercise(

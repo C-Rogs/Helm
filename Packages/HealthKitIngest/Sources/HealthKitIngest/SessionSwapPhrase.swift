@@ -58,6 +58,7 @@ enum SessionSwapPhrase: Sendable {
 
     /// "add dumbbell curls and leg extensions" → two lifts.
     /// "add face pull and move it to the start" → one lift (move is not a second add).
+    /// "Add in crunch machine at 32kg" → "crunch machine" (weight suffix stripped).
     static func parseAddList(_ text: String?) -> [String] {
         guard let text, parse(text) == nil else { return [] }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -94,6 +95,8 @@ enum SessionSwapPhrase: Sendable {
         var seen = Set<String>()
         for part in parts {
             var value = sanitize(part)
+            value = stripLeadingAddNoise(value)
+            value = stripTrailingLoadPhrase(value)
             if let insteadRange = value.range(of: " instead", options: [.caseInsensitive, .backwards]),
                insteadRange.upperBound == value.endIndex {
                 value = String(value[..<insteadRange.lowerBound])
@@ -104,11 +107,84 @@ enum SessionSwapPhrase: Sendable {
                junk.lowerBound == value.startIndex {
                 value = String(value[junk.upperBound...])
             }
+            // "another exercise. Crunch machine" / "new exercise crunch machine"
+            if let exerciseSplit = try? NSRegularExpression(
+                pattern: #"(?i)^(?:another|a new|new)\s+exercises?\s*[.\-:,]?\s*"#
+            ),
+               let splitMatch = exerciseSplit.firstMatch(
+                in: value,
+                range: NSRange(value.startIndex..., in: value)
+               ),
+               let junk = Range(splitMatch.range, in: value),
+               junk.lowerBound == value.startIndex {
+                value = String(value[junk.upperBound...]).trimmingCharacters(in: .whitespacesAndNewlines)
+            }
             let key = value.lowercased()
             guard value.count >= 3, seen.insert(key).inserted else { continue }
+            // Bare "new exercise" / "another exercise" is intent-only, not a lift name.
+            if key == "new exercise" || key == "another exercise" || key == "an exercise" {
+                continue
+            }
             results.append(value)
         }
         return results
+    }
+
+    /// Pulls an absolute kg from "… at 32kg" / "… @ 32 kg" when the athlete names a load with the add.
+    static func parseNamedLoadKg(_ text: String?) -> Double? {
+        guard let text else { return nil }
+        let patterns = [
+            #"(?i)(?:at|@)\s*(\d+(?:\.\d+)?)\s*kg\b"#,
+            #"(?i)(?:at|@)\s*(\d+(?:\.\d+)?)\s*kilos?\b"#,
+            #"(?i)\b(\d+(?:\.\d+)?)\s*kg\b"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(text.startIndex..., in: text)
+            guard let match = regex.firstMatch(in: text, range: range),
+                  match.numberOfRanges >= 2,
+                  let capture = Range(match.range(at: 1), in: text),
+                  let value = Double(text[capture]),
+                  value > 0
+            else { continue }
+            return value
+        }
+        return nil
+    }
+
+    private static func stripLeadingAddNoise(_ raw: String) -> String {
+        var value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+        let prefixes = ["in ", "on ", "the ", "a ", "an "]
+        var stripped = true
+        while stripped {
+            stripped = false
+            let lower = value.lowercased()
+            for prefix in prefixes {
+                if lower.hasPrefix(prefix) {
+                    value = String(value.dropFirst(prefix.count))
+                    stripped = true
+                    break
+                }
+            }
+        }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private static func stripTrailingLoadPhrase(_ raw: String) -> String {
+        var value = raw
+        let patterns = [
+            #"(?i)\s+(?:at|@)\s*\d+(?:\.\d+)?\s*(?:kg|kilos?)?\s*$"#,
+            #"(?i)\s+\d+(?:\.\d+)?\s*(?:kg|kilos?)\s*$"#,
+        ]
+        for pattern in patterns {
+            guard let regex = try? NSRegularExpression(pattern: pattern) else { continue }
+            let range = NSRange(value.startIndex..., in: value)
+            if let match = regex.firstMatch(in: value, range: range),
+               let drop = Range(match.range, in: value) {
+                value = String(value[..<drop.lowerBound])
+            }
+        }
+        return value.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
     static func parseMove(_ text: String?) -> Move? {

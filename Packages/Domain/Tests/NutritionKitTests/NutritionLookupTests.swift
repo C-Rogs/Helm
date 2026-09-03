@@ -216,6 +216,18 @@ struct NutritionLookupTests {
         #expect(!lineItem.usesGenericCofidFallback)
     }
 
+    @Test("prawn boiled prefers plain prawns over prawn toast")
+    func prawnBoiledNotToast() {
+        let match = lookup.resolve(item: "prawn, boiled")
+        #expect(match != nil)
+        guard let match else { return }
+        let description = match.record.description.lowercased()
+        #expect(description.contains("prawn"))
+        #expect(!description.contains("toast"))
+        #expect(!description.contains("cracker"))
+        #expect(!description.contains("curry"))
+    }
+
     @Test("CoFID attribution exposes OGL notice")
     func cofidAttribution() {
         #expect(CoFIDAttribution.licenceNotice.contains("Open Government Licence"))

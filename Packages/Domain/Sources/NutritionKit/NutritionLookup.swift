@@ -91,7 +91,21 @@ public struct NutritionLookup: Sendable {
         let descriptionTokens = Set(normalize(recordDescription).split(separator: " ").map(String.init))
         let complexity = descriptionTokens.intersection(complexDishTokens).count
         let lengthPenalty = max(0, descriptionTokens.count - 5)
-        let total = overlap * 10 + (primaryMatch ? 5 : 0) - complexity * 3 - lengthPenalty
+        // Prefer simple ingredient rows over compound dishes that share one token
+        // (e.g. "prawn, boiled" must not pick "Sesame prawn toast").
+        let unmatchedCandidate = candidateFoodTokens.filter { candidate in
+            !queryFoodTokens.contains(where: { tokensEquivalent($0, candidate) })
+        }.count
+        let coverageBonus: Int = {
+            guard !candidateFoodTokens.isEmpty else { return 0 }
+            return Int((Double(overlap) / Double(candidateFoodTokens.count)) * 10.0)
+        }()
+        let total = overlap * 10
+            + (primaryMatch ? 5 : 0)
+            + coverageBonus
+            - complexity * 8
+            - lengthPenalty
+            - unmatchedCandidate * 4
         return MatchScore(overlap: overlap, total: total)
     }
 
@@ -135,6 +149,7 @@ public struct NutritionLookup: Sendable {
     private static let complexDishTokens: Set<String> = [
         "stuffed", "homemade", "retail", "pie", "cake", "fingers", "coated", "breadcrumbs",
         "curry", "sauce", "sandwich", "burger", "pizza", "croute", "crusted", "topped", "balls", "ball", "paste",
+        "toast", "crackers", "cracker", "takeaway", "pilau", "szechuan", "bhuna", "madras", "sesame",
     ]
 
     private static let phraseAliases: [String: String] = [

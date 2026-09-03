@@ -497,8 +497,8 @@ struct PrescriptionAdjustmentTests {
         #expect(adjusted.exercises[0].targetMass?.kilograms == 65)
     }
 
-    @Test("load adjustment clamps to zero floor")
-    func loadClampsToZero() {
+    @Test("load adjustment clears mass when delta floors at zero")
+    func loadClampsToUnset() {
         let result = PlanKit.apply(
             adjustment: PrescriptionAdjustment(operations: [
                 PrescriptionAdjustmentOperation(
@@ -514,10 +514,48 @@ struct PrescriptionAdjustmentTests {
         )
 
         guard case .applied(let adjusted) = result else {
-            Issue.record("Expected load to clamp to zero")
+            Issue.record("Expected load to clear when floored at zero")
             return
         }
-        #expect(adjusted.exercises[0].targetMass?.kilograms == 0)
+        // Zero is unset - keeps profile fill / next-set carry from treating it as a real load.
+        #expect(adjusted.exercises[0].targetMass == nil)
+    }
+
+    @Test("explicit targetMassKg of zero clears a stuck zero load")
+    func explicitZeroTargetClearsMass() {
+        let withZero = PrescribedSession(
+            helmDay: session.helmDay,
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: "bench_press",
+                    order: 0,
+                    targetSets: 3,
+                    targetRepMin: 8,
+                    targetRepMax: 8,
+                    targetMass: Mass(kilograms: 0),
+                    targetRPE: 8
+                )
+            ]
+        )
+        let result = PlanKit.apply(
+            adjustment: PrescriptionAdjustment(operations: [
+                PrescriptionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "bench_press",
+                    targetMassKg: 0,
+                    loadAdjustmentIntent: .userDirected
+                )
+            ]),
+            to: withZero,
+            excluding: [],
+            catalog: catalog
+        )
+
+        guard case .applied(let adjusted) = result else {
+            Issue.record("Expected zero target to clear mass")
+            return
+        }
+        #expect(adjusted.exercises[0].targetMass == nil)
     }
 
     @Test("RPE adjustment applies within bounds")

@@ -72,6 +72,14 @@ struct SessionSwapPhraseTests {
                 .map { $0.lowercased() }
                 == ["curls", "extensions", "face pull"]
         )
+        #expect(SessionSwapPhrase.parseAdd("Add in crunch machine at 32kg") == "crunch machine")
+        #expect(SessionSwapPhrase.parseNamedLoadKg("Add in crunch machine at 32kg") == 32)
+        #expect(
+            SessionSwapPhrase.parseAdd("I want to add another exercise. Crunch machine")?
+                .lowercased()
+                .contains("crunch") == true
+        )
+        #expect(SessionSwapPhrase.parseAddList("No add new exercise").isEmpty)
     }
 
     @Test("expand order simulates swap then move to start")

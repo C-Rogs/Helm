@@ -38,31 +38,61 @@ enum SessionExerciseIDResolver {
         var unresolved = UnresolvedIDs()
         var catalogCandidates: [String] = []
         let addPhrases = SessionSwapPhrase.parseAddList(phraseHint)
+        let namedLoadKg = SessionSwapPhrase.parseNamedLoadKg(phraseHint)
         var addPhraseIndex = 0
         var addedThisPayload: Set<String> = []
         var mappedOps: [SessionAdjustmentOperation] = []
 
-        for operation in payload.operations {
+        // Model often emits adjustLoad for a brand-new lift ("add crunch machine at 32kg").
+        // Rewrite those into addExercise when the athlete phrase is clearly an add and the
+        // named ID is not already a session row (CAM-34).
+        let rewrittenOps = rewriteSessionOpsAsAddWhenPhraseSaysAdd(
+            operations: payload.operations,
+            sessionExerciseIDs: sessionExerciseIDs,
+            exerciseDisplayNames: exerciseDisplayNames,
+            addPhrases: addPhrases,
+            namedLoadKg: namedLoadKg
+        )
+
+        for operation in rewrittenOps {
             if operation.kind == .addExercise {
                 let span = addPhraseIndex < addPhrases.count ? addPhrases[addPhraseIndex] : nil
                 addPhraseIndex += 1
-                mappedOps.append(
-                    mapOperation(
-                        operation,
-                        sessionExerciseIDs: sessionExerciseIDs,
-                        exerciseDisplayNames: exerciseDisplayNames,
-                        persistence: persistence,
-                        excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
-                        familiarExerciseIDs: familiarExerciseIDs,
-                        recentExerciseIDs: recentExerciseIDs,
-                        phraseHint: phraseHint,
-                        replyHint: payload.reply,
-                        addSpan: span,
-                        restrictAddHintsToSpan: addPhrases.isEmpty == false,
-                        unresolved: &unresolved,
-                        catalogCandidates: &catalogCandidates
-                    )
+                var mapped = mapOperation(
+                    operation,
+                    sessionExerciseIDs: sessionExerciseIDs,
+                    exerciseDisplayNames: exerciseDisplayNames,
+                    persistence: persistence,
+                    excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
+                    familiarExerciseIDs: familiarExerciseIDs,
+                    recentExerciseIDs: recentExerciseIDs,
+                    phraseHint: phraseHint,
+                    replyHint: payload.reply,
+                    addSpan: span,
+                    restrictAddHintsToSpan: addPhrases.isEmpty == false,
+                    unresolved: &unresolved,
+                    catalogCandidates: &catalogCandidates
                 )
+                if mapped.targetMassKg == nil, let namedLoadKg {
+                    mapped = SessionAdjustmentOperation(
+                        kind: mapped.kind,
+                        fromExerciseID: mapped.fromExerciseID,
+                        toExerciseID: mapped.toExerciseID,
+                        excludeExerciseIDs: mapped.excludeExerciseIDs,
+                        orderedExerciseIDs: mapped.orderedExerciseIDs,
+                        exerciseID: mapped.exerciseID,
+                        setDelta: mapped.setDelta,
+                        massDeltaKg: mapped.massDeltaKg,
+                        targetMassKg: namedLoadKg,
+                        rpeDelta: mapped.rpeDelta,
+                        targetRPE: mapped.targetRPE,
+                        loadAdjustmentIntent: mapped.loadAdjustmentIntent,
+                        targetSets: mapped.targetSets,
+                        warmupSets: mapped.warmupSets,
+                        targetReps: mapped.targetReps
+                    )
+                }
+                mappedOps.append(mapped)
                 if let added = mappedOps.last?.toExerciseID {
                     addedThisPayload.insert(added)
                 }
@@ -88,26 +118,54 @@ enum SessionExerciseIDResolver {
         while addPhraseIndex < addPhrases.count {
             let span = addPhrases[addPhraseIndex]
             addPhraseIndex += 1
-            mappedOps.append(
-                mapOperation(
-                    SessionAdjustmentOperation(kind: .addExercise, targetSets: 3),
-                    sessionExerciseIDs: sessionExerciseIDs,
-                    exerciseDisplayNames: exerciseDisplayNames,
-                    persistence: persistence,
-                    excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
-                    familiarExerciseIDs: familiarExerciseIDs,
-                    recentExerciseIDs: recentExerciseIDs,
-                    phraseHint: phraseHint,
-                    replyHint: payload.reply,
-                    addSpan: span,
-                    restrictAddHintsToSpan: true,
-                    unresolved: &unresolved,
-                    catalogCandidates: &catalogCandidates
-                )
+            var mapped = mapOperation(
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    targetMassKg: namedLoadKg,
+                    targetSets: 3
+                ),
+                sessionExerciseIDs: sessionExerciseIDs,
+                exerciseDisplayNames: exerciseDisplayNames,
+                persistence: persistence,
+                excludedExerciseIDs: excludedExerciseIDs.union(addedThisPayload),
+                familiarExerciseIDs: familiarExerciseIDs,
+                recentExerciseIDs: recentExerciseIDs,
+                phraseHint: phraseHint,
+                replyHint: payload.reply,
+                addSpan: span,
+                restrictAddHintsToSpan: true,
+                unresolved: &unresolved,
+                catalogCandidates: &catalogCandidates
             )
+            if mapped.targetMassKg == nil, let namedLoadKg {
+                mapped = SessionAdjustmentOperation(
+                    kind: mapped.kind,
+                    fromExerciseID: mapped.fromExerciseID,
+                    toExerciseID: mapped.toExerciseID,
+                    excludeExerciseIDs: mapped.excludeExerciseIDs,
+                    orderedExerciseIDs: mapped.orderedExerciseIDs,
+                    exerciseID: mapped.exerciseID,
+                    setDelta: mapped.setDelta,
+                    massDeltaKg: mapped.massDeltaKg,
+                    targetMassKg: namedLoadKg,
+                    rpeDelta: mapped.rpeDelta,
+                    targetRPE: mapped.targetRPE,
+                    loadAdjustmentIntent: mapped.loadAdjustmentIntent,
+                    targetSets: mapped.targetSets,
+                    warmupSets: mapped.warmupSets,
+                    targetReps: mapped.targetReps
+                )
+            }
+            mappedOps.append(mapped)
             if let added = mappedOps.last?.toExerciseID {
                 addedThisPayload.insert(added)
             }
+        }
+
+        // Successful catalog adds win over leftover session-unresolved noise from a
+        // mis-emitted adjustLoad on the same new lift.
+        if !addedThisPayload.isEmpty {
+            unresolved.session.removeAll()
         }
 
         let swappedFrom = Set(mappedOps.compactMap { $0.kind == .swap ? $0.fromExerciseID : nil })
@@ -146,6 +204,47 @@ enum SessionExerciseIDResolver {
             unresolvedCatalogIDs: Array(Set(unresolved.catalog)).sorted(),
             catalogCandidates: Array(Set(catalogCandidates)).sorted()
         )
+    }
+
+    /// When the athlete says "add X" but the model emits adjustLoad/adjustSets on X
+    /// (not yet in the session), rewrite to addExercise so catalog resolution runs.
+    private static func rewriteSessionOpsAsAddWhenPhraseSaysAdd(
+        operations: [SessionAdjustmentOperation],
+        sessionExerciseIDs: Set<String>,
+        exerciseDisplayNames: [String: String],
+        addPhrases: [String],
+        namedLoadKg: Double?
+    ) -> [SessionAdjustmentOperation] {
+        guard !addPhrases.isEmpty else { return operations }
+
+        let sessionLabels = Set(
+            sessionExerciseIDs.map { id in
+                ExerciseSearchNormalizer.normalizeKeepingEquipment(
+                    ExerciseDisplayFormatter.friendlyName(for: id, displayNames: exerciseDisplayNames)
+                )
+            }
+        )
+
+        return operations.map { operation in
+            switch operation.kind {
+            case .adjustLoad, .adjustSets, .adjustWarmupSets, .adjustRPE:
+                guard let rawID = operation.exerciseID, !rawID.isEmpty else { return operation }
+                if sessionExerciseIDs.contains(rawID) { return operation }
+                let normalizedLabel = ExerciseSearchNormalizer.normalizeKeepingEquipment(rawID)
+                if sessionLabels.contains(normalizedLabel) { return operation }
+                return SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: rawID,
+                    targetMassKg: operation.targetMassKg ?? namedLoadKg,
+                    targetRPE: operation.targetRPE,
+                    targetSets: operation.targetSets ?? 3,
+                    warmupSets: operation.warmupSets ?? 0,
+                    targetReps: operation.targetReps
+                )
+            default:
+                return operation
+            }
+        }
     }
 
     private static func mapOperation(

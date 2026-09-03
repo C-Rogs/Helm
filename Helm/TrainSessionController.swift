@@ -907,11 +907,18 @@ final class TrainSessionController {
             .filter { $0.setIndex > completedSet.setIndex && $0.status != .completed }
         guard let nextSet = remaining.min(by: { $0.setIndex < $1.setIndex }) else { return }
 
-        let massToCarry = nextSet.mass ?? completedSet.mass
+        // Treat mass/reps of 0 as unset so a stuck zero does not block carry (CAM-31/35).
+        let massToCarry = nextSet.mass.hasMeaningfulWorkingLoad
+            ? nextSet.mass
+            : completedSet.mass
         let repsToCarry = nextSet.reps ?? completedSet.reps
         let rpeToCarry = nextSet.rpe ?? completedSet.rpe
 
-        guard massToCarry != nextSet.mass || repsToCarry != nextSet.reps || rpeToCarry != nextSet.rpe else { return }
+        let massChanged = massToCarry?.meaningfulWorkingKilograms
+            != nextSet.mass?.meaningfulWorkingKilograms
+        let repsChanged = repsToCarry != nextSet.reps
+        let rpeChanged = rpeToCarry != nextSet.rpe
+        guard massChanged || repsChanged || rpeChanged else { return }
 
         do {
             try await store.logSet(

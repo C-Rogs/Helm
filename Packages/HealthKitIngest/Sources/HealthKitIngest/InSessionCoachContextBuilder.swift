@@ -81,7 +81,7 @@ public enum InSessionCoachContextBuilder {
             let plannedWorking = sortedSets.filter {
                 $0.setType.countsAsPrescribedWorkingSet && $0.status == .planned
             }
-            if plannedWorking.contains(where: { $0.mass == nil }) {
+            if plannedWorking.contains(where: { !$0.mass.hasMeaningfulWorkingLoad }) {
                 lines.append("  working_load=unset")
             }
             for set in sortedSets {

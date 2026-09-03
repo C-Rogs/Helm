@@ -1,3 +1,4 @@
+import ActivityKit
 import Core
 import DesignSystem
 import SwiftUI
@@ -108,6 +109,7 @@ struct InAppWorkoutIsland: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var isExpanded = false
     @State private var topSafeArea: CGFloat = IslandChrome.fallbackTopInset
+    @State private var hasSystemLiveActivity = false
 
     var body: some View {
         if tabRouter.selectedTab != .train, let model = Self.model(from: controller) {
@@ -119,11 +121,12 @@ struct InAppWorkoutIsland: View {
                     }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
                     .ignoresSafeArea()
-                } else {
+                } else if !hasSystemLiveActivity {
                     islandColumn(model)
                         .ignoresSafeArea(edges: .top)
                 }
             }
+            .allowsHitTesting(isExpanded || !hasSystemLiveActivity)
             .animation(HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion), value: isExpanded)
             .onChange(of: controller.hasActiveSession) { _, live in
                 if !live { isExpanded = false }
@@ -133,6 +136,18 @@ struct InAppWorkoutIsland: View {
             }
             .onAppear {
                 topSafeArea = Self.windowTopSafeArea()
+            }
+            .task(id: controller.hasActiveSession) {
+                guard controller.hasActiveSession else {
+                    hasSystemLiveActivity = false
+                    return
+                }
+                for _ in 0 ..< 20 {
+                    hasSystemLiveActivity = Self.isSystemLiveActivityRunning
+                    if hasSystemLiveActivity || Task.isCancelled { return }
+                    try? await Task.sleep(for: .milliseconds(250))
+                }
+                hasSystemLiveActivity = Self.isSystemLiveActivityRunning
             }
         }
     }
@@ -177,24 +192,34 @@ struct InAppWorkoutIsland: View {
                         width: IslandChrome.compactGlyphSize,
                         height: IslandChrome.compactGlyphSize
                     )
+                    .frame(
+                        width: IslandChrome.compactContentWidth,
+                        height: IslandChrome.hardwareHeight,
+                        alignment: .trailing
+                    )
                     .padding(.leading, IslandChrome.compactSideInset)
                     .padding(.trailing, IslandChrome.compactIslandGap)
-                    .frame(height: IslandChrome.hardwareHeight)
 
                 Color.clear
                     .frame(width: IslandChrome.hardwareWidth, height: IslandChrome.hardwareHeight)
                     .accessibilityHidden(true)
 
                 compactTrailing(model, palette: palette)
-                    .frame(width: IslandChrome.compactTimerWidth, alignment: .trailing)
+                    .frame(
+                        width: IslandChrome.compactContentWidth,
+                        height: IslandChrome.hardwareHeight,
+                        alignment: .leading
+                    )
                     .padding(.leading, IslandChrome.compactIslandGap)
                     .padding(.trailing, IslandChrome.compactSideInset)
-                    .frame(height: IslandChrome.hardwareHeight)
             }
+            .frame(width: IslandChrome.compactWidth, height: IslandChrome.hardwareHeight)
             .background(palette.canvas, in: Capsule())
             .contentShape(Capsule())
+            .clipShape(Capsule())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(IslandCompactButtonStyle())
+        .dynamicTypeSize(.large)
         .accessibilityLabel(compactAccessibility(model))
         .accessibilityHint(isExpanded ? "Collapses workout controls" : "Shows workout controls")
         .accessibilityAddTraits(.updatesFrequently)
@@ -282,9 +307,10 @@ struct InAppWorkoutIsland: View {
             }
         }
         .font(.system(size: 13, weight: .semibold).monospacedDigit())
-        .multilineTextAlignment(.trailing)
+        .multilineTextAlignment(.leading)
         .lineLimit(1)
         .minimumScaleFactor(0.7)
+        .frame(width: IslandChrome.compactContentWidth, alignment: .leading)
     }
 
     private func compactArc(isResting: Bool, palette: HelmPalette) -> some View {
@@ -395,15 +421,35 @@ struct InAppWorkoutIsland: View {
         return window?.safeAreaInsets.top ?? IslandChrome.fallbackTopInset
     }
 
+    private static var isSystemLiveActivityRunning: Bool {
+        ActivityAuthorizationInfo().areActivitiesEnabled
+            && !Activity<WorkoutActivityAttributes>.activities.isEmpty
+    }
+
     private enum IslandChrome {
-        /// Matches compact Live Activity metrics in `WorkoutLiveActivityWidget`.
-        static let hardwareWidth: CGFloat = 126
-        static let hardwareHeight: CGFloat = 37
+        /// iPhone 14 Pro…17 Pro cutout. Measured 125.3×36 on iPhone 17 Pro @3x.
+        static let hardwareWidth: CGFloat = 125
+        static let hardwareHeight: CGFloat = 36
         static let compactGlyphSize: CGFloat = 20
-        static let compactTimerWidth: CGFloat = 46
+        static let compactContentWidth: CGFloat = 38
         static let compactSideInset: CGFloat = 8
         static let compactIslandGap: CGFloat = 6
         static let fallbackTopInset: CGFloat = 62
+
+        static var compactSlotWidth: CGFloat {
+            compactSideInset + compactContentWidth + compactIslandGap
+        }
+
+        static var compactWidth: CGFloat {
+            hardwareWidth + compactSlotWidth * 2
+        }
+    }
+
+    private struct IslandCompactButtonStyle: ButtonStyle {
+        func makeBody(configuration: Configuration) -> some View {
+            configuration.label
+                .opacity(configuration.isPressed ? 0.88 : 1)
+        }
     }
 
     private static let elapsedWindow: TimeInterval = 60 * 60 * 12

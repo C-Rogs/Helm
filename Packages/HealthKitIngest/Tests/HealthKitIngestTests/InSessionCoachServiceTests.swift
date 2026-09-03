@@ -830,4 +830,49 @@ struct InSessionCoachServiceTests {
         #expect(bridgedBench.targetSets == 3)
         #expect(bridgedBench.warmupSets == 2)
     }
+
+    @Test("add phrase rewrites mis-emitted adjustLoad into catalog addExercise")
+    func addPhraseRewritesAdjustLoadForNewLift() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        let crunchID = "seed-machine-crunch"
+        try store.exercises.upsert(
+            id: crunchID,
+            canonicalName: "machine crunch",
+            displayName: "Crunch (Machine)",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "abs",
+            isPickerDefault: true
+        )
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+
+        // Model wrongly targets adjustLoad on a lift not in the session.
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding Crunch (Machine) at 32 kg.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustLoad,
+                    exerciseID: "Crunch (Machine)",
+                    targetMassKg: 32
+                )
+            ]
+        )
+
+        let proposal = try service.buildProposal(
+            payload: payload,
+            userMessage: "Add in crunch machine at 32kg",
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            modelVersion: payload.schemaVersion
+        )
+
+        #expect(proposal.failureNotice == nil)
+        #expect(proposal.requiresConfirmation)
+        #expect(proposal.payload.operations.contains { $0.kind == .addExercise })
+        #expect(proposal.payload.operations.contains { $0.toExerciseID == crunchID })
+        #expect(proposal.payload.operations.contains { $0.targetMassKg == 32 })
+        #expect(proposal.failureNotice?.contains("doesn't match any exercise in this session") != true)
+    }
 }

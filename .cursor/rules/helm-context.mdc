@@ -9,6 +9,8 @@ alwaysApply: true
 
 This workspace is Helm only. Ignore lab `Development/CLAUDE.md`, Z2H, and Zendesk/TSE rules even if a parent or global copy is still visible.
 
+GitHub is **C-Rogs** only. Never `gh auth switch` / SSH / push as **camronday** (work Cursor). Origin is HTTPS `https://github.com/C-Rogs/Helm.git`. Default `git@github.com` SSH key is camronday; if git says denied to camronday, push HTTPS as C-Rogs.
+
 ## Chat
 
 - Fresh chat when prior thread is long or off-topic.
