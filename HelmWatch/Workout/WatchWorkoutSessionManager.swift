@@ -33,10 +33,12 @@ protocol WatchWorkoutSessionManagerDelegate: AnyObject {
         maxHR: Double
     )
     func workoutSessionManagerDidLoseMirroring(_ manager: any WatchWorkoutSessionManaging)
+    func workoutSessionManager(_ manager: any WatchWorkoutSessionManaging, didFailWithError error: Error)
 }
 
 extension WatchWorkoutSessionManagerDelegate {
     func workoutSessionManagerDidLoseMirroring(_ manager: any WatchWorkoutSessionManaging) {}
+    func workoutSessionManager(_ manager: any WatchWorkoutSessionManaging, didFailWithError error: Error) {}
 }
 
 enum WatchWorkoutSessionError: LocalizedError {
@@ -67,6 +69,8 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
     private var sessionID: String?
     private var restingHR: Double = 60
     private var maxHR: Double = 185
+    /// Suppresses HK `.ended` callbacks while we intentionally tear down.
+    private var isEndingSession = false
 
     init(healthStore: HKHealthStore = HKHealthStore()) {
         self.healthStore = healthStore
@@ -100,41 +104,54 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
     /// `beginCollection` completion fires asynchronously -- the delegate handles it.
     func emergencyFullStart(configuration: HKWorkoutConfiguration, sessionID: String) {
         guard session == nil else { return }
-        guard let workoutSession = try? HKWorkoutSession(
-            healthStore: healthStore,
-            configuration: configuration
-        ) else { return }
+        do {
+            let workoutSession = try HKWorkoutSession(
+                healthStore: healthStore,
+                configuration: configuration
+            )
+            let workoutBuilder = workoutSession.associatedWorkoutBuilder()
+            workoutBuilder.dataSource = HKLiveWorkoutDataSource(
+                healthStore: healthStore,
+                workoutConfiguration: configuration
+            )
 
-        let workoutBuilder = workoutSession.associatedWorkoutBuilder()
-        workoutBuilder.dataSource = HKLiveWorkoutDataSource(
-            healthStore: healthStore,
-            workoutConfiguration: configuration
-        )
+            workoutSession.delegate = self
+            workoutBuilder.delegate = self
 
-        workoutSession.delegate = self
-        workoutBuilder.delegate = self
+            self.session = workoutSession
+            self.builder = workoutBuilder
+            self.sessionID = sessionID
+            self.isMirroringToCompanion = false
 
-        self.session = workoutSession
-        self.builder = workoutBuilder
-        self.sessionID = sessionID
-        self.isMirroringToCompanion = false
-
-        let startDate = Date()
-        workoutSession.startActivity(with: startDate)
-        workoutBuilder.beginCollection(withStart: startDate) { _, _ in }
-
-        // Mirror off the critical path.
-        Task { @MainActor in
-            do {
-                try await workoutSession.startMirroringToCompanionDevice()
-                if self.session === workoutSession {
-                    self.isMirroringToCompanion = true
-                }
-            } catch {
-                if self.session === workoutSession {
-                    self.isMirroringToCompanion = false
+            let startDate = Date()
+            workoutSession.startActivity(with: startDate)
+            workoutBuilder.beginCollection(withStart: startDate) { [weak self] _, error in
+                if let error {
+                    Task { @MainActor in
+                        guard let self, self.session === workoutSession else { return }
+                        self.delegate?.workoutSessionManager(self, didFailWithError: error)
+                    }
                 }
             }
+
+            // Mirror off the critical path.
+            Task { @MainActor in
+                do {
+                    try await workoutSession.startMirroringToCompanionDevice()
+                    if self.session === workoutSession {
+                        self.isMirroringToCompanion = true
+                    }
+                } catch {
+                    if self.session === workoutSession {
+                        self.isMirroringToCompanion = false
+                    }
+                }
+            }
+        } catch {
+            WatchCompanionBootstrap.coordinator.recordDiagnostic(
+                .watchEmergencyFail,
+                detail: error.localizedDescription
+            )
         }
     }
 
@@ -237,6 +254,14 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             throw WatchWorkoutSessionError.noActiveSession
         }
 
+        isEndingSession = true
+        defer {
+            isEndingSession = false
+            self.session = nil
+            self.builder = nil
+            self.sessionID = nil
+        }
+
         let endDate = Date()
         let metadata: [String: Any] = [
             HKMetadataKeyWorkoutBrandName: "Signal",
@@ -261,10 +286,6 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
                 session.end()
             }
         }
-
-        self.session = nil
-        self.builder = nil
-        self.sessionID = nil
     }
 
     private func endCollection(builder: HKLiveWorkoutBuilder, endDate: Date) async throws {
@@ -346,9 +367,27 @@ extension WatchWorkoutSessionManager: HKWorkoutSessionDelegate {
         didChangeTo toState: HKWorkoutSessionState,
         from fromState: HKWorkoutSessionState,
         date: Date
-    ) {}
+    ) {
+        guard toState == .ended || toState == .stopped else { return }
+        Task { @MainActor in
+            guard self.session === workoutSession, !self.isEndingSession else { return }
+            let error = NSError(
+                domain: "HelmWatch",
+                code: Int(toState.rawValue),
+                userInfo: [
+                    NSLocalizedDescriptionKey: "HKWorkoutSession ended unexpectedly (\(toState.rawValue))"
+                ]
+            )
+            self.delegate?.workoutSessionManager(self, didFailWithError: error)
+        }
+    }
 
-    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {}
+    nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
+        Task { @MainActor in
+            guard self.session === workoutSession, !self.isEndingSession else { return }
+            self.delegate?.workoutSessionManager(self, didFailWithError: error)
+        }
+    }
 
     nonisolated func workoutSession(
         _ workoutSession: HKWorkoutSession,

@@ -23,4 +23,9 @@ public enum WatchCompanionDiagnosticEvent: String, Sendable {
     case watchSessionFail = "watch.session.fail"
     case watchCompanionActive = "watch.companion.active"
     case watchBootstrapStart = "watch.bootstrap.start"
+    case watchEmergencyStart = "watch.emergency.start"
+    case watchEmergencySkip = "watch.emergency.skip"
+    case watchEmergencyFail = "watch.emergency.fail"
+    case watchHKSessionFail = "watch.hk.session.fail"
+    case watchCompanionDeactivated = "watch.companion.deactivated"
 }

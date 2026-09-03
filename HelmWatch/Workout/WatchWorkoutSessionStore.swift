@@ -31,16 +31,39 @@ final class WatchWorkoutSessionStore {
     /// startActivity + beginCollection + mirroring. Called from `handle(_:)` before it returns.
     /// watchOS suspends cold-waked apps that don't reach a complete HKWorkoutSession
     /// before handle returns.
+    ///
+    /// Keyed on `!manager.hasActiveSession` (not phase): bootstrap can already be `.preparing`
+    /// from a hydrate race before `handle` runs, and that must not skip emergency start.
     func emergencyFullStart(configuration: HKWorkoutConfiguration, emergencySessionID: String) {
-        guard phase == .idle || phase == .ended else { return }
+        if manager.hasActiveSession {
+            WatchCompanionBootstrap.coordinator.recordDiagnostic(
+                .watchEmergencySkip,
+                detail: "alreadyActive phase=\(String(describing: phase))"
+            )
+            return
+        }
+
+        WatchCompanionBootstrap.coordinator.recordDiagnostic(
+            .watchEmergencyStart,
+            detail: "phase=\(String(describing: phase))"
+        )
         lastError = nil
         isMirroringToCompanion = false
-        apply(.startRequested)
+        if phase == .idle || phase == .ended {
+            apply(.startRequested)
+        } else if phase != .preparing {
+            // Unexpected phase without an HK session - force preparing so sessionReady can apply.
+            phase = .preparing
+        }
         sessionID = emergencySessionID
         lifecycle.begin(sessionID: emergencySessionID)
         manager.emergencyFullStart(configuration: configuration, sessionID: emergencySessionID)
         guard manager.hasActiveSession else {
             lastError = "Emergency session creation failed"
+            WatchCompanionBootstrap.coordinator.recordDiagnostic(
+                .watchEmergencyFail,
+                detail: lastError
+            )
             lifecycle.end()
             sessionID = nil
             apply(.teardownFailed)
@@ -101,7 +124,9 @@ final class WatchWorkoutSessionStore {
     /// Cold-wake / late adoption from phone: skip auth; align start with phone session when known.
     /// If emergencyFullStart already set up the session, just sync state without duplicating work.
     func startWorkout(fromPhoneConfiguration configuration: HKWorkoutConfiguration) async {
-        guard phase == .idle || phase == .ended || phase == .active || phase == .paused else { return }
+        guard phase == .idle || phase == .ended || phase == .active || phase == .paused || phase == .preparing else {
+            return
+        }
         lastError = nil
         isMirroringToCompanion = false
 
@@ -118,8 +143,10 @@ final class WatchWorkoutSessionStore {
             return
         }
 
-        // Normal path: no emergency session, create from scratch.
-        apply(.startRequested)
+        // Normal / recover-from-preparing path: create from scratch if needed.
+        if phase != .preparing {
+            apply(.startRequested)
+        }
 
         let id = UUID().uuidString
         sessionID = id
@@ -261,6 +288,30 @@ extension WatchWorkoutSessionStore: WatchWorkoutSessionManagerDelegate {
             if let heartRateBPM {
                 onLiveHeartRateBPM?(heartRateBPM)
             }
+        }
+    }
+
+    nonisolated func workoutSessionManager(
+        _ manager: any WatchWorkoutSessionManaging,
+        didFailWithError error: Error
+    ) {
+        Task { @MainActor in
+            guard phase == .active || phase == .paused || phase == .preparing else { return }
+            lastError = error.localizedDescription
+            WatchCompanionBootstrap.coordinator.recordDiagnostic(
+                .watchHKSessionFail,
+                detail: error.localizedDescription
+            )
+            stopElapsedTimer()
+            lifecycle.end()
+            teardownTracker.end()
+            sessionID = nil
+            startedAt = nil
+            heartRateBPM = nil
+            heartRateZone = nil
+            isMirroringToCompanion = false
+            apply(.teardownFailed)
+            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(false)
         }
     }
 }

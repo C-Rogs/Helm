@@ -10,6 +10,9 @@ enum WatchCompanionBootstrap {
     static let workoutStore = WatchWorkoutSessionStore()
 
     private static var didStart = false
+    /// Set while `handle(_:)` → emergency start is the owner of cold-wake HK setup.
+    /// Bootstrap hydrate must not race ahead into `.preparing` without a session.
+    private static var isHandlingPhoneLaunch = false
 
     static func start() {
         guard !didStart else { return }
@@ -37,6 +40,8 @@ enum WatchCompanionBootstrap {
 
         Task {
             await consumePhoneLaunchIfNeeded()
+            // Skip auto-start while phone cold-wake owns emergency HK setup.
+            guard !isHandlingPhoneLaunch else { return }
             if coordinator.workoutCompanionActive {
                 await startCompanionWorkoutIfNeeded(playHaptic: false)
             }
@@ -51,6 +56,8 @@ enum WatchCompanionBootstrap {
             .watchHandleBegin,
             detail: "activityRaw=\(activity) phase=\(String(describing: workoutStore.phase))"
         )
+        isHandlingPhoneLaunch = true
+        defer { isHandlingPhoneLaunch = false }
         start()
         WatchWorkoutLaunchBridge.shared.receive(configuration: configuration)
         await consumePhoneLaunchIfNeeded()
@@ -64,7 +71,23 @@ enum WatchCompanionBootstrap {
             configuration.activityType.rawValue
         )
         workoutStore.selectActivity(kind)
-        guard workoutStore.phase == .idle || workoutStore.phase == .ended else {
+
+        // Emergency path already owns an active HK session - just sync.
+        if workoutStore.phase == .active || workoutStore.phase == .paused {
+            coordinator.recordDiagnostic(
+                .watchSessionStart,
+                detail: "adoptEmergency phase=\(String(describing: workoutStore.phase))"
+            )
+            await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
+            flushLiveHeartRateIfNeeded()
+            return
+        }
+
+        // Bootstrap may have left us `.preparing` with no HK session - recover.
+        let canStart = workoutStore.phase == .idle
+            || workoutStore.phase == .ended
+            || workoutStore.phase == .preparing
+        guard canStart else {
             coordinator.recordDiagnostic(
                 .watchSessionStart,
                 detail: "skip alreadyPhase=\(String(describing: workoutStore.phase))"
@@ -91,10 +114,12 @@ enum WatchCompanionBootstrap {
     /// Starts HK workout when phone session is active but Watch missed auto-wake (manual open, hydrate race).
     static func syncCompanionWorkoutWithPhoneState(playHaptic: Bool = false) async {
         guard coordinator.workoutCompanionActive else { return }
+        guard !isHandlingPhoneLaunch else { return }
         await startCompanionWorkoutIfNeeded(playHaptic: playHaptic)
     }
 
     static func startCompanionWorkoutIfNeeded(playHaptic: Bool) async {
+        guard !isHandlingPhoneLaunch else { return }
         guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
         if playHaptic {
             WatchHaptic.sessionStart.play()
@@ -121,6 +146,10 @@ enum WatchCompanionBootstrap {
 
     private static func handleCompanionDeactivated(saveWatchWorkout: Bool) async {
         guard workoutStore.phase == .active || workoutStore.phase == .paused else { return }
+        coordinator.recordDiagnostic(
+            .watchCompanionDeactivated,
+            detail: "save=\(saveWatchWorkout) phase=\(String(describing: workoutStore.phase))"
+        )
         await workoutStore.endWorkout(discard: !saveWatchWorkout)
     }
 
