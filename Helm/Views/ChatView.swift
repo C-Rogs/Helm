@@ -1,5 +1,6 @@
 import DesignSystem
 import CoachLLM
+import HealthKitIngest
 import Persistence
 import SwiftUI
 
@@ -8,6 +9,7 @@ struct ChatView: View {
     @Bindable private var activityGate = CoachActivityGate.shared
     @State private var dictateTipStore = ChatDictateTipStore.shared
     @FocusState private var isInputFocused: Bool
+    @State private var showPatternPrompt = false
     @Environment(\.helmPalette) private var palette
     @Environment(\.helmReduceMotion) private var reduceMotion
     @Environment(\.helmTypographyEpoch) private var typographyEpoch
@@ -156,6 +158,8 @@ struct ChatView: View {
                     await AppTabRouter.shared.preferChromeOverContentLoad()
                     guard !Task.isCancelled else { return }
                     await controller.onAppear()
+                    await ProactiveBootstrap.refreshPatterns()
+                    reloadPatternPrompt()
                 }
             }
             .onChange(of: controller.handoffGeneration) { _, _ in
@@ -199,12 +203,30 @@ struct ChatView: View {
     }
 
     private var emptyState: some View {
-        HelmEmptyState(
-            title: "Ask why",
-            message: "Coach answers from your readiness, training, and nutrition data. Offline keeps numbers and logging working.",
-            icon: .chat
-        )
+        VStack(alignment: .leading, spacing: HelmSpacing.md) {
+            HelmEmptyState(
+                title: "Ask why",
+                message: "Coach answers from your readiness, training, and nutrition data. Offline keeps numbers and logging working.",
+                icon: .chat
+            )
+            if showPatternPrompt {
+                Button("What patterns have you noticed?") {
+                    sendPatternPrompt()
+                }
+                .buttonStyle(.helmSecondary)
+            }
+        }
         .padding(.top, HelmSpacing.xl)
+    }
+
+    private func reloadPatternPrompt() {
+        let service = PatternEvaluationService(store: PersistenceBootstrap.persistenceStore)
+        showPatternPrompt = (try? service.hasNarratableFindings()) ?? false
+    }
+
+    private func sendPatternPrompt() {
+        controller.draftText = "What patterns have you noticed?"
+        controller.send()
     }
 
     private func degradedBanner(_ state: CoachDegradedState) -> some View {
@@ -301,6 +323,8 @@ struct ChatView: View {
             return "Coach ran a calendar query."
         case CoachOutputSchemaVersion.trendsQueryV1.rawValue:
             return "Coach ran a trends query."
+        case CoachOutputSchemaVersion.patternQueryV1.rawValue:
+            return "Coach ran a pattern query."
         case CoachOutputSchemaVersion.healthSyncV1.rawValue:
             return "Coach synced Health."
         case CoachOutputSchemaVersion.workoutDiscardV1.rawValue:

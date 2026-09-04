@@ -13,6 +13,8 @@ final class HelmAppDelegate: NSObject, UIApplicationDelegate {
         didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
     ) -> Bool {
         notificationDelegate.configure()
+        PatternBackgroundScheduler.register()
+        PatternBackgroundScheduler.schedule()
         if let sessionID = RestNotificationLaunchOptions.pendingSessionID(from: launchOptions) {
             RestNotificationRouter.storePendingSessionID(sessionID)
         }

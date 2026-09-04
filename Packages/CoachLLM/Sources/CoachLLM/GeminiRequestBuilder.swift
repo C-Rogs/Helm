@@ -169,6 +169,102 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func patternDiscoveryBody(
+        systemInstructions: String,
+        schemaLines: String
+    ) throws -> GeminiGenerateRequestBody {
+        let coverage = schemaLines.trimmingCharacters(in: .whitespacesAndNewlines)
+        let userMessage = coverage.isEmpty
+            ? "Propose up to 5 hypotheses. Coverage list is empty; return hypotheses=[]."
+            : "Feature coverage (field kind n=non-missing/total):\n\(coverage)\nPropose up to 5 hypotheses."
+        return GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: [
+                [
+                    "role": "user",
+                    "parts": [["text": userMessage]]
+                ]
+            ],
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": patternDiscoverySchema()
+            ]
+        )
+    }
+
+    public static func patternDiscoverySchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.patternDiscoveryV1.rawValue),
+                "hypotheses": [
+                    "type": "array",
+                    "maxItems": 5,
+                    "items": [
+                        "type": "object",
+                        "properties": [
+                            "id": ["type": "string"],
+                            "exposureField": [
+                                "type": "string",
+                                "enum": Self.dayFeatureFields
+                            ],
+                            "exposureOp": [
+                                "type": "string",
+                                "enum": [
+                                    "present",
+                                    "absent",
+                                    "tertile_low",
+                                    "tertile_high",
+                                    "band_equals",
+                                    "residual_positive",
+                                    "residual_non_positive"
+                                ]
+                            ],
+                            "exposureBand": ["type": "string"],
+                            "outcomeField": [
+                                "type": "string",
+                                "enum": Self.dayFeatureFields
+                            ],
+                            "lag": [
+                                "type": "integer",
+                                "minimum": 0,
+                                "maximum": 3
+                            ],
+                            "requireTrainingDay": ["type": "boolean"]
+                        ],
+                        "required": ["id", "exposureField", "exposureOp", "outcomeField", "lag"]
+                    ]
+                ]
+            ],
+            "required": ["schemaVersion", "hypotheses"]
+        ]
+    }
+
+    /// Keep aligned with PatternKit `DayFeatureField.rawValue`.
+    private static let dayFeatureFields = [
+        "alcohol",
+        "breakfast_logged",
+        "training_day",
+        "diet_energy_kcal",
+        "diet_protein_g",
+        "sleep_asleep_min",
+        "sleep_rem_min",
+        "sleep_efficiency",
+        "hrv_sdnn",
+        "resting_hr",
+        "arc_score",
+        "arc_band",
+        "bodymass_kg",
+        "workout_minutes",
+        "session_volume_kg",
+        "prior_day_trimp",
+        "day_demand",
+        "hard_set_count",
+        "energy_residual",
+        "volume_residual"
+    ]
+
     public static func planOptionCardsBody(
         systemInstructions: String,
         userMessage: String

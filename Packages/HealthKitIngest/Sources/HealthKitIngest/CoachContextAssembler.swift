@@ -128,6 +128,8 @@ public enum CoachContextAssembler {
             nutritionWithWeekly = nutritionDiary + "\n\n# Weekly Budget\n" + budget
         }
 
+        let patternFindings = patternFindingsBlock(from: store)
+
         return CoachContextDays(
             readinessBaselines: baselines,
             evidence: evidence,
@@ -143,7 +145,8 @@ public enum CoachContextAssembler {
             engineProfile: engineProfile,
             moduleSummaries: moduleSummaries,
             recentSessionOutcomes: recentSessionOutcomes,
-            freshness: freshness
+            freshness: freshness,
+            patternFindings: patternFindings
         )
     }
 
@@ -701,6 +704,22 @@ public enum CoachContextAssembler {
         if value > 0 { return "+\(body)" }
         if value < 0 { return "-\(body)" }
         return body
+    }
+
+    private static func patternFindingsBlock(from store: PersistenceStore) -> String {
+        let stored = (try? store.patternFindings.fetchAll()) ?? []
+        let visible = stored.filter { row in
+            switch row.status {
+            case "stable", "emerging", "prior_seed", "memory_confirmed":
+                true
+            default:
+                false
+            }
+        }
+        guard !visible.isEmpty else { return "" }
+        return visible.prefix(8).map { row in
+            "\(row.status): \(row.headline) n=\(row.nExp)/\(row.nCtrl)"
+        }.joined(separator: "\n")
     }
 }
 

@@ -148,15 +148,30 @@ public struct ActiveSessionRepository: Sendable {
         let nowString = ISO8601Coding.string(from: startedAt)
         try pool.write { db in
             try Self.assertNoActiveSession(db: db)
+            let prescribedWorkingSets = prescription.exercises.reduce(0) { $0 + max($1.targetSets, 1) }
+            let prescribedVolumeKg = prescription.exercises.reduce(0.0) { total, exercise in
+                let reps = Double(exercise.targetRepMin ?? exercise.targetRepMax ?? 0)
+                let mass = exercise.targetMass?.kilograms ?? 0
+                return total + mass * reps * Double(max(exercise.targetSets, 1))
+            }
             try db.execute(
                 sql: """
                     INSERT INTO workout_session (
                         id, title, started_at, ended_at, status, source,
                         total_volume_kg_cache, total_set_count_cache, total_rep_count_cache,
+                        prescribed_working_sets, prescribed_volume_kg,
                         created_at, updated_at
-                    ) VALUES (?, ?, ?, NULL, 'active', 'prescription', 0, 0, 0, ?, ?)
+                    ) VALUES (?, ?, ?, NULL, 'active', 'prescription', 0, 0, 0, ?, ?, ?, ?)
                     """,
-                arguments: [sessionID, prescription.title ?? "Today's session", nowString, nowString, nowString]
+                arguments: [
+                    sessionID,
+                    prescription.title ?? "Today's session",
+                    nowString,
+                    prescribedWorkingSets,
+                    prescribedVolumeKg,
+                    nowString,
+                    nowString
+                ]
             )
             try Self.insertActiveState(db: db, sessionID: sessionID, now: nowString)
 

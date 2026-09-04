@@ -15,6 +15,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     case recoveryQuery = "recovery_query"
     case calendarQuery = "calendar_query"
     case trendsQuery = "trends_query"
+    case patternQuery = "pattern_query"
     case workoutQuery = "workout_query"
     case nutritionQuery = "nutrition_query"
     case contextRefresh = "context_refresh"
@@ -37,6 +38,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
         case .recoveryQuery: .recoveryQueryV1
         case .calendarQuery: .calendarQueryV1
         case .trendsQuery: .trendsQueryV1
+        case .patternQuery: .patternQueryV1
         case .workoutQuery: .workoutQueryV1
         case .nutritionQuery: .nutritionQueryV1
         case .contextRefresh: .contextRefreshV1
@@ -50,7 +52,7 @@ public enum CoachCatalogToolName: String, Sendable, CaseIterable {
     /// Writes become confirm cards. Queries run immediately and feed a follow-up turn.
     public var isQuery: Bool {
         switch self {
-        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .healthSync:
+        case .mealQuery, .recoveryQuery, .calendarQuery, .trendsQuery, .patternQuery, .workoutQuery, .nutritionQuery, .contextRefresh, .healthSync:
             true
         default:
             false
@@ -87,6 +89,10 @@ public enum CoachCatalogQueryDecoder {
 
     public static func trends(from calls: [CoachLLMFunctionCall]) -> TrendsQueryPayload? {
         decode(TrendsQueryPayload.self, named: .trendsQuery, from: calls)
+    }
+
+    public static func pattern(from calls: [CoachLLMFunctionCall]) -> PatternQueryPayload? {
+        decode(PatternQueryPayload.self, named: .patternQuery, from: calls)
     }
 
     public static func workout(from calls: [CoachLLMFunctionCall]) -> WorkoutQueryPayload? {

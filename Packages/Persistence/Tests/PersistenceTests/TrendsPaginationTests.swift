@@ -90,6 +90,26 @@ struct TrendsPaginationTests {
         #expect(page[0].0 == HelmDay(year: 2026, month: 7, day: 7))
         #expect(page[0].1 == 82)
     }
+
+    @Test("daily weights collapse same-day measured_at ties to one row")
+    func dailyWeightsDedupesTiedMeasuredAt() throws {
+        let store = try makeStore()
+        let day = HelmDay(year: 2026, month: 9, day: 2)
+        let measuredAt = Date(timeIntervalSince1970: 1_756_771_200)
+        let lowerID = UUID(uuidString: "00000000-0000-0000-0000-000000000001")!
+        let higherID = UUID(uuidString: "ffffffff-ffff-ffff-ffff-ffffffffffff")!
+        try store.bodyComposition.upsert(
+            BodyComposition(id: lowerID, helmDay: day, mass: Mass(kilograms: 81.2), measuredAt: measuredAt)
+        )
+        try store.bodyComposition.upsert(
+            BodyComposition(id: higherID, helmDay: day, mass: Mass(kilograms: 81.4), measuredAt: measuredAt)
+        )
+
+        let page = try store.bodyComposition.fetchDailyWeights(endingAt: day, limit: 10)
+        #expect(page.count == 1)
+        #expect(page[0].0 == day)
+        #expect(page[0].1 == 81.4)
+    }
 }
 
 private struct ReadinessFixtureScore: Codable {

@@ -304,4 +304,17 @@ struct ContextBuilderTests {
         #expect(!prompt.contextBlock.contains("# App State"))
         #expect(prompt.contextBlock.hasPrefix("# Memory Profile"))
     }
+
+    @Test("pattern findings land in the stable prefix")
+    func patternFindingsInPrefix() {
+        let days = CoachContextDays(
+            readinessBaselines: baselines,
+            evidence: evidence,
+            recent: fixtureDays().recent,
+            patternFindings: "stable: On alcohol days, sleep duration tends to shift"
+        )
+        let prefix = ContextBuilder.stablePrefixText(profile: profile, days: days)
+        #expect(prefix.contains("# Pattern Findings"))
+        #expect(prefix.contains("On alcohol days, sleep duration tends to shift"))
+    }
 }

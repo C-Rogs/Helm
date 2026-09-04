@@ -23,6 +23,11 @@ public enum BriefEngineTextComposer {
             "Fuel with \(nutrition.caloriesKcal) kcal and \(nutrition.proteinGrams)g protein (\(nutrition.dayType) day)."
         )
 
+        if let patternLine = inputs.patternLine?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !patternLine.isEmpty {
+            sentences.append(patternLine)
+        }
+
         return sentences.joined(separator: " ")
     }
 }

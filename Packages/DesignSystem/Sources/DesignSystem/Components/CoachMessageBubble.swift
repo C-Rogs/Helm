@@ -50,8 +50,12 @@ public struct CoachMessageBubble: View {
         HStack {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 HelmSectionEyebrow(coachName.uppercased(), showsArcMark: false)
-                Text(displayText)
-                    .helmType(.body)
+                if showsThinkingShine {
+                    HelmShimmerText(displayText)
+                } else {
+                    Text(displayText)
+                        .helmType(.body)
+                }
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)
@@ -65,6 +69,19 @@ public struct CoachMessageBubble: View {
             return "..."
         }
         return text
+    }
+
+    /// Empty placeholder or interim status lines (`Looking up…`), not live reply tokens.
+    private var showsThinkingShine: Bool {
+        guard isStreaming else { return false }
+        if text.isEmpty { return true }
+        return Self.isWaitingStatusText(text)
+    }
+
+    private static func isWaitingStatusText(_ text: String) -> Bool {
+        guard !text.contains("\n") else { return false }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.hasSuffix("…") || trimmed.hasSuffix("...")
     }
 }
 
@@ -117,6 +134,7 @@ private struct BubbleChromeModifier: ViewModifier {
         CoachMessageBubble(role: .user, text: "Should I go heavier on bench?")
         CoachMessageBubble(role: .assistant, text: "Stay at 80 kg. Readiness is moderate today.")
         CoachMessageBubble(role: .assistant, text: "", isStreaming: true)
+        CoachMessageBubble(role: .assistant, text: "Looking up patterns…", isStreaming: true)
     }
     .padding()
     .helmTheme()

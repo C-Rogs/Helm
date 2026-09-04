@@ -12,6 +12,7 @@ struct NutritionDayRecord: Codable, FetchableRecord, PersistableRecord {
         case totalCarbohydrateGrams = "total_carbohydrate_grams"
         case totalFatGrams = "total_fat_grams"
         case macroGapKcal = "macro_gap_kcal"
+        case eatToKcal = "eat_to_kcal"
         case updatedAt = "updated_at"
     }
 
@@ -21,6 +22,7 @@ struct NutritionDayRecord: Codable, FetchableRecord, PersistableRecord {
     var totalCarbohydrateGrams: Double?
     var totalFatGrams: Double?
     var macroGapKcal: Double?
+    var eatToKcal: Double?
     var updatedAt: String
 
     init(day: NutritionDay, timestamp: Date = Date()) {
@@ -30,6 +32,7 @@ struct NutritionDayRecord: Codable, FetchableRecord, PersistableRecord {
         totalCarbohydrateGrams = day.totalCarbohydrateGrams
         totalFatGrams = day.totalFatGrams
         macroGapKcal = day.macroGapKilocalories
+        eatToKcal = day.eatToKilocalories
         updatedAt = ISO8601Coding.string(from: timestamp)
     }
 
@@ -40,7 +43,8 @@ struct NutritionDayRecord: Codable, FetchableRecord, PersistableRecord {
             totalProteinGrams: totalProteinGrams,
             totalCarbohydrateGrams: totalCarbohydrateGrams,
             totalFatGrams: totalFatGrams,
-            macroGapKilocalories: macroGapKcal
+            macroGapKilocalories: macroGapKcal,
+            eatToKilocalories: eatToKcal
         )
     }
 }

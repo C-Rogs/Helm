@@ -45,9 +45,12 @@ public struct CoachAIProgressCard: View {
 
                 HStack(spacing: HelmSpacing.sm) {
                     CoachAIPulseIndicator(isLoading: true)
-                    Text(currentStep)
-                        .helmType(.body, color: HelmColor.fg)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                    HelmShimmerText(
+                        currentStep,
+                        baseColor: HelmColor.fgSecondary,
+                        highlightColor: HelmColor.fg
+                    )
+                    .frame(maxWidth: .infinity, alignment: .leading)
                 }
             }
 

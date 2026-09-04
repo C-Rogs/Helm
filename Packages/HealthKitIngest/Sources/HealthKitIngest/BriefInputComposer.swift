@@ -9,7 +9,8 @@ public enum BriefInputComposer {
         readiness: ReadinessScore?,
         prescriptionSummary: PrescribedSessionSummary?,
         prescriptionSession: PrescribedSession?,
-        nutritionSnapshot: NutritionDaySnapshot
+        nutritionSnapshot: NutritionDaySnapshot,
+        patternLine: String? = nil
     ) -> BriefInputsSnapshot {
         let readinessSnapshot = BriefReadinessSnapshot(
             score: readiness?.score,
@@ -45,7 +46,8 @@ public enum BriefInputComposer {
             helmDay: helmDay,
             readiness: readinessSnapshot,
             prescription: prescriptionSnapshot,
-            nutrition: nutritionWithStatus
+            nutrition: nutritionWithStatus,
+            patternLine: patternLine
         )
     }
 }

@@ -10,6 +10,7 @@ public enum HelmSignpostName: Sendable {
     case briefIntentRun
     case workoutSessionLifecycle
     case liveWorkoutBuilderTeardown
+    case patternEvaluate
 }
 
 public struct HelmSignpost: Sendable {
@@ -50,6 +51,7 @@ public struct HelmSignpost: Sendable {
         case .briefIntentRun: "BriefIntentRun"
         case .workoutSessionLifecycle: "WorkoutSessionLifecycle"
         case .liveWorkoutBuilderTeardown: "LiveWorkoutBuilderTeardown"
+        case .patternEvaluate: "PatternEvaluate"
         }
     }
 }

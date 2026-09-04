@@ -1059,6 +1059,77 @@ public struct TrendsQueryPayload: Codable, Sendable, Equatable {
     }
 }
 
+public enum PatternQueryPayloadParser: Sendable {
+    public static func parse(from text: String) -> PatternQueryPayload? {
+        guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .patternQueryV1),
+              let data = block.data(using: .utf8),
+              let payload = try? JSONDecoder().decode(PatternQueryPayload.self, from: data),
+              payload.schemaVersion == CoachOutputSchemaVersion.patternQueryV1.rawValue
+        else {
+            return nil
+        }
+        return payload
+    }
+}
+
+public struct PatternQueryPayload: Sendable, Hashable, Codable, Equatable {
+    public enum StatusFilter: String, Sendable, Hashable, Codable {
+        case priorSeed = "prior_seed"
+        case emerging
+        case stable
+        case retired
+        case memoryConfirmed = "memory_confirmed"
+        case all
+    }
+
+    public let schemaVersion: String
+    public let status: StatusFilter
+    public let field: String?
+
+    public init(
+        schemaVersion: String = CoachOutputSchemaVersion.patternQueryV1.rawValue,
+        status: StatusFilter = .all,
+        field: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.status = status
+        self.field = field
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try container.decodeSchemaVersion()
+        if let raw = try container.decodeIfPresent(String.self, forKey: .status)
+            ?? container.decodeIfPresent(String.self, forKey: .queryType) {
+            status = StatusFilter(rawValue: raw)
+                ?? StatusFilter(rawValue: raw.replacingOccurrences(of: "-", with: "_"))
+                ?? .all
+        } else {
+            status = .all
+        }
+        field = try container.decodeIfPresent(String.self, forKey: .field)
+    }
+
+    public func encode(to encoder: any Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(status, forKey: .status)
+        try container.encodeIfPresent(field, forKey: .field)
+    }
+
+    private enum CodingKeys: String, CodingKey, CoachQueryPayloadCodingKeys {
+        case schemaVersion
+        case status
+        case field
+        case queryType
+        case lookbackDays
+
+        static var schemaVersionKey: CodingKeys { .schemaVersion }
+        static var queryTypeKey: CodingKeys { .status }
+        static var lookbackDaysKey: CodingKeys { .lookbackDays }
+    }
+}
+
 public enum TrendsQueryPayloadParser: Sendable {
     public static func parse(from text: String) -> TrendsQueryPayload? {
         guard let block = CoachEmbeddedJSONBlockFinder.firstBlock(in: text, matching: .trendsQueryV1),

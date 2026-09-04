@@ -7,4 +7,5 @@ public enum CoachPromptVersion: String, Sendable, Equatable, CaseIterable {
     case briefV1 = "brief.prompt.v1"
     case calendarEventClassifyV1 = "calendar_event_classify.prompt.v1"
     case planOptionCardsV1 = "plan_option_cards.prompt.v1"
+    case patternDiscoveryV1 = "pattern_discovery.prompt.v1"
 }

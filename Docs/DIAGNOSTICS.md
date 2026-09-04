@@ -18,6 +18,7 @@ No telemetry anywhere in this system. Nothing here phones home. Everything descr
 | `ReadinessKit` | ARC compute, baseline seeding |
 | `PlanKit` | mesocycle, prescription, drift resolution, adjustments |
 | `NutritionKit` | TDEE, macro targets, photo-macro extraction |
+| `PatternKit` | ContrastEngine evaluate, day-matrix assemble |
 | `CoachLLM` | provider calls, context building, structured-output decode |
 | `Logger` | active session, sets, rest timer, Live Activity |
 | `AppIntents` | `GenerateBriefIntent` and any future intents |
@@ -43,6 +44,7 @@ Named intervals for every critical path, so Instruments and the overnight batter
 | `BriefIntentRun` | `AppIntents` | per invocation (UUID) | M7.1 |
 | `WorkoutSessionLifecycle` | `Logger` (phone side) / `Watch` (Watch side) | per session (UUID), begin at start, event at pause/resume, end at finish/discard | M3.4 (phone HK write), M8.1 (Watch session) |
 | `LiveWorkoutBuilderTeardown` | `Watch` | per session (UUID) | M8.1 |
+| `PatternEvaluate` | `PatternKit` | per nightly evaluate | PatternKit |
 
 Phone AirPods HR (no Watch app) uses ring-buffer events `phone.hr.session.start` / `phone.hr.session.end` / `phone.hr.first` via `WatchCompanionDiagnosticEvent`, not a new signpost name.
 

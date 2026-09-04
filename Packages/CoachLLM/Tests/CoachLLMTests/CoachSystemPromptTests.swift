@@ -45,6 +45,7 @@ struct CoachSystemPromptTests {
         #expect(prompt.contains("lookaheadDays"))
         #expect(prompt.contains("optional search"))
         #expect(prompt.contains("trends_query"))
+        #expect(prompt.contains("pattern_query"))
         #expect(prompt.contains("call the workout_query tool"))
         #expect(prompt.contains("call the trends_query tool"))
         #expect(prompt.contains("queryType bodyFat"))

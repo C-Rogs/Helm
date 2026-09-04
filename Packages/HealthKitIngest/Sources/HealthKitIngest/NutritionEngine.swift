@@ -500,6 +500,9 @@ public actor NutritionEngine {
             resolvedWeeklyBudget = try? weeklyBudget(for: day, prescriptionSummary: prescriptionSummary, now: now)
         }
         let targets = Self.alignedTargets(seed: seedTargets, budgetDay: resolvedWeeklyBudget?.day(for: day))
+        if targets.caloriesKcal > 0 {
+            try? persistence.nutrition.updateEatToKcal(helmDay: day, kcal: Double(targets.caloriesKcal))
+        }
         let loggingComplete = (try? persistence.nutritionLogStatus.isLoggingComplete(helmDay: day)) ?? false
         let activeEnergyKcal = dailyMetrics?.activeEnergy.map { Int($0.kilocalories.rounded()) }
         let today = HelmDay.day(for: now, cutoff: cutoff, calendar: calendar)

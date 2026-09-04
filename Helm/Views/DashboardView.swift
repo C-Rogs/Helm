@@ -103,6 +103,7 @@ struct DashboardView: View {
                     prescriptionSummary: prescriptionService.state.summary
                 )
                 await ProactiveBootstrap.refreshThresholdInsights()
+                await ProactiveBootstrap.refreshPatterns()
                 muscleVolumeStore.refresh()
                 loadTodaySteps()
             }

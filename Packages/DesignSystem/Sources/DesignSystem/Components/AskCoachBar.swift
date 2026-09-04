@@ -30,10 +30,22 @@ public struct AskCoachBar: View {
             HStack(spacing: HelmSpacing.sm) {
                 statusIndicator
 
-                Text(displayPrompt)
-                    .helmType(.body, color: HelmColor.fg)
-                    .lineLimit(peekSnippet == nil ? 1 : 2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                Group {
+                    if isLoading {
+                        HelmShimmerText(
+                            displayPrompt,
+                            baseColor: HelmColor.fgSecondary,
+                            highlightColor: HelmColor.fg,
+                            lineLimit: peekSnippet == nil ? 1 : 2
+                        )
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                    } else {
+                        Text(displayPrompt)
+                            .helmType(.body, color: HelmColor.fg)
+                            .lineLimit(peekSnippet == nil ? 1 : 2)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                    }
+                }
             }
             .padding(.horizontal, HelmSpacing.md)
             .padding(.vertical, HelmSpacing.sm)

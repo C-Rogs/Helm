@@ -1,6 +1,64 @@
 import DesignSystem
+import HealthKitIngest
 import Persistence
 import SwiftUI
+
+struct PatternFindingsView: View {
+    var body: some View {
+        ScrollView {
+            PatternFindingsList()
+                .helmScreenPadding()
+        }
+        .helmScreenBackground()
+        .navigationTitle("Patterns")
+        .navigationBarTitleDisplayMode(.large)
+    }
+}
+
+struct PatternFindingsList: View {
+    @Environment(\.helmSkin) private var skin
+    @State private var patternCards: [PatternFindingCardModel] = []
+
+    private var persistence: PersistenceStore { PersistenceBootstrap.persistenceStore }
+
+    var body: some View {
+        LazyVStack(alignment: .leading, spacing: skin.sectionSpacing) {
+            HelmSectionEyebrow("PATTERNS", showsArcMark: true)
+            if patternCards.isEmpty {
+                HelmEmptyState(
+                    title: "Need more days",
+                    message: "Associations ship once both arms have at least 12 days. Log sleep, drinks, and training as usual.",
+                    icon: .empty
+                )
+            } else {
+                ForEach(patternCards) { card in
+                    PatternFindingCard(
+                        model: card,
+                        onConfirmToMemory: card.canConfirmToMemory
+                            ? { confirmPattern(id: card.id) }
+                            : nil
+                    )
+                }
+            }
+        }
+        .task {
+            await ProactiveBootstrap.refreshPatterns()
+            reloadPatterns()
+        }
+        .refreshable { reloadPatterns() }
+    }
+
+    private func reloadPatterns() {
+        let service = PatternEvaluationService(store: persistence)
+        patternCards = (try? service.cardModels()) ?? []
+    }
+
+    private func confirmPattern(id: String) {
+        let service = PatternEvaluationService(store: persistence)
+        try? service.confirmToMemory(id: id)
+        reloadPatterns()
+    }
+}
 
 struct TrendsView: View {
     @Environment(\.helmSkin) private var skin
@@ -10,33 +68,32 @@ struct TrendsView: View {
     private var persistence: PersistenceStore { PersistenceBootstrap.persistenceStore }
 
     var body: some View {
-        NavigationStack {
-            ScrollView {
-                LazyVStack(alignment: .leading, spacing: skin.sectionSpacing) {
-                    trendCards
+        ScrollView {
+            LazyVStack(alignment: .leading, spacing: skin.sectionSpacing) {
+                trendCards
+                PatternFindingsList()
+            }
+            .helmScreenPadding()
+        }
+        .helmScreenBackground()
+        .navigationTitle("Trends")
+        .navigationBarTitleDisplayMode(.large)
+        .task {
+            controller.refresh()
+        }
+        .refreshable {
+            controller.refresh()
+        }
+        .sheet(isPresented: $isShowingExercisePicker) {
+            ExercisePickerView(
+                fetchRecent: { (try? persistence.exercises.listRecentlyUsed(limit: 500)) ?? [] },
+                fetchExercises: { search, muscle in
+                    try persistence.exercises.listForPicker(search: search, muscleGroup: muscle)
+                },
+                onSelect: { exerciseID in
+                    controller.selectExercise(id: exerciseID)
                 }
-                .helmScreenPadding()
-            }
-            .helmScreenBackground()
-            .navigationTitle("Trends")
-            .navigationBarTitleDisplayMode(.large)
-            .task {
-                controller.refresh()
-            }
-            .refreshable {
-                controller.refresh()
-            }
-            .sheet(isPresented: $isShowingExercisePicker) {
-                ExercisePickerView(
-                    fetchRecent: { (try? persistence.exercises.listRecentlyUsed(limit: 500)) ?? [] },
-                    fetchExercises: { search, muscle in
-                        try persistence.exercises.listForPicker(search: search, muscleGroup: muscle)
-                    },
-                    onSelect: { exerciseID in
-                        controller.selectExercise(id: exerciseID)
-                    }
-                )
-            }
+            )
         }
     }
 

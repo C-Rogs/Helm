@@ -656,6 +656,14 @@ final class ChatController {
                 parseJSON: TrendsQueryPayloadParser.parse,
                 infer: CoachChatIntent.inferredTrendsQuery
             )
+            let patternQuery = catalogQuery(
+                named: .patternQuery,
+                from: querySource,
+                userText: text,
+                decode: CoachCatalogQueryDecoder.pattern,
+                parseJSON: PatternQueryPayloadParser.parse,
+                infer: CoachChatIntent.inferredPatternQuery
+            )
             let workoutQuery = catalogQuery(
                 named: .workoutQuery,
                 from: querySource,
@@ -760,6 +768,17 @@ final class ChatController {
                 assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
                     try await runTrendsQueryFollowUp(
                         query: trendsQuery,
+                        provider: provider,
+                        profile: profile,
+                        endDay: endDay,
+                        priorAssembled: assembledTurn.text
+                    )
+                }
+            } else if CoachCatalogQueryResolver.shouldFollowUp(.patternQuery, explicitQueries: explicitQueries),
+                      let patternQuery {
+                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
+                    try await runPatternQueryFollowUp(
+                        query: patternQuery,
                         provider: provider,
                         profile: profile,
                         endDay: endDay,
@@ -1506,6 +1525,50 @@ final class ChatController {
 
         isStreaming = true
         streamingText = "Looking up trends…"
+
+        let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
+        let thread = CoachThreadState(
+            messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                + [CoachMessage(role: .assistant, text: CoachChatTextFormatter.userFacingText(from: priorAssembled))]
+        ).windowed()
+        let budget = TokenBudget.maxInputTokens(for: providerPreferences.selectedProvider)
+        let prompt = makeCoachPrompt(
+            profile: profile,
+            days: contextDays,
+            budget: budget,
+            turn: .followUp
+        )
+
+        return try await streamAssistantTurn(
+            provider: provider,
+            systemInstructions: prompt.systemInstructions,
+            contextBlock: prompt.contextBlock,
+            userMessage: toolMessage,
+            thread: thread,
+            allowEmptyRetry: true,
+            freshnessSuffix: prompt.freshnessSuffix
+        )
+    }
+
+    private func runPatternQueryFollowUp(
+        query: PatternQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay,
+        priorAssembled: String
+    ) async throws -> AssembledCoachTurn {
+        let service = PatternQueryService(store: persistence)
+        let results = try service.run(query)
+        let toolMessage = """
+        # Pattern query results
+        \(results)
+
+        Narrate only these stored PatternKit cards. Association language, not causal. \
+        If findings=none or n is too small, say so. Never invent a correlation or dump raw day logs.
+        """
+
+        isStreaming = true
+        streamingText = "Looking up patterns…"
 
         let contextDays = try await CoachContextBootstrap.assemble(from: persistence, endingAt: endDay)
         let thread = CoachThreadState(

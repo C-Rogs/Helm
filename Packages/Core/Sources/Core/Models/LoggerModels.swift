@@ -251,8 +251,10 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
     public let hkActivityType: String?
     /// Active energy burned, in kilocalories. Nil for non-HK or unavailable.
     public let hkActiveEnergyKilocalories: Double?
-    /// Total distance, in meters. Nil for non-HK or unavailable.
+    /// HealthKit total distance, in meters. Nil for non-HK or unavailable.
     public let hkTotalDistanceMeters: Double?
+    public let prescribedWorkingSets: Int?
+    public let prescribedVolumeKilograms: Double?
 
     public init(
         id: String,
@@ -266,7 +268,9 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
         source: WorkoutSessionSource = .manual,
         hkActivityType: String? = nil,
         hkActiveEnergyKilocalories: Double? = nil,
-        hkTotalDistanceMeters: Double? = nil
+        hkTotalDistanceMeters: Double? = nil,
+        prescribedWorkingSets: Int? = nil,
+        prescribedVolumeKilograms: Double? = nil
     ) {
         self.id = id
         self.title = title
@@ -280,6 +284,8 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
         self.hkActivityType = hkActivityType
         self.hkActiveEnergyKilocalories = hkActiveEnergyKilocalories
         self.hkTotalDistanceMeters = hkTotalDistanceMeters
+        self.prescribedWorkingSets = prescribedWorkingSets
+        self.prescribedVolumeKilograms = prescribedVolumeKilograms
     }
 }
 

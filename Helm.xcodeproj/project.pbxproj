@@ -116,6 +116,7 @@
 		5C2B69E21678550F1B29DC20 /* TrendWeightChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */; };
 		5D2989127D96B244FE8EFC55 /* HealthKitOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */; };
 		5D47496C9C7FB5D2BC47555B /* NutritionDayCompleteSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */; };
+		5EB57E0DF1672162EB0FCA21 /* PatternBackgroundScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3C9FAC578DF05ADCBAFC9A86 /* PatternBackgroundScheduler.swift */; };
 		5EE09BE100418B1855BA4C37 /* Sounds in Resources */ = {isa = PBXBuildFile; fileRef = 618BEB910286D2A493ECF63B /* Sounds */; };
 		5F6D9A04C7A0D642A58E0654 /* MuscleVolumeBarChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 29BDBC668878E04D57C83BC7 /* MuscleVolumeBarChartCard.swift */; };
 		5FAEBACB5012754CA2E1EDDA /* OnboardingCoordinator.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21053A3537A7606568D37DEE /* OnboardingCoordinator.swift */; };
@@ -171,6 +172,7 @@
 		9175B3430045AFE9D8DA30D7 /* CloudBackupPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */; };
 		928C4DB95D1B1D6E4398E7BA /* TrendsBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2498C194C2470C24926D8786 /* TrendsBootstrap.swift */; };
 		94B55AC71169CAD888BA4000 /* CoachFoodMealConfirmState.swift in Sources */ = {isa = PBXBuildFile; fileRef = 26A010C72AFC68A26D6BE629 /* CoachFoodMealConfirmState.swift */; };
+		95F5C85E63AF94F41E3C66EE /* PatternFindingCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9BE91B562F058BE91B74D119 /* PatternFindingCard.swift */; };
 		960F62D5F9A4B8DBF5F70481 /* RecoveryDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 20ED97094D22CD1B52E5E2FA /* RecoveryDetailView.swift */; };
 		966FFCB2A8A07E5A382DDF2B /* WeekAheadScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */; };
 		974E3DBA773688DE52DA1B8C /* ProgressionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */; };
@@ -465,6 +467,7 @@
 		3BBBC51EF9811FE5D79AA9E3 /* FocusSessionLogSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusSessionLogSheet.swift; sourceTree = "<group>"; };
 		3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FocusModePreferences.swift; sourceTree = "<group>"; };
 		3C3D42005745CED123A3EF54 /* HelmWidgetsBundle.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWidgetsBundle.swift; sourceTree = "<group>"; };
+		3C9FAC578DF05ADCBAFC9A86 /* PatternBackgroundScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternBackgroundScheduler.swift; sourceTree = "<group>"; };
 		3CD452125F7E39BD60465FA6 /* QuickAddFoodView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuickAddFoodView.swift; sourceTree = "<group>"; };
 		3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NotificationOnboardingStepView.swift; sourceTree = "<group>"; };
 		409700B854F2F4A5F2DFC13E /* RestNotificationRouter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RestNotificationRouter.swift; sourceTree = "<group>"; };
@@ -574,6 +577,7 @@
 		9A7B62CE402057349ACD21B9 /* CoachActivityGate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachActivityGate.swift; sourceTree = "<group>"; };
 		9AF798183AFFC925F57A9B3B /* SleepAnalysisView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SleepAnalysisView.swift; sourceTree = "<group>"; };
 		9B57DF668B8BC0BFEE46B85D /* CalendarHistoryQueryService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarHistoryQueryService.swift; sourceTree = "<group>"; };
+		9BE91B562F058BE91B74D119 /* PatternFindingCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PatternFindingCard.swift; sourceTree = "<group>"; };
 		9C352EF85CB40EE3730A712D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9D8E910325AFE50F60C36C51 /* HelmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmApp.swift; sourceTree = "<group>"; };
 		9DA01118E23D90A111A73A50 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
@@ -1222,6 +1226,7 @@
 				5966666B857671AC251ADB2C /* NotificationPermissionService.swift */,
 				7415F93EDE764C20C590FC55 /* NutritionDayMealsStore.swift */,
 				139C4D6F7BD4591C9CD1BD75 /* NutritionMealActionsController.swift */,
+				3C9FAC578DF05ADCBAFC9A86 /* PatternBackgroundScheduler.swift */,
 				32F5F7BA174DC66379865791 /* PendingImportNotificationScheduler.swift */,
 				9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */,
 				1273E2ECFD8816EFEABE1127 /* PrescriptionAutoStartStore.swift */,
@@ -1264,6 +1269,7 @@
 				3467DC9D6D3F336D753B7A41 /* EnergyBalanceChartCard.swift */,
 				E03729725E378954FAB90C8A /* MuscleVolumeArcGridCard.swift */,
 				29BDBC668878E04D57C83BC7 /* MuscleVolumeBarChartCard.swift */,
+				9BE91B562F058BE91B74D119 /* PatternFindingCard.swift */,
 				9486CCBB7963BC4373B4B2F2 /* ReadinessHistoryChartCard.swift */,
 				9E168617C8DCF2C77B9A649D /* TrendsChartShared.swift */,
 				03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */,
@@ -1802,6 +1808,8 @@
 				F23402EF56E75B9E4220BD47 /* OnboardingStep.swift in Sources */,
 				DF59F121763F13ABE6C924D2 /* OnboardingStepChrome.swift in Sources */,
 				2151DF63F306C16D64F26A98 /* OnboardingStore.swift in Sources */,
+				5EB57E0DF1672162EB0FCA21 /* PatternBackgroundScheduler.swift in Sources */,
+				95F5C85E63AF94F41E3C66EE /* PatternFindingCard.swift in Sources */,
 				D5B4D52A9A4E0F672CE0FD84 /* PendingImportNotificationScheduler.swift in Sources */,
 				A168DD1F2A42FB64303EBCB3 /* PersistenceBootstrap.swift in Sources */,
 				79321EC3187EAB4681EC7122 /* PersonalRecordsCelebrationView.swift in Sources */,

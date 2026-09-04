@@ -73,17 +73,20 @@ public struct BriefInputsSnapshot: Sendable, Hashable, Codable, Equatable {
     public let readiness: BriefReadinessSnapshot
     public let prescription: BriefPrescriptionSnapshot?
     public let nutrition: NutritionTargetsSummary
+    public let patternLine: String?
 
     public init(
         helmDay: HelmDay,
         readiness: BriefReadinessSnapshot,
         prescription: BriefPrescriptionSnapshot?,
-        nutrition: NutritionTargetsSummary
+        nutrition: NutritionTargetsSummary,
+        patternLine: String? = nil
     ) {
         self.helmDay = helmDay
         self.readiness = readiness
         self.prescription = prescription
         self.nutrition = nutrition
+        self.patternLine = patternLine
     }
 }
 

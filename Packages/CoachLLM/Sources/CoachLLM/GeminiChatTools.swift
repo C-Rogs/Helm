@@ -30,6 +30,7 @@ public enum GeminiChatTools {
             recoveryQueryDeclaration(),
             calendarQueryDeclaration(),
             trendsQueryDeclaration(),
+            patternQueryDeclaration(),
             workoutQueryDeclaration(),
             nutritionQueryDeclaration(),
             contextRefreshDeclaration(),
@@ -319,6 +320,21 @@ public enum GeminiChatTools {
             queryTypes: ["trimp", "weight", "bodyFat", "e1rm", "energyBalance", "readiness", "all"],
             extraProperties: [
                 "exerciseName": stringProperty("Required for a specific e1rm lift.")
+            ]
+        )
+    }
+
+    private static func patternQueryDeclaration() -> [String: Any] {
+        queryDeclaration(
+            name: .patternQuery,
+            description: """
+            Fetch stored PatternKit finding cards (verified associations). \
+            Never invent correlations. If N is too small the cards say so.
+            """,
+            queryTypes: ["all", "stable", "emerging", "prior_seed", "retired"],
+            extraProperties: [
+                "field": stringProperty("Optional feature field such as alcohol or sleep_asleep_min."),
+                "status": stringProperty("Optional status filter if queryType is omitted.")
             ]
         )
     }

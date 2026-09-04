@@ -553,6 +553,38 @@ public enum CoachChatIntent: Sendable {
         return TrendsQueryPayload(queryType: .all)
     }
 
+    public static func looksLikePatternLookup(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "have you noticed",
+            "have i noticed",
+            "pattern",
+            "when i drink",
+            "alcohol days",
+            "office days",
+            "days like today",
+            "cross-factor",
+            "correlation"
+        ]
+        return needles.contains { lower.contains($0) }
+            && !looksLikeTrendsLookup(text)
+    }
+
+    public static func inferredPatternQuery(from text: String) -> PatternQueryPayload? {
+        guard looksLikePatternLookup(text) else { return nil }
+        let lower = text.lowercased()
+        if lower.contains("alcohol") || lower.contains("when i drink") {
+            return PatternQueryPayload(status: .all, field: "alcohol")
+        }
+        if lower.contains("sleep") {
+            return PatternQueryPayload(status: .all, field: "sleep_asleep_min")
+        }
+        if lower.contains("office") {
+            return PatternQueryPayload(status: .all, field: "day_demand")
+        }
+        return PatternQueryPayload(status: .all)
+    }
+
     // MARK: - Nutrition Query Inference
 
     public static func looksLikeNutritionLookup(_ text: String) -> Bool {

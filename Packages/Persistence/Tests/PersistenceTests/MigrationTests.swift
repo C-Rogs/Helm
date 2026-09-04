@@ -52,7 +52,9 @@ struct MigrationTests {
                 "nutrition_day_demand_override",
                 "coach_advice_record",
                 "coach_applied_action",
-                "schedule_override"
+                "schedule_override",
+                "pattern_finding",
+                "pattern_fdr_state"
             ]
             for table in tables {
                 let exists = try tableExists(table, db: db)

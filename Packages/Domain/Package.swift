@@ -10,7 +10,8 @@ let package = Package(
         .library(name: "Domain", targets: ["Domain"]),
         .library(name: "PlanKit", targets: ["PlanKit"]),
         .library(name: "ReadinessKit", targets: ["ReadinessKit"]),
-        .library(name: "NutritionKit", targets: ["NutritionKit"])
+        .library(name: "NutritionKit", targets: ["NutritionKit"]),
+        .library(name: "PatternKit", targets: ["PatternKit"])
     ],
     dependencies: [
         .package(path: "../Core")
@@ -56,6 +57,19 @@ let package = Package(
             resources: [
                 .copy("Fixtures")
             ]
+        ),
+        .target(
+            name: "PatternKit",
+            dependencies: [
+                .product(name: "Core", package: "Core")
+            ],
+            linkerSettings: [
+                .linkedFramework("Accelerate")
+            ]
+        ),
+        .testTarget(
+            name: "PatternKitTests",
+            dependencies: ["PatternKit"]
         )
     ]
 )

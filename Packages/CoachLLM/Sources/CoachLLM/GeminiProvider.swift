@@ -322,6 +322,35 @@ public final class GeminiProvider: CoachLLMProvider, @unchecked Sendable {
         }.payload
     }
 
+    public func generatePatternDiscovery(
+        schemaLines: String
+    ) async throws -> PatternDiscoveryPayload {
+        let systemInstructions = """
+        You propose at most 5 on-device N-of-1 hypotheses as JSON. The app computes numbers later.
+        Propose AST only. Never invent correlations or dump day logs.
+        Legal exposure ops: present or absent for binary fields; tertile_low or tertile_high for continuous; \
+        residual_positive or residual_non_positive for residual; band_equals for categorical (set exposureBand).
+        Outcomes must be continuous or residual fields, never binary or categorical.
+        Lag 0 to 3. Alcohol to next-morning sleep, RHR, or HRV uses lag 1.
+        Do not propose HRV or ARC as exposure against raw workout minutes or session volume.
+        Only use fields present in the coverage list. Prefer high n. Return fewer than 5 if coverage is thin.
+        """
+        return try await generateStructured(
+            PatternDiscoveryPayload.self,
+            systemInstructions: systemInstructions,
+            contextBlock: "",
+            userMessage: "",
+            thread: .empty,
+            expectedSchema: .patternDiscoveryV1,
+            promptVersion: .patternDiscoveryV1
+        ) {
+            try GeminiRequestBuilder.patternDiscoveryBody(
+                systemInstructions: systemInstructions,
+                schemaLines: schemaLines
+            )
+        }.payload
+    }
+
     public func generatePlanOptionCards(
         systemInstructions: String,
         userMessage: String

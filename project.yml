@@ -143,6 +143,9 @@ targets:
         # and through the Silent switch (see RestTimerBackgroundAudio).
         UIBackgroundModes:
           - audio
+          - processing
+        BGTaskSchedulerPermittedIdentifiers:
+          - com.cameronro.helm.pattern-evaluate
         NSUbiquitousContainers:
           iCloud.com.cameronro.helm:
             NSUbiquitousContainerIsDocumentScopePublic: false

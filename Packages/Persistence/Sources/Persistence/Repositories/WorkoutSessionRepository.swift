@@ -355,6 +355,7 @@ public struct WorkoutSessionRepository: Sendable {
                            ws.total_volume_kg_cache, ws.total_set_count_cache, ws.total_rep_count_cache,
                            ws.source,
                            ws.activity_type, ws.active_energy_kcal, ws.distance_meters,
+                           ws.prescribed_working_sets, ws.prescribed_volume_kg,
                            (
                                SELECT COUNT(*)
                                FROM workout_session_exercise wse
@@ -386,10 +387,16 @@ public struct WorkoutSessionRepository: Sendable {
                     source: source,
                     hkActivityType: hkActivityType,
                     hkActiveEnergyKilocalories: hkEnergy,
-                    hkTotalDistanceMeters: hkDistance
+                    hkTotalDistanceMeters: hkDistance,
+                    prescribedWorkingSets: row["prescribed_working_sets"],
+                    prescribedVolumeKilograms: row["prescribed_volume_kg"]
                 )
             }
         }
+    }
+
+    public func fetchCompletedSummaries() throws -> [WorkoutSessionSummary] {
+        try listSummaries(limit: 100_000, offset: 0)
     }
 
     public func countSummaries(scope: WorkoutSessionHistoryScope = .active) throws -> Int {

@@ -130,22 +130,27 @@ public struct BodyCompositionRepository: Sendable {
     }
 
     /// Latest body-mass sample per day, newest days first.
+    /// Ties on `measured_at` break on `id` so each day appears once (HealthKit can write
+    /// duplicate samples with the same timestamp).
     public func fetchDailyWeights(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [(HelmDay, Double)] {
         try pool.read { db in
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT bc.helm_day, bc.mass_kg
-                    FROM body_composition bc
-                    INNER JOIN (
-                        SELECT helm_day, MAX(measured_at) AS max_measured
+                    SELECT helm_day, mass_kg
+                    FROM (
+                        SELECT
+                            helm_day,
+                            mass_kg,
+                            ROW_NUMBER() OVER (
+                                PARTITION BY helm_day
+                                ORDER BY measured_at DESC, id DESC
+                            ) AS rn
                         FROM body_composition
                         WHERE helm_day <= ?
-                        GROUP BY helm_day
-                    ) latest
-                        ON bc.helm_day = latest.helm_day
-                       AND bc.measured_at = latest.max_measured
-                    ORDER BY bc.helm_day DESC
+                    )
+                    WHERE rn = 1
+                    ORDER BY helm_day DESC
                     LIMIT ? OFFSET ?
                     """,
                 arguments: [HelmDayColumn.encode(end), limit, offset]

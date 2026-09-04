@@ -35,9 +35,14 @@
 	<array>
 		<string>spotify</string>
 	</array>
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.cameronro.helm.pattern-evaluate</string>
+	</array>
 	<key>UIBackgroundModes</key>
 	<array>
 		<string>audio</string>
+		<string>processing</string>
 	</array>
 	<key>NSUbiquitousContainers</key>
 	<dict>

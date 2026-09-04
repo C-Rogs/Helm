@@ -11,7 +11,27 @@ public struct NutritionRepository: Sendable {
 
     public func upsertDay(_ day: NutritionDay) throws {
         try pool.write { db in
-            try NutritionDayRecord(day: day).save(db)
+            var record = NutritionDayRecord(day: day)
+            if record.eatToKcal == nil,
+               let existing = try NutritionDayRecord.fetchOne(db, key: record.helmDay) {
+                record.eatToKcal = existing.eatToKcal
+            }
+            try record.save(db)
+        }
+    }
+
+    public func updateEatToKcal(helmDay: HelmDay, kcal: Double) throws {
+        try pool.write { db in
+            let key = HelmDayColumn.encode(helmDay)
+            if var existing = try NutritionDayRecord.fetchOne(db, key: key) {
+                existing.eatToKcal = kcal
+                existing.updatedAt = ISO8601Coding.string(from: Date())
+                try existing.update(db)
+            } else {
+                try NutritionDayRecord(
+                    day: NutritionDay(helmDay: helmDay, eatToKilocalories: kcal)
+                ).insert(db)
+            }
         }
     }
 

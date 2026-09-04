@@ -40,6 +40,7 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     public let recentSessionOutcomes: [SessionOutcomeCard]
     /// Context block freshness metadata for staleness detection.
     public let freshness: CoachContextFreshness
+    public let patternFindings: String
 
     public init(
         readinessBaselines: String = "",
@@ -56,7 +57,8 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         engineProfile: String = "",
         moduleSummaries: String = "",
         recentSessionOutcomes: [SessionOutcomeCard] = [],
-        freshness: CoachContextFreshness = CoachContextFreshness()
+        freshness: CoachContextFreshness = CoachContextFreshness(),
+        patternFindings: String = ""
     ) {
         self.readinessBaselines = readinessBaselines
         self.evidence = evidence
@@ -73,6 +75,7 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
         self.moduleSummaries = moduleSummaries
         self.recentSessionOutcomes = recentSessionOutcomes
         self.freshness = freshness
+        self.patternFindings = patternFindings
     }
 
     public static let empty = CoachContextDays()

@@ -4,6 +4,7 @@ public enum HelmCategory: String, Sendable, CaseIterable {
     case readinessKit = "ReadinessKit"
     case planKit = "PlanKit"
     case nutritionKit = "NutritionKit"
+    case patternKit = "PatternKit"
     case coachLLM = "CoachLLM"
     case logger = "Logger"
     case appIntents = "AppIntents"

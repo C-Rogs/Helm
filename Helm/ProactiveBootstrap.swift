@@ -2,6 +2,7 @@ import Core
 import Foundation
 import HealthKitIngest
 import Persistence
+import UIKit
 
 enum ProactiveBootstrap {
     private static let persistence = PersistenceBootstrap.persistenceStore
@@ -14,9 +15,11 @@ enum ProactiveBootstrap {
 
     @MainActor
     static func start() {
+        PatternBackgroundScheduler.schedule()
         Task {
             await refreshScheduling()
             await refreshThresholdInsights()
+            await refreshPatterns()
         }
     }
 
@@ -59,5 +62,17 @@ enum ProactiveBootstrap {
     @MainActor
     static func refreshThresholdInsights() async {
         await thresholdInsightService.refresh(today: ReadinessBootstrap.readinessService.state.score)
+    }
+
+    @MainActor
+    static func refreshPatterns() async {
+        let service = PatternEvaluationService(store: persistence)
+        #if os(iOS)
+        UIDevice.current.isBatteryMonitoringEnabled = true
+        let charging = UIDevice.current.batteryState == .charging || UIDevice.current.batteryState == .full
+        #else
+        let charging = false
+        #endif
+        await service.refresh(isCharging: charging)
     }
 }

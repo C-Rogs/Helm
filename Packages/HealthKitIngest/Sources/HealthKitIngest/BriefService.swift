@@ -60,7 +60,8 @@ public actor BriefEngine {
             readiness: readiness,
             prescriptionSummary: prescriptionSummary,
             prescriptionSession: session,
-            nutritionSnapshot: nutritionSnapshot
+            nutritionSnapshot: nutritionSnapshot,
+            patternLine: PatternEvaluationService(store: persistence).stableBriefLine(today: day)
         )
         let fingerprint = BriefInputFingerprint.compute(from: inputs)
 

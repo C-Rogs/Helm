@@ -95,6 +95,11 @@ public enum ContextBuilder {
             sections.append("# Readiness Baselines\n\(baselines)")
         }
 
+        let patterns = normalized(days.patternFindings)
+        if !patterns.isEmpty {
+            sections.append("# Pattern Findings\n\(patterns)")
+        }
+
         let evidence = {
             let grouped = EvidenceIndex.groupedText(from: days.groupedEvidence)
             if !grouped.isEmpty { return grouped }
@@ -168,6 +173,10 @@ public enum ContextBuilder {
         let baselines = normalized(days.readinessBaselines)
         if !baselines.isEmpty {
             sections.append("# Readiness Baselines\n\(baselines)")
+        }
+        let patterns = normalized(days.patternFindings)
+        if !patterns.isEmpty {
+            sections.append("# Pattern Findings\n\(patterns)")
         }
         if let today = days.recent.max(by: { $0.helmDay < $1.helmDay }) {
             let todayText = normalized(today.text)
