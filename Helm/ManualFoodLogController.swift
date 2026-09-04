@@ -240,6 +240,7 @@ final class ManualFoodLogController {
                 ))
             )
             HapticEngine.shared.play(.mealConfirmed)
+            PatternLoggingTipStore.shared.noteAlcoholLogged()
             finishLogging(entryMode: .alcohol)
         } catch {
             phase = .failed(alcoholMessage(for: error))

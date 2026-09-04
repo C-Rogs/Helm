@@ -21,8 +21,22 @@ struct DashboardTrendsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: skin.sectionSpacing) {
-            HelmSectionEyebrow("TRENDS", showsArcMark: true)
+            NavigationLink {
+                TrendsView()
+            } label: {
+                HStack {
+                    HelmSectionEyebrow("TRENDS", showsArcMark: true)
+                    Spacer()
+                    Text("ALL")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                    HelmIconView(.chevronRight, context: .inline)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
                 .padding(.top, HelmSpacing.xs)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Trends and patterns")
 
             trendCards
             patternsLink

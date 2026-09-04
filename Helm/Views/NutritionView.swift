@@ -33,6 +33,7 @@ struct NutritionView: View {
         actionExecutor: HelmActionRuntime.executor
     )
     @State private var foodLogTipStore = FoodLogTipStore.shared
+    @State private var patternLoggingTipStore = PatternLoggingTipStore.shared
     @State private var isRefreshing = false
     @State private var isDayCompleteSaving = false
     @State private var showsPhotoOptions = false
@@ -234,6 +235,10 @@ struct NutritionView: View {
             foodLogTipCard
         }
 
+        if patternLoggingTipStore.activeTip != nil {
+            patternLoggingTipCard
+        }
+
         mealBucketsSection(snapshot: snapshot)
 
         NutritionDayCompleteSection(
@@ -339,6 +344,9 @@ struct NutritionView: View {
         do {
             if let demand {
                 try service.setExplicitOverride(demand, for: day)
+                if demand == .office {
+                    patternLoggingTipStore.noteOfficeTagged()
+                }
             } else {
                 try service.clearExplicitOverride(for: day)
             }
@@ -507,6 +515,30 @@ struct NutritionView: View {
                 }
                 .buttonStyle(.helmPressable)
                 .accessibilityLabel("Dismiss tip")
+            }
+        }
+    }
+
+    private var patternLoggingTipCard: some View {
+        Card {
+            HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    HelmSectionEyebrow("PATTERNS", showsArcMark: true)
+                    Text(patternLoggingTipStore.headline)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+
+                Button {
+                    patternLoggingTipStore.dismiss()
+                } label: {
+                    Image(systemName: "xmark")
+                        .font(.system(size: 14, weight: .semibold))
+                        .foregroundStyle(HelmColor.fgMuted)
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Dismiss pattern tip")
             }
         }
     }

@@ -304,3 +304,14 @@ schemes:
       config: Debug
       targets:
         - HelmUITests
+        - package: Domain/PatternKitTests
+        - package: Persistence/PersistenceTests
+        - package: HealthKitIngest/HealthKitIngestTests
+        - package: CoachLLM/CoachLLMTests
+        - package: Domain/PlanKitTests
+        - package: Domain/ReadinessKitTests
+        - package: Domain/NutritionKitTests
+        - package: DesignSystem/DesignSystemTests
+        - package: Core/CoreTests
+        - package: Diagnostics/DiagnosticsTests
+        - package: ExportKit/ExportKitTests
