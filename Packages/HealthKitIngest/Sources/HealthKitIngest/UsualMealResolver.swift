@@ -58,8 +58,10 @@ public struct UsualMealResolver: Sendable {
         let through = day.adding(days: -1, calendar: calendar)
         guard lookbackStart <= through else { return [] }
 
+        // HealthKit imports are backfill, not intentional usual meals - exclude them
+        // so MFP/etc. rows never drive "Usual HealthKit meal?" nudges.
         let meals = try nutrition.fetchMealsInRange(from: lookbackStart, through: through)
-            .filter { $0.bucket == bucket }
+            .filter { $0.bucket == bucket && $0.source != .healthKit }
         let grouped = Dictionary(grouping: meals, by: \.helmDay)
         let wantWeekend = isWeekend(day)
 
@@ -106,6 +108,18 @@ public struct UsualMealResolver: Sendable {
         return best.0
     }
 
+    /// Preserve first-seen order; drop case-insensitive duplicates.
+    static func uniqueNames(_ names: [String]) -> [String] {
+        var seen = Set<String>()
+        var unique: [String] = []
+        for name in names {
+            let key = name.lowercased()
+            guard seen.insert(key).inserted else { continue }
+            unique.append(name)
+        }
+        return unique
+    }
+
     private func proposal(from template: MealTemplate) -> UsualMealProposal {
         let kcal = Int(template.lineItems.reduce(0) { $0 + $1.caloriesKcal }.rounded())
         return UsualMealProposal(
@@ -121,7 +135,7 @@ public struct UsualMealResolver: Sendable {
         from day: HelmDay,
         bucket: MealBucket
     ) -> UsualMealProposal {
-        let names = meals.map(\.name).filter { !$0.isEmpty }
+        let names = Self.uniqueNames(meals.map(\.name).filter { !$0.isEmpty })
         let displayName: String
         if names.isEmpty {
             displayName = bucket.displayName

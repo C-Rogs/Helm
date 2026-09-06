@@ -126,6 +126,76 @@ struct UsualMealResolverTests {
         #expect(proposal?.source == .copy(from: monday))
     }
 
+    @Test("HealthKit imports never drive usual-meal proposals")
+    func healthKitHistoryIgnored() throws {
+        let store = try PersistenceStore.inMemory()
+        try insertMeal(
+            store: store,
+            day: monday,
+            bucket: .snacks,
+            name: "HealthKit meal",
+            kcal: 400,
+            hour: 12,
+            source: .healthKit
+        )
+        try insertMeal(
+            store: store,
+            day: friday,
+            bucket: .snacks,
+            name: "HealthKit meal",
+            kcal: 420,
+            hour: 12,
+            source: .healthKit
+        )
+
+        let resolver = UsualMealResolver(store: store, calendar: calendar)
+        #expect(try resolver.matchingSamples(for: .snacks, on: tuesday).isEmpty)
+        #expect(try resolver.proposal(for: .snacks, on: tuesday) == nil)
+    }
+
+    @Test("duplicate meal names collapse in copy display name")
+    func duplicateNamesCollapse() throws {
+        let store = try PersistenceStore.inMemory()
+        let loggedAt = date(year: monday.year, month: monday.month, day: monday.day, hour: 8)
+        try store.nutrition.upsertMeal(
+            MealRecord(
+                helmDay: monday,
+                name: "HealthKit meal",
+                loggedAt: loggedAt,
+                bucket: .breakfast,
+                energy: Energy(kilocalories: 200),
+                proteinGrams: 10,
+                carbohydrateGrams: 20,
+                fatGrams: 5,
+                source: .manual
+            )
+        )
+        try store.nutrition.upsertMeal(
+            MealRecord(
+                helmDay: monday,
+                name: "HealthKit meal",
+                loggedAt: loggedAt.addingTimeInterval(60),
+                bucket: .breakfast,
+                energy: Energy(kilocalories: 220),
+                proteinGrams: 12,
+                carbohydrateGrams: 22,
+                fatGrams: 6,
+                source: .manual
+            )
+        )
+
+        let resolver = UsualMealResolver(store: store, calendar: calendar)
+        let proposal = try resolver.proposal(for: .breakfast, on: tuesday)
+        #expect(proposal?.displayName == "HealthKit meal")
+        #expect(proposal?.energyKcal == 420)
+        #expect(proposal?.source == .copy(from: monday))
+    }
+
+    @Test("uniqueNames keeps order and drops case-insensitive dupes")
+    func uniqueNamesHelper() {
+        #expect(UsualMealResolver.uniqueNames(["A", "b", "A", "B", "c"]) == ["A", "b", "c"])
+    }
+
     @Test("logUsual writes the template onto an empty bucket")
     func logUsualWritesTemplate() async throws {
         let store = try PersistenceStore.inMemory()
@@ -235,7 +305,8 @@ struct UsualMealResolverTests {
         bucket: MealBucket,
         name: String,
         kcal: Double,
-        hour: Int
+        hour: Int,
+        source: MealRecord.Source = .template
     ) throws {
         let loggedAt = date(year: day.year, month: day.month, day: day.day, hour: hour)
         try store.nutrition.upsertMeal(
@@ -248,7 +319,7 @@ struct UsualMealResolverTests {
                 proteinGrams: 20,
                 carbohydrateGrams: 40,
                 fatGrams: 10,
-                source: .template
+                source: source
             )
         )
     }

@@ -99,7 +99,8 @@ final class UsualMealNotificationScheduler {
                 continue
             }
             if pending.contains(where: { $0.identifier == identifier }) {
-                await cancel(identifier: identifier)
+                // Refresh pending only - keep delivered so we don't re-arm after delivery.
+                await center.removePendingNotificationRequests(withIdentifiers: [identifier])
             }
 
             let content = UNMutableNotificationContent()
@@ -136,12 +137,13 @@ final class UsualMealNotificationScheduler {
         await cancel(identifier: UsualMealNotificationPlanner.notificationIdentifier(day: day, bucket: bucket))
     }
 
+    /// Drop pending usual-meal requests for the day. Leaves delivered alone so a later
+    /// `reschedule` cannot re-fire buckets that already notified today.
     func cancelPending(for day: HelmDay) async {
         let identifiers = MealBucket.allCases.map {
             UsualMealNotificationPlanner.notificationIdentifier(day: day, bucket: $0)
         }
         await center.removePendingNotificationRequests(withIdentifiers: identifiers)
-        await center.removeDeliveredNotifications(withIdentifiers: identifiers)
     }
 
     private func cancel(identifier: String) async {
