@@ -20,6 +20,12 @@ final class FoodLogTipStore {
         isVisible = false
         defaults.set(true, forKey: Self.dismissedDefaultsKey)
     }
+
+    /// Hide tip after the athlete has logged at least once today.
+    func noteDayHasLoggedFood(_ hasLogged: Bool) {
+        guard hasLogged, isVisible else { return }
+        dismiss()
+    }
 }
 
 /// Soft PatternKit logging echoes. Alcohol max once per ISO week; office once ever.

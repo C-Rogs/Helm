@@ -5,7 +5,7 @@ import NutritionKit
 public struct PhotoMacroEstimator: Sendable, MealMacroEstimating {
     private let grounded: GroundedPhotoMacroEstimator
 
-    public init(router: MealVisionRouter, lookup: NutritionLookup = NutritionLookup()) {
+    public init(router: MealVisionRouter, lookup: NutritionLookup = .shared) {
         grounded = GroundedPhotoMacroEstimator(vision: router, lookup: lookup)
     }
 

@@ -49,16 +49,52 @@ public enum NutritionKit {
         state: inout NutritionTrendState,
         weekDays: [NutritionTrendDayInput],
         profileSeedTDEEKcal: Double?,
-        defaultBodyMassKg: Double = 75
+        defaultBodyMassKg: Double = 75,
+        forceUpdate: Bool = false
     ) -> NutritionTrendState {
         guard !weekDays.isEmpty else { return state }
 
         let sorted = weekDays.sorted { $0.helmDay < $1.helmDay }
         guard let evidenceEnd = sorted.last?.helmDay else { return state }
-        if let lastUpdate = state.lastWeeklyUpdate,
+        if !forceUpdate,
+           let lastUpdate = state.lastWeeklyUpdate,
            lastUpdate.days(to: evidenceEnd) < updateCadenceDays {
             return state
         }
+
+        return applyTrendUpdate(
+            state: &state,
+            sorted: sorted,
+            evidenceEnd: evidenceEnd,
+            profileSeedTDEEKcal: profileSeedTDEEKcal,
+            defaultBodyMassKg: defaultBodyMassKg
+        )
+    }
+
+    /// Weekly check-in ritual path: same TDEE engine as `updateTrend`, cadence forced.
+    @discardableResult
+    public static func reconcileWeekly(
+        state: inout NutritionTrendState,
+        weekDays: [NutritionTrendDayInput],
+        profileSeedTDEEKcal: Double?,
+        defaultBodyMassKg: Double = 75
+    ) -> NutritionTrendState {
+        updateTrend(
+            state: &state,
+            weekDays: weekDays,
+            profileSeedTDEEKcal: profileSeedTDEEKcal,
+            defaultBodyMassKg: defaultBodyMassKg,
+            forceUpdate: true
+        )
+    }
+
+    private static func applyTrendUpdate(
+        state: inout NutritionTrendState,
+        sorted: [NutritionTrendDayInput],
+        evidenceEnd: HelmDay,
+        profileSeedTDEEKcal: Double?,
+        defaultBodyMassKg: Double
+    ) -> NutritionTrendState {
 
         let weights = sorted.compactMap(\.bodyMassKg).filter { $0 > 1 }
         if !weights.isEmpty {
@@ -99,7 +135,12 @@ public enum NutritionKit {
 
         state.estimatedTDEEKcal = NutritionMass.flooredTDEE(estimate, profileSeedTDEE: profileSeed)
         state.priorWeekTrendWeightKg = state.smoothedTrendWeightKg
-        state.lastWeeklyUpdate = evidenceEnd
+        // Only advance cadence when there is enough intake evidence to blend TDEE.
+        // Soft ritual confirms can still update weight/intake averages without blocking
+        // the next passive weekly pass.
+        if intakes.count >= minimumIntakeDaysForUpdate {
+            state.lastWeeklyUpdate = evidenceEnd
+        }
         return state
     }
 

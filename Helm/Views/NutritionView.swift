@@ -38,6 +38,8 @@ struct NutritionView: View {
     @State private var isDayCompleteSaving = false
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
+    @State private var showsWeeklyCheckIn = false
+    @State private var didAutoPresentWeeklyCheckIn = false
     @State private var selectedHelmDay: HelmDay?
     @State private var describeBucket: MealBucket?
     @State private var describeText = ""
@@ -61,6 +63,17 @@ struct NutritionView: View {
             await AppTabRouter.shared.preferChromeOverContentLoad()
             guard !Task.isCancelled else { return }
             await refreshTargets()
+            presentWeeklyCheckInIfDue()
+        }
+        .sheet(isPresented: $showsWeeklyCheckIn, onDismiss: {
+            // Refresh if Confirm already stamped (Done or swipe after success).
+            Task { await refreshTargets() }
+        }) {
+            NutritionWeeklyCheckInSheet(
+                asOf: todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
+            ) {
+                Task { await refreshTargets() }
+            }
         }
         .onChange(of: scenePhase) { _, newPhase in
             guard newPhase == .active else { return }
@@ -258,6 +271,8 @@ struct NutritionView: View {
 
         mealBucketsSection(snapshot: snapshot)
 
+        weeklyCheckInCard
+
         NutritionDayCompleteSection(
             loggingComplete: snapshot.loggingComplete,
             isSaving: isDayCompleteSaving,
@@ -311,6 +326,9 @@ struct NutritionView: View {
         }
         ToolbarItem(placement: .topBarTrailing) {
             Menu {
+                Button("Review week") {
+                    showsWeeklyCheckIn = true
+                }
                 Button("Saved meals") {
                     openTemplates()
                 }
@@ -326,6 +344,37 @@ struct NutritionView: View {
             }
             .accessibilityLabel("Nutrition actions")
         }
+    }
+
+    @ViewBuilder
+    private var weeklyCheckInCard: some View {
+        let due = todayHelmDay.map { NutritionPreferencesStore.shared.isCheckInDue(today: $0) } ?? false
+        Card {
+            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                HelmSectionEyebrow("WEEKLY CHECK-IN")
+                Text(due ? "Your check-in day. Review the last 7 days and update targets." : "Review the last 7 days anytime.")
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                if due {
+                    Button("Start check-in") {
+                        showsWeeklyCheckIn = true
+                    }
+                    .buttonStyle(.helmPrimary)
+                } else {
+                    Button("Review week") {
+                        showsWeeklyCheckIn = true
+                    }
+                    .buttonStyle(.helmSecondary)
+                }
+            }
+        }
+    }
+
+    private func presentWeeklyCheckInIfDue() {
+        guard let today = todayHelmDay else { return }
+        guard NutritionPreferencesStore.shared.isCheckInDue(today: today) else { return }
+        guard !didAutoPresentWeeklyCheckIn else { return }
+        didAutoPresentWeeklyCheckIn = true
+        showsWeeklyCheckIn = true
     }
 
     private func openTemplates() {
@@ -387,6 +436,10 @@ struct NutritionView: View {
         await selectDay(focus.helmDay)
         mealsStore.reload(for: focus.helmDay)
         usualMealStore.reload(for: focus.helmDay)
+        if focus.openWeeklyCheckIn {
+            showsWeeklyCheckIn = true
+            return
+        }
         if focus.startSearch, let bucket = focus.bucket {
             handleBucketAddFood(.search, bucket: bucket)
             return
@@ -446,19 +499,22 @@ struct NutritionView: View {
         let day = selectedHelmDay ?? snapshot.helmDay
         mealsStore.reload(for: day)
         usualMealStore.reload(for: day)
+        foodLogTipStore.noteDayHasLoggedFood((snapshot.loggedKcal ?? 0) > 0)
     }
 
     @ViewBuilder
     private func mealBucketsSection(snapshot: NutritionDaySnapshot) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+        let photoAvailable = photoMealController.isAvailable
+        let coachAvailable = chatController.isCoachAvailable
+        return VStack(alignment: .leading, spacing: HelmSpacing.sm) {
             HelmSectionEyebrow("MEALS", showsArcMark: true)
 
             ForEach(MealBucket.allCases, id: \.self) { bucket in
                 NutritionMealBucketSection(
                     bucket: bucket,
                     meals: mealsStore.mealsByBucket[bucket] ?? [],
-                    isPhotoAvailable: photoMealController.isAvailable,
-                    isDescribeAvailable: chatController.isCoachAvailable,
+                    isPhotoAvailable: photoAvailable,
+                    isDescribeAvailable: coachAvailable,
                     usualProposal: usualMealStore.proposal(for: bucket),
                     isLoggingUsual: usualMealStore.loggingBucket == bucket,
                     onCopyEntry: {
@@ -517,7 +573,7 @@ struct NutritionView: View {
             HStack(alignment: .top, spacing: HelmSpacing.sm) {
                 VStack(alignment: .leading, spacing: HelmSpacing.xs) {
                     HelmSectionEyebrow("LOG FOOD", showsArcMark: true)
-                    Text("Tap + on a meal to search, scan, photo, or quick-add.")
+                    Text("Tap + for photo or barcode. Usual meals and More cover the rest.")
                         .helmType(.body, color: HelmColor.fgSecondary)
                         .fixedSize(horizontal: false, vertical: true)
                 }

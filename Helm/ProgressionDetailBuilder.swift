@@ -46,7 +46,11 @@ enum ProgressionDetailBuilder {
             overrides: overrides
         )
         let muscles = buildMuscleRows(
-            mesocycle: mesocycle, ledger: ledger, targetMuscles: targetMuscles, experience: experience
+            mesocycle: mesocycle,
+            ledger: ledger,
+            targetMuscles: targetMuscles,
+            experience: experience,
+            priorities: settings.phaseGoal.resolvedMusclePriorities
         )
         let representative = muscles.first
         let ladders = try buildLadders(
@@ -68,13 +72,22 @@ enum ProgressionDetailBuilder {
     static func coldStartFallback() -> ProgressionDetailModel { .coldStartFixture }
 
     private static func buildMuscleRows(
-        mesocycle: MesocycleState?, ledger: WeeklyHardSetLedger,
-        targetMuscles: [MuscleGroup], experience: TrainingExperience
+        mesocycle: MesocycleState?,
+        ledger: WeeklyHardSetLedger,
+        targetMuscles: [MuscleGroup],
+        experience: TrainingExperience,
+        priorities: [MuscleGroup]
     ) -> [MesocycleMuscleRow] {
         let fallbackMuscles = mesocycle.map {
             Array($0.muscles.keys).sorted { $0.rawValue < $1.rawValue }
         } ?? []
         let muscles = targetMuscles.isEmpty ? fallbackMuscles : targetMuscles
+        let weeklyTargets: [MuscleGroup: Int]
+        if let mesocycle {
+            weeklyTargets = PlanKit.weeklyHardSetTargets(for: mesocycle, priorities: priorities)
+        } else {
+            weeklyTargets = [:]
+        }
         return muscles.map { muscle in
             let muscleState = mesocycle?.muscles[muscle] ?? MuscleMesocycleState(
                 landmarks: PlanKit.seedLandmarks(muscle: muscle, experience: experience),
@@ -82,11 +95,13 @@ enum ProgressionDetailBuilder {
             )
             let landmarks = muscleState.landmarks
             let weeklyDone = ledger.totals[muscle, default: 0]
+            let weeklyTarget = weeklyTargets[muscle]
+                ?? PlanKit.weeklyHardSetTarget(for: muscleState)
             return MesocycleMuscleRow(
                 id: muscle.rawValue, label: muscleLabel(muscle),
                 currentWeek: muscleState.currentWeek, blockLengthWeeks: muscleState.blockLengthWeeks,
                 phaseLabel: muscleState.phase == .deload ? "Deload" : "Accumulating",
-                weeklyTarget: PlanKit.weeklyHardSetTarget(for: muscleState),
+                weeklyTarget: weeklyTarget,
                 weeklyDone: weeklyDone, mev: landmarks.mev, mrv: landmarks.mrv,
                 state: HelmState.volumeWeekly(sets: weeklyDone, mev: landmarks.mev, mrv: landmarks.mrv)
             )

@@ -85,9 +85,9 @@ extension HevyCSVParserError: LocalizedError {
     }
 }
 
-/// Parses Hevy workout export CSV into completed sessions (90-day clip by default).
+/// Parses Hevy workout export CSV into completed sessions (180-day clip by default).
 public enum HevyCSVParser {
-    public static let defaultLookbackDays = 90
+    public static let defaultLookbackDays = 180
 
     public static func parse(
         csvText: String,

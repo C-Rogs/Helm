@@ -3,7 +3,7 @@ import SwiftUI
 
 struct NotificationOnboardingStepView: View {
     var showsFlowControls: Bool = true
-    var stepIndex: Int = 2
+    var stepIndex: Int = 5
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
     var onBack: (() -> Void)? = nil
@@ -24,11 +24,17 @@ struct NotificationOnboardingStepView: View {
             stepIndex: stepIndex,
             totalSteps: totalSteps,
             showsFlowControls: showsFlowControls,
+            primaryTitle: showsFlowControls ? "Open Train" : "Done",
+            skipTitle: showsFlowControls && !isEnabled ? "Skip notifications" : nil,
             onPrimary: onContinue,
             onBack: onBack,
             onSkip: onSkip
         ) {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                Text("Today's session is ready on Train. Notifications are optional for rest timers and briefs.")
+                    .font(HelmTypography.body)
+                    .foregroundStyle(HelmColor.fgSecondary)
+
                 if isEnabled {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
@@ -42,23 +48,24 @@ struct NotificationOnboardingStepView: View {
                     .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 } else if status == .denied {
                     VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                        Text("Notifications are off in Settings.")
+                        Text("Notifications are off in Settings. You can turn them on later.")
                             .font(HelmTypography.body)
                             .foregroundStyle(HelmColor.fgSecondary)
                         Button("Open Settings") {
                             openSettings()
                         }
-                        .buttonStyle(.helmPrimary)
+                        .buttonStyle(.helmSecondary)
                     }
                     .padding(HelmSpacing.md)
                     .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 } else {
-                    Button(isRequesting ? "Requesting…" : "Enable Notifications") {
+                    Button(isRequesting ? "Requesting…" : "Enable notifications") {
                         Task { await requestPermission() }
                     }
-                    .buttonStyle(.helmPrimary)
+                    .buttonStyle(.helmSecondary)
                     .disabled(isRequesting)
                     .padding(HelmSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .leading)
                     .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
                 }
 

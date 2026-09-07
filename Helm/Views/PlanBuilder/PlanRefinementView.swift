@@ -263,7 +263,8 @@ struct PlanRefinementView: View {
                 phase: phaseGoal.phase,
                 weeklyRateKg: phaseGoal.weeklyRateKg,
                 targetMass: settings.phaseGoal.targetMass,
-                emphasis: settings.phaseGoal.emphasis
+                emphasis: settings.phaseGoal.emphasis,
+                musclePriorities: settings.phaseGoal.musclePriorities
             )
             try await HelmActionRuntime.perform(
                 .trainingPlan(.replaceSettings(settings)),

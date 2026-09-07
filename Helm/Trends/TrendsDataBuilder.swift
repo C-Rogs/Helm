@@ -260,10 +260,10 @@ enum TrendsDataBuilder {
         }
         guard !upcoming.isEmpty else { return [:] }
 
-        var weeklyTargets: [MuscleGroup: Int] = [:]
-        for (muscle, state) in mesocycle.muscles {
-            weeklyTargets[muscle] = PlanKit.weeklyHardSetTarget(for: state)
-        }
+        let weeklyTargets = PlanKit.weeklyHardSetTargets(
+            for: mesocycle,
+            priorities: settings.phaseGoal.resolvedMusclePriorities
+        )
 
         return PlanKit.scheduledSets(
             weeklyTargets: weeklyTargets,

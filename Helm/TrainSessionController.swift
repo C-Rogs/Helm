@@ -77,6 +77,7 @@ final class TrainSessionController {
     private(set) var exerciseSummaries: [String: ExerciseSummary] = [:]
     private(set) var previousPerformance: [String: PreviousPerformance] = [:]
     private(set) var exerciseTargets: [String: String] = [:]
+    private(set) var exerciseLoadGuidance: [String: String] = [:]
     private(set) var prescriptionSummary: PrescribedSessionSummary?
     private(set) var lastFinishedPersonalRecords: [DetectedPersonalRecord] = []
     private(set) var lastSetPersonalRecords: [DetectedPersonalRecord] = []
@@ -414,6 +415,7 @@ final class TrainSessionController {
     func startWorkout() async {
         do {
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             try await store.start()
             WorkoutHapticCoordinator.resetRestState()
@@ -461,6 +463,7 @@ final class TrainSessionController {
     func startWorkout(fromTemplateID templateID: String) async {
         do {
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             guard let template = try persistence.workoutTemplates.fetch(id: templateID) else {
                 errorMessage = "Template not found."
@@ -481,6 +484,7 @@ final class TrainSessionController {
     func startWorkout(fromImportedPlan plan: ImportedWorkoutPlan, saveTemplate: Bool) async {
         do {
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             if saveTemplate {
                 let template = WorkoutTemplateDraft(
@@ -522,6 +526,7 @@ final class TrainSessionController {
             sessionPrompt = nil
             numpadTarget = nil
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             cancelWatchLiveConfirm()
             await refreshMetadata()
@@ -605,6 +610,7 @@ final class TrainSessionController {
             sessionPrompt = nil
             numpadTarget = nil
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             cancelWatchLiveConfirm()
             stopHeartRateSampling(reset: true)
@@ -2557,6 +2563,7 @@ final class TrainSessionController {
         do {
             try await store.discard()
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
             resetCoachSessionState()
             prescriptionAutoStartStore.suppressAutoStart(for: todayHelmDay())
             await refreshMetadata()
@@ -2572,10 +2579,23 @@ final class TrainSessionController {
 
     private func applyPrescriptionTargets(from prescription: SessionPrescription) {
         var targets: [String: String] = [:]
+        var guidance: [String: String] = [:]
         for exercise in prescription.exercises {
             targets[exercise.exerciseID] = exercise.targetSummaryText
+            if let rationale = exercise.rationale?
+                .split(separator: "\n", omittingEmptySubsequences: true)
+                .first
+                .map(String.init),
+               !rationale.isEmpty {
+                guidance[exercise.exerciseID] = rationale
+            }
         }
         exerciseTargets = targets
+        exerciseLoadGuidance = guidance
+    }
+
+    func loadGuidance(for exerciseID: String) -> String? {
+        exerciseLoadGuidance[exerciseID]
     }
 
     private enum MetadataRefreshScope {
@@ -2597,6 +2617,7 @@ final class TrainSessionController {
             rirAdvisoryBySetID = [:]
             if exerciseTargets.isEmpty {
                 exerciseTargets = [:]
+                exerciseLoadGuidance = [:]
             }
             pushWatchCompanionState()
             return
@@ -2609,6 +2630,7 @@ final class TrainSessionController {
             }
         } else if snapshot.session.source != .prescription {
             exerciseTargets = [:]
+            exerciseLoadGuidance = [:]
         }
 
         metadataRefreshGeneration += 1

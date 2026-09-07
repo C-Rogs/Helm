@@ -29,8 +29,8 @@ struct MuscleVolumeBoardContainer: View {
             } else {
                 ScrollView {
                     HelmEmptyState(
-                        title: "No volume data",
-                        message: "Log training this week to see per-muscle volume.",
+                        title: "Volume board is quiet",
+                        message: "Start today's session or log a workout to fill the last 7 days.",
                         icon: .train
                     )
                     .helmScreenPadding()

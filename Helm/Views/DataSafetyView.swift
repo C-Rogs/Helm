@@ -98,7 +98,7 @@ struct DataSafetyView: View {
             } header: {
                 Text("Training history")
             } footer: {
-                Text("Training History JSON is about 90 days of sessions, sets, and aliases: small enough for Files or AirDrop. Hevy CSV import clips to the last 90 days and maps exercise names before writing completed history.")
+                Text("Training History JSON is about 90 days of sessions, sets, and aliases: small enough for Files or AirDrop. Hevy CSV import clips to the last 180 days and maps exercise names before writing completed history.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
 

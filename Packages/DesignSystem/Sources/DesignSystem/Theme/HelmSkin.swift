@@ -20,7 +20,8 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
     }
 
     /// Layout skins exposed in Settings. Additional cases stay reserved behind the seam.
-    public static let selectableSkins: [HelmSkin] = [.signal, .instrument, .dataSheet]
+    /// Instrument is the product default; signal (Tron HUD) and dataSheet stay advanced backups.
+    public static let selectableSkins: [HelmSkin] = [.instrument, .signal, .dataSheet]
 
     public var isSelectable: Bool {
         Self.selectableSkins.contains(self)
@@ -64,7 +65,7 @@ public enum HelmSkin: String, Sendable, CaseIterable, Identifiable {
 }
 
 private struct HelmSkinKey: EnvironmentKey {
-    static let defaultValue: HelmSkin = .signal
+    static let defaultValue: HelmSkin = .instrument
 }
 
 public extension EnvironmentValues {

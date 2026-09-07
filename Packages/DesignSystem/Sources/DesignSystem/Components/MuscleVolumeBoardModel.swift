@@ -69,9 +69,11 @@ public enum MuscleVolumeRecency {
         return "\(daysSinceTrained)d ago"
     }
 
+    /// Compact row label under the muscle name. Always includes "ago" so "3d" is not read as "3D".
     public static func shortLabel(daysSinceTrained: Int?) -> String {
-        guard let daysSinceTrained else { return "-" }
+        guard let daysSinceTrained else { return "Never" }
         if daysSinceTrained == 0 { return "Today" }
-        return "\(daysSinceTrained)d"
+        if daysSinceTrained == 1 { return "1d ago" }
+        return "\(daysSinceTrained)d ago"
     }
 }

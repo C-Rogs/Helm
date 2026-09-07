@@ -97,6 +97,7 @@ public extension Label where Title == Text, Icon == HelmIconView {
             HelmIconView(.dashboard, context: .tab)
             HelmIconView(.train, context: .tab)
             HelmIconView(.nutrition, context: .tab)
+            HelmIconView(.trends, context: .tab)
             HelmIconView(.chat, context: .tab)
             HelmIconView(.settings, context: .tab)
         }

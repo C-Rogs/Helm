@@ -94,12 +94,34 @@ struct NutritionMealBucketSection: View {
                 )
                 .padding(.vertical, HelmSpacing.xs)
             } else {
-                Text("Nothing logged")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.vertical, HelmSpacing.xs)
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    Text(emptyTitle)
+                        .helmType(.body)
+                    Text(emptyMessage)
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, HelmSpacing.xs)
+                .accessibilityElement(children: .combine)
             }
         }
+    }
+
+    private var emptyTitle: String {
+        switch bucket {
+        case .breakfast: "Log breakfast"
+        case .lunch: "Log lunch"
+        case .dinner: "Log dinner"
+        case .snacks: "Log a snack"
+        }
+    }
+
+    private var emptyMessage: String {
+        if isPhotoAvailable {
+            return "Tap + to photo, barcode, or search food."
+        }
+        return "Tap + to barcode, search, or quick-add food."
     }
 
     @ViewBuilder

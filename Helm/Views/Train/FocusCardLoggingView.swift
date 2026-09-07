@@ -146,6 +146,7 @@ struct FocusCardLoggingView: View {
                         exercise: currentExercise,
                         displayName: controller.displayName(for: currentExercise.exerciseID),
                         coachingCue: controller.coachingCue(for: currentExercise.exerciseID),
+                        loadGuidance: controller.loadGuidance(for: currentExercise.exerciseID),
                         imageURL: exerciseImageURL(for: currentExercise.exerciseID),
                         imageMaxHeight: HelmLayout.exerciseHistoryImageHeight,
                         currentSetIndex: currentSetIndex,

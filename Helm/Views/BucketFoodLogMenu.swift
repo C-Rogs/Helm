@@ -20,30 +20,32 @@ struct BucketFoodLogMenu: View {
 
     var body: some View {
         Menu {
-            Button("Search") {
-                onAction(.search)
-            }
-            Button("Barcode") {
-                onAction(.barcode)
-            }
-            if isDescribeAvailable {
-                Button("Describe") {
-                    onAction(.describe)
-                }
-            }
             if isPhotoAvailable {
                 Button("Photo") {
                     onAction(.photo)
                 }
             }
-            Button("Quick add") {
-                onAction(.quickAdd)
+            Button("Barcode") {
+                onAction(.barcode)
             }
-            Button("Saved meals") {
-                onAction(.savedMeals)
-            }
-            Button("Alcohol") {
-                onAction(.alcohol)
+            Menu("More") {
+                Button("Search") {
+                    onAction(.search)
+                }
+                if isDescribeAvailable {
+                    Button("Describe") {
+                        onAction(.describe)
+                    }
+                }
+                Button("Quick add") {
+                    onAction(.quickAdd)
+                }
+                Button("Saved meals") {
+                    onAction(.savedMeals)
+                }
+                Button("Alcohol") {
+                    onAction(.alcohol)
+                }
             }
         } label: {
             Image(systemName: "plus")

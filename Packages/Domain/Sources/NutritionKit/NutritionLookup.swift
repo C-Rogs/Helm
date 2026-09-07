@@ -14,6 +14,9 @@ public struct ResolvedNutrition: Sendable, Equatable {
 
 /// On-device McCance & Widdowson CoFID lookup. No network.
 public struct NutritionLookup: Sendable {
+    /// Shared bundle-backed index. Prefer this over `NutritionLookup()` in UI/hot paths.
+    public static let shared = NutritionLookup()
+
     private let records: [NutritionFoodRecord]
     private let normalizedIndex: [String: NutritionFoodRecord]
     private let fallbackRecord: NutritionFoodRecord

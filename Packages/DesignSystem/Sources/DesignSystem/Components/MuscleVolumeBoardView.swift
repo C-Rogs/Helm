@@ -27,9 +27,12 @@ public struct MuscleVolumeBoardView: View {
             }
 
             if rankedRows.isEmpty {
-                Text("Log training in the last 7 days to see per-muscle volume.")
-                    .helmType(.body, color: HelmColor.fgMuted)
-                    .frame(maxWidth: .infinity, minHeight: HelmLayout.emptyChartMinHeight, alignment: .leading)
+                HelmEmptyState(
+                    title: "Volume board is quiet",
+                    message: "Start today's session or log a workout to fill the last 7 days.",
+                    icon: .train
+                )
+                .frame(maxWidth: .infinity, minHeight: HelmLayout.emptyChartMinHeight, alignment: .leading)
             } else {
                 VStack(spacing: HelmSpacing.md) {
                     ForEach(rankedRows) { row in
@@ -46,7 +49,7 @@ public struct MuscleVolumeBoardView: View {
                     }
                 }
 
-                Text("Solid = logged · Tint = projected · Scale = 0 / MEV / MRV")
+                Text("Solid = logged · Tint = projected · Nd ago = days since last hard sets")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
         }
@@ -71,8 +74,11 @@ public struct MuscleVolumeSummaryCard: View {
                 }
 
                 if model.summaryRows.isEmpty {
-                    Text("Log training to track 7-day volume against landmarks.")
-                        .helmType(.body, color: HelmColor.fgMuted)
+                    HelmEmptyState(
+                        title: "No muscle volume yet",
+                        message: "Log a session to track hard sets against MEV to MRV.",
+                        icon: .train
+                    )
                 } else {
                     VStack(spacing: HelmSpacing.sm) {
                         ForEach(model.summaryRows) { row in

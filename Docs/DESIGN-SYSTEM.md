@@ -10,9 +10,9 @@ An instrument, not an app. Helm reads out the body the way a cockpit reads out a
 
 ## 1. Color
 
-Two profiles, selected automatically by the system appearance (the app follows Light/Dark, it does not offer its own switch). **Dark** is the primary: true black canvas for OLED, warm near-black surfaces (a trace of yellow, never blue-grey). **Light** uses system-neutral greys (`#F2F2F7` grouped background); surfaces are white, not warm paper. One brand accent in both; everything else is a semantic state ramp. Author every component against both token sets from the start; a component is not done until it reads correctly in both.
+Two profiles. **Dark** is the primary: true black canvas for OLED, warm near-black surfaces (a trace of yellow, never blue-grey). **Light** uses system-neutral greys (`#F2F2F7` grouped background); surfaces are white, not warm paper. Theme mode defaults to **auto** (follow system) with an explicit System / Dark / Light picker in Settings. One brand accent in both; everything else is a semantic state ramp. Author every component against both token sets from the start; a component is not done until it reads correctly in both.
 
-Accent is selectable in Settings (`lime` default, `cyan` alternate). Tables below are the **lime** recipe. Cyan swaps the accent family only (`accent` / `accentFill` / `ready` / `primed` / chart derivatives); neutrals and depleted/compromised stay as listed. See §9 for `HelmAccentSource` (including reserved custom hex).
+Accent recipe below is **lime** (shipped). `HelmAccentSource` still allows a reserved custom hex path; there is no accent picker in Settings today, and cyan is not a selectable preset in persistence. Tables below keep the lime recipe. See §9.
 
 ### Dark profile (primary)
 
@@ -144,22 +144,22 @@ Fitness-analysis, not nautical: the Arc reading a value against a scale. **Marqu
 
 ## 9. Skins and theming
 
-Appearance is driven by two independent environment values so the app can carry more than one look without duplicating logic. Everything in sections 1 through 8 except the container treatment is shared across skins.
+Appearance is driven by independent environment values so the app can carry more than one look without duplicating logic. Everything in sections 1 through 8 except the container treatment is shared across skins.
 
-- **`HelmTheme`** (palette): `dark` / `light` / `auto`. Defaults to `auto` (follows system appearance), with an explicit override in Settings. Selects the token set in section 1. Cheap: it is a value swap, and every component already reads tokens, never literals.
-- **`HelmAccentSource`** (brand accent): selectable presets (`lime` default, `cyan`) plus a reserved `.custom(baseHex:)` path for a future colour picker. Resolves the accent family only (`accent`, `accentFill`, `ready`, `primed`, chart/button derivatives). Neutrals and depleted/compromised stay fixed. Light mode always uses a darkened text-weight accent; the bright hue is fill-only (`accentFill`).
-- **`HelmSkin`** (layout family): which container treatment the shared components render through.
+- **`HelmTheme`** (palette): `dark` / `light` / `auto`. Defaults to `auto` (follows system appearance), with an explicit override in Settings (always visible). Selects the token set in section 1.
+- **`HelmAccentSource`** (brand accent): lime is the shipped accent. A reserved `.custom(baseHex:)` path exists for a future colour picker; accent is not exposed in Settings today.
+- **`HelmSkin`** (layout family): which container treatment the shared components render through. Layout picker is advanced-only.
 
 Selectable skins:
 
 | Skin | Feel |
 |---|---|
-| **`signal`** (default) | Tron HUD. Void canvas with faint accent grid, neon corner brackets, accent glow on panels. Sharp geometry. Quiet press. Soft screen-enter settle. Brand accent only (no second hue). |
-| **`instrument`** | Card baseline. Filled rounded panels, hairline stroke, optional accent stripe on heroes. Backup layout. |
-| **`dataSheet`** | Borderless, top hairline-ruled, denser section spacing. Backup layout. |
+| **`instrument`** (default) | Card baseline. Filled rounded panels, hairline stroke, optional accent stripe on heroes. Product layout. |
+| **`signal`** | Tron HUD experiment. Void canvas with faint accent grid, neon corner brackets. Advanced backup only. |
+| **`dataSheet`** | Borderless, top hairline-ruled, denser section spacing. Advanced backup. |
 
 Reserved behind the seam (stubs only): `stateField` (full-bleed state-color hero), `blueprint` (drafting grid, graduated dials).
 
 Rule: components do not hard-code their container. They render content through a `SkinnedContainer` (and, where relevant, a `SkinnedGauge`) that reads `HelmSkin` and picks the treatment. List rows use `helmListRowChrome()`. Chat bubbles use `CoachMessageBubble`. A section becomes a card, a ruled block, or a void block by skin, with identical content and tokens underneath.
 
-Both theme mode, accent source, and skin are `@Observable` app state, persisted, and exposed through the SwiftUI environment so any view can read them without prop-drilling. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme. Signal may tune press scale and appear opacity only; it does not invent a second easing vocabulary or accent.
+Theme mode, accent source, and skin are `@Observable` app state, persisted, and exposed through the SwiftUI environment. The Arc, type scale, motion tokens, and haptics are identical across every skin and theme. Signal may tune press scale and appear opacity only when selected; it does not invent a second easing vocabulary or accent.

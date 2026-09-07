@@ -28,6 +28,14 @@ struct TrainingPlanSettingsStoreTests {
         #expect(loaded == .default)
         #expect(loaded.programTemplateRaw == "ppl")
         #expect(loaded.sessionDurationMinutes == 60)
+        #expect(try store.trainingPlan.hasStoredSettings() == false)
+    }
+
+    @Test("hasStoredSettings after save")
+    func hasStoredSettingsAfterSave() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        #expect(try store.trainingPlan.hasStoredSettings())
     }
 
     @Test("legacy JSON without session shape fields still loads")

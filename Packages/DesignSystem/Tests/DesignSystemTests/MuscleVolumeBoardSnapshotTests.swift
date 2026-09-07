@@ -31,6 +31,7 @@ struct MuscleVolumeBoardSnapshotTests {
         #expect(MuscleVolumeRecency.label(daysSinceTrained: 0) == "Today")
         #expect(MuscleVolumeRecency.label(daysSinceTrained: 3) == "3d ago")
         #expect(MuscleVolumeRecency.label(daysSinceTrained: nil) == "Never")
-        #expect(MuscleVolumeRecency.shortLabel(daysSinceTrained: 2) == "2d")
+        #expect(MuscleVolumeRecency.shortLabel(daysSinceTrained: 2) == "2d ago")
+        #expect(MuscleVolumeRecency.shortLabel(daysSinceTrained: nil) == "Never")
     }
 }

@@ -9,6 +9,7 @@ struct FocusExerciseCard: View {
     let exercise: WorkoutSessionExerciseDraft
     let displayName: String
     let coachingCue: String?
+    let loadGuidance: String?
     let imageURL: URL?
     let imageMaxHeight: CGFloat
     let currentSetIndex: Int
@@ -141,6 +142,13 @@ struct FocusExerciseCard: View {
 
     private var cueAndPrevious: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            if let loadGuidance, !loadGuidance.isEmpty {
+                Text(loadGuidance)
+                    .helmType(.body, color: HelmColor.accent)
+                    .lineLimit(2)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
             if let coachingCue, !coachingCue.isEmpty {
                 Text(coachingCue)
                     .helmType(.body, color: HelmColor.fgSecondary)
@@ -347,6 +355,7 @@ struct FocusExerciseCard: View {
         ),
         displayName: "Bench Press (Barbell)",
         coachingCue: "Drive through your heels and keep your chest proud.",
+        loadGuidance: "Load went up. Own the new weight for the full set.",
         imageURL: nil,
         imageMaxHeight: 220,
         currentSetIndex: 2,

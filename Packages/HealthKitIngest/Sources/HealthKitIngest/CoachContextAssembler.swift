@@ -264,6 +264,7 @@ public enum CoachContextAssembler {
         return TrainingPlanCoachContext.build(
             from: TrainingPlanCoachContext.Input(
                 emphasis: settings.phaseGoal.emphasis,
+                musclePriorities: settings.phaseGoal.resolvedMusclePriorities,
                 todaySplit: todaySplit,
                 weeklyLedger: ledger,
                 mesocycleState: mesocycleState,

@@ -41,13 +41,18 @@ enum PrescriptionEngine {
 
         let selectionCatalog = filteredCatalog(for: profile)
 
+        let weeklyTargets = MesocycleEngine.weeklyHardSetTargets(
+            for: profile.mesocycleState,
+            priorities: profile.phaseGoal.resolvedMusclePriorities
+        )
         var remainingByMuscle: [MuscleGroup: Double] = [:]
         for muscle in SessionComposer.primaryMuscles(in: slots) {
             guard let muscleState = profile.mesocycleState.muscles[muscle] else {
                 remainingByMuscle[muscle] = Double(profile.durationBudget.maxSetsPerSlot)
                 continue
             }
-            let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
+            let weeklyTarget = weeklyTargets[muscle]
+                ?? MesocycleEngine.weeklyHardSetTarget(for: muscleState)
             let breakdown = weeklyBreakdown[muscle] ?? MuscleVolumeBreakdown(direct: 0, synergist: 0)
             remainingByMuscle[muscle] = HardSetAccounting.remainingWeeklyHardSets(
                 weeklyTarget: weeklyTarget,
@@ -115,7 +120,10 @@ enum PrescriptionEngine {
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
                 targetRPE: targetRPE,
-                rationale: allocation.candidate.rationale,
+                rationale: Self.mergedRationale(
+                    loadLine: progression.loadDecision.athleteCoachingLine,
+                    selectionRationale: allocation.candidate.rationale
+                ),
                 evidenceIDs: allocation.candidate.evidenceIDs
             ))
             exerciseRoles[catalogExercise.exerciseID] = slot.role
@@ -220,6 +228,10 @@ enum PrescriptionEngine {
         let volumeMultiplier = readinessVolumeScale * phaseMultiplier
         let thinSession = false
 
+        let weeklyTargets = MesocycleEngine.weeklyHardSetTargets(
+            for: profile.mesocycleState,
+            priorities: profile.phaseGoal.resolvedMusclePriorities
+        )
         for muscle in profile.targetMuscles {
             if sessionSets >= maxSessionSets { break }
             guard let muscleState = profile.mesocycleState.muscles[muscle] else { continue }
@@ -232,7 +244,8 @@ enum PrescriptionEngine {
                 familiarExerciseIDs: profile.familiarExerciseIDs
             ) else { continue }
 
-            let weeklyTarget = MesocycleEngine.weeklyHardSetTarget(for: muscleState)
+            let weeklyTarget = weeklyTargets[muscle]
+                ?? MesocycleEngine.weeklyHardSetTarget(for: muscleState)
             let doneThisWeek = weeklyLedger.totals[muscle, default: 0]
             let remaining = max(0, Double(weeklyTarget) - doneThisWeek)
             let bounds = SessionSetAllocator.roleBounds(role: .primary, thinSession: thinSession)
@@ -260,7 +273,10 @@ enum PrescriptionEngine {
                 targetRepMax: progression.targetRepMax,
                 targetMass: progression.workingWeight,
                 targetRPE: targetRPE,
-                rationale: selection.rationale,
+                rationale: Self.mergedRationale(
+                    loadLine: progression.loadDecision.athleteCoachingLine,
+                    selectionRationale: selection.rationale
+                ),
                 evidenceIDs: selection.evidenceIDs
             ))
             order += 1
@@ -289,5 +305,13 @@ enum PrescriptionEngine {
         case .maintain: 1.0
         case .gain: 1.0
         }
+    }
+
+    private static func mergedRationale(loadLine: String, selectionRationale: String?) -> String {
+        let trimmedSelection = selectionRationale?.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let trimmedSelection, !trimmedSelection.isEmpty else {
+            return loadLine
+        }
+        return "\(loadLine)\n\(trimmedSelection)"
     }
 }

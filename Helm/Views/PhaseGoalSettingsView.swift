@@ -49,7 +49,8 @@ struct PhaseGoalSettingsView: View {
                     phase: phase,
                     weeklyRateKg: rate,
                     targetMass: settings.phaseGoal.targetMass,
-                    emphasis: settings.phaseGoal.emphasis
+                    emphasis: settings.phaseGoal.emphasis,
+                    musclePriorities: settings.phaseGoal.musclePriorities
                 )
                 weeklyRateText = String(format: "%.2f", rate)
                 HapticEngine.shared.play(.selection)
@@ -247,9 +248,15 @@ struct PhaseGoalSettingsView: View {
             }
         }
 
-        TextField("Emphasis", text: $emphasisText)
+        TextField("Emphasis (coach note)", text: $emphasisText)
             .textFieldStyle(.roundedBorder)
             .onChange(of: emphasisText) { _, _ in syncEmphasis() }
+
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Muscle focus")
+                .helmType(.label, color: HelmColor.fgSecondary)
+            MusclePriorityChipPicker(selected: musclePrioritiesBinding)
+        }
     }
 
     @ViewBuilder
@@ -267,7 +274,23 @@ struct PhaseGoalSettingsView: View {
                     phase: newPhase,
                     weeklyRateKg: settings.phaseGoal.weeklyRateKg,
                     targetMass: settings.phaseGoal.targetMass,
-                    emphasis: settings.phaseGoal.emphasis
+                    emphasis: settings.phaseGoal.emphasis,
+                    musclePriorities: settings.phaseGoal.musclePriorities
+                )
+            }
+        )
+    }
+
+    private var musclePrioritiesBinding: Binding<[MuscleGroup]> {
+        Binding(
+            get: { settings.phaseGoal.resolvedMusclePriorities },
+            set: { muscles in
+                settings.phaseGoal = PhaseGoal(
+                    phase: settings.phaseGoal.phase,
+                    weeklyRateKg: settings.phaseGoal.weeklyRateKg,
+                    targetMass: settings.phaseGoal.targetMass,
+                    emphasis: settings.phaseGoal.emphasis,
+                    musclePriorities: muscles.map(\.rawValue)
                 )
             }
         )
@@ -374,7 +397,8 @@ struct PhaseGoalSettingsView: View {
             phase: settings.phaseGoal.phase,
             weeklyRateKg: rate,
             targetMass: settings.phaseGoal.targetMass,
-            emphasis: settings.phaseGoal.emphasis
+            emphasis: settings.phaseGoal.emphasis,
+            musclePriorities: settings.phaseGoal.musclePriorities
         )
     }
 
@@ -384,7 +408,8 @@ struct PhaseGoalSettingsView: View {
             phase: settings.phaseGoal.phase,
             weeklyRateKg: settings.phaseGoal.weeklyRateKg,
             targetMass: settings.phaseGoal.targetMass,
-            emphasis: trimmed.isEmpty ? nil : trimmed
+            emphasis: trimmed.isEmpty ? nil : trimmed,
+            musclePriorities: settings.phaseGoal.musclePriorities
         )
     }
 

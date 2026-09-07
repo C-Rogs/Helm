@@ -3,32 +3,12 @@ import Persistence
 import SwiftUI
 import UniformTypeIdentifiers
 
-struct HevyImportOnboardingStepView: View {
-    var showsFlowControls: Bool = true
-    var stepIndex: Int = 6
-    var totalSteps: Int = OnboardingStep.allCases.count
-    var onContinue: () -> Void = {}
-    var onBack: (() -> Void)? = nil
-    var onSkip: () -> Void = {}
-
+/// Settings entry for Hevy CSV import (removed from required onboarding).
+struct HevyImportSettingsView: View {
     @State private var transferController: TrainingHistoryTransferController
     @State private var isPickingFile = false
 
-    init(
-        showsFlowControls: Bool = true,
-        stepIndex: Int = 6,
-        totalSteps: Int = OnboardingStep.allCases.count,
-        onContinue: @escaping () -> Void = {},
-        onBack: (() -> Void)? = nil,
-        onSkip: @escaping () -> Void = {},
-        persistence: PersistenceStore = PersistenceBootstrap.persistenceStore
-    ) {
-        self.showsFlowControls = showsFlowControls
-        self.stepIndex = stepIndex
-        self.totalSteps = totalSteps
-        self.onContinue = onContinue
-        self.onBack = onBack
-        self.onSkip = onSkip
+    init(persistence: PersistenceStore = PersistenceBootstrap.persistenceStore) {
         _transferController = State(initialValue: TrainingHistoryTransferController(persistence: persistence))
     }
 
@@ -37,40 +17,59 @@ struct HevyImportOnboardingStepView: View {
     }
 
     var body: some View {
-        OnboardingStepChrome(
-            step: .hevyImport,
-            stepIndex: stepIndex,
-            totalSteps: totalSteps,
-            showsFlowControls: showsFlowControls,
-            primaryTitle: primaryTitle,
-            isPrimaryLoading: transferController.isParsingHevyCSV,
-            skipTitle: showsFlowControls && !didImport ? "Skip for now" : nil,
-            onPrimary: {
-                if didImport {
-                    onContinue()
-                } else {
-                    beginPick()
-                }
-            },
-            onBack: onBack,
-            onSkip: onSkip
-        ) {
-            VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                Text("Export workouts as CSV from Hevy, then pick that file. Signal keeps the last 90 days and maps exercise names before writing completed history.")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.fgSecondary)
-                Text("You can also import later from Settings, Data and Backup.")
-                    .font(HelmTypography.body)
-                    .foregroundStyle(HelmColor.fgMuted)
-                if let status = transferController.statusMessage {
-                    Text(status)
-                        .font(HelmTypography.body)
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    Text("Import Hevy CSV")
+                        .font(HelmTypography.title)
                         .foregroundStyle(HelmColor.fg)
+
+                    Text("Export workouts as CSV from Hevy, then pick that file. Signal keeps the last 180 days and maps exercise names before writing completed history.")
+                        .font(HelmTypography.body)
+                        .foregroundStyle(HelmColor.fgSecondary)
                 }
+
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    if let status = transferController.statusMessage {
+                        Text(status)
+                            .font(HelmTypography.body)
+                            .foregroundStyle(HelmColor.fg)
+                    } else if didImport {
+                        Text("Import complete.")
+                            .font(HelmTypography.body)
+                            .foregroundStyle(HelmColor.ready)
+                    } else {
+                        Text("No file imported yet.")
+                            .font(HelmTypography.body)
+                            .foregroundStyle(HelmColor.fgMuted)
+                    }
+                }
+                .padding(HelmSpacing.md)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+
+                Button {
+                    HapticEngine.shared.play(.selection)
+                    beginPick()
+                } label: {
+                    if transferController.isParsingHevyCSV {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                            .tint(HelmColor.buttonPrimaryForeground)
+                            .accessibilityLabel("Reading CSV")
+                    } else {
+                        Text(didImport ? "Choose another CSV" : "Choose Hevy CSV")
+                    }
+                }
+                .buttonStyle(.helmPrimary)
+                .disabled(transferController.isParsingHevyCSV)
+                .opacity(transferController.isParsingHevyCSV ? 0.65 : 1)
             }
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            .padding(HelmSpacing.lg)
         }
+        .helmScreenBackground()
+        .navigationTitle("Import Hevy CSV")
+        .navigationBarTitleDisplayMode(.inline)
         .sheet(isPresented: hevyPreviewPresented) {
             HevyCSVImportPreviewView(controller: transferController)
         }
@@ -103,12 +102,6 @@ struct HevyImportOnboardingStepView: View {
         }
     }
 
-    private var primaryTitle: String {
-        if transferController.isParsingHevyCSV { return "Reading CSV" }
-        if didImport { return "Continue" }
-        return "Choose Hevy CSV"
-    }
-
     private var hevyPreviewPresented: Binding<Bool> {
         Binding(
             get: { transferController.isShowingHevyPreview },
@@ -123,6 +116,8 @@ struct HevyImportOnboardingStepView: View {
 }
 
 #Preview {
-    HevyImportOnboardingStepView()
-        .helmTheme()
+    NavigationStack {
+        HevyImportSettingsView()
+    }
+    .helmTheme()
 }

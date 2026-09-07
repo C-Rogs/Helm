@@ -66,7 +66,7 @@ final class PhotoMealController {
     }
 
     var isAvailable: Bool {
-        service != nil
+        NutritionBootstrap.isPhotoMealAvailable
     }
 
     func handlePickerItemChange() async {

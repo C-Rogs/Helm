@@ -10,6 +10,7 @@ struct TrainView: View {
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
     @Bindable private var weekAheadStore = WeekAheadScheduleBootstrap.store
     @Bindable private var trainPreferences = TrainPreferences.shared
+    @Bindable private var chatController = ChatBootstrap.controller
     @ObservedObject private var spotify = SpotifyAppRemoteService.shared
     @Environment(\.scenePhase) private var scenePhase
     @Environment(\.helmReduceMotion) private var reduceMotion
@@ -23,6 +24,10 @@ struct TrainView: View {
     @State private var viewportHeight: CGFloat = 0
     @State private var suppressChromeAnimations = false
     @State private var isShowingSessionLog = false
+    @State private var isShowingTrainingWeekReview = false
+    @State private var didAutoPresentTrainingWeekReview = false
+    @State private var phaseNarrative: String?
+    @State private var isShowingVolumeExplain = false
 
     var body: some View {
         navigationRoot
@@ -47,6 +52,7 @@ struct TrainView: View {
                 history.refresh()
                 muscleVolumeStore.refresh()
                 await weekAheadStore.refresh()
+                await loadPhaseNarrative()
             }
             .onChange(of: scenePhase) { _, newPhase in
                 if newPhase == .active {
@@ -145,7 +151,65 @@ struct TrainView: View {
                     genericIdleCard(rest: PlanBootstrap.prescriptionService.state.restDay)
                 }
 
+                TrainPlanStrip(phaseNarrative: phaseNarrative)
+
                 weekAheadSection
+
+                Button {
+                    isShowingTrainingWeekReview = true
+                } label: {
+                    Card {
+                        HStack {
+                            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                                HelmSectionEyebrow("WEEK REVIEW", showsArcMark: false)
+                                Text(
+                                    trainingWeekReviewDue
+                                        ? "Volume vs target, gaps, and next sessions"
+                                        : "Review this week's volume and next sessions"
+                                )
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                            }
+                            Spacer()
+                            if trainingWeekReviewDue {
+                                Text("Due")
+                                    .helmType(.monoTag, color: HelmColor.accent)
+                                    .padding(.horizontal, HelmSpacing.xs)
+                                    .padding(.vertical, HelmSpacing.xxs)
+                                    .background(HelmColor.accent.opacity(0.12), in: Capsule())
+                            }
+                            HelmIconView(.chevronRight, context: .inline)
+                                .foregroundStyle(HelmColor.fgMuted)
+                        }
+                    }
+                }
+                .buttonStyle(.helmPressableCard)
+                .accessibilityLabel(
+                    trainingWeekReviewDue
+                        ? "Training week review, due"
+                        : "Training week review"
+                )
+
+                NavigationLink {
+                    ProgressionDetailContainer()
+                } label: {
+                    Card {
+                        HStack {
+                            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                                HelmSectionEyebrow("PROGRESSION", showsArcMark: false)
+                                Text("Phase, volume landmarks, and load scheme")
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                                if let phaseNarrative {
+                                    Text(phaseNarrative)
+                                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                                }
+                            }
+                            Spacer()
+                            HelmIconView(.chevronRight, context: .inline)
+                                .foregroundStyle(HelmColor.fgMuted)
+                        }
+                    }
+                }
+                .buttonStyle(.helmPressableCard)
 
                 if !history.recentPersonalRecords.isEmpty {
                     PersonalRecordsCelebrationView(
@@ -185,6 +249,60 @@ struct TrainView: View {
                 )
             }
         }
+        .sheet(isPresented: $isShowingTrainingWeekReview) {
+            TrainingWeekReviewLoader(
+                weekAhead: weekAheadStore.model,
+                onGotIt: recordTrainingWeekReview
+            )
+        }
+        .sheet(isPresented: $isShowingVolumeExplain) {
+            if let summary = controller.prescriptionSummary {
+                ExplainSheet(
+                    metric: ExplainableMetricMappers.prescriptionVolume(
+                        summary,
+                        baselineSets: nil,
+                        coachAvailable: chatController.isCoachAvailable
+                    ),
+                    onAskCoach: chatController.requestCoachHandoff(prompt:)
+                )
+            }
+        }
+        .task(id: trainingWeekReviewDue) {
+            guard trainingWeekReviewDue, !didAutoPresentTrainingWeekReview else { return }
+            didAutoPresentTrainingWeekReview = true
+            isShowingTrainingWeekReview = true
+        }
+    }
+
+    private var trainingWeekReviewDue: Bool {
+        WeeklyCheckInPreferences.isTrainingReviewDue(
+            today: HelmDay.day(for: .now, calendar: .current)
+        )
+    }
+
+    private func recordTrainingWeekReview() {
+        WeeklyCheckInPreferences.recordTrainingReview(
+            on: HelmDay.day(for: .now, calendar: .current)
+        )
+    }
+
+    @MainActor
+    private func loadPhaseNarrative() async {
+        do {
+            let readiness = ReadinessBootstrap.readinessService.state.score
+            let settings = try await PlanBootstrap.engine.loadTrainingPlan()
+            let model = try await ProgressionDetailBuilder.load(
+                store: PersistenceBootstrap.persistenceStore,
+                engine: PlanBootstrap.engine,
+                readiness: readiness
+            )
+            phaseNarrative = PhaseNarrativeFormatter.string(
+                from: model,
+                weeklyRateKg: settings.phaseGoal.weeklyRateKg
+            )
+        } catch {
+            phaseNarrative = nil
+        }
     }
 
     private func prescriptionIdleCard(_ summary: PrescribedSessionSummary) -> some View {
@@ -197,10 +315,29 @@ struct TrainView: View {
                 onLeadingChip: { controller.discussTodaysSession() },
                 onView: { isShowingTodaysSession = true }
             ) {
-                SessionExercisePreviewList(
-                    exercises: summary.exercises.map(\.displayName),
-                    collapsedVisibleCount: summary.exercises.count
-                )
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text("Session volume")
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                        Spacer()
+                        HStack(alignment: .firstTextBaseline, spacing: HelmSpacing.xxs) {
+                            HelmNumericText(summary.totalSets)
+                                .helmType(.number)
+                            Text("sets")
+                                .helmType(.body, color: HelmColor.fgMuted)
+                        }
+                        HelmExplainInfoButton(
+                            accessibilityLabel: "Show how session volume is calculated"
+                        ) {
+                            isShowingVolumeExplain = true
+                        }
+                    }
+
+                    SessionExercisePreviewList(
+                        exercises: summary.exercises.map(\.displayName),
+                        collapsedVisibleCount: summary.exercises.count
+                    )
+                }
             }
 
             Button("Start today's session") {
@@ -208,7 +345,7 @@ struct TrainView: View {
             }
             .buttonStyle(.helmPrimary)
 
-            emptyAndPasteRow
+            emptyAndPasteMenu
         }
         .frame(maxWidth: .infinity)
         .padding(.top, HelmSpacing.md)
@@ -228,19 +365,24 @@ struct TrainView: View {
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 
-                emptyAndPasteRow
-            } else {
+                emptyAndPasteMenu
+                } else {
                 HelmEmptyState(
-                    title: "No active session",
-                    message: "Start a workout or paste a plan from your coach.",
+                    title: "Ready when you are",
+                    message: "Start an empty workout, or paste a plan from coach chat.",
                     icon: .train,
                     actionTitle: "Start workout"
                 ) {
                     Task { await controller.startWorkout() }
                 }
 
-                Button("Paste") {
-                    isShowingImport = true
+                Menu {
+                    Button("Paste plan") {
+                        isShowingImport = true
+                    }
+                } label: {
+                    Text("More")
+                        .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.helmSecondary)
             }
@@ -249,18 +391,20 @@ struct TrainView: View {
         .padding(.top, HelmSpacing.md)
     }
 
-    private var emptyAndPasteRow: some View {
-        HStack(spacing: HelmSpacing.sm) {
+    private var emptyAndPasteMenu: some View {
+        Menu {
             Button("Empty workout") {
                 Task { await controller.startWorkout() }
             }
-            .buttonStyle(.helmSecondary)
-
-            Button("Paste") {
+            Button("Paste plan") {
                 isShowingImport = true
             }
-            .buttonStyle(.helmSecondary)
+        } label: {
+            Text("More")
+                .frame(maxWidth: .infinity)
         }
+        .buttonStyle(.helmSecondary)
+        .accessibilityLabel("More workout options")
     }
 
     private var weekAheadSection: some View {
@@ -289,6 +433,7 @@ struct TrainView: View {
             exercise: exercise,
             displayName: controller.displayName(for: exercise.exerciseID),
             targetSummary: controller.targetSummary(for: exercise.exerciseID),
+            loadGuidance: controller.loadGuidance(for: exercise.exerciseID),
             coachingCue: controller.coachingCue(for: exercise.exerciseID),
             restSeconds: exercise.targetRestSeconds ?? 90,
             isReorderMode: controller.isReorderMode,
@@ -959,8 +1104,8 @@ private struct CompactRestPill: View {
 #Preview("Train empty") {
     ScrollView {
         HelmEmptyState(
-            title: "No active session",
-            message: "Start a workout or paste a plan from your coach.",
+            title: "Ready when you are",
+            message: "Start an empty workout, or paste a plan from coach chat.",
             icon: .train,
             actionTitle: "Start workout"
         ) {}

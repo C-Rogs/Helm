@@ -171,6 +171,7 @@ struct CoachSettingsView: View {
             try keyStore.save(geminiKey, kind: .gemini)
             keyStatus = "Key saved in Keychain."
             HapticEngine.shared.play(.selection)
+            NutritionBootstrap.invalidatePhotoMealServiceCache()
             refreshInstalledProvider()
         } catch {
             keyStatus = "Could not save key."
@@ -194,6 +195,7 @@ struct CoachSettingsView: View {
             openRouterMetadata.clear()
             openRouterStatus = "OpenRouter key saved in Keychain."
             HapticEngine.shared.play(.selection)
+            NutritionBootstrap.invalidatePhotoMealServiceCache()
             refreshOpenRouterStatus()
         } catch {
             openRouterStatus = "Could not save OpenRouter key."

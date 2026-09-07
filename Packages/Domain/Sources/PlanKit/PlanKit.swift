@@ -44,8 +44,27 @@ public enum PlanKit {
     }
 
     /// Weekly hard-set target for a muscle given its current mesocycle position.
+    /// Unprioritized base target; prefer `weeklyHardSetTargets(for:priorities:)` when
+    /// applying athlete focus muscles.
     public static func weeklyHardSetTarget(for muscleState: MuscleMesocycleState) -> Int {
         MesocycleEngine.weeklyHardSetTarget(for: muscleState)
+    }
+
+    /// Weekly hard-set targets for the full mesocycle, with optional muscle-priority redistribution.
+    public static func weeklyHardSetTargets(
+        for state: MesocycleState,
+        priorities: [MuscleGroup] = []
+    ) -> [MuscleGroup: Int] {
+        MesocycleEngine.weeklyHardSetTargets(for: state, priorities: priorities)
+    }
+
+    /// Single-muscle lookup after priority redistribution across `state`.
+    public static func weeklyHardSetTarget(
+        for muscle: MuscleGroup,
+        in state: MesocycleState,
+        priorities: [MuscleGroup] = []
+    ) -> Int? {
+        weeklyHardSetTargets(for: state, priorities: priorities)[muscle]
     }
 
     /// Scheduled deload target: max(MEV, round(0.5 * peak week)).

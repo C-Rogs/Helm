@@ -1,4 +1,5 @@
 import Core
+import Diagnostics
 import Foundation
 import Persistence
 import ReadinessKit
@@ -8,6 +9,11 @@ public enum ReadinessHistoryBuilder {
     /// Scoring windows need up to 14 days of history (HRV acute/medium, sleep debt).
     /// 30 days provides a buffer while keeping queries fast.
     public static let defaultHistoryDays = 30
+
+    private static let historySignpost = HelmSignpost(
+        name: .readinessHistoryBuild,
+        category: .healthKitIngest
+    )
 
     public static func history(
         from store: PersistenceStore,
@@ -38,13 +44,24 @@ public enum ReadinessHistoryBuilder {
         calendar: Calendar = .current,
         cutoff: DayCutoff = .default
     ) throws -> [ReadinessDayInput] {
+        let signpostID = historySignpost.makeSignpostID()
+        historySignpost.begin(id: signpostID)
+        defer { historySignpost.end(id: signpostID) }
+
         _ = calendar
         _ = cutoff
 
         let metrics = try store.dailyMetrics.fetchRange(from: startDay, through: endDay)
         let metricsByDay = Dictionary(uniqueKeysWithValues: metrics.map { ($0.helmDay, $0) })
 
-        var days = Set(metricsByDay.keys)
+        // Wake-day sleep windows: every calendar day in range, not only days that
+        // already have a metrics row or an onset-bucketed sleep_record helm_day.
+        var days = Set<HelmDay>()
+        var cursor = startDay
+        while cursor <= endDay {
+            days.insert(cursor)
+            cursor = cursor.adding(days: 1, calendar: calendar)
+        }
         for helmDay in try store.sleep.listDays() where helmDay >= startDay && helmDay <= endDay {
             days.insert(helmDay)
         }
@@ -64,8 +81,9 @@ public enum ReadinessHistoryBuilder {
             guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { continue }
             let windowStart = SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
             let windowEnd = SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
+            let nightRecords = sleepRecords.filter { $0.end > windowStart && $0.start < windowEnd }
             let nightSummary = SleepAggregation.nightSummary(
-                from: sleepRecords,
+                from: nightRecords,
                 windowStart: windowStart,
                 windowEnd: windowEnd
             )

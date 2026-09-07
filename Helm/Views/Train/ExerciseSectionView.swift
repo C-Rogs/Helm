@@ -6,6 +6,7 @@ struct ExerciseSectionView: View {
     let exercise: WorkoutSessionExerciseDraft
     let displayName: String
     let targetSummary: String?
+    let loadGuidance: String?
     let coachingCue: String?
     let restSeconds: Int
     let isReorderMode: Bool
@@ -128,7 +129,13 @@ struct ExerciseSectionView: View {
                         .buttonStyle(.helmPressable)
                         .disabled(isReorderMode)
 
-                        if let coachingCue {
+                        if let loadGuidance, !loadGuidance.isEmpty {
+                            Text(loadGuidance)
+                                .helmType(.body, color: HelmColor.accent)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+
+                        if let coachingCue, !coachingCue.isEmpty {
                             Text(coachingCue)
                                 .helmType(.body, color: HelmColor.fgSecondary)
                                 .fixedSize(horizontal: false, vertical: true)
@@ -219,6 +226,7 @@ struct ExerciseSectionView: View {
         ),
         displayName: "Bench Press (Barbell)",
         targetSummary: "3×8 · 80kg · RPE 8",
+        loadGuidance: "Same load as last time. Match or beat last week's reps.",
         coachingCue: "Drive through your heels and keep your chest proud.",
         restSeconds: 90,
         isReorderMode: false,

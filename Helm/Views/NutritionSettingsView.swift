@@ -1,9 +1,11 @@
 import DesignSystem
 import HealthKitIngest
+import NutritionKit
 import SwiftUI
 
 struct NutritionSettingsView: View {
     @State private var dietarySourceMode: DietarySourceMode
+    @State private var checkInWeekday: Int
 
     private let preferences: NutritionPreferencesStore
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
@@ -11,6 +13,7 @@ struct NutritionSettingsView: View {
     init(preferences: NutritionPreferencesStore = .shared) {
         self.preferences = preferences
         _dietarySourceMode = State(initialValue: preferences.mode())
+        _checkInWeekday = State(initialValue: preferences.checkInWeekday())
     }
 
     var body: some View {
@@ -32,6 +35,24 @@ struct NutritionSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Nutrition")
+            }
+
+            Section {
+                Picker("Check-in day", selection: $checkInWeekday) {
+                    ForEach(NutritionWeeklyCheckIn.weekdayChoices, id: \.weekday) { choice in
+                        Text(choice.name).tag(choice.weekday)
+                    }
+                }
+                .onChange(of: checkInWeekday) { _, newValue in
+                    preferences.setCheckInWeekday(newValue)
+                    HapticEngine.shared.play(.selection)
+                }
+
+                Text("On this weekday Helm offers a weekly nutrition check-in over the last 7 calendar days.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Text("Weekly check-in")
             }
 
             if case .ready(let snapshot) = nutritionService.state {

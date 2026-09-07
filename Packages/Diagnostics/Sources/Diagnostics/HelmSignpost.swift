@@ -11,6 +11,8 @@ public enum HelmSignpostName: Sendable {
     case workoutSessionLifecycle
     case liveWorkoutBuilderTeardown
     case patternEvaluate
+    case sleepFetchOverlapping
+    case readinessHistoryBuild
 }
 
 public struct HelmSignpost: Sendable {
@@ -52,6 +54,8 @@ public struct HelmSignpost: Sendable {
         case .workoutSessionLifecycle: "WorkoutSessionLifecycle"
         case .liveWorkoutBuilderTeardown: "LiveWorkoutBuilderTeardown"
         case .patternEvaluate: "PatternEvaluate"
+        case .sleepFetchOverlapping: "SleepFetchOverlapping"
+        case .readinessHistoryBuild: "ReadinessHistoryBuild"
         }
     }
 }

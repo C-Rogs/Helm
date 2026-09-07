@@ -96,7 +96,7 @@ Prefer **Training History JSON** or **iCloud sync** for wipe/reinstall recovery 
 
 1. Export workouts from Hevy (CSV).
 2. On first launch, the **Hevy import** onboarding step, or later Settings > Data & Backup > **Import Hevy CSV**.
-3. Helm clips to the **last 90 days** relative to the newest session in the file, skips cardio rows without reps, and previews exercise-name mappings.
+3. Helm clips to the **last 180 days** relative to the newest session in the file, skips cardio rows without reps, and previews exercise-name mappings.
 4. On confirm, sessions land as completed `source=import` history with deterministic IDs (`hevy-…`) so re-import skips duplicates.
 
 ### iCloud device restore (new or replaced iPhone)

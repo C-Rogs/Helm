@@ -228,6 +228,16 @@ struct NutritionLookupTests {
         #expect(!description.contains("curry"))
     }
 
+    @Test("shared lookup resolves the same as a fresh instance")
+    func sharedMatchesFreshInit() {
+        let shared = NutritionLookup.shared
+        let fresh = NutritionLookup()
+        let queries = ["grilled chicken breast", "banana", "olive oil", "unknown mystery mush"]
+        for query in queries {
+            #expect(shared.resolve(item: query) == fresh.resolve(item: query))
+        }
+    }
+
     @Test("CoFID attribution exposes OGL notice")
     func cofidAttribution() {
         #expect(CoFIDAttribution.licenceNotice.contains("Open Government Licence"))

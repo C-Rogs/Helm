@@ -39,7 +39,7 @@ struct ProgressionDetailView: View {
                 Text(model.phaseLabel).helmType(.title)
 
                 HStack(spacing: HelmSpacing.sm) {
-                    Text(model.blockSummary).helmType(.body, color: HelmColor.fgSecondary)
+                    Text(model.blockSummary).helmType(.body, color: HelmColor.fgMuted)
                     Text("·").helmType(.body, color: HelmColor.fgMuted)
                     Text(model.experienceLabel).helmType(.monoTag, color: HelmColor.fgMuted)
                 }
@@ -47,6 +47,9 @@ struct ProgressionDetailView: View {
                 if model.isColdStart {
                     Text("Log working sets to populate lift ladders.")
                         .helmType(.body, color: HelmColor.fgMuted)
+                } else if !model.muscles.isEmpty {
+                    Text(model.volumeGapLine)
+                        .helmType(.body, color: HelmColor.fgSecondary)
                 }
             }
         }
@@ -56,7 +59,11 @@ struct ProgressionDetailView: View {
     private var mesocycleCard: some View {
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                HelmSectionEyebrow("MESOCYCLE")
+                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                    HelmSectionEyebrow("SCHEDULE WEEK")
+                    Text("Mon–Sun plan targets (not the rolling 7-day board on Progress / Train)")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
+                }
                 if model.muscles.isEmpty {
                     Text("No mesocycle state yet. Finish training plan setup in Settings.")
                         .helmType(.body, color: HelmColor.fgMuted)
@@ -73,15 +80,18 @@ struct ProgressionDetailView: View {
                             LandmarkVolumeBar(
                                 label: "Sets",
                                 weeklySets: muscle.weeklyDone,
+                                scheduledSets: muscle.scheduledRemaining,
                                 mev: muscle.mev,
                                 mrv: muscle.mrv,
                                 state: muscle.state
                             )
-                            Text("Target \(muscle.weeklyTarget) hard sets this week")
+                            Text(muscle.volumeReadout)
                                 .helmType(.body, color: HelmColor.fgMuted)
                         }
                         if muscle.id != model.muscles.last?.id { HelmHairlineRule() }
                     }
+                    Text("Solid = logged · Tint = remaining to weekly target · Scale = 0 / MEV / MRV")
+                        .helmType(.monoTag, color: HelmColor.fgMuted)
                 }
             }
         }
@@ -134,8 +144,19 @@ struct ProgressionDetailView: View {
                     }
                 }
                 Text(ladder.targetRepRange).helmType(.monoTag, color: HelmColor.fgMuted)
+                if let working = ladder.workingWeightKilograms {
+                    HStack(spacing: HelmSpacing.xxs) {
+                        Text("Working")
+                            .helmType(.body, color: HelmColor.fgMuted)
+                        HelmNumericText(working, format: "%.1f")
+                            .helmType(.number, color: HelmColor.fgSecondary)
+                        Text("kg")
+                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                    }
+                }
                 if ladder.steps.isEmpty {
-                    Text("No logged steps yet.").helmType(.body, color: HelmColor.fgMuted)
+                    Text("No logged steps yet. Finish prescribed sets to climb this ladder.")
+                        .helmType(.body, color: HelmColor.fgMuted)
                 } else {
                     ForEach(ladder.steps) { step in
                         ladderStepRow(step)

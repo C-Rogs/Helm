@@ -38,8 +38,7 @@ public struct CoachMessageBubble: View {
     private var userBubble: some View {
         HStack {
             Spacer(minLength: HelmSpacing.xl)
-            Text(text)
-                .helmType(.body)
+            HelmMarkdownText(text)
                 .padding(.horizontal, HelmSpacing.md)
                 .padding(.vertical, HelmSpacing.sm)
                 .modifier(BubbleChromeModifier(kind: .user, skin: skin, palette: palette))
@@ -53,8 +52,7 @@ public struct CoachMessageBubble: View {
                 if showsThinkingShine {
                     HelmShimmerText(displayText)
                 } else {
-                    Text(displayText)
-                        .helmType(.body)
+                    HelmMarkdownText(displayText)
                 }
             }
             .padding(.horizontal, HelmSpacing.md)
@@ -132,7 +130,7 @@ private struct BubbleChromeModifier: ViewModifier {
 #Preview("Coach message bubbles") {
     VStack(spacing: HelmSpacing.md) {
         CoachMessageBubble(role: .user, text: "Should I go heavier on bench?")
-        CoachMessageBubble(role: .assistant, text: "Stay at 80 kg. Readiness is moderate today.")
+        CoachMessageBubble(role: .assistant, text: "Stay at **80 kg**. Readiness is moderate today.")
         CoachMessageBubble(role: .assistant, text: "", isStreaming: true)
         CoachMessageBubble(role: .assistant, text: "Looking up patterns…", isStreaming: true)
     }

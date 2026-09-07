@@ -95,7 +95,7 @@ public final class HelmThemeCoordinator {
         if let storedSkin, storedSkin.isSelectable {
             skin = storedSkin
         } else {
-            skin = .signal
+            skin = .instrument
         }
         accentSource = HelmAccentSource.fromPersistence(defaults.string(forKey: Keys.accentSource))
         if defaults.object(forKey: Keys.hapticsEnabled) == nil {

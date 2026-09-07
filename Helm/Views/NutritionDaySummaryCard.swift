@@ -230,14 +230,11 @@ struct NutritionDaySummaryCard: View {
             Text(snapshot.phase.label)
                 .helmType(.monoTag, color: HelmColor.accent)
             if explainMetric != nil, onAskCoach != nil {
-                Button {
+                HelmExplainInfoButton(
+                    accessibilityLabel: "Show how eat-to is calculated"
+                ) {
                     isShowingTargetExplain = true
-                } label: {
-                    HelmIconView(.info, context: .inline)
-                        .foregroundStyle(HelmColor.fgMuted)
                 }
-                .buttonStyle(.helmPressable)
-                .accessibilityLabel("Show how eat-to is calculated")
             }
         }
     }

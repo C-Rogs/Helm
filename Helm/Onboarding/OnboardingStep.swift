@@ -2,55 +2,45 @@ import Foundation
 
 enum OnboardingStep: Int, CaseIterable, Identifiable, Sendable {
     case welcome
-    case healthKit
-    case bodyProfile
-    case notifications
     case trainingPlan
-    case hevyImport
-    case backfill
+    case bodyProfile
+    case healthKit
+    case notifications
 
     var id: Int { rawValue }
 
     var title: String {
         switch self {
         case .welcome: "Welcome to Signal"
-        case .healthKit: "Health data"
+        case .trainingPlan: "Your plan"
         case .bodyProfile: "Body profile"
-        case .notifications: "Notifications"
-        case .trainingPlan: "Training plan"
-        case .hevyImport: "Hevy import"
-        case .backfill: "Import history"
+        case .healthKit: "Health data"
+        case .notifications: "You're ready"
         }
     }
 
     var subtitle: String {
         switch self {
         case .welcome:
-            "Your readiness instrument. One arc, one score, one plan for today."
-        case .healthKit:
-            "Signal reads Apple Health to compute readiness, training load, and nutrition."
-        case .bodyProfile:
-            "Confirm weight, height, sex, and date of birth so Signal can estimate maintenance calories."
-        case .notifications:
-            "Rest timers and future briefs use local notifications."
+            "Readiness, training, and nutrition in one closed loop. Your body tells Signal the plan."
         case .trainingPlan:
-            "Draft plan options, ask for a different split, and preview an example session."
-        case .hevyImport:
-            "Import the last 90 days from a Hevy CSV so recents, previous weights, and PRs are already there."
-        case .backfill:
-            "Import the last six months to seed readiness baselines."
+            "Set experience, days, equipment, and phase. Signal drafts the split and today's session."
+        case .bodyProfile:
+            "Weight, height, sex, and date of birth seed maintenance calories."
+        case .healthKit:
+            "Apple Health feeds readiness and training load so the plan can adapt."
+        case .notifications:
+            "Optional rest timers and briefs. Then open Train for your first session."
         }
     }
 
     var settingsLabel: String {
         switch self {
         case .welcome: "Welcome"
-        case .healthKit: "Health Access"
-        case .bodyProfile: "Body Profile"
-        case .notifications: "Notifications"
         case .trainingPlan: "Training Plan"
-        case .hevyImport: "Hevy Import"
-        case .backfill: "Health Import"
+        case .bodyProfile: "Body Profile"
+        case .healthKit: "Health Access"
+        case .notifications: "Notifications"
         }
     }
 

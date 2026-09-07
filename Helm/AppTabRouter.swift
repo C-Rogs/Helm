@@ -7,6 +7,7 @@ struct NutritionNavigationFocus: Equatable {
     var mealID: UUID?
     var bucket: MealBucket?
     var startSearch = false
+    var openWeeklyCheckIn = false
 }
 
 @MainActor
@@ -29,6 +30,10 @@ final class AppTabRouter {
 
     func openTrain() {
         open(.train)
+    }
+
+    func openProgress() {
+        open(.progress)
     }
 
     func open(_ tab: AppTab) {

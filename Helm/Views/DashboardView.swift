@@ -23,7 +23,12 @@ struct DashboardView: View {
     @State private var sleepSummary: SleepNightSummary?
     @State private var showSettings = false
     @State private var todayStepCount: Int?
+    @State private var moreBodyExpanded = true
+    @State private var phaseNarrative: String?
+    @State private var recompStory: RecompStory?
+    @State private var isShowingReadinessExplain = false
     @Bindable private var tabRouter = AppTabRouter.shared
+    @Bindable private var trendsController = TrendsBootstrap.controller
     @Namespace private var readinessNamespace
     @Namespace private var muscleVolumeNamespace
 
@@ -37,22 +42,31 @@ struct DashboardView: View {
                 HelmScreenStack {
                     greetingHeader
                         .helmStaggeredAppear(index: 0)
-                    thresholdInsightCard
+                    heroCard
                         .helmStaggeredAppear(index: 1)
-                    briefCard
+                    thresholdInsightCard
                         .helmStaggeredAppear(index: 2)
+                    // Always-visible body context (Signal wedge). Not buried in a closed disclosure.
                     readinessCard
                         .helmStaggeredAppear(index: 3)
                     sleepCard
                         .helmStaggeredAppear(index: 4)
-                    prescriptionCard
-                        .helmStaggeredAppear(index: 5)
-                    muscleVolumeSummaryCard
-                        .helmStaggeredAppear(index: 6)
-                    nutritionTargetsCard
-                        .helmStaggeredAppear(index: 7)
-                    DashboardTrendsSection()
+                    if heroKind != .brief {
+                        briefCard
+                            .helmStaggeredAppear(index: 5)
+                    }
+                    if heroKind != .nutrition {
+                        nutritionTargetsCard
+                            .helmStaggeredAppear(index: 6)
+                    }
+                    if let recompStory {
+                        RecompStoryCard(story: recompStory)
+                            .helmStaggeredAppear(index: 7)
+                    }
+                    progressionTeaserCard
                         .helmStaggeredAppear(index: 8)
+                    moreBodySection
+                        .helmStaggeredAppear(index: 9)
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -60,7 +74,7 @@ struct DashboardView: View {
                         Label("Ask Coach", helmIcon: .chat, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
-                    .helmStaggeredAppear(index: 9)
+                    .helmStaggeredAppear(index: 10)
                 }
                 .helmScreenPadding()
             }
@@ -79,6 +93,17 @@ struct DashboardView: View {
             }
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
+            }
+            .sheet(isPresented: $isShowingReadinessExplain) {
+                if case let .scored(score) = readinessService.state {
+                    ExplainSheet(
+                        metric: ExplainableMetricMappers.readiness(
+                            score,
+                            coachAvailable: chatController.isCoachAvailable
+                        ),
+                        onAskCoach: chatController.requestCoachHandoff(prompt:)
+                    )
+                }
             }
             .onChange(of: tabRouter.pendingOpenSettings) { _, pending in
                 guard pending else { return }
@@ -106,15 +131,28 @@ struct DashboardView: View {
                 await ProactiveBootstrap.refreshPatterns()
                 muscleVolumeStore.refresh()
                 loadTodaySteps()
+                await loadPhaseNarrative()
+                trendsController.refresh()
+                refreshRecompStory()
+            }
+            .onChange(of: trendsController.snapshot) { _, _ in
+                refreshRecompStory()
             }
             .task {
                 for await _ in HealthKitBootstrap.healthKitIngest.updates(for: .activity) {
                     loadTodaySteps()
                 }
             }
+            .task {
+                for await snapshot in HealthKitBootstrap.healthKitIngest.updates(for: .sleep) {
+                    guard snapshot.status.lastSyncSampleCount > 0
+                        || snapshot.status.lastSyncDeletedCount > 0
+                    else { continue }
+                    await loadSleepSummary()
+                }
+            }
             .onChange(of: readinessService.state) { _, newState in
                 Task {
-                    await loadSleepSummary()
                     await prescriptionService.refresh(readiness: newState.score)
                     await nutritionService.refresh(
                         prescriptionSummary: prescriptionService.state.summary
@@ -160,13 +198,11 @@ struct DashboardView: View {
 
     private func loadSleepSummary() async {
         let wakeDay = Calendar.current.startOfDay(for: Date())
-        do {
-            sleepSummary = try PersistenceBootstrap.persistenceStore.sleep.nightSummary(
-                forWakeCalendarDay: wakeDay
-            )
-        } catch {
-            sleepSummary = nil
-        }
+        let store = PersistenceBootstrap.persistenceStore
+        let summary = await Task.detached(priority: .userInitiated) {
+            try? store.sleep.nightSummary(forWakeCalendarDay: wakeDay)
+        }.value
+        sleepSummary = summary
     }
 
     @ViewBuilder
@@ -282,14 +318,129 @@ struct DashboardView: View {
         VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(greetingText)
                 .helmType(.title)
-            Text("Today's readiness")
+            Text(heroActionSubtitle)
                 .helmType(.body, color: HelmColor.fgSecondary)
+            if let phaseNarrative {
+                Text(phaseNarrative)
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                    .accessibilityLabel(phaseNarrative)
+            }
             if let todayStepCount {
                 Text("\(todayStepCount) steps")
                     .helmType(.monoTag, color: HelmColor.fgMuted)
                     .accessibilityLabel("\(todayStepCount) steps today")
             }
         }
+    }
+
+    private enum DashboardHeroKind {
+        case session
+        case nutrition
+        case brief
+    }
+
+    private var heroKind: DashboardHeroKind {
+        switch prescriptionService.state {
+        case .prescribed, .restDay, .awaitingCatalog:
+            return .session
+        case .loading:
+            if case .ready = nutritionService.state {
+                return .nutrition
+            }
+            return .brief
+        }
+    }
+
+    private var heroActionSubtitle: String {
+        switch heroKind {
+        case .session:
+            if case .restDay = prescriptionService.state {
+                return "Rest day. Recover, then check Train."
+            }
+            return "One thing: start today's session."
+        case .nutrition:
+            return "One thing: log your next meal."
+        case .brief:
+            return "Today's plan from your body."
+        }
+    }
+
+    @ViewBuilder
+    private var heroCard: some View {
+        switch heroKind {
+        case .session:
+            prescriptionCard
+        case .nutrition:
+            nutritionTargetsCard
+        case .brief:
+            briefCard
+        }
+    }
+
+    private var progressionTeaserCard: some View {
+        Button {
+            AppTabRouter.shared.openProgress()
+        } label: {
+            Card {
+                HStack {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        HelmSectionEyebrow("PROGRESSION", showsArcMark: false)
+                        Text("Open Progress for phase, trends, and patterns")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                        if let phaseNarrative {
+                            Text(phaseNarrative)
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
+                    }
+                    Spacer()
+                    HelmIconView(.chevronRight, context: .inline)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+            }
+        }
+        .buttonStyle(.helmPressableCard)
+        .accessibilityLabel(
+            phaseNarrative.map { "Progression. \($0)" }
+                ?? "Progression. Open Progress tab"
+        )
+    }
+
+    @ViewBuilder
+    private var moreBodySection: some View {
+        DisclosureGroup(isExpanded: $moreBodyExpanded) {
+            VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                muscleVolumeSummaryCard
+                progressShortcutCard
+            }
+            .padding(.top, HelmSpacing.sm)
+        } label: {
+            Text("Volume & progress")
+                .helmType(.label)
+        }
+        .tint(HelmColor.accent)
+    }
+
+    private var progressShortcutCard: some View {
+        Button {
+            AppTabRouter.shared.openProgress()
+        } label: {
+            Card {
+                HStack {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        HelmSectionEyebrow("TRENDS & PATTERNS", showsArcMark: true)
+                        Text("Weight trend, e1RM, and associations live on Progress")
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                    }
+                    Spacer()
+                    HelmIconView(.trends, context: .inline)
+                        .foregroundStyle(HelmColor.fgMuted)
+                    HelmIconView(.chevronRight, context: .inline)
+                        .foregroundStyle(HelmColor.fgMuted)
+                }
+            }
+        }
+        .buttonStyle(.helmPressableCard)
+        .accessibilityLabel("Trends and patterns. Open Progress tab")
     }
 
     private func loadTodaySteps() {
@@ -311,12 +462,23 @@ struct DashboardView: View {
                 }
             }
         case .awaitingData:
-            readinessShell(subtitle: "Awaiting data") {
-                placeholderArc(state: .compromised, subtitle: "Awaiting data")
+            readinessShell(subtitle: "") {
+                HelmEmptyState(
+                    title: "Waiting on Health",
+                    message: "Connect Apple Health so ARC can read HRV, resting HR, and sleep.",
+                    icon: .health,
+                    actionTitle: "Open Settings"
+                ) {
+                    showSettings = true
+                }
             }
         case let .buildingBaseline(_, message):
-            readinessShell(subtitle: message) {
-                placeholderArc(state: .compromised, subtitle: message)
+            readinessShell(subtitle: "") {
+                HelmEmptyState(
+                    title: "Building baseline",
+                    message: message,
+                    icon: .health
+                )
             }
         case let .scored(score):
             scoredReadinessCard(score: score)
@@ -335,7 +497,10 @@ struct DashboardView: View {
         } label: {
             readinessShell(
                 subtitle: readinessSubtitle(for: score),
-                state: helmState
+                state: helmState,
+                onExplain: {
+                    isShowingReadinessExplain = true
+                }
             ) {
                 VStack(alignment: .leading, spacing: HelmSpacing.md) {
                     ArcRevealGauge(
@@ -373,33 +538,24 @@ struct DashboardView: View {
         .buttonStyle(.helmPressableCard)
     }
 
-    private func placeholderArc(state: HelmState, subtitle: String) -> some View {
-        ArcGauge(value: 0, state: state) {
-            VStack(spacing: HelmSpacing.xxs) {
-                Text("--")
-                    .helmType(.heroNumber, color: HelmColor.fgMuted)
-                Text(state.label)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                Text(subtitle)
-                    .helmType(.body, color: HelmColor.fgMuted)
-                    .multilineTextAlignment(.center)
-            }
-        }
-        .frame(maxWidth: 220)
-        .frame(maxWidth: .infinity)
-    }
-
     @ViewBuilder
     private func readinessShell<Content: View>(
         subtitle: String,
         state: HelmState? = nil,
+        onExplain: (() -> Void)? = nil,
         @ViewBuilder content: () -> Content
     ) -> some View {
         let card = Card {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                HStack {
+                HStack(spacing: HelmSpacing.xs) {
                     HelmSectionEyebrow("ARC")
-                    Spacer()
+                    Spacer(minLength: HelmSpacing.sm)
+                    if let onExplain {
+                        HelmExplainInfoButton(
+                            accessibilityLabel: "Show how ARC is calculated",
+                            action: onExplain
+                        )
+                    }
                     if let state {
                         stateBadge(for: state)
                     }
@@ -407,9 +563,11 @@ struct DashboardView: View {
 
                 content()
 
-                Text(subtitle)
-                    .helmType(.body, color: HelmColor.fgMuted)
-                    .frame(maxWidth: .infinity, alignment: .center)
+                if !subtitle.isEmpty {
+                    Text(subtitle)
+                        .helmType(.body, color: HelmColor.fgMuted)
+                        .frame(maxWidth: .infinity, alignment: .center)
+                }
             }
         }
 
@@ -574,12 +732,28 @@ struct DashboardView: View {
                             }
                         )
                     } else {
-                        Button {
-                            AppTabRouter.shared.openNutrition()
-                        } label: {
-                            Label("Log food", helmIcon: .plus, context: .inline)
+                        HStack(spacing: HelmSpacing.sm) {
+                            Button {
+                                AppTabRouter.shared.openNutrition()
+                            } label: {
+                                Label("Log food", helmIcon: .plus, context: .inline)
+                            }
+                            .buttonStyle(.helmSecondary)
+
+                            if NutritionPreferencesStore.shared.isCheckInDue(today: snapshot.helmDay) {
+                                Button {
+                                    AppTabRouter.shared.openNutrition(
+                                        focus: NutritionNavigationFocus(
+                                            helmDay: snapshot.helmDay,
+                                            openWeeklyCheckIn: true
+                                        )
+                                    )
+                                } label: {
+                                    Text("Review week")
+                                }
+                                .buttonStyle(.helmSecondary)
+                            }
                         }
-                        .buttonStyle(.helmSecondary)
                     }
                 }
             }
@@ -691,6 +865,37 @@ struct DashboardView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
     }
+
+    @MainActor
+    private func loadPhaseNarrative() async {
+        do {
+            let readiness = readinessService.state.score
+            let settings = try await PlanBootstrap.engine.loadTrainingPlan()
+            let model = try await ProgressionDetailBuilder.load(
+                store: PersistenceBootstrap.persistenceStore,
+                engine: PlanBootstrap.engine,
+                readiness: readiness
+            )
+            phaseNarrative = PhaseNarrativeFormatter.string(
+                from: model,
+                weeklyRateKg: settings.phaseGoal.weeklyRateKg
+            )
+        } catch {
+            phaseNarrative = nil
+        }
+    }
+
+    private func refreshRecompStory() {
+        let store = PersistenceBootstrap.persistenceStore
+        let bodyFat = (try? store.bodyComposition.fetchBodyFatHistory(onOrBefore: today, limit: 8)) ?? []
+        let bodyFatPercents = bodyFat.compactMap(\.bodyFatPercentage).reversed()
+        let story = RecompStoryBuilder.story(
+            snapshot: trendsController.snapshot,
+            bodyFatPercentOldestFirst: Array(bodyFatPercents)
+        )
+        // Keep warm empty off Dashboard; Progress hub always shows the card.
+        recompStory = story.isEmptyState ? nil : story
+    }
 }
 
 private extension TrainingPhase {
@@ -735,10 +940,11 @@ private extension TrainingPhase {
 #Preview("Dashboard empty readiness") {
     ScrollView {
         HelmEmptyState(
-            title: "Awaiting data",
-            message: "Connect HealthKit to start building your readiness baseline.",
-            icon: .health
-        )
+            title: "Waiting on Health",
+            message: "Connect Apple Health so ARC can read HRV, resting HR, and sleep.",
+            icon: .health,
+            actionTitle: "Open Settings"
+        ) {}
         .helmScreenPadding()
     }
     .helmTheme()

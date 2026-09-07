@@ -43,6 +43,7 @@ public final class PlanBuilderService {
             interview.daysPerWeek = settings.daysPerWeek
             interview.experienceRaw = settings.experienceRaw
             interview.emphasis = settings.phaseGoal.emphasis
+            interview.musclePriorities = settings.phaseGoal.musclePriorities
         }
         if let profile = BodyProfileStore(metadata: persistence.appMetadata).load(),
            let tdee = BodyProfileTDEE.seedTDEEKcal(profile: profile) {
@@ -205,7 +206,8 @@ public final class PlanBuilderService {
             phase: next.phaseGoal.phase,
             weeklyRateKg: next.phaseGoal.weeklyRateKg,
             targetMass: next.phaseGoal.targetMass,
-            emphasis: notes.isEmpty ? nil : notes
+            emphasis: notes.isEmpty ? nil : notes,
+            musclePriorities: interview.musclePriorities
         )
         syncProgressionGoal(interview.progressionGoal, into: &next)
         return next

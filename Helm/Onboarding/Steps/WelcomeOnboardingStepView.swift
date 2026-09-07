@@ -38,7 +38,7 @@ struct WelcomeOnboardingStepView: View {
                 .frame(maxWidth: 220)
                 .frame(maxWidth: .infinity)
 
-                Text("Readiness, training, and nutrition in one calm instrument.")
+                Text("Closed loop: readiness gates the plan, training and nutrition feed it back. Your body told us what to do today.")
                     .font(HelmTypography.body)
                     .foregroundStyle(HelmColor.fgSecondary)
                     .multilineTextAlignment(.center)

@@ -83,6 +83,13 @@ public struct TrainingPlanSettingsStore: Sendable {
         }
     }
 
+    /// True when a training-plan row has been persisted (Plan Builder commit, settings edit, backup restore).
+    public func hasStoredSettings() throws -> Bool {
+        try pool.read { db in
+            try TrainingPlanSettingsRecord.fetchOne(db, key: TrainingPlanSettingsRecord.singletonID) != nil
+        }
+    }
+
     public func save(_ settings: StoredTrainingPlanSettings, updatedAt: Date = Date()) throws {
         let data = try encoder.encode(settings)
         guard let json = String(data: data, encoding: .utf8) else {

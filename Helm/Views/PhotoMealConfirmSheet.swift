@@ -14,7 +14,7 @@ struct PhotoMealConfirmSheet: View {
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    private let lookup = NutritionLookup()
+    private let lookup = NutritionLookup.shared
 
     init(
         controller: PhotoMealController,

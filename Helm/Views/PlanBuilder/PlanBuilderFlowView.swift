@@ -32,6 +32,7 @@ struct PlanBuilderFlowView: View {
     @State private var selectedExperience: Set<String> = ["intermediate"]
     @State private var selectedGoal: Set<String> = [PlanBuilderInterview.ProgressionGoal.hypertrophy.rawValue]
     @State private var emphasisText = ""
+    @State private var selectedMusclePriorities: [MuscleGroup] = []
     @State private var discussionText = ""
     @State private var phase: TrainingPhase = .maintain
     @State private var weeklyRateText = ""
@@ -146,6 +147,7 @@ struct PlanBuilderFlowView: View {
         selectedExperience = [value.experienceRaw]
         selectedGoal = [value.progressionGoal.rawValue]
         emphasisText = value.emphasis ?? ""
+        selectedMusclePriorities = value.musclePriorities.compactMap(MuscleGroup.init(rawValue:))
         discussionText = value.discussionNote ?? ""
         if let kcal = value.confirmedMaintenanceKcal {
             maintenanceText = String(Int(kcal))
@@ -158,13 +160,20 @@ struct PlanBuilderFlowView: View {
             if let rate = settings.phaseGoal.weeklyRateKg {
                 weeklyRateText = String(rate)
             }
+            if selectedMusclePriorities.isEmpty {
+                selectedMusclePriorities = settings.phaseGoal.resolvedMusclePriorities
+            }
         }
     }
 
     private func currentPhaseGoal() -> PhaseGoal {
         let trimmed = weeklyRateText.trimmingCharacters(in: .whitespacesAndNewlines)
         let rate = trimmed.isEmpty ? nil : Double(trimmed)
-        return PhaseGoal(phase: phase, weeklyRateKg: rate)
+        return PhaseGoal(
+            phase: phase,
+            weeklyRateKg: rate,
+            musclePriorities: selectedMusclePriorities.map(\.rawValue)
+        )
     }
 
     // MARK: - Interview
@@ -177,7 +186,7 @@ struct PlanBuilderFlowView: View {
                         .font(HelmTypography.monoTag)
                         .foregroundStyle(HelmColor.fgMuted)
                         .textCase(.uppercase)
-                    Text("Set phase, then draft plan options you can talk through.")
+                    Text("Pick experience, days, equipment, and phase. Signal drafts the split and a first-session path.")
                         .helmType(.body, color: HelmColor.fgSecondary)
                 } else {
                     Text("Confirm what Signal knows, then draft plan options.")
@@ -241,10 +250,16 @@ struct PlanBuilderFlowView: View {
                 }
 
                 VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                    Text("Emphasis (optional)")
+                    Text("Emphasis note (optional)")
                         .helmType(.label, color: HelmColor.fgSecondary)
-                    TextField("e.g. arms, v-taper", text: $emphasisText)
+                    TextField("e.g. v-taper aesthetic", text: $emphasisText)
                         .textFieldStyle(.roundedBorder)
+                }
+
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    Text("Muscle focus")
+                        .helmType(.label, color: HelmColor.fgSecondary)
+                    MusclePriorityChipPicker(selected: $selectedMusclePriorities)
                 }
 
                 if let notice {
@@ -344,6 +359,7 @@ struct PlanBuilderFlowView: View {
         }
         let trimmedEmphasis = emphasisText.trimmingCharacters(in: .whitespacesAndNewlines)
         interview.emphasis = trimmedEmphasis.isEmpty ? nil : trimmedEmphasis
+        interview.musclePriorities = selectedMusclePriorities.map(\.rawValue)
         let trimmedDiscussion = discussionText.trimmingCharacters(in: .whitespacesAndNewlines)
         interview.discussionNote = trimmedDiscussion.isEmpty ? nil : trimmedDiscussion
     }

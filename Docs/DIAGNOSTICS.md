@@ -45,6 +45,8 @@ Named intervals for every critical path, so Instruments and the overnight batter
 | `WorkoutSessionLifecycle` | `Logger` (phone side) / `Watch` (Watch side) | per session (UUID), begin at start, event at pause/resume, end at finish/discard | M3.4 (phone HK write), M8.1 (Watch session) |
 | `LiveWorkoutBuilderTeardown` | `Watch` | per session (UUID) | M8.1 |
 | `PatternEvaluate` | `PatternKit` | per nightly evaluate | PatternKit |
+| `SleepFetchOverlapping` | `Persistence` | per `fetchOverlapping` call | sleep hot-path harness |
+| `ReadinessHistoryBuild` | `HealthKitIngest` | per `ReadinessHistoryBuilder.history` window | sleep hot-path harness |
 
 Phone AirPods HR (no Watch app) uses ring-buffer events `phone.hr.session.start` / `phone.hr.session.end` / `phone.hr.first` via `WatchCompanionDiagnosticEvent`, not a new signpost name.
 

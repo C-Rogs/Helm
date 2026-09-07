@@ -40,6 +40,7 @@ struct OnboardingFlowView: View {
             Task { @MainActor in
                 await ProactiveBootstrap.refreshScheduling()
             }
+            AppTabRouter.shared.openTrain()
             onFinished()
         }
 
@@ -52,8 +53,8 @@ struct OnboardingFlowView: View {
                 onBack: goBack,
                 onSkip: skip
             )
-        case .healthKit:
-            HealthKitOnboardingStepView(
+        case .trainingPlan:
+            TrainingPlanOnboardingStepView(
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: advance,
@@ -68,31 +69,16 @@ struct OnboardingFlowView: View {
                 onBack: goBack,
                 onSkip: skip
             )
+        case .healthKit:
+            HealthKitOnboardingStepView(
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                onContinue: advance,
+                onBack: goBack,
+                onSkip: skip
+            )
         case .notifications:
             NotificationOnboardingStepView(
-                stepIndex: stepIndex,
-                totalSteps: totalSteps,
-                onContinue: advance,
-                onBack: goBack,
-                onSkip: skip
-            )
-        case .trainingPlan:
-            TrainingPlanOnboardingStepView(
-                stepIndex: stepIndex,
-                totalSteps: totalSteps,
-                onContinue: advance,
-                onSkip: skip
-            )
-        case .hevyImport:
-            HevyImportOnboardingStepView(
-                stepIndex: stepIndex,
-                totalSteps: totalSteps,
-                onContinue: advance,
-                onBack: goBack,
-                onSkip: skip
-            )
-        case .backfill:
-            BackfillOnboardingStepView(
                 stepIndex: stepIndex,
                 totalSteps: totalSteps,
                 onContinue: finish,

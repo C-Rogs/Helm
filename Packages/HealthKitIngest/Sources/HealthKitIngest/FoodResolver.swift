@@ -77,7 +77,7 @@ public actor FoodResolver {
 
     public init(
         persistence: PersistenceStore,
-        cofidLookup: NutritionLookup = NutritionLookup(),
+        cofidLookup: NutritionLookup = .shared,
         offClient: any OpenFoodFactsClient = LiveOpenFoodFactsClient(),
         networkGate: any NetworkGating = LiveNetworkGate(),
         now: @escaping @Sendable () -> Date = Date.init

@@ -2,7 +2,7 @@ import DesignSystem
 import SwiftUI
 
 struct TrainingPlanOnboardingStepView: View {
-    var stepIndex: Int = 5
+    var stepIndex: Int = 2
     var totalSteps: Int = OnboardingStep.allCases.count
     var onContinue: () -> Void = {}
     var onBack: (() -> Void)? = nil

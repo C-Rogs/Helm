@@ -6,6 +6,9 @@ import Persistence
 
 enum NutritionBootstrap {
     static let engine = NutritionEngine(persistence: PersistenceBootstrap.persistenceStore)
+    static let weeklyCheckInService = NutritionWeeklyCheckInService(
+        persistence: PersistenceBootstrap.persistenceStore
+    )
 
     @MainActor
     static let nutritionService = NutritionService(engine: engine)
@@ -44,15 +47,41 @@ enum NutritionBootstrap {
     )
 
     @MainActor
+    private static var cachedPhotoMealService: PhotoMealService?
+    @MainActor
+    private static var cachedPhotoMealAvailable: Bool?
+
+    /// Cheap availability check. Does not build estimator or load CoFID.
+    @MainActor
+    static var isPhotoMealAvailable: Bool {
+        if let cachedPhotoMealAvailable {
+            return cachedPhotoMealAvailable
+        }
+        let available = MealVisionRouter(apiKeyStore: APIKeyStore()).isAvailable
+        cachedPhotoMealAvailable = available
+        return available
+    }
+
+    @MainActor
     static var photoMealService: PhotoMealService? {
-        let keyStore = APIKeyStore()
-        let router = MealVisionRouter(apiKeyStore: keyStore)
-        guard router.isAvailable else { return nil }
-        return PhotoMealService(
-            estimator: PhotoMacroEstimator(router: router),
+        if let cachedPhotoMealService {
+            return cachedPhotoMealService
+        }
+        guard isPhotoMealAvailable else { return nil }
+        let service = PhotoMealService(
+            estimator: PhotoMacroEstimator(router: MealVisionRouter(apiKeyStore: APIKeyStore())),
             localStore: PhotoMealLocalStore(store: PersistenceBootstrap.persistenceStore),
             hkWrites: manualMealService.hkWrites
         )
+        cachedPhotoMealService = service
+        return service
+    }
+
+    /// Call when API keys change so photo meal availability is re-evaluated.
+    @MainActor
+    static func invalidatePhotoMealServiceCache() {
+        cachedPhotoMealService = nil
+        cachedPhotoMealAvailable = nil
     }
 
     @MainActor

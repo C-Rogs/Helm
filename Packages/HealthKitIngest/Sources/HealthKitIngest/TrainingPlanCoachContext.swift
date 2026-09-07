@@ -6,6 +6,8 @@ import PlanKit
 public enum TrainingPlanCoachContext {
     public struct Input: Sendable, Equatable {
         public let emphasis: String?
+        /// Structured focus muscles; engine redistributes weekly targets when non-empty.
+        public let musclePriorities: [MuscleGroup]
         /// Nil when today is an intentional rest / non-training day in the week plan.
         public let todaySplit: SessionSplitKind?
         public let weeklyLedger: WeeklyHardSetLedger
@@ -22,6 +24,7 @@ public enum TrainingPlanCoachContext {
 
         public init(
             emphasis: String?,
+            musclePriorities: [MuscleGroup] = [],
             todaySplit: SessionSplitKind?,
             weeklyLedger: WeeklyHardSetLedger,
             mesocycleState: MesocycleState?,
@@ -36,6 +39,7 @@ public enum TrainingPlanCoachContext {
             scheduleOverrideNote: String? = nil
         ) {
             self.emphasis = emphasis
+            self.musclePriorities = MusclePriorityRedistribution.normalize(musclePriorities)
             self.todaySplit = todaySplit
             self.weeklyLedger = weeklyLedger
             self.mesocycleState = mesocycleState
@@ -88,15 +92,22 @@ public enum TrainingPlanCoachContext {
         if let emphasis = normalizedEmphasis(input.emphasis) {
             lines.append("emphasis=\"\(emphasis)\"")
         }
+        if !input.musclePriorities.isEmpty {
+            lines.append(
+                "muscle_priorities=\(input.musclePriorities.map(\.rawValue).joined(separator: ","))"
+            )
+        }
+
+        let weeklyTargets = input.mesocycleState.map {
+            PlanKit.weeklyHardSetTargets(for: $0, priorities: input.musclePriorities)
+        } ?? [:]
 
         lines.append("rolling_7d_hard_sets:")
         for muscle in MuscleGroup.allCases {
             let weeklySets = input.weeklyLedger.totals[muscle, default: 0]
             let landmarks = input.mesocycleState?.muscles[muscle]?.landmarks
                 ?? PlanKit.seedLandmarks(muscle: muscle, experience: input.experience)
-            let weeklyTarget = input.mesocycleState?.muscles[muscle].map {
-                PlanKit.weeklyHardSetTarget(for: $0)
-            }
+            let weeklyTarget = weeklyTargets[muscle]
             let targetSuffix = weeklyTarget.map { " weekly_target=\($0)" } ?? ""
             lines.append(
                 "  \(muscle.rawValue): \(formatSets(weeklySets)) hard sets | MEV \(landmarks.mev) MRV \(landmarks.mrv)\(targetSuffix)"

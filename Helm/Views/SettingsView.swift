@@ -82,6 +82,9 @@ struct SettingsView: View {
             settingsLink("Body Profile", value: nil) {
                 BodyProfileSettingsView()
             }
+            settingsLink("Import Hevy CSV", value: nil) {
+                HevyImportSettingsView()
+            }
             if friendsRelease.showsAdvanced {
                 settingsLink("Plan details", value: nil) {
                     PhaseGoalSettingsView()
@@ -277,7 +280,7 @@ struct SettingsView: View {
             Text("Appearance")
         } footer: {
             if friendsRelease.showsAdvanced {
-                Text("Signal is Tron HUD: grid void, neon brackets. Instrument and Data sheet stay as backups.")
+                Text("Instrument is the product layout. Signal (Tron HUD) and Data sheet stay as advanced backups.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         }
@@ -310,6 +313,9 @@ struct SettingsView: View {
         Section("Data") {
             settingsLink("Data & Backup", value: nil) {
                 DataSafetyView()
+            }
+            settingsLink("Backfill Health", value: nil) {
+                HealthBackfillSettingsView()
             }
             if friendsRelease.showsAdvanced {
                 settingsLink("Export health data", value: nil) {

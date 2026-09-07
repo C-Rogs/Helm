@@ -48,7 +48,9 @@ public enum SessionDesignBriefBuilder {
         let muscleText = SessionSplitPlanner.muscleSummary(for: targetMuscles)
         let mesoText = mesocycleSummary(for: targetMuscles, state: mesocycleState)
         var summaryParts = [muscleText, "\(totalSets) sets", mesoText]
-        if let emphasisLabel = TrainingPlanCoachContext.emphasisDisplayLabel(phaseGoal.emphasis) {
+        if let focus = phaseGoal.musclePrioritiesDisplayLabel {
+            summaryParts.append("Focus: \(focus)")
+        } else if let emphasisLabel = TrainingPlanCoachContext.emphasisDisplayLabel(phaseGoal.emphasis) {
             summaryParts.append(emphasisLabel)
         }
         let summary = summaryParts.joined(separator: " · ")
@@ -61,7 +63,8 @@ public enum SessionDesignBriefBuilder {
             let progressNotes = weeklyProgressNotes(
                 muscles: targetMuscles,
                 ledger: weeklyLedger,
-                mesocycleState: mesocycleState
+                mesocycleState: mesocycleState,
+                priorities: phaseGoal.resolvedMusclePriorities
             )
             rationale.append(contentsOf: progressNotes)
         }
@@ -90,13 +93,19 @@ public enum SessionDesignBriefBuilder {
     private static func weeklyProgressNotes(
         muscles: [MuscleGroup],
         ledger: WeeklyHardSetLedger,
-        mesocycleState: MesocycleState
+        mesocycleState: MesocycleState,
+        priorities: [MuscleGroup]
     ) -> [String] {
-        muscles.compactMap { muscle in
-            guard let muscleState = mesocycleState.muscles[muscle] else { return nil }
-            let target = PlanKit.weeklyHardSetTarget(for: muscleState)
+        let weeklyTargets = PlanKit.weeklyHardSetTargets(
+            for: mesocycleState,
+            priorities: priorities
+        )
+        return muscles.compactMap { muscle in
+            guard mesocycleState.muscles[muscle] != nil else { return nil }
+            let target = weeklyTargets[muscle]
+                ?? PlanKit.weeklyHardSetTarget(for: mesocycleState.muscles[muscle]!)
             let done = ledger.totals[muscle, default: 0]
-            return "\(muscle.rawValue.capitalized): \(formatHardSets(done))/\(target) hard sets this week."
+            return "\(muscle.displayLabel): \(formatHardSets(done))/\(target) hard sets this week."
         }
         .prefix(2)
         .map { String($0) }

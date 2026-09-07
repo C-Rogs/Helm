@@ -1,8 +1,16 @@
 import Core
 import Foundation
 import GRDB
+import os
 
 public struct SleepRepository: Sendable {
+    /// Matches `HelmSignpostName.sleepFetchOverlapping` / Docs/DIAGNOSTICS.md (raw os_signpost;
+    /// Persistence cannot import Diagnostics because that package is UIKit-bound).
+    private static let fetchOverlappingLog = OSLog(
+        subsystem: "com.cameronro.helm",
+        category: "Persistence"
+    )
+
     private let pool: DatabasePool
 
     init(pool: DatabasePool) {
@@ -36,6 +44,12 @@ public struct SleepRepository: Sendable {
 
     /// Returns sleep intervals overlapping `[start, end)`.
     public func fetchOverlapping(start: Date, end: Date) throws -> [SleepRecord] {
+        let signpostID = OSSignpostID(log: Self.fetchOverlappingLog)
+        os_signpost(.begin, log: Self.fetchOverlappingLog, name: "SleepFetchOverlapping", signpostID: signpostID)
+        defer {
+            os_signpost(.end, log: Self.fetchOverlappingLog, name: "SleepFetchOverlapping", signpostID: signpostID)
+        }
+
         let startString = ISO8601Coding.string(from: start)
         let endString = ISO8601Coding.string(from: end)
         return try pool.read { db in
@@ -49,6 +63,26 @@ public struct SleepRepository: Sendable {
                 arguments: [startString, endString]
             )
             return try rows.map { try $0.toValue() }
+        }
+    }
+
+    /// SQL-only overlapping fetch of ISO timestamp strings (no `toValue` / date decode).
+    /// Used by sleep hot-path benches to split I/O from decode cost.
+    func fetchOverlappingISOStrings(start: Date, end: Date) throws -> [(startAt: String, endAt: String)] {
+        let startString = ISO8601Coding.string(from: start)
+        let endString = ISO8601Coding.string(from: end)
+        return try pool.read { db in
+            try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT start_at, end_at FROM sleep_record
+                    WHERE end_at > ? AND start_at < ?
+                    ORDER BY start_at
+                    """,
+                arguments: [startString, endString]
+            ).map { row in
+                (startAt: row["start_at"], endAt: row["end_at"])
+            }
         }
     }
 

@@ -24,6 +24,6 @@ final class OnboardingCoordinator {
     }
 
     var isOnFinalStep: Bool {
-        currentStep == .backfill
+        currentStep == .notifications
     }
 }

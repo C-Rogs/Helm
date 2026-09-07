@@ -21,7 +21,7 @@ struct HevyCSVImportPreviewView: View {
                                         .helmType(.body, color: HelmColor.fgSecondary)
                                 }
                                 if result.clippedAwaySessionCount > 0 {
-                                    Text("Clipped \(result.clippedAwaySessionCount) sessions older than 90 days.")
+                                    Text("Clipped \(result.clippedAwaySessionCount) sessions older than \(HevyCSVParser.defaultLookbackDays) days.")
                                         .helmType(.body, color: HelmColor.warning)
                                 }
                                 if result.skippedCardioSetCount > 0 {

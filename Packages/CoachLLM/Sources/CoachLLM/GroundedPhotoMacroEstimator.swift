@@ -6,7 +6,7 @@ public struct GroundedPhotoMacroEstimator: Sendable {
     private let vision: any MealMacroVisionProviding
     private let lookup: NutritionLookup
 
-    public init(vision: any MealMacroVisionProviding, lookup: NutritionLookup = NutritionLookup()) {
+    public init(vision: any MealMacroVisionProviding, lookup: NutritionLookup = .shared) {
         self.vision = vision
         self.lookup = lookup
     }

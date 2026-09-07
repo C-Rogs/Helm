@@ -17,18 +17,7 @@ enum TrendsChartSupport {
     }
 
     static func muscleLabel(_ muscle: MuscleGroup) -> String {
-        switch muscle {
-        case .chest: "Chest"
-        case .back: "Back"
-        case .shoulders: "Shoulders"
-        case .biceps: "Biceps"
-        case .triceps: "Triceps"
-        case .quads: "Quads"
-        case .hamstrings: "Hamstrings"
-        case .glutes: "Glutes"
-        case .calves: "Calves"
-        case .abs: "Abs"
-        }
+        muscle.displayLabel
     }
 
     /// Inclusive start day for a history window ending at `today`.

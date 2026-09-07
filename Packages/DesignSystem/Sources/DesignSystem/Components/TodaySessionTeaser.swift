@@ -49,7 +49,7 @@ public struct TodaySessionTeaser: View {
                         .helmType(.monoTag, color: HelmColor.depleted)
                 }
 
-                Button("Open Train", action: onOpenTrain)
+                Button("Start session", action: onOpenTrain)
                     .buttonStyle(.helmPrimary)
             }
         }

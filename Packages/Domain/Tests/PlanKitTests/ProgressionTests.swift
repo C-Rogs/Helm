@@ -579,4 +579,12 @@ struct HardSetAccountingTests {
         // Fatigue tracks effort, so the two easy sets cost less than the hard one.
         #expect((ledger.fatigueTotals[.biceps] ?? 0) < 3.0)
     }
+
+    @Test("load decisions expose plain-language athlete coaching lines")
+    func athleteCoachingLines() {
+        #expect(LoadDecision.hold.athleteCoachingLine.contains("Same load"))
+        #expect(LoadDecision.bump.athleteCoachingLine.contains("Load went up"))
+        #expect(LoadDecision.stallBackoff.athleteCoachingLine.contains("stall"))
+        #expect(LoadDecision.coldStart.athleteCoachingLine.contains("First working"))
+    }
 }

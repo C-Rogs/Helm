@@ -54,10 +54,11 @@ public final class ReadinessService {
 
         let task = Task { @MainActor in
             await self.hydrateFromCache()
+            let day = self.today()
+            let engine = self.engine
             do {
-                let next = try await self.engine.dashboardState(for: self.today())
-                // Actor hop from ReadinessEngine can resume off the real main thread;
-                // assign Observable state only after a real main-queue hop.
+                // History + ISO decode run on ReadinessEngine's actor executor (not MainActor).
+                let next = try await engine.dashboardState(for: day)
                 await self.reclaimMainThread()
                 self.state = next
             } catch {

@@ -109,7 +109,8 @@ public struct HelmActionExecutor: Sendable {
                 phase: phase,
                 weeklyRateKg: payload.weeklyRateKg ?? current.weeklyRateKg,
                 targetMass: current.targetMass,
-                emphasis: payload.emphasis ?? current.emphasis
+                emphasis: payload.emphasis ?? current.emphasis,
+                musclePriorities: current.musclePriorities
             )
             try await engine.saveTrainingPlan(settings)
             PrescriptionDayStore.clear(for: today)

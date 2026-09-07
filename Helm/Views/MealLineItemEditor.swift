@@ -40,7 +40,7 @@ struct MealLineItemEditor: View {
     @FocusState private var focusedField: Field?
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    private let lookup = NutritionLookup()
+    private let lookup = NutritionLookup.shared
 
     private var isSpotlightActive: Bool {
         focusModePreferences.isFocusModeEnabled && focusedField != nil

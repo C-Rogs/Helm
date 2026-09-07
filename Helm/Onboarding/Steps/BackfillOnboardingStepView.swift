@@ -3,14 +3,8 @@ import HealthKitIngest
 import ReadinessKit
 import SwiftUI
 
-struct BackfillOnboardingStepView: View {
-    var showsFlowControls: Bool = true
-    var stepIndex: Int = 7
-    var totalSteps: Int = OnboardingStep.allCases.count
-    var onContinue: () -> Void = {}
-    var onBack: (() -> Void)? = nil
-    var onSkip: () -> Void = {}
-
+/// Settings entry for Health history backfill (removed from required onboarding).
+struct HealthBackfillSettingsView: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var isBackfilling = false
     @State private var progress = BackfillProgress(
@@ -23,46 +17,52 @@ struct BackfillOnboardingStepView: View {
     @State private var revealDetailsVisible = false
 
     var body: some View {
-        OnboardingStepChrome(
-            step: .backfill,
-            stepIndex: stepIndex,
-            totalSteps: totalSteps,
-            showsFlowControls: showsFlowControls,
-            primaryTitle: "Get started",
-            skipTitle: showsFlowControls ? "Skip import" : nil,
-            onPrimary: onContinue,
-            onBack: onBack,
-            onSkip: onSkip
-        ) {
-            VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                payoffSection
+        ScrollView {
+            VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    Text("Backfill Health")
+                        .font(HelmTypography.title)
+                        .foregroundStyle(HelmColor.fg)
 
-                if isBackfilling || hasStarted || progress.isComplete {
-                    ArcProgressGauge(progress: progressFraction, state: .ready, reduceMotion: reduceMotion) {
-                        VStack(spacing: HelmSpacing.xxs) {
-                            HelmNumericText(Int((progressFraction * 100).rounded()))
-                                .helmType(.heroNumber)
-                            Text("IMPORT")
-                                .helmType(.monoTag, color: HelmColor.fgMuted)
-                        }
-                    }
-                    .frame(maxWidth: 180)
-                    .frame(maxWidth: .infinity)
-
-                    Text(statusText)
+                    Text("Import about six months of Apple Health samples to seed readiness baselines. Safe to re-run; already-imported chunks are skipped.")
                         .font(HelmTypography.body)
                         .foregroundStyle(HelmColor.fgSecondary)
                 }
 
-                Button(buttonTitle) {
-                    Task { await runBackfill() }
+                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                    payoffSection
+
+                    if isBackfilling || hasStarted || progress.isComplete {
+                        ArcProgressGauge(progress: progressFraction, state: .ready, reduceMotion: reduceMotion) {
+                            VStack(spacing: HelmSpacing.xxs) {
+                                HelmNumericText(Int((progressFraction * 100).rounded()))
+                                    .helmType(.heroNumber)
+                                Text("IMPORT")
+                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                            }
+                        }
+                        .frame(maxWidth: 180)
+                        .frame(maxWidth: .infinity)
+
+                        Text(statusText)
+                            .font(HelmTypography.body)
+                            .foregroundStyle(HelmColor.fgSecondary)
+                    }
+
+                    Button(buttonTitle) {
+                        Task { await runBackfill() }
+                    }
+                    .buttonStyle(.helmPrimary)
+                    .disabled(isBackfilling || progress.isComplete)
                 }
-                .buttonStyle(.helmPrimary)
-                .disabled(isBackfilling || progress.isComplete)
+                .padding(HelmSpacing.md)
+                .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
             }
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
+            .padding(HelmSpacing.lg)
         }
+        .helmScreenBackground()
+        .navigationTitle("Backfill Health")
+        .navigationBarTitleDisplayMode(.inline)
         .task { await loadSavedProgress() }
     }
 
@@ -109,7 +109,7 @@ struct BackfillOnboardingStepView: View {
         if case let .scored(score) = ReadinessBootstrap.readinessService.state {
             let helmState = HelmState.readiness(score: Double(score.score))
             VStack(spacing: HelmSpacing.md) {
-                Text("Your first readiness score")
+                Text("Your readiness score")
                     .font(HelmTypography.headline)
                     .foregroundStyle(HelmColor.fg)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -134,13 +134,13 @@ struct BackfillOnboardingStepView: View {
                 .frame(maxWidth: 200)
                 .frame(maxWidth: .infinity)
             }
-            .padding(HelmSpacing.md)
-            .background(HelmColor.surface, in: RoundedRectangle(cornerRadius: HelmRadius.md))
         }
     }
 }
 
 #Preview {
-    BackfillOnboardingStepView()
-        .helmTheme()
+    NavigationStack {
+        HealthBackfillSettingsView()
+    }
+    .helmTheme()
 }

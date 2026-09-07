@@ -145,6 +145,25 @@ enum MesocycleEngine {
         }
     }
 
+    /// Weekly hard-set targets for every muscle in `state`, optionally redistributed
+    /// by structured muscle priorities (see `MusclePriorityRedistribution`).
+    static func weeklyHardSetTargets(
+        for state: MesocycleState,
+        priorities: [MuscleGroup] = []
+    ) -> [MuscleGroup: Int] {
+        var base: [MuscleGroup: Int] = [:]
+        var landmarks: [MuscleGroup: VolumeLandmarks] = [:]
+        for (muscle, muscleState) in state.muscles {
+            base[muscle] = weeklyHardSetTarget(for: muscleState)
+            landmarks[muscle] = muscleState.landmarks
+        }
+        return MusclePriorityRedistribution.redistribute(
+            baseTargets: base,
+            landmarks: landmarks,
+            priorities: priorities
+        )
+    }
+
     /// Scheduled deload: max(MEV, round(0.5 * peak week)).
     static func deloadWeeklyTarget(landmarks: VolumeLandmarks, blockLength: Int) -> Int {
         let peak = accumulatingTarget(

@@ -7,6 +7,20 @@ public enum LoadDecision: String, Sendable, Hashable, Codable {
     case hold = "hold"
     case bump = "bump"
     case stallBackoff = "stall_backoff"
+
+    /// Plain-language coach line for the athlete (Train set header).
+    public var athleteCoachingLine: String {
+        switch self {
+        case .coldStart:
+            "First working weight. Hit the rep target with clean form."
+        case .hold:
+            "Same load as last time. Match or beat last week's reps."
+        case .bump:
+            "Load went up. Own the new weight for the full set."
+        case .stallBackoff:
+            "Load eased after a stall. Rebuild clean reps here."
+        }
+    }
 }
 
 /// Per-lift progression targets derived from logged history.

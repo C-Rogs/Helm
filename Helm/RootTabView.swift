@@ -5,6 +5,7 @@ enum AppTab: Hashable {
     case dashboard
     case train
     case nutrition
+    case progress
     case chat
     case settings
 
@@ -13,6 +14,7 @@ enum AppTab: Hashable {
         case .dashboard: "dashboard"
         case .train: "train"
         case .nutrition: "nutrition"
+        case .progress: "progress"
         case .chat: "chat"
         case .settings: "settings"
         }
@@ -23,6 +25,7 @@ enum AppTab: Hashable {
         case "dashboard": self = .dashboard
         case "train": self = .train
         case "nutrition": self = .nutrition
+        case "progress": self = .progress
         case "chat": self = .chat
         case "settings": self = .settings
         default: return nil
@@ -45,6 +48,9 @@ struct RootTabView: View {
             }
             Tab("Nutrition", systemImage: HelmIcon.nutrition.rawValue, value: AppTab.nutrition) {
                 NutritionView()
+            }
+            Tab("Progress", systemImage: HelmIcon.trends.rawValue, value: AppTab.progress) {
+                ProgressHubView()
             }
             Tab("Chat", systemImage: HelmIcon.chat.rawValue, value: AppTab.chat) {
                 ChatView()

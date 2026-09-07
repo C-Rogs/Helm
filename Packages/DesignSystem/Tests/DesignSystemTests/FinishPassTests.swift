@@ -22,6 +22,7 @@ struct FinishPassTests {
         let auditedRelativePaths = [
             "Helm/Views/DashboardView.swift",
             "Helm/Views/DashboardTrendsSection.swift",
+            "Helm/Views/ProgressHubView.swift",
             "Helm/Views/TrainView.swift",
             "Helm/Views/TrendsView.swift",
             "Helm/Views/NutritionView.swift",
@@ -31,7 +32,8 @@ struct FinishPassTests {
             "Helm/RootTabView.swift",
             "Packages/DesignSystem/Sources/DesignSystem/Components/HelmScreenState.swift",
             "Packages/DesignSystem/Sources/DesignSystem/Components/BriefCard.swift",
-            "Packages/DesignSystem/Sources/DesignSystem/Components/AskCoachBar.swift"
+            "Packages/DesignSystem/Sources/DesignSystem/Components/AskCoachBar.swift",
+            "Packages/DesignSystem/Sources/DesignSystem/Components/PhaseNarrativeFormatter.swift"
         ]
 
         for relativePath in auditedRelativePaths {
@@ -61,7 +63,6 @@ struct FinishPassTests {
             "Helm/Views/NutritionView.swift",
             "Packages/DesignSystem/Sources/DesignSystem/Components/SetRow.swift",
             "Packages/DesignSystem/Sources/DesignSystem/Components/AskCoachBar.swift",
-            "Packages/DesignSystem/Sources/DesignSystem/Components/ExplainableAffordance.swift",
             "Packages/DesignSystem/Sources/DesignSystem/Components/AdjustmentBanner.swift"
         ]
 

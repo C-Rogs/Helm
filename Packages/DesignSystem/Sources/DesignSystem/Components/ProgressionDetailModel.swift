@@ -35,6 +35,19 @@ public struct MesocycleMuscleRow: Sendable, Hashable, Equatable, Identifiable {
         self.mrv = mrv
         self.state = state
     }
+
+    /// Sets still needed to hit this week's hard-set target (drives tint fill on LandmarkVolumeBar).
+    public var scheduledRemaining: Double {
+        max(0, Double(weeklyTarget) - weeklyDone)
+    }
+
+    public var volumeReadout: String {
+        let done = Int(weeklyDone.rounded())
+        if scheduledRemaining > 0.05 {
+            return "\(done) logged · \(Int(scheduledRemaining.rounded())) to target \(weeklyTarget)"
+        }
+        return "\(done) of \(weeklyTarget) hard sets this week"
+    }
 }
 
 public struct ProgressionSchemeSummary: Sendable, Hashable, Equatable {
@@ -140,6 +153,42 @@ public struct ProgressionDetailModel: Sendable, Hashable, Equatable {
         self.scheme = scheme
         self.ladders = ladders
         self.isColdStart = isColdStart
+    }
+
+    /// Plain coach line for surfaces that still want prose (Train week review, etc.).
+    public var coachSummary: String {
+        if isColdStart {
+            return "Log working sets this week. Landmarks and lift ladders fill in from your sessions."
+        }
+        if isDeloadWeek {
+            return "Deload week. Keep form sharp; volume and load stay light on purpose."
+        }
+        if muscles.isEmpty {
+            return "Finish training plan setup so mesocycle volume can track against MEV and MRV."
+        }
+        let behind = muscles.filter { $0.scheduledRemaining > 0.5 }.count
+        if behind == 0 {
+            return "Weekly volume is on track. Push load when rep targets feel clean."
+        }
+        if behind == 1 {
+            return "One muscle group still needs sets this week. Hit the remaining hard sets."
+        }
+        return "\(behind) muscle groups still need sets this week. Close the gaps before the week turns."
+    }
+
+    /// Factual gap line for Progression detail (no coaching prose).
+    public var volumeGapLine: String {
+        if isDeloadWeek {
+            return "Deload · volume targets reduced"
+        }
+        let behind = muscles.filter { $0.scheduledRemaining > 0.5 }.count
+        if behind == 0 {
+            return "All muscle groups at weekly target"
+        }
+        if behind == 1 {
+            return "1 muscle group behind weekly target"
+        }
+        return "\(behind) muscle groups behind weekly target"
     }
 }
 
