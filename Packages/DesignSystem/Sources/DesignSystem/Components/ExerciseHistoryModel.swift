@@ -39,13 +39,15 @@ public struct ExerciseHistoryModel: Sendable, Hashable, Equatable {
     public let instructionText: String?
     public let coachingCues: [String]
     public let imageURL: URL?
+    /// Optional external form/demo page. Separate from GIF `imageURL`.
+    public let demoURL: URL?
     public let currentE1RMKilograms: Double?
     public let previousSets: [ExercisePreviousSetRow]
     public let e1RMHistory: [ExerciseE1RMHistoryRow]
 
     public var hasFormContent: Bool {
         let hasInstruction = !(instructionText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
-        return hasInstruction || !coachingCues.isEmpty || imageURL != nil
+        return hasInstruction || !coachingCues.isEmpty || imageURL != nil || demoURL != nil
     }
 
     public init(
@@ -53,6 +55,7 @@ public struct ExerciseHistoryModel: Sendable, Hashable, Equatable {
         instructionText: String? = nil,
         coachingCues: [String] = [],
         imageURL: URL? = nil,
+        demoURL: URL? = nil,
         currentE1RMKilograms: Double?,
         previousSets: [ExercisePreviousSetRow],
         e1RMHistory: [ExerciseE1RMHistoryRow]
@@ -61,6 +64,7 @@ public struct ExerciseHistoryModel: Sendable, Hashable, Equatable {
         self.instructionText = instructionText
         self.coachingCues = coachingCues
         self.imageURL = imageURL
+        self.demoURL = demoURL
         self.currentE1RMKilograms = currentE1RMKilograms
         self.previousSets = previousSets
         self.e1RMHistory = e1RMHistory
@@ -75,6 +79,7 @@ public enum ExerciseHistorySnapshot {
             model.exerciseName,
             "## Form",
             "image=\(model.imageURL?.absoluteString ?? "nil")",
+            "demo=\(model.demoURL?.absoluteString ?? "nil")",
             "instruction=\(model.instructionText ?? "nil")"
         ]
 

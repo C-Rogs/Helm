@@ -155,7 +155,7 @@ Positioning (`README.md`, `Docs/DESIGN-SYSTEM.md`): *closed-loop adaptive prescr
 
 **Still deferred:**
 
-- Wave 5: demo links, pattern teasers, optional step goal (see `SIGNAL-PRODUCT-CATCHUP.md`)
+- Recipe/lesson CMS (explicit non-goal)
 
 **Wave 1 rituals (in tree):**
 
@@ -178,6 +178,12 @@ Positioning (`README.md`, `Docs/DESIGN-SYSTEM.md`): *closed-loop adaptive prescr
 - Exercise detail sheet (form cues + gif + history)
 - Rest coaching lines during timer; expiry via proactive prefs
 - Session quartile toasts + finish checkpoint recap (PR path unchanged)
+
+**Wave 5 thin content (in tree):**
+
+- Optional exercise `demoURL` on FORM (Open demo)
+- Dashboard pattern teaser → findings
+- Optional daily step goal (default off)
 
 Build command examples (historical):
 

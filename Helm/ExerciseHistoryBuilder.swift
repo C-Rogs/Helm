@@ -58,12 +58,22 @@ enum ExerciseHistoryBuilder {
             }
             return URL(string: raw)
         }()
+        let demoURL: URL? = {
+            guard let raw = summary?.demoURL?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !raw.isEmpty
+            else {
+                return nil
+            }
+            return URL(string: raw)
+        }()
 
         return ExerciseHistoryModel(
             exerciseName: displayName,
             instructionText: instructionText,
             coachingCues: coachingCues,
             imageURL: imageURL,
+            demoURL: demoURL,
             currentE1RMKilograms: currentE1RM,
             previousSets: previousSets,
             e1RMHistory: e1RMRows

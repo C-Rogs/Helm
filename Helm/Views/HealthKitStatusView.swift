@@ -25,11 +25,56 @@ struct AppleHealthSettingsView: View {
     @State private var latestBodyFatText = "None stored"
     @State private var bodyFatTrace = BodyFatQueryTrace.empty
     @State private var showsAdvancedDetail = false
+    @State private var stepGoalEnabled = StepGoalPreferences.isEnabled()
+    @State private var stepGoalCount = StepGoalPreferences.goalCount()
 
     private let presenceChecker = HealthKitDataPresenceChecker()
 
     private var isConnected: Bool {
         status.connectionState == .connected
+    }
+
+    private var stepGoalSection: some View {
+        Section {
+            Toggle("Daily step goal", isOn: $stepGoalEnabled)
+                .helmListRowChrome()
+                .onChange(of: stepGoalEnabled) { _, newValue in
+                    StepGoalPreferences.setEnabled(newValue)
+                    if newValue {
+                        stepGoalCount = StepGoalPreferences.goalCount()
+                    }
+                    HapticEngine.shared.play(.selection)
+                }
+
+            if stepGoalEnabled {
+                Stepper(
+                    value: $stepGoalCount,
+                    in: StepGoalPreferences.minGoalCount ... StepGoalPreferences.maxGoalCount,
+                    step: StepGoalPreferences.goalStep
+                ) {
+                    Text("\(stepGoalCount) steps")
+                        .helmType(.body)
+                }
+                .helmListRowChrome()
+                .onChange(of: stepGoalCount) { _, newValue in
+                    StepGoalPreferences.setGoalCount(newValue)
+                    let snapped = StepGoalPreferences.goalCount()
+                    if snapped != newValue {
+                        stepGoalCount = snapped
+                    }
+                    HapticEngine.shared.play(.selection)
+                }
+            }
+        } header: {
+            Text("Steps")
+        } footer: {
+            Text(
+                stepGoalEnabled
+                    ? "Dashboard greeting shows today versus this target. Off keeps a plain step count."
+                    : "Optional. Off by default. When on, Dashboard shows steps versus the target."
+            )
+            .helmType(.body, color: HelmColor.fgMuted)
+        }
     }
 
     var body: some View {
@@ -39,6 +84,8 @@ struct AppleHealthSettingsView: View {
                     .helmType(.body, color: HelmColor.fgMuted)
                     .helmListRowChrome()
             }
+
+            stepGoalSection
 
             Section("Status") {
                 HelmStatusRow(

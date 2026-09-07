@@ -7,6 +7,7 @@ public struct ExerciseSummary: Sendable, Hashable, Codable, Identifiable {
     public let isCustom: Bool
     public let primaryMuscleGroup: String?
     public let gifURL: String?
+    public let demoURL: String?
 
     public init(
         id: String,
@@ -14,7 +15,8 @@ public struct ExerciseSummary: Sendable, Hashable, Codable, Identifiable {
         exerciseMode: ExerciseMode,
         isCustom: Bool,
         primaryMuscleGroup: String? = nil,
-        gifURL: String? = nil
+        gifURL: String? = nil,
+        demoURL: String? = nil
     ) {
         self.id = id
         self.displayName = displayName
@@ -22,6 +24,7 @@ public struct ExerciseSummary: Sendable, Hashable, Codable, Identifiable {
         self.isCustom = isCustom
         self.primaryMuscleGroup = primaryMuscleGroup
         self.gifURL = gifURL
+        self.demoURL = demoURL
     }
 }
 

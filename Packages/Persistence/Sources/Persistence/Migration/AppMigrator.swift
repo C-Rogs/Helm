@@ -94,6 +94,9 @@ struct AppMigrator {
         if version >= 27 {
             PatternFindingSchemaMigration.register(on: &migrator)
         }
+        if version >= 28 {
+            ExerciseDemoURLSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

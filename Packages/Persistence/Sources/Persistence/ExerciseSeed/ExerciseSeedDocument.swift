@@ -70,6 +70,8 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
     public let instructionText: String?
     public let coachingCues: [String]?
     public let imageURL: String?
+    /// Optional external form/demo page. Separate from GIF `imageURL`.
+    public let demoURL: String?
     public let isPickerDefault: Bool?
     public let pickerRank: Int?
     public let isHevyLibrary: Bool?
@@ -78,7 +80,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
     enum CodingKeys: String, CodingKey {
         case id, canonicalName, displayName, aliases, exerciseMode, equipment
         case primaryMuscleGroup, secondaryMuscleGroups, movementPattern
-        case sourceDatasetID, instructionText, coachingCues, imageURL
+        case sourceDatasetID, instructionText, coachingCues, imageURL, demoURL
         case isPickerDefault, pickerRank, isHevyLibrary, evidence
     }
 
@@ -96,6 +98,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         instructionText: String? = nil,
         coachingCues: [String]? = nil,
         imageURL: String? = nil,
+        demoURL: String? = nil,
         isPickerDefault: Bool? = nil,
         pickerRank: Int? = nil,
         isHevyLibrary: Bool? = nil,
@@ -114,6 +117,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         self.instructionText = instructionText
         self.coachingCues = coachingCues
         self.imageURL = imageURL
+        self.demoURL = demoURL
         self.isPickerDefault = isPickerDefault
         self.pickerRank = pickerRank
         self.isHevyLibrary = isHevyLibrary
@@ -135,6 +139,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         instructionText = try container.decodeIfPresent(String.self, forKey: .instructionText)
         coachingCues = try container.decodeIfPresent([String].self, forKey: .coachingCues)
         imageURL = try container.decodeIfPresent(String.self, forKey: .imageURL)
+        demoURL = try container.decodeIfPresent(String.self, forKey: .demoURL)
         isPickerDefault = try container.decodeIfPresent(Bool.self, forKey: .isPickerDefault)
         pickerRank = try container.decodeIfPresent(Int.self, forKey: .pickerRank)
         isHevyLibrary = try container.decodeIfPresent(Bool.self, forKey: .isHevyLibrary)
@@ -175,6 +180,7 @@ public struct ExerciseSeedEntry: Codable, Sendable, Equatable {
         try container.encodeIfPresent(instructionText, forKey: .instructionText)
         try container.encodeIfPresent(coachingCues, forKey: .coachingCues)
         try container.encodeIfPresent(imageURL, forKey: .imageURL)
+        try container.encodeIfPresent(demoURL, forKey: .demoURL)
         try container.encodeIfPresent(isPickerDefault, forKey: .isPickerDefault)
         try container.encodeIfPresent(pickerRank, forKey: .pickerRank)
         try container.encodeIfPresent(isHevyLibrary, forKey: .isHevyLibrary)

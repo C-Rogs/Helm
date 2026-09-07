@@ -89,6 +89,23 @@ struct ExerciseHistorySheet: View {
                 }
             }
 
+            if let demoURL = model.demoURL {
+                Card {
+                    Link(destination: demoURL) {
+                        HStack(spacing: HelmSpacing.sm) {
+                            Text("Open demo")
+                                .helmType(.body, color: HelmColor.accent)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            Image(systemName: "arrow.up.right")
+                                .font(.system(size: 13, weight: .semibold))
+                                .foregroundStyle(HelmColor.fgMuted)
+                        }
+                        .padding(.vertical, HelmSpacing.xxs)
+                    }
+                    .accessibilityLabel("Open demo in Safari")
+                }
+            }
+
             Card {
                 VStack(alignment: .leading, spacing: HelmSpacing.sm) {
                     HelmSectionEyebrow("INSTRUCTION")

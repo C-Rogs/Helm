@@ -1,5 +1,4 @@
 import DesignSystem
-import HealthKitIngest
 import Persistence
 import SwiftUI
 
@@ -8,7 +7,6 @@ struct DashboardTrendsSection: View {
     @Environment(\.helmSkin) private var skin
     @Bindable private var controller = TrendsBootstrap.controller
     @State private var isShowingExercisePicker = false
-    @State private var patternTeaser: String?
 
     private var persistence: PersistenceStore { PersistenceBootstrap.persistenceStore }
 
@@ -39,14 +37,12 @@ struct DashboardTrendsSection: View {
             .accessibilityLabel("Trends and patterns")
 
             trendCards
-            patternsLink
+            DashboardPatternTeaser()
         }
         .task {
             await AppTabRouter.shared.preferChromeOverContentLoad()
             guard !Task.isCancelled else { return }
-            await ProactiveBootstrap.refreshPatterns()
             controller.refresh()
-            reloadPatternTeaser()
         }
         .sheet(isPresented: $isShowingExercisePicker) {
             ExercisePickerView(
@@ -96,38 +92,6 @@ struct DashboardTrendsSection: View {
         }
     }
 
-    private var patternsLink: some View {
-        NavigationLink {
-            PatternFindingsView()
-        } label: {
-            Card {
-                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-                    HStack {
-                        HelmSectionEyebrow("PATTERNS")
-                        Spacer()
-                        HelmIconView(.chevronRight, context: .inline)
-                            .foregroundStyle(HelmColor.fgMuted)
-                    }
-                    if let patternTeaser {
-                        Text(patternTeaser)
-                            .helmType(.label)
-                            .multilineTextAlignment(.leading)
-                    } else {
-                        Text("Need more days. Associations ship once both arms have at least 12 days.")
-                            .helmType(.body, color: HelmColor.fgSecondary)
-                            .multilineTextAlignment(.leading)
-                    }
-                }
-            }
-        }
-        .buttonStyle(.helmPressableCard)
-        .accessibilityLabel(patternTeaser.map { "Patterns. \($0)" } ?? "Patterns. Need more days")
-    }
-
-    private func reloadPatternTeaser() {
-        let cards = (try? PatternEvaluationService(store: persistence).cardModels()) ?? []
-        patternTeaser = cards.first?.headline
-    }
 }
 
 #Preview {

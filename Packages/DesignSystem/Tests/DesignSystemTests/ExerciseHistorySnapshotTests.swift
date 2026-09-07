@@ -42,6 +42,7 @@ private let benchSnapshotText = """
 Bench Press (Barbell)
 ## Form
 image=https://example.com/bench.gif
+demo=https://exrx.net/WeightExercises/PectoralSternal/BBBenchPress
 instruction=Lie on a flat bench, plant feet, and press the bar from mid-chest to lockout.
 - cue 1: Brace hard and pull shoulder blades together.
 - cue 2: Drive through your heels and keep your chest proud.
@@ -64,6 +65,7 @@ private let coldStartSnapshotText = """
 Lat Pulldown (Cable)
 ## Form
 image=nil
+demo=nil
 instruction=nil
 cues=none
 ## Current e1RM

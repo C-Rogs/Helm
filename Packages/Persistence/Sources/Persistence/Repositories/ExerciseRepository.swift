@@ -82,7 +82,7 @@ public struct ExerciseRepository: Sendable {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group, gif_url
+                    SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group, gif_url, demo_url
                     FROM exercise
                     WHERE deleted_at IS NULL AND id IN (\(placeholders))
                     """,
@@ -204,7 +204,7 @@ public struct ExerciseRepository: Sendable {
         try pool.read { db in
             var sql = """
                 SELECT DISTINCT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group,
-                       e.is_picker_default, e.picker_rank, e.sort_name, e.gif_url
+                       e.is_picker_default, e.picker_rank, e.sort_name, e.gif_url, e.demo_url
                 FROM exercise e
                 LEFT JOIN exercise_alias a ON a.exercise_id = e.id
                 WHERE e.deleted_at IS NULL
@@ -251,7 +251,7 @@ public struct ExerciseRepository: Sendable {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group, e.gif_url
+                    SELECT e.id, e.display_name, e.exercise_mode, e.is_custom, e.primary_muscle_group, e.gif_url, e.demo_url
                     FROM exercise e
                     INNER JOIN workout_session_exercise wse ON wse.exercise_id = e.id
                     INNER JOIN workout_session ws ON ws.id = wse.workout_session_id
@@ -353,7 +353,7 @@ public struct ExerciseRepository: Sendable {
             let rows = try Row.fetchAll(
                 db,
                 sql: """
-                    SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group, gif_url
+                    SELECT id, display_name, exercise_mode, is_custom, primary_muscle_group, gif_url, demo_url
                     FROM exercise
                     WHERE deleted_at IS NULL AND is_custom = 1
                     ORDER BY sort_name ASC
@@ -536,7 +536,8 @@ public struct ExerciseRepository: Sendable {
             exerciseMode: mode,
             isCustom: isCustom,
             primaryMuscleGroup: row["primary_muscle_group"],
-            gifURL: row["gif_url"]
+            gifURL: row["gif_url"],
+            demoURL: row["demo_url"]
         )
     }
 }

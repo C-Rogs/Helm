@@ -143,9 +143,9 @@ public struct ExerciseSeedImporter: Sendable {
                 INSERT INTO exercise (
                     id, canonical_name, display_name, exercise_mode, equipment_type,
                     primary_muscle_group, secondary_muscle_groups_json, is_custom, sort_name,
-                    instruction_text, coaching_cues_json, gif_url, source_dataset_id, is_hevy_library, is_picker_default,
+                    instruction_text, coaching_cues_json, gif_url, demo_url, source_dataset_id, is_hevy_library, is_picker_default,
                     picker_rank, movement_pattern, evidence_json, created_at, updated_at, deleted_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NULL)
                 ON CONFLICT(id) DO UPDATE SET
                     canonical_name = excluded.canonical_name,
                     display_name = excluded.display_name,
@@ -159,6 +159,7 @@ public struct ExerciseSeedImporter: Sendable {
                         ELSE exercise.coaching_cues_json
                     END,
                     gif_url = COALESCE(excluded.gif_url, exercise.gif_url),
+                    demo_url = COALESCE(excluded.demo_url, exercise.demo_url),
                     source_dataset_id = excluded.source_dataset_id,
                     is_hevy_library = MAX(exercise.is_hevy_library, excluded.is_hevy_library),
                     sort_name = excluded.sort_name,
@@ -182,6 +183,7 @@ public struct ExerciseSeedImporter: Sendable {
                 entry.instructionText,
                 coachingCuesJSON,
                 entry.imageURL,
+                entry.demoURL,
                 entry.sourceDatasetID,
                 isHevyLibrary,
                 isPickerDefault,

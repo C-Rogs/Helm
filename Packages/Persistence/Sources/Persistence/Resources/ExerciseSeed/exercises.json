@@ -1,5 +1,5 @@
 {
-  "seedVersion": 11,
+  "seedVersion": 12,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -919,7 +919,8 @@
         "Maintain tripod foot contact through every rep."
       ],
       "sourceDatasetID": "Barbell_Squat",
-      "pickerRank": 1
+      "pickerRank": 1,
+      "demoURL": "https://exrx.net/WeightExercises/Quadriceps/BBSquat"
     },
     {
       "id": "seed-dumbbell-lateral-raise",
@@ -969,7 +970,8 @@
         "Lower under control to full extension."
       ],
       "sourceDatasetID": "Weighted_Pull_Ups",
-      "pickerRank": 3
+      "pickerRank": 3,
+      "demoURL": "https://exrx.net/WeightExercises/LatissimusDorsi/BWPullup"
     },
     {
       "id": "seed-bench-press",
@@ -997,7 +999,8 @@
         "Press up and slightly back while keeping glutes on the bench."
       ],
       "sourceDatasetID": "Barbell_Bench_Press_-_Medium_Grip",
-      "pickerRank": 4
+      "pickerRank": 4,
+      "demoURL": "https://exrx.net/WeightExercises/PectoralSternal/BBBenchPress"
     },
     {
       "id": "seed-ez-bar-curl",

@@ -23,7 +23,7 @@
 | 2 | Journey: Progress tab, recomp card, onboarding rewrite, phase narrative | **In tree** - Progress 5th tab + hub; `PhaseNarrativeFormatter` + `RecompStoryCard`; onboarding Welcome → plan → body → Health → ready (Hevy/backfill → Settings) |
 | 3 | Modifiers: Your-plan strip, muscle prioritizer (real volume), warm empties, inline explain | **In tree** - Train Your-plan strip → PlanBuilder; PlanKit +20% focus redistrib (1–3 muscles) + chip picker; warm empties; Explain on Dashboard ARC + Train volume |
 | 4 | Form + celebration: exercise detail sheet, rest coaching, milestones | **In tree** - FORM|HISTORY exercise sheet; RestCoachingPolicy under UP NEXT + expiry prefs; quartile accessory toast (not prHit) + finish checkpoints |
-| 5 | Thin content: demo links, pattern teasers, optional step goal; skip recipe CMS | Pending |
+| 5 | Thin content: demo links, pattern teasers, optional step goal; skip recipe CMS | **In tree** - optional `demoURL` on FORM; Dashboard pattern teaser; optional step goal (Settings → Apple Health) |
 
 ## Non-goals
 

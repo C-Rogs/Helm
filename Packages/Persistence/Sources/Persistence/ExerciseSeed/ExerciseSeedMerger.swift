@@ -8,8 +8,8 @@ struct ExerciseSeedMergeResult: Sendable, Equatable {
 
 enum ExerciseSeedMerger {
     /// Overlay rows keep their own ids. `sourceDatasetID` only copies GIF /
-    /// instructions off the Free Exercise DB row so hide-lists cannot delete
-    /// the Hevy-named overlay.
+    /// demo URL / instructions off the Free Exercise DB row so hide-lists cannot
+    /// delete the Hevy-named overlay.
     static func merge(catalog: [ExerciseSeedEntry], overlay: [ExerciseSeedEntry]) -> ExerciseSeedMergeResult {
         guard !overlay.isEmpty else {
             return ExerciseSeedMergeResult(
@@ -81,6 +81,7 @@ enum ExerciseSeedMerger {
             instructionText: overlay.instructionText ?? catalogMedia?.instructionText ?? base.instructionText,
             coachingCues: mergedCoachingCues(base: base.coachingCues, overlay: overlay.coachingCues),
             imageURL: overlay.imageURL ?? catalogMedia?.imageURL ?? base.imageURL,
+            demoURL: overlay.demoURL ?? catalogMedia?.demoURL ?? base.demoURL,
             isPickerDefault: overlay.isPickerDefault ?? base.isPickerDefault,
             pickerRank: overlay.pickerRank ?? base.pickerRank,
             isHevyLibrary: overlay.isHevyLibrary ?? base.isHevyLibrary,

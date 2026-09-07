@@ -23,6 +23,9 @@ struct DashboardView: View {
     @State private var sleepSummary: SleepNightSummary?
     @State private var showSettings = false
     @State private var todayStepCount: Int?
+    @AppStorage(StepGoalPreferences.isEnabledKey) private var stepGoalEnabled = false
+    @AppStorage(StepGoalPreferences.goalCountKey) private var stepGoalCount =
+        StepGoalPreferences.defaultGoalCount
     @State private var moreBodyExpanded = true
     @State private var phaseNarrative: String?
     @State private var recompStory: RecompStory?
@@ -65,8 +68,10 @@ struct DashboardView: View {
                     }
                     progressionTeaserCard
                         .helmStaggeredAppear(index: 8)
-                    moreBodySection
+                    DashboardPatternTeaser()
                         .helmStaggeredAppear(index: 9)
+                    moreBodySection
+                        .helmStaggeredAppear(index: 10)
 
                     Button {
                         chatController.requestCoachHandoff(prompt: "What should I focus on today?")
@@ -74,7 +79,7 @@ struct DashboardView: View {
                         Label("Ask Coach", helmIcon: .chat, context: .inline)
                     }
                     .buttonStyle(.helmSecondary)
-                    .helmStaggeredAppear(index: 10)
+                    .helmStaggeredAppear(index: 11)
                 }
                 .helmScreenPadding()
             }
@@ -326,9 +331,15 @@ struct DashboardView: View {
                     .accessibilityLabel(phaseNarrative)
             }
             if let todayStepCount {
-                Text("\(todayStepCount) steps")
+                // Observe AppStorage so Settings toggles refresh this readout.
+                let _ = (stepGoalEnabled, stepGoalCount)
+                Text(StepGoalPreferences.greetingStepsLine(stepCount: todayStepCount))
                     .helmType(.monoTag, color: HelmColor.fgMuted)
-                    .accessibilityLabel("\(todayStepCount) steps today")
+                    .accessibilityLabel(
+                        StepGoalPreferences.greetingStepsAccessibilityLabel(
+                            stepCount: todayStepCount
+                        )
+                    )
             }
         }
     }

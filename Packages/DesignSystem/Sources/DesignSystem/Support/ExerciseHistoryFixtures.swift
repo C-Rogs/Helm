@@ -10,6 +10,7 @@ public extension ExerciseHistoryModel {
             "Press up and slightly back."
         ],
         imageURL: URL(string: "https://example.com/bench.gif"),
+        demoURL: URL(string: "https://exrx.net/WeightExercises/PectoralSternal/BBBenchPress"),
         currentE1RMKilograms: 102.5,
         previousSets: [
             ExercisePreviousSetRow(
@@ -46,6 +47,7 @@ public extension ExerciseHistoryModel {
         instructionText: nil,
         coachingCues: [],
         imageURL: nil,
+        demoURL: nil,
         currentE1RMKilograms: nil,
         previousSets: [
             ExercisePreviousSetRow(
