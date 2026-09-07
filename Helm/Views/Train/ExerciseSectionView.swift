@@ -118,7 +118,7 @@ struct ExerciseSectionView: View {
                         }
                         .buttonStyle(.helmPressable)
                         .disabled(isReorderMode)
-                        .accessibilityLabel("View history for \(displayName)")
+                        .accessibilityLabel("View details for \(displayName)")
 
                         Button {
                             onEditRest()

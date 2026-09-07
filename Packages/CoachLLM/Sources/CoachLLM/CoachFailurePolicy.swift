@@ -15,6 +15,8 @@ public enum CoachProviderError: Error, Sendable, Equatable {
             .rateLimited
         case 408, 504:
             .timeout
+        case 500, 502, 503:
+            .unavailable("Coach is temporarily unavailable. Try again.")
         default:
             .requestFailed("HTTP \(statusCode)")
         }

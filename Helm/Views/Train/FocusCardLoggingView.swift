@@ -26,12 +26,16 @@ struct FocusCardLoggingView: View {
             exerciseStrip
                 .frame(height: exerciseStripHeight)
 
-            ScrollView {
-                VStack(spacing: HelmSpacing.sm) {
-                    cardArea
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(spacing: HelmSpacing.sm) {
+                        cardArea
+                    }
+                    .padding(.horizontal, HelmSpacing.md)
+                    .padding(.bottom, HelmSpacing.md)
+                    .helmVerticalScrollContentWidth(geo.size.width)
                 }
-                .padding(.horizontal, HelmSpacing.md)
-                .padding(.bottom, HelmSpacing.md)
+                .helmVerticalScrollContainer()
             }
         }
         .onAppear {
@@ -198,6 +202,9 @@ struct FocusCardLoggingView: View {
                                     advanceToNextSet()
                                 }
                             }
+                        },
+                        onOpenDetail: {
+                            controller.openExerciseHistory(sessionExerciseID: currentExercise.id)
                         }
                     )
                     .id("exercise-\(currentExercise.id)-set-\(currentSetIndex)")

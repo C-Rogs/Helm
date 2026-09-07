@@ -261,6 +261,8 @@ public final class LiveGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
             return .rateLimited
         case 408, 504:
             return .timeout
+        case 500, 502, 503:
+            return .unavailable("Coach is temporarily unavailable. Try again.")
         default:
             return .requestFailed(errorDetail(statusCode: statusCode, data: data))
         }

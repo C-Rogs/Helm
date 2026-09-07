@@ -204,6 +204,14 @@ public final class PrescriptionService {
         try await engine.computeSession(for: today(), readiness: readiness, busyDays: lastBusyDays)
     }
 
+    public func prescription(for day: HelmDay, readiness: ReadinessScore?) async throws -> PrescribedSession {
+        try await engine.computeSession(for: day, readiness: readiness, busyDays: lastBusyDays)
+    }
+
+    public func dashboardState(for day: HelmDay, readiness: ReadinessScore?) async throws -> PrescriptionDashboardState {
+        try await engine.dashboardState(for: day, readiness: readiness, busyDays: lastBusyDays)
+    }
+
     private func today(calendar: Calendar = .current, cutoff: DayCutoff = .default) -> HelmDay {
         HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
     }
@@ -370,8 +378,13 @@ public actor PlanPrescriptionEngine {
             for: day
         )
 
+        // Always rewrite the plan from today (or earlier if computing a past day).
+        // Starting persist at a future day would filter out today/intervening rows and
+        // `replacePlannedWorkouts` would wipe them - breaks week-ahead preview/start (CAM-39).
+        let todayDay = HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
+        let persistStart = min(day, todayDay)
         try persistPlannedWorkouts(
-            startingAt: day,
+            startingAt: persistStart,
             settings: settings,
             history: history,
             muscleMaps: muscleMaps,

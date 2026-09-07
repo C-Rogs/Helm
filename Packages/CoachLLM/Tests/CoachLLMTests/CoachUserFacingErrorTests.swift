@@ -17,6 +17,21 @@ struct CoachUserFacingErrorTests {
         #expect(degraded.userMessage == "Coach is cooling down. Numbers and logging still work.")
     }
 
+    @Test("HTTP 503 maps to unavailable without raw status spam")
+    func http503Unavailable() {
+        let error = CoachProviderError.fromHTTPStatusCode(503)
+        #expect(error == .unavailable("Coach is temporarily unavailable. Try again."))
+        #expect(
+            CoachUserFacingError.message(for: error)
+                == "Coach is temporarily unavailable. Try again."
+        )
+        let degraded = CoachFailurePolicy.degradedState(for: error)
+        #expect(degraded.reason == .providerUnavailable)
+        #expect(degraded.userMessage == "Coach is temporarily unavailable. Try again.")
+        #expect(!degraded.userMessage.contains("503"))
+        #expect(!degraded.userMessage.contains("HTTP"))
+    }
+
     @Test("structured output errors have readable messages")
     func structuredOutputMessages() {
         #expect(

@@ -5,6 +5,9 @@ import SwiftUI
 
 struct TodaysSessionPreviewSheet: View {
     let summary: PrescribedSessionSummary
+    var navigationTitle: String = "Today's session"
+    var startButtonTitle: String = "Start today's session"
+    var showsDiscuss: Bool = true
     var onStart: () -> Void
     var onDiscuss: () -> Void
 
@@ -50,7 +53,7 @@ struct TodaysSessionPreviewSheet: View {
                         }
                     }
 
-                    Button("Start today's session") {
+                    Button(startButtonTitle) {
                         onStart()
                     }
                     .buttonStyle(.helmPrimary)
@@ -59,7 +62,7 @@ struct TodaysSessionPreviewSheet: View {
                 .padding(.bottom, HelmLayout.trainScrollBottomInset)
             }
             .helmScreenBackground()
-            .navigationTitle("Today's session")
+            .navigationTitle(navigationTitle)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -67,9 +70,11 @@ struct TodaysSessionPreviewSheet: View {
                         dismiss()
                     }
                 }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button("Discuss") {
-                        onDiscuss()
+                if showsDiscuss {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        Button("Discuss") {
+                            onDiscuss()
+                        }
                     }
                 }
             }

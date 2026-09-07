@@ -13,12 +13,12 @@ public struct TrainSessionProgress: Sendable, Hashable, Equatable {
 
     public static func from(snapshot: ActiveSessionSnapshot, now: Date = Date()) -> TrainSessionProgress {
         let elapsed = max(0, Int(now.timeIntervalSince(snapshot.session.startedAt)))
-        let allSets = snapshot.session.exercises.flatMap(\.sets)
-        let completed = allSets.filter { $0.status == .completed }.count
+        let workingSets = snapshot.session.exercises.flatMap(\.sets).filter { !$0.setType.isWarmup }
+        let completed = workingSets.filter { $0.status == .completed }.count
         return TrainSessionProgress(
             elapsedSeconds: elapsed,
             completedSetCount: completed,
-            totalSetCount: allSets.count
+            totalSetCount: workingSets.count
         )
     }
 }

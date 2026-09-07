@@ -109,11 +109,38 @@ struct ManualRestTimerSheet: View {
                         remainingSeconds: remaining,
                         totalSeconds: totalSeconds
                     )
-                    RadialCountdownRing(
+                    let phase = RestCoachingPolicy.phase(
                         remainingSeconds: remaining,
-                        remainingFraction: fraction
+                        totalSeconds: totalSeconds
                     )
-                    .frame(maxWidth: 200)
+                    let line = remaining > 0
+                        ? RestCoachingPolicy.line(
+                            phase: phase,
+                            upNextName: controller.upNextExerciseName,
+                            formCue: controller.restFormCue
+                        )
+                        : nil
+
+                    VStack(spacing: HelmSpacing.sm) {
+                        RadialCountdownRing(
+                            remainingSeconds: remaining,
+                            remainingFraction: fraction
+                        )
+                        .frame(maxWidth: 200)
+
+                        if let upNext = controller.upNextExerciseName, !upNext.isEmpty {
+                            Text("UP NEXT · \(upNext)")
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                                .lineLimit(1)
+                        }
+
+                        if let line, !line.isEmpty {
+                            Text(line)
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .multilineTextAlignment(.center)
+                                .lineLimit(2)
+                        }
+                    }
                 }
             }
 

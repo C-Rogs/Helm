@@ -121,5 +121,21 @@ struct WorkoutFinishSummaryBuilderTests {
         #expect(summary.musicSegments.count == 1)
         #expect(summary.musicSegments[0].bpm == 128)
         #expect(summary.musicSegments[0].displayBPM == 128)
+        #expect(summary.milestoneRecap == nil)
+    }
+
+    @Test("Attaches milestone recap without clearing compliance")
+    func attachesMilestoneRecap() {
+        let base = WorkoutFinishSummary(
+            setCount: 8,
+            totalVolumeKilograms: 2_000,
+            estimatedTRIMP: 50,
+            durationMinutes: 40,
+            muscleMovements: [],
+            readinessTeaser: "Moderate load; readiness should hold steady."
+        )
+        let summary = base.withMilestoneRecap("Checkpoints hit: Quarter done, Halfway.")
+        #expect(summary.milestoneRecap == "Checkpoints hit: Quarter done, Halfway.")
+        #expect(summary.readinessTeaser.contains("Moderate"))
     }
 }

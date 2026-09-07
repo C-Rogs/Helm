@@ -63,6 +63,11 @@ public struct WeekAheadScheduleRow: Sendable, Hashable, Equatable, Identifiable 
     public var isRestDay: Bool {
         status == .rest
     }
+
+    /// Upcoming / today / shifted training rows can be opened and started early.
+    public var canStartAsTodaysSession: Bool {
+        !isRestDay && (status == .today || status == .upcoming || status == .shifted)
+    }
 }
 
 public struct WeekAheadScheduleModel: Sendable, Hashable, Equatable {

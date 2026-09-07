@@ -20,6 +20,7 @@ struct TrainView: View {
     @State private var restEditorExerciseID: String?
     @State private var isShowingTodaysSession = false
     @State private var discussAfterPreviewDismiss = false
+    @State private var plannedDayPreview: PlannedDayPreview?
     @State private var measuredChromeHeight: CGFloat = 0
     @State private var viewportHeight: CGFloat = 0
     @State private var suppressChromeAnimations = false
@@ -143,91 +144,95 @@ struct TrainView: View {
     }
 
     private var idleState: some View {
-        ScrollView {
-            HelmScreenStack {
-                if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
-                    prescriptionIdleCard(summary)
-                } else {
-                    genericIdleCard(rest: PlanBootstrap.prescriptionService.state.restDay)
-                }
-
-                TrainPlanStrip(phaseNarrative: phaseNarrative)
-
-                weekAheadSection
-
-                Button {
-                    isShowingTrainingWeekReview = true
-                } label: {
-                    Card {
-                        HStack {
-                            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                                HelmSectionEyebrow("WEEK REVIEW", showsArcMark: false)
-                                Text(
-                                    trainingWeekReviewDue
-                                        ? "Volume vs target, gaps, and next sessions"
-                                        : "Review this week's volume and next sessions"
-                                )
-                                .helmType(.body, color: HelmColor.fgSecondary)
-                            }
-                            Spacer()
-                            if trainingWeekReviewDue {
-                                Text("Due")
-                                    .helmType(.monoTag, color: HelmColor.accent)
-                                    .padding(.horizontal, HelmSpacing.xs)
-                                    .padding(.vertical, HelmSpacing.xxs)
-                                    .background(HelmColor.accent.opacity(0.12), in: Capsule())
-                            }
-                            HelmIconView(.chevronRight, context: .inline)
-                                .foregroundStyle(HelmColor.fgMuted)
-                        }
+        GeometryReader { geo in
+            ScrollView {
+                HelmScreenStack {
+                    if let summary = controller.prescriptionSummary, !summary.exercises.isEmpty {
+                        prescriptionIdleCard(summary)
+                    } else {
+                        genericIdleCard(rest: PlanBootstrap.prescriptionService.state.restDay)
                     }
-                }
-                .buttonStyle(.helmPressableCard)
-                .accessibilityLabel(
-                    trainingWeekReviewDue
-                        ? "Training week review, due"
-                        : "Training week review"
-                )
 
-                NavigationLink {
-                    ProgressionDetailContainer()
-                } label: {
-                    Card {
-                        HStack {
-                            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                                HelmSectionEyebrow("PROGRESSION", showsArcMark: false)
-                                Text("Phase, volume landmarks, and load scheme")
+                    TrainPlanStrip(phaseNarrative: phaseNarrative)
+
+                    weekAheadSection
+
+                    Button {
+                        isShowingTrainingWeekReview = true
+                    } label: {
+                        Card {
+                            HStack {
+                                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                                    HelmSectionEyebrow("WEEK REVIEW", showsArcMark: false)
+                                    Text(
+                                        trainingWeekReviewDue
+                                            ? "Volume vs target, gaps, and next sessions"
+                                            : "Review this week's volume and next sessions"
+                                    )
                                     .helmType(.body, color: HelmColor.fgSecondary)
-                                if let phaseNarrative {
-                                    Text(phaseNarrative)
-                                        .helmType(.monoTag, color: HelmColor.fgMuted)
                                 }
+                                Spacer()
+                                if trainingWeekReviewDue {
+                                    Text("Due")
+                                        .helmType(.monoTag, color: HelmColor.accent)
+                                        .padding(.horizontal, HelmSpacing.xs)
+                                        .padding(.vertical, HelmSpacing.xxs)
+                                        .background(HelmColor.accent.opacity(0.12), in: Capsule())
+                                }
+                                HelmIconView(.chevronRight, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
                             }
-                            Spacer()
-                            HelmIconView(.chevronRight, context: .inline)
-                                .foregroundStyle(HelmColor.fgMuted)
                         }
                     }
-                }
-                .buttonStyle(.helmPressableCard)
-
-                if !history.recentPersonalRecords.isEmpty {
-                    PersonalRecordsCelebrationView(
-                        records: history.recentPersonalRecords,
-                        exerciseName: history.displayName(for:)
+                    .buttonStyle(.helmPressableCard)
+                    .accessibilityLabel(
+                        trainingWeekReviewDue
+                            ? "Training week review, due"
+                            : "Training week review"
                     )
+
+                    NavigationLink {
+                        ProgressionDetailContainer()
+                    } label: {
+                        Card {
+                            HStack {
+                                VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                                    HelmSectionEyebrow("PROGRESSION", showsArcMark: false)
+                                    Text("Phase, volume landmarks, and load scheme")
+                                        .helmType(.body, color: HelmColor.fgSecondary)
+                                    if let phaseNarrative {
+                                        Text(phaseNarrative)
+                                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                                    }
+                                }
+                                Spacer()
+                                HelmIconView(.chevronRight, context: .inline)
+                                    .foregroundStyle(HelmColor.fgMuted)
+                            }
+                        }
+                    }
+                    .buttonStyle(.helmPressableCard)
+
+                    if !history.recentPersonalRecords.isEmpty {
+                        PersonalRecordsCelebrationView(
+                            records: history.recentPersonalRecords,
+                            exerciseName: history.displayName(for:)
+                        )
+                    }
+
+                    muscleVolumeBoardSection
+
+                    WorkoutTemplatesListView(history: history) { templateID in
+                        Task { await controller.startWorkout(fromTemplateID: templateID) }
+                    }
+
+                    WorkoutHistoryRecentSection(history: history)
                 }
-
-                muscleVolumeBoardSection
-
-                WorkoutTemplatesListView(history: history) { templateID in
-                    Task { await controller.startWorkout(fromTemplateID: templateID) }
-                }
-
-                WorkoutHistoryRecentSection(history: history)
+                .helmScreenPadding()
+                .padding(.bottom, HelmLayout.trainScrollBottomInset)
+                .helmVerticalScrollContentWidth(geo.size.width)
             }
-            .helmScreenPadding()
-            .padding(.bottom, HelmLayout.trainScrollBottomInset)
+            .helmVerticalScrollContainer()
         }
         .sheet(isPresented: $isShowingTodaysSession, onDismiss: {
             if discussAfterPreviewDismiss {
@@ -253,6 +258,20 @@ struct TrainView: View {
             TrainingWeekReviewLoader(
                 weekAhead: weekAheadStore.model,
                 onGotIt: recordTrainingWeekReview
+            )
+        }
+        .sheet(item: $plannedDayPreview) { preview in
+            TodaysSessionPreviewSheet(
+                summary: preview.summary,
+                navigationTitle: preview.dayLabel,
+                startButtonTitle: "Start this session today",
+                showsDiscuss: false,
+                onStart: {
+                    let day = preview.day
+                    plannedDayPreview = nil
+                    Task { await controller.startPlannedDayPrescription(day) }
+                },
+                onDiscuss: {}
             )
         }
         .sheet(isPresented: $isShowingVolumeExplain) {
@@ -408,11 +427,44 @@ struct TrainView: View {
     }
 
     private var weekAheadSection: some View {
-        WeekAheadScheduleSection(store: weekAheadStore) {
-            Task {
-                await controller.regenerateTodaysPrescription()
-                await weekAheadStore.refresh()
+        WeekAheadScheduleSection(
+            store: weekAheadStore,
+            onRegenerate: {
+                Task {
+                    await controller.regenerateTodaysPrescription()
+                    await weekAheadStore.refresh()
+                }
+            },
+            onSelectTrainingDay: { dayID in
+                Task { await openPlannedDayPreview(dayID: dayID) }
             }
+        )
+    }
+
+    private func openPlannedDayPreview(dayID: String) async {
+        guard let day = HelmDay(formatted: dayID) else { return }
+        if controller.hasActiveSession {
+            controller.errorMessage = WorkoutStartCoordinator.StartError.alreadyActive.localizedDescription
+            return
+        }
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        do {
+            let state = try await PlanBootstrap.prescriptionService.dashboardState(
+                for: day,
+                readiness: readiness
+            )
+            guard case let .prescribed(summary) = state, !summary.exercises.isEmpty else {
+                controller.errorMessage = "No prescription available for that day."
+                return
+            }
+            let dayLabel = weekAheadStore.model?
+                .chronologicalRows
+                .first(where: { $0.id == dayID })
+                .map { "\($0.dayLabel) · \($0.splitLabel)" }
+                ?? summary.title
+            plannedDayPreview = PlannedDayPreview(day: day, dayLabel: dayLabel, summary: summary)
+        } catch {
+            controller.errorMessage = error.localizedDescription
         }
     }
 
@@ -652,155 +704,159 @@ struct TrainView: View {
 
     private func tableLoggingContent(_ snapshot: ActiveSessionSnapshot) -> some View {
         ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
-                    HStack {
-                        TrainSessionHeaderView(
-                            startedAt: snapshot.session.startedAt,
-                            progress: TrainSessionProgress.from(snapshot: snapshot),
-                            watchLinkStatus: WatchCompanionLinkStatus.resolve(
-                                canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
-                                liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+            GeometryReader { geo in
+                ScrollView {
+                    VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        HStack {
+                            TrainSessionHeaderView(
+                                startedAt: snapshot.session.startedAt,
+                                progress: TrainSessionProgress.from(snapshot: snapshot),
+                                watchLinkStatus: WatchCompanionLinkStatus.resolve(
+                                    canDriveWatch: WatchReadinessBootstrap.coordinator.canDriveWatchCompanion,
+                                    liveBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay
+                                )
                             )
-                        )
 
-                        Spacer()
+                            Spacer()
 
-                        Button {
-                            trainPreferences.cardLoggingModeEnabled = true
-                        } label: {
-                            Image(systemName: "rectangle.grid.1x2")
-                                .font(.body)
-                                .foregroundStyle(HelmColor.fgSecondary)
-                                .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
-                                .contentShape(Rectangle())
-                        }
-                        .buttonStyle(.helmPressable)
-                        .accessibilityLabel("Switch to card view")
-                    }
-                    .padding(.horizontal, HelmSpacing.xs)
-
-                    // Only show the reconnect CTA when authorized but App Remote is down.
-                    // Connected sessions drop the chip so it doesn't eat table space (CAM-30).
-                    if controller.hasActiveSession, spotify.isAuthorized, !spotify.isConnected {
-                        Button {
-                            spotify.wakeSpotifyAndConnect()
-                        } label: {
-                            HStack(spacing: HelmSpacing.xxs) {
-                                Image(systemName: "music.note")
-                                    .font(.caption)
-                                Text(spotify.workoutMusicChipTitle)
-                                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+                            Button {
+                                trainPreferences.cardLoggingModeEnabled = true
+                            } label: {
+                                Image(systemName: "rectangle.grid.1x2")
+                                    .font(.body)
+                                    .foregroundStyle(HelmColor.fgSecondary)
+                                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                                    .contentShape(Rectangle())
                             }
-                            .padding(.horizontal, HelmSpacing.xs)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .buttonStyle(.helmPressable)
+                            .accessibilityLabel("Switch to card view")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(spotify.workoutMusicChipTitle)
-                        .accessibilityHint("Switches to Spotify so Helm can read now playing")
-                    }
+                        .padding(.horizontal, HelmSpacing.xs)
 
-                    if let notice = controller.watchCompanionNotice {
-                        Button {
-                            if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
-                                controller.retryWatchCompanionLaunch()
-                            } else {
-                                controller.dismissWatchCompanionNotice()
-                            }
-                        } label: {
-                            Text(notice)
-                                .helmType(.body, color: HelmColor.fgSecondary)
+                        // Only show the reconnect CTA when authorized but App Remote is down.
+                        // Connected sessions drop the chip so it doesn't eat table space (CAM-30).
+                        if controller.hasActiveSession, spotify.isAuthorized, !spotify.isConnected {
+                            Button {
+                                spotify.wakeSpotifyAndConnect()
+                            } label: {
+                                HStack(spacing: HelmSpacing.xxs) {
+                                    Image(systemName: "music.note")
+                                        .font(.caption)
+                                    Text(spotify.workoutMusicChipTitle)
+                                        .helmType(.monoTag, color: HelmColor.fgSecondary)
+                                }
                                 .padding(.horizontal, HelmSpacing.xs)
                                 .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(spotify.workoutMusicChipTitle)
+                            .accessibilityHint("Switches to Spotify so Helm can read now playing")
                         }
-                        .buttonStyle(.plain)
-                        .accessibilityLabel(notice)
-                    }
 
-                    if let banner = controller.adjustmentBanner {
-                        AdjustmentBanner(
-                            fromLabel: banner.fromLabel,
-                            toLabel: banner.toLabel,
-                            reason: banner.reason
-                        ) {
-                            Task { await controller.undoLastAdjustment() }
+                        if let notice = controller.watchCompanionNotice {
+                            Button {
+                                if notice.contains("retry") || notice.contains("Wake") || notice.contains("wake") {
+                                    controller.retryWatchCompanionLaunch()
+                                } else {
+                                    controller.dismissWatchCompanionNotice()
+                                }
+                            } label: {
+                                Text(notice)
+                                    .helmType(.body, color: HelmColor.fgSecondary)
+                                    .padding(.horizontal, HelmSpacing.xs)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                            .buttonStyle(.plain)
+                            .accessibilityLabel(notice)
                         }
-                        .transition(
-                            .asymmetric(
-                                insertion: .move(edge: .top).combined(with: .opacity),
-                                removal: .opacity
+
+                        if let banner = controller.adjustmentBanner {
+                            AdjustmentBanner(
+                                fromLabel: banner.fromLabel,
+                                toLabel: banner.toLabel,
+                                reason: banner.reason
+                            ) {
+                                Task { await controller.undoLastAdjustment() }
+                            }
+                            .transition(
+                                .asymmetric(
+                                    insertion: .move(edge: .top).combined(with: .opacity),
+                                    removal: .opacity
+                                )
                             )
+                        }
+
+                        if snapshot.session.exercises.isEmpty {
+                            Text("Add your first exercise to begin logging sets.")
+                                .helmType(.body, color: HelmColor.fgSecondary)
+                                .padding(.horizontal, HelmSpacing.xs)
+                        }
+
+                        ForEach(controller.exercisesForDisplay()) { exercise in
+                            exerciseSection(for: exercise)
+                        }
+                        .animation(
+                            HelmMotion.animation(
+                                HelmMotion.settleAnimation,
+                                reduceMotion: reduceMotion
+                            ),
+                            value: controller.reorderDraftIDs
+                        )
+
+                        if !controller.isReorderMode {
+                            Button {
+                                controller.isShowingExercisePicker = true
+                            } label: {
+                                Label("Add exercise", helmIcon: .plus, context: .inline)
+                            }
+                            .buttonStyle(.helmSecondary)
+                        }
+
+                        if controller.numpadTarget == nil, !controller.isReorderMode {
+                            sessionActionBar
+                        }
+
+                        if controller.isReorderMode {
+                            reorderActionBar
+                        }
+                    }
+                    .padding(HelmSpacing.screenGutter)
+                    .padding(.bottom, HelmSpacing.md)
+                    .frame(maxWidth: .infinity)
+                    .helmVerticalScrollContentWidth(geo.size.width)
+                }
+                .helmVerticalScrollContainer()
+                .background {
+                    GeometryReader { geometry in
+                        Color.clear.preference(
+                            key: TrainViewportHeightKey.self,
+                            value: geometry.size.height
                         )
                     }
-
-                    if snapshot.session.exercises.isEmpty {
-                        Text("Add your first exercise to begin logging sets.")
-                            .helmType(.body, color: HelmColor.fgSecondary)
-                            .padding(.horizontal, HelmSpacing.xs)
-                    }
-
-                    ForEach(controller.exercisesForDisplay()) { exercise in
-                        exerciseSection(for: exercise)
-                    }
-                    .animation(
-                        HelmMotion.animation(
-                            HelmMotion.settleAnimation,
-                            reduceMotion: reduceMotion
-                        ),
-                        value: controller.reorderDraftIDs
-                    )
-
-                    if !controller.isReorderMode {
-                        Button {
-                            controller.isShowingExercisePicker = true
-                        } label: {
-                            Label("Add exercise", helmIcon: .plus, context: .inline)
-                        }
-                        .buttonStyle(.helmSecondary)
-                    }
-
-                    if controller.numpadTarget == nil, !controller.isReorderMode {
-                        sessionActionBar
-                    }
-
-                    if controller.isReorderMode {
-                        reorderActionBar
-                    }
                 }
-                .padding(HelmSpacing.screenGutter)
-                .padding(.bottom, HelmSpacing.md)
-                .frame(maxWidth: .infinity)
-            }
-            .background {
-                GeometryReader { geometry in
-                    Color.clear.preference(
-                        key: TrainViewportHeightKey.self,
-                        value: geometry.size.height
+                .onPreferenceChange(TrainViewportHeightKey.self) { height in
+                    viewportHeight = height
+                }
+                .animation(
+                    HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
+                    value: controller.adjustmentBanner
+                )
+                .onChange(of: controller.numpadTarget) { _, target in
+                    guard let setID = target?.setID else { return }
+                    scheduleScrollToFocusedSet(
+                        proxy: proxy,
+                        setID: setID,
+                        viewportHeight: viewportHeight
                     )
                 }
-            }
-            .onPreferenceChange(TrainViewportHeightKey.self) { height in
-                viewportHeight = height
-            }
-            .animation(
-                HelmMotion.animation(HelmMotion.settleAnimation, reduceMotion: reduceMotion),
-                value: controller.adjustmentBanner
-            )
-            .onChange(of: controller.numpadTarget) { _, target in
-                guard let setID = target?.setID else { return }
-                scheduleScrollToFocusedSet(
-                    proxy: proxy,
-                    setID: setID,
-                    viewportHeight: viewportHeight
-                )
-            }
-            .onChange(of: measuredChromeHeight) { _, _ in
-                guard let setID = controller.numpadTarget?.setID else { return }
-                scheduleScrollToFocusedSet(
-                    proxy: proxy,
-                    setID: setID,
-                    viewportHeight: viewportHeight
-                )
+                .onChange(of: measuredChromeHeight) { _, _ in
+                    guard let setID = controller.numpadTarget?.setID else { return }
+                    scheduleScrollToFocusedSet(
+                        proxy: proxy,
+                        setID: setID,
+                        viewportHeight: viewportHeight
+                    )
+                }
             }
         }
     }
@@ -1087,6 +1143,14 @@ private struct CompactRestPill: View {
     TrainView()
         .helmTheme()
         .environment(\.helmSkin, .instrument)
+}
+
+private struct PlannedDayPreview: Identifiable {
+    let day: HelmDay
+    let dayLabel: String
+    let summary: PrescribedSessionSummary
+
+    var id: String { day.formatted }
 }
 
 #Preview("Train data sheet") {

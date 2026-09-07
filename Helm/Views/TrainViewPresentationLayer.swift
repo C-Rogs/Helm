@@ -140,12 +140,24 @@ extension View {
       get: { controller.historyExerciseSessionID != nil },
       set: { if !$0 { controller.dismissExerciseHistory() } }
     )) {
-      if let sessionExerciseID = controller.historyExerciseSessionID,
-         let model = controller.exerciseHistoryModel(for: sessionExerciseID) {
-        ExerciseHistorySheet(
-          model: model,
-          imageURL: controller.exerciseImageURL(forSessionExerciseID: sessionExerciseID)
-        )
+      if let sessionExerciseID = controller.historyExerciseSessionID {
+        if let model = controller.exerciseHistoryModel(for: sessionExerciseID) {
+          ExerciseHistorySheet(model: model)
+        } else {
+          NavigationStack {
+            ContentUnavailableView(
+              "Exercise unavailable",
+              systemImage: "figure.strengthtraining.traditional",
+              description: Text("This exercise is no longer in the session.")
+            )
+            .toolbar {
+              ToolbarItem(placement: .cancellationAction) {
+                Button("Done") { controller.dismissExerciseHistory() }
+              }
+            }
+          }
+          .presentationDetents([.medium])
+        }
       }
     }
   }

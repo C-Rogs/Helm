@@ -15,7 +15,7 @@ enum WorkoutStartCoordinator {
             case .alreadyActive:
                 "A workout is already in progress."
             case .emptyPrescription:
-                "No prescription available for today."
+                "No prescription available for that session."
             case let .startFailed(message):
                 message
             }
@@ -44,6 +44,39 @@ enum WorkoutStartCoordinator {
         guard !prescription.exercises.isEmpty else {
             throw StartError.emptyPrescription
         }
+
+        if openTrainTab {
+            AppTabRouter.shared.openTrain()
+        }
+
+        await controller.startPrescription(prescription)
+        try ensureSessionStarted(controller)
+    }
+
+    /// Starts a planned day's prescription as today's workout (does not rewrite the week calendar).
+    static func startPlannedDaySession(
+        day: HelmDay,
+        controller: TrainSessionController,
+        prescriptionService: PrescriptionService,
+        openTrainTab: Bool = false
+    ) async throws {
+        guard !controller.hasActiveSession else {
+            throw StartError.alreadyActive
+        }
+
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        let planned = try await prescriptionService.prescription(for: day, readiness: readiness)
+        guard !planned.exercises.isEmpty else {
+            throw StartError.emptyPrescription
+        }
+
+        let today = HelmDay.day(for: .now, calendar: .current)
+        let prescription = SessionPrescription(
+            id: planned.id,
+            helmDay: today,
+            title: planned.title,
+            exercises: planned.exercises
+        )
 
         if openTrainTab {
             AppTabRouter.shared.openTrain()

@@ -155,7 +155,7 @@ Positioning (`README.md`, `Docs/DESIGN-SYSTEM.md`): *closed-loop adaptive prescr
 
 **Still deferred:**
 
-- Wave 4–5: form sheet, rest coaching, milestones, demo links (see `SIGNAL-PRODUCT-CATCHUP.md`)
+- Wave 5: demo links, pattern teasers, optional step goal (see `SIGNAL-PRODUCT-CATCHUP.md`)
 
 **Wave 1 rituals (in tree):**
 
@@ -172,6 +172,12 @@ Positioning (`README.md`, `Docs/DESIGN-SYSTEM.md`): *closed-loop adaptive prescr
 
 - Train Your-plan strip; muscle focus chips → PlanKit weekly target redistrib
 - Warm empties; ExplainSheet on Dashboard readiness + Train session volume
+
+**Wave 4 form + celebration (in tree):**
+
+- Exercise detail sheet (form cues + gif + history)
+- Rest coaching lines during timer; expiry via proactive prefs
+- Session quartile toasts + finish checkpoint recap (PR path unchanged)
 
 Build command examples (historical):
 

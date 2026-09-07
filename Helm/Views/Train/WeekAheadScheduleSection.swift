@@ -4,6 +4,7 @@ import SwiftUI
 struct WeekAheadScheduleSection: View {
     @Bindable var store: WeekAheadScheduleStore
     var onRegenerate: (() -> Void)?
+    var onSelectTrainingDay: ((String) -> Void)?
     @Environment(\.helmReduceMotion) private var reduceMotion
     @State private var isExpanded = false
 
@@ -20,9 +21,16 @@ struct WeekAheadScheduleSection: View {
                     }
 
                     if isExpanded {
-                        WeekAheadScheduleView(model: model, showsHeader: false)
+                        WeekAheadScheduleView(
+                            model: model,
+                            showsHeader: false,
+                            onSelectTrainingDay: onSelectTrainingDay
+                        )
                     } else {
-                        WeekAheadScheduleStrip(model: model)
+                        WeekAheadScheduleStrip(
+                            model: model,
+                            onSelectTrainingDay: onSelectTrainingDay
+                        )
                     }
                 }
             }

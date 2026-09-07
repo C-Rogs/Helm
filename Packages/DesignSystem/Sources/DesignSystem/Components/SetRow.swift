@@ -86,32 +86,44 @@ public struct SetRow: View {
     private var rowContent: some View {
         HStack(spacing: HelmSpacing.xs) {
             setIndexColumn
+                .layoutPriority(1)
 
             previousColumn
+                .frame(minWidth: 44, maxWidth: 72, alignment: .leading)
+                .layoutPriority(0)
 
             valueField(title: "kg", state: weightState, field: .weight)
+                .layoutPriority(1)
             valueField(title: "reps", state: repsState, field: .reps)
+                .layoutPriority(1)
             valueField(title: "RPE", state: rpeState, field: .rpe)
-                .frame(width: 56)
+                .frame(minWidth: 44, idealWidth: 56, maxWidth: 56)
+                .layoutPriority(1)
 
             if let badgeText {
                 Text(badgeText)
                     .helmType(.monoTag, color: HelmColor.accent)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.7)
                     .padding(.horizontal, HelmSpacing.xxs)
                     .padding(.vertical, 2)
                     .background(HelmColor.accent.opacity(0.15), in: Capsule())
+                    .layoutPriority(0)
             }
 
             Button(action: onComplete) {
                 HelmIconView(isCompleted ? .checkmarkFilled : .circle, context: .inline)
                     .foregroundStyle(checkmarkColor)
                     // Visual glyph stays ~15pt; hit target is intentionally larger for mid-set taps.
-                    .frame(width: 56, height: 56)
+                    .frame(width: 44, height: 56)
+                    .frame(minWidth: HelmLayout.minTapTarget, minHeight: HelmLayout.minTapTarget)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.helmPressable)
+            .layoutPriority(1)
             .accessibilityLabel(checkmarkAccessibilityLabel)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .padding(.horizontal, HelmSpacing.xs)
         .padding(.vertical, HelmSpacing.xxs)
         .background(HelmColor.surfaceElevated.opacity(isCompleted ? 0.55 : 1), in: RoundedRectangle(cornerRadius: HelmRadius.sm))

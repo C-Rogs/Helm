@@ -22,7 +22,7 @@
 | 1 | Rituals: nutrition check-in UI + training week review | **In tree** - shared weekday `helm.nutrition.checkInWeekday` (default Sunday); rolling 7d math; Train week review sheet; Nutrition check-in sheet + Settings picker; QA fixes (cutoff day unify, auto-present once, exclude clears mass, rolling-7 goals) |
 | 2 | Journey: Progress tab, recomp card, onboarding rewrite, phase narrative | **In tree** - Progress 5th tab + hub; `PhaseNarrativeFormatter` + `RecompStoryCard`; onboarding Welcome → plan → body → Health → ready (Hevy/backfill → Settings) |
 | 3 | Modifiers: Your-plan strip, muscle prioritizer (real volume), warm empties, inline explain | **In tree** - Train Your-plan strip → PlanBuilder; PlanKit +20% focus redistrib (1–3 muscles) + chip picker; warm empties; Explain on Dashboard ARC + Train volume |
-| 4 | Form + celebration: exercise detail sheet, rest coaching, milestones | Pending |
+| 4 | Form + celebration: exercise detail sheet, rest coaching, milestones | **In tree** - FORM|HISTORY exercise sheet; RestCoachingPolicy under UP NEXT + expiry prefs; quartile accessory toast (not prHit) + finish checkpoints |
 | 5 | Thin content: demo links, pattern teasers, optional step goal; skip recipe CMS | Pending |
 
 ## Non-goals

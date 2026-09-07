@@ -3,6 +3,13 @@ import Foundation
 public extension ExerciseHistoryModel {
     static let benchFixture = ExerciseHistoryModel(
         exerciseName: "Bench Press (Barbell)",
+        instructionText: "Lie on a flat bench, plant feet, and press the bar from mid-chest to lockout.",
+        coachingCues: [
+            "Brace hard and pull shoulder blades together.",
+            "Drive through your heels and keep your chest proud.",
+            "Press up and slightly back."
+        ],
+        imageURL: URL(string: "https://example.com/bench.gif"),
         currentE1RMKilograms: 102.5,
         previousSets: [
             ExercisePreviousSetRow(
@@ -36,6 +43,9 @@ public extension ExerciseHistoryModel {
 
     static let coldStartFixture = ExerciseHistoryModel(
         exerciseName: "Lat Pulldown (Cable)",
+        instructionText: nil,
+        coachingCues: [],
+        imageURL: nil,
         currentE1RMKilograms: nil,
         previousSets: [
             ExercisePreviousSetRow(

@@ -1,6 +1,7 @@
 import Foundation
 
 /// Fires at most four ~25% set-completion milestones per workout session.
+/// Visible toast uses short copy; coach peek / chat keep the longer prompt.
 public enum SessionMilestonePolicy {
     public static let maxFiresPerSession = 4
 
@@ -39,6 +40,35 @@ public enum SessionMilestonePolicy {
         return nil
     }
 
+    /// Short title for the in-workout toast (not the PR celebration sheet).
+    public static func toastTitle(forQuartile quartile: Int) -> String {
+        switch quartile {
+        case 1:
+            return "Quarter done"
+        case 2:
+            return "Halfway"
+        case 3:
+            return "Three quarters"
+        default:
+            return "Nearly done"
+        }
+    }
+
+    /// One-line body under the toast title.
+    public static func toastMessage(forQuartile quartile: Int) -> String {
+        switch quartile {
+        case 1:
+            return "About 25% through. Check joints and the working muscle."
+        case 2:
+            return "Keep form tight. Tell coach if anything feels off."
+        case 3:
+            return "Finish strong, or ask for a safer swap."
+        default:
+            return "Note any pain or niggles before you leave."
+        }
+    }
+
+    /// Longer coach-facing prompt for peek / chat / push.
     public static func message(forQuartile quartile: Int) -> String {
         switch quartile {
         case 1:
@@ -50,5 +80,13 @@ public enum SessionMilestonePolicy {
         default:
             return "Session nearly done. Tell me about any pain or niggles and I can save a short recovery note to Memory."
         }
+    }
+
+    /// Optional finish-summary line listing checkpoints that fired this session.
+    public static func finishRecap(firedQuartiles: Set<Int>) -> String? {
+        let ordered = (1...maxFiresPerSession).filter { firedQuartiles.contains($0) }
+        guard !ordered.isEmpty else { return nil }
+        let labels = ordered.map { toastTitle(forQuartile: $0) }
+        return "Checkpoints hit: \(labels.joined(separator: ", "))."
     }
 }

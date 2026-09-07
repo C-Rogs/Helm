@@ -2,10 +2,15 @@ import SwiftUI
 
 public struct WeekAheadScheduleStrip: View {
     private let model: WeekAheadScheduleModel
+    private let onSelectTrainingDay: ((String) -> Void)?
     private let cardMinWidth: CGFloat = 112
 
-    public init(model: WeekAheadScheduleModel) {
+    public init(
+        model: WeekAheadScheduleModel,
+        onSelectTrainingDay: ((String) -> Void)? = nil
+    ) {
         self.model = model
+        self.onSelectTrainingDay = onSelectTrainingDay
     }
 
     public var body: some View {
@@ -33,8 +38,9 @@ public struct WeekAheadScheduleStrip: View {
         proxy.scrollTo(todayID, anchor: .leading)
     }
 
+    @ViewBuilder
     private func dayCard(for row: WeekAheadScheduleRow) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+        let card = VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
             Text(row.dayLabel)
                 .helmType(.monoTag, color: row.isToday ? HelmColor.accent : HelmColor.fgMuted)
                 .lineLimit(1)
@@ -67,6 +73,18 @@ public struct WeekAheadScheduleStrip: View {
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(for: row))
+
+        if row.canStartAsTodaysSession, let onSelectTrainingDay {
+            Button {
+                onSelectTrainingDay(row.id)
+            } label: {
+                card
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityHint("Preview and start this session today")
+        } else {
+            card
+        }
     }
 
     private func cardBackground(for row: WeekAheadScheduleRow) -> Color {

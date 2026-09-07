@@ -212,13 +212,10 @@ struct NutritionView: View {
                         }
                     }
                     .helmScreenPadding()
-                    .frame(width: geo.size.width, alignment: .leading)
-                    .clipped()
+                    .helmVerticalScrollContentWidth(geo.size.width)
                     .id(selectedHelmDay)
                 }
-                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-                .contentShape(Rectangle())
-                .background(NutritionHorizontalScrollLock())
+                .helmVerticalScrollContainer()
             }
         }
     }
@@ -618,53 +615,6 @@ struct NutritionView: View {
 
     private var loadingCard: some View {
         HelmLoadingState(rowCount: 3)
-    }
-}
-
-/// Hard-locks horizontal pan/bounce on the diary ScrollView. SwiftUI has no `.never` bounce mode.
-private final class NutritionScrollLockView: UIView {
-    override func didMoveToWindow() {
-        super.didMoveToWindow()
-        lock()
-    }
-
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        lock()
-    }
-
-    private func lock() {
-        var ancestor: UIView? = superview
-        while let current = ancestor {
-            if let scroll = current as? UIScrollView {
-                scroll.alwaysBounceHorizontal = false
-                scroll.showsHorizontalScrollIndicator = false
-                scroll.isDirectionalLockEnabled = true
-                scroll.bouncesHorizontally = false
-                let inset = scroll.adjustedContentInset
-                let maxWidth = max(scroll.bounds.width - inset.left - inset.right, 0)
-                if maxWidth > 0, scroll.contentSize.width > maxWidth + 0.5 {
-                    scroll.contentSize.width = maxWidth
-                }
-                if abs(scroll.contentOffset.x + inset.left) > 0.5 {
-                    scroll.contentOffset.x = -inset.left
-                }
-            }
-            ancestor = current.superview
-        }
-    }
-}
-
-private struct NutritionHorizontalScrollLock: UIViewRepresentable {
-    func makeUIView(context: Context) -> NutritionScrollLockView {
-        let view = NutritionScrollLockView()
-        view.isUserInteractionEnabled = false
-        view.backgroundColor = .clear
-        return view
-    }
-
-    func updateUIView(_ uiView: NutritionScrollLockView, context: Context) {
-        uiView.setNeedsLayout()
     }
 }
 

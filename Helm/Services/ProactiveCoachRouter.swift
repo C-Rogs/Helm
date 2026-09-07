@@ -5,12 +5,13 @@ enum ProactiveCoachRouter {
     static func surface(
         _ message: String,
         sessionID: String?,
-        on controller: TrainSessionController
+        on controller: TrainSessionController,
+        includeBanner: Bool = true
     ) {
         if ProactiveCoachPreferences.peekEnabled {
             controller.setCoachPeekSnippet(message)
         }
-        if ProactiveCoachPreferences.bannerEnabled {
+        if includeBanner, ProactiveCoachPreferences.bannerEnabled {
             controller.setProactiveCoachBanner(message)
         }
         if ProactiveCoachPreferences.autoChatEnabled {

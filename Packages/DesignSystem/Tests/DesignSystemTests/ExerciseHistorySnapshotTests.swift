@@ -11,6 +11,7 @@ struct ExerciseHistorySnapshotTests {
         #expect(text.contains("Bench Press (Barbell)"))
         #expect(text.contains("PREV=80×8"))
         #expect(text.contains("e1RM=102.5"))
+        #expect(text.contains("Brace hard and pull shoulder blades together."))
     }
 
     @Test("cold start fixture snapshot")
@@ -22,6 +23,7 @@ struct ExerciseHistorySnapshotTests {
         #expect(text.contains("PREV=nil"))
         #expect(text.contains("e1RM history"))
         #expect(text.contains("- none"))
+        #expect(text.contains("cues=none"))
     }
 
     @Test("snapshot text is byte-stable across calls")
@@ -35,9 +37,15 @@ struct ExerciseHistorySnapshotTests {
 }
 
 private let benchSnapshotText = """
-# Exercise history
+# Exercise detail
 ## Exercise
 Bench Press (Barbell)
+## Form
+image=https://example.com/bench.gif
+instruction=Lie on a flat bench, plant feet, and press the bar from mid-chest to lockout.
+- cue 1: Brace hard and pull shoulder blades together.
+- cue 2: Drive through your heels and keep your chest proud.
+- cue 3: Press up and slightly back.
 ## Current e1RM
 102.5
 ## PREV
@@ -51,9 +59,13 @@ Bench Press (Barbell)
 """
 
 private let coldStartSnapshotText = """
-# Exercise history
+# Exercise detail
 ## Exercise
 Lat Pulldown (Cable)
+## Form
+image=nil
+instruction=nil
+cues=none
 ## Current e1RM
 nil
 ## PREV

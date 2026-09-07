@@ -36,17 +36,31 @@ public struct ExerciseE1RMHistoryRow: Sendable, Hashable, Equatable, Identifiabl
 
 public struct ExerciseHistoryModel: Sendable, Hashable, Equatable {
     public let exerciseName: String
+    public let instructionText: String?
+    public let coachingCues: [String]
+    public let imageURL: URL?
     public let currentE1RMKilograms: Double?
     public let previousSets: [ExercisePreviousSetRow]
     public let e1RMHistory: [ExerciseE1RMHistoryRow]
 
+    public var hasFormContent: Bool {
+        let hasInstruction = !(instructionText?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ?? true)
+        return hasInstruction || !coachingCues.isEmpty || imageURL != nil
+    }
+
     public init(
         exerciseName: String,
+        instructionText: String? = nil,
+        coachingCues: [String] = [],
+        imageURL: URL? = nil,
         currentE1RMKilograms: Double?,
         previousSets: [ExercisePreviousSetRow],
         e1RMHistory: [ExerciseE1RMHistoryRow]
     ) {
         self.exerciseName = exerciseName
+        self.instructionText = instructionText
+        self.coachingCues = coachingCues
+        self.imageURL = imageURL
         self.currentE1RMKilograms = currentE1RMKilograms
         self.previousSets = previousSets
         self.e1RMHistory = e1RMHistory
@@ -56,13 +70,27 @@ public struct ExerciseHistoryModel: Sendable, Hashable, Equatable {
 public enum ExerciseHistorySnapshot {
     public static func text(for model: ExerciseHistoryModel) -> String {
         var lines = [
-            "# Exercise history",
+            "# Exercise detail",
             "## Exercise",
             model.exerciseName,
+            "## Form",
+            "image=\(model.imageURL?.absoluteString ?? "nil")",
+            "instruction=\(model.instructionText ?? "nil")"
+        ]
+
+        if model.coachingCues.isEmpty {
+            lines.append("cues=none")
+        } else {
+            for (index, cue) in model.coachingCues.enumerated() {
+                lines.append("- cue \(index + 1): \(cue)")
+            }
+        }
+
+        lines.append(contentsOf: [
             "## Current e1RM",
             format(model.currentE1RMKilograms),
             "## PREV"
-        ]
+        ])
 
         if model.previousSets.isEmpty {
             lines.append("- none")

@@ -2,41 +2,44 @@ import DesignSystem
 import SwiftUI
 
 struct ExerciseHistorySheet: View {
+    enum Pane: String, CaseIterable, Identifiable {
+        case form
+        case history
+
+        var id: String { rawValue }
+
+        var title: String {
+            switch self {
+            case .form: "FORM"
+            case .history: "HISTORY"
+            }
+        }
+    }
+
     let model: ExerciseHistoryModel
-    var imageURL: URL? = nil
 
     @Environment(\.dismiss) private var dismiss
+    @State private var pane: Pane = .form
 
     var body: some View {
         NavigationStack {
-            ScrollView {
-                VStack(alignment: .leading, spacing: HelmSpacing.lg) {
-                    if let imageURL {
-                        ExerciseImageView(
-                            url: imageURL,
-                            fallbackLabel: model.exerciseName
-                        )
-                        .frame(maxWidth: .infinity)
-                        .frame(height: HelmLayout.exerciseHistoryImageHeight)
-                        .accessibilityLabel("\(model.exerciseName) demonstration")
-                    }
+            VStack(spacing: 0) {
+                panePicker
+                    .padding(.horizontal, HelmSpacing.md)
+                    .padding(.top, HelmSpacing.sm)
+                    .padding(.bottom, HelmSpacing.xs)
 
-                    if let currentE1RM = model.currentE1RMKilograms {
-                        Card {
-                            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                                Text("Current e1RM")
-                                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                                HelmNumericText(currentE1RM, format: "%.0f kg")
-                                    .helmType(.bigNumber, color: HelmColor.accent)
-                            }
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                ScrollView {
+                    Group {
+                        switch pane {
+                        case .form:
+                            formSection
+                        case .history:
+                            historySection
                         }
                     }
-
-                    previousSection
-                    e1rmHistorySection
+                    .padding(HelmSpacing.md)
                 }
-                .padding(HelmSpacing.md)
             }
             .helmScreenBackground()
             .navigationTitle(model.exerciseName)
@@ -48,12 +51,107 @@ struct ExerciseHistorySheet: View {
             }
         }
         .presentationDetents([.medium, .large])
+        .onAppear {
+            HapticEngine.shared.play(.selection)
+            if !model.hasFormContent {
+                pane = .history
+            }
+        }
+    }
+
+    private var panePicker: some View {
+        Picker("Exercise detail pane", selection: $pane) {
+            ForEach(Pane.allCases) { option in
+                Text(option.title).tag(option)
+            }
+        }
+        .pickerStyle(.segmented)
+        .onChange(of: pane) { _, _ in
+            HapticEngine.shared.play(.selection)
+        }
+        .accessibilityLabel("Exercise detail sections")
+    }
+
+    private var formSection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            if let imageURL = model.imageURL {
+                Card {
+                    VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                        HelmSectionEyebrow("DEMO")
+                        ExerciseImageView(
+                            url: imageURL,
+                            fallbackLabel: model.exerciseName
+                        )
+                        .frame(maxWidth: .infinity)
+                        .frame(height: HelmLayout.exerciseHistoryImageHeight)
+                        .accessibilityLabel("\(model.exerciseName) demonstration")
+                    }
+                }
+            }
+
+            Card {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HelmSectionEyebrow("INSTRUCTION")
+                    if let instruction = model.instructionText {
+                        Text(instruction)
+                            .helmType(.body, color: HelmColor.fg)
+                            .fixedSize(horizontal: false, vertical: true)
+                    } else {
+                        emptyState("No instruction text for this exercise.")
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            Card {
+                VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+                    HelmSectionEyebrow("CUES")
+                    if model.coachingCues.isEmpty {
+                        emptyState("No coaching cues seeded for this exercise.")
+                    } else {
+                        VStack(spacing: 0) {
+                            ForEach(Array(model.coachingCues.enumerated()), id: \.offset) { index, cue in
+                                HelmRuledRow {
+                                    HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                                        Text(String(format: "%02d", index + 1))
+                                            .helmType(.monoTag, color: HelmColor.fgMuted)
+                                            .frame(width: 28, alignment: .leading)
+                                        Text(cue)
+                                            .helmType(.body, color: HelmColor.fg)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                            .frame(maxWidth: .infinity, alignment: .leading)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    private var historySection: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.lg) {
+            if let currentE1RM = model.currentE1RMKilograms {
+                Card {
+                    VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+                        HelmSectionEyebrow("CURRENT e1RM")
+                        HelmNumericText(currentE1RM, format: "%.0f kg")
+                            .helmType(.bigNumber, color: HelmColor.accent)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            previousSection
+            e1rmHistorySection
+        }
     }
 
     private var previousSection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("PREV")
-                .helmType(.label)
+            HelmSectionEyebrow("PREV")
 
             Card {
                 if model.previousSets.isEmpty || model.previousSets.allSatisfy({ $0.previousLabel == nil }) {
@@ -88,8 +186,7 @@ struct ExerciseHistorySheet: View {
 
     private var e1rmHistorySection: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("e1RM history")
-                .helmType(.label)
+            HelmSectionEyebrow("e1RM HISTORY")
 
             Card {
                 if model.e1RMHistory.isEmpty {
@@ -118,16 +215,16 @@ struct ExerciseHistorySheet: View {
         Text(message)
             .helmType(.body, color: HelmColor.fgSecondary)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(HelmSpacing.sm)
+            .padding(.vertical, HelmSpacing.xxs)
     }
 }
 
-#Preview("Exercise history") {
+#Preview("Exercise detail") {
     ExerciseHistorySheet(model: .benchFixture)
         .helmTheme()
 }
 
-#Preview("Exercise history cold start") {
+#Preview("Exercise detail cold start") {
     ExerciseHistorySheet(model: .coldStartFixture)
         .helmTheme()
 }

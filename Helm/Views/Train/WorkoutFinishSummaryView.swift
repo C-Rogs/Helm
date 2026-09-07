@@ -41,6 +41,12 @@ struct WorkoutFinishSummaryView: View {
                 complianceSection(complianceCard)
             }
 
+            if let milestoneRecap = summary.milestoneRecap {
+                Text(milestoneRecap)
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
             Text(summary.readinessTeaser)
                 .helmType(.body, color: HelmColor.fgMuted)
                 .frame(maxWidth: .infinity, alignment: .leading)

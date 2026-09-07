@@ -56,4 +56,27 @@ struct SessionMilestonePolicyTests {
         #expect(SessionMilestonePolicy.applies(to: .template) == true)
         #expect(SessionMilestonePolicy.applies(to: .importSource) == true)
     }
+
+    @Test("toast titles stay short and ordered")
+    func toastCopy() {
+        #expect(SessionMilestonePolicy.toastTitle(forQuartile: 1) == "Quarter done")
+        #expect(SessionMilestonePolicy.toastTitle(forQuartile: 2) == "Halfway")
+        #expect(SessionMilestonePolicy.toastTitle(forQuartile: 3) == "Three quarters")
+        #expect(SessionMilestonePolicy.toastTitle(forQuartile: 4) == "Nearly done")
+        #expect(!SessionMilestonePolicy.toastMessage(forQuartile: 1).isEmpty)
+        #expect(SessionMilestonePolicy.message(forQuartile: 1).contains("quarter"))
+    }
+
+    @Test("finish recap lists fired checkpoints")
+    func finishRecap() {
+        #expect(SessionMilestonePolicy.finishRecap(firedQuartiles: []) == nil)
+        #expect(
+            SessionMilestonePolicy.finishRecap(firedQuartiles: [1, 3])
+                == "Checkpoints hit: Quarter done, Three quarters."
+        )
+        #expect(
+            SessionMilestonePolicy.finishRecap(firedQuartiles: [4, 2, 1])
+                == "Checkpoints hit: Quarter done, Halfway, Nearly done."
+        )
+    }
 }

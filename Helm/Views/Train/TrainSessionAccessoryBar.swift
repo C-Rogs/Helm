@@ -22,7 +22,10 @@ struct TrainSessionAccessoryBar: View {
         let showRest = controller.isRestTimerRunning
             && controller.snapshot?.restTimer?.endsAt != nil
         let showCoach = !controller.isReorderMode && !cardLoggingModeEnabled
-        return showRest || showCoach
+        let showBanner = ProactiveCoachPreferences.bannerEnabled
+            && !(controller.proactiveCoachBanner?.isEmpty ?? true)
+        let showToast = controller.accessoryToast != nil
+        return showRest || showCoach || showBanner || showToast
     }
 
     var body: some View {
@@ -32,6 +35,29 @@ struct TrainSessionAccessoryBar: View {
             && !trainPreferences.cardLoggingModeEnabled
 
         VStack(spacing: HelmSpacing.xs) {
+            if let toast = controller.accessoryToast {
+                TrainAccessoryToastBanner(
+                    toast: toast,
+                    onDismiss: { controller.dismissAccessoryToast() },
+                    onPrimary: toast.kind == .coach
+                        ? { controller.openCoachFromAccessoryToast() }
+                        : nil,
+                    primaryLabel: toast.kind == .coach ? "Coach" : nil
+                )
+            }
+
+            if ProactiveCoachPreferences.bannerEnabled,
+               controller.accessoryToast == nil,
+               let message = controller.proactiveCoachBanner,
+               !message.isEmpty {
+                ProactiveCoachBanner(
+                    message: message,
+                    onDismiss: { controller.dismissProactiveCoachBanner() },
+                    onCoach: { controller.isShowingCoachPrompt = true }
+                )
+                .padding(.horizontal, HelmSpacing.screenGutter)
+            }
+
             if showRest,
                let timer = controller.snapshot?.restTimer,
                let endsAt = timer.endsAt {
@@ -45,7 +71,8 @@ struct TrainSessionAccessoryBar: View {
                         Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
                     },
                     onRemainingSecondsChange: forwardRestTick,
-                    upNextName: controller.upNextExerciseName
+                    upNextName: controller.upNextExerciseName,
+                    formCue: controller.restFormCue
                 )
             }
 

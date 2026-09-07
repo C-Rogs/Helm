@@ -3,10 +3,16 @@ import SwiftUI
 public struct WeekAheadScheduleView: View {
     private let model: WeekAheadScheduleModel
     private let showsHeader: Bool
+    private let onSelectTrainingDay: ((String) -> Void)?
 
-    public init(model: WeekAheadScheduleModel, showsHeader: Bool = true) {
+    public init(
+        model: WeekAheadScheduleModel,
+        showsHeader: Bool = true,
+        onSelectTrainingDay: ((String) -> Void)? = nil
+    ) {
         self.model = model
         self.showsHeader = showsHeader
+        self.onSelectTrainingDay = onSelectTrainingDay
     }
 
     public var body: some View {
@@ -40,7 +46,7 @@ public struct WeekAheadScheduleView: View {
 
     @ViewBuilder
     private func rowView(_ row: WeekAheadScheduleRow) -> some View {
-        HStack(alignment: .top, spacing: HelmSpacing.sm) {
+        let content = HStack(alignment: .top, spacing: HelmSpacing.sm) {
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text(row.dayLabel)
                     .helmType(row.isToday ? .label : .body, color: row.isToday ? HelmColor.accent : HelmColor.fgSecondary)
@@ -70,8 +76,21 @@ public struct WeekAheadScheduleView: View {
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
+        .contentShape(Rectangle())
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel(for: row))
+
+        if row.canStartAsTodaysSession, let onSelectTrainingDay {
+            Button {
+                onSelectTrainingDay(row.id)
+            } label: {
+                content
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityHint("Preview and start this session today")
+        } else {
+            content
+        }
     }
 
     private func statusColor(for status: WeekAheadSessionStatus) -> Color {

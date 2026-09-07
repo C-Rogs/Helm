@@ -122,6 +122,8 @@ final class TrainSessionController {
     private(set) var lastCoachRequestID: UUID?
     private(set) var adjustmentBanner: SessionAdjustmentBannerModel?
     private(set) var proactiveCoachBanner: String?
+    /// Lightweight non-PR celebration / cue toast above accessory chrome (shared with rest cues).
+    private(set) var accessoryToast: TrainAccessoryToast?
     private(set) var coachPeekSnippet: String?
     private(set) var watchCompanionNotice: String?
     /// True when Watch or phone live session delivered HR; skip MET energy estimate.
@@ -152,6 +154,7 @@ final class TrainSessionController {
     private var coachMessageTask: Task<Void, Never>?
     private var proactiveCoachPeekClearTask: Task<Void, Never>?
     private var proactiveCoachBannerClearTask: Task<Void, Never>?
+    private var accessoryToastClearTask: Task<Void, Never>?
     private var restTimerMonitorTask: Task<Void, Never>?
     private var isReconcilingRest = false
     private var isSyncingSideEffects = false
@@ -380,6 +383,7 @@ final class TrainSessionController {
     /// Keeps Ask Coach bar single-line most of the time; peek text is brief.
     private static let proactiveCoachPeekDisplayDuration: Duration = .seconds(6)
     private static let proactiveCoachBannerDisplayDuration: Duration = .seconds(8)
+    private static let accessoryToastDisplayDuration: Duration = .seconds(4.5)
 
     func setCoachPeekSnippet(_ snippet: String) {
         coachPeekSnippet = snippet
@@ -403,13 +407,39 @@ final class TrainSessionController {
         proactiveCoachBanner = nil
     }
 
+    func presentAccessoryToast(_ toast: TrainAccessoryToast) {
+        accessoryToast = toast
+        scheduleAccessoryToastClear()
+    }
+
+    func dismissAccessoryToast() {
+        accessoryToastClearTask?.cancel()
+        accessoryToastClearTask = nil
+        accessoryToast = nil
+    }
+
+    func openCoachFromAccessoryToast() {
+        dismissAccessoryToast()
+        isShowingCoachPrompt = true
+    }
+
     func insertProactiveCoachMessage(_ message: String) {
         appendTrainCoachMessage(role: .assistant, text: message)
         appendCoachThread(role: .assistant, text: message)
     }
 
     func handleRestExpiredProactiveCoach() {
-        // Rest-over feedback is haptic/sound only (F-DT8.5); no proactive coach surfacing.
+        guard !didSurfaceRestOverrunProactive else { return }
+        didSurfaceRestOverrunProactive = true
+        let message = RestCoachingPolicy.line(
+            phase: .expired,
+            upNextName: upNextExerciseName
+        )
+        ProactiveCoachRouter.surface(
+            message,
+            sessionID: snapshot?.session.id,
+            on: self
+        )
     }
 
     func startWorkout() async {
@@ -433,6 +463,19 @@ final class TrainSessionController {
         do {
             try await HelmActionRuntime.startTodaysSession(
                 controller: self,
+                openTrainTab: false
+            )
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    func startPlannedDayPrescription(_ day: HelmDay) async {
+        do {
+            try await WorkoutStartCoordinator.startPlannedDaySession(
+                day: day,
+                controller: self,
+                prescriptionService: prescriptionService,
                 openTrainTab: false
             )
         } catch {
@@ -521,6 +564,9 @@ final class TrainSessionController {
         defer { isFinishingWorkout = false }
         do {
             let skipPhoneEnergy = sessionDeliveredHeartRate
+            let milestoneRecap = SessionMilestonePolicy.finishRecap(
+                firedQuartiles: firedMilestoneQuartiles
+            )
             let finishedID = try await store.finish()
             await deactivateHeartRateCompanion(saveWorkout: true)
             sessionPrompt = nil
@@ -559,7 +605,9 @@ final class TrainSessionController {
                         )
                         if let summary = lastFinishSummary {
                             let outcomeCard = buildOutcomeCard(from: session)
-                            lastFinishSummary = summary.withComplianceCard(outcomeCard)
+                            lastFinishSummary = summary
+                                .withComplianceCard(outcomeCard)
+                                .withMilestoneRecap(milestoneRecap)
                         }
                     } else {
                         lastFinishSummary = nil
@@ -724,6 +772,9 @@ final class TrainSessionController {
     }
 
     func removeExercise(sessionExerciseID: String) async {
+        if historyExerciseSessionID == sessionExerciseID {
+            dismissExerciseHistory()
+        }
         do {
             try await store.removeExercise(sessionExerciseID: sessionExerciseID)
             await refreshMetadata()
@@ -955,10 +1006,21 @@ final class TrainSessionController {
             return
         }
         firedMilestoneQuartiles.insert(quartile)
+        presentAccessoryToast(
+            TrainAccessoryToast(
+                kind: .milestone,
+                eyebrow: "MILESTONE",
+                title: SessionMilestonePolicy.toastTitle(forQuartile: quartile),
+                message: SessionMilestonePolicy.toastMessage(forQuartile: quartile)
+            )
+        )
+        // Selection only: prHit stays reserved for personal records.
+        WorkoutHapticCoordinator.play(.selection)
         ProactiveCoachRouter.surface(
             SessionMilestonePolicy.message(forQuartile: quartile),
             sessionID: snapshot.session.id,
-            on: self
+            on: self,
+            includeBanner: false
         )
     }
 
@@ -1178,11 +1240,17 @@ final class TrainSessionController {
             }
             await reconcileExpiredRestTimer()
             let currentRemaining = localRemainingRestSeconds()
+            let returnedFromBackgroundRest = wasRestRunningOnBackground
             WorkoutHapticCoordinator.handleForegroundReturn(
                 timerID: trackedRestTimerID,
                 wasRunningOnBackground: wasRestRunningOnBackground,
                 currentRemaining: currentRemaining
             )
+            // Rest may have ended off-screen; surface copy once (haptic already handled).
+            if returnedFromBackgroundRest,
+               currentRemaining == nil || currentRemaining == 0 {
+                handleRestExpiredProactiveCoach()
+            }
             wasRestRunningOnBackground = false
             previousRestRemaining = currentRemaining
             startLiveActivityHeartbeat()
@@ -1214,6 +1282,10 @@ final class TrainSessionController {
             previousRemaining: previous,
             currentRemaining: currentRemaining
         )
+        // Copy only; restDone haptic/sound already fired above. Do not ring again.
+        if let previous, previous > 0, currentRemaining == 0 {
+            handleRestExpiredProactiveCoach()
+        }
     }
 
     func syncSideEffects(restRemainingOverride: Int? = nil, force: Bool = false) async {
@@ -1307,6 +1379,8 @@ final class TrainSessionController {
         await syncSideEffects(restRemainingOverride: 0, force: true)
         await Self.reclaimMainThread()
         syncRestTimerMonitor()
+        // Notification tap / cold recover may skip the previous>0 → 0 tick path.
+        handleRestExpiredProactiveCoach()
     }
 
     func syncRestTimerMonitor() {
@@ -1432,6 +1506,16 @@ final class TrainSessionController {
         }
         guard let next else { return nil }
         return displayName(for: next.exerciseID)
+    }
+
+    /// Form cue for the exercise tied to the running rest timer (mid-rest coaching).
+    var restFormCue: String? {
+        guard let sessionExerciseID = snapshot?.restTimer?.sessionExerciseID,
+              let exercise = snapshot?.session.exercises.first(where: { $0.id == sessionExerciseID })
+        else {
+            return nil
+        }
+        return coachingCue(for: exercise.exerciseID)
     }
 
     var sessionProgress: TrainSessionProgress? {
@@ -2850,6 +2934,9 @@ final class TrainSessionController {
         proactiveCoachBannerClearTask?.cancel()
         proactiveCoachBannerClearTask = nil
         proactiveCoachBanner = nil
+        accessoryToastClearTask?.cancel()
+        accessoryToastClearTask = nil
+        accessoryToast = nil
         coachPeekSnippet = nil
         didSurfaceRestOverrunProactive = false
         firedMilestoneQuartiles = []
@@ -2927,7 +3014,7 @@ final class TrainSessionController {
             return
         }
 
-        guard let glyph = WorkoutSetMilestonePolicy.encouragementGlyph(
+        guard let glyph = WorkoutSetEncouragementPolicy.encouragementGlyph(
             for: completedSet,
             in: exercise.sets,
             excludingLast: lastEncouragementGlyph
@@ -2964,6 +3051,16 @@ final class TrainSessionController {
             guard !Task.isCancelled else { return }
             proactiveCoachBanner = nil
             proactiveCoachBannerClearTask = nil
+        }
+    }
+
+    private func scheduleAccessoryToastClear() {
+        accessoryToastClearTask?.cancel()
+        accessoryToastClearTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.accessoryToastDisplayDuration)
+            guard !Task.isCancelled else { return }
+            accessoryToast = nil
+            accessoryToastClearTask = nil
         }
     }
 

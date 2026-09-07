@@ -23,6 +23,7 @@ struct FocusExerciseCard: View {
     let onFillPrevious: () -> Void
     let onCycleSetType: () -> Void
     let onCompleteSet: () -> Void
+    let onOpenDetail: () -> Void
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
@@ -89,12 +90,25 @@ struct FocusExerciseCard: View {
 
     private var titleRow: some View {
         HStack(spacing: HelmSpacing.xs) {
-            Text(displayName)
-                .helmType(.label)
-                .lineLimit(1)
-                .minimumScaleFactor(0.85)
+            Button(action: onOpenDetail) {
+                Text(displayName)
+                    .helmType(.label)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.85)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("View details for \(displayName)")
 
-            Spacer(minLength: 0)
+            Button(action: onOpenDetail) {
+                Image(systemName: "info.circle")
+                    .font(.body.weight(.medium))
+                    .foregroundStyle(HelmColor.fgMuted)
+                    .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Exercise form and history")
 
             Button(action: onCycleSetType) {
                 Text(setTypeGlyph)
@@ -381,7 +395,8 @@ struct FocusExerciseCard: View {
         onOpenField: { _ in },
         onFillPrevious: {},
         onCycleSetType: {},
-        onCompleteSet: {}
+        onCompleteSet: {},
+        onOpenDetail: {}
     )
     .padding()
     .helmTheme()

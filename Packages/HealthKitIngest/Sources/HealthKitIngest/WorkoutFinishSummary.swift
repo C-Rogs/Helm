@@ -39,6 +39,8 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
     public let exerciseMarkers: [SessionExerciseMarker]
     public let musicSegments: [SessionMusicSegment]
     public let complianceCard: SessionOutcomeCard?
+    /// Non-PR session checkpoints hit during the workout (quartiles).
+    public let milestoneRecap: String?
 
     public var hasHeartRateSeries: Bool { !heartRateSamples.isEmpty }
     public var hasMusicSegments: Bool { !musicSegments.isEmpty }
@@ -57,7 +59,8 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         setMarkers: [SessionSetMarker] = [],
         exerciseMarkers: [SessionExerciseMarker] = [],
         musicSegments: [SessionMusicSegment] = [],
-        complianceCard: SessionOutcomeCard? = nil
+        complianceCard: SessionOutcomeCard? = nil,
+        milestoneRecap: String? = nil
     ) {
         self.setCount = setCount
         self.totalVolumeKilograms = totalVolumeKilograms
@@ -70,6 +73,7 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
         self.exerciseMarkers = exerciseMarkers
         self.musicSegments = musicSegments
         self.complianceCard = complianceCard
+        self.milestoneRecap = milestoneRecap
     }
 
     public func withSessionTimeline(
@@ -89,7 +93,8 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
             setMarkers: setMarkers,
             exerciseMarkers: exerciseMarkers,
             musicSegments: musicSegments,
-            complianceCard: complianceCard
+            complianceCard: complianceCard,
+            milestoneRecap: milestoneRecap
         )
     }
 
@@ -112,7 +117,25 @@ public struct WorkoutFinishSummary: Sendable, Equatable {
             setMarkers: setMarkers,
             exerciseMarkers: exerciseMarkers,
             musicSegments: musicSegments,
-            complianceCard: card
+            complianceCard: card,
+            milestoneRecap: milestoneRecap
+        )
+    }
+
+    public func withMilestoneRecap(_ recap: String?) -> WorkoutFinishSummary {
+        WorkoutFinishSummary(
+            setCount: setCount,
+            totalVolumeKilograms: totalVolumeKilograms,
+            estimatedTRIMP: estimatedTRIMP,
+            durationMinutes: durationMinutes,
+            muscleMovements: muscleMovements,
+            readinessTeaser: readinessTeaser,
+            heartRateSamples: heartRateSamples,
+            setMarkers: setMarkers,
+            exerciseMarkers: exerciseMarkers,
+            musicSegments: musicSegments,
+            complianceCard: complianceCard,
+            milestoneRecap: recap
         )
     }
 }

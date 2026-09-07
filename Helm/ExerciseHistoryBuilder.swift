@@ -41,8 +41,29 @@ enum ExerciseHistoryBuilder {
             excludingSessionID: excludingSessionID
         )?.kilograms ?? history.first?.e1RMKilograms
 
+        let coachingLookupID = (try? store.exercises.resolveSeededCatalogID(exercise.exerciseID))
+            ?? exercise.exerciseID
+        let coachingCues = try store.exercises.fetchCoachingCues(id: coachingLookupID)
+        let instructionRaw = try store.exercises.fetchInstructionText(id: coachingLookupID)
+        let instructionText = instructionRaw?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .nilIfEmpty
+        let summary = try store.exercises.fetchSummary(id: coachingLookupID)
+        let imageURL: URL? = {
+            guard let raw = summary?.gifURL?
+                .trimmingCharacters(in: .whitespacesAndNewlines),
+                !raw.isEmpty
+            else {
+                return nil
+            }
+            return URL(string: raw)
+        }()
+
         return ExerciseHistoryModel(
             exerciseName: displayName,
+            instructionText: instructionText,
+            coachingCues: coachingCues,
+            imageURL: imageURL,
             currentE1RMKilograms: currentE1RM,
             previousSets: previousSets,
             e1RMHistory: e1RMRows
@@ -78,5 +99,11 @@ enum ExerciseHistoryBuilder {
             return "\(helmDay.month)/\(helmDay.day)"
         }
         return formatter.string(from: date)
+    }
+}
+
+private extension String {
+    var nilIfEmpty: String? {
+        isEmpty ? nil : self
     }
 }
