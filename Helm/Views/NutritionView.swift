@@ -185,33 +185,39 @@ struct NutritionView: View {
 
     @ViewBuilder
     private var diaryScroll: some View {
-        GeometryReader { geo in
-            ScrollView(.vertical) {
-                HelmScreenStack {
-                    switch nutritionService.state {
-                    case .loading:
-                        loadingCard
-                    case let .ready(snapshot):
-                        diaryReadyContent(snapshot)
+        VStack(spacing: 0) {
+            stickyDiaryHeader
+
+            GeometryReader { geo in
+                ScrollView(.vertical) {
+                    HelmScreenStack {
+                        switch nutritionService.state {
+                        case .loading:
+                            loadingCard
+                        case let .ready(snapshot):
+                            diaryReadyContent(snapshot)
+                        }
                     }
+                    .helmScreenPadding()
+                    .frame(width: geo.size.width, alignment: .leading)
+                    .clipped()
+                    .id(selectedHelmDay)
                 }
-                .helmScreenPadding()
-                .frame(width: geo.size.width, alignment: .leading)
-                .clipped()
+                .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+                .contentShape(Rectangle())
+                .background(NutritionHorizontalScrollLock())
             }
-            .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
-            .contentShape(Rectangle())
-            .background(NutritionHorizontalScrollLock())
         }
     }
 
     @ViewBuilder
-    private func diaryReadyContent(_ snapshot: NutritionDaySnapshot) -> some View {
-        if let selectedHelmDay, let todayHelmDay {
+    private var stickyDiaryHeader: some View {
+        if let todayHelmDay {
+            let selected = selectedHelmDay ?? todayHelmDay
             NutritionDiaryHeader(
-                selectedDay: selectedHelmDay,
+                selectedDay: selected,
                 today: todayHelmDay,
-                budget: snapshot.weeklyBudget,
+                budget: nutritionService.state.snapshot?.weeklyBudget,
                 onSelectDay: { day in
                     Task { await selectDay(day) }
                 },
@@ -219,8 +225,19 @@ struct NutritionView: View {
                     Task { await setDayDemand(demand, for: day) }
                 }
             )
+            .helmScreenPadding()
+            .padding(.top, HelmSpacing.sm)
+            .padding(.bottom, HelmSpacing.sm)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(HelmColor.canvas)
+            .overlay(alignment: .bottom) {
+                HelmHairlineRule()
+            }
         }
+    }
 
+    @ViewBuilder
+    private func diaryReadyContent(_ snapshot: NutritionDaySnapshot) -> some View {
         NutritionDaySummaryCard(
             snapshot: snapshot,
             showTrend: false,

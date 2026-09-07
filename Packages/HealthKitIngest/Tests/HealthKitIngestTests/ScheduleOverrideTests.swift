@@ -1,3 +1,4 @@
+import CoachLLM
 import Core
 import Foundation
 import Persistence
@@ -144,5 +145,61 @@ struct ScheduleOverrideTests {
             overrides: overrides
         )
         #expect(days.contains(today) == false)
+    }
+
+    @Test("pinDay that already matches is redundant")
+    func pinDayAlreadyAppliedIsRedundant() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        let today = HelmDay(year: 2026, month: 9, day: 7)
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: .current)
+        try store.scheduleOverrides.save(
+            StoredScheduleOverrides(
+                weekStartFormatted: weekStart.formatted,
+                pinnedByDay: [today.formatted: TrainingDayKind.legs.rawValue],
+                reason: "Pinned Legs"
+            )
+        )
+        let payload = ScheduleAdjustmentPayload(
+            action: .pinDay,
+            pinKind: "legs",
+            helmDay: today.formatted,
+            reason: "Pin legs again"
+        )
+        #expect(ScheduleOverrideApplier.isRedundant(payload, persistence: store, today: today))
+    }
+
+    @Test("sameIntent ignores reply and reason wording")
+    func sameIntentIgnoresWording() {
+        let a = ScheduleAdjustmentPayload(
+            action: .swapDays,
+            reply: "Swapping Friday",
+            dayA: "2026-09-04",
+            dayB: "2026-09-05",
+            reason: "Club night"
+        )
+        let b = ScheduleAdjustmentPayload(
+            action: .swapDays,
+            reply: "Different prose",
+            dayA: "2026-09-04",
+            dayB: "2026-09-05",
+            reason: "Other reason"
+        )
+        #expect(ScheduleOverrideApplier.sameIntent(a, b))
+        let c = ScheduleAdjustmentPayload(
+            action: .swapDays,
+            dayA: "2026-09-04",
+            dayB: "2026-09-06"
+        )
+        #expect(!ScheduleOverrideApplier.sameIntent(a, c))
+    }
+
+    @Test("clear is redundant when overrides empty")
+    func clearEmptyIsRedundant() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        let today = HelmDay(year: 2026, month: 9, day: 7)
+        let payload = ScheduleAdjustmentPayload(action: .clear)
+        #expect(ScheduleOverrideApplier.isRedundant(payload, persistence: store, today: today))
     }
 }

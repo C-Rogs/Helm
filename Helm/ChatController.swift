@@ -41,6 +41,8 @@ final class ChatController {
     private(set) var memoryRefinementSourceMessageID: String?
     /// Applied coach writes keyed by the assistant message that confirmed them.
     private(set) var undoableActionsByMessageID: [String: CoachAppliedAction] = [:]
+    /// Last schedule write the athlete confirmed (suppress identical re-proposals).
+    private var lastAppliedSchedulePayload: ScheduleAdjustmentPayload?
     /// Date of the last refinement extraction for debouncing.
     private var lastRefinementExtractionDate: Date?
     /// `navigate` held until the athlete confirms a same-turn write.
@@ -100,6 +102,7 @@ final class ChatController {
             pendingMemoryRefinements = []
             memoryRefinementSourceMessageID = nil
             undoableActionsByMessageID = [:]
+            lastAppliedSchedulePayload = nil
             lastRefinementExtractionDate = nil
             clearChatProgress()
             CoachDiagnosticsStore.shared.clear()
@@ -274,6 +277,11 @@ final class ChatController {
                     let data = Data(action.snapshotJSON.utf8)
                     let snapshot = try JSONDecoder().decode(MealDeleteSnapshot.self, from: data)
                     try await restoreDeletedMeals(snapshot)
+                case .scheduleAdjustment:
+                    let data = Data(action.snapshotJSON.utf8)
+                    let snapshot = try JSONDecoder().decode(ScheduleOverrideSnapshot.self, from: data)
+                    try await restoreScheduleOverrides(snapshot)
+                    lastAppliedSchedulePayload = nil
                 }
                 try persistence.coachAppliedActions.markUndone(id: id)
                 undoableActionsByMessageID[action.messageID] = nil
@@ -435,10 +443,16 @@ final class ChatController {
                 )
             case let .scheduleAdjustment(payload):
                 applyProgressStep = "Updating week…"
+                let priorOverrides = (try? persistence.scheduleOverrides.load()) ?? .empty
                 _ = try await HelmActionRuntime.perform(
                     .trainingPlan(.scheduleAdjustment(payload)),
                     after: .coach
                 )
+                persistScheduleUndo(
+                    prior: priorOverrides,
+                    caption: proposal.detail
+                )
+                lastAppliedSchedulePayload = payload
             case let .reactiveDeload(payload):
                 applyProgressStep = "Updating plan…"
                 let action: HelmReactiveDeloadAction = payload.action == .confirm ? .confirm : .dismiss
@@ -501,7 +515,10 @@ final class ChatController {
         degradedState = nil
         lastTurnError = nil
         lastFailedUserMessage = text
-        if CoachChatIntent.clearsPendingWorkoutStart(text) {
+        // Only drop a pending workout-start card when the athlete changes topic.
+        // Greetings must not silently clear schedule/memory confirms (CAM-37).
+        if CoachChatIntent.clearsPendingWorkoutStart(text),
+           case .workoutStart = pendingChatAction?.kind {
             pendingChatAction = nil
         }
         if coachUserMessage != nil {
@@ -898,7 +915,26 @@ final class ChatController {
                         fromFoodLog: payload.replacingHelmDay(day.formatted)
                     )
                 }
-                pendingChatAction = pendingAction
+                if CoachChatIntent.suppressesWriteProposals(text) {
+                    // Drop this turn's writes; keep any prior confirm card (CAM-37).
+                    pendingAction = nil
+                } else {
+                    if case let .scheduleAdjustment(payload) = pendingAction?.kind {
+                        let today = HelmDay.day(for: Date(), calendar: .current)
+                        let matchesLast = lastAppliedSchedulePayload.map {
+                            ScheduleOverrideApplier.sameIntent($0, payload)
+                        } ?? false
+                        if matchesLast
+                            || ScheduleOverrideApplier.isRedundant(
+                                payload,
+                                persistence: persistence,
+                                today: today
+                            ) {
+                            pendingAction = nil
+                        }
+                    }
+                    pendingChatAction = pendingAction
+                }
             }
 
             var storedText = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
@@ -2104,6 +2140,37 @@ final class ChatController {
         } catch {
             CoachDiagnosticsStore.shared.recordFailure(surface: "coachAppliedAction", error: error)
         }
+    }
+
+    private func persistScheduleUndo(prior: StoredScheduleOverrides, caption: String) {
+        let messageID = messages.last(where: { $0.role == .assistant })?.id ?? UUID().uuidString
+        let snapshot = ScheduleOverrideSnapshot(overrides: prior, caption: caption)
+        let json = (try? JSONEncoder().encode(snapshot)).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+        let action = CoachAppliedAction(
+            messageID: messageID,
+            kind: .scheduleAdjustment,
+            snapshotJSON: json
+        )
+        do {
+            try persistence.coachAppliedActions.insert(action)
+            undoableActionsByMessageID[messageID] = action
+        } catch {
+            CoachDiagnosticsStore.shared.recordFailure(surface: "coachAppliedAction", error: error)
+        }
+    }
+
+    private func restoreScheduleOverrides(_ snapshot: ScheduleOverrideSnapshot) async throws {
+        if snapshot.overrides.isEmpty {
+            try persistence.scheduleOverrides.clear()
+        } else {
+            try persistence.scheduleOverrides.save(snapshot.overrides)
+        }
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        PrescriptionDayStore.clear(for: today)
+        await HelmActionRuntime.apply(
+            HelmActionResult(sideEffects: [.refreshPrescription]),
+            after: .coach
+        )
     }
 
     private func restoreDeletedMeals(_ snapshot: MealDeleteSnapshot) async throws {

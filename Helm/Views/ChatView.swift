@@ -52,11 +52,17 @@ struct ChatView: View {
                                         )
                                     }
                                     if let action = controller.undoableAction(for: message.id) {
-                                        Button("Undo") {
-                                            controller.undoAppliedAction(id: action.id)
+                                        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                                            if let caption = scheduleUndoCaption(for: action) {
+                                                Text(caption)
+                                                    .helmType(.body, color: HelmColor.fgSecondary)
+                                            }
+                                            Button("Undo") {
+                                                controller.undoAppliedAction(id: action.id)
+                                            }
+                                            .buttonStyle(.helmSecondary)
+                                            .accessibilityLabel("Undo coach action")
                                         }
-                                        .buttonStyle(.helmSecondary)
-                                        .accessibilityLabel("Undo coach action")
                                     }
                                 }
                                 .id(message.id)
@@ -331,9 +337,21 @@ struct ChatView: View {
             return "Coach discarded a workout."
         case CoachOutputSchemaVersion.calendarEventClassifyV1.rawValue:
             return "Coach classified calendar events."
+        case CoachOutputSchemaVersion.scheduleAdjustmentV1.rawValue:
+            return "Coach updated the week schedule."
         default:
             return nil
         }
+    }
+
+    private func scheduleUndoCaption(for action: CoachAppliedAction) -> String? {
+        guard action.kind == .scheduleAdjustment else { return nil }
+        let data = Data(action.snapshotJSON.utf8)
+        guard let snapshot = try? JSONDecoder().decode(ScheduleOverrideSnapshot.self, from: data),
+              let caption = snapshot.caption,
+              !caption.isEmpty
+        else { return nil }
+        return caption
     }
 
     private func actionCaption(_ text: String) -> some View {

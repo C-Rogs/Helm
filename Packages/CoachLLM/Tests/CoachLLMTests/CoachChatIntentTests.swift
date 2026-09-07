@@ -23,6 +23,12 @@ struct CoachChatIntentTests {
         )
         #expect(CoachChatIntent.clearsPendingWorkoutStart("How was my workout earlier"))
         #expect(!CoachChatIntent.clearsPendingWorkoutStart("Start the workout"))
+        #expect(!CoachChatIntent.clearsPendingWorkoutStart("Hello coach"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Hello coach"))
+        #expect(CoachChatIntent.suppressesWriteProposals("hi"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Hey!"))
+        #expect(!CoachChatIntent.suppressesWriteProposals("I want to train on Friday"))
+        #expect(!CoachChatIntent.suppressesWriteProposals("hello and swap Friday"))
     }
 
     @Test("infers workout and meal queries")

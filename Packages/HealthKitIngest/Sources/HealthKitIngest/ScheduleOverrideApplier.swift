@@ -16,18 +16,81 @@ public enum ScheduleOverrideApplier {
             throw ScheduleOverrideApplyError.liveWorkoutActive
         }
 
-        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: calendar)
-        var stored = (try? persistence.scheduleOverrides.load()) ?? .empty
-        if stored.isActive(forWeekStarting: weekStart) == false {
-            stored = StoredScheduleOverrides(weekStartFormatted: weekStart.formatted)
-        } else {
-            stored.weekStartFormatted = weekStart.formatted
-        }
-
         switch payload.action {
         case .clear:
             try persistence.scheduleOverrides.clear()
             return
+        case .deferKinds, .pinDay, .swapDays:
+            let stored = try mutatedOverrides(
+                payload,
+                persistence: persistence,
+                today: today,
+                calendar: calendar
+            )
+            try persistence.scheduleOverrides.save(stored)
+        }
+    }
+
+    /// True when applying `payload` would leave week overrides unchanged (ignore reason text).
+    public static func isRedundant(
+        _ payload: ScheduleAdjustmentPayload,
+        persistence: PersistenceStore,
+        today: HelmDay,
+        calendar: Calendar = .current
+    ) -> Bool {
+        do {
+            let before = (try? persistence.scheduleOverrides.load()) ?? .empty
+            let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: calendar)
+            switch payload.action {
+            case .clear:
+                return before.isEmpty || before.isActive(forWeekStarting: weekStart) == false
+            case .deferKinds, .pinDay, .swapDays:
+                if try hasLiveWorkout(persistence: persistence), affectsToday(payload, today: today) {
+                    return false
+                }
+                let after = try mutatedOverrides(
+                    payload,
+                    persistence: persistence,
+                    today: today,
+                    calendar: calendar
+                )
+                let baseline = workingCopy(of: before, weekStart: weekStart)
+                return scheduleStateEqual(baseline, after)
+            }
+        } catch {
+            return false
+        }
+    }
+
+    /// Same schedule intent ignoring reply/reason wording (for suppressing re-proposals).
+    public static func sameIntent(
+        _ lhs: ScheduleAdjustmentPayload,
+        _ rhs: ScheduleAdjustmentPayload
+    ) -> Bool {
+        lhs.action == rhs.action
+            && lhs.region == rhs.region
+            && lhs.kinds == rhs.kinds
+            && lhs.pinKind == rhs.pinKind
+            && lhs.helmDay == rhs.helmDay
+            && lhs.dayA == rhs.dayA
+            && lhs.dayB == rhs.dayB
+    }
+
+    private static func mutatedOverrides(
+        _ payload: ScheduleAdjustmentPayload,
+        persistence: PersistenceStore,
+        today: HelmDay,
+        calendar: Calendar
+    ) throws -> StoredScheduleOverrides {
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: calendar)
+        var stored = workingCopy(
+            of: (try? persistence.scheduleOverrides.load()) ?? .empty,
+            weekStart: weekStart
+        )
+
+        switch payload.action {
+        case .clear:
+            return .empty
 
         case .deferKinds:
             let settings = try persistence.trainingPlan.load()
@@ -119,7 +182,29 @@ public enum ScheduleOverrideApplier {
             stored.reason = payload.reason ?? "Swapped \(dayA.formatted) and \(dayB.formatted)"
         }
 
-        try persistence.scheduleOverrides.save(stored)
+        return stored
+    }
+
+    private static func workingCopy(
+        of stored: StoredScheduleOverrides,
+        weekStart: HelmDay
+    ) -> StoredScheduleOverrides {
+        if stored.isActive(forWeekStarting: weekStart) == false {
+            return StoredScheduleOverrides(weekStartFormatted: weekStart.formatted)
+        }
+        var copy = stored
+        copy.weekStartFormatted = weekStart.formatted
+        return copy
+    }
+
+    private static func scheduleStateEqual(
+        _ lhs: StoredScheduleOverrides,
+        _ rhs: StoredScheduleOverrides
+    ) -> Bool {
+        lhs.weekStartFormatted == rhs.weekStartFormatted
+            && lhs.pinnedByDay == rhs.pinnedByDay
+            && Set(lhs.deferredKinds) == Set(rhs.deferredKinds)
+            && Set(lhs.restDays) == Set(rhs.restDays)
     }
 
     // MARK: - Swap / kind resolution

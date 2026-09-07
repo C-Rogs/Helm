@@ -28,42 +28,44 @@ struct NutritionDiaryHeader: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            HStack(spacing: HelmSpacing.xs) {
-                Button {
-                    onSelectDay(selectedDay.adding(days: -1))
-                } label: {
-                    Image(systemName: "chevron.left")
-                }
-                .buttonStyle(.helmPressable)
-                .accessibilityLabel("Previous day")
-
-                HStack(spacing: HelmSpacing.xxs) {
-                    ForEach(weekDays) { day in
-                        dayChip(day)
-                    }
-                }
-                .frame(minWidth: 0, maxWidth: .infinity)
-                .clipped()
-                .contentShape(Rectangle())
-                .highPriorityGesture(weekSwipeGesture)
-
-                Button {
-                    goToNextDay()
-                } label: {
-                    Image(systemName: "chevron.right")
-                }
-                .buttonStyle(.helmPressable)
-                .disabled(selectedDay >= today)
-                .accessibilityLabel("Next day")
+        HStack(spacing: HelmSpacing.xs) {
+            Button {
+                onSelectDay(selectedDay.adding(days: -1))
+            } label: {
+                Image(systemName: "chevron.left")
             }
+            .buttonStyle(.helmPressable)
+            .accessibilityLabel("Previous day")
+
+            HStack(spacing: HelmSpacing.xxs) {
+                ForEach(weekDays) { day in
+                    dayChip(day)
+                }
+            }
+            .frame(minWidth: 0, maxWidth: .infinity)
+            .clipped()
+            .contentShape(Rectangle())
+            .highPriorityGesture(weekSwipeGesture)
 
             if selectedDay != today {
-                Button("Jump to today") {
+                Button {
                     onSelectDay(today)
+                } label: {
+                    Text("Today")
+                        .helmType(.monoTag, color: HelmColor.accent)
                 }
-                .buttonStyle(.helmSecondary)
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Jump to today")
             }
+
+            Button {
+                goToNextDay()
+            } label: {
+                Image(systemName: "chevron.right")
+            }
+            .buttonStyle(.helmPressable)
+            .disabled(selectedDay >= today)
+            .accessibilityLabel("Next day")
         }
     }
 
@@ -200,6 +202,16 @@ extension NutritionDayDemand {
 #Preview {
     NutritionDiaryHeader(
         selectedDay: HelmDay(year: 2026, month: 7, day: 24),
+        today: HelmDay(year: 2026, month: 7, day: 24),
+        onSelectDay: { _ in }
+    )
+    .padding()
+    .helmTheme()
+}
+
+#Preview("Past day") {
+    NutritionDiaryHeader(
+        selectedDay: HelmDay(year: 2026, month: 7, day: 22),
         today: HelmDay(year: 2026, month: 7, day: 24),
         onSelectDay: { _ in }
     )

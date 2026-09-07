@@ -6,6 +6,7 @@ import GRDB
 public struct CoachAppliedAction: Sendable, Identifiable, Equatable {
     public enum Kind: String, Sendable, Codable, Equatable {
         case mealDelete
+        case scheduleAdjustment
     }
 
     public var id: UUID
@@ -49,6 +50,18 @@ public struct MealDeleteSnapshot: Sendable, Codable, Equatable {
 
     public init(items: [Item]) {
         self.items = items
+    }
+}
+
+/// Prior week overrides so a schedule confirm can be undone from chat.
+public struct ScheduleOverrideSnapshot: Sendable, Codable, Equatable {
+    public var overrides: StoredScheduleOverrides
+    /// Human caption shown next to Undo (e.g. swap detail).
+    public var caption: String?
+
+    public init(overrides: StoredScheduleOverrides, caption: String? = nil) {
+        self.overrides = overrides
+        self.caption = caption
     }
 }
 

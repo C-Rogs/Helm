@@ -113,11 +113,9 @@ public enum CoachChatIntent: Sendable {
     public static func clearsPendingWorkoutStart(_ text: String) -> Bool {
         if looksLikeWorkoutStart(text) { return false }
         if looksLikeWorkoutProposal(text) { return false }
+        if suppressesWriteProposals(text) { return false }
         let lower = text.lowercased()
         let clearNeedles = [
-            "hello",
-            "hi",
-            "hey",
             "clear",
             "how was",
             "how did",
@@ -135,6 +133,30 @@ public enum CoachChatIntent: Sendable {
             "can you see"
         ]
         return clearNeedles.contains { lower.contains($0) }
+    }
+
+    /// Pure greeting / no-intent turn: keep any pending confirm card, and drop
+    /// write proposals the model re-emits from transcript context (CAM-37).
+    public static func suppressesWriteProposals(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .lowercased()
+        guard !trimmed.isEmpty else { return false }
+        let greetings: Set<String> = [
+            "hello",
+            "hi",
+            "hey",
+            "hello coach",
+            "hi coach",
+            "hey coach",
+            "hello there",
+            "hi there",
+            "hey there",
+            "good morning",
+            "good afternoon",
+            "good evening"
+        ]
+        return greetings.contains(trimmed)
     }
 
     public static func looksLikeClearChat(_ text: String) -> Bool {
