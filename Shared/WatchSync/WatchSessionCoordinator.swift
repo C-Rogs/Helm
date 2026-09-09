@@ -423,7 +423,11 @@ final class WatchSessionCoordinator: NSObject {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = HKWorkoutActivityType(rawValue: kind.healthKitActivityTypeRawValue)
             ?? .traditionalStrengthTraining
-        configuration.locationType = kind.usesOutdoorLocation ? .outdoor : .indoor
+        let exerciseNames = pendingWorkoutCompanionPush?.exerciseName.map { [$0] } ?? []
+        configuration.locationType = kind.usesIndoorLocation(
+            sessionTitle: nil,
+            exerciseNames: exerciseNames
+        ) ? .indoor : .outdoor
         return await withCheckedContinuation { continuation in
             HKHealthStore().startWatchApp(with: configuration) { @Sendable (success: Bool, error: Error?) in
                 if let error {

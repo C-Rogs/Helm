@@ -33,6 +33,17 @@ public enum WatchWorkoutActivityKind: String, CaseIterable, Sendable, Identifiab
         }
     }
 
+    public func usesIndoorLocation(sessionTitle: String?, exerciseNames: [String]) -> Bool {
+        let joined = ([sessionTitle].compactMap { $0 } + exerciseNames)
+            .map { $0.lowercased() }
+            .joined(separator: " ")
+        let indoorNeedles = ["treadmill", "stationary", "indoor", "spin bike", "exercise bike"]
+        if indoorNeedles.contains(where: joined.contains) {
+            return true
+        }
+        return !usesOutdoorLocation
+    }
+
     /// Raw HealthKit activity type identifier (mirrors `HKWorkoutActivityType` raw values).
     public var healthKitActivityTypeRawValue: UInt {
         switch self {
@@ -48,7 +59,7 @@ public enum WatchWorkoutActivityKind: String, CaseIterable, Sendable, Identifiab
     }
 
     public static func fromHealthKitActivityTypeRawValue(_ rawValue: UInt) -> WatchWorkoutActivityKind {
-        Self.allCases.first { $0.healthKitActivityTypeRawValue == rawValue } ?? .traditionalStrengthTraining
+        Self.allCases.first { $0.healthKitActivityTypeRawValue == rawValue } ?? .other
     }
 
     /// Infer HK activity from a Helm session title + exercise names/modes.

@@ -115,6 +115,8 @@ public struct TrainingHistorySet: Codable, Sendable, Hashable, Identifiable {
     public let setType: SetType
     public let massKilograms: Double?
     public let reps: Int?
+    public let distanceKilometers: Double?
+    public let durationSeconds: Int?
     public let rpe: Double?
     public let rir: Double?
     public let completedAt: Date?
@@ -125,6 +127,8 @@ public struct TrainingHistorySet: Codable, Sendable, Hashable, Identifiable {
         setType: SetType,
         massKilograms: Double?,
         reps: Int?,
+        distanceKilometers: Double? = nil,
+        durationSeconds: Int? = nil,
         rpe: Double?,
         rir: Double?,
         completedAt: Date?
@@ -134,6 +138,8 @@ public struct TrainingHistorySet: Codable, Sendable, Hashable, Identifiable {
         self.setType = setType
         self.massKilograms = massKilograms
         self.reps = reps
+        self.distanceKilometers = distanceKilometers
+        self.durationSeconds = durationSeconds
         self.rpe = rpe
         self.rir = rir
         self.completedAt = completedAt
@@ -217,6 +223,8 @@ public struct TrainingHistoryExportService: Sendable {
                                 setType: set.setType,
                                 massKilograms: set.mass?.kilograms,
                                 reps: set.reps,
+                                distanceKilometers: set.distanceKilometers,
+                                durationSeconds: set.durationSeconds,
                                 rpe: set.rpe,
                                 rir: set.rir,
                                 completedAt: set.completedAt
@@ -336,6 +344,8 @@ guard export.schemaVersion <= TrainingHistoryExport.currentSchemaVersion else {
                                 status: .completed,
                                 mass: set.massKilograms.map { Mass(kilograms: $0) },
                                 reps: set.reps,
+                                distanceKilometers: set.distanceKilometers,
+                                durationSeconds: set.durationSeconds,
                                 rpe: set.rpe,
                                 rir: set.rir,
                                 completedAt: set.completedAt ?? session.startedAt

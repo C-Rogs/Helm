@@ -7,6 +7,7 @@ import Testing
 struct ActiveSessionEngineTests {
     private let benchPressID = "exercise-bench-press"
     private let squatID = "exercise-squat"
+    private let treadmillID = "exercise-treadmill"
 
     private func makeHarness(at instant: Date = Date(timeIntervalSince1970: 1_700_000_000)) throws -> (
         store: PersistenceStore,
@@ -26,6 +27,15 @@ struct ActiveSessionEngineTests {
             displayName: "Bench Press (Barbell)",
             exerciseMode: .weightReps,
             primaryMuscleGroup: "chest"
+        )
+    }
+
+    private func seedTreadmill(in store: PersistenceStore) throws {
+        try store.exercises.upsert(
+            id: treadmillID,
+            canonicalName: "treadmill",
+            displayName: "Treadmill",
+            exerciseMode: .distanceDuration
         )
     }
 
@@ -319,6 +329,32 @@ struct ActiveSessionEngineTests {
         let sets = try #require(afterAdd.session.exercises.first?.sets)
         #expect(sets.count == 3)
         #expect(Set(sets.map(\.setIndex)).count == 3)
+    }
+
+    @Test("cardio exercise starts with one interval and persists metrics")
+    func cardioDefaultsAndMetrics() async throws {
+        let (persistence, engine, _) = try makeHarness()
+        try seedTreadmill(in: persistence)
+
+        _ = try await engine.start(title: "Easy jog")
+        let snapshot = try await engine.addExercise(exerciseID: treadmillID)
+        let exercise = try #require(snapshot.session.exercises.first)
+        let interval = try #require(exercise.sets.first)
+
+        #expect(exercise.exerciseMode == .distanceDuration)
+        #expect(exercise.sets.count == 1)
+
+        let logged = try await engine.logSet(
+            setID: interval.id,
+            update: SetLogUpdate(
+                distanceKilometers: 2,
+                durationSeconds: 600,
+                rpe: 6
+            )
+        )
+        #expect(logged.session.exercises[0].sets[0].durationSeconds == 600)
+        #expect(logged.session.exercises[0].sets[0].distanceKilometers == 2)
+        #expect(logged.session.exercises[0].sets[0].rpe == 6)
     }
 
     @Test("add set copies mass and reps from the last working set")

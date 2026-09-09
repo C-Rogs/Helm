@@ -1,5 +1,5 @@
 {
-  "seedVersion": 12,
+  "seedVersion": 13,
   "placeholder": false,
   "catalogResource": "free-exercise-db",
   "pickerCuration": "explicit",
@@ -2931,7 +2931,7 @@
       "aliases": [
         "Cycling"
       ],
-      "exerciseMode": "weight_reps",
+      "exerciseMode": "distance_duration",
       "secondaryMuscleGroups": [],
       "movementPattern": "cardio",
       "isPickerDefault": true,

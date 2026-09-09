@@ -6,6 +6,8 @@ public struct ImportedWorkoutSetPlan: Sendable, Hashable {
     public let setType: SetType
     public let mass: Mass?
     public let reps: Int?
+    public let durationSeconds: Int?
+    public let distanceKilometers: Double?
     public let rpe: Double?
 
     public init(
@@ -13,12 +15,16 @@ public struct ImportedWorkoutSetPlan: Sendable, Hashable {
         setType: SetType = .normal,
         mass: Mass? = nil,
         reps: Int? = nil,
+        durationSeconds: Int? = nil,
+        distanceKilometers: Double? = nil,
         rpe: Double? = nil
     ) {
         self.setIndex = setIndex
         self.setType = setType
         self.mass = mass
         self.reps = reps
+        self.durationSeconds = durationSeconds
+        self.distanceKilometers = distanceKilometers
         self.rpe = rpe
     }
 }
@@ -212,6 +218,8 @@ public struct WorkoutImportService: Sendable {
                     status: .completed,
                     mass: set.mass,
                     reps: set.reps,
+                    distanceKilometers: set.distanceKilometers,
+                    durationSeconds: set.durationSeconds,
                     rpe: set.rpe,
                     completedAt: startedAt
                 )

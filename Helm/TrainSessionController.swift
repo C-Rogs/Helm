@@ -14,6 +14,8 @@ import UIKit
 enum NumpadFieldKind: Hashable, Sendable {
     case weight
     case reps
+    case durationMinutes
+    case distanceKilometers
     case rpe
 }
 
@@ -893,29 +895,45 @@ final class TrainSessionController {
 
             guard let refreshedSet = findSet(setID: setID) else { return false }
 
-            if refreshedSet.mass == nil || refreshedSet.reps == nil,
-               let previous = previousFor(set: refreshedSet, exerciseID: exerciseID(for: sessionExerciseID)) {
+            let mode = exerciseMode(for: sessionExerciseID)
+            if let previous = previousFor(set: refreshedSet, exerciseID: exerciseID(for: sessionExerciseID)) {
                 var mass = refreshedSet.mass
                 var reps = refreshedSet.reps
+                var durationSeconds = refreshedSet.durationSeconds
+                var distanceKilometers = refreshedSet.distanceKilometers
                 if mass == nil { mass = previous.mass }
                 if reps == nil { reps = previous.reps }
+                if durationSeconds == nil { durationSeconds = previous.durationSeconds }
+                if distanceKilometers == nil { distanceKilometers = previous.distanceKilometers }
                 try await store.logSet(
                     setID: setID,
                     update: SetLogUpdate(
                         mass: mass,
                         reps: reps,
+                        distanceKilometers: distanceKilometers,
+                        durationSeconds: durationSeconds,
                         rpe: refreshedSet.rpe,
-                        rir: refreshedSet.rpe.map { PlanKit.rirFromRPE($0) } ?? refreshedSet.rir
+                        rir: mode.isCardio
+                            ? nil
+                            : refreshedSet.rpe.map { PlanKit.rirFromRPE($0) } ?? refreshedSet.rir
                     )
                 )
-                updateRIRAdvisory(
-                    setID: setID,
-                    exerciseID: exerciseID(for: sessionExerciseID),
-                    mass: mass,
-                    reps: reps,
-                    rpe: refreshedSet.rpe,
-                    setType: refreshedSet.setType
-                )
+                if !mode.isCardio {
+                    updateRIRAdvisory(
+                        setID: setID,
+                        exerciseID: exerciseID(for: sessionExerciseID),
+                        mass: mass,
+                        reps: reps,
+                        rpe: refreshedSet.rpe,
+                        setType: refreshedSet.setType
+                    )
+                }
+            }
+
+            guard let completionSet = findSet(setID: setID) else { return false }
+            if let message = mode.completionValidationMessage(for: completionSet) {
+                rejectNumpadValidation(message)
+                return false
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
             numpadTarget = nil
@@ -969,13 +987,17 @@ final class TrainSessionController {
             ? nextSet.mass
             : completedSet.mass
         let repsToCarry = nextSet.reps ?? completedSet.reps
+        let durationToCarry = nextSet.durationSeconds ?? completedSet.durationSeconds
+        let distanceToCarry = nextSet.distanceKilometers ?? completedSet.distanceKilometers
         let rpeToCarry = nextSet.rpe ?? completedSet.rpe
 
         let massChanged = massToCarry?.meaningfulWorkingKilograms
             != nextSet.mass?.meaningfulWorkingKilograms
         let repsChanged = repsToCarry != nextSet.reps
+        let durationChanged = durationToCarry != nextSet.durationSeconds
+        let distanceChanged = distanceToCarry != nextSet.distanceKilometers
         let rpeChanged = rpeToCarry != nextSet.rpe
-        guard massChanged || repsChanged || rpeChanged else { return }
+        guard massChanged || repsChanged || durationChanged || distanceChanged || rpeChanged else { return }
 
         do {
             try await store.logSet(
@@ -983,8 +1005,10 @@ final class TrainSessionController {
                 update: SetLogUpdate(
                     mass: massToCarry,
                     reps: repsToCarry,
+                    distanceKilometers: distanceToCarry,
+                    durationSeconds: durationToCarry,
                     rpe: rpeToCarry,
-                    rir: rpeToCarry.map { PlanKit.rirFromRPE($0) }
+                    rir: exercise.exerciseMode.isCardio ? nil : rpeToCarry.map { PlanKit.rirFromRPE($0) }
                 )
             )
         } catch {
@@ -1660,14 +1684,16 @@ final class TrainSessionController {
             try await store.logSet(setID: target.setID, update: update)
             await refreshMetadata(scope: .light)
             numpadValidationError = nil
-            updateRIRAdvisory(
-                setID: target.setID,
-                exerciseID: exerciseID(for: target.sessionExerciseID),
-                mass: update.mass,
-                reps: update.reps,
-                rpe: update.rpe,
-                setType: set.setType
-            )
+            if !exerciseMode(for: target.sessionExerciseID).isCardio {
+                updateRIRAdvisory(
+                    setID: target.setID,
+                    exerciseID: exerciseID(for: target.sessionExerciseID),
+                    mass: update.mass,
+                    reps: update.reps,
+                    rpe: update.rpe,
+                    setType: set.setType
+                )
+            }
             return true
         } catch {
             errorMessage = error.localizedDescription
@@ -1687,6 +1713,9 @@ final class TrainSessionController {
         let nextField: NumpadFieldKind? = switch target.field {
         case .weight: .reps
         case .reps: .rpe
+        case .durationMinutes:
+            exerciseMode(for: target.sessionExerciseID) == .distanceDuration ? .distanceKilometers : .rpe
+        case .distanceKilometers: .rpe
         case .rpe: nil
         }
 
@@ -1769,19 +1798,25 @@ final class TrainSessionController {
                 update: SetLogUpdate(
                     mass: previous.mass ?? set.mass,
                     reps: previous.reps ?? set.reps,
+                    distanceKilometers: previous.distanceKilometers ?? set.distanceKilometers,
+                    durationSeconds: previous.durationSeconds ?? set.durationSeconds,
                     rpe: set.rpe,
-                    rir: set.rpe.map { PlanKit.rirFromRPE($0) } ?? set.rir
+                    rir: exerciseMode(for: sessionExerciseID).isCardio
+                        ? nil
+                        : set.rpe.map { PlanKit.rirFromRPE($0) } ?? set.rir
                 )
             )
             await refreshMetadata()
-            updateRIRAdvisory(
-                setID: setID,
-                exerciseID: exerciseID(for: sessionExerciseID),
-                mass: previous.mass ?? set.mass,
-                reps: previous.reps ?? set.reps,
-                rpe: set.rpe,
-                setType: set.setType
-            )
+            if !exerciseMode(for: sessionExerciseID).isCardio {
+                updateRIRAdvisory(
+                    setID: setID,
+                    exerciseID: exerciseID(for: sessionExerciseID),
+                    mass: previous.mass ?? set.mass,
+                    reps: previous.reps ?? set.reps,
+                    rpe: set.rpe,
+                    setType: set.setType
+                )
+            }
         } catch {
             errorMessage = error.localizedDescription
         }
@@ -2270,7 +2305,8 @@ final class TrainSessionController {
                 try await PhoneWorkoutSessionManager.shared.start(
                     sessionID: sessionID,
                     activityStart: startedAt,
-                    activityKind: activityKind
+                    activityKind: activityKind,
+                    indoor: inferredWorkoutUsesIndoorLocation(activityKind: activityKind)
                 )
             } catch {
                 WatchReadinessBootstrap.coordinator.recordDiagnostic(
@@ -2447,6 +2483,19 @@ final class TrainSessionController {
         )
     }
 
+    private func inferredWorkoutUsesIndoorLocation(
+        activityKind: WatchWorkoutActivityKind
+    ) -> Bool {
+        guard let snapshot = store.snapshot else { return !activityKind.usesOutdoorLocation }
+        let names = snapshot.session.exercises.map { exercise in
+            exerciseSummaries[exercise.exerciseID]?.displayName ?? exercise.exerciseID
+        }
+        return activityKind.usesIndoorLocation(
+            sessionTitle: snapshot.session.title,
+            exerciseNames: names
+        )
+    }
+
     /// Tears down Watch companion + phone live HR session.
     /// Phone HKWorkout saved only when HR arrived and Watch did not (avoid double workout).
     private func deactivateHeartRateCompanion(saveWorkout: Bool) async {
@@ -2469,6 +2518,12 @@ final class TrainSessionController {
                 return formatWeight(mass.kilograms)
             case .reps:
                 return set.reps.map(String.init) ?? ""
+            case .durationMinutes:
+                guard let seconds = set.durationSeconds else { return "" }
+                return formatDurationMinutes(seconds)
+            case .distanceKilometers:
+                guard let distance = set.distanceKilometers else { return "" }
+                return formatDistance(distance)
             case .rpe:
                 guard let rpe = set.rpe else { return "" }
                 return formattedRPE(rpe)
@@ -2511,6 +2566,8 @@ final class TrainSessionController {
         switch field {
         case .weight: set.mass != nil
         case .reps: set.reps != nil
+        case .durationMinutes: set.durationSeconds != nil
+        case .distanceKilometers: set.distanceKilometers != nil
         case .rpe: set.rpe != nil
         }
     }
@@ -2522,6 +2579,12 @@ final class TrainSessionController {
             return formatWeight(mass.kilograms)
         case .reps:
             return set.reps.map(String.init) ?? ""
+        case .durationMinutes:
+            guard let seconds = set.durationSeconds else { return "" }
+            return formatDurationMinutes(seconds)
+        case .distanceKilometers:
+            guard let distance = set.distanceKilometers else { return "" }
+            return formatDistance(distance)
         case .rpe:
             guard let rpe = set.rpe else { return "" }
             return formattedRPE(rpe)
@@ -2540,6 +2603,12 @@ final class TrainSessionController {
             return formatWeight(mass.kilograms)
         case .reps:
             return previous.reps.map(String.init) ?? "-"
+        case .durationMinutes:
+            guard let seconds = previous.durationSeconds else { return "-" }
+            return formatDurationMinutes(seconds)
+        case .distanceKilometers:
+            guard let distance = previous.distanceKilometers else { return "-" }
+            return formatDistance(distance)
         case .rpe:
             return "-"
         }
@@ -2569,7 +2638,14 @@ final class TrainSessionController {
             } else {
                 mass = existing.mass
             }
-            return setLogUpdate(mass: mass, reps: existing.reps, rpe: existing.rpe)
+            return SetLogUpdate(
+                mass: mass,
+                reps: existing.reps,
+                distanceKilometers: existing.distanceKilometers,
+                durationSeconds: existing.durationSeconds,
+                rpe: existing.rpe,
+                rir: existing.rir
+            )
         case .reps:
             let reps: Int?
             if trimmed.isEmpty {
@@ -2579,7 +2655,36 @@ final class TrainSessionController {
             } else {
                 reps = existing.reps
             }
-            return setLogUpdate(mass: existing.mass, reps: reps, rpe: existing.rpe)
+            return SetLogUpdate(
+                mass: existing.mass,
+                reps: reps,
+                distanceKilometers: existing.distanceKilometers,
+                durationSeconds: existing.durationSeconds,
+                rpe: existing.rpe,
+                rir: existing.rir
+            )
+        case .durationMinutes:
+            let durationSeconds = trimmed.isEmpty
+                ? nil
+                : Double(trimmed).map { Int(($0 * 60).rounded()) }
+            return SetLogUpdate(
+                mass: existing.mass,
+                reps: existing.reps,
+                distanceKilometers: existing.distanceKilometers,
+                durationSeconds: durationSeconds,
+                rpe: existing.rpe,
+                rir: existing.rir
+            )
+        case .distanceKilometers:
+            let distanceKilometers = trimmed.isEmpty ? nil : Double(trimmed)
+            return SetLogUpdate(
+                mass: existing.mass,
+                reps: existing.reps,
+                distanceKilometers: distanceKilometers,
+                durationSeconds: existing.durationSeconds,
+                rpe: existing.rpe,
+                rir: existing.rir
+            )
         case .rpe:
             let rpe: Double?
             if trimmed.isEmpty {
@@ -2589,17 +2694,17 @@ final class TrainSessionController {
             } else {
                 rpe = existing.rpe
             }
-            return setLogUpdate(mass: existing.mass, reps: existing.reps, rpe: rpe)
+            return SetLogUpdate(
+                mass: existing.mass,
+                reps: existing.reps,
+                distanceKilometers: existing.distanceKilometers,
+                durationSeconds: existing.durationSeconds,
+                rpe: rpe,
+                rir: exerciseMode(forSetID: existing.id).isCardio
+                    ? nil
+                    : rpe.map { PlanKit.rirFromRPE($0) }
+            )
         }
-    }
-
-    private func setLogUpdate(mass: Mass?, reps: Int?, rpe: Double?) -> SetLogUpdate {
-        SetLogUpdate(
-            mass: mass,
-            reps: reps,
-            rpe: rpe,
-            rir: rpe.map { PlanKit.rirFromRPE($0) }
-        )
     }
 
     private func updateRIRAdvisory(
@@ -2878,6 +2983,20 @@ final class TrainSessionController {
         return snapshot.session.exercises.first(where: { $0.id == sessionExerciseID })?.exerciseID ?? ""
     }
 
+    private func exerciseMode(for sessionExerciseID: String) -> ExerciseMode {
+        guard let snapshot = store.snapshot else { return .weightReps }
+        return snapshot.session.exercises
+            .first(where: { $0.id == sessionExerciseID })?
+            .exerciseMode ?? .weightReps
+    }
+
+    private func exerciseMode(forSetID setID: String) -> ExerciseMode {
+        guard let snapshot = store.snapshot else { return .weightReps }
+        return snapshot.session.exercises
+            .first(where: { exercise in exercise.sets.contains(where: { $0.id == setID }) })?
+            .exerciseMode ?? .weightReps
+    }
+
     private func previousKey(exerciseID: String, setIndex: Int, setType: SetType) -> String {
         "\(exerciseID)|\(setIndex)|\(setType.rawValue)"
     }
@@ -2902,6 +3021,20 @@ final class TrainSessionController {
                 return String(reps)
             }
             return ""
+        case .durationMinutes:
+            if let seconds = set.durationSeconds { return formatDurationMinutes(seconds) }
+            if let previous = previousFor(set: set, exerciseID: exerciseID),
+               let seconds = previous.durationSeconds {
+                return formatDurationMinutes(seconds)
+            }
+            return ""
+        case .distanceKilometers:
+            if let distance = set.distanceKilometers { return formatDistance(distance) }
+            if let previous = previousFor(set: set, exerciseID: exerciseID),
+               let distance = previous.distanceKilometers {
+                return formatDistance(distance)
+            }
+            return ""
         case .rpe:
             if let rpe = set.rpe { return formatRPE(rpe) }
             return ""
@@ -2912,6 +3045,19 @@ final class TrainSessionController {
         kilograms.truncatingRemainder(dividingBy: 1) == 0
             ? String(format: "%.0f", kilograms)
             : String(format: "%.1f", kilograms)
+    }
+
+    private func formatDurationMinutes(_ seconds: Int) -> String {
+        let minutes = Double(seconds) / 60
+        return minutes.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", minutes)
+            : String(format: "%.1f", minutes)
+    }
+
+    private func formatDistance(_ kilometers: Double) -> String {
+        kilometers.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.2f", kilometers)
     }
 
     private func formatRPE(_ value: Double) -> String {

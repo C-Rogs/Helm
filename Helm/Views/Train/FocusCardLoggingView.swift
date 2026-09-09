@@ -136,7 +136,9 @@ struct FocusCardLoggingView: View {
             )
         }
         .buttonStyle(.helmPressable)
-        .accessibilityLabel("\(name), \(completed) of \(total) sets completed")
+        .accessibilityLabel(
+            "\(name), \(completed) of \(total) \(exercise.exerciseMode.isCardio ? "intervals" : "sets") completed"
+        )
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
@@ -221,7 +223,7 @@ struct FocusCardLoggingView: View {
 
                     completedSetsStack(currentExercise)
 
-                    if currentExercise.sets.contains(where: { $0.setType.countsAsPrescribedWorkingSet }) {
+                    if !currentExercise.sets.isEmpty {
                         setManagementControls(currentExercise)
                     }
 
@@ -316,7 +318,10 @@ struct FocusCardLoggingView: View {
     }
 
     private func setTypeGlyph(for set: SetEntryDraft) -> String {
-        set.setType.loggerGlyph(setNumber: set.setIndex + 1)
+        if let exercise = exercises[safe: currentExerciseIndex], exercise.exerciseMode.isCardio {
+            return "\(set.setIndex + 1)"
+        }
+        return set.setType.loggerGlyph(setNumber: set.setIndex + 1)
     }
 
     private func setTypeColor(for set: SetEntryDraft) -> Color {
@@ -329,6 +334,19 @@ struct FocusCardLoggingView: View {
     }
 
     private func completedSetValue(for set: SetEntryDraft) -> String {
+        if let exercise = exercises[safe: currentExerciseIndex], exercise.exerciseMode.isCardio {
+            var parts: [String] = []
+            if let seconds = set.durationSeconds {
+                parts.append(seconds.isMultiple(of: 60) ? "\(seconds / 60) min" : "\(seconds) sec")
+            }
+            if let distance = set.distanceKilometers {
+                parts.append("\(formatDistance(distance)) km")
+            }
+            if let rpe = set.rpe {
+                parts.append("RPE \(formattedRPE(rpe))")
+            }
+            return parts.isEmpty ? "No interval data" : parts.joined(separator: " · ")
+        }
         let weight = set.mass.map { formatWeight($0.kilograms) } ?? "-"
         let reps = set.reps.map(String.init) ?? "-"
         let rpe = set.rpe.map { formattedRPE($0) } ?? "-"
@@ -375,7 +393,10 @@ struct FocusCardLoggingView: View {
             Button {
                 Task { @MainActor in await controller.removeSet(sessionExerciseID: exercise.id) }
             } label: {
-                Label("Remove set", systemImage: "minus.circle")
+                Label(
+                    exercise.exerciseMode.isCardio ? "Remove interval" : "Remove set",
+                    systemImage: "minus.circle"
+                )
             }
             .buttonStyle(.helmSecondary)
             .disabled(!canRemove)
@@ -383,7 +404,10 @@ struct FocusCardLoggingView: View {
             Button {
                 Task { @MainActor in await controller.addSet(sessionExerciseID: exercise.id) }
             } label: {
-                Label("Add set", systemImage: "plus.circle")
+                Label(
+                    exercise.exerciseMode.isCardio ? "Add interval" : "Add set",
+                    systemImage: "plus.circle"
+                )
             }
             .buttonStyle(.helmSecondary)
         }
@@ -497,6 +521,12 @@ struct FocusCardLoggingView: View {
 
     private func exerciseImageURL(for exerciseID: String) -> URL? {
         controller.exerciseImageURL(for: exerciseID)
+    }
+
+    private func formatDistance(_ kilometers: Double) -> String {
+        kilometers.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.2f", kilometers)
     }
 
     private func prefetchNeighborImages() {

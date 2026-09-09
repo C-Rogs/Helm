@@ -29,7 +29,7 @@ struct WatchWorkoutSessionPhaseTests {
         #expect(phase == .idle)
     }
 
-    @Test("maps HealthKit strength activity raw value to Watch kind")
+    @Test("maps known and unknown HealthKit activity values")
     func mapsStrengthActivityRawValue() {
         #expect(
             WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(50)
@@ -37,7 +37,7 @@ struct WatchWorkoutSessionPhaseTests {
         )
         #expect(
             WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(9999)
-                == .traditionalStrengthTraining
+                == .other
         )
     }
 

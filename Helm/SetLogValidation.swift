@@ -6,6 +6,10 @@ enum SetLogValidation {
     static let maxWeightKg = 500.0
     static let minReps = 1
     static let maxReps = 50
+    static let minDurationMinutes = 1
+    static let maxDurationMinutes = 1_440
+    static let minDistanceKilometers = 0.01
+    static let maxDistanceKilometers = 1_000.0
     static let minRPE = 5.0
     static let maxRPE = 10.0
 
@@ -39,6 +43,20 @@ enum SetLogValidation {
             }
             guard value >= minReps, value <= maxReps else {
                 return "Reps must be \(minReps)–\(maxReps)."
+            }
+        case .durationMinutes:
+            guard let value = Double(trimmed) else {
+                return "Enter a valid duration."
+            }
+            guard value >= Double(minDurationMinutes), value <= Double(maxDurationMinutes) else {
+                return "Duration must be \(minDurationMinutes)–\(maxDurationMinutes) minutes."
+            }
+        case .distanceKilometers:
+            guard let value = Double(trimmed) else {
+                return "Enter a valid distance."
+            }
+            guard value >= minDistanceKilometers, value <= maxDistanceKilometers else {
+                return "Distance must be 0.01–1,000 km."
             }
         case .rpe:
             guard let value = Double(trimmed) else {

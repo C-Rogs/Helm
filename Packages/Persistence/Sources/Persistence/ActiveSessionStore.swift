@@ -61,7 +61,7 @@ public final class ActiveSessionStore {
         snapshot = try await engine.uncompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
     }
 
-    public func addExercise(exerciseID: String, defaultSetCount: Int = 3, defaultRestSeconds: Int = 90) async throws {
+    public func addExercise(exerciseID: String, defaultSetCount: Int? = nil, defaultRestSeconds: Int = 90) async throws {
         snapshot = try await engine.addExercise(
             exerciseID: exerciseID,
             defaultSetCount: defaultSetCount,

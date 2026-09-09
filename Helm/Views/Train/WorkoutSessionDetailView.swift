@@ -33,6 +33,10 @@ struct WorkoutSessionDetailView: View {
         return draft != savedSnapshot
     }
 
+    private var isNativeCardio: Bool {
+        summary?.isNativeCardio ?? false
+    }
+
     var body: some View {
         if let summary, summary.source == .healthKit {
             healthKitDetailView
@@ -325,7 +329,7 @@ struct WorkoutSessionDetailView: View {
 
     @ViewBuilder
     private func leadingSummaryBlock(for draft: WorkoutSessionDraft) -> some View {
-        if let finishSummary {
+        if let finishSummary, !isNativeCardio {
             // No matchedGeometryEffect on the tall summary: source row frame would
             // squeeze it and let the timeline chart paint outside its bounds.
             WorkoutFinishSummaryView(
@@ -419,6 +423,14 @@ struct WorkoutSessionDetailView: View {
                 return partial + mass.kilograms * Double(reps)
             }
         let exerciseCount = summary?.exerciseCount ?? draft.exercises.count
+        let loggedDurationSeconds = draft.exercises
+            .flatMap(\.sets)
+            .compactMap(\.durationSeconds)
+            .reduce(0, +)
+        let loggedDistanceKilometers = draft.exercises
+            .flatMap(\.sets)
+            .compactMap(\.distanceKilometers)
+            .reduce(0, +)
 
         Card {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {
@@ -431,20 +443,43 @@ struct WorkoutSessionDetailView: View {
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 
-                HStack(spacing: HelmSpacing.sm) {
-                    summaryStat(label: "TIME", value: durationValue(for: draft), unit: "min")
-                    summaryStat(label: "EX", value: "\(exerciseCount)", unit: nil)
-                    summaryStat(label: "SETS", value: "\(totalSets)", unit: nil)
-                    summaryStat(label: "REPS", value: "\(totalReps)", unit: nil)
-                }
+                if isNativeCardio {
+                    HStack(spacing: HelmSpacing.sm) {
+                        summaryStat(label: "TIME", value: durationValue(for: draft), unit: "min")
+                        summaryStat(label: "EX", value: "\(exerciseCount)", unit: nil)
+                        summaryStat(label: "INTERVALS", value: "\(totalSets)", unit: nil)
+                    }
+                    HStack(spacing: HelmSpacing.sm) {
+                        summaryStat(
+                            label: "LOGGED",
+                            value: WorkoutHistoryFormatting.intervalDurationLabel(seconds: loggedDurationSeconds),
+                            unit: nil
+                        )
+                        if loggedDistanceKilometers > 0 {
+                            summaryStat(
+                                label: "DISTANCE",
+                                value: formatDistance(loggedDistanceKilometers),
+                                unit: "km"
+                            )
+                        }
+                        Spacer(minLength: 0)
+                    }
+                } else {
+                    HStack(spacing: HelmSpacing.sm) {
+                        summaryStat(label: "TIME", value: durationValue(for: draft), unit: "min")
+                        summaryStat(label: "EX", value: "\(exerciseCount)", unit: nil)
+                        summaryStat(label: "SETS", value: "\(totalSets)", unit: nil)
+                        summaryStat(label: "REPS", value: "\(totalReps)", unit: nil)
+                    }
 
-                HStack(spacing: HelmSpacing.sm) {
-                    summaryStat(
-                        label: "VOLUME",
-                        value: WorkoutHistoryFormatting.volumeLabel(kilograms: totalVolume),
-                        unit: "kg"
-                    )
-                    Spacer(minLength: 0)
+                    HStack(spacing: HelmSpacing.sm) {
+                        summaryStat(
+                            label: "VOLUME",
+                            value: WorkoutHistoryFormatting.volumeLabel(kilograms: totalVolume),
+                            unit: "kg"
+                        )
+                        Spacer(minLength: 0)
+                    }
                 }
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -459,6 +494,12 @@ struct WorkoutSessionDetailView: View {
             return "\(minutes)"
         }
         return "-"
+    }
+
+    private func formatDistance(_ kilometers: Double) -> String {
+        kilometers.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.2f", kilometers)
     }
 
     private func summaryStat(label: String, value: String, unit: String?) -> some View {
@@ -491,12 +532,13 @@ struct WorkoutSessionDetailView: View {
                             if isEditing {
                                 EditableSetRow(
                                     set: set,
+                                    exerciseMode: exercise.exerciseMode,
                                     onUpdate: { updated in
                                         updateSet(exerciseID: exercise.id, set: updated)
                                     }
                                 )
                             } else {
-                                ReadOnlySetRow(set: set)
+                                ReadOnlySetRow(set: set, exerciseMode: exercise.exerciseMode)
                             }
                         }
                     }
@@ -531,6 +573,7 @@ struct WorkoutSessionDetailView: View {
 
 private struct ReadOnlySetRow: View {
     let set: SetEntryDraft
+    let exerciseMode: ExerciseMode
 
     var body: some View {
         HStack(alignment: .center, spacing: HelmSpacing.sm) {
@@ -556,6 +599,26 @@ private struct ReadOnlySetRow: View {
     }
 
     private var setLabel: String {
+        if exerciseMode.isCardio {
+            var parts: [String] = []
+            if let seconds = set.durationSeconds {
+                parts.append(
+                    WorkoutHistoryFormatting.intervalDurationLabel(seconds: seconds)
+                )
+            }
+            if let distance = set.distanceKilometers {
+                parts.append(
+                    WorkoutHistoryFormatting.distanceLabel(meters: distance * 1_000)
+                )
+            }
+            if let rpe = set.rpe {
+                let value = rpe.truncatingRemainder(dividingBy: 1) == 0
+                    ? String(format: "%.0f", rpe)
+                    : String(format: "%.1f", rpe)
+                parts.append("RPE \(value)")
+            }
+            return parts.isEmpty ? "-" : parts.joined(separator: " · ")
+        }
         switch (set.mass, set.reps) {
         case let (mass?, reps?):
             let weight = mass.kilograms.truncatingRemainder(dividingBy: 1) == 0
@@ -575,16 +638,19 @@ private struct ReadOnlySetRow: View {
     }
 
     private var accessibilityText: String {
-        "Set \(set.setIndex + 1), \(setLabel)"
+        "\(exerciseMode.isCardio ? "Interval" : "Set") \(set.setIndex + 1), \(setLabel)"
     }
 }
 
 private struct EditableSetRow: View {
     let set: SetEntryDraft
+    let exerciseMode: ExerciseMode
     let onUpdate: (SetEntryDraft) -> Void
 
     @State private var weightText = ""
     @State private var repsText = ""
+    @State private var durationText = ""
+    @State private var distanceText = ""
 
     var body: some View {
         HStack(alignment: .center, spacing: HelmSpacing.sm) {
@@ -593,43 +659,46 @@ private struct EditableSetRow: View {
                 .frame(width: 22, alignment: .leading)
                 .accessibilityLabel("Set \(set.setIndex + 1)")
 
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("kg")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                TextField("-", text: $weightText)
-                    .keyboardType(.decimalPad)
-                    .helmType(.number, color: HelmColor.fg)
-                    .monospacedDigit()
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onChange(of: weightText) { _, newValue in
-                        if newValue.isEmpty {
-                            onUpdate(updatedSet(mass: nil, massProvided: true))
-                        } else if let kilograms = Double(newValue) {
-                            onUpdate(updatedSet(mass: Mass(kilograms: kilograms), massProvided: true))
-                        }
+            if exerciseMode.isCardio {
+                editableField(label: "min", text: $durationText, decimal: true) { newValue in
+                    if newValue.isEmpty {
+                        onUpdate(updatedSet(durationSeconds: nil, durationProvided: true))
+                    } else if let minutes = Double(newValue) {
+                        onUpdate(
+                            updatedSet(
+                                durationSeconds: Int((minutes * 60).rounded()),
+                                durationProvided: true
+                            )
+                        )
                     }
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
+                }
 
-            VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-                Text("reps")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                TextField("-", text: $repsText)
-                    .keyboardType(.numberPad)
-                    .helmType(.number, color: HelmColor.fg)
-                    .monospacedDigit()
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .onChange(of: repsText) { _, newValue in
+                if exerciseMode == .distanceDuration {
+                    editableField(label: "km", text: $distanceText, decimal: true) { newValue in
                         if newValue.isEmpty {
-                            onUpdate(updatedSet(reps: nil, repsProvided: true))
-                        } else if let reps = Int(newValue) {
-                            onUpdate(updatedSet(reps: reps, repsProvided: true))
+                            onUpdate(updatedSet(distanceKilometers: nil, distanceProvided: true))
+                        } else if let distance = Double(newValue) {
+                            onUpdate(updatedSet(distanceKilometers: distance, distanceProvided: true))
                         }
                     }
+                }
+            } else {
+                editableField(label: "kg", text: $weightText, decimal: true) { newValue in
+                    if newValue.isEmpty {
+                        onUpdate(updatedSet(mass: nil, massProvided: true))
+                    } else if let kilograms = Double(newValue) {
+                        onUpdate(updatedSet(mass: Mass(kilograms: kilograms), massProvided: true))
+                    }
+                }
+
+                editableField(label: "reps", text: $repsText, decimal: false) { newValue in
+                    if newValue.isEmpty {
+                        onUpdate(updatedSet(reps: nil, repsProvided: true))
+                    } else if let reps = Int(newValue) {
+                        onUpdate(updatedSet(reps: reps, repsProvided: true))
+                    }
+                }
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .padding(.horizontal, HelmSpacing.xs)
         .onAppear {
@@ -638,6 +707,28 @@ private struct EditableSetRow: View {
         .onChange(of: set.id) { _, _ in
             syncFieldsFromSet()
         }
+    }
+
+    private func editableField(
+        label: String,
+        text: Binding<String>,
+        decimal: Bool,
+        onChange: @escaping (String) -> Void
+    ) -> some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
+            Text(label)
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+            TextField("-", text: text)
+                .keyboardType(decimal ? .decimalPad : .numberPad)
+                .helmType(.number, color: HelmColor.fg)
+                .monospacedDigit()
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .onChange(of: text.wrappedValue) { _, newValue in
+                    onChange(newValue)
+                }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func syncFieldsFromSet() {
@@ -654,13 +745,30 @@ private struct EditableSetRow: View {
         } else {
             repsText = ""
         }
+        if let seconds = set.durationSeconds {
+            let minutes = Double(seconds) / 60
+            durationText = minutes.truncatingRemainder(dividingBy: 1) == 0
+                ? String(format: "%.0f", minutes)
+                : String(format: "%.1f", minutes)
+        } else {
+            durationText = ""
+        }
+        if let distance = set.distanceKilometers {
+            distanceText = String(format: "%.2f", distance)
+        } else {
+            distanceText = ""
+        }
     }
 
     private func updatedSet(
         mass: Mass? = nil,
         massProvided: Bool = false,
         reps: Int? = nil,
-        repsProvided: Bool = false
+        repsProvided: Bool = false,
+        durationSeconds: Int? = nil,
+        durationProvided: Bool = false,
+        distanceKilometers: Double? = nil,
+        distanceProvided: Bool = false
     ) -> SetEntryDraft {
         SetEntryDraft(
             id: set.id,
@@ -669,8 +777,8 @@ private struct EditableSetRow: View {
             status: set.status,
             mass: massProvided ? mass : set.mass,
             reps: repsProvided ? reps : set.reps,
-            distanceKilometers: set.distanceKilometers,
-            durationSeconds: set.durationSeconds,
+            distanceKilometers: distanceProvided ? distanceKilometers : set.distanceKilometers,
+            durationSeconds: durationProvided ? durationSeconds : set.durationSeconds,
             rpe: set.rpe,
             rir: set.rir,
             completedAt: set.completedAt

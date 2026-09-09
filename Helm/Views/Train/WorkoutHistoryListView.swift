@@ -295,7 +295,7 @@ struct WorkoutHistoryRow: View {
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 
-                if summary.source == .healthKit {
+                if summary.source == .healthKit || summary.isNativeCardio {
                     healthKitChips
                 } else {
                     strengthChips
@@ -319,6 +319,16 @@ struct WorkoutHistoryRow: View {
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
             }
 
+            if summary.isNativeCardio, summary.loggedDurationSeconds > 0 {
+                metricChip(
+                    icon: .train,
+                    value: WorkoutHistoryFormatting.intervalDurationLabel(
+                        seconds: summary.loggedDurationSeconds
+                    ),
+                    unit: nil
+                )
+            }
+
             if let kcal = summary.hkActiveEnergyKilocalories {
                 metricChip(
                     icon: .flame,
@@ -327,7 +337,8 @@ struct WorkoutHistoryRow: View {
                 )
             }
 
-            if let distance = summary.hkTotalDistanceMeters {
+            if let distance = summary.hkTotalDistanceMeters
+                ?? (summary.loggedDistanceKilometers > 0 ? summary.loggedDistanceKilometers * 1_000 : nil) {
                 metricChip(
                     icon: .distance,
                     value: WorkoutHistoryFormatting.distanceLabel(meters: distance),

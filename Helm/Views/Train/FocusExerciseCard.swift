@@ -110,21 +110,23 @@ struct FocusExerciseCard: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Exercise form and history")
 
-            Button(action: onCycleSetType) {
-                Text(setTypeGlyph)
-                    .helmType(.monoTag, color: isNormalSet ? HelmColor.fgMuted : setTypeColor)
-                    .frame(minWidth: 24)
-                    .padding(.horizontal, HelmSpacing.xs)
-                    .padding(.vertical, 2)
-                    .background(
-                        (isNormalSet ? HelmColor.fgMuted : setTypeColor).opacity(0.12),
-                        in: Capsule()
-                    )
+            if !exercise.exerciseMode.isCardio {
+                Button(action: onCycleSetType) {
+                    Text(setTypeGlyph)
+                        .helmType(.monoTag, color: isNormalSet ? HelmColor.fgMuted : setTypeColor)
+                        .frame(minWidth: 24)
+                        .padding(.horizontal, HelmSpacing.xs)
+                        .padding(.vertical, 2)
+                        .background(
+                            (isNormalSet ? HelmColor.fgMuted : setTypeColor).opacity(0.12),
+                            in: Capsule()
+                        )
+                }
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel(
+                    (currentSet?.setType ?? .normal).loggerSetTypeAccessibilityLabel(setNumber: setNumber)
+                )
             }
-            .buttonStyle(.helmPressable)
-            .accessibilityLabel(
-                (currentSet?.setType ?? .normal).loggerSetTypeAccessibilityLabel(setNumber: setNumber)
-            )
 
             if isCompleted {
                 Image(systemName: "checkmark.circle.fill")
@@ -195,6 +197,16 @@ struct FocusExerciseCard: View {
     }
 
     private func previousLabel(_ previous: PreviousPerformance) -> String {
+        if exercise.exerciseMode.isCardio {
+            var parts: [String] = []
+            if let seconds = previous.durationSeconds {
+                parts.append(formatDuration(seconds))
+            }
+            if let distance = previous.distanceKilometers {
+                parts.append("\(formatDistance(distance)) km")
+            }
+            return parts.isEmpty ? "No values" : parts.joined(separator: " · ")
+        }
         let weight = previous.mass.map { formatWeight($0.kilograms) } ?? "-"
         let reps = previous.reps.map(String.init) ?? "-"
         return "\(weight)kg × \(reps)"
@@ -204,8 +216,15 @@ struct FocusExerciseCard: View {
 
     private var fieldRow: some View {
         HStack(spacing: HelmSpacing.sm) {
-            fieldButton(.weight, label: "Weight", unit: "kg")
-            fieldButton(.reps, label: "Reps", unit: "")
+            if exercise.exerciseMode.isCardio {
+                fieldButton(.durationMinutes, label: "Duration", unit: "min")
+                if exercise.exerciseMode == .distanceDuration {
+                    fieldButton(.distanceKilometers, label: "Distance", unit: "km")
+                }
+            } else {
+                fieldButton(.weight, label: "Weight", unit: "kg")
+                fieldButton(.reps, label: "Reps", unit: "")
+            }
             fieldButton(.rpe, label: "RPE", unit: "")
         }
     }
@@ -264,6 +283,8 @@ struct FocusExerciseCard: View {
             switch kind {
             case .weight: currentSet?.mass != nil
             case .reps: currentSet?.reps != nil
+            case .durationMinutes: currentSet?.durationSeconds != nil
+            case .distanceKilometers: currentSet?.distanceKilometers != nil
             case .rpe: currentSet?.rpe != nil
             }
         }()
@@ -273,6 +294,10 @@ struct FocusExerciseCard: View {
                 previous?.mass.map { formatWeight($0.kilograms) }
             case .reps:
                 previous?.reps.map(String.init)
+            case .durationMinutes:
+                previous?.durationSeconds.map(formatDurationMinutes)
+            case .distanceKilometers:
+                previous?.distanceKilometers.map(formatDistance)
             case .rpe:
                 nil
             }
@@ -352,6 +377,23 @@ struct FocusExerciseCard: View {
             ? String(format: "%.0f", kilograms)
             : String(format: "%.1f", kilograms)
     }
+
+    private func formatDurationMinutes(_ seconds: Int) -> String {
+        let minutes = Double(seconds) / 60
+        return minutes.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", minutes)
+            : String(format: "%.1f", minutes)
+    }
+
+    private func formatDuration(_ seconds: Int) -> String {
+        seconds.isMultiple(of: 60) ? "\(seconds / 60) min" : "\(seconds) sec"
+    }
+
+    private func formatDistance(_ kilometers: Double) -> String {
+        kilometers.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.2f", kilometers)
+    }
 }
 
 #Preview("Focus card active") {
@@ -389,6 +431,8 @@ struct FocusExerciseCard: View {
             switch field {
             case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""
             case .reps: set.reps.map(String.init) ?? ""
+            case .durationMinutes: set.durationSeconds.map { String($0 / 60) } ?? ""
+            case .distanceKilometers: set.distanceKilometers.map { String(format: "%.2f", $0) } ?? ""
             case .rpe: set.rpe.map { String(format: "%.0f", $0) } ?? ""
             }
         },

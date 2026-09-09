@@ -1,4 +1,5 @@
 import Core
+import Foundation
 import Persistence
 import Testing
 @testable import HealthKitIngest
@@ -47,6 +48,23 @@ struct NutritionDayDemandServiceTests {
         #expect(cardio.source == .plannedCardio)
         #expect(office.demand == .office)
         #expect(office.source == .ordinary)
+    }
+
+    @Test("native duration session is cardio demand despite having set rows")
+    func nativeCardioSessionClassification() {
+        let summary = WorkoutSessionSummary(
+            id: "native-cardio",
+            title: "Easy jog",
+            startedAt: Date(),
+            totalVolumeKilograms: 0,
+            totalSetCount: 1,
+            totalRepCount: 0,
+            exerciseCount: 1,
+            cardioExerciseCount: 1,
+            loggedDurationSeconds: 600
+        )
+
+        #expect(NutritionEngine.looksLikeCardio(summary))
     }
 
     private func plannedWorkout(on day: HelmDay) -> PlannedWorkoutRecord {

@@ -80,8 +80,6 @@ public struct WorkoutHistoryQueryService: Sendable {
         let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
         let body = WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names)
         let title = summary.title ?? "Workout"
-        let sets = summary.totalSetCount
-        let volume = Int(summary.totalVolumeKilograms.rounded())
         let duration: String
         if let ended = summary.endedAt {
             duration = "duration_s=\(Int(ended.timeIntervalSince(summary.startedAt)))"
@@ -89,9 +87,25 @@ public struct WorkoutHistoryQueryService: Sendable {
             duration = "duration_s=unknown"
         }
         let started = ISO8601DateFormatter().string(from: summary.startedAt)
+        let metrics: String
+        if summary.isNativeCardio {
+            var cardioMetrics = ["source=native_cardio", "intervals=\(summary.totalSetCount)"]
+            if summary.loggedDurationSeconds > 0 {
+                cardioMetrics.append("logged_duration_s=\(summary.loggedDurationSeconds)")
+            }
+            if summary.loggedDistanceKilometers > 0 {
+                cardioMetrics.append(
+                    String(format: "distance_km=%.2f", summary.loggedDistanceKilometers)
+                )
+            }
+            metrics = cardioMetrics.joined(separator: " ")
+        } else {
+            let volume = Int(summary.totalVolumeKilograms.rounded())
+            metrics = "sets=\(summary.totalSetCount) volume_kg=\(volume)"
+        }
         return """
         \(header)
-        title=\(title) sets=\(sets) volume_kg=\(volume) \(duration) started=\(started)
+        title=\(title) \(metrics) \(duration) started=\(started)
 
         \(body)
         """

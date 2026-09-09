@@ -258,6 +258,9 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
     public let hkTotalDistanceMeters: Double?
     public let prescribedWorkingSets: Int?
     public let prescribedVolumeKilograms: Double?
+    public let cardioExerciseCount: Int
+    public let loggedDurationSeconds: Int
+    public let loggedDistanceKilometers: Double
 
     public init(
         id: String,
@@ -273,7 +276,10 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
         hkActiveEnergyKilocalories: Double? = nil,
         hkTotalDistanceMeters: Double? = nil,
         prescribedWorkingSets: Int? = nil,
-        prescribedVolumeKilograms: Double? = nil
+        prescribedVolumeKilograms: Double? = nil,
+        cardioExerciseCount: Int = 0,
+        loggedDurationSeconds: Int = 0,
+        loggedDistanceKilometers: Double = 0
     ) {
         self.id = id
         self.title = title
@@ -289,6 +295,13 @@ public struct WorkoutSessionSummary: Sendable, Hashable, Codable, Identifiable {
         self.hkTotalDistanceMeters = hkTotalDistanceMeters
         self.prescribedWorkingSets = prescribedWorkingSets
         self.prescribedVolumeKilograms = prescribedVolumeKilograms
+        self.cardioExerciseCount = cardioExerciseCount
+        self.loggedDurationSeconds = loggedDurationSeconds
+        self.loggedDistanceKilometers = loggedDistanceKilometers
+    }
+
+    public var isNativeCardio: Bool {
+        source != .healthKit && exerciseCount > 0 && cardioExerciseCount == exerciseCount
     }
 }
 

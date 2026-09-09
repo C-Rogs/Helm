@@ -328,4 +328,25 @@ struct WorkoutStartStructuredPayloadTests {
         #expect(text.contains("\"schemaVersion\":\"workout_start.v2\""))
         #expect(text.contains("Lat Pulldown"))
     }
+
+    @Test("embeds native cardio interval values")
+    func embedsCardioJSON() throws {
+        let payload = WorkoutStartStructuredPayload(
+            reply: "Starting a ten minute jog.",
+            title: "Easy jog",
+            exercises: [
+                .init(
+                    name: "Treadmill",
+                    sets: [
+                        .init(durationSeconds: 600, distanceKilometers: 2, rpe: 6)
+                    ]
+                )
+            ]
+        )
+        let text = try payload.chatAssemblyText()
+        #expect(text.contains("\"durationSeconds\":600"))
+        #expect(text.contains("\"distanceKilometers\":2"))
+        #expect(!text.contains("\"massKg\""))
+        #expect(!text.contains("\"reps\""))
+    }
 }

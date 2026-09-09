@@ -129,6 +129,14 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
                 if let error {
                     Task { @MainActor in
                         guard let self, self.session === workoutSession else { return }
+                        self.isEndingSession = true
+                        workoutSession.end()
+                        workoutBuilder.discardWorkout()
+                        self.session = nil
+                        self.builder = nil
+                        self.sessionID = nil
+                        self.isMirroringToCompanion = false
+                        self.isEndingSession = false
                         self.delegate?.workoutSessionManager(self, didFailWithError: error)
                     }
                 }
@@ -204,7 +212,6 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             }
         } else {
             workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
-            workoutSession.startActivity(with: startDate)
             let workoutBuilder = workoutSession.associatedWorkoutBuilder()
             workoutBuilder.dataSource = HKLiveWorkoutDataSource(
                 healthStore: healthStore,
@@ -212,17 +219,33 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
             )
             workoutSession.delegate = self
             workoutBuilder.delegate = self
+            self.session = workoutSession
             self.builder = workoutBuilder
-            try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                workoutBuilder.beginCollection(withStart: startDate) { success, error in
-                    if let error {
-                        continuation.resume(throwing: error)
-                    } else if success {
-                        continuation.resume()
-                    } else {
-                        continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
+            self.sessionID = sessionID
+            workoutSession.startActivity(with: startDate)
+            do {
+                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                    workoutBuilder.beginCollection(withStart: startDate) { success, error in
+                        if let error {
+                            continuation.resume(throwing: error)
+                        } else if success {
+                            continuation.resume()
+                        } else {
+                            continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
+                        }
                     }
                 }
+            } catch {
+                isEndingSession = true
+                workoutSession.end()
+                workoutBuilder.discardWorkout()
+                isEndingSession = false
+                if self.session === workoutSession {
+                    self.session = nil
+                    self.builder = nil
+                    self.sessionID = nil
+                }
+                throw error
             }
         }
 
@@ -378,6 +401,10 @@ extension WatchWorkoutSessionManager: HKWorkoutSessionDelegate {
                     NSLocalizedDescriptionKey: "HKWorkoutSession ended unexpectedly (\(toState.rawValue))"
                 ]
             )
+            self.session = nil
+            self.builder = nil
+            self.sessionID = nil
+            self.isMirroringToCompanion = false
             self.delegate?.workoutSessionManager(self, didFailWithError: error)
         }
     }
@@ -385,6 +412,10 @@ extension WatchWorkoutSessionManager: HKWorkoutSessionDelegate {
     nonisolated func workoutSession(_ workoutSession: HKWorkoutSession, didFailWithError error: Error) {
         Task { @MainActor in
             guard self.session === workoutSession, !self.isEndingSession else { return }
+            self.session = nil
+            self.builder = nil
+            self.sessionID = nil
+            self.isMirroringToCompanion = false
             self.delegate?.workoutSessionManager(self, didFailWithError: error)
         }
     }

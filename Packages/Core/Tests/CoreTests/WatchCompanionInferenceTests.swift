@@ -48,6 +48,32 @@ struct WatchWorkoutActivityKindInferenceTests {
         )
     }
 
+    @Test("treadmill run uses indoor location")
+    func treadmillIsIndoor() {
+        #expect(
+            WatchWorkoutActivityKind.running.usesIndoorLocation(
+                sessionTitle: "Easy run",
+                exerciseNames: ["Treadmill"]
+            )
+        )
+    }
+
+    @Test("stationary cycling uses indoor location")
+    func stationaryCyclingIsIndoor() {
+        #expect(
+            WatchWorkoutActivityKind.cycling.usesIndoorLocation(
+                sessionTitle: nil,
+                exerciseNames: ["Stationary bike"]
+            )
+        )
+        #expect(
+            !WatchWorkoutActivityKind.cycling.usesIndoorLocation(
+                sessionTitle: "Outdoor ride",
+                exerciseNames: ["Cycling"]
+            )
+        )
+    }
+
     @Test("walk maps to walking")
     func walkTitle() {
         #expect(
@@ -78,6 +104,13 @@ struct WatchWorkoutActivityKindInferenceTests {
                 exerciseNames: ["Row"],
                 exerciseModes: [.duration]
             ) == .mixedCardio
+        )
+    }
+
+    @Test("unknown phone activity does not become strength")
+    func unknownActivityIsOther() {
+        #expect(
+            WatchWorkoutActivityKind.fromHealthKitActivityTypeRawValue(9_999) == .other
         )
     }
 }

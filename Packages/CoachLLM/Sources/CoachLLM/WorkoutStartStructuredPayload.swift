@@ -6,12 +6,23 @@ public struct WorkoutStartStructuredPayload: Codable, Sendable, Equatable {
         public let setType: String?
         public let reps: Int?
         public let massKg: Double?
+        public let durationSeconds: Int?
+        public let distanceKilometers: Double?
         public let rpe: Double?
 
-        public init(setType: String? = nil, reps: Int? = nil, massKg: Double? = nil, rpe: Double? = nil) {
+        public init(
+            setType: String? = nil,
+            reps: Int? = nil,
+            massKg: Double? = nil,
+            durationSeconds: Int? = nil,
+            distanceKilometers: Double? = nil,
+            rpe: Double? = nil
+        ) {
             self.setType = setType
             self.reps = reps
             self.massKg = massKg
+            self.durationSeconds = durationSeconds
+            self.distanceKilometers = distanceKilometers
             self.rpe = rpe
         }
     }
@@ -66,6 +77,10 @@ public struct WorkoutStartStructuredPayload: Codable, Sendable, Equatable {
                         if let setType = set.setType { row["setType"] = setType }
                         if let reps = set.reps { row["reps"] = reps }
                         if let massKg = set.massKg { row["massKg"] = massKg }
+                        if let durationSeconds = set.durationSeconds { row["durationSeconds"] = durationSeconds }
+                        if let distanceKilometers = set.distanceKilometers {
+                            row["distanceKilometers"] = distanceKilometers
+                        }
                         if let rpe = set.rpe { row["rpe"] = rpe }
                         return row
                     }

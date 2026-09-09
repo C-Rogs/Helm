@@ -67,4 +67,49 @@ struct WorkoutHistoryQueryTests {
         #expect(result.contains("Pull"))
         #expect(result.contains("Squat") || result.contains("100"))
     }
+
+    @Test("native cardio formats duration and distance without strength volume")
+    func nativeCardioFormats() throws {
+        let store = try PersistenceStore.inMemory()
+        let treadmillID = "exercise-treadmill"
+        try store.exercises.upsert(
+            id: treadmillID,
+            canonicalName: "treadmill",
+            displayName: "Treadmill",
+            exerciseMode: .distanceDuration
+        )
+        let completedAt = Date(timeIntervalSince1970: 1_780_000_000)
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "session-cardio",
+                title: "Easy jog",
+                startedAt: completedAt,
+                endedAt: completedAt.addingTimeInterval(650),
+                exercises: [
+                    WorkoutSessionExerciseDraft(
+                        exerciseID: treadmillID,
+                        displayOrder: 0,
+                        exerciseMode: .distanceDuration,
+                        sets: [
+                            SetEntryDraft(
+                                setIndex: 0,
+                                distanceKilometers: 2,
+                                durationSeconds: 600,
+                                rpe: 6,
+                                completedAt: completedAt
+                            )
+                        ]
+                    )
+                ]
+            )
+        )
+
+        let result = try WorkoutHistoryQueryService(store: store)
+            .run(WorkoutQueryPayload(queryType: .latestCompleted))
+        #expect(result.contains("source=native_cardio"))
+        #expect(result.contains("logged_duration_s=600"))
+        #expect(result.contains("distance_km=2.00"))
+        #expect(result.contains("duration 10 min"))
+        #expect(!result.contains("volume_kg="))
+    }
 }

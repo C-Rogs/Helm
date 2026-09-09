@@ -407,9 +407,10 @@ public enum GeminiRequestBuilder {
                 ],
                 "reps": ["type": "integer"],
                 "massKg": ["type": "number"],
+                "durationSeconds": ["type": "integer"],
+                "distanceKilometers": ["type": "number"],
                 "rpe": ["type": "number"]
-            ],
-            "required": ["setType", "reps", "massKg"]
+            ]
         ]
     }
 

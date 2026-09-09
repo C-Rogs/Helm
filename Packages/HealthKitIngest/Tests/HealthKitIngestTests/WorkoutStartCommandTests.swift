@@ -10,6 +10,7 @@ struct WorkoutStartCommandTests {
     private let day = HelmDay(year: 2026, month: 7, day: 29)
     private let squatID = "exercise-squat"
     private let benchID = "exercise-bench"
+    private let treadmillID = "exercise-treadmill"
 
     @Test("parses workout_start payload with exercises")
     func parsesPayloadWithExercises() {
@@ -78,6 +79,37 @@ struct WorkoutStartCommandTests {
         #expect(plan.exercises[0].sets[0].mass?.kilograms == 60)
         #expect(plan.exercises[0].sets[1].setType == .dropSet)
         #expect(plan.exercises[0].sets[1].reps == 8)
+    }
+
+    @Test("builds ten minute jog with native cardio metrics")
+    func buildsCardioPlan() throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+
+        let payload = WorkoutStartPayload(
+            schemaVersion: CoachOutputSchemaVersion.workoutStartV2.rawValue,
+            title: "Easy jog",
+            exercises: [
+                WorkoutStartExerciseSpec(
+                    name: "Treadmill",
+                    sets: [
+                        WorkoutStartSetSpec(
+                            durationSeconds: 600,
+                            distanceKilometers: 2,
+                            rpe: 6
+                        )
+                    ]
+                )
+            ]
+        )
+
+        let plan = try WorkoutStartPlanBuilder.importedPlan(from: payload, persistence: store)
+        #expect(plan.exercises[0].exerciseMode == .distanceDuration)
+        #expect(plan.exercises[0].sets.count == 1)
+        #expect(plan.exercises[0].sets[0].durationSeconds == 600)
+        #expect(plan.exercises[0].sets[0].distanceKilometers == 2)
+        #expect(plan.exercises[0].sets[0].mass == nil)
+        #expect(plan.exercises[0].sets[0].reps == nil)
     }
 
     @Test("matches barbell bench press to Bench Press catalogue name")
@@ -156,6 +188,12 @@ struct WorkoutStartCommandTests {
             canonicalName: "bench press (barbell)",
             displayName: "Bench Press",
             exerciseMode: .weightReps
+        )
+        try store.exercises.upsert(
+            id: treadmillID,
+            canonicalName: "treadmill",
+            displayName: "Treadmill",
+            exerciseMode: .distanceDuration
         )
     }
 }

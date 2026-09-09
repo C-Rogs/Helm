@@ -7,17 +7,23 @@ public struct WorkoutStartSetSpec: Codable, Sendable, Equatable {
     public let setType: String?
     public let reps: Int?
     public let massKg: Double?
+    public let durationSeconds: Int?
+    public let distanceKilometers: Double?
     public let rpe: Double?
 
     public init(
         setType: String? = nil,
         reps: Int? = nil,
         massKg: Double? = nil,
+        durationSeconds: Int? = nil,
+        distanceKilometers: Double? = nil,
         rpe: Double? = nil
     ) {
         self.setType = setType
         self.reps = reps
         self.massKg = massKg
+        self.durationSeconds = durationSeconds
+        self.distanceKilometers = distanceKilometers
         self.rpe = rpe
     }
 }
@@ -200,6 +206,8 @@ public enum WorkoutStartPlanBuilder {
                     setType: WorkoutStartSetTypeParser.parse(set.setType),
                     mass: set.massKg.map { Mass(kilograms: $0) },
                     reps: set.reps,
+                    durationSeconds: set.durationSeconds,
+                    distanceKilometers: set.distanceKilometers,
                     rpe: set.rpe
                 )
             }

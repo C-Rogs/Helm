@@ -410,7 +410,8 @@ public actor NutritionEngine {
         return (training, cardio)
     }
 
-    private static func looksLikeCardio(_ summary: WorkoutSessionSummary) -> Bool {
+    static func looksLikeCardio(_ summary: WorkoutSessionSummary) -> Bool {
+        if summary.isNativeCardio { return true }
         if summary.exerciseCount > 0, summary.totalSetCount > 0 { return false }
         let activity = (summary.hkActivityType ?? summary.title ?? "").lowercased()
         let cardioNeedles = ["run", "cycle", "ride", "swim", "walk", "hike", "row", "cardio", "elliptical"]

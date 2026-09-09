@@ -590,8 +590,8 @@ public enum CoachContextAssembler {
         }
 
         if !workouts.isEmpty {
-            let strengthWorkouts = workouts.filter { $0.source != .healthKit }
-            let hkWorkouts = workouts.filter { $0.source == .healthKit }
+            let strengthWorkouts = workouts.filter { $0.source != .healthKit && !$0.isNativeCardio }
+            let cardioWorkouts = workouts.filter { $0.source == .healthKit || $0.isNativeCardio }
 
             if !strengthWorkouts.isEmpty {
                 let titles = strengthWorkouts.map { $0.title ?? "Workout" }.joined(separator: ", ")
@@ -599,16 +599,21 @@ public enum CoachContextAssembler {
                 parts.append("workout=\"\(titles)\" sets=\(setCount)")
             }
 
-            for hk in hkWorkouts {
-                var hkParts: [String] = ["cardio=\"\(hk.title ?? "Workout")\""]
-                if let ended = hk.endedAt {
-                    let seconds = Int(ended.timeIntervalSince(hk.startedAt))
-                    hkParts.append("duration_s=\(seconds)")
+            for cardio in cardioWorkouts {
+                var cardioParts: [String] = ["cardio=\"\(cardio.title ?? "Workout")\""]
+                if cardio.isNativeCardio, cardio.loggedDurationSeconds > 0 {
+                    cardioParts.append("duration_s=\(cardio.loggedDurationSeconds)")
+                } else if let ended = cardio.endedAt {
+                    let seconds = Int(ended.timeIntervalSince(cardio.startedAt))
+                    cardioParts.append("duration_s=\(seconds)")
                 }
-                if let kcal = hk.hkActiveEnergyKilocalories {
-                    hkParts.append("energy_kcal=\(Int(kcal))")
+                if cardio.isNativeCardio, cardio.loggedDistanceKilometers > 0 {
+                    cardioParts.append("distance_km=\(format(cardio.loggedDistanceKilometers))")
                 }
-                parts.append(hkParts.joined(separator: " "))
+                if let kcal = cardio.hkActiveEnergyKilocalories {
+                    cardioParts.append("energy_kcal=\(Int(kcal))")
+                }
+                parts.append(cardioParts.joined(separator: " "))
             }
         }
 

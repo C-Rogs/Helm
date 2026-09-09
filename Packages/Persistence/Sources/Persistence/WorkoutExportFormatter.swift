@@ -118,6 +118,12 @@ public enum WorkoutExportFormatter {
 
     private static func formatSetLine(_ set: SetEntryDraft) -> String {
         var parts: [String] = []
+        if let durationSeconds = set.durationSeconds, durationSeconds > 0 {
+            parts.append("duration \(formatDuration(durationSeconds))")
+        }
+        if let distanceKilometers = set.distanceKilometers, distanceKilometers > 0 {
+            parts.append("distance \(formatDistanceKilometers(distanceKilometers)) km")
+        }
         if let mass = set.mass, let reps = set.reps {
             parts.append("\(formatWeightKilograms(mass.kilograms)) kg x \(reps)")
         } else if let reps = set.reps {
@@ -130,6 +136,19 @@ public enum WorkoutExportFormatter {
             parts.append("(\(setType))")
         }
         return parts.isEmpty ? "Set \(set.setIndex + 1)" : parts.joined(separator: " ")
+    }
+
+    private static func formatDuration(_ seconds: Int) -> String {
+        if seconds.isMultiple(of: 60) {
+            return "\(seconds / 60) min"
+        }
+        return "\(seconds) s"
+    }
+
+    private static func formatDistanceKilometers(_ kilometers: Double) -> String {
+        kilometers.truncatingRemainder(dividingBy: 1) == 0
+            ? String(format: "%.0f", kilometers)
+            : String(format: "%.2f", kilometers)
     }
 
     private static func formatRPE(_ value: Double) -> String {

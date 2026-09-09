@@ -360,7 +360,36 @@ public struct WorkoutSessionRepository: Sendable {
                                SELECT COUNT(*)
                                FROM workout_session_exercise wse
                                WHERE wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
-                           ) AS exercise_count
+                           ) AS exercise_count,
+                           (
+                               SELECT COUNT(*)
+                               FROM workout_session_exercise wse
+                               JOIN exercise e ON e.id = wse.exercise_id
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND e.deleted_at IS NULL
+                                 AND e.movement_pattern = 'cardio'
+                           ) AS cardio_exercise_count,
+                           (
+                               SELECT COALESCE(SUM(se.duration_seconds), 0)
+                               FROM set_entry se
+                               JOIN workout_session_exercise wse
+                                 ON wse.id = se.workout_session_exercise_id
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND se.deleted_at IS NULL
+                                 AND se.status = 'completed'
+                           ) AS logged_duration_seconds,
+                           (
+                               SELECT COALESCE(SUM(se.distance_km), 0)
+                               FROM set_entry se
+                               JOIN workout_session_exercise wse
+                                 ON wse.id = se.workout_session_exercise_id
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND se.deleted_at IS NULL
+                                 AND se.status = 'completed'
+                           ) AS logged_distance_km
                     FROM workout_session ws
                     WHERE ws.status = 'completed' AND \(scope.deletedAtSQLPredicate(column: "ws.deleted_at"))
                     ORDER BY ws.started_at DESC
@@ -389,7 +418,10 @@ public struct WorkoutSessionRepository: Sendable {
                     hkActiveEnergyKilocalories: hkEnergy,
                     hkTotalDistanceMeters: hkDistance,
                     prescribedWorkingSets: row["prescribed_working_sets"],
-                    prescribedVolumeKilograms: row["prescribed_volume_kg"]
+                    prescribedVolumeKilograms: row["prescribed_volume_kg"],
+                    cardioExerciseCount: row["cardio_exercise_count"] ?? 0,
+                    loggedDurationSeconds: row["logged_duration_seconds"] ?? 0,
+                    loggedDistanceKilometers: row["logged_distance_km"] ?? 0
                 )
             }
         }

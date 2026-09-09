@@ -99,7 +99,7 @@ public struct ActiveSessionRepository: Sendable {
                 ) ?? ExerciseMode.weightReps.rawValue
                 let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
                 let restSeconds = exercise.defaultRestSeconds ?? 90
-                let setCount = max(exercise.targetSetCount ?? 3, 1)
+                let setCount = max(exercise.targetSetCount ?? exerciseMode.defaultIntervalCount, 1)
 
                 try db.execute(
                     sql: """
@@ -302,8 +302,8 @@ public struct ActiveSessionRepository: Sendable {
                         sql: """
                             INSERT INTO set_entry (
                                 id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
-                                weight_kg, reps, rpe, created_at, updated_at
-                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?)
+                                weight_kg, reps, duration_seconds, distance_km, rpe, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, ?, 'planned', ?, ?, ?, ?, ?, ?, ?)
                             """,
                         arguments: [
                             setID,
@@ -313,6 +313,8 @@ public struct ActiveSessionRepository: Sendable {
                             set.setType.rawValue,
                             set.mass?.kilograms,
                             set.reps,
+                            set.durationSeconds,
+                            set.distanceKilometers,
                             set.rpe,
                             nowString,
                             nowString
@@ -537,7 +539,7 @@ public struct ActiveSessionRepository: Sendable {
     public func addExercise(
         sessionID: String,
         exerciseID: String,
-        defaultSetCount: Int = 3,
+        defaultSetCount: Int? = nil,
         defaultRestSeconds: Int = 90,
         timestamp: Date
     ) throws -> String {
@@ -574,7 +576,7 @@ public struct ActiveSessionRepository: Sendable {
                 ]
             )
 
-            let setCount = max(defaultSetCount, 1)
+            let setCount = max(defaultSetCount ?? exerciseMode.defaultIntervalCount, 1)
             let preset = try Self.previousPerformancePreset(
                 db: db,
                 exerciseID: exerciseID,
@@ -586,8 +588,8 @@ public struct ActiveSessionRepository: Sendable {
                     sql: """
                         INSERT INTO set_entry (
                             id, workout_session_exercise_id, logged_exercise_id, set_index, set_type, status,
-                            weight_kg, reps, rpe, created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?, ?)
+                                weight_kg, reps, distance_km, duration_seconds, rpe, created_at, updated_at
+                            ) VALUES (?, ?, ?, ?, 'normal', 'planned', ?, ?, ?, ?, ?, ?, ?)
                         """,
                     arguments: [
                         setID,
@@ -596,6 +598,8 @@ public struct ActiveSessionRepository: Sendable {
                         index,
                         preset?.mass?.kilograms,
                         preset?.reps,
+                            preset?.distanceKilometers,
+                            preset?.durationSeconds,
                         preset?.rpe,
                         now,
                         now
@@ -1308,6 +1312,8 @@ extension ActiveSessionRepository {
     struct PerformancePreset: Sendable {
         let mass: Mass?
         let reps: Int?
+        let distanceKilometers: Double?
+        let durationSeconds: Int?
         let rpe: Double?
     }
 
@@ -1319,7 +1325,7 @@ extension ActiveSessionRepository {
         guard let row = try Row.fetchOne(
             db,
             sql: """
-                SELECT se.weight_kg, se.reps, se.rpe
+                SELECT se.weight_kg, se.reps, se.distance_km, se.duration_seconds, se.rpe
                 FROM set_entry se
                 JOIN workout_session_exercise wse ON wse.id = se.workout_session_exercise_id
                 JOIN workout_session ws ON ws.id = wse.workout_session_id
@@ -1341,6 +1347,8 @@ extension ActiveSessionRepository {
         return PerformancePreset(
             mass: (row["weight_kg"] as Double?).map { Mass(kilograms: $0) },
             reps: row["reps"],
+            distanceKilometers: row["distance_km"],
+            durationSeconds: row["duration_seconds"],
             rpe: row["rpe"]
         )
     }

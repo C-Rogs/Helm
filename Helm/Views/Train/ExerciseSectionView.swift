@@ -160,6 +160,7 @@ struct ExerciseSectionView: View {
                         SetRowView(
                             setEntry: set,
                             setNumber: index + 1,
+                            exerciseMode: exercise.exerciseMode,
                             previous: previousLookup(set),
                             activeField: activeField,
                             numpadSelectAll: numpadSelectAll,
@@ -194,7 +195,10 @@ struct ExerciseSectionView: View {
                         Button {
                             onRemoveSet()
                         } label: {
-                            Label("Remove set", systemImage: "minus.circle")
+                            Label(
+                                exercise.exerciseMode.isCardio ? "Remove interval" : "Remove set",
+                                systemImage: "minus.circle"
+                            )
                         }
                         .buttonStyle(.helmSecondary)
                         .disabled(!canRemoveSet)
@@ -202,7 +206,10 @@ struct ExerciseSectionView: View {
                         Button {
                             onAddSet()
                         } label: {
-                            Label("Add set", systemImage: "plus.circle")
+                            Label(
+                                exercise.exerciseMode.isCardio ? "Add interval" : "Add set",
+                                systemImage: "plus.circle"
+                            )
                         }
                         .buttonStyle(.helmSecondary)
                     }
@@ -241,6 +248,8 @@ struct ExerciseSectionView: View {
             switch field {
             case .weight: set.mass.map { String(format: "%.0f", $0.kilograms) } ?? ""
             case .reps: set.reps.map(String.init) ?? ""
+            case .durationMinutes: set.durationSeconds.map { String($0 / 60) } ?? ""
+            case .distanceKilometers: set.distanceKilometers.map { String(format: "%.2f", $0) } ?? ""
             case .rpe: set.rpe.map { String(format: "%.0f", $0) } ?? ""
             }
         },

@@ -21,7 +21,12 @@ final class PhoneWorkoutSessionManager: NSObject {
         super.init()
     }
 
-    func start(sessionID: String, activityStart: Date?, activityKind: WatchWorkoutActivityKind = .traditionalStrengthTraining) async throws {
+    func start(
+        sessionID: String,
+        activityStart: Date?,
+        activityKind: WatchWorkoutActivityKind = .traditionalStrengthTraining,
+        indoor: Bool? = nil
+    ) async throws {
         guard session == nil else { return }
 
         guard HKHealthStore.isHealthDataAvailable() else {
@@ -33,7 +38,8 @@ final class PhoneWorkoutSessionManager: NSObject {
         let configuration = HKWorkoutConfiguration()
         configuration.activityType = HKWorkoutActivityType(rawValue: activityKind.healthKitActivityTypeRawValue)
             ?? .traditionalStrengthTraining
-        configuration.locationType = activityKind.usesOutdoorLocation ? .outdoor : .indoor
+        let usesIndoorLocation = indoor ?? !activityKind.usesOutdoorLocation
+        configuration.locationType = usesIndoorLocation ? .indoor : .outdoor
 
         let workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)
         let workoutBuilder = workoutSession.associatedWorkoutBuilder()

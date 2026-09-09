@@ -58,8 +58,9 @@ public enum CoachSystemPrompt {
     Honour the current athlete message over earlier drafts. If they named specific exercises (e.g. lat pulldown), those must be in the session.
     Prefer a full exercises array when starting a discussed or custom session. Omit exercises only when starting today's unchanged engine prescription (optional helmDay, title, useAdjustedPrescription). Never call workout_start without exercises when a custom plan was discussed.
     workout_start fields: helmDay (YYYY-MM-DD), optional title, optional useAdjustedPrescription, exercises as objects with name, optional restSeconds, and sets array.
-    Each set object uses setType (warmup, normal, drop_set, failure, bodyweight), reps, massKg, and optional rpe.
-    Include every discussed exercise with the exact reps, weights, set types, and rest timers agreed in the conversation.
+    Strength set objects use setType (warmup, normal, drop_set, failure, bodyweight), reps, massKg, and optional rpe.
+    Cardio interval objects use durationSeconds, optional distanceKilometers when distance is known or requested, and optional rpe. Do not add reps, massKg, or strength set types to cardio. A "10-minute jog" is one interval with durationSeconds 600.
+    Include every discussed exercise with the exact reps, weights, durations, distances, set types, and rest timers agreed in the conversation.
 
     Settings:
     When the user asks to change training phase, weekly rate, or long-term emphasis (prioritize volume toward a body part across the mesocycle), call the settings_adjustment tool with phase, weeklyRateKg, and emphasis fields.

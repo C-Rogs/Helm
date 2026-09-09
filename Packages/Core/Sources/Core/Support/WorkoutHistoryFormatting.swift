@@ -140,6 +140,18 @@ public enum WorkoutHistoryFormatting {
         return String(format: "%.0f m", meters)
     }
 
+    public static func intervalDurationLabel(seconds: Int) -> String {
+        if seconds >= 3_600 {
+            let hours = seconds / 3_600
+            let minutes = (seconds % 3_600) / 60
+            return minutes == 0 ? "\(hours)h" : "\(hours)h \(minutes)m"
+        }
+        if seconds >= 60 {
+            return "\(seconds / 60) min"
+        }
+        return "\(seconds) sec"
+    }
+
     public static func accessibilityLabel(for summary: WorkoutSessionSummary) -> String {
         var parts: [String] = [summary.title ?? "Workout"]
         parts.append(contextualDateTimeLabel(summary.startedAt))
@@ -153,6 +165,15 @@ public enum WorkoutHistoryFormatting {
             }
             if let distance = summary.hkTotalDistanceMeters {
                 parts.append(distanceLabel(meters: distance))
+            }
+        } else if summary.isNativeCardio {
+            parts.append("\(summary.exerciseCount) cardio exercises")
+            parts.append("\(summary.totalSetCount) intervals")
+            if summary.loggedDurationSeconds > 0 {
+                parts.append(intervalDurationLabel(seconds: summary.loggedDurationSeconds))
+            }
+            if summary.loggedDistanceKilometers > 0 {
+                parts.append(distanceLabel(meters: summary.loggedDistanceKilometers * 1_000))
             }
         } else {
             parts.append("\(summary.exerciseCount) exercises")

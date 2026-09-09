@@ -94,7 +94,7 @@ public actor ActiveSessionEngine {
         return try requireSnapshot(at: now)
     }
 
-    public func addExercise(exerciseID: String, defaultSetCount: Int = 3, defaultRestSeconds: Int = 90) throws -> ActiveSessionSnapshot {
+    public func addExercise(exerciseID: String, defaultSetCount: Int? = nil, defaultRestSeconds: Int = 90) throws -> ActiveSessionSnapshot {
         let now = clock.now()
         guard let snapshot = try repository.fetchActiveSnapshot(at: now) else {
             throw PersistenceError.noActiveSession

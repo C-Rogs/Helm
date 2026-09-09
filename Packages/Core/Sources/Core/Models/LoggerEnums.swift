@@ -7,6 +7,38 @@ public enum ExerciseMode: String, Codable, CaseIterable, Sendable {
     case distanceDuration = "distance_duration"
 }
 
+public extension ExerciseMode {
+    var isCardio: Bool {
+        self == .duration || self == .distanceDuration
+    }
+
+    var defaultIntervalCount: Int {
+        isCardio ? 1 : 3
+    }
+
+    func completionValidationMessage(for set: SetEntryDraft) -> String? {
+        switch self {
+        case .weightReps:
+            if set.mass == nil { return "Enter weight before completing this set." }
+            if set.reps == nil { return "Enter reps before completing this set." }
+        case .bodyweightReps:
+            if set.reps == nil { return "Enter reps before completing this set." }
+        case .duration:
+            if (set.durationSeconds ?? 0) <= 0 {
+                return "Enter duration before completing this interval."
+            }
+        case .distanceDuration:
+            if (set.durationSeconds ?? 0) <= 0 {
+                return "Enter duration before completing this interval."
+            }
+            if (set.distanceKilometers ?? 0) <= 0 {
+                return "Enter distance before completing this interval."
+            }
+        }
+        return nil
+    }
+}
+
 public enum WorkoutSessionStatus: String, Codable, CaseIterable, Sendable {
     case active
     case paused

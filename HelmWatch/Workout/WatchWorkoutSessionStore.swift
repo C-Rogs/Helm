@@ -168,14 +168,15 @@ final class WatchWorkoutSessionStore {
             Task { await prepareHealthKit() }
         } catch {
             lastError = error.localizedDescription
+            WatchCompanionBootstrap.coordinator.recordDiagnostic(
+                .watchSessionFail,
+                detail: "phoneConfiguration \(error.localizedDescription)"
+            )
             lifecycle.end()
             teardownTracker.end()
             sessionID = nil
             isMirroringToCompanion = false
             apply(.teardownFailed)
-            // Fall back: auth then normal start.
-            await prepareHealthKit()
-            await startWorkout()
         }
     }
 

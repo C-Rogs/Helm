@@ -134,7 +134,10 @@ enum WatchCompanionBootstrap {
             let configuration = HKWorkoutConfiguration()
             configuration.activityType = HKWorkoutActivityType(rawValue: kind.healthKitActivityTypeRawValue)
                 ?? .traditionalStrengthTraining
-            configuration.locationType = kind.usesOutdoorLocation ? .outdoor : .indoor
+            configuration.locationType = kind.usesIndoorLocation(
+                sessionTitle: nil,
+                exerciseNames: [coordinator.companionExerciseName].compactMap { $0 }
+            ) ? .indoor : .outdoor
             await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
             flushLiveHeartRateIfNeeded()
             return
