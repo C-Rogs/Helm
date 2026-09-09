@@ -184,26 +184,60 @@ public struct InSessionCoachService: Sendable {
             requestID: artefact.requestID
         )
 
-        // Ambiguous catalog lookup (e.g. "hip thrust"): one inference retry where
-        // the model sees its failed phrase plus the resolver's closest matches and
-        // must either commit to an exact catalogue display name or drop the op.
-        guard case .failed(.unresolvedCatalogExerciseIDs(let ids, let candidates)) = proposal.status,
-              !candidates.isEmpty else {
-            await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
-            return proposal
+        if let retried = try await retryUnresolvedProposal(
+            initial: proposal,
+            userMessage: userMessage,
+            snapshot: snapshot,
+            excludedExerciseIDs: excludedExerciseIDs,
+            provider: provider,
+            prompt: prompt,
+            thread: thread
+        ) {
+            await logProposalDiagnostics(proposal: retried, sessionID: snapshot.session.id)
+            return retried
+        }
+        await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
+        return proposal
+    }
+
+    private func retryUnresolvedProposal(
+        initial: CoachSessionProposal,
+        userMessage: String,
+        snapshot: ActiveSessionSnapshot,
+        excludedExerciseIDs: Set<String>,
+        provider: any CoachLLMProvider,
+        prompt: CoachPrompt,
+        thread: CoachThreadState
+    ) async throws -> CoachSessionProposal? {
+        let retryMessage: String?
+        switch initial.status {
+        case .failed(.unresolvedCatalogExerciseIDs(let ids, let candidates)) where !candidates.isEmpty:
+            helmLogger(category: .coachLLM).info(
+                "coach lookup retry: \(ids.joined(separator: ", "), privacy: .public) -> \(candidates.count) candidates"
+            )
+            retryMessage = """
+            Your previous reply referenced exercise\(ids.count == 1 ? "" : "s") \(ids.map { "\"\($0)\"" }.joined(separator: ", ")) \
+            that could not be matched to exactly one catalogue exercise. Closest catalogue matches: \
+            \(candidates.joined(separator: "; ")). Re-issue the operations using the exact catalogue display name \
+            for the exercise the athlete means, or omit the operation if none of the matches is right. \
+            Athlete request was: \(userMessage)
+            """
+        case .failed(.unresolvedExerciseIDs(let ids, let sessionLabels)) where !sessionLabels.isEmpty:
+            helmLogger(category: .coachLLM).info(
+                "coach session retry: \(ids.joined(separator: ", "), privacy: .public) -> \(sessionLabels.count) session labels"
+            )
+            retryMessage = """
+            Your previous reply referenced exercise\(ids.count == 1 ? "" : "s") \(ids.map { "\"\($0)\"" }.joined(separator: ", ")) \
+            that could not be matched to this session. Use one of these exact session exercise names: \
+            \(sessionLabels.joined(separator: "; ")). Re-issue the operations or omit them if none fit. \
+            Athlete request was: \(userMessage)
+            """
+        default:
+            retryMessage = nil
         }
 
-        helmLogger(category: .coachLLM).info(
-            "coach lookup retry: \(ids.joined(separator: ", "), privacy: .public) -> \(candidates.count) candidates"
-        )
+        guard let retryUserMessage = retryMessage else { return nil }
 
-        let retryUserMessage = """
-        Your previous reply referenced exercise\(ids.count == 1 ? "" : "s") \(ids.map { "\"\($0)\"" }.joined(separator: ", ")) \
-        that could not be matched to exactly one catalogue exercise. Closest catalogue matches: \
-        \(candidates.joined(separator: "; ")). Re-issue the operations using the exact catalogue display name \
-        for the exercise the athlete means, or omit the operation if none of the matches is right. \
-        Athlete request was: \(userMessage)
-        """
         let retryArtefact = try await provider.generateSessionAdjustment(
             systemInstructions: prompt.systemInstructions,
             contextBlock: prompt.contextBlock,
@@ -218,13 +252,13 @@ public struct InSessionCoachService: Sendable {
             modelVersion: retryArtefact.schemaVersion.rawValue,
             requestID: retryArtefact.requestID
         )
-        // Keep whichever attempt got further; the retry wins only if it resolved cleanly.
-        if case .failed(.unresolvedCatalogExerciseIDs) = retryProposal.status {
-            await logProposalDiagnostics(proposal: proposal, sessionID: snapshot.session.id)
-            return proposal
+
+        switch retryProposal.status {
+        case .failed(.unresolvedCatalogExerciseIDs), .failed(.unresolvedExerciseIDs):
+            return nil
+        default:
+            return retryProposal
         }
-        await logProposalDiagnostics(proposal: retryProposal, sessionID: snapshot.session.id)
-        return retryProposal
     }
 
     public func applyProposal(

@@ -146,6 +146,12 @@ struct NutritionDaySummaryCard: View {
                     }
                 }
 
+                if let breakdown = snapshot.dailyEnergyBreakdown {
+                    Divider()
+                        .overlay(HelmColor.gaugeTrack)
+                    DailyEnergyBreakdownSection(breakdown: breakdown)
+                }
+
                 if showTrend {
                     trendSection
                 }

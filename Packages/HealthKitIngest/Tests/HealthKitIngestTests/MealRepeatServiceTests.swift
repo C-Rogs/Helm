@@ -268,4 +268,39 @@ struct MealRepeatServiceTests {
         #expect(fetched.count == 1)
         #expect(fetched[0].name == "Weekday oats")
     }
+
+    @Test("duplicate copy to same bucket is rejected")
+    func duplicateCopyRejected() async throws {
+        let store = try PersistenceStore.inMemory()
+        let repeatService = makeService(store: store)
+        let calendar = Calendar(identifier: .gregorian)
+        let sourceLoggedAt = yesterday.startInstant(calendar: calendar)!.addingTimeInterval(3_600)
+        try store.nutrition.upsertMeal(
+            MealRecord(
+                helmDay: yesterday,
+                name: "Sunday dinner",
+                loggedAt: sourceLoggedAt,
+                bucket: .dinner,
+                energy: Energy(kilocalories: 700),
+                proteinGrams: 50,
+                carbohydrateGrams: 40,
+                fatGrams: 25,
+                source: .manual
+            )
+        )
+
+        _ = try await repeatService.copyBucket(
+            from: yesterday,
+            bucket: .dinner,
+            to: today
+        )
+
+        await #expect(throws: MealRepeatError.duplicateCopy) {
+            try await repeatService.copyBucket(
+                from: yesterday,
+                bucket: .dinner,
+                to: today
+            )
+        }
+    }
 }

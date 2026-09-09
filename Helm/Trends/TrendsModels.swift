@@ -7,6 +7,7 @@ import ReadinessKit
 enum TrendsHistoryWindow: Int, CaseIterable, Identifiable, Sendable {
     case days30 = 30
     case days90 = 90
+    case year1 = 365
     case all = 0
 
     var id: Int { rawValue }
@@ -15,6 +16,7 @@ enum TrendsHistoryWindow: Int, CaseIterable, Identifiable, Sendable {
         switch self {
         case .days30: "30d"
         case .days90: "90d"
+        case .year1: "1y"
         case .all: "All"
         }
     }
@@ -22,7 +24,7 @@ enum TrendsHistoryWindow: Int, CaseIterable, Identifiable, Sendable {
     /// Inclusive lookback in calendar days; `nil` means unbounded.
     var lookbackDays: Int? {
         switch self {
-        case .days30, .days90: rawValue
+        case .days30, .days90, .year1: rawValue
         case .all: nil
         }
     }

@@ -273,7 +273,8 @@ enum CoachChatActionParser {
     }
 
     private static func proposal(fromMealCopy payload: MealCopyPayload) -> CoachChatActionProposal {
-        let preview = MealCopyCommandApplier.preview(for: payload)
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        let preview = MealCopyCommandApplier.preview(for: payload, today: today)
         return CoachChatActionProposal(
             reply: payload.reply,
             kind: .mealCopy(payload),

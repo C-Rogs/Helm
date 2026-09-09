@@ -152,6 +152,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
     public let activeEnergyKcal: Int?
     public let activeEnergyFreshness: ActiveEnergyFreshness
     public let energyBalance: EnergyBalanceSummary
+    public let dailyEnergyBreakdown: DailyEnergyBreakdown?
     public let loggingComplete: Bool
     public let weeklyBudget: WeeklyNutritionBudget?
 
@@ -185,6 +186,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
         activeEnergyKcal: Int? = nil,
         activeEnergyFreshness: ActiveEnergyFreshness = .unavailable,
         energyBalance: EnergyBalanceSummary? = nil,
+        dailyEnergyBreakdown: DailyEnergyBreakdown? = nil,
         loggingComplete: Bool = false,
         weeklyBudget: WeeklyNutritionBudget? = nil
     ) {
@@ -202,6 +204,7 @@ public struct NutritionDaySnapshot: Sendable, Equatable {
             baseTargetKcal: targets.caloriesKcal,
             activeEnergy: activeEnergyFreshness
         )
+        self.dailyEnergyBreakdown = dailyEnergyBreakdown
         self.loggingComplete = loggingComplete
         self.weeklyBudget = weeklyBudget
     }
@@ -523,6 +526,20 @@ public actor NutritionEngine {
             baseTargetKcal: targets.caloriesKcal,
             activeEnergy: activeEnergyFreshness
         )
+        let dayWorkouts = (try? persistence.workoutSessions.listSummaries(
+            on: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )) ?? []
+        let bodyMassKg = bodyProfile?.bodyMassKg
+        let dailyEnergyBreakdown = DailyEnergyBreakdownBuilder.build(
+            intakeKcal: intakeKcal,
+            restingKcal: dailyMetrics?.restingEnergyKcal,
+            activeKcal: activeEnergyKcal,
+            activeFreshness: activeEnergyFreshness,
+            workouts: dayWorkouts.map(DailyEnergyBreakdownBuilder.WorkoutEnergyWorkoutInput.init(summary:)),
+            bodyMassKilograms: bodyMassKg
+        )
 
         return NutritionDaySnapshot(
             helmDay: day,
@@ -535,6 +552,7 @@ public actor NutritionEngine {
             activeEnergyKcal: activeEnergyKcal,
             activeEnergyFreshness: activeEnergyFreshness,
             energyBalance: energyBalance,
+            dailyEnergyBreakdown: dailyEnergyBreakdown.hasVisibleContent ? dailyEnergyBreakdown : nil,
             loggingComplete: loggingComplete,
             weeklyBudget: resolvedWeeklyBudget
         )

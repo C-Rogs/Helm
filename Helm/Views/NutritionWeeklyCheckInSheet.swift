@@ -85,9 +85,11 @@ struct NutritionWeeklyCheckInSheet: View {
                         Text("\(preview.weighInDays) weigh-ins · \(preview.foodDays) food days included")
                             .helmType(.body, color: HelmColor.fgMuted)
                         if !preview.meetsSoftGate {
-                            Text("Need at least 3 weigh-ins and 3 food days for a confident update.")
+                            Text("Need at least 3 Apple Health weigh-ins and 3 food days for a confident update.")
                                 .helmType(.body, color: HelmColor.compromised)
                         }
+                        Text("Weigh-ins come from Apple Health body-mass samples. Helm does not ask for a manual scale entry.")
+                            .helmType(.body, color: HelmColor.fgMuted)
                     }
                 }
 
@@ -175,7 +177,7 @@ struct NutritionWeeklyCheckInSheet: View {
                 Text(day.helmDay.formattedLabel)
                     .helmType(.label)
                 HStack(spacing: HelmSpacing.sm) {
-                    statusChip(day.hasWeighIn ? "Weigh-in" : "No weigh-in", ok: day.hasWeighIn)
+                    statusChip(day.hasWeighIn ? "Health weigh-in" : "No Health weigh-in", ok: day.hasWeighIn)
                     statusChip(day.hasFoodLog ? "Food" : "No food", ok: day.hasFoodLog)
                     if day.isIncomplete {
                         statusChip("Incomplete", ok: false)
@@ -231,6 +233,7 @@ struct NutritionWeeklyCheckInSheet: View {
         isLoading = preview == nil
         loadError = nil
         do {
+            _ = await HealthKitBootstrap.healthKitIngest.syncKinds([.bodyMass])
             let built = try await NutritionBootstrap.weeklyCheckInService.buildPreview(
                 asOf: asOf,
                 includedOverrides: includedOverrides.isEmpty ? nil : includedOverrides
@@ -255,6 +258,7 @@ struct NutritionWeeklyCheckInSheet: View {
                 includedOverrides: includedOverrides
             )
             preferences.setLastCheckInCompletedOn(preview.asOf)
+            NutritionBootstrap.refreshNutrition(for: preview.asOf)
             HapticEngine.shared.play(.mealConfirmed)
             didConfirm = true
             onConfirmed()

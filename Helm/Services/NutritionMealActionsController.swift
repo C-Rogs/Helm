@@ -119,6 +119,14 @@ final class NutritionMealActionsController {
         isSaving = true
         defer { isSaving = false }
         do {
+            if try mealRepeatService.wouldDuplicateCopy(
+                from: context.sourceDay,
+                bucket: context.sourceBucket,
+                to: targetDay,
+                targetBucket: targetBucket
+            ) {
+                throw MealRepeatError.duplicateCopy
+            }
             _ = try await persist(
                 .copyMeal(HelmCopyMealCommand(
                     sourceDay: context.sourceDay,
@@ -131,6 +139,8 @@ final class NutritionMealActionsController {
             HapticEngine.shared.play(.mealConfirmed)
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(context.sourceBucket.displayName.lowercased()) to copy."
+        } catch MealRepeatError.duplicateCopy {
+            errorMessage = "That meal is already on \(targetDay.formattedLabel) \(targetBucket.displayName.lowercased())."
         } catch {
             errorMessage = "Could not copy entry. Try again."
         }

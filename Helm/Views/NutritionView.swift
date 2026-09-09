@@ -749,9 +749,12 @@ private struct NutritionLoggingSheets: ViewModifier {
                     }
                     .ignoresSafeArea()
                 } else {
-                    CameraImagePicker { image in
-                        Task { await photoMealController.handleCameraImage(image) }
-                    }
+                    CameraImagePicker(
+                        onImage: { image in
+                            Task { await photoMealController.handleCameraImage(image) }
+                        },
+                        onUnavailable: photoMealController.cameraUnavailable
+                    )
                     .ignoresSafeArea()
                 }
             }

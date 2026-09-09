@@ -96,6 +96,7 @@ final class MealDepthCameraViewController: UIViewController {
     private let photoOutput = AVCapturePhotoOutput()
     private var previewLayer: AVCaptureVideoPreviewLayer?
     private var isCapturing = false
+    private var isCaptureConfigured = false
 
     override func viewDidLoad() {
         super.viewDidLoad()
@@ -111,7 +112,7 @@ final class MealDepthCameraViewController: UIViewController {
 
     override func viewWillAppear(_ animated: Bool) {
         super.viewWillAppear(animated)
-        guard !session.isRunning else { return }
+        guard isCaptureConfigured, !session.isRunning else { return }
         session.startRunning()
     }
 
@@ -143,6 +144,7 @@ final class MealDepthCameraViewController: UIViewController {
         if photoOutput.isDepthDataDeliverySupported {
             photoOutput.isDepthDataDeliveryEnabled = true
         }
+        isCaptureConfigured = true
         session.commitConfiguration()
 
         let previewLayer = AVCaptureVideoPreviewLayer(session: session)
@@ -195,7 +197,11 @@ final class MealDepthCameraViewController: UIViewController {
     }
 
     @objc private func shutterTapped() {
-        guard !isCapturing else { return }
+        guard isCaptureConfigured,
+              !photoOutput.connections.isEmpty,
+              !isCapturing else {
+            return
+        }
         isCapturing = true
 
         let settings = AVCapturePhotoSettings()

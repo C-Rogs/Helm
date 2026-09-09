@@ -47,6 +47,11 @@ final class ChatController {
     private var lastRefinementExtractionDate: Date?
     /// `navigate` held until the athlete confirms a same-turn write.
     private var pendingNavigateTab: AppTab?
+    /// Recent meal_query context used to validate edit/delete proposals.
+    private var lastMealQueryContext: MealQueryContext?
+    private var mutationLedger: CoachMutationLedger {
+        CoachMutationLedger(metadata: persistence.appMetadata)
+    }
 
     private let persistence: PersistenceStore
     private let providerPreferences: ProviderPreferencesStore
@@ -375,23 +380,53 @@ final class ChatController {
         }
 
         do {
+            if case let .foodLog(payload) = proposal.kind,
+               let validationError = FoodLogProposalValidator.validate(
+                   payload: payload,
+                   queryContext: lastMealQueryContext,
+                   persistence: persistence
+               ) {
+                lastTurnError = validationError.recoveryMessage
+                return
+            }
+
+            if let idempotencyKey = mutationIdempotencyKey(for: proposal),
+               mutationLedger.wasApplied(idempotencyKey) {
+                pendingChatAction = nil
+                lastTurnError = nil
+                applyDeferredNavigateIfNeeded()
+                return
+            }
+
             switch proposal.kind {
             case let .foodLog(payload):
                 applyProgressStep = "Writing to diary…"
                 let deleteSnapshot = payload.action == .delete ? try snapshotMeals(for: payload) : nil
-                _ = try await HelmActionRuntime.perform(
+                let result = try await HelmActionRuntime.perform(
                     .meal(.fromCoachPayload(payload, now: Date())),
                     after: .coach
                 )
                 if let deleteSnapshot {
                     persistMealDeleteUndo(snapshot: deleteSnapshot)
                 }
+                if let day = result.nutritionDay {
+                    NutritionBootstrap.refreshNutrition(for: day)
+                }
             case let .mealCopy(payload):
                 applyProgressStep = "Copying meal…"
-                guard let resolved = MealCopyCommandApplier.resolvedDays(payload) else {
+                let today = HelmDay.day(for: Date(), calendar: .current)
+                guard let resolved = MealCopyCommandApplier.resolvedDays(payload, today: today) else {
                     throw ManualMealError.invalidQuickAdd
                 }
-                _ = try await HelmActionRuntime.perform(
+                if try NutritionBootstrap.mealRepeatService.wouldDuplicateCopy(
+                    from: resolved.source,
+                    bucket: resolved.sourceBucket,
+                    to: resolved.target,
+                    targetBucket: resolved.targetBucket
+                ) {
+                    throw MealRepeatError.duplicateCopy
+                }
+                let result = try await HelmActionRuntime.perform(
                     .copyMeal(HelmCopyMealCommand(
                         sourceDay: resolved.source,
                         sourceBucket: resolved.sourceBucket,
@@ -400,6 +435,9 @@ final class ChatController {
                     )),
                     after: .coach
                 )
+                if let day = result.nutritionDay {
+                    NutritionBootstrap.refreshNutrition(for: day)
+                }
             case let .memoryAdjustment(payload):
                 applyProgressStep = "Updating Memory…"
                 let today = HelmDay.day(for: Date(), calendar: .current)
@@ -475,12 +513,47 @@ final class ChatController {
                 applyProgressStep = "Discarding workout…"
                 await TrainBootstrap.sessionController.discardWorkout()
             }
+            if let idempotencyKey = mutationIdempotencyKey(for: proposal) {
+                try? mutationLedger.recordApplied(idempotencyKey)
+            }
             pendingChatAction = nil
             lastTurnError = nil
             applyDeferredNavigateIfNeeded()
+        } catch let duplicate as MealRepeatError where duplicate == .duplicateCopy {
+            lastTurnError = "That meal is already on the target day. Pick another day or bucket."
+            CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: duplicate)
         } catch {
             lastTurnError = error.localizedDescription
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatAction", error: error)
+        }
+    }
+
+    private func mutationIdempotencyKey(for proposal: CoachChatActionProposal) -> String? {
+        let today = HelmDay.day(for: Date(), calendar: .current)
+        switch proposal.kind {
+        case let .foodLog(payload):
+            let day = FoodLogCommandApplier.resolvedHelmDay(from: payload, now: Date())
+            return CoachMutationIdempotency.key(forFoodLog: payload, resolvedHelmDay: day)
+        case let .mealCopy(payload):
+            guard let resolved = MealCopyCommandApplier.resolvedDays(payload, today: today) else {
+                return nil
+            }
+            return CoachMutationIdempotency.key(
+                forMealCopy: HelmCopyMealCommand(
+                    sourceDay: resolved.source,
+                    sourceBucket: resolved.sourceBucket,
+                    targetDay: resolved.target,
+                    targetBucket: resolved.targetBucket
+                )
+            )
+        case let .sessionAdjustment(sessionProposal):
+            guard let sessionID = TrainBootstrap.sessionController.store.snapshot?.session.id else {
+                return nil
+            }
+            return CoachMutationIdempotency.key(forSession: sessionProposal, sessionID: sessionID)
+        case .workoutStart, .memoryAdjustment, .settingsAdjustment, .scheduleAdjustment,
+             .reactiveDeload, .planRegenerate, .workoutDiscard:
+            return nil
         }
     }
 
@@ -912,9 +985,22 @@ final class ChatController {
                         nutritionTabVisible: AppTabRouter.shared.selectedTab == .nutrition,
                         viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
                     )
-                    pendingAction = CoachChatActionParser.proposal(
-                        fromFoodLog: payload.replacingHelmDay(day.formatted)
-                    )
+                    let resolvedPayload = payload.replacingHelmDay(day.formatted)
+                    if let validationError = FoodLogProposalValidator.validate(
+                        payload: resolvedPayload,
+                        queryContext: lastMealQueryContext,
+                        persistence: persistence
+                    ) {
+                        pendingAction = nil
+                        assembledTurn = AssembledCoachTurn(
+                            text: validationError.recoveryMessage,
+                            functionCalls: []
+                        )
+                    } else {
+                        pendingAction = CoachChatActionParser.proposal(
+                            fromFoodLog: resolvedPayload
+                        )
+                    }
                 }
                 if CoachChatIntent.suppressesWriteProposals(text) {
                     // Drop this turn's writes; keep any prior confirm card (CAM-37).
@@ -1728,7 +1814,7 @@ final class ChatController {
         streamingText = "Syncing Health…"
 
         let outcome = await HealthKitBootstrap.healthKitIngest.syncKinds([
-            .hrvSDNN, .restingHeartRate, .sleep, .respiratoryRate, .wristTemperature
+            .hrvSDNN, .restingHeartRate, .sleep, .respiratoryRate, .wristTemperature, .bodyMass
         ])
         await ReadinessBootstrap.readinessService.refresh()
         let status = await HealthKitBootstrap.healthKitIngest.currentStatus()
@@ -1737,14 +1823,21 @@ final class ChatController {
         let syncAt = status.lastSyncFinishedAt.map { ISO8601DateFormatter().string(from: $0) } ?? "unknown"
         let hrv = metrics?.hrvSDNN.map { "\($0.milliseconds)ms" } ?? "none"
         let rhr = metrics?.restingHeartRate.map { "\($0) bpm" } ?? "none"
+        let bodyMass = try? persistence.bodyComposition
+            .fetchLatest(onOrBefore: today, limit: 1)
+            .first?
+            .mass
+            .kilograms
+        let bodyMassLabel = bodyMass.map { String(format: "%.1f kg", $0) } ?? "none"
         let results = """
         synced_at=\(syncAt)
         samples_ingested=\(outcome.samplesIngested)
         samples_deleted=\(outcome.samplesDeleted)
         hrv_sdnn=\(hrv)
         resting_hr=\(rhr)
+        body_mass=\(bodyMassLabel)
         """
-        let fallback = "HealthKit sync finished at \(syncAt). HRV \(hrv), resting HR \(rhr)."
+        let fallback = "HealthKit sync finished at \(syncAt). HRV \(hrv), resting HR \(rhr), body mass \(bodyMassLabel)."
         let toolMessage = """
         # Health sync results
         \(results)
@@ -1794,6 +1887,7 @@ final class ChatController {
     ) async throws -> AssembledCoachTurn {
         let service = MealHistoryQueryService(store: persistence)
         let results = try service.run(query)
+        lastMealQueryContext = MealQueryContext.from(query: query, results: results)
         let toolMessage = """
         # Meal query results
         \(results)

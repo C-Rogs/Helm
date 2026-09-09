@@ -154,6 +154,10 @@ final class PhotoMealController {
         }
     }
 
+    func cameraUnavailable() {
+        phase = .failed("This device does not have a usable camera.")
+    }
+
     func prepareForNewPhotoSelection() {
         pickerItem = nil
     }
@@ -238,9 +242,17 @@ final class PhotoMealController {
 struct CameraImagePicker: UIViewControllerRepresentable {
     @Environment(\.dismiss) private var dismiss
     let onImage: (UIImage) -> Void
+    let onUnavailable: () -> Void
 
     func makeUIViewController(context: Context) -> UIImagePickerController {
         let picker = UIImagePickerController()
+        guard UIImagePickerController.isSourceTypeAvailable(.camera) else {
+            DispatchQueue.main.async {
+                onUnavailable()
+                dismiss()
+            }
+            return picker
+        }
         picker.sourceType = .camera
         picker.delegate = context.coordinator
         return picker

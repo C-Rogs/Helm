@@ -425,6 +425,354 @@ public struct WorkoutSessionRepository: Sendable {
         }
     }
 
+    /// Completed sessions whose `started_at` falls on the given Helm day.
+    public func listSummaries(
+        on day: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [WorkoutSessionSummary] {
+        guard
+            let startInstant = day.startInstant(cutoff: cutoff, calendar: calendar),
+            let endInstant = day.endInstant(cutoff: cutoff, calendar: calendar)
+        else {
+            return []
+        }
+        let startString = ISO8601Coding.string(from: startInstant)
+        let endString = ISO8601Coding.string(from: endInstant)
+
+        return try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT ws.id, ws.title, ws.started_at, ws.ended_at,
+                           ws.total_volume_kg_cache, ws.total_set_count_cache, ws.total_rep_count_cache,
+                           ws.source,
+                           ws.activity_type, ws.active_energy_kcal, ws.distance_meters,
+                           ws.prescribed_working_sets, ws.prescribed_volume_kg,
+                           (
+                               SELECT COUNT(*)
+                               FROM workout_session_exercise wse
+                               WHERE wse.workout_session_id = ws.id AND wse.deleted_at IS NULL
+                           ) AS exercise_count,
+                           (
+                               SELECT COUNT(*)
+                               FROM workout_session_exercise wse
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND wse.exercise_mode IN ('duration', 'distance_duration')
+                           ) AS cardio_exercise_count,
+                           (
+                               SELECT COALESCE(SUM(se.duration_seconds), 0)
+                               FROM set_entry se
+                               JOIN workout_session_exercise wse
+                                 ON wse.id = se.workout_session_exercise_id
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND se.deleted_at IS NULL
+                                 AND se.status = 'completed'
+                           ) AS logged_duration_seconds,
+                           (
+                               SELECT COALESCE(SUM(se.distance_km), 0)
+                               FROM set_entry se
+                               JOIN workout_session_exercise wse
+                                 ON wse.id = se.workout_session_exercise_id
+                               WHERE wse.workout_session_id = ws.id
+                                 AND wse.deleted_at IS NULL
+                                 AND se.deleted_at IS NULL
+                                 AND se.status = 'completed'
+                           ) AS logged_distance_km
+                    FROM workout_session ws
+                    WHERE ws.status = 'completed'
+                      AND ws.deleted_at IS NULL
+                      AND ws.started_at >= ?
+                      AND ws.started_at < ?
+                    ORDER BY ws.started_at ASC
+                    """,
+                arguments: [startString, endString]
+            )
+
+            return try rows.map { row in
+                let source = WorkoutSessionSource(rawValue: row["source"] as String) ?? .manual
+                return WorkoutSessionSummary(
+                    id: row["id"],
+                    title: row["title"],
+                    startedAt: try ISO8601Coding.date(from: row["started_at"] as String),
+                    endedAt: (row["ended_at"] as String?).flatMap { try? ISO8601Coding.date(from: $0) },
+                    totalVolumeKilograms: row["total_volume_kg_cache"] ?? 0,
+                    totalSetCount: row["total_set_count_cache"] ?? 0,
+                    totalRepCount: row["total_rep_count_cache"] ?? 0,
+                    exerciseCount: row["exercise_count"] ?? 0,
+                    source: source,
+                    hkActivityType: row["activity_type"],
+                    hkActiveEnergyKilocalories: row["active_energy_kcal"],
+                    hkTotalDistanceMeters: row["distance_meters"],
+                    prescribedWorkingSets: row["prescribed_working_sets"],
+                    prescribedVolumeKilograms: row["prescribed_volume_kg"],
+                    cardioExerciseCount: row["cardio_exercise_count"] ?? 0,
+                    loggedDurationSeconds: row["logged_duration_seconds"] ?? 0,
+                    loggedDistanceKilometers: row["logged_distance_km"] ?? 0
+                )
+            }
+        }
+    }
+
+    public struct TrainingOverviewAggregate: Sendable, Hashable {
+        public let sessionCount: Int
+        public let helmSessionCount: Int
+        public let totalSets: Int
+        public let totalVolumeKg: Double
+        public let totalDurationSeconds: Int
+
+        public init(
+            sessionCount: Int,
+            helmSessionCount: Int,
+            totalSets: Int,
+            totalVolumeKg: Double,
+            totalDurationSeconds: Int
+        ) {
+            self.sessionCount = sessionCount
+            self.helmSessionCount = helmSessionCount
+            self.totalSets = totalSets
+            self.totalVolumeKg = totalVolumeKg
+            self.totalDurationSeconds = totalDurationSeconds
+        }
+    }
+
+    public func fetchTrainingOverviewAggregate(
+        since startDay: HelmDay,
+        through endDay: HelmDay,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> TrainingOverviewAggregate {
+        guard
+            let startInstant = startDay.startInstant(cutoff: cutoff, calendar: calendar),
+            let endInstant = endDay.endInstant(cutoff: cutoff, calendar: calendar)
+        else {
+            return TrainingOverviewAggregate(
+                sessionCount: 0,
+                helmSessionCount: 0,
+                totalSets: 0,
+                totalVolumeKg: 0,
+                totalDurationSeconds: 0
+            )
+        }
+        let startString = ISO8601Coding.string(from: startInstant)
+        let endString = ISO8601Coding.string(from: endInstant)
+
+        return try pool.read { db in
+            let row = try Row.fetchOne(
+                db,
+                sql: """
+                    SELECT
+                        COUNT(*) AS session_count,
+                        SUM(CASE WHEN source != ? THEN 1 ELSE 0 END) AS helm_session_count,
+                        COALESCE(SUM(total_set_count_cache), 0) AS total_sets,
+                        COALESCE(SUM(total_volume_kg_cache), 0) AS total_volume_kg,
+                        COALESCE(SUM(
+                            (
+                                SELECT COALESCE(SUM(se.duration_seconds), 0)
+                                FROM set_entry se
+                                JOIN workout_session_exercise wse
+                                  ON wse.id = se.workout_session_exercise_id
+                                WHERE wse.workout_session_id = ws.id
+                                  AND wse.deleted_at IS NULL
+                                  AND se.deleted_at IS NULL
+                                  AND se.status = 'completed'
+                            )
+                        ), 0) AS total_duration_seconds
+                    FROM workout_session ws
+                    WHERE ws.status = 'completed'
+                      AND ws.deleted_at IS NULL
+                      AND ws.started_at >= ?
+                      AND ws.started_at < ?
+                    """,
+                arguments: [
+                    WorkoutSessionSource.healthKit.rawValue,
+                    startString,
+                    endString
+                ]
+            )
+
+            return TrainingOverviewAggregate(
+                sessionCount: row?["session_count"] ?? 0,
+                helmSessionCount: row?["helm_session_count"] ?? 0,
+                totalSets: row?["total_sets"] ?? 0,
+                totalVolumeKg: row?["total_volume_kg"] ?? 0,
+                totalDurationSeconds: row?["total_duration_seconds"] ?? 0
+            )
+        }
+    }
+
+    public struct ExerciseProgressHighlight: Sendable, Hashable, Identifiable {
+        public let exerciseID: String
+        public let displayName: String
+        public let exerciseMode: ExerciseMode
+        public let sessionCount: Int
+        public let latestValue: Double
+        public let priorValue: Double?
+
+        public var id: String { exerciseID }
+
+        public init(
+            exerciseID: String,
+            displayName: String,
+            exerciseMode: ExerciseMode,
+            sessionCount: Int,
+            latestValue: Double,
+            priorValue: Double?
+        ) {
+            self.exerciseID = exerciseID
+            self.displayName = displayName
+            self.exerciseMode = exerciseMode
+            self.sessionCount = sessionCount
+            self.latestValue = latestValue
+            self.priorValue = priorValue
+        }
+    }
+
+    /// Top logged exercises in a window with a mode-appropriate highlight metric.
+    public func fetchExerciseProgressHighlights(
+        since startDay: HelmDay,
+        through endDay: HelmDay,
+        priorSince startPriorDay: HelmDay,
+        priorThrough endPriorDay: HelmDay,
+        limit: Int = 6,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> [ExerciseProgressHighlight] {
+        guard
+            let currentStart = startDay.startInstant(cutoff: cutoff, calendar: calendar),
+            let currentEnd = endDay.endInstant(cutoff: cutoff, calendar: calendar),
+            let priorStart = startPriorDay.startInstant(cutoff: cutoff, calendar: calendar),
+            let priorEnd = endPriorDay.endInstant(cutoff: cutoff, calendar: calendar)
+        else {
+            return []
+        }
+
+        let currentStartString = ISO8601Coding.string(from: currentStart)
+        let currentEndString = ISO8601Coding.string(from: currentEnd)
+        let priorStartString = ISO8601Coding.string(from: priorStart)
+        let priorEndString = ISO8601Coding.string(from: priorEnd)
+
+        return try pool.read { db in
+            let rows = try Row.fetchAll(
+                db,
+                sql: """
+                    SELECT
+                        se.logged_exercise_id AS exercise_id,
+                        COALESCE(e.display_name, se.logged_exercise_id) AS display_name,
+                        COALESCE(wse.exercise_mode, e.exercise_mode, 'weight_reps') AS exercise_mode,
+                        COUNT(DISTINCT ws.id) AS session_count,
+                        MAX(
+                            CASE
+                                WHEN wse.exercise_mode IN ('duration') AND se.duration_seconds IS NOT NULL
+                                    THEN CAST(se.duration_seconds AS REAL)
+                                WHEN wse.exercise_mode IN ('distance_duration') AND se.distance_km IS NOT NULL
+                                    THEN se.distance_km
+                                WHEN se.weight_kg IS NOT NULL AND se.reps IS NOT NULL AND se.reps > 0
+                                    THEN se.weight_kg * (1.0 + CAST(se.reps AS REAL) / 30.0)
+                                WHEN se.reps IS NOT NULL AND se.reps > 0
+                                    THEN CAST(se.reps AS REAL)
+                                ELSE NULL
+                            END
+                        ) AS current_metric,
+                        (
+                            SELECT MAX(
+                                CASE
+                                    WHEN wse2.exercise_mode IN ('duration') AND se2.duration_seconds IS NOT NULL
+                                        THEN CAST(se2.duration_seconds AS REAL)
+                                    WHEN wse2.exercise_mode IN ('distance_duration') AND se2.distance_km IS NOT NULL
+                                        THEN se2.distance_km
+                                    WHEN se2.weight_kg IS NOT NULL AND se2.reps IS NOT NULL AND se2.reps > 0
+                                        THEN se2.weight_kg * (1.0 + CAST(se2.reps AS REAL) / 30.0)
+                                    WHEN se2.reps IS NOT NULL AND se2.reps > 0
+                                        THEN CAST(se2.reps AS REAL)
+                                    ELSE NULL
+                                END
+                            )
+                            FROM workout_session ws2
+                            JOIN workout_session_exercise wse2 ON wse2.workout_session_id = ws2.id
+                            JOIN set_entry se2 ON se2.workout_session_exercise_id = wse2.id
+                            WHERE se2.logged_exercise_id = se.logged_exercise_id
+                              AND ws2.status = 'completed'
+                              AND ws2.deleted_at IS NULL
+                              AND wse2.deleted_at IS NULL
+                              AND se2.deleted_at IS NULL
+                              AND se2.status = 'completed'
+                              AND se2.set_type != 'warmup'
+                              AND ws2.started_at >= ?
+                              AND ws2.started_at < ?
+                        ) AS prior_metric
+                    FROM workout_session ws
+                    JOIN workout_session_exercise wse ON wse.workout_session_id = ws.id
+                    JOIN set_entry se ON se.workout_session_exercise_id = wse.id
+                    LEFT JOIN exercise e ON e.id = se.logged_exercise_id
+                    WHERE ws.status = 'completed'
+                      AND ws.deleted_at IS NULL
+                      AND ws.source != ?
+                      AND wse.deleted_at IS NULL
+                      AND se.deleted_at IS NULL
+                      AND se.status = 'completed'
+                      AND se.set_type != 'warmup'
+                      AND ws.started_at >= ?
+                      AND ws.started_at < ?
+                    GROUP BY se.logged_exercise_id
+                    HAVING current_metric IS NOT NULL
+                    ORDER BY session_count DESC, current_metric DESC
+                    LIMIT ?
+                    """,
+                arguments: [
+                    priorStartString,
+                    priorEndString,
+                    WorkoutSessionSource.healthKit.rawValue,
+                    currentStartString,
+                    currentEndString,
+                    limit
+                ]
+            )
+
+            return rows.compactMap { row in
+                let modeRaw: String = row["exercise_mode"] ?? ExerciseMode.weightReps.rawValue
+                let mode = ExerciseMode(rawValue: modeRaw) ?? .weightReps
+                let currentMetric: Double? = row["current_metric"]
+                guard let currentMetric else { return nil }
+                let priorMetric: Double? = row["prior_metric"]
+                return ExerciseProgressHighlight(
+                    exerciseID: row["exercise_id"],
+                    displayName: row["display_name"],
+                    exerciseMode: mode,
+                    sessionCount: row["session_count"] ?? 0,
+                    latestValue: currentMetric,
+                    priorValue: priorMetric
+                )
+            }
+        }
+    }
+
+    /// First completed session day in history, or nil when no sessions exist.
+    public func earliestCompletedSessionDay(
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
+    ) throws -> HelmDay? {
+        try pool.read { db in
+            guard let startedAtString = try String.fetchOne(
+                db,
+                sql: """
+                    SELECT started_at
+                    FROM workout_session
+                    WHERE status = 'completed'
+                      AND deleted_at IS NULL
+                    ORDER BY started_at ASC
+                    LIMIT 1
+                    """
+            ) else {
+                return nil
+            }
+            let startedAt = try ISO8601Coding.date(from: startedAtString)
+            return HelmDay.day(for: startedAt, cutoff: cutoff, calendar: calendar)
+        }
+    }
+
     public func fetchCompletedSummaries() throws -> [WorkoutSessionSummary] {
         try listSummaries(limit: 100_000, offset: 0)
     }

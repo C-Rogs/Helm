@@ -27,7 +27,7 @@ struct CopyMealEntrySheet: View {
         self.isSaving = isSaving
         self.onConfirm = onConfirm
         self.onCancel = onCancel
-        _targetDay = State(initialValue: sourceDay)
+        _targetDay = State(initialValue: today)
         _targetBucket = State(initialValue: sourceBucket)
     }
 

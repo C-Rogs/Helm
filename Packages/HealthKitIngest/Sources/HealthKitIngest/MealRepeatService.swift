@@ -5,6 +5,7 @@ import Persistence
 public enum MealRepeatError: Error, Sendable, Equatable {
     case emptySource
     case emptyBucket
+    case duplicateCopy
 }
 
 /// Copy meals between days, save templates, and log saved templates.
@@ -119,6 +120,21 @@ public struct MealRepeatService: Sendable {
         )
     }
 
+    public func wouldDuplicateCopy(
+        from sourceDay: HelmDay,
+        bucket: MealBucket,
+        to targetDay: HelmDay,
+        targetBucket: MealBucket? = nil
+    ) throws -> Bool {
+        let sourceMeals = try nutrition.fetchMeals(for: sourceDay)
+            .filter { $0.bucket == bucket }
+        guard !sourceMeals.isEmpty else { return false }
+        let destinationBucket = targetBucket ?? bucket
+        let targetMeals = try nutrition.fetchMeals(for: targetDay)
+            .filter { $0.bucket == destinationBucket }
+        return fingerprint(sourceMeals) == fingerprint(targetMeals)
+    }
+
     @discardableResult
     public func copyBucket(
         from sourceDay: HelmDay,
@@ -131,6 +147,14 @@ public struct MealRepeatService: Sendable {
             .filter { $0.bucket == bucket }
         guard !meals.isEmpty else { throw MealRepeatError.emptyBucket }
         let destinationBucket = targetBucket ?? bucket
+        if try wouldDuplicateCopy(
+            from: sourceDay,
+            bucket: bucket,
+            to: targetDay,
+            targetBucket: destinationBucket
+        ) {
+            throw MealRepeatError.duplicateCopy
+        }
         return try await copy(
             meals: meals,
             to: targetDay,
@@ -214,5 +238,21 @@ public struct MealRepeatService: Sendable {
         }
 
         return copiedCount
+    }
+
+    private func fingerprint(_ meals: [MealRecord]) -> String {
+        meals
+            .sorted { lhs, rhs in
+                if lhs.name != rhs.name { return lhs.name < rhs.name }
+                return lhs.id.uuidString < rhs.id.uuidString
+            }
+            .map { meal in
+                let kcal = Int((meal.energy?.kilocalories ?? 0).rounded())
+                let protein = Int((meal.proteinGrams ?? 0).rounded())
+                let carbs = Int((meal.carbohydrateGrams ?? 0).rounded())
+                let fat = Int((meal.fatGrams ?? 0).rounded())
+                return "\(meal.name.lowercased())|\(kcal)|\(protein)|\(carbs)|\(fat)"
+            }
+            .joined(separator: ";")
     }
 }

@@ -2095,6 +2095,7 @@ final class TrainSessionController {
     @discardableResult
     func applySessionProposal(_ proposal: CoachSessionProposal) async throws -> SessionPrescription? {
         if let snapshot = store.snapshot {
+            let beforePrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
             let result = try await inSessionCoach.applyProposal(
                 proposal,
                 snapshot: snapshot,
@@ -2103,6 +2104,16 @@ final class TrainSessionController {
             await HelmActionRuntime.apply(result, after: .none)
             guard let applied = result.sessionAdjustment else {
                 throw InSessionCoachError.noApplicableChange
+            }
+            await store.recover()
+            if let refreshed = store.snapshot {
+                let afterPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: refreshed)
+                try SessionAdjustmentVerifier.verifyPersistedChange(
+                    from: beforePrescription,
+                    to: afterPrescription
+                )
+            } else {
+                throw SessionAdjustmentVerificationError.noPersistedChange
             }
             try await finishApplyingAdjustment(applied)
             return nil
@@ -2128,12 +2139,34 @@ final class TrainSessionController {
         guard let proposal = pendingCoachProposal else { return }
 
         isCoachThinking = true
+        coachTurnError = nil
         defer { isCoachThinking = false }
+
+        let ledger = CoachMutationLedger(metadata: persistence.appMetadata)
+        if let snapshot = store.snapshot {
+            let key = CoachMutationIdempotency.key(
+                forSession: proposal,
+                sessionID: snapshot.session.id
+            )
+            if ledger.wasApplied(key) {
+                pendingCoachProposal = nil
+                isShowingCoachPrompt = false
+                return
+            }
+        }
 
         let hadLiveSession = store.snapshot != nil
         do {
             let adjusted = try await applySessionProposal(proposal)
+            if let snapshot = store.snapshot {
+                let key = CoachMutationIdempotency.key(
+                    forSession: proposal,
+                    sessionID: snapshot.session.id
+                )
+                try? ledger.recordApplied(key)
+            }
             pendingCoachProposal = nil
+            coachTurnError = nil
             isShowingCoachPrompt = false
             if !hadLiveSession, let adjusted {
                 let names = try persistence.exercises.displayNames(for: adjusted.exercises.map(\.exerciseID))
@@ -2143,13 +2176,16 @@ final class TrainSessionController {
             }
         } catch InSessionCoachError.adjustmentRejected(let reason) {
             WorkoutHapticCoordinator.play(.clampRejected)
-            pendingCoachProposal = nil
-            appendCoachFailureNotice(CoachProposalFailure.clamp(reason).userMessage)
+            coachTurnError = CoachProposalFailure.clamp(reason).userMessage
+            appendCoachFailureNotice(coachTurnError ?? "That change couldn't be applied.")
         } catch InSessionCoachError.noApplicableChange {
-            pendingCoachProposal = nil
-            appendCoachFailureNotice("That change couldn't be applied. Ask the coach to try again.")
+            coachTurnError = "That change couldn't be applied. Ask the coach to try again."
+            appendCoachFailureNotice(coachTurnError ?? "That change couldn't be applied. Ask the coach to try again.")
+        } catch let verification as SessionAdjustmentVerificationError {
+            coachTurnError = verification.localizedDescription
+            appendCoachFailureNotice(verification.localizedDescription)
         } catch {
-            pendingCoachProposal = nil
+            coachTurnError = error.localizedDescription
             appendCoachFailureNotice(error.localizedDescription)
         }
     }
@@ -2192,6 +2228,7 @@ final class TrainSessionController {
         do {
             try inSessionCoach.dismissProposal(recommendationID: proposal.recommendationID)
             pendingCoachProposal = nil
+            coachTurnError = nil
             let acknowledgement = "Keeping the current plan."
             appendTrainCoachMessage(role: .assistant, text: acknowledgement)
             appendCoachThread(role: .assistant, text: acknowledgement)

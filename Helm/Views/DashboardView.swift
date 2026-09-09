@@ -582,7 +582,6 @@ struct DashboardView: View {
                     }
                     .frame(maxWidth: 220)
                     .frame(maxWidth: .infinity)
-                    .helmMatchedCardDetail(id: "arc-readiness", in: readinessNamespace)
                     .onAppear {
                         contributorDetailsVisible = !shouldReveal
                     }
@@ -593,6 +592,7 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.helmPressableCard)
+        .helmMatchedCardDetail(id: "arc-readiness", in: readinessNamespace)
     }
 
     @ViewBuilder

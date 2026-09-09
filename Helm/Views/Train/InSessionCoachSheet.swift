@@ -210,10 +210,13 @@ struct InSessionCoachSheet: View {
                 title: proposal.previewBanner?.toLabel ?? "Apply change",
                 detail: proposal.previewBanner?.fromLabel ?? "Session adjustment",
                 reason: proposal.previewBanner?.reason ?? proposal.reply,
+                errorMessage: controller.coachTurnError,
                 confirmLabel: "Apply change",
                 cancelLabel: "Keep plan",
+                isRetryDisabled: controller.isCoachThinking,
                 onConfirm: { Task { await controller.confirmCoachProposal() } },
-                onCancel: { Task { await controller.dismissCoachProposal() } }
+                onCancel: { Task { await controller.dismissCoachProposal() } },
+                onRetry: { Task { await controller.confirmCoachProposal() } }
             )
         }
     }

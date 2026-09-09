@@ -9,6 +9,7 @@ struct ProgressHubView: View {
     @Environment(\.helmSkin) private var skin
     @Bindable private var trendsController = TrendsBootstrap.controller
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
+    @Bindable private var progressAnalyticsStore = ProgressAnalyticsBootstrap.store
     @State private var progressionModel: ProgressionDetailModel?
     @State private var weeklyRateKg: Double?
     @State private var recompStory: RecompStory = RecompStoryClassifier.classify(RecompStorySignals())
@@ -27,16 +28,18 @@ struct ProgressHubView: View {
                         .helmStaggeredAppear(index: 0)
                     volumeSection
                         .helmStaggeredAppear(index: 1)
+                    analyticsSection
+                        .helmStaggeredAppear(index: 2)
                     if !recompStory.isEmptyState {
                         RecompStoryCard(story: recompStory)
-                            .helmStaggeredAppear(index: 2)
+                            .helmStaggeredAppear(index: 3)
                     }
                     progressionSection
-                        .helmStaggeredAppear(index: 3)
-                    trendsSection
                         .helmStaggeredAppear(index: 4)
-                    PatternFindingsList()
+                    trendsSection
                         .helmStaggeredAppear(index: 5)
+                    PatternFindingsList()
+                        .helmStaggeredAppear(index: 6)
                 }
                 .helmScreenPadding()
             }
@@ -51,6 +54,14 @@ struct ProgressHubView: View {
             }
             .onChange(of: trendsController.snapshot) { _, _ in
                 refreshRecompStory()
+            }
+            .onChange(of: progressAnalyticsStore.historyWindow) { _, newWindow in
+                trendsController.setHistoryWindow(newWindow)
+            }
+            .onChange(of: trendsController.historyWindow) { _, newWindow in
+                if progressAnalyticsStore.historyWindow != newWindow {
+                    progressAnalyticsStore.historyWindow = newWindow
+                }
             }
             .refreshable {
                 await reloadAll()
@@ -107,6 +118,38 @@ struct ProgressHubView: View {
     }
 
     @ViewBuilder
+    private var analyticsSection: some View {
+        VStack(alignment: .leading, spacing: skin.sectionSpacing) {
+            HStack {
+                HelmSectionEyebrow("ANALYTICS", showsArcMark: true)
+                Spacer()
+                ProgressHistoryWindowPicker(window: $progressAnalyticsStore.historyWindow)
+            }
+
+            if progressAnalyticsStore.isLoading, progressAnalyticsStore.snapshot.overview.sessionCount == 0 {
+                HelmSkeletonCard(rowCount: 4)
+            } else {
+                TrainingOverviewCard(overview: progressAnalyticsStore.snapshot.overview)
+                MuscleDistributionCard(rows: progressAnalyticsStore.snapshot.muscleDistribution)
+                ExerciseProgressHighlightsCard(
+                    rows: progressAnalyticsStore.snapshot.exerciseHighlights,
+                    onSelectExercise: { exerciseID in
+                        trendsController.selectExercise(id: exerciseID)
+                    }
+                )
+            }
+
+            if let errorMessage = progressAnalyticsStore.errorMessage {
+                HelmErrorState(
+                    title: "Analytics unavailable",
+                    message: errorMessage,
+                    onRetry: { progressAnalyticsStore.refresh() }
+                )
+            }
+        }
+    }
+
+    @ViewBuilder
     private var volumeSection: some View {
         if muscleVolumeStore.isLoading, muscleVolumeStore.model == nil {
             HelmSkeletonCard(rowCount: 4)
@@ -153,7 +196,7 @@ struct ProgressHubView: View {
             )
 
             E1RMProgressionChartCard(
-                points: trendsController.snapshot.e1RMHistory,
+                points: trendsController.displayedE1RMHistory,
                 exerciseName: trendsController.snapshot.selectedExerciseName,
                 onPickExercise: { isShowingExercisePicker = true }
             )
@@ -179,8 +222,9 @@ struct ProgressHubView: View {
     @MainActor
     private func loadIfNeeded() async {
         if didLoadOnce {
-            // Tab re-select: keep cached model; refresh volume only (cheap).
+            // Tab re-select: keep cached model; refresh volume + analytics only (cheap).
             muscleVolumeStore.refresh()
+            progressAnalyticsStore.refresh()
             return
         }
         await reloadAll()
@@ -193,6 +237,7 @@ struct ProgressHubView: View {
         defer { isLoadingHistory = false }
 
         muscleVolumeStore.refresh()
+        progressAnalyticsStore.refresh()
         await loadProgression()
         trendsController.refresh()
         refreshRecompStory()

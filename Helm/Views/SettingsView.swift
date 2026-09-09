@@ -28,16 +28,16 @@ struct SettingsView: View {
 
     var body: some View {
         List {
+            appearanceSection
             feedbackSection
             trainingSection
             nutritionSection
-            coachSection
             connectionsSection
             notificationsSection
             trainSessionSection
             restTimerSection
-            appearanceSection
             if friendsRelease.showsAdvanced {
+                coachSection
                 batterySection
             }
             dataSection
@@ -82,10 +82,10 @@ struct SettingsView: View {
             settingsLink("Body Profile", value: nil) {
                 BodyProfileSettingsView()
             }
-            settingsLink("Import Hevy CSV", value: nil) {
-                HevyImportSettingsView()
-            }
             if friendsRelease.showsAdvanced {
+                settingsLink("Import Hevy CSV", value: nil) {
+                    HevyImportSettingsView()
+                }
                 settingsLink("Plan details", value: nil) {
                     PhaseGoalSettingsView()
                 }
@@ -126,15 +126,15 @@ struct SettingsView: View {
             settingsLink("Apple Health", value: healthStatusLabel) {
                 AppleHealthSettingsView()
             }
+            settingsLink("Spotify", value: spotifyStatusLabel) {
+                SpotifySettingsView()
+            }
+            settingsLink("Watch Sync", value: watchStatusLabel) {
+                WatchSyncStatusView()
+            }
             if friendsRelease.showsAdvanced {
-                settingsLink("Spotify", value: spotifyStatusLabel) {
-                    SpotifySettingsView()
-                }
                 settingsLink("Calendar Hints", value: calendarStatusLabel) {
                     CalendarHintStatusView()
-                }
-                settingsLink("Watch Sync", value: watchStatusLabel) {
-                    WatchSyncStatusView()
                 }
             }
         }
@@ -314,10 +314,10 @@ struct SettingsView: View {
             settingsLink("Data & Backup", value: nil) {
                 DataSafetyView()
             }
-            settingsLink("Backfill Health", value: nil) {
-                HealthBackfillSettingsView()
-            }
             if friendsRelease.showsAdvanced {
+                settingsLink("Backfill Health", value: nil) {
+                    HealthBackfillSettingsView()
+                }
                 settingsLink("Export health data", value: nil) {
                     SchemaV2ExportView()
                 }
