@@ -280,7 +280,7 @@ struct SettingsView: View {
             Text("Appearance")
         } footer: {
             if friendsRelease.showsAdvanced {
-                Text("Instrument is the product layout. Signal (Tron HUD) and Data sheet stay as advanced backups.")
+                Text("Data sheet is the product layout. Instrument and Signal (Tron HUD) stay as advanced backups.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
         }

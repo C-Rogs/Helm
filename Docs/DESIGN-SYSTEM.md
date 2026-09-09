@@ -59,7 +59,7 @@ Rules: one accent only, no second brand color. No decorative gradients; a radial
 
 ## 2. Type
 
-Two families. Space Grotesk speaks; JetBrains Mono reads out. Both OFL, bundled in-app.
+Two families. Space Grotesk speaks; JetBrains Mono reads out. Both OFL, bundled in-app. System fonts are the default; the bundled faces remain available as an advanced preference.
 
 - **Display / titles / UI labels / body**: Space Grotesk. Weights 400, 500, 600.
 - **All numeric readout**: JetBrains Mono, `monospacedDigit` / tabular figures, weights 600, 700. Score, load, reps, RPE, kcal, e1RM, timers, percentages, dates, and the small-caps mono labels (`READY`, `PREV`, `TARGET`).
@@ -155,9 +155,9 @@ Selectable skins:
 
 | Skin | Feel |
 |---|---|
-| **`instrument`** (default) | Card baseline. Filled rounded panels, hairline stroke, optional accent stripe on heroes. Product layout. |
+| **`dataSheet`** (default) | Borderless, top hairline-ruled, denser section spacing. Product layout. |
+| **`instrument`** | Card baseline. Filled rounded panels, hairline stroke, optional accent stripe on heroes. Advanced backup. |
 | **`signal`** | Tron HUD experiment. Void canvas with faint accent grid, neon corner brackets. Advanced backup only. |
-| **`dataSheet`** | Borderless, top hairline-ruled, denser section spacing. Advanced backup. |
 
 Reserved behind the seam (stubs only): `stateField` (full-bleed state-color hero), `blueprint` (drafting grid, graduated dials).
 

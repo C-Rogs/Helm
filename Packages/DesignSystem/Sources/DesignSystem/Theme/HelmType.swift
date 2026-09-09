@@ -50,7 +50,7 @@ public enum HelmType {
 
 public enum HelmFontPreferences {
     /// Set by `HelmThemeCoordinator`; read by `HelmFont` resolvers.
-    nonisolated(unsafe) public static var prefersSystemFonts = false
+    nonisolated(unsafe) public static var prefersSystemFonts = true
 }
 
 public enum HelmFont {

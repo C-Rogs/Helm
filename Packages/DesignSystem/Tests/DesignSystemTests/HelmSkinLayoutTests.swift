@@ -39,18 +39,19 @@ struct HelmSkinLayoutTests {
         #expect(!HelmSkin.instrument.usesStaggeredAppear)
     }
 
-    @Test("theme coordinator defaults to instrument and falls back for reserved skins")
+    @Test("theme coordinator defaults to data sheet and system fonts")
     @MainActor
-    func coordinatorSkinFallback() {
+    func coordinatorAppearanceDefaults() {
         let defaults = UserDefaults(suiteName: "HelmSkinLayoutTests")!
         defaults.removePersistentDomain(forName: "HelmSkinLayoutTests")
 
         let fresh = HelmThemeCoordinator(defaults: defaults)
-        #expect(fresh.skin == .instrument)
+        #expect(fresh.skin == .dataSheet)
+        #expect(fresh.prefersSystemFonts)
 
         defaults.set(HelmSkin.blueprint.rawValue, forKey: "helm.skin")
         let coordinator = HelmThemeCoordinator(defaults: defaults)
-        #expect(coordinator.skin == .instrument)
+        #expect(coordinator.skin == .dataSheet)
 
         coordinator.skin = .dataSheet
         #expect(defaults.string(forKey: "helm.skin") == HelmSkin.dataSheet.rawValue)

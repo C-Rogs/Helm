@@ -95,7 +95,7 @@ public final class HelmThemeCoordinator {
         if let storedSkin, storedSkin.isSelectable {
             skin = storedSkin
         } else {
-            skin = .instrument
+            skin = .dataSheet
         }
         accentSource = HelmAccentSource.fromPersistence(defaults.string(forKey: Keys.accentSource))
         if defaults.object(forKey: Keys.hapticsEnabled) == nil {
@@ -109,7 +109,7 @@ public final class HelmThemeCoordinator {
             thresholdInsightHapticsEnabled = defaults.bool(forKey: Keys.thresholdInsightHapticsEnabled)
         }
         if defaults.object(forKey: Keys.prefersSystemFonts) == nil {
-            prefersSystemFonts = false
+            prefersSystemFonts = true
         } else {
             prefersSystemFonts = defaults.bool(forKey: Keys.prefersSystemFonts)
         }
@@ -187,7 +187,7 @@ private struct HelmPaletteKey: EnvironmentKey {
 }
 
 private struct HelmPrefersSystemFontsKey: EnvironmentKey {
-    static let defaultValue = false
+    static let defaultValue = true
 }
 
 public extension EnvironmentValues {
