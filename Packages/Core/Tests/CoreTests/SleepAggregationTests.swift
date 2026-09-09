@@ -159,4 +159,27 @@ struct SleepAggregationTests {
         #expect(abs((summary.inBedHours ?? 0) - 8.0) < 0.02)
         #expect(abs((summary.awakeMinutes ?? 0) - 30) < 1)
     }
+
+    @Test("batched summaries retain an interval that spans adjacent wake days")
+    func batchedSummariesRetainLongIntervals() throws {
+        let firstDay = HelmDay(year: 2026, month: 7, day: 24)
+        let secondDay = HelmDay(year: 2026, month: 7, day: 25)
+        let records = [
+            SleepRecord(
+                start: date(DateComponents(year: 2026, month: 7, day: 23, hour: 23)),
+                end: date(DateComponents(year: 2026, month: 7, day: 25, hour: 1)),
+                helmDay: HelmDay(year: 2026, month: 7, day: 23),
+                stage: .asleepCore
+            ),
+        ]
+
+        let summaries = SleepAggregation.nightSummaries(
+            for: [secondDay, firstDay],
+            records: records,
+            calendar: calendar
+        )
+
+        #expect(abs((try #require(summaries[firstDay]).asleepHours ?? 0) - 19.0) < 0.02)
+        #expect(abs((try #require(summaries[secondDay]).asleepHours ?? 0) - 7.0) < 0.02)
+    }
 }

@@ -56,14 +56,11 @@ public enum ReadinessHistoryBuilder {
 
         // Wake-day sleep windows: every calendar day in range, not only days that
         // already have a metrics row or an onset-bucketed sleep_record helm_day.
-        var days = Set<HelmDay>()
+        var days: [HelmDay] = []
         var cursor = startDay
         while cursor <= endDay {
-            days.insert(cursor)
+            days.append(cursor)
             cursor = cursor.adding(days: 1, calendar: calendar)
-        }
-        for helmDay in try store.sleep.listDays() where helmDay >= startDay && helmDay <= endDay {
-            days.insert(helmDay)
         }
 
         let historyWindowStart = sleepHistoryWindowStart(for: startDay, calendar: calendar)
@@ -72,21 +69,18 @@ public enum ReadinessHistoryBuilder {
             start: historyWindowStart,
             end: historyWindowEnd
         )
+        let sleepSummaries = SleepAggregation.nightSummaries(
+            for: days,
+            records: sleepRecords,
+            calendar: calendar
+        )
 
         var history: [ReadinessDayInput] = []
         history.reserveCapacity(days.count)
 
-        for helmDay in days.sorted() {
+        for helmDay in days {
             let dayMetrics = metricsByDay[helmDay]
-            guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { continue }
-            let windowStart = SleepAggregation.sleepWindowStart(for: wakeDay, calendar: calendar)
-            let windowEnd = SleepAggregation.sleepWindowEnd(for: wakeDay, calendar: calendar)
-            let nightRecords = sleepRecords.filter { $0.end > windowStart && $0.start < windowEnd }
-            let nightSummary = SleepAggregation.nightSummary(
-                from: nightRecords,
-                windowStart: windowStart,
-                windowEnd: windowEnd
-            )
+            let nightSummary = sleepSummaries[helmDay] ?? SleepNightSummary(asleepHours: nil)
 
             history.append(
                 ReadinessDayInput(

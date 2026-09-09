@@ -57,21 +57,23 @@ public enum DayFeatureAssembler {
         let sleepRecords = try store.sleep.fetchOverlapping(start: sleepStart, end: sleepEnd)
 
         var rows: [DayFeatureRow] = []
-        var day = start
-        while day <= end {
+        var days: [HelmDay] = []
+        var cursor = start
+        while cursor <= end {
+            days.append(cursor)
+            cursor = cursor.adding(days: 1, calendar: calendar)
+        }
+        let sleepSummaries = SleepAggregation.nightSummaries(
+            for: days,
+            records: sleepRecords,
+            calendar: calendar
+        )
+
+        rows.reserveCapacity(days.count)
+        for day in days {
             let wakeDate = calendar.date(from: day.dateComponents())
             let weekday = wakeDate.map { calendar.component(.weekday, from: $0) } ?? 1
-            let windowStart = wakeDate.map { SleepAggregation.sleepWindowStart(for: $0, calendar: calendar) }
-            let windowEnd = wakeDate.map { SleepAggregation.sleepWindowEnd(for: $0, calendar: calendar) }
-            let sleep: SleepNightSummary? = {
-                guard let windowStart, let windowEnd else { return nil }
-                let summary = SleepAggregation.nightSummary(
-                    from: sleepRecords,
-                    windowStart: windowStart,
-                    windowEnd: windowEnd
-                )
-                return summary.asleepHours == nil ? nil : summary
-            }()
+            let sleep = sleepSummaries[day].flatMap { $0.asleepHours == nil ? nil : $0 }
 
             let dayMeals = meals[day] ?? []
             let daySessions = sessions[day] ?? []
@@ -124,7 +126,6 @@ public enum DayFeatureAssembler {
                     volumeResidual: volumeResidual
                 )
             )
-            day = day.adding(days: 1, calendar: calendar)
         }
         return rows
     }

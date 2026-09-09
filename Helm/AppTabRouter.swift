@@ -24,8 +24,10 @@ final class AppTabRouter {
     private var lastSettledEpoch: UInt64 = 0
 
     func openNutrition(focus: NutritionNavigationFocus? = nil) {
-        selectedTab = .nutrition
-        pendingNutritionFocus = focus
+        select(.nutrition)
+        if pendingNutritionFocus != focus {
+            pendingNutritionFocus = focus
+        }
     }
 
     func openTrain() {
@@ -38,15 +40,24 @@ final class AppTabRouter {
 
     func open(_ tab: AppTab) {
         if tab == .settings {
-            selectedTab = .dashboard
-            pendingOpenSettings = true
+            select(.dashboard)
+            if !pendingOpenSettings {
+                pendingOpenSettings = true
+            }
         } else {
-            selectedTab = tab
+            select(tab)
         }
     }
 
     func consumePendingOpenSettings() {
-        pendingOpenSettings = false
+        if pendingOpenSettings {
+            pendingOpenSettings = false
+        }
+    }
+
+    func select(_ tab: AppTab) {
+        guard selectedTab != tab else { return }
+        selectedTab = tab
     }
 
     func noteSelectionChanged() {

@@ -6,6 +6,8 @@ import UIKit
 
 enum ProactiveBootstrap {
     private static let persistence = PersistenceBootstrap.persistenceStore
+    @MainActor private static var thresholdRefreshTask: Task<Void, Never>?
+    @MainActor private static var patternRefreshTask: Task<Void, Never>?
 
     @MainActor
     static let notificationScheduler = ProactiveNotificationScheduler(persistence: persistence)
@@ -62,21 +64,41 @@ enum ProactiveBootstrap {
 
     @MainActor
     static func refreshThresholdInsights() async {
-        await thresholdInsightService.refresh(today: ReadinessBootstrap.readinessService.state.score)
+        if let thresholdRefreshTask {
+            await thresholdRefreshTask.value
+            return
+        }
+
+        let readiness = ReadinessBootstrap.readinessService.state.score
+        let task = Task { @MainActor in
+            await thresholdInsightService.refresh(today: readiness)
+        }
+        thresholdRefreshTask = task
+        await task.value
+        thresholdRefreshTask = nil
     }
 
     @MainActor
     static func refreshPatterns() async {
-        let service = PatternEvaluationService(store: persistence)
+        if let patternRefreshTask {
+            await patternRefreshTask.value
+            return
+        }
+
         #if os(iOS)
         UIDevice.current.isBatteryMonitoringEnabled = true
         let charging = UIDevice.current.batteryState == .charging || UIDevice.current.batteryState == .full
         #else
         let charging = false
         #endif
+        let persistence = persistence
         // Pattern assembly scans and sorts sleep history; keep it off the UI executor.
-        await Task.detached(priority: .utility) {
+        let task = Task.detached(priority: .utility) {
+            let service = PatternEvaluationService(store: persistence)
             await service.refresh(isCharging: charging)
-        }.value
+        }
+        patternRefreshTask = task
+        await task.value
+        patternRefreshTask = nil
     }
 }

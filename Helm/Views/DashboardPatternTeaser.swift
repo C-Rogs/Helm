@@ -36,7 +36,11 @@ struct DashboardPatternTeaser: View {
         .buttonStyle(.helmPressableCard)
         .accessibilityLabel(patternTeaser.map { "Patterns. \($0)" } ?? "Patterns. Need more days")
         .task {
+            // Paint persisted findings first; the shared refresh may be doing pattern assembly
+            // for launch or another tab already.
+            reloadPatternTeaser()
             await ProactiveBootstrap.refreshPatterns()
+            guard !Task.isCancelled else { return }
             reloadPatternTeaser()
         }
     }

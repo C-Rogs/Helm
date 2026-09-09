@@ -76,7 +76,7 @@ struct RootTabView: View {
         }
         .onChange(of: chatController.handoffGeneration) { _, _ in
             guard chatController.pendingHandoffPrompt != nil else { return }
-            tabRouter.selectedTab = .chat
+            tabRouter.select(.chat)
         }
     }
 }

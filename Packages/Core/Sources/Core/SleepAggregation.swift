@@ -52,40 +52,94 @@ public enum SleepAggregation: Sendable {
         windowStart: Date,
         windowEnd: Date
     ) -> SleepNightSummary {
-        let asleepStages: Set<SleepAnalysisStage> = [
-            .asleepUnspecified, .asleepCore, .asleepDeep, .asleepREM
-        ]
+        let orderedRecords = records.sorted { $0.start < $1.start }
+        return nightSummary(
+            fromRecordsSortedByStart: orderedRecords,
+            windowStart: windowStart,
+            windowEnd: windowEnd
+        )
+    }
 
-        let asleepMinutes = mergedDurationMinutes(
-            from: records,
-            stages: asleepStages,
-            windowStart: windowStart,
-            windowEnd: windowEnd
-        )
-        let inBedMinutes = mergedDurationMinutes(
-            from: records,
-            stages: [.inBed],
-            windowStart: windowStart,
-            windowEnd: windowEnd
-        )
-        let awakeMinutes = mergedDurationMinutes(
-            from: records,
-            stages: [.awake],
-            windowStart: windowStart,
-            windowEnd: windowEnd
-        )
-        let deepMinutes = mergedDurationMinutes(
-            from: records,
-            stages: [.asleepDeep],
-            windowStart: windowStart,
-            windowEnd: windowEnd
-        )
-        let remMinutes = mergedDurationMinutes(
-            from: records,
-            stages: [.asleepREM],
-            windowStart: windowStart,
-            windowEnd: windowEnd
-        )
+    /// Builds summaries for consecutive wake days while scanning the supplied records once.
+    ///
+    /// `fetchOverlapping` already orders its result, but this method also accepts unsorted
+    /// input because callers outside Persistence can provide arbitrary sleep records.
+    public static func nightSummaries(
+        for wakeDays: [HelmDay],
+        records: [SleepRecord],
+        calendar: Calendar
+    ) -> [HelmDay: SleepNightSummary] {
+        let orderedDays = Array(Set(wakeDays)).sorted()
+        guard !orderedDays.isEmpty else { return [:] }
+
+        let orderedRecords = records.sorted { $0.start < $1.start }
+        var nextRecordIndex = 0
+        var activeRecords: [SleepRecord] = []
+        var summaries: [HelmDay: SleepNightSummary] = [:]
+        summaries.reserveCapacity(orderedDays.count)
+
+        for helmDay in orderedDays {
+            guard let wakeDay = calendar.date(from: helmDay.dateComponents()) else { continue }
+            let windowStart = sleepWindowStart(for: wakeDay, calendar: calendar)
+            let windowEnd = sleepWindowEnd(for: wakeDay, calendar: calendar)
+
+            activeRecords.removeAll { $0.end <= windowStart }
+            while nextRecordIndex < orderedRecords.count,
+                  orderedRecords[nextRecordIndex].start < windowEnd {
+                let record = orderedRecords[nextRecordIndex]
+                if record.end > windowStart {
+                    activeRecords.append(record)
+                }
+                nextRecordIndex += 1
+            }
+
+            summaries[helmDay] = nightSummary(
+                fromRecordsSortedByStart: activeRecords,
+                windowStart: windowStart,
+                windowEnd: windowEnd
+            )
+        }
+
+        return summaries
+    }
+
+    private static func nightSummary(
+        fromRecordsSortedByStart records: [SleepRecord],
+        windowStart: Date,
+        windowEnd: Date
+    ) -> SleepNightSummary {
+        var asleepIntervals: [(start: Date, end: Date)] = []
+        var inBedIntervals: [(start: Date, end: Date)] = []
+        var awakeIntervals: [(start: Date, end: Date)] = []
+        var deepIntervals: [(start: Date, end: Date)] = []
+        var remIntervals: [(start: Date, end: Date)] = []
+
+        for record in records {
+            guard let interval = clip(record.start ... record.end, to: windowStart ... windowEnd) else {
+                continue
+            }
+
+            switch record.stage {
+            case .asleepUnspecified, .asleepCore:
+                asleepIntervals.append(interval)
+            case .asleepDeep:
+                asleepIntervals.append(interval)
+                deepIntervals.append(interval)
+            case .asleepREM:
+                asleepIntervals.append(interval)
+                remIntervals.append(interval)
+            case .inBed:
+                inBedIntervals.append(interval)
+            case .awake:
+                awakeIntervals.append(interval)
+            }
+        }
+
+        let asleepMinutes = mergedDurationMinutes(fromSorted: asleepIntervals)
+        let inBedMinutes = mergedDurationMinutes(fromSorted: inBedIntervals)
+        let awakeMinutes = mergedDurationMinutes(fromSorted: awakeIntervals)
+        let deepMinutes = mergedDurationMinutes(fromSorted: deepIntervals)
+        let remMinutes = mergedDurationMinutes(fromSorted: remIntervals)
 
         let asleepHours = asleepMinutes.map { $0 / 60.0 }
         let efficiency = sleepEfficiency(
@@ -108,13 +162,19 @@ public enum SleepAggregation: Sendable {
     public static func mergedDurationMinutes(
         from intervals: [(start: Date, end: Date)]
     ) -> Double? {
-        let valid = intervals.filter { $0.end > $0.start }
-        guard !valid.isEmpty else { return nil }
+        let sorted = intervals
+            .filter { $0.end > $0.start }
+            .sorted { $0.start < $1.start }
+        return mergedDurationMinutes(fromSorted: sorted)
+    }
 
-        let sorted = valid.sorted { $0.start < $1.start }
+    private static func mergedDurationMinutes(
+        fromSorted intervals: [(start: Date, end: Date)]
+    ) -> Double? {
+        guard !intervals.isEmpty else { return nil }
         var merged: [(start: Date, end: Date)] = []
 
-        for interval in sorted {
+        for interval in intervals {
             if var last = merged.popLast() {
                 if interval.start <= last.end {
                     last.end = max(last.end, interval.end)
@@ -130,19 +190,6 @@ public enum SleepAggregation: Sendable {
 
         let totalSeconds = merged.reduce(0.0) { $0 + $1.end.timeIntervalSince($1.start) }
         return totalSeconds / 60.0
-    }
-
-    private static func mergedDurationMinutes(
-        from records: [SleepRecord],
-        stages: Set<SleepAnalysisStage>,
-        windowStart: Date,
-        windowEnd: Date
-    ) -> Double? {
-        let intervals = records.compactMap { record -> (start: Date, end: Date)? in
-            guard stages.contains(record.stage) else { return nil }
-            return clip(record.start ... record.end, to: windowStart ... windowEnd)
-        }
-        return mergedDurationMinutes(from: intervals)
     }
 
     private static func sleepEfficiency(

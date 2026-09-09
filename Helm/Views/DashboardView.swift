@@ -30,6 +30,11 @@ struct DashboardView: View {
     @State private var moreBodyExpanded = true
     @State private var phaseNarrative: String?
     @State private var recompStory: RecompStory?
+    @State private var dependentRefreshTask: Task<Void, Never>?
+    @State private var lastRefreshedReadiness: ReadinessScore?
+    @State private var hasRefreshedDependentContent = false
+    @State private var lastRefreshedPrescription: PrescriptionDashboardState?
+    @State private var hasRefreshedNutritionAndBrief = false
     @State private var isShowingReadinessExplain = false
     @Bindable private var tabRouter = AppTabRouter.shared
     @Bindable private var trendsController = TrendsBootstrap.controller
@@ -121,22 +126,10 @@ struct DashboardView: View {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
                 guard !Task.isCancelled else { return }
                 await readinessService.refresh()
+                await refreshDependentContent(for: readinessService.state.score)
                 await loadSleepSummary()
-                await prescriptionService.refresh(readiness: readinessService.state.score)
-                await nutritionService.refresh(
-                    prescriptionSummary: prescriptionService.state.summary
-                )
-                if case let .ready(snapshot) = nutritionService.state {
-                    usualMealStore.reload(for: snapshot.helmDay)
-                }
-                await briefService.refresh(
-                    readiness: readinessService.state.score,
-                    prescriptionSummary: prescriptionService.state.summary
-                )
-                await ProactiveBootstrap.refreshThresholdInsights()
-                await ProactiveBootstrap.refreshPatterns()
                 muscleVolumeStore.refresh()
-                loadTodaySteps()
+                await loadTodaySteps()
                 await loadPhaseNarrative()
                 trendsController.refresh()
                 refreshRecompStory()
@@ -146,7 +139,7 @@ struct DashboardView: View {
             }
             .task {
                 for await _ in HealthKitBootstrap.healthKitIngest.updates(for: .activity) {
-                    loadTodaySteps()
+                    await loadTodaySteps()
                 }
             }
             .task {
@@ -158,25 +151,11 @@ struct DashboardView: View {
                 }
             }
             .onChange(of: readinessService.state) { _, newState in
-                Task {
-                    await prescriptionService.refresh(readiness: newState.score)
-                    await nutritionService.refresh(
-                        prescriptionSummary: prescriptionService.state.summary
-                    )
-                    await briefService.refresh(
-                        readiness: newState.score,
-                        prescriptionSummary: prescriptionService.state.summary
-                    )
-                    await ProactiveBootstrap.refreshThresholdInsights()
-                }
+                scheduleDependentRefresh(for: newState.score)
             }
             .onChange(of: prescriptionService.state) { _, newState in
                 Task {
-                    await nutritionService.refresh(prescriptionSummary: newState.summary)
-                    await briefService.refresh(
-                        readiness: readinessService.state.score,
-                        prescriptionSummary: newState.summary
-                    )
+                    await refreshNutritionAndBrief(for: newState)
                 }
             }
             .onChange(of: nutritionService.state) { _, newState in
@@ -477,9 +456,53 @@ struct DashboardView: View {
         .accessibilityLabel("Trends and patterns. Open Progress tab")
     }
 
-    private func loadTodaySteps() {
+    private func scheduleDependentRefresh(for readiness: ReadinessScore?) {
+        dependentRefreshTask?.cancel()
+        dependentRefreshTask = Task {
+            // Hydration can publish a cached score immediately before the full refresh.
+            // Coalesce that pair instead of rebuilding every downstream Dashboard card twice.
+            try? await Task.sleep(for: .milliseconds(150))
+            guard !Task.isCancelled else { return }
+            await refreshDependentContent(for: readiness)
+        }
+    }
+
+    private func refreshDependentContent(for readiness: ReadinessScore?) async {
+        guard !hasRefreshedDependentContent || readiness != lastRefreshedReadiness else {
+            return
+        }
+        hasRefreshedDependentContent = true
+        lastRefreshedReadiness = readiness
+
+        await prescriptionService.refresh(readiness: readiness)
+        await refreshNutritionAndBrief(for: prescriptionService.state)
+        await ProactiveBootstrap.refreshThresholdInsights()
+    }
+
+    private func refreshNutritionAndBrief(for prescription: PrescriptionDashboardState) async {
+        guard !hasRefreshedNutritionAndBrief || prescription != lastRefreshedPrescription else {
+            return
+        }
+        hasRefreshedNutritionAndBrief = true
+        lastRefreshedPrescription = prescription
+
+        await nutritionService.refresh(prescriptionSummary: prescription.summary)
+        if case let .ready(snapshot) = nutritionService.state {
+            usualMealStore.reload(for: snapshot.helmDay)
+        }
+        await briefService.refresh(
+            readiness: readinessService.state.score,
+            prescriptionSummary: prescription.summary
+        )
+    }
+
+    private func loadTodaySteps() async {
         let day = HelmDay.day(for: .now, calendar: .current)
-        todayStepCount = try? PersistenceBootstrap.persistenceStore.dailyMetrics.fetch(helmDay: day)?.stepCount
+        let stepCount = await Task.detached(priority: .utility) {
+            try? PersistenceBootstrap.persistenceStore.dailyMetrics.fetch(helmDay: day)?.stepCount
+        }.value
+        guard !Task.isCancelled else { return }
+        todayStepCount = stepCount
     }
 
     @ViewBuilder
