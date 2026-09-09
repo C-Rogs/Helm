@@ -4,7 +4,7 @@ import Testing
 
 @Suite("Session milestone policy")
 struct SessionMilestonePolicyTests {
-    @Test("fires at most four quartiles")
+    @Test("fires 25, 50, and 75 percent checkpoints")
     func firesQuartilesOnce() {
         var fired: Set<Int> = []
         var previous = 0
@@ -22,8 +22,8 @@ struct SessionMilestonePolicyTests {
             }
             previous = completed
         }
-        #expect(messages == [1, 2, 3, 4])
-        #expect(fired.count == 4)
+        #expect(messages == [1, 2, 3])
+        #expect(fired.count == 3)
     }
 
     @Test("skips when toggle would have already fired quartile")
@@ -43,7 +43,18 @@ struct SessionMilestonePolicyTests {
             previousCompleted: 14,
             completed: 15,
             total: 20,
-            alreadyFiredQuartiles: [1, 2, 3, 4]
+            alreadyFiredQuartiles: [1, 2, 3]
+        )
+        #expect(q == nil)
+    }
+
+    @Test("does not fire after the final set")
+    func skipsCompletedWorkout() {
+        let q = SessionMilestonePolicy.crossedMilestone(
+            previousCompleted: 19,
+            completed: 20,
+            total: 20,
+            alreadyFiredQuartiles: [1, 2, 3]
         )
         #expect(q == nil)
     }
@@ -62,7 +73,6 @@ struct SessionMilestonePolicyTests {
         #expect(SessionMilestonePolicy.toastTitle(forQuartile: 1) == "Quarter done")
         #expect(SessionMilestonePolicy.toastTitle(forQuartile: 2) == "Halfway")
         #expect(SessionMilestonePolicy.toastTitle(forQuartile: 3) == "Three quarters")
-        #expect(SessionMilestonePolicy.toastTitle(forQuartile: 4) == "Nearly done")
         #expect(!SessionMilestonePolicy.toastMessage(forQuartile: 1).isEmpty)
         #expect(SessionMilestonePolicy.message(forQuartile: 1).contains("quarter"))
     }
@@ -75,8 +85,8 @@ struct SessionMilestonePolicyTests {
                 == "Checkpoints hit: Quarter done, Three quarters."
         )
         #expect(
-            SessionMilestonePolicy.finishRecap(firedQuartiles: [4, 2, 1])
-                == "Checkpoints hit: Quarter done, Halfway, Nearly done."
+            SessionMilestonePolicy.finishRecap(firedQuartiles: [3, 2, 1])
+                == "Checkpoints hit: Quarter done, Halfway, Three quarters."
         )
     }
 }

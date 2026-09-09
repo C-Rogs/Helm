@@ -13,6 +13,25 @@ public struct WatchCompanionSetLineToken: Equatable, Sendable {
 }
 
 public enum WatchCompanionSetLine {
+    public static func targetSummary(
+        massKilograms: Double?,
+        rpe: Double?,
+        fallback: String?
+    ) -> String? {
+        let resolvedMass = massKilograms.flatMap { value in
+            value.isFinite && value > 0 ? displayNumber(value) : nil
+        } ?? kilograms(from: fallback)
+        let resolvedRPE = rpe.flatMap { value in
+            value.isFinite && value > 0 ? displayNumber(value) : nil
+        } ?? Self.rpe(from: fallback)
+
+        let parts = [
+            resolvedMass.map { "\($0)kg" },
+            resolvedRPE.map { "RPE \($0)" },
+        ].compactMap { $0 }
+        return parts.isEmpty ? fallback : parts.joined(separator: " · ")
+    }
+
     public static func make(setNumber: Int?, setCount: Int?, targetSummary: String?) -> String {
         tokens(setNumber: setNumber, setCount: setCount, targetSummary: targetSummary)
             .map(\.text)
@@ -64,6 +83,10 @@ public enum WatchCompanionSetLine {
 
     private static func displayNumber(_ raw: String) -> String {
         guard let value = Double(raw) else { return raw }
+        return displayNumber(value)
+    }
+
+    private static func displayNumber(_ value: Double) -> String {
         if value.truncatingRemainder(dividingBy: 1) == 0 {
             return String(format: "%.0f", value)
         }

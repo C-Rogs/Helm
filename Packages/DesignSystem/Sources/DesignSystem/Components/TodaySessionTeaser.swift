@@ -6,6 +6,7 @@ public struct TodaySessionTeaser: View {
     public let totalSets: Int
     public let phaseLabel: String?
     public let readinessAdjusted: Bool
+    public let actionTitle: String
     public let onOpenTrain: () -> Void
 
     public init(
@@ -13,12 +14,14 @@ public struct TodaySessionTeaser: View {
         totalSets: Int,
         phaseLabel: String? = nil,
         readinessAdjusted: Bool = false,
+        actionTitle: String = "Start session",
         onOpenTrain: @escaping () -> Void
     ) {
         self.title = title
         self.totalSets = totalSets
         self.phaseLabel = phaseLabel
         self.readinessAdjusted = readinessAdjusted
+        self.actionTitle = actionTitle
         self.onOpenTrain = onOpenTrain
     }
 
@@ -49,7 +52,7 @@ public struct TodaySessionTeaser: View {
                         .helmType(.monoTag, color: HelmColor.depleted)
                 }
 
-                Button("Start session", action: onOpenTrain)
+                Button(actionTitle, action: onOpenTrain)
                     .buttonStyle(.helmPrimary)
             }
         }

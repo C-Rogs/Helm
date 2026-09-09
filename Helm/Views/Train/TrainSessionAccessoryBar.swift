@@ -70,9 +70,7 @@ struct TrainSessionAccessoryBar: View {
                     onAdjust: { delta in
                         Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
                     },
-                    onRemainingSecondsChange: forwardRestTick,
-                    upNextName: controller.upNextExerciseName,
-                    formCue: controller.restFormCue
+                    onRemainingSecondsChange: forwardRestTick
                 )
             }
 

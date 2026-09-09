@@ -14,6 +14,7 @@ struct DashboardView: View {
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
     @Bindable private var chatController = ChatBootstrap.controller
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
+    @Bindable private var sessionController = TrainBootstrap.sessionController
     private var thresholdInsightService: ThresholdInsightService { ProactiveBootstrap.thresholdInsightService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
@@ -282,6 +283,7 @@ struct DashboardView: View {
                 totalSets: summary.totalSets,
                 phaseLabel: summary.phase.label,
                 readinessAdjusted: summary.readinessAdjusted,
+                actionTitle: sessionController.hasActiveSession ? "Resume session" : "Start session",
                 onOpenTrain: { AppTabRouter.shared.openTrain() }
             )
         }
@@ -365,6 +367,9 @@ struct DashboardView: View {
     private var heroActionSubtitle: String {
         switch heroKind {
         case .session:
+            if sessionController.hasActiveSession {
+                return "One thing: resume your session."
+            }
             if case .restDay = prescriptionService.state {
                 return "Rest day. Recover, then check Train."
             }

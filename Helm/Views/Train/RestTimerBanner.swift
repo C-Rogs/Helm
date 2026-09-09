@@ -8,10 +8,6 @@ struct RestTimerBanner: View {
     let onSkip: () -> Void
     var onAdjust: ((Int) -> Void)?
     var onRemainingSecondsChange: ((Int) -> Void)?
-    /// Next exercise after the one in progress; shown as a compact dock peek.
-    var upNextName: String?
-    /// Optional short form cue for mid-rest coaching (`RestCoachingPolicy`).
-    var formCue: String?
 
     @Environment(\.helmReduceMotion) private var reduceMotion
     @Environment(\.helmTypographyEpoch) private var typographyEpoch
@@ -38,13 +34,6 @@ struct RestTimerBanner: View {
             totalSeconds: totalSeconds
         )
         let elapsedFraction = 1 - progress
-        let phase = RestCoachingPolicy.phase(
-            remainingSeconds: remainingSeconds,
-            totalSeconds: totalSeconds
-        )
-        let phaseLine = remainingSeconds > 0
-            ? RestCoachingPolicy.line(phase: phase, upNextName: upNextName, formCue: formCue)
-            : nil
 
         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
             GeometryReader { geometry in
@@ -62,22 +51,6 @@ struct RestTimerBanner: View {
             }
             .frame(height: HelmSpacing.xxs)
             .accessibilityHidden(true)
-
-            if let upNextName, !upNextName.isEmpty {
-                Text("UP NEXT · \(upNextName)")
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                    .lineLimit(1)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel("Up next, \(upNextName)")
-            }
-
-            if let phaseLine, !phaseLine.isEmpty {
-                Text(phaseLine)
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                    .lineLimit(2)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .accessibilityLabel(phaseLine)
-            }
 
             HStack(spacing: HelmSpacing.sm) {
                 Text(RestTimerFormatting.mmss(remainingSeconds))
@@ -137,9 +110,7 @@ private struct RestDockSkipStyle: ButtonStyle {
         endsAt: Date().addingTimeInterval(140),
         totalSeconds: 150,
         onSkip: {},
-        onAdjust: { _ in },
-        upNextName: "Single Arm Lateral Raise (Cable)",
-        formCue: "Drive through your heels."
+        onAdjust: { _ in }
     )
     .helmTheme()
 }

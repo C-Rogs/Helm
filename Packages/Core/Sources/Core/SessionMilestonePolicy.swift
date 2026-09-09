@@ -1,9 +1,8 @@
 import Foundation
 
-/// Fires at most four ~25% set-completion milestones per workout session.
-/// Visible toast uses short copy; coach peek / chat keep the longer prompt.
+/// Fires at most three set-completion milestones per workout session.
 public enum SessionMilestonePolicy {
-    public static let maxFiresPerSession = 4
+    public static let maxFiresPerSession = 3
 
     /// Empty / ad-hoc sessions grow as the athlete adds lifts. Quartiles against a moving total are noise.
     public static func applies(to source: WorkoutSessionSource) -> Bool {
@@ -15,7 +14,7 @@ public enum SessionMilestonePolicy {
         }
     }
 
-    /// Returns the quartile (1...4) just crossed, or nil if none / already recorded / cap hit.
+    /// Returns the checkpoint (1...3 for 25/50/75%) just crossed.
     public static func crossedMilestone(
         previousCompleted: Int,
         completed: Int,
@@ -24,6 +23,7 @@ public enum SessionMilestonePolicy {
     ) -> Int? {
         guard total > 0,
               completed > previousCompleted,
+              completed < total,
               alreadyFiredQuartiles.count < maxFiresPerSession else {
             return nil
         }
@@ -32,7 +32,7 @@ public enum SessionMilestonePolicy {
         let currentRatio = Double(min(completed, total)) / Double(total)
 
         for quartile in 1...maxFiresPerSession {
-            let threshold = Double(quartile) / Double(maxFiresPerSession)
+            let threshold = Double(quartile) / 4
             guard previousRatio < threshold, currentRatio >= threshold else { continue }
             guard !alreadyFiredQuartiles.contains(quartile) else { continue }
             return quartile
@@ -50,7 +50,7 @@ public enum SessionMilestonePolicy {
         case 3:
             return "Three quarters"
         default:
-            return "Nearly done"
+            return "Progress"
         }
     }
 
@@ -64,7 +64,7 @@ public enum SessionMilestonePolicy {
         case 3:
             return "Finish strong, or ask for a safer swap."
         default:
-            return "Note any pain or niggles before you leave."
+            return "Keep moving."
         }
     }
 
@@ -78,7 +78,7 @@ public enum SessionMilestonePolicy {
         case 3:
             return "Three quarters. Finish strong, or ask if you want a safer swap."
         default:
-            return "Session nearly done. Tell me about any pain or niggles and I can save a short recovery note to Memory."
+            return "Keep moving."
         }
     }
 

@@ -1016,12 +1016,6 @@ final class TrainSessionController {
         )
         // Selection only: prHit stays reserved for personal records.
         WorkoutHapticCoordinator.play(.selection)
-        ProactiveCoachRouter.surface(
-            SessionMilestonePolicy.message(forQuartile: quartile),
-            sessionID: snapshot.session.id,
-            on: self,
-            includeBanner: false
-        )
     }
 
     func badgeText(forSetID setID: String) -> String? {
@@ -2422,16 +2416,17 @@ final class TrainSessionController {
             guard let timer = snapshot.restTimer, timer.phase == .running else { return nil }
             return timer.endsAt
         }()
+        let targetSummary = WatchCompanionSetLine.targetSummary(
+            massKilograms: currentSet?.mass.meaningfulWorkingKilograms,
+            rpe: currentSet?.rpe,
+            fallback: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
+        )
         WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
             active: true,
             exerciseName: displayName,
             setNumber: setNumber,
             setCount: currentExercise?.sets.count,
-            targetSummary: WatchCompanionSetLine.make(
-                setNumber: setNumber,
-                setCount: currentExercise?.sets.count,
-                targetSummary: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
-            ),
+            targetSummary: targetSummary,
             sessionExerciseID: currentExercise?.id,
             setID: currentSet?.id,
             sessionStartedAt: snapshot.session.startedAt,
