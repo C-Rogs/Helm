@@ -16,6 +16,7 @@ struct FocusExerciseCard: View {
     let previous: PreviousPerformance?
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
+    let validationMessage: String?
     let showsPRCelebration: Bool
     let encouragementGlyph: EncouragementGlyph?
     let fieldDisplayText: (SetEntryDraft, NumpadFieldKind) -> String
@@ -83,6 +84,12 @@ struct FocusExerciseCard: View {
             cueAndPrevious
             fieldRow
             logSetButton
+            if let validationMessage, !isCompleted {
+                Text(validationMessage)
+                    .helmType(.body, color: HelmColor.destructive)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .accessibilityLabel(validationMessage)
+            }
         }
         .padding(.horizontal, HelmSpacing.sm)
         .padding(.vertical, HelmSpacing.sm)
@@ -132,7 +139,7 @@ struct FocusExerciseCard: View {
                 Image(systemName: "checkmark.circle.fill")
                     .foregroundStyle(HelmColor.accent)
                     .font(.title3)
-                    .accessibilityLabel("Set completed")
+                    .accessibilityLabel("\(workItemLabel.capitalized) completed")
             }
         }
     }
@@ -250,6 +257,7 @@ struct FocusExerciseCard: View {
             )
         }
         .buttonStyle(.plain)
+        .frame(minHeight: HelmLayout.minTapTarget)
         .accessibilityLabel("\(label), \(fieldAccessibilityValue(kind))")
     }
 
@@ -338,8 +346,8 @@ struct FocusExerciseCard: View {
                     .underline()
             }
             .buttonStyle(.plain)
-            .accessibilityLabel("Undo set")
-            .accessibilityHint("Marks this set as not completed")
+            .accessibilityLabel("Undo \(workItemLabel)")
+            .accessibilityHint("Marks this \(workItemLabel) as not completed")
         } else {
             Button(action: onCompleteSet) {
                 ZStack {
@@ -365,12 +373,16 @@ struct FocusExerciseCard: View {
                 }
             }
             .buttonStyle(.helmPressable)
-            .accessibilityLabel("Done")
-            .accessibilityHint("Records this set as completed")
+            .accessibilityLabel("Complete \(workItemLabel)")
+            .accessibilityHint("Records this \(workItemLabel) as completed")
         }
     }
 
     // MARK: - Helpers
+
+    private var workItemLabel: String {
+        exercise.exerciseMode.isCardio ? "interval" : "set"
+    }
 
     private func formatWeight(_ kilograms: Double) -> String {
         kilograms.truncatingRemainder(dividingBy: 1) == 0
@@ -425,6 +437,7 @@ struct FocusExerciseCard: View {
         ),
         activeField: nil,
         numpadSelectAll: false,
+        validationMessage: nil,
         showsPRCelebration: false,
         encouragementGlyph: nil,
         fieldDisplayText: { set, field in

@@ -364,11 +364,9 @@ public struct WorkoutSessionRepository: Sendable {
                            (
                                SELECT COUNT(*)
                                FROM workout_session_exercise wse
-                               JOIN exercise e ON e.id = wse.exercise_id
                                WHERE wse.workout_session_id = ws.id
                                  AND wse.deleted_at IS NULL
-                                 AND e.deleted_at IS NULL
-                                 AND e.movement_pattern = 'cardio'
+                                 AND wse.exercise_mode IN ('duration', 'distance_duration')
                            ) AS cardio_exercise_count,
                            (
                                SELECT COALESCE(SUM(se.duration_seconds), 0)

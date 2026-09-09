@@ -48,6 +48,17 @@ struct WatchWorkoutActivityKindInferenceTests {
         )
     }
 
+    @Test("bike intervals remain cycling")
+    func bikeIntervals() {
+        #expect(
+            WatchWorkoutActivityKind.inferred(
+                sessionTitle: "Bike intervals",
+                exerciseNames: ["Stationary bike"],
+                exerciseModes: [.distanceDuration]
+            ) == .cycling
+        )
+    }
+
     @Test("treadmill run uses indoor location")
     func treadmillIsIndoor() {
         #expect(

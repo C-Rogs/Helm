@@ -16,8 +16,14 @@ public enum WatchCompanionSetLine {
     public static func targetSummary(
         massKilograms: Double?,
         rpe: Double?,
+        durationSeconds: Int? = nil,
+        distanceKilometers: Double? = nil,
         fallback: String?
     ) -> String? {
+        let resolvedDuration = durationSeconds.flatMap { $0 > 0 ? durationLabel(seconds: $0) : nil }
+        let resolvedDistance = distanceKilometers.flatMap { value in
+            value.isFinite && value > 0 ? "\(displayNumber(value)) km" : nil
+        }
         let resolvedMass = massKilograms.flatMap { value in
             value.isFinite && value > 0 ? displayNumber(value) : nil
         } ?? kilograms(from: fallback)
@@ -26,6 +32,8 @@ public enum WatchCompanionSetLine {
         } ?? Self.rpe(from: fallback)
 
         let parts = [
+            resolvedDuration,
+            resolvedDistance,
             resolvedMass.map { "\($0)kg" },
             resolvedRPE.map { "RPE \($0)" },
         ].compactMap { $0 }
@@ -54,6 +62,16 @@ public enum WatchCompanionSetLine {
             result.append(WatchCompanionSetLineToken(text: "Set ", isValue: false))
             result.append(WatchCompanionSetLineToken(text: "\(setNumber)/\(setCount)", isValue: true))
         }
+        if let duration = duration(from: targetSummary) {
+            appendSeparator()
+            result.append(WatchCompanionSetLineToken(text: duration, isValue: true))
+            result.append(WatchCompanionSetLineToken(text: " MIN", isValue: false))
+        }
+        if let kilometers = kilometers(from: targetSummary) {
+            appendSeparator()
+            result.append(WatchCompanionSetLineToken(text: kilometers, isValue: true))
+            result.append(WatchCompanionSetLineToken(text: " KM", isValue: false))
+        }
         if let kilograms = kilograms(from: targetSummary) {
             appendSeparator()
             result.append(WatchCompanionSetLineToken(text: kilograms, isValue: true))
@@ -79,6 +97,25 @@ public enum WatchCompanionSetLine {
             return nil
         }
         return displayNumber(match)
+    }
+
+    private static func duration(from summary: String?) -> String? {
+        guard let summary, let match = firstMatch(#"(\d+(?:\.\d+)?)\s*min"#, in: summary) else {
+            return nil
+        }
+        return displayNumber(match)
+    }
+
+    private static func kilometers(from summary: String?) -> String? {
+        guard let summary, let match = firstMatch(#"(\d+(?:\.\d+)?)\s*km"#, in: summary) else {
+            return nil
+        }
+        return displayNumber(match)
+    }
+
+    private static func durationLabel(seconds: Int) -> String {
+        let minutes = Double(seconds) / 60
+        return "\(displayNumber(minutes)) min"
     }
 
     private static func displayNumber(_ raw: String) -> String {

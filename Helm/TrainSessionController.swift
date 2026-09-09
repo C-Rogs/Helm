@@ -104,7 +104,14 @@ final class TrainSessionController {
         pendingExerciseRemoval.pendingID
     }
     private var pendingExerciseRemoval = PendingExerciseRemoval()
-    var numpadValidationError: String?
+    var numpadValidationError: String? {
+        didSet {
+            if numpadValidationError == nil {
+                validationSetID = nil
+            }
+        }
+    }
+    private(set) var validationSetID: String?
     var numpadShakeToken = 0
     var isShowingFinishSummary = false
     var isShowingPersonalRecords = false
@@ -128,6 +135,7 @@ final class TrainSessionController {
     private(set) var accessoryToast: TrainAccessoryToast?
     private(set) var coachPeekSnippet: String?
     private(set) var watchCompanionNotice: String?
+    var canRetryWatchCompanion: Bool { watchCompanionNotice != nil && store.snapshot != nil }
     /// True when Watch or phone live session delivered HR; skip MET energy estimate.
     private(set) var sessionDeliveredHeartRate = false
     /// True when live HR came from Watch (mirror/WCSession). Prefer Watch HKWorkout; discard phone save.
@@ -876,10 +884,12 @@ final class TrainSessionController {
     }
 
     /// Watch / Live Activity remote path: apply-if-incomplete (never uncomplete on redelivery).
-    func completeSetIfNeeded(sessionExerciseID: String, setID: String) async {
-        guard let existingSet = findSet(setID: setID) else { return }
-        guard RemoteCompleteSetPolicy.shouldApply(status: existingSet.status) else { return }
-        await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
+    @discardableResult
+    func completeSetIfNeeded(sessionExerciseID: String, setID: String) async -> Bool {
+        guard let existingSet = findSet(setID: setID) else { return false }
+        if existingSet.status == .completed { return true }
+        guard RemoteCompleteSetPolicy.shouldApply(status: existingSet.status) else { return false }
+        return await performCompleteSet(sessionExerciseID: sessionExerciseID, setID: setID)
     }
 
     @discardableResult
@@ -932,7 +942,7 @@ final class TrainSessionController {
 
             guard let completionSet = findSet(setID: setID) else { return false }
             if let message = mode.completionValidationMessage(for: completionSet) {
-                rejectNumpadValidation(message)
+                rejectNumpadValidation(message, setID: setID)
                 return false
             }
             try await store.completeSet(sessionExerciseID: sessionExerciseID, setID: setID)
@@ -1669,7 +1679,7 @@ final class TrainSessionController {
         let text = target.field == .rpe ? formattedRPE(numpadDraftRPE) : numpadWorkingText
 
         if let error = SetLogValidation.validate(field: target.field, text: text) {
-            rejectNumpadValidation(error)
+            rejectNumpadValidation(error, setID: target.setID)
             return false
         }
 
@@ -2455,6 +2465,8 @@ final class TrainSessionController {
         let targetSummary = WatchCompanionSetLine.targetSummary(
             massKilograms: currentSet?.mass.meaningfulWorkingKilograms,
             rpe: currentSet?.rpe,
+            durationSeconds: currentSet?.durationSeconds,
+            distanceKilometers: currentSet?.distanceKilometers,
             fallback: currentExercise.flatMap { exerciseTargets[$0.exerciseID] }
         )
         WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
@@ -2620,8 +2632,12 @@ final class TrainSessionController {
             : String(format: "%.1f", rpe)
     }
 
-    private func rejectNumpadValidation(_ message: String) {
+    private func rejectNumpadValidation(_ message: String, setID: String? = nil) {
         numpadValidationError = message
+        validationSetID = setID
+        if let setID {
+            blockerShakeTokenBySetID[setID, default: 0] += 1
+        }
         numpadShakeToken += 1
         HapticEngine.shared.play(.clampRejected)
     }

@@ -110,7 +110,7 @@ public actor FoodResolver {
         try localResults(query: query, limit: limit)
     }
 
-    /// Local hits plus Open Food Facts when online. Call only on explicit search submit.
+    /// Local hits plus Open Food Facts when online. Call on explicit search submit.
     public func searchRemote(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard trimmed.count >= 3 else {
@@ -118,21 +118,28 @@ public actor FoodResolver {
         }
 
         // Prefer strong local hits (recents / cache). Cap CoFID contribution so a wall of
-        // weak generic matches cannot fill `limit` and skip branded Open Food Facts.
-        let local = try localResults(query: trimmed, limit: limit, cofidCap: max(5, limit / 2))
+        // weak generic matches cannot fill `limit` and hide branded Open Food Facts.
+        let localLimit = max(1, limit / 2)
+        let local = try localResults(
+            query: trimmed,
+            limit: localLimit,
+            cofidCap: max(3, localLimit / 2)
+        )
         var results = local
-        guard results.count < limit else {
-            return results
-        }
 
         guard await networkGate.isOnline() else {
             return results
         }
 
         do {
-            let offProducts = try await offClient.search(query: trimmed, pageSize: min(10, limit))
+            let offProducts = try await offClient.search(query: trimmed, pageSize: limit)
+            let rankedProducts = rankedRemoteProducts(
+                offProducts,
+                query: trimmed,
+                limit: limit
+            )
             var seen = Set(results.map(\.product.ref.cacheKey))
-            for offProduct in offProducts {
+            for offProduct in rankedProducts {
                 let resolved = try cacheAndResolve(offProduct: offProduct)
                 guard seen.insert(resolved.ref.cacheKey).inserted else { continue }
                 results.append(FoodSearchResult(product: resolved))
@@ -153,6 +160,58 @@ public actor FoodResolver {
         }
 
         return results
+    }
+
+    private func rankedRemoteProducts(
+        _ products: [OpenFoodFactsProduct],
+        query: String,
+        limit: Int
+    ) -> [OpenFoodFactsProduct] {
+        let queryTokens = meaningfulTokens(query)
+        guard !queryTokens.isEmpty else {
+            return Array(products.prefix(limit))
+        }
+
+        let scored = products.enumerated().map { index, product in
+            let candidateTokens = meaningfulTokens("\(product.brand ?? "") \(product.productName)")
+            let overlap = queryTokens.reduce(into: 0) { count, queryToken in
+                if candidateTokens.contains(where: { NutritionLookup.tokensEquivalent(queryToken, $0) }) {
+                    count += 1
+                }
+            }
+            return (
+                product: product,
+                overlap: overlap,
+                fullMatch: overlap == queryTokens.count,
+                candidateTokenCount: candidateTokens.count,
+                originalIndex: index
+            )
+        }
+
+        let filtered = scored.filter { $0.overlap > 0 }
+
+        return filtered.sorted { lhs, rhs in
+            if lhs.fullMatch != rhs.fullMatch {
+                return lhs.fullMatch && !rhs.fullMatch
+            }
+            if lhs.overlap != rhs.overlap {
+                return lhs.overlap > rhs.overlap
+            }
+            if lhs.candidateTokenCount != rhs.candidateTokenCount {
+                return lhs.candidateTokenCount < rhs.candidateTokenCount
+            }
+            return lhs.originalIndex < rhs.originalIndex
+        }
+        .prefix(limit)
+        .map { $0.product }
+    }
+
+    private func meaningfulTokens(_ value: String) -> [String] {
+        let ignored = Set(["and", "the", "with", "for", "from", "of"])
+        return NutritionLookup.normalize(value)
+            .split(separator: " ")
+            .map(String.init)
+            .filter { $0.count >= 2 && !ignored.contains($0) }
     }
 
     public func search(query: String, limit: Int = 20) async throws -> [FoodSearchResult] {
@@ -235,7 +294,8 @@ public actor FoodResolver {
         }
 
         if let cofid = cofidLookup.resolve(item: trimmed),
-           cofid.matchConfidence != .fallback {
+           cofid.matchConfidence != .fallback,
+           cofid.matchConfidence != .partial || meaningfulTokens(trimmed).count == 1 {
             let ref = FoodProductRef(origin: .cofid, externalID: cofid.record.fdcId, displayName: cofid.record.description)
             return resolved(from: cofid, ref: ref)
         }

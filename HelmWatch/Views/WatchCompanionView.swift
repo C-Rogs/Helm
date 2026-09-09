@@ -301,7 +301,7 @@ struct WatchCompanionView: View {
                     let setID
                 else { return }
                 coordinator.requestCompleteSet(sessionExerciseID: exerciseID, setID: setID)
-                WatchHaptic.setLogged.play()
+                WatchHaptic.selection.play()
             } label: {
                 Text(isPending ? "Sending" : "Done")
                     .font(WatchType.label.font)

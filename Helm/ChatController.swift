@@ -166,6 +166,7 @@ final class ChatController {
             return
         }
 
+        lastTurnError = nil
         draftText = ""
         streamTask?.cancel()
         isFoodDictationTurn = true

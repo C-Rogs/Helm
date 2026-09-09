@@ -148,8 +148,23 @@ public struct ActiveSessionRepository: Sendable {
         let nowString = ISO8601Coding.string(from: startedAt)
         try pool.write { db in
             try Self.assertNoActiveSession(db: db)
-            let prescribedWorkingSets = prescription.exercises.reduce(0) { $0 + max($1.targetSets, 1) }
+            var exerciseModes: [String: ExerciseMode] = [:]
+            for exercise in prescription.exercises where exerciseModes[exercise.exerciseID] == nil {
+                let mode: String = try String.fetchOne(
+                    db,
+                    sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
+                    arguments: [exercise.exerciseID]
+                ) ?? ExerciseMode.weightReps.rawValue
+                exerciseModes[exercise.exerciseID] = ExerciseMode(rawValue: mode) ?? .weightReps
+            }
+            let prescribedWorkingSets = prescription.exercises.reduce(0) { total, exercise in
+                let mode = exerciseModes[exercise.exerciseID] ?? .weightReps
+                return total + (mode.isCardio ? mode.defaultIntervalCount : max(exercise.targetSets, 1))
+            }
             let prescribedVolumeKg = prescription.exercises.reduce(0.0) { total, exercise in
+                guard !(exerciseModes[exercise.exerciseID] ?? .weightReps).isCardio else {
+                    return total
+                }
                 let reps = Double(exercise.targetRepMin ?? exercise.targetRepMax ?? 0)
                 let mass = exercise.targetMass?.kilograms ?? 0
                 return total + mass * reps * Double(max(exercise.targetSets, 1))
@@ -177,15 +192,12 @@ public struct ActiveSessionRepository: Sendable {
 
             for exercise in prescription.exercises.sorted(by: { $0.order < $1.order }) {
                 let sessionExerciseID = UUID().uuidString
-                let mode: String = try String.fetchOne(
-                    db,
-                    sql: "SELECT exercise_mode FROM exercise WHERE id = ? AND deleted_at IS NULL",
-                    arguments: [exercise.exerciseID]
-                ) ?? ExerciseMode.weightReps.rawValue
-                let exerciseMode = ExerciseMode(rawValue: mode) ?? .weightReps
+                let exerciseMode = exerciseModes[exercise.exerciseID] ?? .weightReps
                 let restSeconds = 90
-                let warmupCount = max(exercise.warmupSets, 0)
-                let workingCount = max(exercise.targetSets, 1)
+                let warmupCount = exerciseMode.isCardio ? 0 : max(exercise.warmupSets, 0)
+                let workingCount = exerciseMode.isCardio
+                    ? exerciseMode.defaultIntervalCount
+                    : max(exercise.targetSets, 1)
                 let targetReps = exercise.targetRepMin ?? exercise.targetRepMax
 
                 try db.execute(

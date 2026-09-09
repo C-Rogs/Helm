@@ -49,6 +49,83 @@ struct NutritionView: View {
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
+        navigationRoot
+            .task {
+                await AppTabRouter.shared.preferChromeOverContentLoad()
+                guard !Task.isCancelled else { return }
+                await refreshTargets()
+                presentWeeklyCheckInIfDue()
+            }
+            .modifier(
+                WeeklyCheckInPresentation(
+                    isPresented: $showsWeeklyCheckIn,
+                    asOf: todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current),
+                    onRefresh: {
+                        Task { await refreshTargets() }
+                    }
+                )
+            )
+            .onChange(of: scenePhase) { _, newPhase in
+                handleScenePhaseChange(newPhase)
+            }
+            .onChange(of: prescriptionService.state) { _, newState in
+                handlePrescriptionChange(newState)
+            }
+            .onChange(of: nutritionService.state) { _, newState in
+                handleNutritionStateChange(newState)
+            }
+            .onChange(of: tabRouter.pendingNutritionFocus) { _, focus in
+                handleNutritionFocusChange(focus)
+            }
+            .onChange(of: manualFoodLogController.phase) { _, newPhase in
+                handleManualFoodLogPhaseChange(newPhase)
+            }
+            .onChange(of: photoMealController.pickerItem) { _, newValue in
+                handlePhotoPickerChange(newValue)
+            }
+            .modifier(NutritionLoggingSheets(
+                photoMealController: photoMealController,
+                manualFoodLogController: manualFoodLogController,
+                mealActionsController: mealActionsController,
+                mealEditController: mealEditController,
+                showsPhotoOptions: $showsPhotoOptions,
+                showsTemplates: $showsTemplates,
+                currentHelmDay: selectedHelmDay,
+                todayHelmDay: todayHelmDay,
+                onMealsChanged: {
+                    reloadMeals(from: nutritionService.state)
+                }
+            ))
+            .modifier(
+                DescribeFoodPresentation(
+                    chatController: chatController,
+                    describeBucket: $describeBucket,
+                    describeText: $describeText,
+                    isDescribeFlowActive: $isDescribeFlowActive,
+                    onSubmit: sendDescribeFood,
+                    onUseSearch: { bucket in
+                        cancelDescribeFlow()
+                        describeBucket = nil
+                        manualFoodLogController.start(.search, bucket: bucket)
+                    }
+                )
+            )
+            .modifier(
+                FoodMealConfirmPresentation(
+                    chatController: chatController,
+                    isDescribeFlowActive: $isDescribeFlowActive
+                )
+            )
+            .onChange(of: chatController.pendingFoodMealConfirm != nil) { _, isPresented in
+                handlePendingFoodMealConfirmChange(isPresented)
+            }
+            .onChange(of: chatController.pendingFoodMealConfirm == nil) { _, isCleared in
+                handleFoodMealConfirmDismissed(isCleared)
+            }
+    }
+
+    private var navigationRoot: AnyView {
+        AnyView(
         NavigationStack {
             diaryScroll
                 .helmScreenBackground()
@@ -59,141 +136,57 @@ struct NutritionView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .toolbar { nutritionToolbar }
         }
-        .task {
-            await AppTabRouter.shared.preferChromeOverContentLoad()
-            guard !Task.isCancelled else { return }
-            await refreshTargets()
-            presentWeeklyCheckInIfDue()
+        )
+    }
+
+    private func handleScenePhaseChange(_ phase: ScenePhase) {
+        guard phase == .active else { return }
+        Task {
+            await manualFoodLogController.refreshConnectivity()
         }
-        .sheet(isPresented: $showsWeeklyCheckIn, onDismiss: {
-            // Refresh if Confirm already stamped (Done or swipe after success).
-            Task { await refreshTargets() }
-        }) {
-            NutritionWeeklyCheckInSheet(
-                asOf: todayHelmDay ?? HelmDay.day(for: Date(), calendar: .current)
-            ) {
-                Task { await refreshTargets() }
-            }
+    }
+
+    private func handleNutritionFocusChange(_ focus: NutritionNavigationFocus?) {
+        guard let focus else { return }
+        Task { await applyNutritionFocus(focus) }
+    }
+
+    private func handlePrescriptionChange(_ state: PrescriptionDashboardState) {
+        Task {
+            await refreshSelectedDay(prescriptionSummary: state.summary)
         }
-        .onChange(of: scenePhase) { _, newPhase in
-            guard newPhase == .active else { return }
-            Task {
-                await manualFoodLogController.refreshConnectivity()
-            }
+    }
+
+    private func handleNutritionStateChange(_ state: NutritionDashboardState) {
+        reloadMeals(from: state)
+    }
+
+    private func handleManualFoodLogPhaseChange(_ phase: ManualFoodLogController.Phase) {
+        if case .idle = phase {
+            reloadMeals(from: nutritionService.state)
         }
-        .onChange(of: prescriptionService.state) { _, newState in
-            Task {
-                await refreshSelectedDay(prescriptionSummary: newState.summary)
-            }
+    }
+
+    private func handlePhotoPickerChange(_ item: PhotosPickerItem?) {
+        // Dismiss options first; estimate starts in sheet onDismiss so fullScreenCover
+        // is not cancelled by the options sheet teardown race.
+        if item != nil {
+            showsPhotoOptions = false
         }
-        .onChange(of: nutritionService.state) { _, newState in
-            reloadMeals(from: newState)
+    }
+
+    private func handlePendingFoodMealConfirmChange(_ isPresented: Bool) {
+        if isPresented, isDescribeFlowActive {
+            describeBucket = nil
         }
-        .onChange(of: tabRouter.pendingNutritionFocus) { _, focus in
-            guard let focus else { return }
-            Task { await applyNutritionFocus(focus) }
-        }
-        .onChange(of: manualFoodLogController.phase) { _, newPhase in
-            if case .idle = newPhase {
-                reloadMeals(from: nutritionService.state)
-            }
-        }
-        .onChange(of: photoMealController.pickerItem) { _, newValue in
-            // Dismiss options first; estimate starts in sheet onDismiss so fullScreenCover
-            // is not cancelled by the options sheet teardown race.
-            if newValue != nil {
-                showsPhotoOptions = false
-            }
-        }
-        .modifier(NutritionLoggingSheets(
-            photoMealController: photoMealController,
-            manualFoodLogController: manualFoodLogController,
-            mealActionsController: mealActionsController,
-            mealEditController: mealEditController,
-            showsPhotoOptions: $showsPhotoOptions,
-            showsTemplates: $showsTemplates,
-            currentHelmDay: selectedHelmDay,
-            todayHelmDay: todayHelmDay,
-            onMealsChanged: {
-                reloadMeals(from: nutritionService.state)
-            }
-        ))
-        .sheet(isPresented: Binding(
-            get: { describeBucket != nil },
-            set: { if !$0 { describeBucket = nil } }
-        )) {
-            if let bucket = describeBucket {
-                DescribeFoodSheet(
-                    bucket: bucket,
-                    text: $describeText,
-                    onSubmit: { text in
-                        describeBucket = nil
-                        sendDescribeFood(text, bucket: bucket)
-                    },
-                    onUseSearch: {
-                        describeBucket = nil
-                        manualFoodLogController.start(.search, bucket: bucket)
-                    }
-                )
-                .presentationDetents([.height(260)])
-            }
-        }
-        .sheet(isPresented: Binding(
-            get: { isDescribeFlowActive && chatController.pendingFoodMealConfirm != nil },
-            set: { if !$0 { chatController.dismissFoodMealConfirm() } }
-        )) {
-            if let state = chatController.pendingFoodMealConfirm {
-                CoachFoodMealConfirmSheet(
-                    state: state,
-                    isSaving: chatController.isApplyingChatAction,
-                    errorMessage: chatController.lastTurnError,
-                    onCancel: {
-                        chatController.dismissFoodMealConfirm()
-                        isDescribeFlowActive = false
-                    },
-                    onConfirm: { estimate, name, bucket in
-                        chatController.confirmFoodMeal(estimate: estimate, name: name, bucket: bucket)
-                    }
-                )
-            }
-        }
-        .onChange(of: chatController.pendingFoodMealConfirm == nil) { _, isCleared in
-            guard isCleared, isDescribeFlowActive, !chatController.isStreaming,
-                  !chatController.isPreparingFoodMealConfirm else { return }
-            isDescribeFlowActive = false
-            Task { await refreshSelectedDay() }
-        }
-        .alert(
-            "Couldn't estimate that meal",
-            isPresented: Binding(
-                get: {
-                    isDescribeFlowActive
-                        && chatController.pendingFoodMealConfirm == nil
-                        && !chatController.isStreaming
-                        && !chatController.isPreparingFoodMealConfirm
-                        && chatController.lastTurnError != nil
-                },
-                set: { if !$0 { isDescribeFlowActive = false } }
-            )
-        ) {
-            Button("Use Search") {
-                isDescribeFlowActive = false
-                manualFoodLogController.start(.search, bucket: manualFoodLogController.preferredBucket)
-            }
-            Button("OK", role: .cancel) {
-                isDescribeFlowActive = false
-            }
-        } message: {
-            Text(chatController.lastTurnError ?? "The coach needs a network connection to estimate meals. Search works offline.")
-        }
-        .overlay(alignment: .bottom) {
-            if isDescribeFlowActive,
-               chatController.isStreaming || chatController.isPreparingFoodMealConfirm {
-                describeProgressBanner
-            }
-        }
-        .animation(HelmMotion.standardAnimation, value: chatController.isStreaming)
-        .animation(HelmMotion.standardAnimation, value: chatController.isPreparingFoodMealConfirm)
+    }
+
+    private func handleFoodMealConfirmDismissed(_ isCleared: Bool) {
+        guard isCleared, isDescribeFlowActive, !chatController.isStreaming,
+              !chatController.isPreparingFoodMealConfirm else { return }
+        isDescribeFlowActive = false
+        describeBucket = nil
+        Task { await refreshSelectedDay() }
     }
 
     @ViewBuilder
@@ -201,21 +194,17 @@ struct NutritionView: View {
         VStack(spacing: 0) {
             stickyDiaryHeader
 
-            GeometryReader { geo in
-                ScrollView(.vertical) {
-                    HelmScreenStack {
-                        switch nutritionService.state {
-                        case .loading:
-                            loadingCard
-                        case let .ready(snapshot):
-                            diaryReadyContent(snapshot)
-                        }
+            HelmVerticalPageScroll {
+                HelmScreenStack {
+                    switch nutritionService.state {
+                    case .loading:
+                        loadingCard
+                    case let .ready(snapshot):
+                        diaryReadyContent(snapshot)
                     }
-                    .helmScreenPadding()
-                    .helmVerticalScrollContentWidth(geo.size.width)
-                    .id(selectedHelmDay)
                 }
-                .helmVerticalScrollContainer()
+                .helmScreenPadding()
+                .id(selectedHelmDay)
             }
         }
     }
@@ -293,17 +282,11 @@ struct NutritionView: View {
         chatController.sendFoodDictation(transcript)
     }
 
-    private var describeProgressBanner: some View {
-        CoachAIProgressCard(
-            eyebrow: "COACH",
-            title: chatController.chatProgressTitle ?? "Estimating meal",
-            completedSteps: chatController.chatProgressCompletedSteps,
-            currentStep: chatController.chatProgressStep ?? "Estimating your meal…",
-            isImpactful: true
-        )
-        .helmScreenPadding()
-        .padding(.bottom, HelmSpacing.lg)
-        .transition(.opacity)
+    private func cancelDescribeFlow() {
+        guard isDescribeFlowActive else { return }
+        chatController.cancelStreaming()
+        chatController.dismissFoodMealConfirm()
+        isDescribeFlowActive = false
     }
 
     @ToolbarContentBuilder
@@ -615,6 +598,113 @@ struct NutritionView: View {
 
     private var loadingCard: some View {
         HelmLoadingState(rowCount: 3)
+    }
+}
+
+private struct WeeklyCheckInPresentation: ViewModifier {
+    @Binding var isPresented: Bool
+    let asOf: HelmDay
+    let onRefresh: () -> Void
+
+    func body(content: Content) -> some View {
+        content.sheet(isPresented: $isPresented, onDismiss: onRefresh) {
+            NutritionWeeklyCheckInSheet(asOf: asOf, onConfirmed: onRefresh)
+        }
+    }
+}
+
+private struct DescribeFoodPresentation: ViewModifier {
+    @Bindable var chatController: ChatController
+    @Binding var describeBucket: MealBucket?
+    @Binding var describeText: String
+    @Binding var isDescribeFlowActive: Bool
+    let onSubmit: (String, MealBucket) -> Void
+    let onUseSearch: (MealBucket) -> Void
+
+    private var errorMessage: String? {
+        guard isDescribeFlowActive,
+              chatController.pendingFoodMealConfirm == nil,
+              !chatController.isStreaming,
+              !chatController.isPreparingFoodMealConfirm
+        else {
+            return nil
+        }
+        return chatController.lastTurnError
+    }
+
+    private var isEstimating: Bool {
+        isDescribeFlowActive
+            && chatController.pendingFoodMealConfirm == nil
+            && errorMessage == nil
+    }
+
+    func body(content: Content) -> some View {
+        content.sheet(
+            isPresented: Binding(
+                get: { describeBucket != nil },
+                set: { if !$0 { describeBucket = nil } }
+            ),
+            onDismiss: {
+                if chatController.pendingFoodMealConfirm == nil {
+                    chatController.cancelStreaming()
+                    chatController.dismissFoodMealConfirm()
+                    isDescribeFlowActive = false
+                }
+            }
+        ) {
+            if let bucket = describeBucket {
+                DescribeFoodSheet(
+                    bucket: bucket,
+                    text: $describeText,
+                    isEstimating: isEstimating,
+                    progressTitle: chatController.chatProgressTitle ?? "Estimating meal",
+                    completedSteps: chatController.chatProgressCompletedSteps,
+                    progressStep: chatController.chatProgressStep ?? "Estimating your meal…",
+                    errorMessage: errorMessage,
+                    onSubmit: { text in
+                        onSubmit(text, bucket)
+                    },
+                    onUseSearch: {
+                        onUseSearch(bucket)
+                    }
+                )
+                .presentationDetents([.medium, .large])
+            }
+        }
+    }
+}
+
+private struct FoodMealConfirmPresentation: ViewModifier {
+    @Bindable var chatController: ChatController
+    @Binding var isDescribeFlowActive: Bool
+
+    func body(content: Content) -> some View {
+        content.sheet(
+            isPresented: Binding(
+                get: { isDescribeFlowActive && chatController.pendingFoodMealConfirm != nil },
+                set: { isPresented in
+                    if !isPresented {
+                        chatController.dismissFoodMealConfirm()
+                        isDescribeFlowActive = false
+                    }
+                }
+            )
+        ) {
+            if let state = chatController.pendingFoodMealConfirm {
+                CoachFoodMealConfirmSheet(
+                    state: state,
+                    isSaving: chatController.isApplyingChatAction,
+                    errorMessage: chatController.lastTurnError,
+                    onCancel: {
+                        chatController.dismissFoodMealConfirm()
+                        isDescribeFlowActive = false
+                    },
+                    onConfirm: { estimate, name, bucket in
+                        chatController.confirmFoodMeal(estimate: estimate, name: name, bucket: bucket)
+                    }
+                )
+            }
+        }
     }
 }
 

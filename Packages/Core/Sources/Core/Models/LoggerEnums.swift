@@ -31,9 +31,6 @@ public extension ExerciseMode {
             if (set.durationSeconds ?? 0) <= 0 {
                 return "Enter duration before completing this interval."
             }
-            if (set.distanceKilometers ?? 0) <= 0 {
-                return "Enter distance before completing this interval."
-            }
         }
         return nil
     }

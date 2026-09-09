@@ -15,10 +15,30 @@ public struct OpenFoodFactsProduct: Sendable, Equatable {
     public let rawJSON: String
 
     public var displayName: String {
-        if let brand, !brand.isEmpty {
+        if let brand, !brand.isEmpty, !Self.containsBrand(productName: productName, brand: brand) {
             return "\(brand) \(productName)"
         }
         return productName
+    }
+
+    private static func containsBrand(productName: String, brand: String) -> Bool {
+        let nameTokens = normalizedTokens(productName)
+        let brandTokens = normalizedTokens(brand)
+        guard !brandTokens.isEmpty, brandTokens.count <= nameTokens.count else { return false }
+
+        for start in 0 ... (nameTokens.count - brandTokens.count) {
+            if Array(nameTokens[start ..< start + brandTokens.count]) == brandTokens {
+                return true
+            }
+        }
+        return false
+    }
+
+    private static func normalizedTokens(_ value: String) -> [String] {
+        value
+            .lowercased()
+            .components(separatedBy: CharacterSet.alphanumerics.inverted)
+            .filter { !$0.isEmpty }
     }
 }
 
@@ -46,13 +66,16 @@ enum OpenFoodFactsEndpoint {
         URL(string: "https://\(productHost)/api/v2/product/\(barcode).json")!
     }
 
-    static func searchALiciousURL(query: String, pageSize: Int) -> URL {
+    static func searchALiciousURL(query: String, pageSize: Int, ukOnly: Bool = false) -> URL {
         var components = URLComponents()
         components.scheme = "https"
         components.host = searchHost
         components.path = "/search"
+        let searchQuery = ukOnly
+            ? "\(query) countries_tags:\"en:united-kingdom\""
+            : query
         components.queryItems = [
-            URLQueryItem(name: "q", value: query),
+            URLQueryItem(name: "q", value: searchQuery),
             URLQueryItem(name: "langs", value: "en"),
             URLQueryItem(name: "page_size", value: String(pageSize)),
             URLQueryItem(name: "boost_phrase", value: "true"),
@@ -61,12 +84,12 @@ enum OpenFoodFactsEndpoint {
         return components.url!
     }
 
-    static func legacySearchURL(query: String, pageSize: Int) -> URL {
+    static func legacySearchURL(query: String, pageSize: Int, ukOnly: Bool = false) -> URL {
         var components = URLComponents()
         components.scheme = "https"
         components.host = productHost
         components.path = "/cgi/search.pl"
-        components.queryItems = [
+        var queryItems = [
             URLQueryItem(name: "search_terms", value: query),
             URLQueryItem(name: "search_simple", value: "1"),
             URLQueryItem(name: "action", value: "process"),
@@ -74,6 +97,14 @@ enum OpenFoodFactsEndpoint {
             URLQueryItem(name: "page_size", value: String(pageSize)),
             URLQueryItem(name: "fields", value: searchFields)
         ]
+        if ukOnly {
+            queryItems.append(contentsOf: [
+                URLQueryItem(name: "tagtype_0", value: "countries"),
+                URLQueryItem(name: "tag_contains_0", value: "contains"),
+                URLQueryItem(name: "tag_0", value: "united-kingdom")
+            ])
+        }
+        components.queryItems = queryItems
         return components.url!
     }
 }
@@ -308,12 +339,51 @@ public final class LiveOpenFoodFactsClient: OpenFoodFactsClient, @unchecked Send
     }
 
     public func search(query: String, pageSize: Int) async throws -> [OpenFoodFactsProduct] {
-        incrementRequestCount()
         log.debug("OFF text search queryLength=\(query.count, privacy: .public)")
 
+        var products: [OpenFoodFactsProduct] = []
+        var firstError: Error?
+
+        do {
+            products = try await searchEndpoint(query: query, pageSize: pageSize, ukOnly: true)
+        } catch OpenFoodFactsError.rateLimited {
+            throw OpenFoodFactsError.rateLimited
+        } catch {
+            firstError = error
+        }
+
+        do {
+            let globalProducts = try await searchEndpoint(query: query, pageSize: pageSize, ukOnly: false)
+            var seen = Set(products.map(\.barcode))
+            products.append(contentsOf: globalProducts.filter { seen.insert($0.barcode).inserted })
+        } catch OpenFoodFactsError.rateLimited {
+            if products.isEmpty {
+                throw OpenFoodFactsError.rateLimited
+            }
+        } catch {
+            if products.isEmpty {
+                throw firstError ?? error
+            }
+        }
+
+        // Keep both pools for caller-side relevance ranking. The resolver caps
+        // display results after comparing UK-biased and global matches.
+        return products
+    }
+
+    private func searchEndpoint(
+        query: String,
+        pageSize: Int,
+        ukOnly: Bool
+    ) async throws -> [OpenFoodFactsProduct] {
+        incrementRequestCount()
         do {
             return try await performSearch(
-                url: OpenFoodFactsEndpoint.searchALiciousURL(query: query, pageSize: pageSize),
+                url: OpenFoodFactsEndpoint.searchALiciousURL(
+                    query: query,
+                    pageSize: pageSize,
+                    ukOnly: ukOnly
+                ),
                 parse: OpenFoodFactsParser.parseSearchALiciousResponse
             )
         } catch OpenFoodFactsError.rateLimited {
@@ -325,14 +395,21 @@ public final class LiveOpenFoodFactsClient: OpenFoodFactsClient, @unchecked Send
                     error: primaryError,
                     category: .healthKitIngest,
                     message: "Search-a-licious failed; falling back to legacy OFF search",
-                    context: ["queryLength": String(query.count)]
+                    context: [
+                        "queryLength": String(query.count),
+                        "ukOnly": String(ukOnly)
+                    ]
                 )
             }
 
             incrementRequestCount()
             do {
                 return try await performSearch(
-                    url: OpenFoodFactsEndpoint.legacySearchURL(query: query, pageSize: pageSize),
+                    url: OpenFoodFactsEndpoint.legacySearchURL(
+                        query: query,
+                        pageSize: pageSize,
+                        ukOnly: ukOnly
+                    ),
                     parse: OpenFoodFactsParser.parseSearchResponse
                 )
             } catch {

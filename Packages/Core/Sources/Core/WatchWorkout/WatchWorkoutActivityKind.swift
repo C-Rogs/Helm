@@ -95,10 +95,11 @@ public enum WatchWorkoutActivityKind: String, CaseIterable, Sendable, Identifiab
             return .traditionalStrengthTraining
         }
 
+        if containsAny(["hiit", "tabata"]) { return .highIntensityIntervalTraining }
         if containsAny(Self.runNeedles) { return .running }
-        if containsAny(Self.hiitNeedles) { return .highIntensityIntervalTraining }
         if containsAny(Self.cycleNeedles) { return .cycling }
         if containsAny(Self.walkNeedles) { return .walking }
+        if containsAny(Self.hiitNeedles) { return .highIntensityIntervalTraining }
         return .mixedCardio
     }
 

@@ -14,6 +14,7 @@ struct ExerciseSectionView: View {
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
     let validationMessage: String?
+    var validationSetID: String? = nil
     let advisoryMessage: (String) -> String?
     let shakeToken: Int
     let blockerShakeToken: (String) -> Int
@@ -165,6 +166,7 @@ struct ExerciseSectionView: View {
                             activeField: activeField,
                             numpadSelectAll: numpadSelectAll,
                             validationMessage: validationMessage,
+                            validationSetID: validationSetID,
                             advisoryMessage: advisoryMessage(set.id),
                             shakeToken: shakeToken + blockerShakeToken(set.id),
                             badgeText: badgeText(set.id),

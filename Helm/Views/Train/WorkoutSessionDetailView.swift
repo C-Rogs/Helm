@@ -445,13 +445,13 @@ struct WorkoutSessionDetailView: View {
 
                 if isNativeCardio {
                     HStack(spacing: HelmSpacing.sm) {
-                        summaryStat(label: "TIME", value: durationValue(for: draft), unit: "min")
+                        summaryStat(label: "SESSION", value: durationValue(for: draft), unit: "min")
                         summaryStat(label: "EX", value: "\(exerciseCount)", unit: nil)
                         summaryStat(label: "INTERVALS", value: "\(totalSets)", unit: nil)
                     }
                     HStack(spacing: HelmSpacing.sm) {
                         summaryStat(
-                            label: "LOGGED",
+                            label: "INTERVALS",
                             value: WorkoutHistoryFormatting.intervalDurationLabel(seconds: loggedDurationSeconds),
                             unit: nil
                         )

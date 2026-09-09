@@ -108,6 +108,7 @@ Build these in DesignSystem so screens compose, never re-invent.
 
 - One-handed, mid-set, often not looking. Reading (score, targets, prev) lives in the top two thirds; action (ask-coach, numpad, primary buttons) in the bottom third.
 - Single-scroll screens where possible; the Dashboard resolves the whole day without a tab change.
+- Page roots that scroll vertically only: use `HelmVerticalPageScroll` (Train, Nutrition diary). Content never wider than the page; no sideways bounce. Nested horizontal strips (week chips, exercise pills) stay their own `ScrollView(.horizontal)`.
 - Spacing scale: 4, 8, 12, 16, 22, 32. Screen gutter 22. Card gap 12.
 - Hit targets never below 44pt (plan minimum).
 

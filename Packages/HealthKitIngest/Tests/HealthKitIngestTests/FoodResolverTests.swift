@@ -79,7 +79,7 @@ struct FoodResolverTests {
 
         let results = try await resolver.searchRemote(query: "Grenade Carb Killa", limit: 5)
 
-        #expect(results.contains { $0.product.ref == grenadeRef })
+        #expect(results.contains { $0.product.ref.externalID == grenadeRef.externalID })
         #expect(results.contains { $0.product.source == .openFoodFacts })
         #expect(offClient.requestCount == 1)
 
@@ -295,10 +295,130 @@ struct FoodResolverTests {
         let results = try await resolver.searchLocal(query: "gin tonic", limit: 10)
         #expect(!results.contains { $0.product.ref == gingerRef })
     }
+
+    @Test("Ben's Cookies ranks full token overlap above weak and junk hits")
+    func bensCookiesRanking() async throws {
+        let store = try PersistenceStore.inMemory()
+        let expected = offProduct(
+            barcode: "bens-cookie",
+            productName: "Milk Chocolate Chunk Cookie",
+            brand: "Ben's Cookies"
+        )
+        let client = StaticSearchOpenFoodFactsClient(products: [
+            offProduct(barcode: "bens-reiz", productName: "Bens Reiz", brand: "Ben's Original"),
+            offProduct(barcode: "junk", productName: "Sparkling Water", brand: "Acme"),
+            offProduct(barcode: "cookie-1", productName: "Chocolate Cookies", brand: "Bakery"),
+            offProduct(barcode: "cookie-2", productName: "Butter Cookies", brand: "Bakery"),
+            offProduct(barcode: "cookie-3", productName: "Oat Cookies", brand: "Bakery"),
+            expected
+        ])
+        let resolver = makeResolver(store: store, offClient: client, online: true)
+
+        let results = try await resolver.searchRemote(query: "Ben's Cookies", limit: 20)
+        let remote = results.filter { $0.product.source == .openFoodFacts }
+        let expectedIndex = try #require(remote.firstIndex { $0.product.ref.externalID == "bens-cookie" })
+        let weakIndex = try #require(remote.firstIndex { $0.product.ref.externalID == "bens-reiz" })
+
+        #expect(remote.first?.product.ref.externalID == expected.barcode)
+        #expect(!remote.contains { $0.product.ref.externalID == "junk" })
+        #expect(expectedIndex < weakIndex)
+    }
+
+    @Test("Lidl search requests and returns up to twenty usable products")
+    func lidlResultLimit() async throws {
+        let store = try PersistenceStore.inMemory()
+        let products = (0 ..< 25).map {
+            offProduct(
+                barcode: "lidl-\($0)",
+                productName: "Protein Product \($0)",
+                brand: "Lidl"
+            )
+        }
+        let client = StaticSearchOpenFoodFactsClient(products: products)
+        let resolver = makeResolver(store: store, offClient: client, online: true)
+
+        let results = try await resolver.searchRemote(query: "Lidl", limit: 20)
+
+        #expect(results.count == 20)
+        #expect(client.requestedPageSizes == [20])
+        #expect(results.allSatisfy { $0.product.ref.displayName.contains("Lidl") })
+    }
+
+    @Test("Milbona full query ranks first and brand is not duplicated")
+    func milbonaRankingAndDisplayName() async throws {
+        let store = try PersistenceStore.inMemory()
+        let client = StaticSearchOpenFoodFactsClient(products: [
+            offProduct(barcode: "milbona-yogurt", productName: "Protein Yogurt", brand: "Milbona"),
+            offProduct(barcode: "protein-shake", productName: "Protein Shake", brand: "Other"),
+            offProduct(
+                barcode: "milbona-shake",
+                productName: "Milbona Protein Shake",
+                brand: "Milbona"
+            )
+        ])
+        let resolver = makeResolver(store: store, offClient: client, online: true)
+
+        let results = try await resolver.searchRemote(query: "Milbona protein shake", limit: 20)
+
+        #expect(results.first?.product.ref.externalID == "milbona-shake")
+        #expect(results.first?.product.ref.displayName == "Milbona Protein Shake")
+    }
+
+    private func offProduct(
+        barcode: String,
+        productName: String,
+        brand: String?
+    ) -> OpenFoodFactsProduct {
+        OpenFoodFactsProduct(
+            barcode: barcode,
+            productName: productName,
+            brand: brand,
+            per100gKcal: 100,
+            per100gProteinG: 10,
+            per100gCarbsG: 10,
+            per100gFatG: 2,
+            servingSizeLabel: nil,
+            servingQuantityGrams: nil,
+            rawJSON: "{}"
+        )
+    }
 }
 
 @Suite("Open Food Facts client")
 struct OpenFoodFactsClientTests {
+    @Test("search URLs apply UK bias and keep an unfiltered fallback")
+    func searchURLBiasAndFallback() throws {
+        let ukURL = OpenFoodFactsEndpoint.searchALiciousURL(
+            query: "Milbona protein shake",
+            pageSize: 20,
+            ukOnly: true
+        )
+        let globalURL = OpenFoodFactsEndpoint.searchALiciousURL(
+            query: "Milbona protein shake",
+            pageSize: 20
+        )
+        let legacyUKURL = OpenFoodFactsEndpoint.legacySearchURL(
+            query: "Lidl",
+            pageSize: 20,
+            ukOnly: true
+        )
+
+        let ukItems = try #require(URLComponents(url: ukURL, resolvingAgainstBaseURL: false)?.queryItems)
+        let globalItems = try #require(URLComponents(url: globalURL, resolvingAgainstBaseURL: false)?.queryItems)
+        let legacyItems = try #require(URLComponents(url: legacyUKURL, resolvingAgainstBaseURL: false)?.queryItems)
+
+        #expect(
+            ukItems.contains {
+                $0.name == "q"
+                    && $0.value == #"Milbona protein shake countries_tags:"en:united-kingdom""#
+            }
+        )
+        #expect(ukItems.contains { $0.name == "page_size" && $0.value == "20" })
+        #expect(globalItems.contains { $0.name == "q" && $0.value == "Milbona protein shake" })
+        #expect(legacyItems.contains { $0.name == "tagtype_0" && $0.value == "countries" })
+        #expect(legacyItems.contains { $0.name == "tag_0" && $0.value == "united-kingdom" })
+    }
+
     @Test("fixture barcode parses Grenade product")
     func fixtureBarcode() async throws {
         let client = FixtureOpenFoodFactsClient(bundle: .module)
@@ -357,5 +477,35 @@ struct OpenFoodFactsClientTests {
 
         #expect(product.displayName.contains("GetPro"))
         #expect(abs(product.per100gKcal - 73.6) < 1)
+    }
+}
+
+private final class StaticSearchOpenFoodFactsClient: OpenFoodFactsClient, @unchecked Sendable {
+    private let products: [OpenFoodFactsProduct]
+    private let lock = NSLock()
+    private nonisolated(unsafe) var pageSizes: [Int] = []
+
+    init(products: [OpenFoodFactsProduct]) {
+        self.products = products
+    }
+
+    var requestCount: Int {
+        lock.withLock { pageSizes.count }
+    }
+
+    var requestedPageSizes: [Int] {
+        lock.withLock { pageSizes }
+    }
+
+    func fetchProduct(barcode: String) async throws -> OpenFoodFactsProduct {
+        guard let product = products.first(where: { $0.barcode == barcode }) else {
+            throw OpenFoodFactsError.productNotFound
+        }
+        return product
+    }
+
+    func search(query: String, pageSize: Int) async throws -> [OpenFoodFactsProduct] {
+        lock.withLock { pageSizes.append(pageSize) }
+        return Array(products.prefix(pageSize))
     }
 }

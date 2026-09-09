@@ -82,4 +82,23 @@ struct WatchCompanionSetLineTests {
             ) == "85kg · RPE 8"
         )
     }
+
+    @Test("formats cardio interval targets")
+    func cardioIntervalTargets() {
+        let summary = WatchCompanionSetLine.targetSummary(
+            massKilograms: nil,
+            rpe: 7,
+            durationSeconds: 600,
+            distanceKilometers: 1.5,
+            fallback: nil
+        )
+        #expect(summary == "10 min · 1.5 km · RPE 7")
+        #expect(
+            WatchCompanionSetLine.make(
+                setNumber: 1,
+                setCount: 1,
+                targetSummary: summary
+            ) == "Set 1/1 . 10 MIN . 1.5 KM . rpe 7"
+        )
+    }
 }

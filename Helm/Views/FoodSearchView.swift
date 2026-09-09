@@ -12,6 +12,7 @@ struct FoodSearchView: View {
     @State private var recents: [ResolvedFoodProduct] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
+    @State private var searchGeneration = UUID()
     @State private var remoteSearchMessage: String?
     @State private var hasSubmittedRemoteSearch = false
 
@@ -44,22 +45,38 @@ struct FoodSearchView: View {
                         .listRowBackground(HelmColor.surface)
                 }
 
+                if isOnline, trimmedQuery.count >= 3 {
+                    Button {
+                        submitRemoteSearch()
+                    } label: {
+                        Label(
+                            isSearching ? "Searching branded products…" : "Search branded products",
+                            systemImage: "magnifyingglass"
+                        )
+                    }
+                    .buttonStyle(.helmSecondary)
+                    .disabled(isSearching)
+                    .listRowBackground(HelmColor.surface)
+                }
+
                 if isSearching {
                     HStack(spacing: HelmSpacing.sm) {
                         ProgressView()
-                        Text("Searching foods…")
+                        Text("Searching branded products…")
                             .helmType(.body, color: HelmColor.fgMuted)
                     }
                     .listRowBackground(HelmColor.surface)
-                } else if trimmedQuery.isEmpty {
-                    Text("Search CoFID and scanned products on-device. Press Search for new branded products.")
+                }
+
+                if trimmedQuery.isEmpty {
+                    Text("Search CoFID and scanned products on-device. Search branded products with 3 or more characters.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .listRowBackground(HelmColor.surface)
                 } else if results.isEmpty {
                     if !isOnline {
                         offlineMissState
-                    } else if !hasSubmittedRemoteSearch {
-                        Text("No local matches for \"\(trimmedQuery)\". Press Search to check branded products.")
+                    } else if !hasSubmittedRemoteSearch || isSearching {
+                        Text("Checking local and branded products for \"\(trimmedQuery)\".")
                             .helmType(.body, color: HelmColor.fgMuted)
                             .listRowBackground(HelmColor.surface)
                     } else {
@@ -86,7 +103,7 @@ struct FoodSearchView: View {
         .navigationTitle("Search food")
         .navigationBarTitleDisplayMode(.inline)
         .onSubmit(of: .search) {
-            Task { await submitRemoteSearch() }
+            submitRemoteSearch()
         }
         .onChange(of: query) { _, newValue in
             hasSubmittedRemoteSearch = false
@@ -170,6 +187,9 @@ struct FoodSearchView: View {
 
     private func scheduleLocalSearch(for query: String) {
         searchTask?.cancel()
+        let generation = UUID()
+        searchGeneration = generation
+        isSearching = false
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             results = []
@@ -182,16 +202,17 @@ struct FoodSearchView: View {
             guard !Task.isCancelled else { return }
             do {
                 let hits = try await controller.searchLocal(query: trimmed)
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, searchGeneration == generation else { return }
                 results = hits
             } catch {
-                guard !Task.isCancelled else { return }
+                guard !Task.isCancelled, searchGeneration == generation else { return }
                 results = []
             }
+
         }
     }
 
-    private func submitRemoteSearch() async {
+    private func submitRemoteSearch() {
         searchTask?.cancel()
         let trimmed = trimmedQuery
         guard trimmed.count >= 3 else {
@@ -203,21 +224,39 @@ struct FoodSearchView: View {
             return
         }
 
+        let generation = UUID()
+        searchGeneration = generation
+        searchTask = Task {
+            await performRemoteSearch(query: trimmed, generation: generation)
+        }
+    }
+
+    private func performRemoteSearch(query: String, generation: UUID) async {
+        guard searchGeneration == generation else { return }
         isSearching = true
         remoteSearchMessage = nil
-        defer { isSearching = false }
 
         do {
-            let hits = try await controller.searchRemote(query: trimmed)
+            let hits = try await controller.searchRemote(query: query)
+            guard !Task.isCancelled, searchGeneration == generation else { return }
             results = hits
             hasSubmittedRemoteSearch = true
         } catch FoodResolverError.rateLimited {
+            guard !Task.isCancelled, searchGeneration == generation else { return }
             remoteSearchMessage = "Too many searches. Wait a minute and try again."
+            hasSubmittedRemoteSearch = true
         } catch FoodResolverError.queryTooShort {
+            guard !Task.isCancelled, searchGeneration == generation else { return }
             remoteSearchMessage = "Enter at least 3 characters to search branded products."
+            hasSubmittedRemoteSearch = true
         } catch {
+            guard !Task.isCancelled, searchGeneration == generation else { return }
             remoteSearchMessage = "Branded search failed. Local results are still shown."
+            hasSubmittedRemoteSearch = true
         }
+
+        guard searchGeneration == generation else { return }
+        isSearching = false
     }
 }
 

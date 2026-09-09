@@ -21,7 +21,7 @@ struct CardioExerciseModeTests {
         #expect(
             ExerciseMode.distanceDuration.completionValidationMessage(
                 for: SetEntryDraft(setIndex: 0, durationSeconds: 600)
-            ) != nil
+            ) == nil
         )
         #expect(
             ExerciseMode.distanceDuration.completionValidationMessage(

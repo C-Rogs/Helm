@@ -267,23 +267,41 @@ struct DashboardView: View {
                     .multilineTextAlignment(.leading)
             }
         case let .restDay(rest):
-            Button {
-                AppTabRouter.shared.openTrain()
-            } label: {
-                prescriptionShell(subtitle: rest.title, showsChevron: true) {
-                    Text(rest.summary)
-                        .helmType(.body, color: HelmColor.fgSecondary)
-                        .multilineTextAlignment(.leading)
+            if sessionController.hasActiveSession {
+                let activeExercises = sessionController.snapshot?.session.exercises ?? []
+                let usesIntervals = !activeExercises.isEmpty && activeExercises.allSatisfy { $0.exerciseMode.isCardio }
+                TodaySessionTeaser(
+                    title: rest.title,
+                    totalSets: activeExercises.reduce(0) { $0 + $1.sets.count },
+                    actionTitle: "Resume session",
+                    workItemLabel: usesIntervals ? "intervals" : "sets",
+                    onOpenTrain: { AppTabRouter.shared.openTrain() }
+                )
+            } else {
+                Button {
+                    AppTabRouter.shared.openTrain()
+                } label: {
+                    prescriptionShell(subtitle: rest.title, showsChevron: true) {
+                        Text(rest.summary)
+                            .helmType(.body, color: HelmColor.fgSecondary)
+                            .multilineTextAlignment(.leading)
+                    }
                 }
+                .buttonStyle(.helmPressableCard)
             }
-            .buttonStyle(.helmPressableCard)
         case let .prescribed(summary):
+            let activeExercises = sessionController.snapshot?.session.exercises ?? []
+            let usesIntervals = !activeExercises.isEmpty && activeExercises.allSatisfy { $0.exerciseMode.isCardio }
+            let totalWorkItems = sessionController.hasActiveSession
+                ? activeExercises.reduce(0) { $0 + $1.sets.count }
+                : summary.totalSets
             TodaySessionTeaser(
                 title: summary.title,
-                totalSets: summary.totalSets,
+                totalSets: totalWorkItems,
                 phaseLabel: summary.phase.label,
                 readinessAdjusted: summary.readinessAdjusted,
                 actionTitle: sessionController.hasActiveSession ? "Resume session" : "Start session",
+                workItemLabel: usesIntervals ? "intervals" : "sets",
                 onOpenTrain: { AppTabRouter.shared.openTrain() }
             )
         }

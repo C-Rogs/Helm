@@ -10,6 +10,7 @@ struct SetRowView: View {
     let activeField: NumpadTarget?
     let numpadSelectAll: Bool
     let validationMessage: String?
+    var validationSetID: String? = nil
     let advisoryMessage: String?
     let shakeToken: Int
     let badgeText: String?
@@ -55,6 +56,9 @@ struct SetRowView: View {
     }
 
     private var rowValidationMessage: String? {
+        if validationSetID == setEntry.id {
+            return validationMessage ?? advisoryMessage
+        }
         if let activeField, activeField.setID == setEntry.id {
             return validationMessage ?? advisoryMessage
         }
@@ -152,7 +156,18 @@ struct SetRowView: View {
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(isCompleted ? "Undo interval" : "Complete interval")
+                .accessibilityLabel(
+                    isCompleted
+                        ? "Undo interval"
+                        : (isConfirmable ? "Log interval as shown" : "Complete interval")
+                )
+                .accessibilityHint(
+                    isCompleted
+                        ? "Marks this interval as not completed"
+                        : (isConfirmable
+                            ? "Records this interval with the shown values"
+                            : "Enter duration and distance before completing")
+                )
             }
 
             if let rowValidationMessage {
@@ -166,6 +181,7 @@ struct SetRowView: View {
                         .helmType(.monoTag, color: HelmColor.fgSecondary)
                 }
                 .buttonStyle(.helmPressable)
+                .accessibilityLabel("Fill from previous, \(cardioPreviousLabel(previous))")
             }
         }
         .padding(.horizontal, HelmSpacing.xs)
@@ -196,6 +212,15 @@ struct SetRowView: View {
                     ? HelmColor.accent.opacity(0.08)
                     : Color.clear,
                 in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: HelmRadius.sm)
+                    .strokeBorder(
+                        activeField?.setID == setEntry.id && activeField?.field == field
+                            ? HelmColor.accent
+                            : Color.clear,
+                        lineWidth: 1
+                    )
             )
         }
         .buttonStyle(.plain)

@@ -502,7 +502,13 @@ struct InAppWorkoutIsland: View {
             exerciseName: currentExercise.flatMap { controller.exerciseSummaries[$0.exerciseID]?.displayName },
             setNumber: setNumber,
             setCount: currentExercise?.sets.count,
-            targetSummary: currentExercise.flatMap { controller.exerciseTargets[$0.exerciseID] },
+            targetSummary: WatchCompanionSetLine.targetSummary(
+                massKilograms: currentSet?.mass.meaningfulWorkingKilograms,
+                rpe: currentSet?.rpe,
+                durationSeconds: currentSet?.durationSeconds,
+                distanceKilometers: currentSet?.distanceKilometers,
+                fallback: currentExercise.flatMap { controller.exerciseTargets[$0.exerciseID] }
+            ),
             restRemainingSeconds: controller.localRemainingRestSeconds(),
             restEndsAt: restEndsAt,
             heartRateBPM: WatchReadinessBootstrap.coordinator.liveHeartRateBPMForDisplay,

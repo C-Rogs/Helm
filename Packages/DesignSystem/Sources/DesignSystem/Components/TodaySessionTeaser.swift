@@ -7,6 +7,7 @@ public struct TodaySessionTeaser: View {
     public let phaseLabel: String?
     public let readinessAdjusted: Bool
     public let actionTitle: String
+    public let workItemLabel: String
     public let onOpenTrain: () -> Void
 
     public init(
@@ -15,6 +16,7 @@ public struct TodaySessionTeaser: View {
         phaseLabel: String? = nil,
         readinessAdjusted: Bool = false,
         actionTitle: String = "Start session",
+        workItemLabel: String = "sets",
         onOpenTrain: @escaping () -> Void
     ) {
         self.title = title
@@ -22,6 +24,7 @@ public struct TodaySessionTeaser: View {
         self.phaseLabel = phaseLabel
         self.readinessAdjusted = readinessAdjusted
         self.actionTitle = actionTitle
+        self.workItemLabel = workItemLabel
         self.onOpenTrain = onOpenTrain
     }
 
@@ -43,7 +46,7 @@ public struct TodaySessionTeaser: View {
 
                 HStack(spacing: HelmSpacing.xxs) {
                     HelmNumericText(totalSets)
-                    Text("total sets")
+                    Text("total \(workItemLabel)")
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 

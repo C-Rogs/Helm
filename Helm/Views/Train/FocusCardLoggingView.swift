@@ -13,7 +13,6 @@ struct FocusCardLoggingView: View {
 
     @Environment(\.helmReduceMotion) private var reduceMotion
 
-    private let exerciseStripHeight: CGFloat = 40
     /// Live exercises from the controller snapshot.
     private var exercises: [WorkoutSessionExerciseDraft] {
         controller.snapshot?.session.exercises ?? []
@@ -24,18 +23,14 @@ struct FocusCardLoggingView: View {
     var body: some View {
         VStack(spacing: 0) {
             exerciseStrip
-                .frame(height: exerciseStripHeight)
+                .frame(minHeight: HelmLayout.minTapTarget)
 
-            GeometryReader { geo in
-                ScrollView {
-                    VStack(spacing: HelmSpacing.sm) {
-                        cardArea
-                    }
-                    .padding(.horizontal, HelmSpacing.md)
-                    .padding(.bottom, HelmSpacing.md)
-                    .helmVerticalScrollContentWidth(geo.size.width)
+            HelmVerticalPageScroll {
+                VStack(spacing: HelmSpacing.sm) {
+                    cardArea
                 }
-                .helmVerticalScrollContainer()
+                .padding(.horizontal, HelmSpacing.screenGutter)
+                .padding(.bottom, HelmSpacing.md)
             }
         }
         .onAppear {
@@ -69,7 +64,7 @@ struct FocusCardLoggingView: View {
                         Image(systemName: "plus")
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(HelmColor.fgSecondary)
-                            .frame(width: 32, height: 32)
+                            .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
                             .background(HelmColor.surfaceElevated, in: Capsule())
                             .contentShape(Rectangle())
                             .overlay(
@@ -81,7 +76,7 @@ struct FocusCardLoggingView: View {
                     .accessibilityLabel("Add exercise")
                     .padding(.trailing, HelmSpacing.md)
                 }
-                .padding(.horizontal, HelmSpacing.md)
+                .padding(.horizontal, HelmSpacing.screenGutter)
             }
             .onChange(of: currentExerciseIndex) { _, _ in
                 guard let ex = exercises[safe: currentExerciseIndex] else { return }
@@ -162,6 +157,9 @@ struct FocusCardLoggingView: View {
                         ),
                         activeField: controller.numpadTarget,
                         numpadSelectAll: controller.numpadSelectAll,
+                        validationMessage: currentExercise.sets[safe: currentSetIndex]?.id == controller.validationSetID
+                            ? controller.numpadValidationError
+                            : nil,
                         showsPRCelebration: currentExercise.sets[safe: currentSetIndex].map { controller.showsPRCelebration(forSetID: $0.id) } ?? false,
                         encouragementGlyph: currentExercise.sets[safe: currentSetIndex].flatMap { controller.encouragementGlyph(forSetID: $0.id) },
                         fieldDisplayText: { set, field in
@@ -306,7 +304,7 @@ struct FocusCardLoggingView: View {
                     .contentShape(Rectangle())
             }
             .buttonStyle(.helmPressable)
-            .accessibilityLabel("Undo set")
+            .accessibilityLabel(exercise.exerciseMode.isCardio ? "Undo interval" : "Undo set")
         }
         .padding(.horizontal, HelmSpacing.sm)
         .padding(.vertical, HelmSpacing.xs)

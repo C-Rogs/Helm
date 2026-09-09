@@ -30,7 +30,11 @@ public enum TrainSessionProgressFormatter {
         return String(format: "%d:%02d", minutes, remainder)
     }
 
-    public static func setCountLabel(completed: Int, total: Int) -> String {
-        "\(completed)/\(total) sets"
+    public static func setCountLabel(
+        completed: Int,
+        total: Int,
+        workItemLabel: String = "sets"
+    ) -> String {
+        "\(completed)/\(total) \(workItemLabel)"
     }
 }

@@ -50,11 +50,11 @@ struct AppRootView: View {
             else { return }
             let eventID = note.userInfo?[LiveActivityCompleteSetBridge.eventIDKey] as? String
             Task { @MainActor in
-                await TrainBootstrap.sessionController.completeSetIfNeeded(
+                let didComplete = await TrainBootstrap.sessionController.completeSetIfNeeded(
                     sessionExerciseID: exerciseID,
                     setID: setID
                 )
-                if let eventID, !eventID.isEmpty {
+                if didComplete, let eventID, !eventID.isEmpty {
                     WatchReadinessBootstrap.coordinator.acknowledgeCompleteSet(eventID: eventID)
                 }
             }

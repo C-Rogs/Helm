@@ -78,6 +78,7 @@ final class PhoneWorkoutSessionManager: NSObject {
                 }
             }
         } catch {
+            workoutBuilder.discardWorkout()
             workoutSession.end()
             self.session = nil
             self.builder = nil
@@ -98,7 +99,7 @@ final class PhoneWorkoutSessionManager: NSObject {
 
         let endDate = Date()
         let metadata: [String: Any] = [
-            HKMetadataKeyWorkoutBrandName: "Signal",
+            HKMetadataKeyWorkoutBrandName: "Helm",
             "com.cameronro.helm.session_id": sessionID ?? "",
             HKMetadataKeyExternalUUID: sessionID ?? ""
         ]
@@ -126,6 +127,7 @@ final class PhoneWorkoutSessionManager: NSObject {
         self.builder = nil
         self.sessionID = nil
         isActive = false
+        WatchReadinessBootstrap.coordinator.setPhoneHeartRateSessionActive(false)
     }
 
     private func requestAuthorization() async throws {
@@ -215,6 +217,7 @@ extension PhoneWorkoutSessionManager: HKWorkoutSessionDelegate {
                 self.builder = nil
                 self.sessionID = nil
                 WatchReadinessBootstrap.coordinator.clearPhoneHeartRate()
+                WatchReadinessBootstrap.coordinator.setPhoneHeartRateSessionActive(false)
             }
         }
     }
@@ -226,6 +229,7 @@ extension PhoneWorkoutSessionManager: HKWorkoutSessionDelegate {
             self.builder = nil
             self.sessionID = nil
             WatchReadinessBootstrap.coordinator.clearPhoneHeartRate()
+            WatchReadinessBootstrap.coordinator.setPhoneHeartRateSessionActive(false)
             WatchReadinessBootstrap.coordinator.recordDiagnostic(
                 .phoneHeartRateSessionEnd,
                 detail: "fail=\(error.localizedDescription)"

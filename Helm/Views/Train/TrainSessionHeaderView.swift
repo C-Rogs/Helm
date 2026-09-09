@@ -7,6 +7,7 @@ struct TrainSessionHeaderView: View {
     let progress: TrainSessionProgress
     var watchLinkStatus: WatchCompanionLinkStatus = .unavailable
     var showsSetCount = true
+    var workItemLabel = "sets"
 
     var body: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
@@ -24,7 +25,8 @@ struct TrainSessionHeaderView: View {
 
                     Text(TrainSessionProgressFormatter.setCountLabel(
                         completed: progress.completedSetCount,
-                        total: progress.totalSetCount
+                        total: progress.totalSetCount,
+                        workItemLabel: workItemLabel
                     ))
                     .helmType(.monoTag, color: HelmColor.fgSecondary)
                     .helmNumericRoll(value: progress.completedSetCount)
@@ -85,7 +87,7 @@ struct TrainSessionHeaderView: View {
         }
         parts.append("Elapsed \(minutes) minutes \(seconds) seconds")
         if showsSetCount {
-            parts.append("\(progress.completedSetCount) of \(progress.totalSetCount) sets completed")
+            parts.append("\(progress.completedSetCount) of \(progress.totalSetCount) \(workItemLabel) completed")
         }
         return parts.joined(separator: ". ")
     }
