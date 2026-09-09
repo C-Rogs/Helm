@@ -74,6 +74,9 @@ enum ProactiveBootstrap {
         #else
         let charging = false
         #endif
-        await service.refresh(isCharging: charging)
+        // Pattern assembly scans and sorts sleep history; keep it off the UI executor.
+        await Task.detached(priority: .utility) {
+            await service.refresh(isCharging: charging)
+        }.value
     }
 }

@@ -8,7 +8,8 @@
 # Usage:
 #   scripts/profile-hotpath.sh              # benches + report from matrix only
 #   scripts/profile-hotpath.sh --record     # also xctrace record (needs DEST device)
-#   scripts/profile-hotpath.sh --trace PATH # aggregate an existing .trace
+#   scripts/profile-hotpath.sh --trace PATH # aggregate run 1 from an existing .trace
+#   scripts/profile-hotpath.sh --trace PATH --run 2
 #
 # Env:
 #   DEST   xcodebuild destination (default: booted sim / generic like xcodebuild.sh)
@@ -17,10 +18,12 @@ cd "$(dirname "$0")/.."
 
 RECORD=0
 EXISTING_TRACE=""
+RUN_NUMBER=1
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --record) RECORD=1; shift ;;
     --trace) EXISTING_TRACE="$2"; shift 2 ;;
+    --run) RUN_NUMBER="$2"; shift 2 ;;
     -h|--help)
       sed -n '2,20p' "$0"
       exit 0
@@ -31,6 +34,11 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "$RUN_NUMBER" != "1" && "$RUN_NUMBER" != "2" ]]; then
+  echo "--run must be 1 or 2" >&2
+  exit 2
+fi
 
 default_dest() {
   if [[ -n "${DEST:-}" ]]; then
@@ -95,25 +103,25 @@ elif [[ "$RECORD" -eq 1 ]]; then
 fi
 
 if [[ -n "$TRACE_PATH" && -e "$TRACE_PATH" ]]; then
-  echo "==> Exporting hangs + time-profile from $TRACE_PATH"
-  HANGS_XML="/tmp/helm-hotpath-hangs.xml"
-  TP_XML="/tmp/helm-hotpath-tp.xml"
+  echo "==> Exporting hangs + CPU profile from run $RUN_NUMBER of $TRACE_PATH"
+  HANGS_XML="/tmp/helm-hotpath-run${RUN_NUMBER}-hangs.xml"
+  TP_XML="/tmp/helm-hotpath-run${RUN_NUMBER}-cpu.xml"
   xcrun xctrace export --input "$TRACE_PATH" \
-    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="potential-hangs"]' \
+    --xpath "/trace-toc/run[@number=\"$RUN_NUMBER\"]/data/table[@schema=\"potential-hangs\"]" \
     --output "$HANGS_XML" || true
   xcrun xctrace export --input "$TRACE_PATH" \
-    --xpath '/trace-toc/run[@number="1"]/data/table[@schema="time-profile"]' \
+    --xpath "/trace-toc/run[@number=\"$RUN_NUMBER\"]/data/table[@schema=\"cpu-profile\"]" \
     --output "$TP_XML" || true
 fi
 
 echo "==> Aggregating report"
-AGG_ARGS=(--matrix "$MATRIX" --out /tmp/helm-hotpath-report.md)
+AGG_ARGS=(--matrix "$MATRIX" --out "/tmp/helm-hotpath-run${RUN_NUMBER}-report.md")
 [[ -n "$HANGS_XML" && -f "$HANGS_XML" ]] && AGG_ARGS+=(--hangs "$HANGS_XML")
 [[ -n "$TP_XML" && -f "$TP_XML" ]] && AGG_ARGS+=(--time-profile "$TP_XML")
 python3 scripts/aggregate-hotpath-trace.py "${AGG_ARGS[@]}"
 
 echo ""
 echo "Matrix: $MATRIX"
-echo "Report: /tmp/helm-hotpath-report.md"
+echo "Report: /tmp/helm-hotpath-run${RUN_NUMBER}-report.md"
 echo ""
 echo "Instruments POI: SleepFetchOverlapping, ReadinessHistoryBuild"

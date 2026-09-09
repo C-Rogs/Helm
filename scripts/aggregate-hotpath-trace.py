@@ -9,6 +9,7 @@ import re
 import sys
 from collections import Counter
 from pathlib import Path
+from typing import Iterator
 
 
 INTERESTING = (
@@ -50,22 +51,33 @@ def aggregate_time_profile(path: Path) -> dict:
     anyf: Counter[bytes] = Counter()
     bins: Counter[bytes] = Counter()
     samples = 0
-    with path.open("rb") as f:
-        data = f.read()
-    pos = 0
     frame_def = re.compile(br'<frame id="(\d+)" name="([^"]+)"')
     frame_any = re.compile(br'<frame (?:id="(\d+)" name="([^"]+)"|ref="(\d+)")')
     bin_def = re.compile(br'<binary id="(\d+)" name="([^"]+)"')
     bin_any = re.compile(br'<binary (?:id="(\d+)" name="([^"]+)"|ref="(\d+)")')
-    while True:
-        s = data.find(b"<row>", pos)
-        if s < 0:
-            break
-        e = data.find(b"</row>", s)
-        if e < 0:
-            break
-        row = data[s:e]
-        pos = e + 6
+
+    def rows() -> Iterator[bytes]:
+        buffer = b""
+        with path.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                buffer += chunk
+                position = 0
+                while True:
+                    start = buffer.find(b"<row>", position)
+                    if start < 0:
+                        buffer = buffer[-4:]
+                        break
+                    end = buffer.find(b"</row>", start + 5)
+                    if end < 0:
+                        buffer = buffer[start:]
+                        break
+                    yield buffer[start:end]
+                    position = end + 6
+                    if position >= len(buffer):
+                        buffer = b""
+                        break
+
+    for row in rows():
         samples += 1
         for m in frame_def.finditer(row):
             frame_names[m.group(1)] = m.group(2)
