@@ -91,11 +91,17 @@ targets:
         basedOnDependencyAnalysis: false
       - name: Bundle Secrets
         script: |
+          set -eu
           SECRETS_SRC="${SRCROOT}/Secrets"
           SECRETS_DST="${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets"
+          rm -rf "$SECRETS_DST"
           if [ -d "$SECRETS_SRC" ]; then
             mkdir -p "$SECRETS_DST"
-            ditto "$SECRETS_SRC" "$SECRETS_DST"
+            for name in gemini.key openrouter.key spotify-client-id.key linear.key; do
+              if [ -f "$SECRETS_SRC/$name" ]; then
+                cp "$SECRETS_SRC/$name" "$SECRETS_DST/$name"
+              fi
+            done
           fi
         basedOnDependencyAnalysis: false
       - name: Copy Exercise Seed

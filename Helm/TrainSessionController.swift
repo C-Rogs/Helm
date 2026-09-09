@@ -141,7 +141,6 @@ final class TrainSessionController {
     /// True when live HR came from Watch (mirror/WCSession). Prefer Watch HKWorkout; discard phone save.
     private var watchDeliveredHeartRate = false
 
-    private var didSurfaceRestOverrunProactive = false
     private var firedMilestoneQuartiles: Set<Int> = []
     private var watchLiveConfirmTask: Task<Void, Never>?
     private var didRelaunchWatchForReachability = false
@@ -436,20 +435,6 @@ final class TrainSessionController {
     func insertProactiveCoachMessage(_ message: String) {
         appendTrainCoachMessage(role: .assistant, text: message)
         appendCoachThread(role: .assistant, text: message)
-    }
-
-    func handleRestExpiredProactiveCoach() {
-        guard !didSurfaceRestOverrunProactive else { return }
-        didSurfaceRestOverrunProactive = true
-        let message = RestCoachingPolicy.line(
-            phase: .expired,
-            upNextName: upNextExerciseName
-        )
-        ProactiveCoachRouter.surface(
-            message,
-            sessionID: snapshot?.session.id,
-            on: self
-        )
     }
 
     func startWorkout() async {
@@ -1270,17 +1255,11 @@ final class TrainSessionController {
             }
             await reconcileExpiredRestTimer()
             let currentRemaining = localRemainingRestSeconds()
-            let returnedFromBackgroundRest = wasRestRunningOnBackground
             WorkoutHapticCoordinator.handleForegroundReturn(
                 timerID: trackedRestTimerID,
                 wasRunningOnBackground: wasRestRunningOnBackground,
                 currentRemaining: currentRemaining
             )
-            // Rest may have ended off-screen; surface copy once (haptic already handled).
-            if returnedFromBackgroundRest,
-               currentRemaining == nil || currentRemaining == 0 {
-                handleRestExpiredProactiveCoach()
-            }
             wasRestRunningOnBackground = false
             previousRestRemaining = currentRemaining
             startLiveActivityHeartbeat()
@@ -1299,9 +1278,6 @@ final class TrainSessionController {
     }
 
     func handleRestRemainingSecondsChange(_ currentRemaining: Int?) {
-        if let currentRemaining, currentRemaining > 0 {
-            didSurfaceRestOverrunProactive = false
-        }
         let timerID = snapshot?.restTimer?.id
         let previous = previousRestRemaining
         // Mutate Observable state before haptic/audio side effects.
@@ -1312,10 +1288,6 @@ final class TrainSessionController {
             previousRemaining: previous,
             currentRemaining: currentRemaining
         )
-        // Copy only; restDone haptic/sound already fired above. Do not ring again.
-        if let previous, previous > 0, currentRemaining == 0 {
-            handleRestExpiredProactiveCoach()
-        }
     }
 
     func syncSideEffects(restRemainingOverride: Int? = nil, force: Bool = false) async {
@@ -1409,8 +1381,6 @@ final class TrainSessionController {
         await syncSideEffects(restRemainingOverride: 0, force: true)
         await Self.reclaimMainThread()
         syncRestTimerMonitor()
-        // Notification tap / cold recover may skip the previous>0 → 0 tick path.
-        handleRestExpiredProactiveCoach()
     }
 
     func syncRestTimerMonitor() {
@@ -3097,7 +3067,6 @@ final class TrainSessionController {
         accessoryToastClearTask = nil
         accessoryToast = nil
         coachPeekSnippet = nil
-        didSurfaceRestOverrunProactive = false
         firedMilestoneQuartiles = []
         coachPromptText = ""
         coachMessages = []
