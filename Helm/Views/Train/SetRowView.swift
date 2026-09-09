@@ -43,7 +43,6 @@ struct SetRowView: View {
             return (setEntry.durationSeconds ?? previous?.durationSeconds ?? 0) > 0
         case .distanceDuration:
             return (setEntry.durationSeconds ?? previous?.durationSeconds ?? 0) > 0
-                && (setEntry.distanceKilometers ?? previous?.distanceKilometers ?? 0) > 0
         }
     }
 
@@ -66,6 +65,9 @@ struct SetRowView: View {
     }
 
     private var rowShakeToken: Int {
+        if validationSetID == setEntry.id {
+            return shakeToken
+        }
         guard let activeField, activeField.setID == setEntry.id else { return 0 }
         return shakeToken
     }
@@ -166,7 +168,7 @@ struct SetRowView: View {
                         ? "Marks this interval as not completed"
                         : (isConfirmable
                             ? "Records this interval with the shown values"
-                            : "Enter duration and distance before completing")
+                            : "Enter duration before completing")
                 )
             }
 

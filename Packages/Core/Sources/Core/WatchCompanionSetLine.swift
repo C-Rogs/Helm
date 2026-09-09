@@ -21,9 +21,10 @@ public enum WatchCompanionSetLine {
         fallback: String?
     ) -> String? {
         let resolvedDuration = durationSeconds.flatMap { $0 > 0 ? durationLabel(seconds: $0) : nil }
+            ?? duration(from: fallback).map { "\($0) min" }
         let resolvedDistance = distanceKilometers.flatMap { value in
             value.isFinite && value > 0 ? "\(displayNumber(value)) km" : nil
-        }
+        } ?? kilometers(from: fallback).map { "\($0) km" }
         let resolvedMass = massKilograms.flatMap { value in
             value.isFinite && value > 0 ? displayNumber(value) : nil
         } ?? kilograms(from: fallback)

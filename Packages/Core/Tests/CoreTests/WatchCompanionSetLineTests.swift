@@ -101,4 +101,17 @@ struct WatchCompanionSetLineTests {
             ) == "Set 1/1 . 10 MIN . 1.5 KM . rpe 7"
         )
     }
+
+    @Test("missing cardio values fall back independently")
+    func partialCardioIntervalTargets() {
+        #expect(
+            WatchCompanionSetLine.targetSummary(
+                massKilograms: nil,
+                rpe: 8,
+                durationSeconds: nil,
+                distanceKilometers: nil,
+                fallback: "12 min · 2.5 km · RPE 7"
+            ) == "12 min · 2.5 km · RPE 8"
+        )
+    }
 }

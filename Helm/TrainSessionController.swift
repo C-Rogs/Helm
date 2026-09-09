@@ -914,7 +914,9 @@ final class TrainSessionController {
                 if mass == nil { mass = previous.mass }
                 if reps == nil { reps = previous.reps }
                 if durationSeconds == nil { durationSeconds = previous.durationSeconds }
-                if distanceKilometers == nil { distanceKilometers = previous.distanceKilometers }
+                if !mode.isCardio, distanceKilometers == nil {
+                    distanceKilometers = previous.distanceKilometers
+                }
                 try await store.logSet(
                     setID: setID,
                     update: SetLogUpdate(
