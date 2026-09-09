@@ -4,6 +4,7 @@ import Persistence
 
 enum ReadinessBootstrap {
     private static let engine = ReadinessEngine(persistence: PersistenceBootstrap.persistenceStore)
+    @MainActor private static var startupRefreshTask: Task<Void, Never>?
 
     @MainActor
     static let readinessService = ReadinessService(engine: engine)
@@ -12,7 +13,9 @@ enum ReadinessBootstrap {
 
     @MainActor
     static func start() {
-        Task(priority: .userInitiated) { @MainActor in
+        guard startupRefreshTask == nil else { return }
+
+        startupRefreshTask = Task(priority: .userInitiated) { @MainActor in
             // Convert legacy per-sample TRIMP history before any recompute reads it.
             try? await engine.migrateTRIMPEpochIfNeeded()
 
@@ -23,6 +26,17 @@ enum ReadinessBootstrap {
 
         Task(priority: .utility) { @MainActor in
             observeIngest()
+        }
+    }
+
+    /// Dashboard launch joins the startup compute when present, preventing a second
+    /// 30-day history rebuild after the bootstrap task has already completed.
+    @MainActor
+    static func refreshForDashboard() async {
+        if let startupRefreshTask {
+            await startupRefreshTask.value
+        } else {
+            await readinessService.refresh()
         }
     }
 

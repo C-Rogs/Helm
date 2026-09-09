@@ -125,7 +125,7 @@ struct DashboardView: View {
             .task {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
                 guard !Task.isCancelled else { return }
-                await readinessService.refresh()
+                await ReadinessBootstrap.refreshForDashboard()
                 await refreshDependentContent(for: readinessService.state.score)
                 await loadSleepSummary()
                 muscleVolumeStore.refresh()
