@@ -133,7 +133,7 @@ struct ProgressHubView: View {
                 MuscleDistributionCard(rows: progressAnalyticsStore.snapshot.muscleDistribution)
                 ExerciseProgressHighlightsCard(
                     rows: progressAnalyticsStore.snapshot.exerciseHighlights,
-                    onSelectExercise: { exerciseID in
+                    onOpenDetailedTrends: { exerciseID in
                         trendsController.selectExercise(id: exerciseID)
                     }
                 )
