@@ -26,7 +26,17 @@ final class CloudFeatureConsentPreferences {
 
     private init(defaults: UserDefaults = .standard) {
         self.defaults = defaults
-        isConsented = defaults.bool(forKey: Self.consentedKey)
+        if !defaults.bool(forKey: Self.decidedKey),
+           defaults.bool(forKey: OnboardingStore.completedDefaultsKey) {
+            // Before this preference existed, completed onboarding implied that
+            // cloud-backed Coach behavior was available. Preserve that behavior
+            // for upgrades; new installs remain opt-in through onboarding.
+            isConsented = true
+            defaults.set(true, forKey: Self.consentedKey)
+            defaults.set(true, forKey: Self.decidedKey)
+        } else {
+            isConsented = defaults.bool(forKey: Self.consentedKey)
+        }
     }
 
     func accept() {

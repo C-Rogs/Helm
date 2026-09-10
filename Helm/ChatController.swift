@@ -57,6 +57,8 @@ final class ChatController {
     private let providerPreferences: ProviderPreferencesStore
     private var streamTask: Task<Void, Never>?
     private var isFoodDictationTurn = false
+    private static let cloudFeaturesOffMessage =
+        "Cloud features are off. Turn them on in Settings to use Coach."
 
     init(
         persistence: PersistenceStore,
@@ -121,12 +123,7 @@ final class ChatController {
 
     func refreshAvailability() async {
         guard CloudFeatureConsentPreferences.shared.isConsented else {
-            isCoachAvailable = false
-            degradedState = CoachDegradedState(
-                mode: .engineOnly,
-                reason: .providerUnavailable,
-                userMessage: "Cloud features are off. Turn them on in Settings to use Coach."
-            )
+            markCloudFeaturesUnavailable()
             return
         }
 
@@ -142,6 +139,15 @@ final class ChatController {
                 userMessage: helpText ?? label
             )
         }
+    }
+
+    private func markCloudFeaturesUnavailable() {
+        isCoachAvailable = false
+        degradedState = CoachDegradedState(
+            mode: .engineOnly,
+            reason: .providerUnavailable,
+            userMessage: Self.cloudFeaturesOffMessage
+        )
     }
 
     func send() {
@@ -568,6 +574,14 @@ final class ChatController {
     }
 
     private func sendMessage(_ text: String, coachUserMessage: String? = nil) async {
+        guard CloudFeatureConsentPreferences.shared.isConsented else {
+            let wasFoodDictation = isFoodDictationTurn
+            isFoodDictationTurn = false
+            markCloudFeaturesUnavailable()
+            lastTurnError = wasFoodDictation ? Self.cloudFeaturesOffMessage : nil
+            return
+        }
+
         let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
         let availability = await provider.availability()
         guard availability.isAvailable else {
@@ -589,10 +603,8 @@ final class ChatController {
             }
             // Nutrition describe sheet only watches lastTurnError - surface key/provider gaps there.
             if wasFoodDictation {
-            lastTurnError = CloudFeatureConsentPreferences.shared.isConsented
-                ? (degradedState?.userMessage
-                    ?? "Coach is unavailable. Check Coach settings and try again.")
-                : "Cloud features are off. Turn them on in Settings to use Coach."
+                lastTurnError = degradedState?.userMessage
+                    ?? "Coach is unavailable. Check Coach settings and try again."
             }
             return
         }

@@ -2,15 +2,16 @@ import CoachLLM
 import Foundation
 
 enum CoachBootstrap {
+    @MainActor
     static func start() {
-        Task { @MainActor in
-            refreshProvider()
-            #if !DEBUG
-            if CloudFeatureConsentPreferences.shared.isConsented {
+        refreshProvider()
+        #if !DEBUG
+        if CloudFeatureConsentPreferences.shared.isConsented {
+            Task { @MainActor in
                 _ = await OpenRouterKeyProvisioner.provisionIfNeeded()
             }
-            #endif
         }
+        #endif
     }
 
     @MainActor

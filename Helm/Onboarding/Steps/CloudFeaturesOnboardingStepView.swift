@@ -18,6 +18,7 @@ struct CloudFeaturesOnboardingStepView: View {
             skipTitle: "Keep features on device",
             onPrimary: {
                 consent.accept()
+                CoachBootstrap.start()
                 onContinue()
             },
             onBack: onBack,
