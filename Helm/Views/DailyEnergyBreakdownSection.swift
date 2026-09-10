@@ -4,11 +4,19 @@ import SwiftUI
 
 struct DailyEnergyBreakdownSection: View {
     let breakdown: DailyEnergyBreakdown
+    @State private var isShowingDescriptor = false
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.sm) {
-            Text("Energy breakdown")
-                .helmType(.label)
+            HStack(spacing: HelmSpacing.xs) {
+                Text("Energy breakdown")
+                    .helmType(.label)
+                HelmExplainInfoButton(
+                    accessibilityLabel: "Explain energy breakdown"
+                ) {
+                    isShowingDescriptor = true
+                }
+            }
 
             summaryRows
 
@@ -17,10 +25,13 @@ struct DailyEnergyBreakdownSection: View {
             }
 
             otherActivityRow
-
-            Text("Workout burn is nested inside Apple Health active energy, not added on top.")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+        }
+        .popover(isPresented: $isShowingDescriptor, arrowEdge: .top) {
+            Text("Active is the total active energy reported by Apple Health. Workout burn is included in Active. Other activity is the remaining active energy after workout contributors are reconciled.")
+                .helmType(.body, color: HelmColor.fgSecondary)
                 .fixedSize(horizontal: false, vertical: true)
+                .padding(HelmSpacing.md)
+                .presentationCompactAdaptation(.popover)
         }
     }
 
@@ -29,18 +40,14 @@ struct DailyEnergyBreakdownSection: View {
             if let intake = breakdown.intakeKcal {
                 energyRow(
                     label: "In",
-                    value: "\(intake) kcal",
-                    detail: "Logged food",
-                    provenance: nil
+                    value: "\(intake) kcal"
                 )
             }
 
             if let resting = breakdown.restingKcal {
                 energyRow(
                     label: "Resting",
-                    value: "\(resting) kcal",
-                    detail: EnergyProvenance.appleHealth.displayLabel,
-                    provenance: EnergyProvenance.appleHealth.displayLabel
+                    value: "\(resting) kcal"
                 )
             }
 
@@ -49,9 +56,7 @@ struct DailyEnergyBreakdownSection: View {
             if let totalOut = breakdown.totalOutKcal {
                 energyRow(
                     label: "Total out",
-                    value: "\(totalOut) kcal",
-                    detail: "Resting + active",
-                    provenance: EnergyProvenance.appleHealth.displayLabel
+                    value: "\(totalOut) kcal"
                 )
             }
 
@@ -59,8 +64,6 @@ struct DailyEnergyBreakdownSection: View {
                 energyRow(
                     label: "Net",
                     value: signedKcal(net),
-                    detail: net >= 0 ? "Surplus" : "Deficit",
-                    provenance: nil,
                     valueColor: net >= 0 ? HelmColor.ready : HelmColor.depleted
                 )
             }
@@ -76,24 +79,18 @@ struct DailyEnergyBreakdownSection: View {
             if let partial, partial > 0 {
                 energyRow(
                     label: "Active",
-                    value: "\(partial) kcal",
-                    detail: ActiveEnergyDisplayCopy.stalePartial,
-                    provenance: EnergyProvenance.appleHealth.displayLabel
+                    value: "\(partial) kcal"
                 )
             } else {
                 energyRow(
                     label: "Active",
-                    value: "Syncing",
-                    detail: ActiveEnergyDisplayCopy.stalePending,
-                    provenance: EnergyProvenance.appleHealth.displayLabel
+                    value: "Syncing"
                 )
             }
         case let .fresh(active):
             energyRow(
                 label: "Active",
-                value: "\(active) kcal",
-                detail: ActiveEnergyDisplayCopy.freshDetail,
-                provenance: EnergyProvenance.appleHealth.displayLabel
+                value: "\(active) kcal"
             )
         }
     }
@@ -106,9 +103,7 @@ struct DailyEnergyBreakdownSection: View {
             ForEach(breakdown.workoutContributors) { contributor in
                 energyRow(
                     label: contributor.title,
-                    value: "\(contributor.kilocalories) kcal",
-                    detail: contributor.detail ?? contributor.provenance.displayLabel,
-                    provenance: contributor.provenance.displayLabel
+                    value: "\(contributor.kilocalories) kcal"
                 )
             }
         }
@@ -122,24 +117,18 @@ struct DailyEnergyBreakdownSection: View {
         case .syncing:
             energyRow(
                 label: "Other activity",
-                value: "Syncing",
-                detail: "Apple Health is still reconciling today's active energy",
-                provenance: EnergyProvenance.appleHealth.displayLabel
+                value: "Syncing"
             )
-        case let .unreconciled(workoutTotal, activeTotal):
+        case .unreconciled:
             energyRow(
                 label: "Other activity",
-                value: "Unreconciled",
-                detail: "Workouts report \(workoutTotal) kcal inside \(activeTotal) kcal active. Refresh after Apple Health catches up.",
-                provenance: EnergyProvenance.appleHealth.displayLabel
+                value: "Unreconciled"
             )
         case let .reconciled(kilocalories):
             if kilocalories > 0 {
                 energyRow(
                     label: "Other activity",
-                    value: "\(kilocalories) kcal",
-                    detail: "Steps and movement outside logged workouts",
-                    provenance: EnergyProvenance.appleHealth.displayLabel
+                    value: "\(kilocalories) kcal"
                 )
             }
         }
@@ -148,28 +137,14 @@ struct DailyEnergyBreakdownSection: View {
     private func energyRow(
         label: String,
         value: String,
-        detail: String,
-        provenance: String?,
         valueColor: Color = HelmColor.fg
     ) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
-            HStack(alignment: .firstTextBaseline) {
-                Text(label)
-                    .helmType(.body, color: HelmColor.fgSecondary)
-                Spacer()
-                Text(value)
-                    .helmType(.body, color: valueColor)
-            }
-            HStack(spacing: HelmSpacing.xxs) {
-                Text(detail)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-                if let provenance {
-                    Text("·")
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                    Text(provenance)
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                }
-            }
+        HStack(alignment: .firstTextBaseline) {
+            Text(label)
+                .helmType(.body, color: HelmColor.fgSecondary)
+            Spacer()
+            Text(value)
+                .helmType(.body, color: valueColor)
         }
         .padding(.vertical, HelmSpacing.xxs)
     }
