@@ -226,13 +226,6 @@ struct NutritionDaySummaryCard: View {
             Text(dayTitle)
                 .helmType(.label)
             Spacer()
-            if let demand = snapshot.budgetDay?.demand {
-                Text(demand.displayLabel)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-            } else {
-                Text(snapshot.dayType.rawValue.capitalized)
-                    .helmType(.monoTag, color: HelmColor.fgMuted)
-            }
             Text(snapshot.phase.label)
                 .helmType(.monoTag, color: HelmColor.accent)
             if explainMetric != nil, onAskCoach != nil {
