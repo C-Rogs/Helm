@@ -120,6 +120,16 @@ final class ChatController {
     }
 
     func refreshAvailability() async {
+        guard CloudFeatureConsentPreferences.shared.isConsented else {
+            isCoachAvailable = false
+            degradedState = CoachDegradedState(
+                mode: .engineOnly,
+                reason: .providerUnavailable,
+                userMessage: "Cloud features are off. Turn them on in Settings to use Coach."
+            )
+            return
+        }
+
         let provider = ProviderRegistry.shared.provider(for: providerPreferences.selectedProvider)
         let availability = await provider.availability()
         isCoachAvailable = availability.isAvailable
@@ -579,8 +589,10 @@ final class ChatController {
             }
             // Nutrition describe sheet only watches lastTurnError - surface key/provider gaps there.
             if wasFoodDictation {
-                lastTurnError = degradedState?.userMessage
-                    ?? "Coach is unavailable. Try Search or add your Gemini API key in Settings."
+            lastTurnError = CloudFeatureConsentPreferences.shared.isConsented
+                ? (degradedState?.userMessage
+                    ?? "Coach is unavailable. Check Coach settings and try again.")
+                : "Cloud features are off. Turn them on in Settings to use Coach."
             }
             return
         }

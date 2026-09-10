@@ -23,6 +23,7 @@ struct DashboardView: View {
     @State private var contributorDetailsVisible = true
     @State private var sleepSummary: SleepNightSummary?
     @State private var showSettings = false
+    @State private var showCloudFeaturesSettings = false
     @State private var todayStepCount: Int?
     @AppStorage(StepGoalPreferences.isEnabledKey) private var stepGoalEnabled = false
     @AppStorage(StepGoalPreferences.goalCountKey) private var stepGoalCount =
@@ -105,6 +106,9 @@ struct DashboardView: View {
             .navigationDestination(isPresented: $showSettings) {
                 SettingsView()
             }
+            .navigationDestination(isPresented: $showCloudFeaturesSettings) {
+                CloudFeaturesSettingsView()
+            }
             .sheet(isPresented: $isShowingReadinessExplain) {
                 if case let .scored(score) = readinessService.state {
                     ExplainSheet(
@@ -120,6 +124,11 @@ struct DashboardView: View {
                 guard pending else { return }
                 showSettings = true
                 tabRouter.consumePendingOpenSettings()
+            }
+            .onChange(of: tabRouter.pendingOpenCloudFeatures) { _, pending in
+                guard pending else { return }
+                showCloudFeaturesSettings = true
+                tabRouter.consumePendingOpenCloudFeatures()
             }
             .environment(\.helmStaggerBaseDelay, HelmMotion.standard)
             .task {

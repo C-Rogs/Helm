@@ -236,12 +236,22 @@ struct ChatView: View {
     }
 
     private func degradedBanner(_ state: CoachDegradedState) -> some View {
-        HStack(spacing: HelmSpacing.sm) {
-            HelmIconView(bannerIcon(for: state.reason), context: .inline)
-                .foregroundStyle(HelmColor.fgSecondary)
-            Text(state.userMessage)
-                .helmType(.body, color: HelmColor.fgSecondary)
-                .frame(maxWidth: .infinity, alignment: .leading)
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            HStack(alignment: .top, spacing: HelmSpacing.sm) {
+                HelmIconView(bannerIcon(for: state.reason), context: .inline)
+                    .foregroundStyle(HelmColor.fgSecondary)
+                Text(state.userMessage)
+                    .helmType(.body, color: HelmColor.fgSecondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            if !CloudFeatureConsentPreferences.shared.isConsented {
+                Button("Turn on Cloud features in Settings") {
+                    AppTabRouter.shared.openCloudFeaturesSettings()
+                }
+                .buttonStyle(.helmSecondary)
+                .accessibilityHint("Opens Settings where Cloud features can be turned on")
+            }
         }
         .padding(.horizontal, HelmSpacing.md)
         .padding(.vertical, HelmSpacing.sm)
