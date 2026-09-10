@@ -109,7 +109,7 @@ struct InSessionCoachSheet: View {
 
                 composer
             }
-            .helmScreenBackground(ignoreKeyboard: false)
+            .scrollContentBackground(.hidden)
             .navigationTitle(coachName)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -147,6 +147,7 @@ struct InSessionCoachSheet: View {
         }
         .presentationDetents([.fraction(0.28), .medium, .large])
         .presentationDragIndicator(.visible)
+        .presentationBackground(.clear)
         .alert("Copied", isPresented: $didCopyExport) {
             Button("OK", role: .cancel) {}
         } message: {
