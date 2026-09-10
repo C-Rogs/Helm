@@ -71,6 +71,8 @@ final class UsualMealNotificationScheduler {
 
         for bucket in MealBucket.allCases {
             let identifier = UsualMealNotificationPlanner.notificationIdentifier(day: day, bucket: bucket)
+            let hasPending = pending.contains(where: { $0.identifier == identifier })
+            let hasDelivered = delivered.contains(where: { $0.request.identifier == identifier })
             guard !UsualMealPreferences.isSkipped(day: day, bucket: bucket) else {
                 await cancel(identifier: identifier)
                 continue
@@ -84,7 +86,15 @@ final class UsualMealNotificationScheduler {
                 await cancel(identifier: identifier)
                 continue
             }
-            if delivered.contains(where: { $0.request.identifier == identifier }) {
+            if UsualMealPreferences.isNudgeCoolingDown(bucket: bucket, now: now) {
+                if hasPending || hasDelivered {
+                    continue
+                }
+                await cancel(identifier: identifier)
+                continue
+            }
+            if hasDelivered {
+                UsualMealPreferences.markNudgeOffered(bucket: bucket, at: now)
                 continue
             }
             let loggedAts = samples.flatMap { $0.meals.map(\.loggedAt) }
@@ -98,7 +108,7 @@ final class UsualMealNotificationScheduler {
                 await cancel(identifier: identifier)
                 continue
             }
-            if pending.contains(where: { $0.identifier == identifier }) {
+            if hasPending {
                 // Refresh pending only - keep delivered so we don't re-arm after delivery.
                 await center.removePendingNotificationRequests(withIdentifiers: [identifier])
             }
@@ -112,7 +122,12 @@ final class UsualMealNotificationScheduler {
 
             let trigger = UNTimeIntervalNotificationTrigger(timeInterval: max(interval, 1), repeats: false)
             let request = UNNotificationRequest(identifier: identifier, content: content, trigger: trigger)
-            try? await center.add(request)
+            do {
+                try await center.add(request)
+                UsualMealPreferences.markNudgeOffered(bucket: bucket, at: now)
+            } catch {
+                continue
+            }
         }
     }
 
@@ -137,13 +152,13 @@ final class UsualMealNotificationScheduler {
         await cancel(identifier: UsualMealNotificationPlanner.notificationIdentifier(day: day, bucket: bucket))
     }
 
-    /// Drop pending usual-meal requests for the day. Leaves delivered alone so a later
-    /// `reschedule` cannot re-fire buckets that already notified today.
-    func cancelPending(for day: HelmDay) async {
-        let identifiers = MealBucket.allCases.map {
-            UsualMealNotificationPlanner.notificationIdentifier(day: day, bucket: $0)
+    /// Remove reminders for buckets that now contain a meal. Keep delivered reminders
+    /// for still-empty buckets so a later reschedule cannot re-arm them.
+    func cancelLogged(for day: HelmDay) async {
+        let buckets = Set((try? persistence.nutrition.fetchMeals(for: day).map(\.bucket)) ?? [])
+        for bucket in buckets {
+            await cancel(day: day, bucket: bucket)
         }
-        await center.removePendingNotificationRequests(withIdentifiers: identifiers)
     }
 
     private func cancel(identifier: String) async {

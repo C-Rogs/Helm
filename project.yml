@@ -199,6 +199,18 @@ targets:
         embed: true
       - target: HelmShare
         embed: true
+  HelmTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - HelmTests
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.cameronro.helm.tests
+        GENERATE_INFOPLIST_FILE: YES
+        TARGETED_DEVICE_FAMILY: "1"
+    dependencies:
+      - target: Helm
   HelmUITests:
     type: bundle.ui-testing
     platform: iOS
@@ -309,6 +321,7 @@ schemes:
     build:
       targets:
         Helm: all
+        HelmTests: [test]
         HelmShare: all
         HelmWatch: all
         HelmUITests: [test]
@@ -317,6 +330,7 @@ schemes:
     test:
       config: Debug
       targets:
+        - HelmTests
         - HelmUITests
         - package: Domain/PatternKitTests
         - package: Persistence/PersistenceTests

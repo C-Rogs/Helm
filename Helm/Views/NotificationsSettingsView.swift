@@ -110,7 +110,7 @@ struct NotificationsSettingsView: View {
             } header: {
                 Text("Food logging")
             } footer: {
-                Text("Asks once per meal if that slot is still empty and you have a usual from recent logs. Yes logs it. Festival mode pauses these.")
+                Text("Asks at most once a week per meal when that slot is empty and recent logs show a repeated usual. Yes logs it. Festival mode pauses these.")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
 

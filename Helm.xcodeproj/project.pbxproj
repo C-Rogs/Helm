@@ -249,6 +249,7 @@
 		C2B1CBFAFDC0EC9B08F418B4 /* WatchWorkoutSessionLifecycleTracker.swift in Sources */ = {isa = PBXBuildFile; fileRef = D6BD494E68B5D3D03BF91C3F /* WatchWorkoutSessionLifecycleTracker.swift */; };
 		C48F79B428283DD80D62EC52 /* WatchWorkoutLaunchBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = CEB49E94526778CBCD171A92 /* WatchWorkoutLaunchBridge.swift */; };
 		C5F842C14A456091C1B1EC87 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 88F44550306FA5A33BEFC537 /* Assets.xcassets */; };
+		C5FD0DE71A6FED74A489EE92 /* UsualMealNudgeTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD79905C03153F32660A252C /* UsualMealNudgeTests.swift */; };
 		C6ADF55A0E3B453E61CBE53A /* WorkoutSessionSideEffects.swift in Sources */ = {isa = PBXBuildFile; fileRef = A9E0109DD30A97AAF5DE7F2C /* WorkoutSessionSideEffects.swift */; };
 		C6C44BFF48DC039C035EA405 /* ExerciseSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D1240B315B6B2120DDD331CA /* ExerciseSectionView.swift */; };
 		C8804AFEDC9815C9C00484FC /* ProgressAnalyticsStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = C802EB2D820F240C1BC13C30 /* ProgressAnalyticsStore.swift */; };
@@ -360,6 +361,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = E159A873B86CCE50ABD86A4F;
 			remoteInfo = HelmShare;
+		};
+		2FCBB00079764D83CEF0B600 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = E5945378979AE75AA69216F7 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 99E4676A382CEA1F9A5AE6C1;
+			remoteInfo = Helm;
 		};
 		82416DA0A7A509F2FB8AE8B1 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -630,6 +638,7 @@
 		AC9102F5A201EC033CB767E0 /* MorningBriefAutomationGuideView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MorningBriefAutomationGuideView.swift; sourceTree = "<group>"; };
 		AF5EC68FB1B8FD3686AFD4A3 /* ReccoBeatsSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReccoBeatsSongTempoProvider.swift; sourceTree = "<group>"; };
 		AFB878F4BA5B5A0E1FB8244E /* MealDepthCameraView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealDepthCameraView.swift; sourceTree = "<group>"; };
+		AFE490BB33586AACBDEA44E2 /* HelmTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = HelmTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		AFEA77FA7C81C86058E1CBA7 /* ExerciseImageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseImageView.swift; sourceTree = "<group>"; };
 		B10704A6844A8E72BA3B1C78 /* FoodLogTipStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FoodLogTipStore.swift; sourceTree = "<group>"; };
 		B426D8758F266B7E04B1F08C /* HelmWatchApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmWatchApp.swift; sourceTree = "<group>"; };
@@ -719,6 +728,7 @@
 		F91F2E3194632AA180E17439 /* SourcesMethodologyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SourcesMethodologyView.swift; sourceTree = "<group>"; };
 		F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarHintStatusView.swift; sourceTree = "<group>"; };
 		FC587134C8EB2C87F3B76479 /* TrendsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsView.swift; sourceTree = "<group>"; };
+		FD79905C03153F32660A252C /* UsualMealNudgeTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealNudgeTests.swift; sourceTree = "<group>"; };
 		FEEF754F3E09C21EF17863B4 /* WorkoutSessionLifecycleTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutSessionLifecycleTracker.swift; sourceTree = "<group>"; };
 		FF54CE6D1CD4E3D68BBB9B35 /* TrainSessionController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainSessionController.swift; sourceTree = "<group>"; };
 		FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FriendsReleasePreferences.swift; sourceTree = "<group>"; };
@@ -1076,6 +1086,7 @@
 			children = (
 				8D835BB050C165B2974D4A41 /* Helm.app */,
 				ED1B211D964D5382DF275D95 /* HelmShare.appex */,
+				AFE490BB33586AACBDEA44E2 /* HelmTests.xctest */,
 				04567CF083B4C469EA782E32 /* HelmUITests.xctest */,
 				053F9ED9C33440FD2497E414 /* HelmWatch.app */,
 				38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */,
@@ -1200,6 +1211,7 @@
 				494352EE369BB11D85D6FD93 /* Helm */,
 				EB256D6CA3DC8F2B2389469E /* HelmIntents */,
 				4A30B047C7CB11554B5417DE /* HelmShare */,
+				F2C4C096765F17C7869D4845 /* HelmTests */,
 				6F4926D2E8424FCC3FD48E9B /* HelmUITests */,
 				4519BA9FC6E7EAFF14C36642 /* HelmWatch */,
 				899977D38DEF0F21C1B95DFA /* HelmWatchWidgets */,
@@ -1373,6 +1385,14 @@
 			path = HelmIntents;
 			sourceTree = "<group>";
 		};
+		F2C4C096765F17C7869D4845 /* HelmTests */ = {
+			isa = PBXGroup;
+			children = (
+				FD79905C03153F32660A252C /* UsualMealNudgeTests.swift */,
+			);
+			path = HelmTests;
+			sourceTree = "<group>";
+		};
 		F6FA3C0FB1C4A821B51E3A85 /* Workout */ = {
 			isa = PBXGroup;
 			children = (
@@ -1422,6 +1442,24 @@
 			productName = HelmWidgets;
 			productReference = DD0599286ECBAC737BFFA983 /* HelmWidgets.appex */;
 			productType = "com.apple.product-type.app-extension";
+		};
+		29A52200E570179E90B2DDAF /* HelmTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 0806E165CB33F917763D5949 /* Build configuration list for PBXNativeTarget "HelmTests" */;
+			buildPhases = (
+				4E4F5877ED52B860AD92CCAE /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				1034283E3A0D0A92EAE76D4D /* PBXTargetDependency */,
+			);
+			name = HelmTests;
+			packageProductDependencies = (
+			);
+			productName = HelmTests;
+			productReference = AFE490BB33586AACBDEA44E2 /* HelmTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
 		};
 		99E4676A382CEA1F9A5AE6C1 /* Helm */ = {
 			isa = PBXNativeTarget;
@@ -1540,6 +1578,10 @@
 						DevelopmentTeam = SXWJBD2V3V;
 						ProvisioningStyle = Automatic;
 					};
+					29A52200E570179E90B2DDAF = {
+						DevelopmentTeam = SXWJBD2V3V;
+						ProvisioningStyle = Automatic;
+					};
 					99E4676A382CEA1F9A5AE6C1 = {
 						DevelopmentTeam = SXWJBD2V3V;
 						ProvisioningStyle = Automatic;
@@ -1585,6 +1627,7 @@
 			targets = (
 				99E4676A382CEA1F9A5AE6C1 /* Helm */,
 				E159A873B86CCE50ABD86A4F /* HelmShare */,
+				29A52200E570179E90B2DDAF /* HelmTests */,
 				22A80A6D6529E47F0243F0BE /* HelmUITests */,
 				F3EA07921D7C19E2AAF76135 /* HelmWatch */,
 				C0D6DA97A19AA02637C54AF3 /* HelmWatchWidgets */,
@@ -2015,6 +2058,14 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		4E4F5877ED52B860AD92CCAE /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				C5FD0DE71A6FED74A489EE92 /* UsualMealNudgeTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		77DA6964D0625869E05ACF7A /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -2054,6 +2105,11 @@
 			isa = PBXTargetDependency;
 			target = E159A873B86CCE50ABD86A4F /* HelmShare */;
 			targetProxy = 2E9A07F13D168A63CF612888 /* PBXContainerItemProxy */;
+		};
+		1034283E3A0D0A92EAE76D4D /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 99E4676A382CEA1F9A5AE6C1 /* Helm */;
+			targetProxy = 2FCBB00079764D83CEF0B600 /* PBXContainerItemProxy */;
 		};
 		6B502BA2FBD267F4D5ABD51B /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -2101,6 +2157,40 @@
 				TARGETED_DEVICE_FAMILY = 1;
 			};
 			name = Release;
+		};
+		089A9AA9D8062BE676BFA827 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Helm.app/Helm";
+			};
+			name = Release;
+		};
+		1556E957AF46BF016A0B4E73 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.cameronro.helm.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Helm.app/Helm";
+			};
+			name = Debug;
 		};
 		27FE985DE457A258418B9760 /* Release */ = {
 			isa = XCBuildConfiguration;
@@ -2447,6 +2537,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		0806E165CB33F917763D5949 /* Build configuration list for PBXNativeTarget "HelmTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1556E957AF46BF016A0B4E73 /* Debug */,
+				089A9AA9D8062BE676BFA827 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 		2856FE909638B8AD9777345D /* Build configuration list for PBXNativeTarget "HelmUITests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

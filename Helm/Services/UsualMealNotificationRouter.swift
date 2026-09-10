@@ -53,6 +53,7 @@ enum UsualMealNotificationRouter {
         case UsualMealNotificationPlanner.skipActionID:
             UsualMealPreferences.skip(day: day, bucket: bucket)
             await NutritionBootstrap.usualMealScheduler.cancel(day: day, bucket: bucket)
+            NutritionBootstrap.refreshNutrition(for: day)
         case UsualMealNotificationPlanner.otherActionID:
             storePendingOther(day: day, bucket: bucket, startSearch: true)
             await processPendingIfForeground()

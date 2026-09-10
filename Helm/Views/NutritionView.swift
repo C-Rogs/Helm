@@ -93,7 +93,7 @@ struct NutritionView: View {
                 currentHelmDay: selectedHelmDay,
                 todayHelmDay: todayHelmDay,
                 onMealsChanged: {
-                    reloadMeals(from: nutritionService.state)
+                    reloadPersistedMeals()
                 }
             ))
             .modifier(
@@ -162,9 +162,14 @@ struct NutritionView: View {
     }
 
     private func handleManualFoodLogPhaseChange(_ phase: ManualFoodLogController.Phase) {
-        if case .idle = phase {
-            reloadMeals(from: nutritionService.state)
-        }
+        guard case .idle = phase else { return }
+        reloadPersistedMeals()
+    }
+
+    private func reloadPersistedMeals() {
+        guard let day = selectedHelmDay ?? nutritionService.state.snapshot?.helmDay else { return }
+        mealsStore.reload(for: day)
+        usualMealStore.reload(for: day)
     }
 
     private func handlePhotoPickerChange(_ item: PhotosPickerItem?) {

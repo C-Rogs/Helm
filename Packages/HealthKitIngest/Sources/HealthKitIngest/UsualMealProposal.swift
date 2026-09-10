@@ -1,7 +1,7 @@
 import Core
 import Foundation
 
-/// One-tap usual meal for an empty bucket: saved template or last matching weekday/weekend copy.
+/// One-tap usual meal for an empty bucket: a repeated saved template or meal copy.
 public struct UsualMealProposal: Sendable, Equatable, Identifiable {
     public enum Source: Sendable, Equatable {
         case template(MealTemplate)

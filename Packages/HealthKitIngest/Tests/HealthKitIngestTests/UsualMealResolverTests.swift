@@ -15,8 +15,11 @@ struct UsualMealResolverTests {
     private let tuesday = HelmDay(year: 2026, month: 9, day: 1)
     private let monday = HelmDay(year: 2026, month: 8, day: 31)
     private let friday = HelmDay(year: 2026, month: 8, day: 28)
+    private let thursday = HelmDay(year: 2026, month: 8, day: 27)
+    private let wednesday = HelmDay(year: 2026, month: 8, day: 26)
     private let saturday = HelmDay(year: 2026, month: 8, day: 29)
     private let sunday = HelmDay(year: 2026, month: 8, day: 30)
+    private let previousSaturday = HelmDay(year: 2026, month: 8, day: 22)
     private let nextSaturday = HelmDay(year: 2026, month: 9, day: 5)
 
     @Test("weekday prefers named template used on weekdays")
@@ -32,6 +35,8 @@ struct UsualMealResolverTests {
             kcal: 520,
             hour: 8
         )
+        try insertMeal(store: store, day: friday, bucket: .breakfast, name: "Work breakfast", kcal: 520, hour: 8)
+        try insertMeal(store: store, day: thursday, bucket: .breakfast, name: "Work breakfast", kcal: 520, hour: 8)
 
         let resolver = UsualMealResolver(store: store, calendar: calendar)
         let proposal = try resolver.proposal(for: .breakfast, on: tuesday)
@@ -67,6 +72,7 @@ struct UsualMealResolverTests {
         let store = try PersistenceStore.inMemory()
         try insertMeal(store: store, day: friday, bucket: .breakfast, name: "Oats", kcal: 400, hour: 8)
         try insertMeal(store: store, day: monday, bucket: .breakfast, name: "Oats", kcal: 410, hour: 8)
+        try insertMeal(store: store, day: thursday, bucket: .breakfast, name: "Oats", kcal: 405, hour: 8)
 
         let resolver = UsualMealResolver(store: store, calendar: calendar)
         let proposal = try resolver.proposal(for: .breakfast, on: tuesday)
@@ -75,11 +81,39 @@ struct UsualMealResolverTests {
         #expect(proposal?.source == .copy(from: monday))
     }
 
+    @Test("one or two matching days do not create a usual")
+    func insufficientHistoryStaysQuiet() throws {
+        let store = try PersistenceStore.inMemory()
+        try insertMeal(store: store, day: monday, bucket: .lunch, name: "Sandwich", kcal: 500, hour: 12)
+
+        let resolver = UsualMealResolver(store: store, calendar: calendar)
+        #expect(try resolver.proposal(for: .lunch, on: tuesday) == nil)
+
+        try insertMeal(store: store, day: friday, bucket: .lunch, name: "Sandwich", kcal: 500, hour: 12)
+        #expect(try resolver.proposal(for: .lunch, on: tuesday) == nil)
+    }
+
+    @Test("repeated meal beats a recent one-off")
+    func recurringMealBeatsRecentOutlier() throws {
+        let store = try PersistenceStore.inMemory()
+        try insertMeal(store: store, day: monday, bucket: .lunch, name: "Different lunch", kcal: 700, hour: 12)
+        try insertMeal(store: store, day: friday, bucket: .lunch, name: "Usual lunch", kcal: 550, hour: 12)
+        try insertMeal(store: store, day: thursday, bucket: .lunch, name: "Usual lunch", kcal: 540, hour: 12)
+        try insertMeal(store: store, day: wednesday, bucket: .lunch, name: "Usual lunch", kcal: 560, hour: 12)
+
+        let resolver = UsualMealResolver(store: store, calendar: calendar)
+        let proposal = try resolver.proposal(for: .lunch, on: tuesday)
+        #expect(proposal?.displayName == "Usual lunch")
+        #expect(proposal?.energyKcal == 550)
+        #expect(proposal?.source == .copy(from: friday))
+    }
+
     @Test("uses weekend copy on Saturday")
     func weekendCopyFromLastWeekend() throws {
         let store = try PersistenceStore.inMemory()
         try insertMeal(store: store, day: saturday, bucket: .breakfast, name: "Brunch", kcal: 700, hour: 10)
         try insertMeal(store: store, day: sunday, bucket: .breakfast, name: "Brunch", kcal: 680, hour: 10)
+        try insertMeal(store: store, day: previousSaturday, bucket: .breakfast, name: "Brunch", kcal: 700, hour: 10)
 
         let resolver = UsualMealResolver(store: store, calendar: calendar)
         let proposal = try resolver.proposal(for: .breakfast, on: nextSaturday)
@@ -98,21 +132,16 @@ struct UsualMealResolverTests {
         #expect(try resolver.proposal(for: .breakfast, on: tuesday) == nil)
     }
 
-    @Test("weekday with a single unused template still proposes it")
-    func weekdayOnboardingTemplate() throws {
+    @Test("unused template without repeated history stays quiet")
+    func unusedTemplateWithoutHistoryStaysQuiet() throws {
         let store = try PersistenceStore.inMemory()
         try store.mealTemplates.save(workBreakfastTemplate(updatedAt: date(year: 2026, month: 8, day: 31, hour: 8)))
 
         let resolver = UsualMealResolver(store: store, calendar: calendar)
-        let proposal = try resolver.proposal(for: .breakfast, on: tuesday)
-        #expect(proposal?.displayName == "Work breakfast")
-        guard case .template? = proposal?.source else {
-            Issue.record("expected template")
-            return
-        }
+        #expect(try resolver.proposal(for: .breakfast, on: tuesday) == nil)
     }
 
-    @Test("snacks need two matching samples")
+    @Test("snacks need three matching samples")
     func snacksRequireStablePattern() throws {
         let store = try PersistenceStore.inMemory()
         try insertMeal(store: store, day: monday, bucket: .snacks, name: "Yogurt", kcal: 150, hour: 16)
@@ -121,6 +150,7 @@ struct UsualMealResolverTests {
         #expect(try resolver.proposal(for: .snacks, on: tuesday) == nil)
 
         try insertMeal(store: store, day: friday, bucket: .snacks, name: "Yogurt", kcal: 150, hour: 16)
+        try insertMeal(store: store, day: thursday, bucket: .snacks, name: "Yogurt", kcal: 150, hour: 16)
         let proposal = try resolver.proposal(for: .snacks, on: tuesday)
         #expect(proposal?.displayName == "Yogurt")
         #expect(proposal?.source == .copy(from: monday))
@@ -183,6 +213,8 @@ struct UsualMealResolverTests {
                 source: .manual
             )
         )
+        try insertMeal(store: store, day: friday, bucket: .breakfast, name: "HealthKit meal", kcal: 200, hour: 8, source: .manual)
+        try insertMeal(store: store, day: thursday, bucket: .breakfast, name: "HealthKit meal", kcal: 200, hour: 8, source: .manual)
 
         let resolver = UsualMealResolver(store: store, calendar: calendar)
         let proposal = try resolver.proposal(for: .breakfast, on: tuesday)
@@ -206,6 +238,8 @@ struct UsualMealResolverTests {
         let template = workBreakfastTemplate(updatedAt: date(year: 2026, month: 8, day: 31, hour: 8))
         try store.mealTemplates.save(template)
         try insertMeal(store: store, day: monday, bucket: .breakfast, name: "Work breakfast", kcal: 520, hour: 8)
+        try insertMeal(store: store, day: friday, bucket: .breakfast, name: "Work breakfast", kcal: 520, hour: 8)
+        try insertMeal(store: store, day: thursday, bucket: .breakfast, name: "Work breakfast", kcal: 520, hour: 8)
 
         let executor = HelmActionExecutor(
             manualMealService: meals,

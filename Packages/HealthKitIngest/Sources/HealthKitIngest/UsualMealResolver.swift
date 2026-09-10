@@ -2,11 +2,11 @@ import Core
 import Foundation
 import Persistence
 
-/// Resolves a usual meal for an empty bucket, split by weekday vs weekend.
+/// Resolves a repeated usual meal for an empty bucket, split by weekday vs weekend.
 public struct UsualMealResolver: Sendable {
     public static let lookbackDays = 45
     public static let maxSamples = 8
-    public static let snackMinimumSamples = 2
+    public static let minimumSamples = 3
 
     private let nutrition: NutritionRepository
     private let mealTemplates: MealTemplateRepository
@@ -31,9 +31,7 @@ public struct UsualMealResolver: Sendable {
         guard existing.isEmpty else { return nil }
 
         let templates = try mealTemplates.fetchAll().filter { $0.bucket == bucket }
-        let targetIsWeekend = isWeekend(day)
-
-        if bucket == .snacks, samples.count < Self.snackMinimumSamples {
+        guard samples.count >= Self.minimumSamples else {
             return nil
         }
 
@@ -41,12 +39,8 @@ public struct UsualMealResolver: Sendable {
             return proposal(from: template)
         }
 
-        if let latest = samples.first {
-            return proposal(copying: latest.meals, from: latest.day, bucket: bucket)
-        }
-
-        if !targetIsWeekend, bucket != .snacks, templates.count == 1, let template = templates.first {
-            return proposal(from: template)
+        if let recurring = bestRecurringSample(in: samples) {
+            return proposal(copying: recurring.meals, from: recurring.day, bucket: bucket)
         }
 
         return nil
@@ -98,7 +92,9 @@ public struct UsualMealResolver: Sendable {
             }.count
             return (template, score)
         }
-        let matches = scored.filter { $0.1 > 0 }
+        let matches = scored.filter {
+            Self.hasUsualSupport(matchCount: $0.1, sampleCount: samples.count)
+        }
         guard let best = matches.max(by: { lhs, rhs in
             if lhs.1 != rhs.1 { return lhs.1 < rhs.1 }
             return lhs.0.updatedAt < rhs.0.updatedAt
@@ -106,6 +102,51 @@ public struct UsualMealResolver: Sendable {
             return nil
         }
         return best.0
+    }
+
+    private func bestRecurringSample(in samples: [UsualMealDaySample]) -> UsualMealDaySample? {
+        var grouped: [String: (count: Int, sample: UsualMealDaySample, firstIndex: Int)] = [:]
+
+        for (index, sample) in samples.enumerated() {
+            guard let identity = Self.mealIdentity(for: sample.meals) else { continue }
+            if let current = grouped[identity] {
+                grouped[identity] = (
+                    count: current.count + 1,
+                    sample: current.sample,
+                    firstIndex: current.firstIndex
+                )
+            } else {
+                grouped[identity] = (count: 1, sample: sample, firstIndex: index)
+            }
+        }
+
+        return grouped.values
+            .filter { Self.hasUsualSupport(matchCount: $0.count, sampleCount: samples.count) }
+            .max { lhs, rhs in
+                if lhs.count != rhs.count {
+                    return lhs.count < rhs.count
+                }
+                return lhs.firstIndex > rhs.firstIndex
+            }?
+            .sample
+    }
+
+    private static func hasUsualSupport(matchCount: Int, sampleCount: Int) -> Bool {
+        matchCount >= minimumSamples && matchCount * 2 >= sampleCount
+    }
+
+    private static func mealIdentity(for meals: [MealRecord]) -> String? {
+        let names = meals.compactMap { meal -> String? in
+            let normalized = meal.name
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+                .folding(options: [.caseInsensitive, .diacriticInsensitive], locale: nil)
+                .lowercased()
+                .split(whereSeparator: \.isWhitespace)
+                .joined(separator: " ")
+            return normalized.isEmpty ? nil : normalized
+        }
+        guard !names.isEmpty else { return nil }
+        return Array(Set(names)).sorted().joined(separator: "|")
     }
 
     /// Preserve first-seen order; drop case-insensitive duplicates.

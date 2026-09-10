@@ -46,14 +46,12 @@ enum ProactiveBootstrap {
         await NutritionBootstrap.usualMealScheduler.reschedule()
     }
 
-    /// Drop today's pending usual-meal nudges immediately, then rebuild in the background.
-    /// Delivered notifications stay so already-fired buckets do not re-arm.
+    /// Remove reminders for newly populated buckets immediately, then rebuild today's
+    /// remaining eligible reminders without re-arming delivered empty-bucket nudges.
     @MainActor
     static func noteNutritionLogged(day: HelmDay) async {
-        await NutritionBootstrap.usualMealScheduler.cancelPending(for: day)
-        Task(priority: .utility) { @MainActor in
-            await rescheduleUsualMeals()
-        }
+        await NutritionBootstrap.usualMealScheduler.cancelLogged(for: day)
+        await rescheduleUsualMeals()
     }
 
     @MainActor
