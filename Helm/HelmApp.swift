@@ -27,11 +27,6 @@ struct HelmApp: App {
             // Hydrate ARC before seed/iCloud so dashboard is not blocked on those.
             ReadinessBootstrap.start()
             await PersistenceBootstrap.importExerciseSeed()
-            if !ProcessInfo.processInfo.arguments.contains("-helm-uitesting") {
-                try? CoachMemoryAdjuster.seedShoulderNiggleIfNeeded(
-                    persistence: PersistenceBootstrap.persistenceStore
-                )
-            }
             await CloudBackupCoordinator.shared.pullIfNeededOnLaunch()
             await PersistenceBootstrap.importExerciseSeed()
             PlanBootstrap.start()
@@ -72,15 +67,5 @@ private enum DiagnosticsBootstrap {
             context: ["phase": "M0.3"]
         )
 
-        struct BootstrapTestError: Error {
-            let reason: String
-        }
-
-        await DiagnosticsLog.shared.capture(
-            error: BootstrapTestError(reason: "deliberate M0.3 test error"),
-            category: .ui,
-            message: "Captured bootstrap test error",
-            context: ["source": "M0.3 acceptance"]
-        )
     }
 }

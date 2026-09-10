@@ -181,10 +181,7 @@ struct CoachSettingsView: View {
 
     @MainActor
     private func refreshInstalledProvider() {
-        ProviderRegistry.shared.resetChatProvider()
-        if keyStore.hasKey(kind: .gemini), preferences.selectedProvider == .gemini {
-            ProviderRegistry.shared.installChatProvider(GeminiProvider(apiKeyStore: keyStore))
-        }
+        CoachBootstrap.refreshProvider()
     }
 
     private func saveOpenRouterKey() {

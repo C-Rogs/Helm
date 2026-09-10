@@ -63,7 +63,8 @@ public enum HelmMotion {
         baseDelay: TimeInterval = 0,
         reduceMotion: Bool
     ) -> TimeInterval {
-        reduceMotion ? 0 : baseDelay + step * Double(index)
+        guard !reduceMotion else { return 0 }
+        return ((baseDelay + step * Double(index)) * 1_000).rounded() / 1_000
     }
 
     public static func usesShimmer(reduceMotion: Bool) -> Bool {

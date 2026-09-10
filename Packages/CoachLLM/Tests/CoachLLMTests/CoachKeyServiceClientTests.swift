@@ -140,8 +140,11 @@ struct CoachKeyServiceClientTests {
 struct HelmDeviceIdentityTests {
     @Test("device id is stable across reads")
     func stableDeviceId() throws {
-        let first = try HelmDeviceIdentity.deviceId()
-        let second = try HelmDeviceIdentity.deviceId()
+        let suiteName = "HelmDeviceIdentityTests.\(UUID().uuidString)"
+        let defaults = try #require(UserDefaults(suiteName: suiteName))
+        defer { defaults.removePersistentDomain(forName: suiteName) }
+        let first = try HelmDeviceIdentity.deviceId(defaults: defaults)
+        let second = try HelmDeviceIdentity.deviceId(defaults: defaults)
         #expect(first == second)
         #expect(first.contains("-"))
     }
@@ -151,7 +154,7 @@ struct HelmDeviceIdentityTests {
 struct OpenRouterKeyProvisionerTests {
     @Test("skips when openrouter key already present")
     func skipsWhenPresent() async {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try? store.save("existing-key", kind: .openRouter)
 
         let result = await OpenRouterKeyProvisioner.provisionIfNeeded(

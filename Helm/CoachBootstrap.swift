@@ -4,15 +4,25 @@ import Foundation
 enum CoachBootstrap {
     static func start() {
         Task { @MainActor in
-            installProvider()
+            refreshProvider()
             #if !DEBUG
-            _ = await OpenRouterKeyProvisioner.provisionIfNeeded()
+            if CloudFeatureConsentPreferences.shared.isConsented {
+                _ = await OpenRouterKeyProvisioner.provisionIfNeeded()
+            }
             #endif
         }
     }
 
     @MainActor
+    static func refreshProvider() {
+        ProviderRegistry.shared.resetChatProvider()
+        guard CloudFeatureConsentPreferences.shared.isConsented else { return }
+        installProvider()
+    }
+
+    @MainActor
     static var calendarClassifierProvider: (any CoachLLMProvider)? {
+        guard CloudFeatureConsentPreferences.shared.isConsented else { return nil }
         let keyStore = APIKeyStore()
         guard keyStore.hasKey(kind: .gemini) else { return nil }
         return GeminiProvider(apiKeyStore: keyStore, model: .calendar)
@@ -20,6 +30,7 @@ enum CoachBootstrap {
 
     @MainActor
     private static func installProvider() {
+        guard CloudFeatureConsentPreferences.shared.isConsented else { return }
         let keyStore = APIKeyStore()
         if keyStore.hasKey(kind: .gemini) {
             let provider = GeminiProvider(apiKeyStore: keyStore)

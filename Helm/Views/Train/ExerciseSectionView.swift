@@ -77,7 +77,7 @@ struct ExerciseSectionView: View {
                     .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
             .disabled(!canMoveUp)
             .accessibilityLabel("Move \(displayName) up")
 
@@ -88,7 +88,7 @@ struct ExerciseSectionView: View {
                     .frame(width: HelmLayout.minTapTarget, height: HelmLayout.minTapTarget)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
             .disabled(!canMoveDown)
             .accessibilityLabel("Move \(displayName) down")
         }

@@ -34,6 +34,8 @@ public enum CoachChatIntent: Sendable {
         let startNeedles = [
             "start the workout",
             "start workout",
+            "start a ",
+            "start an ",
             "start today's",
             "start todays",
             "let's go",
@@ -48,6 +50,7 @@ public enum CoachChatIntent: Sendable {
         // Short confirm after negotiation.
         let trimmed = lower.trimmingCharacters(in: .whitespacesAndNewlines)
         return ["yes let's go", "yes lets go", "yes start", "start it"].contains(trimmed)
+            || trimmed.hasSuffix(" and start")
     }
 
     /// Exercise phrase the current message requires in workout_start (e.g. "with lat pulldown").
@@ -628,6 +631,7 @@ public enum CoachChatIntent: Sendable {
             "week budget",
             "my nutrition budget",
             "nutrition plan",
+            "week ahead nutrition",
             "what can i eat today",
             "how many calories today"
         ]

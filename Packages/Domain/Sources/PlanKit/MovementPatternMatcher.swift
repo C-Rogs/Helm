@@ -14,6 +14,9 @@ enum MovementPatternMatcher {
 
     static func patternScore(exerciseID: String, pattern: MovementPatternKind) -> Double {
         let id = exerciseID.lowercased()
+        if pattern == .horizontalPress, id.contains("dip") {
+            return 0
+        }
         let needles = keywords(for: pattern)
         guard !needles.isEmpty else { return 0 }
         var score = 0.0

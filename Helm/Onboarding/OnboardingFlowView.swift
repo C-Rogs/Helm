@@ -69,6 +69,13 @@ struct OnboardingFlowView: View {
                 onBack: goBack,
                 onSkip: skip
             )
+        case .cloudFeatures:
+            CloudFeaturesOnboardingStepView(
+                stepIndex: stepIndex,
+                totalSteps: totalSteps,
+                onContinue: advance,
+                onBack: goBack
+            )
         case .healthKit:
             HealthKitOnboardingStepView(
                 stepIndex: stepIndex,

@@ -13,7 +13,7 @@ struct LinearFeedbackClientTests {
 
     @Test("submit posts bug payload with name and transcript")
     func submitIncludesTranscript() async throws {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.linear.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("lin_api_testkey", kind: .linear)
 
         let client = LinearFeedbackClient(
@@ -55,7 +55,7 @@ struct LinearFeedbackClientTests {
 
     @Test("rejects a missing title")
     func rejectsShortTitle() async {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.linear.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try? store.save("lin_api_testkey", kind: .linear)
         let client = LinearFeedbackClient(session: makeSession { _ in
             throw URLError(.badServerResponse)

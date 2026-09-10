@@ -92,7 +92,7 @@ struct GroundedPhotoMacroEstimatorTests {
 
     @Test("gemini vision fixture decodes decomposition")
     func geminiVisionFixture() async throws {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("fixture-key", kind: .gemini)
         let vision = GeminiMealVisionProvider(
             apiKeyStore: store,
@@ -107,7 +107,7 @@ struct GroundedPhotoMacroEstimatorTests {
 
     @Test("openrouter vision fixture decodes decomposition")
     func openRouterVisionFixture() async throws {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("fixture-key", kind: .openRouter)
         let vision = OpenRouterMealVisionProvider(
             apiKeyStore: store,
@@ -152,7 +152,7 @@ struct GroundedPhotoMacroEstimatorTests {
             }
         }
 
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("fixture-key", kind: .gemini)
         let httpClient = CountingGeminiHTTPClient()
         let vision = GeminiMealVisionProvider(
@@ -171,7 +171,7 @@ struct GroundedPhotoMacroEstimatorTests {
 
     @Test("router prefers gemini in auto when gemini key present")
     func routerPrefersGeminiInAuto() async throws {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("gemini-key", kind: .gemini)
         try store.save("openrouter-key", kind: .openRouter)
 
@@ -252,7 +252,7 @@ struct GroundedPhotoMacroEstimatorTests {
             }
         }
 
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("fixture-key", kind: .openRouter)
         let httpClient = CountingOpenRouterHTTPClient()
 
@@ -277,7 +277,7 @@ struct GroundedPhotoMacroEstimatorTests {
             }
         }
 
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
         try store.save("gemini-key", kind: .gemini)
         try store.save("openrouter-key", kind: .openRouter)
 

@@ -12,7 +12,7 @@ struct PendingFoodImportServiceTests {
     private let grenadeRef = FoodProductRef(
         origin: .openFoodFacts,
         externalID: "5050159001234",
-        displayName: "Grenade Carb Killa"
+        displayName: "Grenade Carb Killa High Protein Bar"
     )
 
     private func makeService(

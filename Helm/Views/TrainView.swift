@@ -721,7 +721,7 @@ struct TrainView: View {
             .padding(.horizontal, HelmSpacing.xs)
             .frame(minHeight: HelmLayout.minTapTarget)
         }
-        .buttonStyle(.plain)
+        .buttonStyle(.helmPressable)
         .accessibilityLabel(notice)
         .accessibilityHint(
             controller.canRetryWatchCompanion
@@ -780,7 +780,7 @@ struct TrainView: View {
                             .padding(.horizontal, HelmSpacing.xs)
                             .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        .buttonStyle(.plain)
+                        .buttonStyle(.helmPressable)
                         .frame(minHeight: HelmLayout.minTapTarget)
                         .accessibilityLabel(spotify.workoutMusicChipTitle)
                         .accessibilityHint("Switches to Spotify so Helm can read now playing")
@@ -968,7 +968,7 @@ struct TrainView: View {
                     .padding(.vertical, HelmSpacing.sm)
                     .contentShape(Rectangle())
             }
-            .buttonStyle(.plain)
+            .buttonStyle(.helmPressable)
             .accessibilityLabel("Dismiss keyboard")
             .simultaneousGesture(
                 DragGesture(minimumDistance: 12)

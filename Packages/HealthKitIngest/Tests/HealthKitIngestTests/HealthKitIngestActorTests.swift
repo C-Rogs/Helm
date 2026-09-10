@@ -59,7 +59,6 @@ struct HealthKitIngestActorTests {
             .appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: anchorDirectory, withIntermediateDirectories: true)
 
-        let sampleID = UUID()
         let loggedAt = try #require(
             calendar.date(from: DateComponents(year: 2026, month: 7, day: 21, hour: 13))
         )
@@ -68,7 +67,7 @@ struct HealthKitIngestActorTests {
             quantity: HKQuantity(unit: .kilocalorie(), doubleValue: 500),
             start: loggedAt,
             end: loggedAt,
-            metadata: [HKMetadataKeyExternalUUID: sampleID.uuidString]
+            metadata: [HKMetadataKeyExternalUUID: UUID().uuidString]
         )
         mockStore.setFetchResult(
             AnchoredFetchResult(addedSamples: [sample], deletedObjectIDs: [], newAnchor: nil),
@@ -84,7 +83,7 @@ struct HealthKitIngestActorTests {
         #expect(try store.nutrition.fetchMeals(for: day).count == 1)
 
         mockStore.setFetchResult(
-            AnchoredFetchResult(addedSamples: [], deletedObjectIDs: [sampleID], newAnchor: nil),
+            AnchoredFetchResult(addedSamples: [], deletedObjectIDs: [sample.uuid], newAnchor: nil),
             for: HKQuantityType(.dietaryEnergyConsumed)
         )
         let outcome = await ingest.syncNow()

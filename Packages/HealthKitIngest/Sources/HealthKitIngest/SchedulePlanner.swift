@@ -180,8 +180,7 @@ public enum SchedulePlanner {
     ) -> [PlannedWorkoutRecord] {
         var records: [PlannedWorkoutRecord] = []
         var plannedSplitsThisWeek: [SessionSplitKind] = []
-        var plannedKindsThisWeek: [TrainingDayKind] = []
-        var projectionWeekStart = PrescriptionHistoryBuilder.weekStart(containing: startDay, calendar: calendar)
+        var projectionOverrides = overrides
         let placements = projectedTrainingDayPlacements(
             startingAt: startDay,
             dayCount: dayCount,
@@ -194,12 +193,6 @@ public enum SchedulePlanner {
 
         for placement in placements {
             let day = placement.day
-            let dayWeekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
-            if dayWeekStart != projectionWeekStart {
-                plannedSplitsThisWeek = []
-                plannedKindsThisWeek = []
-                projectionWeekStart = dayWeekStart
-            }
 
             let result = plan(
                 for: day,
@@ -210,10 +203,17 @@ public enum SchedulePlanner {
                 sessionsPerWeek: sessionsPerWeek,
                 additionalCompletedSplits: plannedSplitsThisWeek,
                 dayKindRotation: dayKindRotation,
-                overrides: overrides
+                overrides: projectionOverrides
             )
             plannedSplitsThisWeek.append(result.splitKind)
-            plannedKindsThisWeek.append(result.splitKind.trainingDayKind)
+            // Deferrals are a short recovery guard, not a permanent removal from
+            // this week's rotation. Once another session is placed, resume normal
+            // ordering so the deferred split can be scheduled next.
+            if projectionOverrides.pinnedByDay[day] == nil,
+               !projectionOverrides.deferredKinds.contains(result.splitKind.trainingDayKind)
+            {
+                projectionOverrides.deferredKinds.removeAll()
+            }
             var notes = result.scheduleNotes
             if let ideal = placement.idealDay, ideal != day {
                 // Keep override/recovery notes first for Week Ahead primaryNote.

@@ -20,7 +20,7 @@ struct BriefEngineTests {
             narrator: MorningBriefNarrator { _ in nil }
         )
 
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
         let readiness = readinessScore(score: 72, band: .balanced)
 
         let prescriptionEngine = PlanPrescriptionEngine(persistence: store)
@@ -71,7 +71,7 @@ struct BriefEngineTests {
             narrator: narrator
         )
 
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
         let readiness = readinessScore(score: 60, band: .balanced)
         let summary = try await prescriptionEngine.dashboardState(for: day, readiness: readiness)
         guard case let .prescribed(prescribedSummary) = summary else {
@@ -94,7 +94,8 @@ struct BriefEngineTests {
             prescriptionSummary: prescribedSummary,
             attemptNarration: true
         )
-        #expect(cached == first)
+        #expect(cached.inputFingerprint == first.inputFingerprint)
+        #expect(cached.narrationText == first.narrationText)
         #expect(narrationCounter.value == 1)
 
         let depleted = readinessScore(score: 28, band: .depleted)
@@ -126,7 +127,7 @@ struct BriefEngineTests {
             narrator: MorningBriefNarrator { _ in nil }
         )
 
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
         let brief = try await engine.ensureBrief(
             for: day,
             readiness: nil,

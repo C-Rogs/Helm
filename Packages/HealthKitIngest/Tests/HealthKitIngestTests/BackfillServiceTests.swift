@@ -128,9 +128,11 @@ struct BackfillServiceTests {
             calendar: calendar
         )
 
+        var finalProgress: BackfillProgress?
         for await progress in await service.run(window: firstWindow) {
-            #expect(progress.isComplete)
+            finalProgress = progress
         }
+        #expect(finalProgress?.isComplete == true)
 
         let laterEnd = try #require(calendar.date(from: DateComponents(year: 2026, month: 7, day: 23, hour: 15)))
         let laterWindow = BackfillWindow.sixMonths(endingAt: laterEnd, calendar: calendar)
@@ -203,8 +205,12 @@ struct BackfillBaselineSeedTests {
             )
         )
 
-        let end = Date()
-        let start = Calendar.current.date(byAdding: .day, value: -7, to: end)!
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let end = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 22, hour: 12))
+        )
+        let start = try #require(calendar.date(byAdding: .day, value: -7, to: end))
         let window = BackfillWindow(start: start, end: end)
         let history = try BackfillBaselineSeed.readinessHistory(from: store, window: window)
 

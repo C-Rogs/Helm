@@ -142,7 +142,7 @@ struct CoachChatIntentTests {
     func chatFoodDayIgnoresHiddenNutritionDay() {
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = TimeZone(identifier: "Europe/London")!
-        let friday = calendar.date(from: DateComponents(year: 2026, month: 8, day: 28))!
+        let friday = calendar.date(from: DateComponents(year: 2026, month: 8, day: 28, hour: 12))!
         let thursday = HelmDay(year: 2026, month: 8, day: 27)
         let unnamed = CoachChatIntent.resolvedChatFoodHelmDay(
             userText: "log 400 calories of chicken",

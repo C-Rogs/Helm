@@ -7,13 +7,13 @@ struct SetRowFieldValueStateTests {
     @Test("prefilled uses muted colour")
     func prefilledColour() {
         let state = SetRowFieldValueState.prefilled(display: "80")
-        #expect(SetRowFieldValueStateResolver.textColor(for: state) == HelmColor.fgMuted)
+        #expect(SetRowFieldValueStateResolver.textColorToken(for: state) == .muted)
     }
 
     @Test("committed uses primary colour")
     func committedColour() {
         let state = SetRowFieldValueState.committed(display: "80")
-        #expect(SetRowFieldValueStateResolver.textColor(for: state) == HelmColor.fg)
+        #expect(SetRowFieldValueStateResolver.textColorToken(for: state) == .primary)
     }
 
     @Test("editing committed tap uses select-all highlight")
@@ -21,7 +21,7 @@ struct SetRowFieldValueStateTests {
         let state = SetRowFieldValueState.editing(display: "80", showsCaret: false, isSelectAll: true)
         #expect(SetRowFieldValueStateResolver.showsSelectionHighlight(for: state))
         #expect(!SetRowFieldValueStateResolver.showsCaret(for: state))
-        #expect(SetRowFieldValueStateResolver.textColor(for: state) == HelmColor.fg)
+        #expect(SetRowFieldValueStateResolver.textColorToken(for: state) == .primary)
     }
 
     @Test("editing prefilled tap shows caret")

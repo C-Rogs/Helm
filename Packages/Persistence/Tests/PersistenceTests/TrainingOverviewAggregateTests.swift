@@ -9,6 +9,12 @@ struct TrainingOverviewAggregateTests {
     func aggregateWindow() throws {
         let store = try PersistenceStore.inMemory()
         let startedAt = ISO8601DateFormatter().date(from: "2026-08-06T10:00:00Z")!
+        try store.exercises.upsert(
+            id: "exercise-bench",
+            canonicalName: "bench press",
+            displayName: "Bench Press",
+            exerciseMode: .weightReps
+        )
 
         try store.workoutSessions.insert(
             WorkoutSessionDraft(

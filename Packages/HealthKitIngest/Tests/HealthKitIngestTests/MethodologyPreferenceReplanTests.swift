@@ -24,14 +24,43 @@ struct MethodologyPreferenceReplanTests {
     @Test("equipment preference changes selected exercise")
     func equipmentPreferenceReplans() async throws {
         let store = try PersistenceStore.inMemory()
-        let fixtureURL = try #require(
-            Bundle.module.url(forResource: "exercise_seed_methodology", withExtension: "json")
+        let fixtureURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("exercise_seed_methodology-\(UUID().uuidString).json")
+        let document = ExerciseSeedDocument(
+            seedVersion: 99,
+            placeholder: true,
+            exercises: [
+                ExerciseSeedEntry(
+                    id: "method-bench",
+                    canonicalName: "bench press (barbell)",
+                    displayName: "Bench Press (Barbell)",
+                    aliases: ["Bench Press"],
+                    exerciseMode: .weightReps,
+                    equipment: "barbell",
+                    primaryMuscleGroup: "chest",
+                    secondaryMuscleGroups: ["triceps"],
+                    isPickerDefault: true
+                ),
+                ExerciseSeedEntry(
+                    id: "method-db-press",
+                    canonicalName: "dumbbell press",
+                    displayName: "Dumbbell Press",
+                    aliases: ["DB Press"],
+                    exerciseMode: .weightReps,
+                    equipment: "dumbbell",
+                    primaryMuscleGroup: "chest",
+                    secondaryMuscleGroups: ["triceps"],
+                    isPickerDefault: true
+                )
+            ]
         )
+        try JSONEncoder().encode(document).write(to: fixtureURL)
+        defer { try? FileManager.default.removeItem(at: fixtureURL) }
         _ = try await store.importExerciseSeedIfNeeded(manifestURL: fixtureURL)
         try store.trainingPlan.save(.default)
 
         let engine = PlanPrescriptionEngine(persistence: store)
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
 
         try await engine.saveMethodologyPreferences(
             MethodologyPreferences(allowedEquipment: ["barbell"])

@@ -6,6 +6,11 @@ public enum SetRowFieldValueState: Equatable, Sendable {
     case editing(display: String, showsCaret: Bool, isSelectAll: Bool)
 }
 
+public enum SetRowFieldTextColorToken: Equatable, Sendable {
+    case primary
+    case muted
+}
+
 public enum SetRowFieldValueStateResolver {
     public static func resolve(
         hasStoredValue: Bool,
@@ -39,11 +44,13 @@ public enum SetRowFieldValueStateResolver {
     }
 
     public static func textColor(for state: SetRowFieldValueState) -> Color {
+        textColorToken(for: state) == .muted ? HelmColor.fgMuted : HelmColor.fg
+    }
+
+    public static func textColorToken(for state: SetRowFieldValueState) -> SetRowFieldTextColorToken {
         switch state {
-        case .prefilled:
-            HelmColor.fgMuted
-        case .committed, .editing:
-            HelmColor.fg
+        case .prefilled: .muted
+        case .committed, .editing: .primary
         }
     }
 

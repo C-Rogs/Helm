@@ -58,7 +58,7 @@ struct WorkoutHistoryRecentSection: View {
                         .helmType(.monoTag, color: HelmColor.accent)
                         .frame(minHeight: 44, alignment: .trailing)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(.helmPressable)
                 .accessibilityLabel(viewAllAccessibilityLabel)
             }
         }
@@ -283,7 +283,7 @@ struct WorkoutHistoryRow: View {
                             Text("Health")
                                 .helmType(.monoTag, color: HelmColor.fgMuted)
                                 .padding(.horizontal, HelmSpacing.xxs)
-                                .padding(.vertical, 2)
+                                .padding(.vertical, HelmSpacing.xxs)
                                 .background(
                                     RoundedRectangle(cornerRadius: 4)
                                         .fill(HelmColor.surfaceElevated)

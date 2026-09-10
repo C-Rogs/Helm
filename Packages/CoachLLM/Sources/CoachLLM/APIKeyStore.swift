@@ -15,16 +15,52 @@ public enum APIKeyStoreError: Error, Sendable, Equatable, LocalizedError {
     }
 }
 
+/// Test seam for code that needs credentials without touching the simulator Keychain.
+public protocol APIKeyStoreBackend: Sendable {
+    func save(_ value: String, kind: APIKeyKind) throws
+    func load(kind: APIKeyKind) throws -> String?
+    func delete(kind: APIKeyKind) throws
+}
+
+public final class InMemoryAPIKeyStoreBackend: APIKeyStoreBackend, @unchecked Sendable {
+    private let lock = NSLock()
+    private var values: [APIKeyKind: String] = [:]
+
+    public init() {}
+
+    public func save(_ value: String, kind: APIKeyKind) throws {
+        guard !value.isEmpty else { throw APIKeyStoreError.invalidData }
+        lock.withLock { values[kind] = value }
+    }
+
+    public func load(kind: APIKeyKind) throws -> String? {
+        lock.withLock { values[kind] }
+    }
+
+    public func delete(kind: APIKeyKind) throws {
+        lock.withLock { values.removeValue(forKey: kind) }
+    }
+}
+
 public struct APIKeyStore: Sendable {
     public static let defaultService = "com.cameronro.helm.apikeys"
 
     private let service: String
+    private let backend: (any APIKeyStoreBackend)?
 
-    public init(service: String = APIKeyStore.defaultService) {
+    public init(
+        service: String = APIKeyStore.defaultService,
+        backend: (any APIKeyStoreBackend)? = nil
+    ) {
         self.service = service
+        self.backend = backend
     }
 
     public func save(_ value: String, kind: APIKeyKind) throws {
+        if let backend {
+            try backend.save(value, kind: kind)
+            return
+        }
         let data = Data(value.utf8)
         guard !data.isEmpty else {
             throw APIKeyStoreError.invalidData
@@ -54,6 +90,9 @@ public struct APIKeyStore: Sendable {
     }
 
     public func load(kind: APIKeyKind) throws -> String? {
+        if let backend {
+            return try backend.load(kind: kind)
+        }
         var query = baseQuery(for: kind)
         query[kSecReturnData as String] = true
         query[kSecMatchLimit as String] = kSecMatchLimitOne
@@ -74,6 +113,10 @@ public struct APIKeyStore: Sendable {
     }
 
     public func delete(kind: APIKeyKind) throws {
+        if let backend {
+            try backend.delete(kind: kind)
+            return
+        }
         let status = SecItemDelete(baseQuery(for: kind) as CFDictionary)
         guard status == errSecSuccess || status == errSecItemNotFound else {
             throw APIKeyStoreError.keychainError(status)

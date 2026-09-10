@@ -48,11 +48,13 @@ public enum FoodPortionDefaultsResolver {
         )
 
         if let storedPreference {
-            return buildDefaults(
-                product: product,
+            return FoodPortionDefaults(
                 grams: storedPreference.grams,
                 servingLabel: storedPreference.servingLabel,
-                countableConfig: countableConfig
+                prefersServingLabel: prefersServingLabel(
+                    for: product,
+                    servingLabel: storedPreference.servingLabel
+                )
             )
         }
 

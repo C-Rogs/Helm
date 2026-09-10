@@ -95,6 +95,7 @@ struct ManualMealServiceTests {
                     totalFatGrams: 70
                 )
             )
+            try store.nutritionLogStatus.markComplete(helmDay: day)
             try store.bodyComposition.upsert(
                 BodyComposition(helmDay: day, mass: Mass(kilograms: 80), measuredAt: loggedAt)
             )
@@ -111,6 +112,7 @@ struct ManualMealServiceTests {
             loggedAt: loggedAt,
             mealID: "quick-add-meal"
         )
+        try store.nutritionLogStatus.markComplete(helmDay: endDay)
 
         let engine = NutritionEngine(persistence: store)
         let snapshot = await engine.snapshot(for: endDay, prescriptionSummary: nil)

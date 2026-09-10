@@ -10,7 +10,16 @@ public enum HelmDeviceIdentity {
     private static let service = "com.cameronro.helm.device-identity"
     private static let account = "default"
 
-    public static func deviceId() throws -> String {
+    public static func deviceId(defaults: UserDefaults? = nil) throws -> String {
+        if let defaults {
+            let key = "helm.deviceIdentity"
+            if let existing = defaults.string(forKey: key), !existing.isEmpty {
+                return existing
+            }
+            let generated = UUID().uuidString.lowercased()
+            defaults.set(generated, forKey: key)
+            return generated
+        }
         if let existing = readId() {
             return existing
         }

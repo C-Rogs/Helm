@@ -43,7 +43,7 @@ struct ScheduleOverrideTests {
         #expect(kinds.contains(.pull))
     }
 
-    @Test("pin legs forces today and projects later push")
+    @Test("pin legs delays a deferred push, then reschedules it")
     func pinLegsProjectsWeek() {
         let today = HelmDay(year: 2026, month: 9, day: 7) // Monday
         let overrides = ScheduleWeekOverrides(
@@ -73,7 +73,7 @@ struct ScheduleOverrideTests {
         let kinds = records.compactMap {
             PlannedWorkoutSessionDecoder.decode(from: $0.sessionJSON)?.splitKind
         }
-        #expect(kinds.contains(TrainingDayKind.push.rawValue) || kinds.contains("push"))
+        #expect(kinds.contains(TrainingDayKind.push.rawValue))
     }
 
     @Test("rest day override removes placement")

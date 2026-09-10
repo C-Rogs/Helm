@@ -120,11 +120,11 @@ struct HealthKitWorkoutHistoryTests {
             sourceBundleID: "com.apple.health"
         )
 
-        // A new row was created because the old one was deleted
-        #expect(id != id2)
+        // The original tombstone remains authoritative for this HealthKit UUID.
+        #expect(id == id2)
 
         let active = try store.workoutSessions.listSummaries(limit: 10, scope: .active)
-        #expect(active.contains(where: { $0.id == id2 }))
+        #expect(!active.contains(where: { $0.id == id2 }))
         #expect(!active.contains(where: { $0.id == id }))
     }
 
@@ -132,6 +132,12 @@ struct HealthKitWorkoutHistoryTests {
     func prescriptionExcludesHealthKit() async throws {
         let store = try PersistenceStore.inMemory()
         let startedAt = ISO8601DateFormatter().date(from: "2026-08-06T10:00:00Z")!
+        try store.exercises.upsert(
+            id: "exercise-bench",
+            canonicalName: "bench press",
+            displayName: "Bench Press",
+            exerciseMode: .weightReps
+        )
 
         // HealthKit session
         _ = try store.workoutSessions.upsertHealthKitWorkout(
@@ -180,6 +186,6 @@ struct HealthKitWorkoutHistoryTests {
 
         // Only the Signal session
         #expect(history.sessions.count == 1)
-        #expect(history.sessions.first?.id.uuidString == "signal-session-1")
+        #expect(history.sessions.first?.helmDay == HelmDay(year: 2026, month: 8, day: 6))
     }
 }

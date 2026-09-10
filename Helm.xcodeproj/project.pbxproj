@@ -121,6 +121,7 @@
 		5AC8ABDCA507BA58A753BBD3 /* UsualMealNotificationRouter.swift in Sources */ = {isa = PBXBuildFile; fileRef = 410561537119D805499A1FB0 /* UsualMealNotificationRouter.swift */; };
 		5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */; };
 		5B58663B4B4AFA554000DA32 /* TrainPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 82D898E8CDEA7E5F069259D2 /* TrainPreferences.swift */; };
+		5B79A425FAB64B5948876109 /* CloudFeaturesOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 02271B7BE09175B16BE51024 /* CloudFeaturesOnboardingStepView.swift */; };
 		5C2B69E21678550F1B29DC20 /* TrendWeightChartCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */; };
 		5D2989127D96B244FE8EFC55 /* HealthKitOnboardingStepView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */; };
 		5D47496C9C7FB5D2BC47555B /* NutritionDayCompleteSection.swift in Sources */ = {isa = PBXBuildFile; fileRef = CD012FFE784DAFDE09734890 /* NutritionDayCompleteSection.swift */; };
@@ -187,8 +188,10 @@
 		966FFCB2A8A07E5A382DDF2B /* WeekAheadScheduleStore.swift in Sources */ = {isa = PBXBuildFile; fileRef = 281E2AE21FF5FF83241DFC89 /* WeekAheadScheduleStore.swift */; };
 		974E3DBA773688DE52DA1B8C /* ProgressionDetailView.swift in Sources */ = {isa = PBXBuildFile; fileRef = E1060931A30ACC328E9F59FE /* ProgressionDetailView.swift */; };
 		98A21C60D95516C298BE5E03 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F4545C1493CC90839AA3B3FA /* SwiftUI.framework */; };
+		98BE0558A301BF98E1F56489 /* CloudFeaturesSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = D297987F2D516D9B7B345A23 /* CloudFeaturesSettingsView.swift */; };
 		991080364B26DC6915F8A836 /* SongTempoLookupService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0CEC371F95461BCD5CA03826 /* SongTempoLookupService.swift */; };
 		996DC6FB96C784C69A5A295D /* CoachSettingsView.swift in Sources */ = {isa = PBXBuildFile; fileRef = CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */; };
+		9B5ABAD2A9BC3DACA1D3519F /* CloudFeatureConsentPreferences.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9DF8D29A7F3F1900A1AFE958 /* CloudFeatureConsentPreferences.swift */; };
 		9B99D16555C2E142CA6A5C3C /* SleepAnalysisView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AF798183AFFC925F57A9B3B /* SleepAnalysisView.swift */; };
 		9C43933ED172237747E00858 /* CoachPlanSettingsAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7A1B4D79D160E61AF593D879 /* CoachPlanSettingsAdjuster.swift */; };
 		9CD491863ADA475909DE3204 /* CoachBootstrap.swift in Sources */ = {isa = PBXBuildFile; fileRef = 63468E7D96CE782EFC0B9DFE /* CoachBootstrap.swift */; };
@@ -209,7 +212,6 @@
 		AB97255CCFFA481F87CE420B /* HelmWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACF7EC588BCF81579B336F00 /* MealEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41276A961E6E89096F44D629 /* MealEditSheet.swift */; };
 		AD81353C0A9C0662F71D9084 /* LogUsualMealIntent.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F4906AA5855EAC1B22C1E5D /* LogUsualMealIntent.swift */; };
-		AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */ = {isa = PBXBuildFile; fileRef = D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */; };
 		AF0EB822FFD384CB41C00D85 /* WorkoutFinishSummaryAssembler.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6C34319A5C893A9796631DDE /* WorkoutFinishSummaryAssembler.swift */; };
 		AF8793383B6926457DFAED50 /* ExerciseHistorySheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 78ED9EC9330DD1E9532DF79E /* ExerciseHistorySheet.swift */; };
 		B10E4B608A6D2651FE49B0B0 /* HelmWatchTheme.swift in Sources */ = {isa = PBXBuildFile; fileRef = C2D47C3A50F25620B3A3436C /* HelmWatchTheme.swift */; };
@@ -410,6 +412,7 @@
 		003EAD8C95AB124772A7DD7E /* HealthKitBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HealthKitBootstrap.swift; sourceTree = "<group>"; };
 		01D4655437CCA89206868D9C /* RecoveryDetailContainer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecoveryDetailContainer.swift; sourceTree = "<group>"; };
 		01DD4C22FBD04AE21441770F /* PlanBuilderFlowView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanBuilderFlowView.swift; sourceTree = "<group>"; };
+		02271B7BE09175B16BE51024 /* CloudFeaturesOnboardingStepView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFeaturesOnboardingStepView.swift; sourceTree = "<group>"; };
 		02F55C024C286B4F7FE4F093 /* WorkoutImportController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutImportController.swift; sourceTree = "<group>"; };
 		03297B1EE37AA06C7CDA9640 /* TrendWeightChartCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendWeightChartCard.swift; sourceTree = "<group>"; };
 		03C643CA6B30C2E3422578B1 /* DataSafetyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DataSafetyView.swift; sourceTree = "<group>"; };
@@ -605,6 +608,7 @@
 		9C352EF85CB40EE3730A712D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		9D8E910325AFE50F60C36C51 /* HelmApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelmApp.swift; sourceTree = "<group>"; };
 		9DA01118E23D90A111A73A50 /* WorkoutLiveActivityWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutLiveActivityWidget.swift; sourceTree = "<group>"; };
+		9DF8D29A7F3F1900A1AFE958 /* CloudFeatureConsentPreferences.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFeatureConsentPreferences.swift; sourceTree = "<group>"; };
 		9E168617C8DCF2C77B9A649D /* TrendsChartShared.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsChartShared.swift; sourceTree = "<group>"; };
 		9E4EC4C6D6774217DEE0C275 /* PhoneWorkoutSessionManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhoneWorkoutSessionManager.swift; sourceTree = "<group>"; };
 		9E6A6E69A91E304B63CF361B /* CompositeSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CompositeSongTempoProvider.swift; sourceTree = "<group>"; };
@@ -673,12 +677,12 @@
 		D0D9F4901EC4435E95CB6CA4 /* TrainViewPresentationLayer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainViewPresentationLayer.swift; sourceTree = "<group>"; };
 		D11845715FA60333CBC948FB /* MirroredWorkoutSessionBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MirroredWorkoutSessionBridge.swift; sourceTree = "<group>"; };
 		D1240B315B6B2120DDD331CA /* ExerciseSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseSectionView.swift; sourceTree = "<group>"; };
+		D297987F2D516D9B7B345A23 /* CloudFeaturesSettingsView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CloudFeaturesSettingsView.swift; sourceTree = "<group>"; };
 		D40DE5E45F8BFC10CA9DE024 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		D4F6B84C8F55A7086F2EC757 /* DeezerSongTempoProvider.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DeezerSongTempoProvider.swift; sourceTree = "<group>"; };
 		D6BD494E68B5D3D03BF91C3F /* WatchWorkoutSessionLifecycleTracker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WatchWorkoutSessionLifecycleTracker.swift; sourceTree = "<group>"; };
 		D73BD358201D04ABB6466677 /* TrainingOverviewCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingOverviewCard.swift; sourceTree = "<group>"; };
 		D90D6A16496154D0C13C849D /* CalendarEventClassifierService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CalendarEventClassifierService.swift; sourceTree = "<group>"; };
-		D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachMemoryAdjuster.swift; sourceTree = "<group>"; };
 		D9A4D15B91AF85A22B19FF9D /* ReadinessBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReadinessBootstrap.swift; sourceTree = "<group>"; };
 		DB9D9F2E121FC36FF628D7F7 /* TrendsChartSupport.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsChartSupport.swift; sourceTree = "<group>"; };
 		DCE82E32B7A51CFEAFAEDD21 /* WorkoutHistoryController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHistoryController.swift; sourceTree = "<group>"; };
@@ -1107,6 +1111,7 @@
 				C2CECB69DFC398C51E14B613 /* BucketFoodLogMenu.swift */,
 				F9CD738C037B6978AEF618B8 /* CalendarHintStatusView.swift */,
 				5E383F9ECBDA0F1876BF4946 /* ChatView.swift */,
+				D297987F2D516D9B7B345A23 /* CloudFeaturesSettingsView.swift */,
 				CB2EEDC8110DCC66FB6AFD85 /* CoachSettingsView.swift */,
 				8045F9E7A6B189532126DA2B /* CopyMealEntrySheet.swift */,
 				A39222F9FC0C4C1AED91A259 /* DailyEnergyBreakdownSection.swift */,
@@ -1232,6 +1237,7 @@
 			isa = PBXGroup;
 			children = (
 				25EA6FF018EA9F5E4DC79EAC /* CloudBackupPreferences.swift */,
+				9DF8D29A7F3F1900A1AFE958 /* CloudFeatureConsentPreferences.swift */,
 				1C8D4688B8A17D2FB2A84831 /* FestivalModePreferences.swift */,
 				3C389F20E9E9DCDAED5A1B98 /* FocusModePreferences.swift */,
 				FF59BB7F35578AFB1E4BFA65 /* FriendsReleasePreferences.swift */,
@@ -1271,7 +1277,6 @@
 				7F2DB630165D5D390902A892 /* CloudBackupCoordinator.swift */,
 				21E05339095E3797BD0261BC /* CoachChatActionProposal.swift */,
 				26A010C72AFC68A26D6BE629 /* CoachFoodMealConfirmState.swift */,
-				D924969F3AA83BD98835966F /* CoachMemoryAdjuster.swift */,
 				7A1B4D79D160E61AF593D879 /* CoachPlanSettingsAdjuster.swift */,
 				A2B8CEBCAF64D6176359C13A /* CoachWorkoutStartAdjuster.swift */,
 				81D287D7E2845C05A558F48B /* FoodLogMealGrounding.swift */,
@@ -1341,6 +1346,7 @@
 			children = (
 				66F60C5A62D781EA58B36365 /* BackfillOnboardingStepView.swift */,
 				0B2275A3FC6005995E7DD9CB /* BodyProfileOnboardingStepView.swift */,
+				02271B7BE09175B16BE51024 /* CloudFeaturesOnboardingStepView.swift */,
 				59A17AE965A2C96A2D9FB6B9 /* HealthKitOnboardingStepView.swift */,
 				F764077056ED079A576EB0FC /* HevyImportOnboardingStepView.swift */,
 				3F6001551125AA5853828C1F /* NotificationOnboardingStepView.swift */,
@@ -1667,7 +1673,7 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 			shellPath = /bin/sh;
-			shellScript = "set -eu\nSECRETS_SRC=\"${SRCROOT}/Secrets\"\nSECRETS_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets\"\nrm -rf \"$SECRETS_DST\"\nif [ -d \"$SECRETS_SRC\" ]; then\n  mkdir -p \"$SECRETS_DST\"\n  for name in gemini.key openrouter.key spotify-client-id.key linear.key; do\n    if [ -f \"$SECRETS_SRC/$name\" ]; then\n      cp \"$SECRETS_SRC/$name\" \"$SECRETS_DST/$name\"\n    fi\n  done\nfi\n";
+			shellScript = "set -eu\nif [ \"${CONFIGURATION}\" = \"Release\" ]; then\n  # TestFlight must never package the developer's day-to-day credentials.\n  # Supply only short-lived, capped beta keys in this separate directory.\n  SECRETS_SRC=\"${SRCROOT}/Secrets/FriendsRelease\"\n  SECRET_NAMES=\"gemini.key linear.key\"\nelse\n  SECRETS_SRC=\"${SRCROOT}/Secrets\"\n  SECRET_NAMES=\"gemini.key openrouter.key spotify-client-id.key linear.key\"\nfi\nSECRETS_DST=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}/Secrets\"\nrm -rf \"$SECRETS_DST\"\nif [ -d \"$SECRETS_SRC\" ]; then\n  mkdir -p \"$SECRETS_DST\"\n  for name in $SECRET_NAMES; do\n    if [ -f \"$SECRETS_SRC/$name\" ]; then\n      cp \"$SECRETS_SRC/$name\" \"$SECRETS_DST/$name\"\n    fi\n  done\nfi\n";
 		};
 		97B6595F711DC4F8F753702F /* Sync Xcode Project */ = {
 			isa = PBXShellScriptBuildPhase;
@@ -1771,6 +1777,9 @@
 				D22B8CA993A1A711BB7EA1BD /* ChatView.swift in Sources */,
 				30F2D9F4C0B50CFE21A6FE63 /* CloudBackupCoordinator.swift in Sources */,
 				9175B3430045AFE9D8DA30D7 /* CloudBackupPreferences.swift in Sources */,
+				9B5ABAD2A9BC3DACA1D3519F /* CloudFeatureConsentPreferences.swift in Sources */,
+				5B79A425FAB64B5948876109 /* CloudFeaturesOnboardingStepView.swift in Sources */,
+				98BE0558A301BF98E1F56489 /* CloudFeaturesSettingsView.swift in Sources */,
 				1CD86B255F49A56E0D4C2EED /* CoachActivityGate.swift in Sources */,
 				DBA1B55EC37AAFD9186986E7 /* CoachArchetypeBootstrap.swift in Sources */,
 				9CD491863ADA475909DE3204 /* CoachBootstrap.swift in Sources */,
@@ -1781,7 +1790,6 @@
 				1DDD00D7759A8C3E416C397F /* CoachDisplayNameStore.swift in Sources */,
 				A4C3A5964BFA6C25269EEB94 /* CoachFoodMealConfirmSheet.swift in Sources */,
 				94B55AC71169CAD888BA4000 /* CoachFoodMealConfirmState.swift in Sources */,
-				AE18C5B702B9EDC3025B562A /* CoachMemoryAdjuster.swift in Sources */,
 				9C43933ED172237747E00858 /* CoachPlanSettingsAdjuster.swift in Sources */,
 				996DC6FB96C784C69A5A295D /* CoachSettingsView.swift in Sources */,
 				4351B5F9060E5C0DF6E61385 /* CoachWorkoutStartAdjuster.swift in Sources */,

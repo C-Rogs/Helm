@@ -102,10 +102,9 @@ public enum CoachContextAssembler {
             calendar: calendar,
             cutoff: cutoff
         )
-        let weekAheadStart = endDay.mondayOfSameWeek(calendar: calendar)
         let weekAheadSchedule = try weekAheadScheduleBlock(
             from: store,
-            startingAt: weekAheadStart,
+            startingAt: endDay,
             through: endDay.adding(days: 6, calendar: calendar),
             calendar: calendar,
             busyDayHints: busyDayHints

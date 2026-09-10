@@ -1074,7 +1074,7 @@ private struct NutritionLoggingSheets: ViewModifier {
     .helmTheme()
 }
 
-#Preview("Nutrition empty buckets") {
+#Preview("Nutrition empty") {
     ScrollView {
         HelmScreenStack {
             VStack(alignment: .leading, spacing: HelmSpacing.sm) {

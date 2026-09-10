@@ -222,8 +222,8 @@ struct SchedulePlannerTests {
         #expect(movedNotes.contains(where: { $0.contains("Calendar busy") }))
     }
 
-    @Test("projection restarts rotation at calendar week boundary")
-    func plannedWorkoutRecordsRestartAtWeekBoundary() {
+    @Test("projection continues rotation across calendar week boundary")
+    func plannedWorkoutRecordsContinuesAtWeekBoundary() {
         let weekStart = HelmDay(year: 2026, month: 7, day: 27)
         let pushDay = weekStart
         let start = HelmDay(year: 2026, month: 7, day: 31)
@@ -275,7 +275,7 @@ struct SchedulePlannerTests {
         #expect(records.count == 3)
         #expect(labels[0] == "Pull")
         #expect(labels[1] == "Push")
-        #expect(labels[2] == "Pull")
+        #expect(labels[2] == "Legs")
     }
 
     @Test("seven day horizon caps total projected sessions")

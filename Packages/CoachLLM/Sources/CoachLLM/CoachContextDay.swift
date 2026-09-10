@@ -79,4 +79,31 @@ public struct CoachContextDays: Sendable, Hashable, Codable, Equatable {
     }
 
     public static let empty = CoachContextDays()
+
+    private enum CodingKeys: String, CodingKey {
+        case readinessBaselines, evidence, groupedEvidence, recent, recentWorkouts
+        case trainingPlanSnapshot, weekAheadSchedule, nutritionDiary, todayPrescription
+        case prescriptionLoadSummary, volumeStateSummary, engineProfile, moduleSummaries
+        case recentSessionOutcomes, freshness, patternFindings
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        readinessBaselines = try values.decode(String.self, forKey: .readinessBaselines)
+        evidence = try values.decode([EvidenceRecord].self, forKey: .evidence)
+        groupedEvidence = try values.decode([String: [EvidenceRecord]].self, forKey: .groupedEvidence)
+        recent = try values.decode([CoachContextDay].self, forKey: .recent)
+        recentWorkouts = try values.decode(String.self, forKey: .recentWorkouts)
+        trainingPlanSnapshot = try values.decode(String.self, forKey: .trainingPlanSnapshot)
+        weekAheadSchedule = try values.decode(String.self, forKey: .weekAheadSchedule)
+        nutritionDiary = try values.decode(String.self, forKey: .nutritionDiary)
+        todayPrescription = try values.decode(String.self, forKey: .todayPrescription)
+        prescriptionLoadSummary = try values.decode(String.self, forKey: .prescriptionLoadSummary)
+        volumeStateSummary = try values.decode(String.self, forKey: .volumeStateSummary)
+        engineProfile = try values.decode(String.self, forKey: .engineProfile)
+        moduleSummaries = try values.decode(String.self, forKey: .moduleSummaries)
+        recentSessionOutcomes = try values.decode([SessionOutcomeCard].self, forKey: .recentSessionOutcomes)
+        freshness = try values.decode(CoachContextFreshness.self, forKey: .freshness)
+        patternFindings = try values.decodeIfPresent(String.self, forKey: .patternFindings) ?? ""
+    }
 }

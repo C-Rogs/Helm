@@ -1145,10 +1145,18 @@ public struct WorkoutSessionRepository: Sendable {
                 db,
                 sql: """
                     SELECT id FROM workout_session
-                    WHERE hk_uuid = ? AND deleted_at IS NULL
+                    WHERE hk_uuid = ?
                     """,
                 arguments: [hkUUID]
             ) {
+                let isDeleted = try Bool.fetchOne(
+                    db,
+                    sql: "SELECT deleted_at IS NOT NULL FROM workout_session WHERE id = ?",
+                    arguments: [existing]
+                ) ?? false
+                if isDeleted {
+                    return existing
+                }
                 try db.execute(
                     sql: """
                         UPDATE workout_session

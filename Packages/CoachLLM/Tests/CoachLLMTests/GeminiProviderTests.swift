@@ -117,10 +117,9 @@ struct GeminiStructuredDecodeTests {
 
 @Suite("GeminiProvider fixtures")
 struct GeminiProviderFixtureTests {
-    private func fixtureKeyStore() -> APIKeyStore {
-        let store = APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
-        try? store.delete(kind: .gemini)
-        try! store.save("fixture-key", kind: .gemini)
+    private func fixtureKeyStore() throws -> APIKeyStore {
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
+        try store.save("fixture-key", kind: .gemini)
         return store
     }
 
@@ -128,7 +127,7 @@ struct GeminiProviderFixtureTests {
     @Test("fixture stream reassembles and tracks request id")
     func streamFixture() async throws {
         let client = FixtureGeminiHTTPClient(bundle: .module)
-        let store = fixtureKeyStore()
+        let store = try fixtureKeyStore()
         let provider = GeminiProvider(apiKeyStore: store, httpClient: client)
 
         await GeminiStreamTracer.shared.reset()
@@ -159,7 +158,7 @@ struct GeminiProviderFixtureTests {
     @Test("fixture generate decodes session adjustment artefact")
     func generateSessionAdjustmentFixture() async throws {
         let client = FixtureGeminiHTTPClient(bundle: .module)
-        let store = fixtureKeyStore()
+        let store = try fixtureKeyStore()
         let provider = GeminiProvider(apiKeyStore: store, httpClient: client)
 
         let artefact = try await provider.generateSessionAdjustment(

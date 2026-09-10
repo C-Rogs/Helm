@@ -34,6 +34,7 @@ struct NutritionQueryServiceTests {
                     totalFatGrams: 70
                 )
             )
+            try store.nutritionLogStatus.markComplete(helmDay: day)
             try store.bodyComposition.upsert(
                 BodyComposition(
                     helmDay: day,

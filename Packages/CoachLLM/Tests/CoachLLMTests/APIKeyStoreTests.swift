@@ -5,7 +5,7 @@ import Testing
 @Suite("APIKeyStore")
 struct APIKeyStoreTests {
     private func makeStore() -> APIKeyStore {
-        APIKeyStore(service: "com.cameronro.helm.tests.\(UUID().uuidString)")
+        APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
     }
 
     @Test("round-trips a key")

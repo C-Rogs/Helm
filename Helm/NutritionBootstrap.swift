@@ -54,6 +54,7 @@ enum NutritionBootstrap {
     /// Cheap availability check. Does not build estimator or load CoFID.
     @MainActor
     static var isPhotoMealAvailable: Bool {
+        guard CloudFeatureConsentPreferences.shared.isConsented else { return false }
         if let cachedPhotoMealAvailable {
             return cachedPhotoMealAvailable
         }
@@ -64,6 +65,7 @@ enum NutritionBootstrap {
 
     @MainActor
     static var photoMealService: PhotoMealService? {
+        guard CloudFeatureConsentPreferences.shared.isConsented else { return nil }
         if let cachedPhotoMealService {
             return cachedPhotoMealService
         }

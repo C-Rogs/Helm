@@ -14,7 +14,7 @@ struct PrescriptionServiceTests {
         try seedCatalog(in: store)
 
         let engine = PlanPrescriptionEngine(persistence: store)
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
 
         try store.trainingPlan.save(StoredTrainingPlanSettings(phaseGoal: PhaseGoal(phase: .cut)))
         let cut = try await engine.computeSession(for: day, readiness: nil)
@@ -34,7 +34,7 @@ struct PrescriptionServiceTests {
         try store.trainingPlan.save(.default)
 
         let engine = PlanPrescriptionEngine(persistence: store)
-        let day = HelmDay(year: 2026, month: 7, day: 23)
+        let day = HelmDay(year: 2026, month: 7, day: 22)
         let state = try await engine.dashboardState(for: day, readiness: nil)
 
         guard case let .prescribed(summary) = state else {

@@ -36,6 +36,7 @@ struct SettingsView: View {
             notificationsSection
             trainSessionSection
             restTimerSection
+            cloudFeaturesSection
             if friendsRelease.showsAdvanced {
                 coachSection
                 batterySection
@@ -238,6 +239,14 @@ struct SettingsView: View {
         } footer: {
             Text("Rings on speaker and headphones when rest ends, in app or with Signal in the background, and ignores the Silent switch. A notification is the backstop if iOS shuts Signal down first, so keep notifications enabled.")
                 .helmType(.body, color: HelmColor.fgMuted)
+        }
+    }
+
+    private var cloudFeaturesSection: some View {
+        Section("Privacy") {
+            settingsLink("Cloud features", value: nil) {
+                CloudFeaturesSettingsView()
+            }
         }
     }
 

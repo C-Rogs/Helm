@@ -41,7 +41,7 @@ struct NutritionServiceTests {
 
         #expect(snapshot.actual?.helmDay == alcoholDay.helmDay)
         #expect(snapshot.actual?.macroGapKilocalories != nil)
-        #expect(snapshot.targets.macroGapKilocalories! > 100)
+        #expect(snapshot.actual?.macroGapKilocalories ?? 0 > 100)
         #expect(snapshot.targets.carbohydrateGrams > 0)
         #expect(snapshot.dayType == .rest)
     }
@@ -88,6 +88,7 @@ struct NutritionServiceTests {
                     totalFatGrams: 70
                 )
             )
+            try store.nutritionLogStatus.markComplete(helmDay: day)
             try store.bodyComposition.upsert(
                 BodyComposition(
                     helmDay: day,

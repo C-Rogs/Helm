@@ -75,6 +75,12 @@ struct FeedbackView: View {
         errorMessage = nil
         defer { isSending = false }
 
+        guard CloudFeatureConsentPreferences.shared.isConsented else {
+            errorMessage = "Turn on Cloud features in Settings before sending feedback."
+            HapticEngine.shared.play(.clampRejected)
+            return
+        }
+
         let trimmedName = fromName.trimmingCharacters(in: .whitespacesAndNewlines)
         FriendsReleasePreferences.shared.feedbackFromName = trimmedName
 
