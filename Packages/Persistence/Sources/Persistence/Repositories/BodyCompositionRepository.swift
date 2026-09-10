@@ -129,7 +129,8 @@ public struct BodyCompositionRepository: Sendable {
         }
     }
 
-    /// Latest body-mass sample per day, newest days first.
+    /// Latest positive body-mass sample per day, newest days first.
+    /// Zero-mass rows can be created by body-fat-only records and are not weigh-ins.
     /// Ties on `measured_at` break on `id` so each day appears once (HealthKit can write
     /// duplicate samples with the same timestamp).
     public func fetchDailyWeights(endingAt end: HelmDay, limit: Int, offset: Int = 0) throws -> [(HelmDay, Double)] {
@@ -148,6 +149,7 @@ public struct BodyCompositionRepository: Sendable {
                             ) AS rn
                         FROM body_composition
                         WHERE helm_day <= ?
+                          AND mass_kg > 0
                     )
                     WHERE rn = 1
                     ORDER BY helm_day DESC

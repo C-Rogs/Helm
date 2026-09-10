@@ -110,6 +110,33 @@ struct TrendsPaginationTests {
         #expect(page[0].0 == day)
         #expect(page[0].1 == 81.4)
     }
+
+    @Test("daily weights ignore zero-mass records")
+    func dailyWeightsIgnoreZeroMassRecords() throws {
+        let store = try makeStore()
+        let day = HelmDay(year: 2026, month: 9, day: 3)
+        let measuredAt = Date(timeIntervalSince1970: 1_756_771_200)
+
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 81.4),
+                measuredAt: measuredAt
+            )
+        )
+        try store.bodyComposition.upsert(
+            BodyComposition(
+                helmDay: day,
+                mass: Mass(kilograms: 0),
+                measuredAt: measuredAt.addingTimeInterval(60)
+            )
+        )
+
+        let page = try store.bodyComposition.fetchDailyWeights(endingAt: day, limit: 10)
+        #expect(page.count == 1)
+        #expect(page[0].0 == day)
+        #expect(page[0].1 == 81.4)
+    }
 }
 
 private struct ReadinessFixtureScore: Codable {
