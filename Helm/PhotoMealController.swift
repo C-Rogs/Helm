@@ -12,6 +12,7 @@ final class PhotoMealController {
     enum Phase {
         case idle
         case estimating
+        case draft(MealEstimate, previewImage: UIImage?)
         case confirm(MealEstimate, previewImage: UIImage?)
         case saving
         case failed(String)
@@ -38,6 +39,10 @@ final class PhotoMealController {
 
     var usesLidarPortionAssist: Bool {
         pendingPortionAssist != nil
+    }
+
+    var usesCofidGrounding: Bool {
+        NutritionPreferencesStore.shared.isPhotoCofidGroundingEnabled()
     }
 
     var isEstimating: Bool {
@@ -106,6 +111,19 @@ final class PhotoMealController {
         guard let pendingImageJPEG else { return }
         startEstimateTask { [self] in
             await runEstimate(imageJPEGData: pendingImageJPEG, preview: pendingPreview)
+        }
+        await estimateTask?.value
+    }
+
+    func refineDraft(corrections: String, editedEstimate: MealEstimate) async {
+        guard let pendingImageJPEG else { return }
+        startEstimateTask { [self] in
+            await runRefine(
+                imageJPEGData: pendingImageJPEG,
+                preview: pendingPreview,
+                priorEstimate: editedEstimate,
+                corrections: corrections
+            )
         }
         await estimateTask?.value
     }
@@ -204,6 +222,61 @@ final class PhotoMealController {
         do {
             let estimate = try await service.estimate(
                 from: imageJPEGData,
+                userNotes: userNotesPayload,
+                portionAssist: pendingPortionAssist,
+                progress: { [weak self] step in
+                    Task { @MainActor in
+                        self?.reportEstimateProgress(step)
+                    }
+                }
+            )
+            guard !Task.isCancelled else {
+                cancel()
+                return
+            }
+            if estimate.requiresRefinement {
+                phase = .draft(estimate, previewImage: preview)
+            } else {
+                phase = .confirm(estimate, previewImage: preview)
+            }
+        } catch {
+            guard !Task.isCancelled else {
+                cancel()
+                return
+            }
+            if error is CancellationError {
+                cancel()
+                return
+            }
+            phase = .failed(PhotoMealService.userMessage(for: error))
+        }
+    }
+
+    private func runRefine(
+        imageJPEGData: Data,
+        preview: UIImage?,
+        priorEstimate: MealEstimate,
+        corrections: String
+    ) async {
+        guard !Task.isCancelled else {
+            cancel()
+            return
+        }
+
+        guard let service else {
+            failUnlessCancelled("Add a Gemini or OpenRouter API key in Settings to log meals from photos.")
+            return
+        }
+
+        resetEstimateProgress()
+        phase = .estimating
+        let notes = userNotes.trimmingCharacters(in: .whitespacesAndNewlines)
+        let userNotesPayload = notes.isEmpty ? nil : notes
+        do {
+            let estimate = try await service.refine(
+                from: imageJPEGData,
+                priorEstimate: priorEstimate,
+                userCorrections: corrections,
                 userNotes: userNotesPayload,
                 portionAssist: pendingPortionAssist,
                 progress: { [weak self] step in

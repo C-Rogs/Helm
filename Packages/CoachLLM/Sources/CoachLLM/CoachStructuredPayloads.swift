@@ -219,6 +219,84 @@ public struct MealDecomposition: Sendable, Equatable {
     }
 }
 
+public struct MealVisionDraftPayload: Codable, Sendable, Equatable {
+    public enum Confidence: String, Codable, Sendable, Equatable {
+        case low
+        case medium
+        case high
+    }
+
+    public struct Item: Codable, Sendable, Equatable {
+        public let name: String
+        public let estimatedGrams: Double
+        public let caloriesKcal: Double
+        public let proteinG: Double
+        public let carbsG: Double
+        public let fatG: Double
+        public let portionMeta: String
+        public let confidence: Confidence
+
+        public init(
+            name: String,
+            estimatedGrams: Double,
+            caloriesKcal: Double,
+            proteinG: Double,
+            carbsG: Double,
+            fatG: Double,
+            portionMeta: String,
+            confidence: Confidence
+        ) {
+            self.name = name
+            self.estimatedGrams = estimatedGrams
+            self.caloriesKcal = caloriesKcal
+            self.proteinG = proteinG
+            self.carbsG = carbsG
+            self.fatG = fatG
+            self.portionMeta = portionMeta
+            self.confidence = confidence
+        }
+    }
+
+    public let schemaVersion: String
+    public let mealDescription: String
+    public let items: [Item]
+    public let portionNotes: String?
+
+    public init(
+        schemaVersion: String,
+        mealDescription: String,
+        items: [Item],
+        portionNotes: String? = nil
+    ) {
+        self.schemaVersion = schemaVersion
+        self.mealDescription = mealDescription
+        self.items = items
+        self.portionNotes = portionNotes
+    }
+}
+
+public struct MealVisionDraft: Sendable, Equatable {
+    public let mealDescription: String
+    public let items: [MealVisionDraftPayload.Item]
+    public let portionNotes: String?
+
+    public init(payload: MealVisionDraftPayload) {
+        mealDescription = payload.mealDescription
+        items = payload.items
+        portionNotes = payload.portionNotes
+    }
+
+    public init(
+        mealDescription: String,
+        items: [MealVisionDraftPayload.Item],
+        portionNotes: String? = nil
+    ) {
+        self.mealDescription = mealDescription
+        self.items = items
+        self.portionNotes = portionNotes
+    }
+}
+
 public struct FoodLogPayload: Codable, Sendable, Equatable {
     public enum Action: String, Codable, Sendable, Equatable {
         case log

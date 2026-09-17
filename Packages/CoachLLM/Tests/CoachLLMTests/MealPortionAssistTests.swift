@@ -92,4 +92,28 @@ struct MealPortionAssistTests {
         #expect(assisted.caloriesKcal > baseline.caloriesKcal)
         #expect(assisted.groundingWarnings.first?.contains("LiDAR depth assist") == true)
     }
+
+    @Test("scaled draft multiplies grams and macros")
+    func scaledDraft() {
+        let draft = MealVisionDraft(
+            mealDescription: "Salmon plate",
+            items: [
+                .init(
+                    name: "Salmon",
+                    estimatedGrams: 100,
+                    caloriesKcal: 200,
+                    proteinG: 20,
+                    carbsG: 0,
+                    fatG: 10,
+                    portionMeta: "thick slices",
+                    confidence: .high
+                )
+            ]
+        )
+
+        let scaled = MealPortionAssist.scaledDraft(draft, scaleFactor: 1.2)
+        #expect(scaled.items[0].estimatedGrams == 120)
+        #expect(scaled.items[0].caloriesKcal == 240)
+        #expect(scaled.items[0].proteinG == 24)
+    }
 }

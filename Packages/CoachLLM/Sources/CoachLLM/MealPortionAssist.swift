@@ -34,6 +34,27 @@ enum MealPortionAssist {
         return MealDecomposition(payload: payload)
     }
 
+    static func scaledDraft(_ draft: MealVisionDraft, scaleFactor: Double) -> MealVisionDraft {
+        func scale(_ item: MealVisionDraftPayload.Item) -> MealVisionDraftPayload.Item {
+            MealVisionDraftPayload.Item(
+                name: item.name,
+                estimatedGrams: (item.estimatedGrams * scaleFactor).rounded(),
+                caloriesKcal: (item.caloriesKcal * scaleFactor).rounded(),
+                proteinG: (item.proteinG * scaleFactor).rounded(),
+                carbsG: (item.carbsG * scaleFactor).rounded(),
+                fatG: (item.fatG * scaleFactor).rounded(),
+                portionMeta: item.portionMeta,
+                confidence: item.confidence
+            )
+        }
+
+        return MealVisionDraft(
+            mealDescription: draft.mealDescription,
+            items: draft.items.map(scale),
+            portionNotes: draft.portionNotes
+        )
+    }
+
     static func lidarWarning(for assist: MealPortionAssistContext) -> String {
         let pct = Int(((assist.gramScaleFactor - 1) * 100).rounded())
         guard pct != 0 else {

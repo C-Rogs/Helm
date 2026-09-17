@@ -41,6 +41,8 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
     public let liveHeartRateBPM: Int?
     public let workoutCompanionActive: Bool?
     public let companionExerciseName: String?
+    /// Next exercise after the current set completes (shown on Watch during rest).
+    public let companionUpNextExerciseName: String?
     public let companionSetNumber: Int?
     public let companionSetCount: Int?
     public let companionTargetSummary: String?
@@ -79,6 +81,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         liveHeartRateBPM: Int? = nil,
         workoutCompanionActive: Bool? = nil,
         companionExerciseName: String? = nil,
+        companionUpNextExerciseName: String? = nil,
         companionSetNumber: Int? = nil,
         companionSetCount: Int? = nil,
         companionTargetSummary: String? = nil,
@@ -105,6 +108,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         self.liveHeartRateBPM = liveHeartRateBPM
         self.workoutCompanionActive = workoutCompanionActive
         self.companionExerciseName = companionExerciseName
+        self.companionUpNextExerciseName = companionUpNextExerciseName
         self.companionSetNumber = companionSetNumber
         self.companionSetCount = companionSetCount
         self.companionTargetSummary = companionTargetSummary
@@ -133,6 +137,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         case liveHeartRateBPM
         case workoutCompanionActive
         case companionExerciseName
+        case companionUpNextExerciseName
         case companionSetNumber
         case companionSetCount
         case companionTargetSummary
@@ -162,6 +167,7 @@ public struct WatchSyncPayload: Codable, Sendable, Equatable {
         liveHeartRateBPM = try container.decodeIfPresent(Int.self, forKey: .liveHeartRateBPM)
         workoutCompanionActive = try container.decodeIfPresent(Bool.self, forKey: .workoutCompanionActive)
         companionExerciseName = try container.decodeIfPresent(String.self, forKey: .companionExerciseName)
+        companionUpNextExerciseName = try container.decodeIfPresent(String.self, forKey: .companionUpNextExerciseName)
         companionSetNumber = try container.decodeIfPresent(Int.self, forKey: .companionSetNumber)
         companionSetCount = try container.decodeIfPresent(Int.self, forKey: .companionSetCount)
         companionTargetSummary = try container.decodeIfPresent(String.self, forKey: .companionTargetSummary)

@@ -6,7 +6,7 @@ import SwiftUI
 struct AlcoholLogView: View {
     @Bindable var controller: ManualFoodLogController
 
-    @State private var preset: AlcoholDrinkPreset = .beer
+    @State private var preset: AlcoholDrinkPreset = .beerPint
     @State private var quantity = 1
     @State private var bucket: MealBucket
 
@@ -27,16 +27,7 @@ struct AlcoholLogView: View {
 
                 bucketPicker
 
-                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-                    Text("Drink")
-                        .helmType(.monoTag, color: HelmColor.fgMuted)
-                    Picker("Drink", selection: $preset) {
-                        ForEach(AlcoholDrinkPreset.allCases, id: \.self) { drink in
-                            Text(drink.displayName).tag(drink)
-                        }
-                    }
-                    .pickerStyle(.segmented)
-                }
+                drinkPicker
 
                 Stepper(value: $quantity, in: 1 ... 12) {
                     HStack {
@@ -74,6 +65,47 @@ struct AlcoholLogView: View {
         }
     }
 
+    private var drinkPicker: some View {
+        VStack(alignment: .leading, spacing: HelmSpacing.sm) {
+            Text("Drink")
+                .helmType(.monoTag, color: HelmColor.fgMuted)
+
+            ForEach(AlcoholDrinkPreset.Category.allCases, id: \.self) { category in
+                VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+                    Text(category.title)
+                        .helmType(.label, color: HelmColor.fgSecondary)
+
+                    ForEach(category.presets, id: \.self) { drink in
+                        Button {
+                            HapticEngine.shared.play(.selection)
+                            preset = drink
+                        } label: {
+                            HStack {
+                                Text(drink.displayName)
+                                    .helmType(.body)
+                                Spacer()
+                                Text("\(Int(drink.kilocaloriesPerServing)) kcal")
+                                    .helmType(.monoTag, color: HelmColor.fgMuted)
+                                if preset == drink {
+                                    HelmIconView(.checkmark, context: .inline)
+                                        .foregroundStyle(HelmColor.accent)
+                                }
+                            }
+                            .padding(HelmSpacing.sm)
+                            .background(
+                                preset == drink
+                                    ? HelmColor.accent.opacity(0.12)
+                                    : HelmColor.gaugeTrack.opacity(0.35),
+                                in: RoundedRectangle(cornerRadius: HelmRadius.sm)
+                            )
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+    }
+
     private var bucketPicker: some View {
         MealBucketPicker(selection: $bucket, labelStyle: .muted)
     }
@@ -88,7 +120,7 @@ struct AlcoholLogView: View {
                 Text("kcal")
                     .helmType(.body, color: HelmColor.fgMuted)
             }
-            Text(preset.servingLabel)
+            Text(quantity == 1 ? preset.servingLabel : "\(quantity) × \(preset.servingLabel)")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
         .padding(HelmSpacing.md)

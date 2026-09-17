@@ -177,7 +177,7 @@ struct NutritionWeeklyCheckInSheet: View {
                 Text(day.helmDay.formattedLabel)
                     .helmType(.label)
                 HStack(spacing: HelmSpacing.sm) {
-                    statusChip(day.hasWeighIn ? "Health weigh-in" : "No Health weigh-in", ok: day.hasWeighIn)
+                    statusChip(day.hasWeighIn ? "Scale synced" : "No scale sync", ok: day.hasWeighIn)
                     statusChip(day.hasFoodLog ? "Food" : "No food", ok: day.hasFoodLog)
                     if day.isIncomplete {
                         statusChip("Incomplete", ok: false)

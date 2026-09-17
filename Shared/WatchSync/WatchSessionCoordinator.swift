@@ -54,6 +54,7 @@ final class WatchSessionCoordinator: NSObject {
     }
     var workoutCompanionActive = false
     var companionExerciseName: String?
+    var companionUpNextExerciseName: String?
     var companionSetNumber: Int?
     var companionSetCount: Int?
     var companionTargetSummary: String?
@@ -91,6 +92,7 @@ final class WatchSessionCoordinator: NSObject {
     private struct PendingWorkoutCompanionPush: Sendable {
         let active: Bool
         let exerciseName: String?
+        let upNextExerciseName: String?
         let setNumber: Int?
         let setCount: Int?
         let targetSummary: String?
@@ -187,6 +189,7 @@ final class WatchSessionCoordinator: NSObject {
     func pushWorkoutCompanion(
         active: Bool,
         exerciseName: String? = nil,
+        upNextExerciseName: String? = nil,
         setNumber: Int? = nil,
         setCount: Int? = nil,
         targetSummary: String? = nil,
@@ -226,6 +229,7 @@ final class WatchSessionCoordinator: NSObject {
             pendingWorkoutCompanionPush = PendingWorkoutCompanionPush(
                 active: true,
                 exerciseName: exerciseName,
+                upNextExerciseName: upNextExerciseName,
                 setNumber: setNumber,
                 setCount: setCount,
                 targetSummary: targetSummary,
@@ -243,6 +247,7 @@ final class WatchSessionCoordinator: NSObject {
         deliverWorkoutCompanionPush(
             active: active,
             exerciseName: exerciseName,
+            upNextExerciseName: upNextExerciseName,
             setNumber: setNumber,
             setCount: setCount,
             targetSummary: targetSummary,
@@ -265,6 +270,7 @@ final class WatchSessionCoordinator: NSObject {
         deliverWorkoutCompanionPush(
             active: pending.active,
             exerciseName: pending.exerciseName,
+            upNextExerciseName: pending.upNextExerciseName,
             setNumber: pending.setNumber,
             setCount: pending.setCount,
             targetSummary: pending.targetSummary,
@@ -282,6 +288,7 @@ final class WatchSessionCoordinator: NSObject {
     private func deliverWorkoutCompanionPush(
         active: Bool,
         exerciseName: String?,
+        upNextExerciseName: String?,
         setNumber: Int?,
         setCount: Int?,
         targetSummary: String?,
@@ -315,6 +322,7 @@ final class WatchSessionCoordinator: NSObject {
             helmDay: helmDay,
             workoutCompanionActive: active,
             companionExerciseName: exerciseName,
+            companionUpNextExerciseName: upNextExerciseName,
             companionSetNumber: setNumber,
             companionSetCount: setCount,
             companionTargetSummary: targetSummary,
@@ -779,6 +787,7 @@ final class WatchSessionCoordinator: NSObject {
         liveHeartRateBPM: Int? = nil,
         workoutCompanionActive: Bool? = nil,
         companionExerciseName: String? = nil,
+        companionUpNextExerciseName: String? = nil,
         companionSetNumber: Int? = nil,
         companionSetCount: Int? = nil,
         companionTargetSummary: String? = nil,
@@ -808,6 +817,7 @@ final class WatchSessionCoordinator: NSObject {
             liveHeartRateBPM: liveHeartRateBPM,
             workoutCompanionActive: workoutCompanionActive,
             companionExerciseName: companionExerciseName,
+            companionUpNextExerciseName: companionUpNextExerciseName,
             companionSetNumber: companionSetNumber,
             companionSetCount: companionSetCount,
             companionTargetSummary: companionTargetSummary,
@@ -1085,6 +1095,7 @@ final class WatchSessionCoordinator: NSObject {
             let isActive = payload.workoutCompanionActive ?? false
             workoutCompanionActive = isActive
             companionExerciseName = payload.companionExerciseName
+            companionUpNextExerciseName = payload.companionUpNextExerciseName
             companionSetNumber = payload.companionSetNumber
             companionSetCount = payload.companionSetCount
             companionTargetSummary = payload.companionTargetSummary

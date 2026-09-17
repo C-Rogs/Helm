@@ -6,6 +6,7 @@ import SwiftUI
 struct NutritionSettingsView: View {
     @State private var dietarySourceMode: DietarySourceMode
     @State private var checkInWeekday: Int
+    @State private var photoCofidGroundingEnabled: Bool
 
     private let preferences: NutritionPreferencesStore
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
@@ -14,6 +15,7 @@ struct NutritionSettingsView: View {
         self.preferences = preferences
         _dietarySourceMode = State(initialValue: preferences.mode())
         _checkInWeekday = State(initialValue: preferences.checkInWeekday())
+        _photoCofidGroundingEnabled = State(initialValue: preferences.isPhotoCofidGroundingEnabled())
     }
 
     var body: some View {
@@ -53,6 +55,21 @@ struct NutritionSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Weekly check-in")
+            }
+
+            Section {
+                Toggle("Match ingredients to food database", isOn: $photoCofidGroundingEnabled)
+                    .helmListRowChrome()
+                    .onChange(of: photoCofidGroundingEnabled) { _, newValue in
+                        preferences.setPhotoCofidGroundingEnabled(newValue)
+                        NutritionBootstrap.invalidatePhotoMealServiceCache()
+                        HapticEngine.shared.play(.selection)
+                    }
+            } header: {
+                Text("Photo logging")
+            } footer: {
+                Text("By default, photo meals use vision to estimate portions and macros directly. Turning this on matches each ingredient to CoFID on your phone (legacy, slower, can mis-match).")
+                    .helmType(.body, color: HelmColor.fgMuted)
             }
 
             if case .ready(let snapshot) = nutritionService.state {

@@ -31,6 +31,7 @@ struct MealLineItemEditor: View {
     @Binding var description: String
     @Binding var lineItems: [EditableLineItem]
     var showsTotals: Bool = true
+    var usesCofidGrounding: Bool = true
     var onFocusedScrollIDChange: ((String?) -> Void)? = nil
 
     @Bindable private var focusModePreferences = FocusModePreferences.shared
@@ -152,8 +153,14 @@ struct MealLineItemEditor: View {
                             .helmType(.body)
                         Text("\(detail) · \(FoodLogDisplayFormatter.formatNumber(item.caloriesKcal)) kcal")
                             .helmType(.monoTag, color: HelmColor.fgMuted)
-                        Text(cofidMatchLabel(for: item))
-                            .helmType(.monoTag, color: cofidMatchColor(for: item))
+                        if usesCofidGrounding {
+                            Text(cofidMatchLabel(for: item))
+                                .helmType(.monoTag, color: cofidMatchColor(for: item))
+                        } else if let portionMeta = item.portionMeta,
+                                  !portionMeta.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                            Text(portionMeta)
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
                     }
                     Spacer()
                     HelmIconView(isExpanded ? .chevronUp : .chevronDown, context: .inline)
@@ -180,7 +187,7 @@ struct MealLineItemEditor: View {
                             }
                     }
 
-                    if nameQueryItemID == entry.id {
+                    if usesCofidGrounding, nameQueryItemID == entry.id {
                         suggestionList(for: entry)
                     }
 
@@ -326,7 +333,9 @@ struct MealLineItemEditor: View {
                 if portionStates[entryID] == nil, let entry = lineItems.first(where: { $0.id == entryID }) {
                     seedPortionStateIfNeeded(for: entry)
                 }
-                portionStates[entryID]?.servingsText = newValue
+                var state = portionStates[entryID] ?? PortionEditorState(servingsText: "1", selectedLabel: "1 g")
+                state.servingsText = newValue
+                portionStates[entryID] = state
                 applyPortionUpdate(for: entryID)
             }
         )
@@ -339,7 +348,10 @@ struct MealLineItemEditor: View {
                 if portionStates[entryID] == nil, let entry = lineItems.first(where: { $0.id == entryID }) {
                     seedPortionStateIfNeeded(for: entry)
                 }
-                portionStates[entryID]?.selectedLabel = newValue
+                var state = portionStates[entryID] ?? PortionEditorState(servingsText: "1", selectedLabel: "1 g")
+                state.selectedLabel = newValue
+                state.servingsText = "1"
+                portionStates[entryID] = state
                 applyPortionUpdate(for: entryID)
             }
         )
@@ -365,7 +377,7 @@ struct MealLineItemEditor: View {
     }
 
     private func recomputeLineItem(name: String, grams: Double, from item: MealLineItem) -> MealLineItem {
-        if let resolved = lookup.resolve(item: name) {
+        if usesCofidGrounding, let resolved = lookup.resolve(item: name) {
             return MacroAggregator.lineItem(
                 name: name,
                 grams: grams,
@@ -382,9 +394,26 @@ struct MealLineItemEditor: View {
             carbsG: item.carbsG,
             fatG: item.fatG,
             usdaMatchID: item.usdaMatchID,
-            matchConfidence: item.matchConfidence
+            matchConfidence: item.matchConfidence,
+            cofidDescription: item.cofidDescription,
+            portionMeta: item.portionMeta
         )
-        return MacroAggregator.recomputeLineItem(renamed, grams: grams, lookup: lookup)
+        if usesCofidGrounding {
+            return MacroAggregator.recomputeLineItem(renamed, grams: grams, lookup: lookup)
+        }
+        let scale = grams / max(item.grams, 1)
+        return MealLineItem(
+            name: name,
+            grams: grams,
+            caloriesKcal: item.caloriesKcal * scale,
+            proteinG: item.proteinG * scale,
+            carbsG: item.carbsG * scale,
+            fatG: item.fatG * scale,
+            usdaMatchID: item.usdaMatchID,
+            matchConfidence: item.matchConfidence,
+            cofidDescription: item.cofidDescription,
+            portionMeta: item.portionMeta
+        )
     }
 
     private func nameBinding(for entry: EditableLineItem) -> Binding<String> {

@@ -14,6 +14,8 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
     public var matchConfidence: MealEstimate.Confidence
     /// CoFID record description used for macro math (nil when scaled without re-resolve).
     public var cofidDescription: String?
+    /// Vision portion meta (thickness, slice size, coverage) for simple photo scan mode.
+    public var portionMeta: String?
 
     public init(
         name: String,
@@ -24,7 +26,8 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
         fatG: Double,
         usdaMatchID: String? = nil,
         matchConfidence: MealEstimate.Confidence,
-        cofidDescription: String? = nil
+        cofidDescription: String? = nil,
+        portionMeta: String? = nil
     ) {
         self.name = name
         self.grams = grams
@@ -35,6 +38,7 @@ public struct MealLineItem: Sendable, Equatable, Codable, Identifiable {
         self.usdaMatchID = usdaMatchID
         self.matchConfidence = matchConfidence
         self.cofidDescription = cofidDescription
+        self.portionMeta = portionMeta
     }
 
     public var usesGenericCofidFallback: Bool {

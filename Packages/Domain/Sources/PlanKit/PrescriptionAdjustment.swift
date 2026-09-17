@@ -208,6 +208,14 @@ enum PrescriptionAdjustmentEngine {
             return .failure(.swapTargetExcluded(exerciseID: toID))
         }
 
+        if exercises.contains(where: { $0.exerciseID == toID && $0.exerciseID != fromID }) {
+            exercises.remove(at: index)
+            for position in exercises.indices {
+                exercises[position] = replacing(exercises[position], order: position)
+            }
+            return .success
+        }
+
         let primaryMuscle = catalogByID[fromID]?.muscleMap.contributions
             .max(by: { $0.fraction < $1.fraction })?.muscle
         let rationalePayload: (rationale: String, evidenceIDs: [String])

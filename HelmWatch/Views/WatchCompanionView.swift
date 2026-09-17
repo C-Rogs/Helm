@@ -24,6 +24,7 @@ struct WatchCompanionView: View {
             hero
 
             if !isLuminanceReduced, isRestingNow {
+                upNextReadout
                 restChips
             }
 
@@ -111,6 +112,18 @@ struct WatchCompanionView: View {
         if restWindowEnd == key { return }
         restWindowEnd = key
         restSpanSeconds = max(1, ends.timeIntervalSince(Date()))
+    }
+
+    @ViewBuilder
+    private var upNextReadout: some View {
+        if let upNext = coordinator.companionUpNextExerciseName,
+           !upNext.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            Text("UP NEXT · \(upNext)")
+                .watchType(.monoTag, color: WatchPalette.fgMuted)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
     }
 
     private var headerRow: some View {

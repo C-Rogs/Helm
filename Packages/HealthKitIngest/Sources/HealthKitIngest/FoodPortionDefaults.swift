@@ -74,6 +74,23 @@ public enum FoodPortionDefaultsResolver {
 
         switch product.ref.origin {
         case .openFoodFacts:
+            if let countableConfig {
+                let defaultSize = CountablePortion.inferDefaultSize(
+                    from: product.ref.displayName,
+                    config: countableConfig
+                )
+                let unitGrams = CountablePortion.gramsPerUnit(
+                    sizeOption: defaultSize,
+                    config: countableConfig,
+                    fallbackGrams: produceDefaultGrams
+                )
+                return buildDefaults(
+                    product: product,
+                    grams: unitGrams,
+                    servingLabel: product.servingLabel,
+                    countableConfig: countableConfig
+                )
+            }
             return buildDefaults(
                 product: product,
                 grams: produceDefaultGrams,

@@ -268,7 +268,7 @@ final class TrainSessionController {
                 restRemainingSeconds: rest,
                 restTimerSoundEnabled: trainPreferences.restTimerVolume.isEnabled
             )
-            activateWatchCompanionAfterSessionStart()
+            await activateWatchCompanionAfterSessionStart()
         } else {
             await refreshPrescriptionState()
         }
@@ -447,7 +447,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
-                activateWatchCompanionAfterSessionStart()
+                await activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -491,7 +491,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
-                activateWatchCompanionAfterSessionStart()
+                await activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -512,7 +512,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
-                activateWatchCompanionAfterSessionStart()
+                await activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -547,7 +547,7 @@ final class TrainSessionController {
             await refreshMetadata()
             if let snapshot = store.snapshot {
                 await sideEffects.onSessionStarted(snapshot)
-                activateWatchCompanionAfterSessionStart()
+                await activateWatchCompanionAfterSessionStart()
             }
         } catch {
             errorMessage = error.localizedDescription
@@ -681,7 +681,9 @@ final class TrainSessionController {
         coordinator.clearMirroredHeartRate()
         coordinator.clearPhoneHeartRate()
         coordinator.clearLiveHeartRate()
-        activateWatchCompanionAfterSessionStart()
+        Task { @MainActor in
+            await activateWatchCompanionAfterSessionStart()
+        }
     }
 
     func handleWatchReachabilityChange(isReachable: Bool) {
@@ -2299,7 +2301,7 @@ final class TrainSessionController {
         watchCompanionNotice = nil
     }
 
-    private func activateWatchCompanionAfterSessionStart() {
+    private func activateWatchCompanionAfterSessionStart() async {
         startHeartRateSampling()
         startLiveActivityHeartbeat()
         let coordinator = WatchReadinessBootstrap.coordinator
@@ -2319,20 +2321,18 @@ final class TrainSessionController {
         let sessionID = store.snapshot?.session.id ?? UUID().uuidString
         let startedAt = store.snapshot?.session.startedAt
         let activityKind = inferredWatchActivityKind()
-        Task { @MainActor in
-            do {
-                try await PhoneWorkoutSessionManager.shared.start(
-                    sessionID: sessionID,
-                    activityStart: startedAt,
-                    activityKind: activityKind,
-                    indoor: inferredWorkoutUsesIndoorLocation(activityKind: activityKind)
-                )
-            } catch {
-                WatchReadinessBootstrap.coordinator.recordDiagnostic(
-                    .phoneHeartRateSessionEnd,
-                    detail: "startFail=\(error.localizedDescription)"
-                )
-            }
+        do {
+            try await PhoneWorkoutSessionManager.shared.start(
+                sessionID: sessionID,
+                activityStart: startedAt,
+                activityKind: activityKind,
+                indoor: inferredWorkoutUsesIndoorLocation(activityKind: activityKind)
+            )
+        } catch {
+            WatchReadinessBootstrap.coordinator.recordDiagnostic(
+                .phoneHeartRateSessionEnd,
+                detail: "startFail=\(error.localizedDescription)"
+            )
         }
 
         if coordinator.canDriveWatchCompanion {
@@ -2481,6 +2481,7 @@ final class TrainSessionController {
         WatchReadinessBootstrap.coordinator.pushWorkoutCompanion(
             active: true,
             exerciseName: displayName,
+            upNextExerciseName: upNextExerciseName,
             setNumber: setNumber,
             setCount: currentExercise?.sets.count,
             targetSummary: targetSummary,
@@ -2494,6 +2495,28 @@ final class TrainSessionController {
 
     private func inferredWatchActivityKind() -> WatchWorkoutActivityKind {
         guard let snapshot = store.snapshot else { return .traditionalStrengthTraining }
+
+        let currentExercise = snapshot.session.exercises.first { exercise in
+            exercise.sets.contains { $0.status != .completed }
+        } ?? snapshot.session.exercises.first
+
+        if let currentExercise {
+            let currentName = (
+                exerciseSummaries[currentExercise.exerciseID]?.displayName ?? currentExercise.exerciseID
+            ).lowercased()
+            if currentName.contains("treadmill") {
+                return .walking
+            }
+            let currentKind = WatchWorkoutActivityKind.inferred(
+                sessionTitle: nil,
+                exerciseNames: [currentName],
+                exerciseModes: [currentExercise.exerciseMode]
+            )
+            if currentKind != .traditionalStrengthTraining {
+                return currentKind
+            }
+        }
+
         let names = snapshot.session.exercises.map { exercise in
             exerciseSummaries[exercise.exerciseID]?.displayName ?? exercise.exerciseID
         }

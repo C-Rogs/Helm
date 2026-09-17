@@ -46,6 +46,7 @@ struct NutritionView: View {
     // Gates confirm-sheet presentation and error alerts to turns started from
     // this tab, so an unrelated chat conversation cannot surface here.
     @State private var isDescribeFlowActive = false
+    @State private var deferredSearchBucket: MealBucket?
     @Environment(\.scenePhase) private var scenePhase
 
     var body: some View {
@@ -105,8 +106,14 @@ struct NutritionView: View {
                     onSubmit: sendDescribeFood,
                     onUseSearch: { bucket in
                         cancelDescribeFlow()
+                        deferredSearchBucket = bucket
                         describeBucket = nil
-                        manualFoodLogController.start(.search, bucket: bucket)
+                    },
+                    onDescribeDismissed: {
+                        if let bucket = deferredSearchBucket {
+                            deferredSearchBucket = nil
+                            manualFoodLogController.start(.search, bucket: bucket)
+                        }
                     }
                 )
             )
@@ -279,6 +286,8 @@ struct NutritionView: View {
     private func sendDescribeFood(_ text: String, bucket: MealBucket) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
+        chatController.dismissFoodMealConfirm()
+        chatController.cancelStreaming()
         var transcript = "\(trimmed) (log to \(bucket.displayName.lowercased()))"
         if let day = selectedHelmDay, let today = todayHelmDay, day != today {
             transcript += " for \(day.formatted)"
@@ -534,6 +543,9 @@ struct NutritionView: View {
         photoMealController.preferredBucket = bucket
         switch action {
         case .describe:
+            chatController.dismissFoodMealConfirm()
+            chatController.cancelStreaming()
+            isDescribeFlowActive = false
             describeText = ""
             describeBucket = bucket
         case .search:
@@ -625,6 +637,7 @@ private struct DescribeFoodPresentation: ViewModifier {
     @Binding var isDescribeFlowActive: Bool
     let onSubmit: (String, MealBucket) -> Void
     let onUseSearch: (MealBucket) -> Void
+    let onDescribeDismissed: () -> Void
 
     private var errorMessage: String? {
         guard isDescribeFlowActive,
@@ -655,6 +668,7 @@ private struct DescribeFoodPresentation: ViewModifier {
                     chatController.dismissFoodMealConfirm()
                     isDescribeFlowActive = false
                 }
+                onDescribeDismissed()
             }
         ) {
             if let bucket = describeBucket {
@@ -732,15 +746,27 @@ private struct NutritionLoggingSheets: ViewModifier {
                     completedSteps: photoMealController.estimateCompletedSteps,
                     currentStep: photoMealController.estimateCurrentStep,
                     usesLidarAssist: photoMealController.usesLidarPortionAssist,
+                    usesCofidGrounding: photoMealController.usesCofidGrounding,
                     onCancel: { photoMealController.cancel() }
                 )
+            }
+            .sheet(isPresented: photoDraftBinding) {
+                if case let .draft(estimate, previewImage) = photoMealController.phase {
+                    PhotoMealConfirmSheet(
+                        controller: photoMealController,
+                        initialEstimate: estimate,
+                        previewImage: previewImage,
+                        mode: .draft
+                    )
+                }
             }
             .sheet(isPresented: photoConfirmBinding) {
                 if case let .confirm(estimate, previewImage) = photoMealController.phase {
                     PhotoMealConfirmSheet(
                         controller: photoMealController,
                         initialEstimate: estimate,
-                        previewImage: previewImage
+                        previewImage: previewImage,
+                        mode: .confirm
                     )
                 }
             }
@@ -794,7 +820,14 @@ private struct NutritionLoggingSheets: ViewModifier {
                 }
             )
             .sheet(item: manualFoodFlowBinding) { mode in
-                AddFoodFlowView(controller: manualFoodLogController, entryMode: mode)
+                Group {
+                    if mode == .search {
+                        AddFoodFlowView(controller: manualFoodLogController, entryMode: mode)
+                            .presentationDetents([.large])
+                    } else {
+                        AddFoodFlowView(controller: manualFoodLogController, entryMode: mode)
+                    }
+                }
             }
             .alert(
                 "Food logging",
@@ -986,6 +1019,20 @@ private struct NutritionLoggingSheets: ViewModifier {
             get: { photoMealController.isEstimating },
             set: { isPresented in
                 if !isPresented, photoMealController.isEstimating {
+                    photoMealController.cancel()
+                }
+            }
+        )
+    }
+
+    private var photoDraftBinding: Binding<Bool> {
+        Binding(
+            get: {
+                if case .draft = photoMealController.phase { return true }
+                return false
+            },
+            set: { isPresented in
+                if !isPresented, case .draft = photoMealController.phase {
                     photoMealController.cancel()
                 }
             }

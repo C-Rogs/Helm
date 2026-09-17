@@ -11,6 +11,8 @@ struct AddFoodFlowView: View {
     @State private var pendingBarcode: String?
     @State private var barcodePhase: BarcodeScanPhase = .scanning
     @State private var pendingQueueBucket: MealBucket
+    @State private var searchQuery = ""
+    @State private var searchSubmitTrigger = false
     @Environment(\.dismiss) private var dismiss
 
     init(controller: ManualFoodLogController, entryMode: AddFoodEntryMode) {
@@ -54,6 +56,8 @@ struct AddFoodFlowView: View {
                     case .search:
                         FoodSearchView(
                             controller: controller,
+                            query: $searchQuery,
+                            submitTrigger: $searchSubmitTrigger,
                             isOnline: controller.isOnline,
                             onSelect: { product in
                                 handleProductSelection(product)
@@ -77,6 +81,14 @@ struct AddFoodFlowView: View {
                     }
                 }
             }
+        }
+        .searchable(
+            text: entryMode == .search && selectedProduct == nil ? $searchQuery : .constant(""),
+            prompt: "Search foods"
+        )
+        .onSubmit(of: .search) {
+            guard entryMode == .search, selectedProduct == nil else { return }
+            searchSubmitTrigger = true
         }
         .task {
             await controller.refreshConnectivity()

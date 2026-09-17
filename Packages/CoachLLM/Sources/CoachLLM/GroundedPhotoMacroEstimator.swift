@@ -134,12 +134,15 @@ public struct GroundedPhotoMacroEstimator: Sendable {
             )
         }
 
-        return MacroAggregator.sum(
+        var estimate = MacroAggregator.sum(
             description: decomposition.mealDescription,
             lineItems: lineItems,
             groundingWarnings: warnings,
             decompositionAuditJSON: decompositionAuditJSON
         )
+        estimate.scanMode = .cofidGrounded
+        estimate.requiresRefinement = false
+        return estimate
     }
 
     private func encodeDecompositionAudit(_ decomposition: MealDecomposition) -> String? {

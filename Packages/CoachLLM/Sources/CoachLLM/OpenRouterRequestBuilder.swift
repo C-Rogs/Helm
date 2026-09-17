@@ -186,6 +186,73 @@ public enum OpenRouterRequestBuilder {
         )
         return try JSONEncoder().encode(request)
     }
+
+    public static func mealVisionDraftPhotoBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        model: MealVisionModel = .openRouterGemmaFree,
+        useStructuredOutput: Bool = false,
+        userMessage: String
+    ) throws -> Data {
+        try mealVisionDraftBody(
+            systemInstructions: systemInstructions,
+            imageJPEGBase64: imageJPEGBase64,
+            model: model,
+            useStructuredOutput: useStructuredOutput,
+            userMessage: userMessage
+        )
+    }
+
+    public static func mealVisionDraftRefineBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        model: MealVisionModel = .openRouterGemmaFree,
+        useStructuredOutput: Bool = false,
+        userMessage: String
+    ) throws -> Data {
+        try mealVisionDraftBody(
+            systemInstructions: systemInstructions,
+            imageJPEGBase64: imageJPEGBase64,
+            model: model,
+            useStructuredOutput: useStructuredOutput,
+            userMessage: userMessage
+        )
+    }
+
+    private static func mealVisionDraftBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        model: MealVisionModel,
+        useStructuredOutput: Bool,
+        userMessage: String
+    ) throws -> Data {
+        let jsonInstructions = """
+        \(systemInstructions)
+        Respond with JSON only matching meal_vision_draft schema_version \(CoachOutputSchemaVersion.mealVisionDraftV1.rawValue).
+        """
+        let responseFormat: OpenRouterChatCompletionRequest.ResponseFormat? = useStructuredOutput
+            ? .init(
+                type: "json_schema",
+                jsonSchema: .init(
+                    name: "meal_vision_draft",
+                    strict: true,
+                    schema: GeminiRequestBuilder.mealVisionDraftSchema()
+                )
+            )
+            : nil
+        let request = OpenRouterChatCompletionRequest(
+            model: model.rawValue,
+            messages: [
+                .init(role: "user", content: [
+                    .text(jsonInstructions),
+                    .text(userMessage),
+                    .image(jpegBase64: imageJPEGBase64)
+                ])
+            ],
+            responseFormat: responseFormat
+        )
+        return try JSONEncoder().encode(request)
+    }
 }
 
 public enum OpenRouterResponseParser {

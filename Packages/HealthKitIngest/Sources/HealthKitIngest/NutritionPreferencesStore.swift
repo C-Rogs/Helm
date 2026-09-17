@@ -6,6 +6,7 @@ public final class NutritionPreferencesStore: @unchecked Sendable {
     public static let dietarySourceModeKey = "helm.nutrition.dietarySourceMode"
     public static let checkInWeekdayKey = WeeklyCheckInPreferences.checkInWeekdayKey
     public static let lastCheckInCompletedOnKey = "helm.nutrition.lastCheckInCompletedOn"
+    public static let photoCofidGroundingEnabledKey = "helm.nutrition.photoCofidGroundingEnabled"
     public static let shared = NutritionPreferencesStore()
 
     private let defaults: UserDefaults
@@ -61,6 +62,23 @@ public final class NutritionPreferencesStore: @unchecked Sendable {
             } else {
                 defaults.removeObject(forKey: Self.lastCheckInCompletedOnKey)
             }
+        }
+    }
+
+    /// When false (default), photo meals use vision-direct draft estimates without CoFID matching.
+    public func isPhotoCofidGroundingEnabled() -> Bool {
+        lock.withLock {
+            TrainPreferencePersistence.loadBool(
+                key: Self.photoCofidGroundingEnabledKey,
+                defaults: defaults,
+                defaultValue: false
+            )
+        }
+    }
+
+    public func setPhotoCofidGroundingEnabled(_ enabled: Bool) {
+        lock.withLock {
+            TrainPreferencePersistence.saveBool(enabled, key: Self.photoCofidGroundingEnabledKey, defaults: defaults)
         }
     }
 

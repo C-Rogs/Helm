@@ -340,7 +340,7 @@ struct FoodResolverTests {
         let results = try await resolver.searchRemote(query: "Lidl", limit: 20)
 
         #expect(results.count == 20)
-        #expect(client.requestedPageSizes == [20])
+        #expect(client.requestedPageSizes == [40])
         #expect(results.allSatisfy { $0.product.ref.displayName.contains("Lidl") })
     }
 
@@ -379,7 +379,8 @@ struct FoodResolverTests {
             per100gFatG: 2,
             servingSizeLabel: nil,
             servingQuantityGrams: nil,
-            rawJSON: "{}"
+            rawJSON: "{}",
+            macrosKnown: true
         )
     }
 }

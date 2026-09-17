@@ -143,6 +143,130 @@ public struct GeminiMealVisionProvider: Sendable {
         return MealEstimate(payload: payload)
     }
 
+    public func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+        let apiKey = try requireAPIKey()
+        var lastError: Error?
+
+        for model in modelCandidates {
+            do {
+                return try await draftMeal(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model,
+                    userNotes: userNotes
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("Gemini meal vision is unavailable.")
+    }
+
+    private func draftMeal(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: GeminiModel,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let base64 = imageJPEGData.base64EncodedString()
+        let requestID = UUID()
+
+        let body = try GeminiRequestBuilder.mealVisionDraftPhotoBody(
+            systemInstructions: MealVisionPrompt.draftSystemInstructions,
+            imageJPEGBase64: base64,
+            userMessage: MealVisionPrompt.draftUserMessage(notes: userNotes)
+        ).encoded()
+
+        let request = GeminiGenerateHTTPRequest(
+            requestID: requestID,
+            model: model,
+            apiKey: apiKey,
+            body: body
+        )
+
+        let responseData = try await httpClient.generateContent(request)
+        let jsonText = try GeminiSSEParser.responseText(from: responseData)
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MealVisionDraftPayload.self,
+            from: jsonText,
+            expectedSchema: .mealVisionDraftV1
+        )
+        return MealVisionDraft(payload: payload)
+    }
+
+    public func refineDraft(
+        imageJPEGData: Data,
+        priorDraft: MealVisionDraft,
+        userCorrections: String,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let apiKey = try requireAPIKey()
+        var lastError: Error?
+
+        for model in modelCandidates {
+            do {
+                return try await refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("Gemini meal vision is unavailable.")
+    }
+
+    private func refineDraft(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: GeminiModel,
+        priorDraft: MealVisionDraft,
+        userCorrections: String,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let priorJSON = MealVisionDraftMapping.encodeAuditJSON(priorDraft) ?? "{}"
+        let base64 = imageJPEGData.base64EncodedString()
+        let requestID = UUID()
+
+        let body = try GeminiRequestBuilder.mealVisionDraftRefineBody(
+            systemInstructions: MealVisionPrompt.refineDraftSystemInstructions,
+            imageJPEGBase64: base64,
+            userMessage: MealVisionPrompt.refineDraftUserMessage(
+                priorDraftJSON: priorJSON,
+                corrections: userCorrections,
+                notes: userNotes
+            )
+        ).encoded()
+
+        let request = GeminiGenerateHTTPRequest(
+            requestID: requestID,
+            model: model,
+            apiKey: apiKey,
+            body: body
+        )
+
+        let responseData = try await httpClient.generateContent(request)
+        let jsonText = try GeminiSSEParser.responseText(from: responseData)
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MealVisionDraftPayload.self,
+            from: jsonText,
+            expectedSchema: .mealVisionDraftV1
+        )
+        return MealVisionDraft(payload: payload)
+    }
+
     private static func shouldRetryWithAlternateModel(_ error: CoachProviderError) -> Bool {
         guard case .requestFailed(let detail) = error else { return false }
         let normalized = detail.lowercased()

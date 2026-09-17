@@ -126,6 +126,9 @@ struct FoodPortionStepView: View {
         .helmScreenBackground()
         .navigationTitle("Portion")
         .navigationBarTitleDisplayMode(.inline)
+        .onChange(of: selectedServingLabel) { _, _ in
+            resetServingsOnUnitChange()
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel", action: onCancel)
@@ -206,18 +209,39 @@ struct FoodPortionStepView: View {
         return extras
     }
 
+    private func resetServingsOnUnitChange() {
+        servingsText = "1"
+    }
+
     private static func initialServing(
         in options: [ProducePortionOption],
         servingLabel: String?,
         sizeLabel: String?
     ) -> ProducePortionOption? {
-        if let servingLabel, let match = options.first(where: { $0.label == servingLabel }) {
-            return match
+        let candidates = [servingLabel, sizeLabel].compactMap { $0 }
+        for candidate in candidates {
+            if let match = options.first(where: { $0.label == candidate }) {
+                return match
+            }
+            let normalized = normalizeServingLabel(candidate)
+            if let match = options.first(where: { normalizeServingLabel($0.label) == normalized }) {
+                return match
+            }
+            if let match = options.first(where: {
+                normalizeServingLabel($0.label).hasPrefix(normalized)
+                    || normalized.hasPrefix(normalizeServingLabel($0.label))
+            }) {
+                return match
+            }
         }
-        if let sizeLabel, let match = options.first(where: { $0.label == sizeLabel }) {
-            return match
-        }
-        return options.first
+        return options.first { !$0.label.hasSuffix(" g") } ?? options.first
+    }
+
+    private static func normalizeServingLabel(_ label: String) -> String {
+        label
+            .lowercased()
+            .replacingOccurrences(of: " eggs", with: " egg")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
     }
 }
 
@@ -226,6 +250,7 @@ struct ServingQuantityFields: View {
     let options: [ProducePortionOption]
     @Binding var servingsText: String
     @Binding var selectedLabel: String
+    var onServingSizeChange: (() -> Void)?
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
@@ -248,6 +273,7 @@ struct ServingQuantityFields: View {
                         Button(option.label) {
                             HapticEngine.shared.play(.selection)
                             selectedLabel = option.label
+                            onServingSizeChange?()
                         }
                     }
                 } label: {

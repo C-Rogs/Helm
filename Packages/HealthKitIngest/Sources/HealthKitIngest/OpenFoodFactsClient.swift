@@ -13,6 +13,7 @@ public struct OpenFoodFactsProduct: Sendable, Equatable {
     public let servingSizeLabel: String?
     public let servingQuantityGrams: Double?
     public let rawJSON: String
+    public let macrosKnown: Bool
 
     public var displayName: String {
         if let brand, !brand.isEmpty, !Self.containsBrand(productName: productName, brand: brand) {
@@ -190,9 +191,7 @@ enum OpenFoodFactsParser {
 
         let nutriments = product["nutriments"] as? [String: Any] ?? [:]
         let kcal = energyKcalPer100g(from: nutriments)
-        guard let kcal else {
-            throw OpenFoodFactsError.invalidResponse
-        }
+        let macrosKnown = kcal != nil
 
         let brand = parseBrand(from: product)
 
@@ -207,13 +206,14 @@ enum OpenFoodFactsParser {
             barcode: barcode,
             productName: name,
             brand: brand,
-            per100gKcal: kcal,
+            per100gKcal: kcal ?? 0,
             per100gProteinG: doubleValue(nutriments["proteins_100g"]) ?? 0,
             per100gCarbsG: doubleValue(nutriments["carbohydrates_100g"]) ?? 0,
             per100gFatG: doubleValue(nutriments["fat_100g"]) ?? 0,
             servingSizeLabel: servingSizeLabel?.isEmpty == false ? servingSizeLabel : nil,
             servingQuantityGrams: servingQuantityGrams,
-            rawJSON: rawJSONString
+            rawJSON: rawJSONString,
+            macrosKnown: macrosKnown
         )
     }
 

@@ -150,6 +150,27 @@ struct ManualMealServiceTests {
         #expect(meals[0].source == .alcohol)
     }
 
+    @Test("half pint alcohol preset scales kcal correctly")
+    func alcoholHalfPintMacros() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store)
+        )
+
+        _ = try await service.logAlcohol(
+            preset: .beerHalfPint,
+            quantity: 2,
+            bucket: .dinner,
+            loggedAt: loggedAt,
+            mealID: "half-pint-meal"
+        )
+
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        let nutritionDay = try store.nutrition.fetchDay(helmDay: helmDay)
+        #expect(nutritionDay?.totalEnergy?.kilocalories == 210)
+    }
+
     @Test("own HK writes are not re-ingested")
     func dedupOwnWrites() async throws {
         let store = try PersistenceStore.inMemory()

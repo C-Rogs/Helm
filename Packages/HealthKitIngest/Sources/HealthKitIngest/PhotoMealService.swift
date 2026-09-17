@@ -89,6 +89,39 @@ public struct PhotoMealService: Sendable {
         }
     }
 
+    public func refine(
+        from imageJPEGData: Data,
+        priorEstimate: MealEstimate,
+        userCorrections: String,
+        userNotes: String? = nil,
+        portionAssist: MealPortionAssistContext? = nil,
+        progress: MealMacroEstimateProgress? = nil
+    ) async throws -> MealEstimate {
+        guard !imageJPEGData.isEmpty else {
+            throw PhotoMealError.invalidImage
+        }
+        let payload = try Self.normalizedPayload(from: imageJPEGData)
+
+        do {
+            let estimate = try await estimator.refineMacros(
+                imageJPEGData: payload,
+                priorEstimate: priorEstimate,
+                userCorrections: userCorrections,
+                userNotes: userNotes,
+                portionAssist: portionAssist,
+                progress: progress
+            )
+            photoMealLog.debug(
+                "Photo refine kcal=\(estimate.caloriesKcal, privacy: .public) confidence=\(estimate.confidence.rawValue, privacy: .public) items=\(estimate.lineItems.count, privacy: .public)"
+            )
+            return estimate
+        } catch {
+            photoMealLog.error("Photo macro refine failed: \(String(describing: type(of: error)), privacy: .public)")
+            Task { await DiagnosticsLog.shared.capture(error: error, category: .nutritionKit, message: "Photo macro refine failed") }
+            throw error
+        }
+    }
+
     public func confirm(
         estimate: MealEstimate,
         name: String,

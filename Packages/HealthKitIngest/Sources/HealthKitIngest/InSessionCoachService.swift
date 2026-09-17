@@ -98,7 +98,13 @@ public struct CoachSessionProposal: Sendable, Equatable {
 
     /// Failed turns must not keep an optimistic "Swapped..." reply as the athlete-facing line.
     public var displayedAssistantText: String {
-        failureNotice ?? reply
+        if case .confirmable = status {
+            if let previewBanner {
+                return "Tap to confirm: \(previewBanner.fromLabel) → \(previewBanner.toLabel)."
+            }
+            return "Tap to confirm this session change."
+        }
+        return failureNotice ?? reply
     }
 
     public init(

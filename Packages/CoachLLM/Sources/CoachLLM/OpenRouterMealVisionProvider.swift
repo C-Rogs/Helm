@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 public struct OpenRouterMealVisionProvider: Sendable {
@@ -37,6 +38,122 @@ public struct OpenRouterMealVisionProvider: Sendable {
         }
 
         throw lastError ?? CoachProviderError.unavailable("OpenRouter meal vision is unavailable.")
+    }
+
+    public func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+        let apiKey = try requireAPIKey()
+        let models = MealVisionModel.openRouterCandidates(freeModelsOnly: metadataStore.freeModelsOnly)
+        var lastError: Error?
+
+        for model in models {
+            do {
+                return try await draftMeal(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model,
+                    userNotes: userNotes
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("OpenRouter meal vision is unavailable.")
+    }
+
+    private func draftMeal(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: MealVisionModel,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let base64 = imageJPEGData.base64EncodedString()
+        let requestID = UUID()
+
+        let body = try OpenRouterRequestBuilder.mealVisionDraftPhotoBody(
+            systemInstructions: MealVisionPrompt.draftSystemInstructions,
+            imageJPEGBase64: base64,
+            model: model,
+            userMessage: MealVisionPrompt.draftUserMessage(notes: userNotes)
+        )
+
+        let request = OpenRouterHTTPRequest(requestID: requestID, apiKey: apiKey, body: body)
+        let responseData = try await httpClient.chatCompletion(request)
+        let jsonText = try OpenRouterResponseParser.messageText(from: responseData)
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MealVisionDraftPayload.self,
+            from: jsonText,
+            expectedSchema: .mealVisionDraftV1
+        )
+        return MealVisionDraft(payload: payload)
+    }
+
+    public func refineDraft(
+        imageJPEGData: Data,
+        priorDraft: MealVisionDraft,
+        userCorrections: String,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let apiKey = try requireAPIKey()
+        let models = MealVisionModel.openRouterCandidates(freeModelsOnly: metadataStore.freeModelsOnly)
+        var lastError: Error?
+
+        for model in models {
+            do {
+                return try await refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    apiKey: apiKey,
+                    model: model,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            } catch let error as CoachProviderError {
+                guard Self.shouldRetryWithAlternateModel(error) else {
+                    throw error
+                }
+                lastError = error
+            }
+        }
+
+        throw lastError ?? CoachProviderError.unavailable("OpenRouter meal vision is unavailable.")
+    }
+
+    private func refineDraft(
+        imageJPEGData: Data,
+        apiKey: String,
+        model: MealVisionModel,
+        priorDraft: MealVisionDraft,
+        userCorrections: String,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let priorJSON = MealVisionDraftMapping.encodeAuditJSON(priorDraft) ?? "{}"
+        let base64 = imageJPEGData.base64EncodedString()
+        let requestID = UUID()
+
+        let body = try OpenRouterRequestBuilder.mealVisionDraftRefineBody(
+            systemInstructions: MealVisionPrompt.refineDraftSystemInstructions,
+            imageJPEGBase64: base64,
+            model: model,
+            userMessage: MealVisionPrompt.refineDraftUserMessage(
+                priorDraftJSON: priorJSON,
+                corrections: userCorrections,
+                notes: userNotes
+            )
+        )
+
+        let request = OpenRouterHTTPRequest(requestID: requestID, apiKey: apiKey, body: body)
+        let responseData = try await httpClient.chatCompletion(request)
+        let jsonText = try OpenRouterResponseParser.messageText(from: responseData)
+        let payload = try CoachStructuredOutputDecoder.decode(
+            MealVisionDraftPayload.self,
+            from: jsonText,
+            expectedSchema: .mealVisionDraftV1
+        )
+        return MealVisionDraft(payload: payload)
     }
 
     private func decompose(
@@ -83,4 +200,8 @@ public struct OpenRouterMealVisionProvider: Sendable {
     }
 }
 
-extension OpenRouterMealVisionProvider: MealVisionProviding {}
+extension OpenRouterMealVisionProvider: MealMacroVisionProviding {
+    public func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+        throw CoachProviderError.unavailable("Direct macro vision needs a Gemini API key.")
+    }
+}

@@ -4,11 +4,13 @@ import HealthKitIngest
 import SwiftUI
 
 struct FoodSearchView: View {
+    @Binding var query: String
+    @Binding var submitTrigger: Bool
     let isOnline: Bool
     let onSelect: (ResolvedFoodProduct) -> Void
 
-    @State private var query = ""
-    @State private var results: [FoodSearchResult] = []
+    @State private var localResults: [FoodSearchResult] = []
+    @State private var remoteResults: [FoodSearchResult] = []
     @State private var recents: [ResolvedFoodProduct] = []
     @State private var isSearching = false
     @State private var searchTask: Task<Void, Never>?
@@ -18,10 +20,40 @@ struct FoodSearchView: View {
 
     private let controller: ManualFoodLogController
 
-    init(controller: ManualFoodLogController, isOnline: Bool, onSelect: @escaping (ResolvedFoodProduct) -> Void) {
+    init(
+        controller: ManualFoodLogController,
+        query: Binding<String>,
+        submitTrigger: Binding<Bool> = .constant(false),
+        isOnline: Bool,
+        onSelect: @escaping (ResolvedFoodProduct) -> Void
+    ) {
         self.controller = controller
+        _query = query
+        _submitTrigger = submitTrigger
         self.isOnline = isOnline
         self.onSelect = onSelect
+    }
+
+    private var trimmedQuery: String {
+        query.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private var displayedResults: [FoodSearchResult] {
+        var merged: [FoodSearchResult] = []
+        var seen = Set<String>()
+        for result in localResults + remoteResults {
+            guard seen.insert(result.product.ref.cacheKey).inserted else { continue }
+            merged.append(result)
+        }
+        return merged
+    }
+
+    private var onDeviceResults: [FoodSearchResult] {
+        displayedResults.filter { $0.product.source == .cofid || $0.product.source == .recent || $0.product.source == .productCache }
+    }
+
+    private var brandedResults: [FoodSearchResult] {
+        displayedResults.filter { $0.product.source == .openFoodFacts }
     }
 
     var body: some View {
@@ -45,20 +77,6 @@ struct FoodSearchView: View {
                         .listRowBackground(HelmColor.surface)
                 }
 
-                if isOnline, trimmedQuery.count >= 3 {
-                    Button {
-                        submitRemoteSearch()
-                    } label: {
-                        Label(
-                            isSearching ? "Searching branded products…" : "Search branded products",
-                            systemImage: "magnifyingglass"
-                        )
-                    }
-                    .buttonStyle(.helmSecondary)
-                    .disabled(isSearching)
-                    .listRowBackground(HelmColor.surface)
-                }
-
                 if isSearching {
                     HStack(spacing: HelmSpacing.sm) {
                         ProgressView()
@@ -69,13 +87,13 @@ struct FoodSearchView: View {
                 }
 
                 if trimmedQuery.isEmpty {
-                    Text("Search CoFID and scanned products on-device. Search branded products with 3 or more characters.")
+                    Text("Search CoFID and scanned products on-device. Branded products search automatically with 3 or more characters.")
                         .helmType(.body, color: HelmColor.fgMuted)
                         .listRowBackground(HelmColor.surface)
-                } else if results.isEmpty {
+                } else if displayedResults.isEmpty {
                     if !isOnline {
                         offlineMissState
-                    } else if !hasSubmittedRemoteSearch || isSearching {
+                    } else if isSearching {
                         Text("Checking local and branded products for \"\(trimmedQuery)\".")
                             .helmType(.body, color: HelmColor.fgMuted)
                             .listRowBackground(HelmColor.surface)
@@ -85,34 +103,59 @@ struct FoodSearchView: View {
                             .listRowBackground(HelmColor.surface)
                     }
                 } else {
-                    ForEach(results, id: \.product.ref.cacheKey) { result in
-                        Button {
-                            onSelect(result.product)
-                        } label: {
-                            FoodSearchResultRow(product: result.product)
+                    if !onDeviceResults.isEmpty {
+                        Section("On device") {
+                            resultRows(onDeviceResults)
                         }
-                        .buttonStyle(.helmPressable)
-                        .listRowBackground(HelmColor.surface)
+                    }
+                    if !brandedResults.isEmpty {
+                        Section("Branded") {
+                            resultRows(brandedResults)
+                        }
                     }
                 }
             }
             .listStyle(.plain)
             .scrollContentBackground(.hidden)
         }
-        .searchable(text: $query, prompt: "Search foods")
         .navigationTitle("Search food")
         .navigationBarTitleDisplayMode(.inline)
-        .onSubmit(of: .search) {
-            submitRemoteSearch()
-        }
         .onChange(of: query) { _, newValue in
             hasSubmittedRemoteSearch = false
             remoteSearchMessage = nil
-            scheduleLocalSearch(for: newValue)
+            remoteResults = []
+            isSearching = false
+            scheduleSearch(for: newValue)
         }
         .task {
             await controller.refreshConnectivity()
             recents = await controller.fetchRecents()
+        }
+        .onChange(of: submitTrigger) { _, shouldSubmit in
+            guard shouldSubmit else { return }
+            submitSearch()
+            submitTrigger = false
+        }
+    }
+
+    private func submitSearch() {
+        if let first = displayedResults.first?.product {
+            onSelect(first)
+            return
+        }
+        submitRemoteSearch()
+    }
+
+    @ViewBuilder
+    private func resultRows(_ results: [FoodSearchResult]) -> some View {
+        ForEach(results, id: \.product.ref.cacheKey) { result in
+            Button {
+                onSelect(result.product)
+            } label: {
+                FoodSearchResultRow(product: result.product)
+            }
+            .buttonStyle(.helmPressable)
+            .listRowBackground(HelmColor.surface)
         }
     }
 
@@ -159,10 +202,6 @@ struct FoodSearchView: View {
         .background(HelmColor.gaugeTrack.opacity(0.25), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
     }
 
-    private var trimmedQuery: String {
-        query.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-
     private var offlineBanner: some View {
         HStack(spacing: HelmSpacing.sm) {
             HelmIconView(.offline, context: .inline)
@@ -185,30 +224,37 @@ struct FoodSearchView: View {
         .listRowBackground(HelmColor.surface)
     }
 
-    private func scheduleLocalSearch(for query: String) {
+    private func scheduleSearch(for query: String) {
         searchTask?.cancel()
+        isSearching = false
         let generation = UUID()
         searchGeneration = generation
-        isSearching = false
         let trimmed = query.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
-            results = []
-            isSearching = false
+            localResults = []
+            remoteResults = []
             return
         }
 
         searchTask = Task {
             try? await Task.sleep(for: .milliseconds(300))
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled, searchGeneration == generation else { return }
             do {
                 let hits = try await controller.searchLocal(query: trimmed)
                 guard !Task.isCancelled, searchGeneration == generation else { return }
-                results = hits
+                localResults = hits
             } catch {
                 guard !Task.isCancelled, searchGeneration == generation else { return }
-                results = []
+                localResults = []
             }
 
+            guard searchGeneration == generation else { return }
+            if trimmed.count >= 3, isOnline {
+                await performRemoteSearch(query: trimmed, generation: generation)
+            } else {
+                remoteResults = []
+                isSearching = false
+            }
         }
     }
 
@@ -235,11 +281,16 @@ struct FoodSearchView: View {
         guard searchGeneration == generation else { return }
         isSearching = true
         remoteSearchMessage = nil
+        defer {
+            if searchGeneration == generation {
+                isSearching = false
+            }
+        }
 
         do {
             let hits = try await controller.searchRemote(query: query)
             guard !Task.isCancelled, searchGeneration == generation else { return }
-            results = hits
+            remoteResults = hits.filter { $0.product.source == .openFoodFacts }
             hasSubmittedRemoteSearch = true
         } catch FoodResolverError.rateLimited {
             guard !Task.isCancelled, searchGeneration == generation else { return }
@@ -254,9 +305,6 @@ struct FoodSearchView: View {
             remoteSearchMessage = "Branded search failed. Local results are still shown."
             hasSubmittedRemoteSearch = true
         }
-
-        guard searchGeneration == generation else { return }
-        isSearching = false
     }
 }
 
@@ -273,8 +321,13 @@ private struct FoodSearchResultRow: View {
                     .helmType(.monoTag, color: HelmColor.fgMuted)
             }
             Spacer()
-            Text("\(Self.format(product.per100gKcal)) kcal / 100 g")
-                .helmType(.monoTag, color: HelmColor.fgMuted)
+            if product.macrosKnown {
+                Text("\(Self.format(product.per100gKcal)) kcal / 100 g")
+                    .helmType(.monoTag, color: HelmColor.fgMuted)
+            } else {
+                Text("Macros unknown")
+                    .helmType(.monoTag, color: HelmColor.fgSecondary)
+            }
         }
         .padding(.vertical, HelmSpacing.xxs)
     }
@@ -306,6 +359,7 @@ private struct FoodSearchResultRow: View {
     NavigationStack {
         FoodSearchView(
             controller: ManualFoodLogController.previewController(online: true),
+            query: .constant(""),
             isOnline: true,
             onSelect: { _ in }
         )
@@ -317,6 +371,7 @@ private struct FoodSearchResultRow: View {
     NavigationStack {
         FoodSearchView(
             controller: ManualFoodLogController.previewController(online: false),
+            query: .constant(""),
             isOnline: false,
             onSelect: { _ in }
         )

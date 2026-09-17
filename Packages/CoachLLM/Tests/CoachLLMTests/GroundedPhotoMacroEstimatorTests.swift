@@ -206,8 +206,12 @@ struct GroundedPhotoMacroEstimatorTests {
             }
         }
 
-        struct FailingOpenRouter: MealVisionProviding {
+        struct FailingOpenRouter: MealMacroVisionProviding {
             func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("OpenRouter should not be called")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
                 throw CoachProviderError.requestFailed("OpenRouter should not be called")
             }
         }
@@ -271,8 +275,12 @@ struct GroundedPhotoMacroEstimatorTests {
 
     @Test("router falls back to gemini when openrouter fails")
     func routerFallsBackToGemini() async throws {
-        struct FailingOpenRouter: MealVisionProviding {
+        struct FailingOpenRouter: MealMacroVisionProviding {
             func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("OpenRouter request failed with status 404.")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
                 throw CoachProviderError.requestFailed("OpenRouter request failed with status 404.")
             }
         }
@@ -290,7 +298,10 @@ struct GroundedPhotoMacroEstimatorTests {
             openRouterVision: FailingOpenRouter()
         )
 
-        let estimate = try await PhotoMacroEstimator(router: router).estimateMacros(
+        let estimate = try await PhotoMacroEstimator(
+            router: router,
+            preferences: EnabledPhotoCofidGroundingPreferences()
+        ).estimateMacros(
             imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
             userNotes: nil,
             progress: nil

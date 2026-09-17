@@ -8,13 +8,13 @@ public struct MealVisionRouter: Sendable {
     private let apiKeyStore: APIKeyStore
     private let preferences: MealVisionPreferencesStore
     private let geminiVision: any MealMacroVisionProviding
-    private let openRouterVision: any MealVisionProviding
+    private let openRouterVision: any MealMacroVisionProviding
 
     public init(
         apiKeyStore: APIKeyStore = APIKeyStore(),
         preferences: MealVisionPreferencesStore = MealVisionPreferencesStore(),
         geminiVision: (any MealMacroVisionProviding)? = nil,
-        openRouterVision: (any MealVisionProviding)? = nil
+        openRouterVision: (any MealMacroVisionProviding)? = nil
     ) {
         self.apiKeyStore = apiKeyStore
         self.preferences = preferences
@@ -86,6 +86,64 @@ extension MealVisionRouter: MealMacroVisionProviding {
             return try await geminiVision.estimateMacrosDirect(imageJPEGData: imageJPEGData, userNotes: userNotes)
         }
         throw CoachProviderError.unavailable("Direct macro vision needs a Gemini API key.")
+    }
+
+    public func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+        let backend = resolvedBackend()
+        switch backend {
+        case .openRouter:
+            do {
+                return try await openRouterVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            } catch {
+                guard hasGeminiKey else { throw error }
+                mealVisionLog.debug("Meal vision draft falling back to Gemini after OpenRouter failure")
+                return try await geminiVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            }
+        case .gemini:
+            guard hasGeminiKey else {
+                throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
+            }
+            return try await geminiVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+        }
+    }
+
+    public func refineDraft(
+        imageJPEGData: Data,
+        priorDraft: MealVisionDraft,
+        userCorrections: String,
+        userNotes: String?
+    ) async throws -> MealVisionDraft {
+        let backend = resolvedBackend()
+        switch backend {
+        case .openRouter:
+            do {
+                return try await openRouterVision.refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            } catch {
+                guard hasGeminiKey else { throw error }
+                mealVisionLog.debug("Meal vision refine falling back to Gemini after OpenRouter failure")
+                return try await geminiVision.refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            }
+        case .gemini:
+            guard hasGeminiKey else {
+                throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
+            }
+            return try await geminiVision.refineDraft(
+                imageJPEGData: imageJPEGData,
+                priorDraft: priorDraft,
+                userCorrections: userCorrections,
+                userNotes: userNotes
+            )
+        }
     }
 }
 

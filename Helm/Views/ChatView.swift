@@ -329,6 +329,8 @@ struct ChatView: View {
             return "Coach estimated a meal."
         case CoachOutputSchemaVersion.mealDecompositionV1.rawValue:
             return "Coach broke down a meal."
+        case CoachOutputSchemaVersion.mealVisionDraftV1.rawValue:
+            return "Coach drafted a meal from a photo."
         case CoachOutputSchemaVersion.mealQueryV1.rawValue:
             return "Coach ran a meal query."
         case CoachOutputSchemaVersion.workoutQueryV1.rawValue:

@@ -32,6 +32,7 @@ public struct ResolvedFoodProduct: Sendable, Equatable {
     public let suggestedGrams: Double?
     public let servingLabel: String?
     public let source: FoodResolutionSource
+    public let macrosKnown: Bool
 
     public init(
         ref: FoodProductRef,
@@ -42,7 +43,8 @@ public struct ResolvedFoodProduct: Sendable, Equatable {
         confidence: FoodResolutionConfidence,
         suggestedGrams: Double? = nil,
         servingLabel: String? = nil,
-        source: FoodResolutionSource
+        source: FoodResolutionSource,
+        macrosKnown: Bool = true
     ) {
         self.ref = ref
         self.per100gKcal = per100gKcal
@@ -53,6 +55,7 @@ public struct ResolvedFoodProduct: Sendable, Equatable {
         self.suggestedGrams = suggestedGrams
         self.servingLabel = servingLabel
         self.source = source
+        self.macrosKnown = macrosKnown
     }
 }
 
@@ -132,7 +135,11 @@ public actor FoodResolver {
         }
 
         do {
-            let offProducts = try await offClient.search(query: trimmed, pageSize: limit)
+            let fetchSize = max(limit * 2, 40)
+            let offProducts = try await offClient.search(
+                query: retailerBoostedQuery(trimmed),
+                pageSize: fetchSize
+            )
             let rankedProducts = rankedRemoteProducts(
                 offProducts,
                 query: trimmed,
@@ -188,7 +195,12 @@ public actor FoodResolver {
             )
         }
 
-        let filtered = scored.filter { $0.overlap > 0 }
+        let filtered = scored.filter { entry in
+            if queryTokens.count >= 2 {
+                return entry.overlap >= 2 || entry.fullMatch
+            }
+            return entry.overlap > 0
+        }
 
         return filtered.sorted { lhs, rhs in
             if lhs.fullMatch != rhs.fullMatch {
@@ -204,6 +216,13 @@ public actor FoodResolver {
         }
         .prefix(limit)
         .map { $0.product }
+    }
+
+    private func retailerBoostedQuery(_ query: String) -> String {
+        let lowered = query.lowercased()
+        let retailers = ["lidl", "milbona", "tesco", "aldi", "asda", "sainsbury"]
+        guard retailers.contains(where: { lowered.contains($0) }) else { return query }
+        return query
     }
 
     private func meaningfulTokens(_ value: String) -> [String] {
@@ -369,7 +388,8 @@ public actor FoodResolver {
             confidence: .branded,
             suggestedGrams: suggestedGrams,
             servingLabel: servingLabel,
-            source: .openFoodFacts
+            source: .openFoodFacts,
+            macrosKnown: offProduct.macrosKnown
         )
     }
 

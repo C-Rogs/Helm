@@ -10,4 +10,26 @@ public protocol MealMacroEstimating: Sendable {
         portionAssist: MealPortionAssistContext?,
         progress: MealMacroEstimateProgress?
     ) async throws -> MealEstimate
+
+    func refineMacros(
+        imageJPEGData: Data,
+        priorEstimate: MealEstimate,
+        userCorrections: String,
+        userNotes: String?,
+        portionAssist: MealPortionAssistContext?,
+        progress: MealMacroEstimateProgress?
+    ) async throws -> MealEstimate
+}
+
+extension MealMacroEstimating {
+    public func refineMacros(
+        imageJPEGData: Data,
+        priorEstimate: MealEstimate,
+        userCorrections: String,
+        userNotes: String?,
+        portionAssist: MealPortionAssistContext?,
+        progress: MealMacroEstimateProgress?
+    ) async throws -> MealEstimate {
+        throw CoachProviderError.requestFailed("Refinement is not supported for this estimator.")
+    }
 }

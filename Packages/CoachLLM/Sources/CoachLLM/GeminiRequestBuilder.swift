@@ -125,6 +125,44 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    public static func mealVisionDraftPhotoBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        userMessage: String
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.mealPhotoContents(
+                imageJPEGBase64: imageJPEGBase64,
+                userMessage: userMessage
+            ),
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": mealVisionDraftSchema()
+            ]
+        )
+    }
+
+    public static func mealVisionDraftRefineBody(
+        systemInstructions: String,
+        imageJPEGBase64: String,
+        userMessage: String
+    ) throws -> GeminiGenerateRequestBody {
+        GeminiGenerateRequestBody(
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            contents: CoachTranscriptBuilder.mealPhotoContents(
+                imageJPEGBase64: imageJPEGBase64,
+                userMessage: userMessage
+            ),
+            generationConfig: [
+                "temperature": 0.2,
+                "responseMimeType": "application/json",
+                "responseSchema": mealVisionDraftSchema()
+            ]
+        )
+    }
+
     public static func morningBriefBody(
         systemInstructions: String,
         contextBlock: String,
@@ -508,6 +546,51 @@ public enum GeminiRequestBuilder {
                 ]
             ],
             "required": ["name", "estimatedGrams", "confidence"]
+        ]
+    }
+
+    public static func mealVisionDraftSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "schemaVersion": schemaVersionProperty(CoachOutputSchemaVersion.mealVisionDraftV1.rawValue),
+                "mealDescription": ["type": "string"],
+                "items": [
+                    "type": "array",
+                    "items": visionDraftItemSchema()
+                ],
+                "portionNotes": ["type": "string"]
+            ],
+            "required": ["schemaVersion", "mealDescription", "items"]
+        ]
+    }
+
+    private static func visionDraftItemSchema() -> [String: Any] {
+        [
+            "type": "object",
+            "properties": [
+                "name": ["type": "string"],
+                "estimatedGrams": ["type": "number"],
+                "caloriesKcal": ["type": "number"],
+                "proteinG": ["type": "number"],
+                "carbsG": ["type": "number"],
+                "fatG": ["type": "number"],
+                "portionMeta": ["type": "string"],
+                "confidence": [
+                    "type": "string",
+                    "enum": ["low", "medium", "high"]
+                ]
+            ],
+            "required": [
+                "name",
+                "estimatedGrams",
+                "caloriesKcal",
+                "proteinG",
+                "carbsG",
+                "fatG",
+                "portionMeta",
+                "confidence"
+            ]
         ]
     }
 

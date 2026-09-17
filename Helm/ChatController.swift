@@ -188,6 +188,7 @@ final class ChatController {
         }
 
         lastTurnError = nil
+        dismissFoodMealConfirm()
         draftText = ""
         streamTask?.cancel()
         isFoodDictationTurn = true
@@ -383,6 +384,7 @@ final class ChatController {
             applyDeferredNavigateIfNeeded()
         } catch {
             lastTurnError = error.localizedDescription
+            pendingFoodMealConfirm = nil
             CoachDiagnosticsStore.shared.recordFailure(surface: "chatFoodMeal", error: error)
         }
     }
@@ -628,15 +630,18 @@ final class ChatController {
         defer { CoachActivityGate.shared.end(.chat) }
 
         do {
-            let userMessage = try persistence.chat.append(
-                ChatMessageInsert(
-                    role: .user,
-                    text: text,
-                    promptVersion: CoachPromptVersion.chatV1.rawValue
+            let isFoodDictation = coachUserMessage != nil
+            if !isFoodDictation {
+                let userMessage = try persistence.chat.append(
+                    ChatMessageInsert(
+                        role: .user,
+                        text: text,
+                        promptVersion: CoachPromptVersion.chatV1.rawValue
+                    )
                 )
-            )
-            messages.append(userMessage)
-            trimVisibleChatHistory()
+                messages.append(userMessage)
+                trimVisibleChatHistory()
+            }
             navigateIfRequested(from: text)
 
             // Update coach style profile from this athlete message.
@@ -659,7 +664,9 @@ final class ChatController {
                 ) ?? []
             )
             var thread = CoachThreadState(
-                messages: messages.map { CoachMessage(role: $0.role, text: $0.text) }
+                messages: isFoodDictation
+                    ? []
+                    : messages.map { CoachMessage(role: $0.role, text: $0.text) }
             )
 
             // Trigger compaction when thread exceeds 20 messages.

@@ -45,6 +45,10 @@ public struct MealEstimate: Sendable, Equatable {
     public var groundingWarnings: [String]
     /// JSON audit of vision decomposition for Diagnostics export.
     public var decompositionAuditJSON: String?
+    /// Photo scan pipeline that produced this estimate.
+    public var scanMode: PhotoScanMode?
+    /// When true, user must run AI refinement before logging (vision-direct draft).
+    public var requiresRefinement: Bool
 
     public init(
         description: String,
@@ -56,7 +60,9 @@ public struct MealEstimate: Sendable, Equatable {
         lineItems: [MealLineItem] = [],
         visionDirectEstimate: VisionMacroComparison? = nil,
         groundingWarnings: [String] = [],
-        decompositionAuditJSON: String? = nil
+        decompositionAuditJSON: String? = nil,
+        scanMode: PhotoScanMode? = nil,
+        requiresRefinement: Bool = false
     ) {
         self.description = description
         self.caloriesKcal = caloriesKcal
@@ -68,5 +74,7 @@ public struct MealEstimate: Sendable, Equatable {
         self.visionDirectEstimate = visionDirectEstimate
         self.groundingWarnings = groundingWarnings
         self.decompositionAuditJSON = decompositionAuditJSON
+        self.scanMode = scanMode
+        self.requiresRefinement = requiresRefinement
     }
 }
