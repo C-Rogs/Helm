@@ -308,4 +308,193 @@ struct GroundedPhotoMacroEstimatorTests {
         )
         #expect(estimate.lineItems.count == 3)
     }
+
+    @Test("gemini vision retries alternate model after unavailable")
+    func geminiVisionRetriesAlternateModelAfterUnavailable() async throws {
+        final class CountingGeminiHTTPClient: GeminiHTTPClient, @unchecked Sendable {
+            private let lock = NSLock()
+            private var attempts: [String] = []
+
+            var lastStreamRequestID: UUID?
+            var lastGenerateRequestID: UUID?
+
+            func streamGenerate(_ request: GeminiStreamHTTPRequest) async throws -> AsyncThrowingStream<Data, Error> {
+                lastStreamRequestID = request.requestID
+                return AsyncThrowingStream { $0.finish() }
+            }
+
+            func generateContent(_ request: GeminiGenerateHTTPRequest) async throws -> Data {
+                lastGenerateRequestID = request.requestID
+                lock.withLock { attempts.append(request.model.rawValue) }
+                if request.model == .flash35 {
+                    throw CoachProviderError.unavailable("Coach is temporarily unavailable. Try again.")
+                }
+                guard let url = Bundle.module.url(forResource: "gemini_generate_meal_decomposition", withExtension: "json") else {
+                    throw CoachProviderError.requestFailed("Missing fixture")
+                }
+                return try Data(contentsOf: url)
+            }
+
+            func recordedAttempts() -> [String] {
+                lock.withLock { attempts }
+            }
+        }
+
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
+        try store.save("fixture-key", kind: .gemini)
+        let httpClient = CountingGeminiHTTPClient()
+        let vision = GeminiMealVisionProvider(
+            apiKeyStore: store,
+            httpClient: httpClient,
+            models: [.flash35, .flashLite]
+        )
+
+        let decomposition = try await vision.decompose(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
+        #expect(decomposition.mealDescription == "Chicken rice bowl")
+        #expect(httpClient.recordedAttempts() == [
+            GeminiModel.flash35.rawValue,
+            GeminiModel.flashLite.rawValue
+        ])
+    }
+
+    @Test("router falls back to openrouter when gemini draft unavailable")
+    func routerFallsBackToOpenRouterOnGeminiUnavailable() async throws {
+        final class TrackingOpenRouter: MealMacroVisionProviding, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _draftCalls = 0
+
+            var draftCalls: Int {
+                lock.withLock { _draftCalls }
+            }
+
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("decompose unused")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                throw CoachProviderError.requestFailed("direct unused")
+            }
+
+            func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+                _ = imageJPEGData
+                _ = userNotes
+                lock.withLock { _draftCalls += 1 }
+                return MealVisionDraft(
+                    mealDescription: "OpenRouter draft meal",
+                    items: [
+                        .init(
+                            name: "Toast",
+                            estimatedGrams: 40,
+                            caloriesKcal: 120,
+                            proteinG: 4,
+                            carbsG: 20,
+                            fatG: 2,
+                            portionMeta: "1 slice",
+                            confidence: .medium
+                        )
+                    ],
+                    portionNotes: nil
+                )
+            }
+        }
+
+        struct UnavailableGemini: MealMacroVisionProviding {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.unavailable("Coach is temporarily unavailable. Try again.")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                throw CoachProviderError.unavailable("Coach is temporarily unavailable. Try again.")
+            }
+
+            func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+                throw CoachProviderError.unavailable("Coach is temporarily unavailable. Try again.")
+            }
+        }
+
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
+        try store.save("gemini-key", kind: .gemini)
+        try store.save("openrouter-key", kind: .openRouter)
+
+        let preferences = MealVisionPreferencesStore(
+            defaults: UserDefaults(suiteName: "com.cameronro.helm.tests.\(UUID().uuidString)")!
+        )
+        preferences.backendPreference = .auto
+
+        let openRouter = TrackingOpenRouter()
+        let router = MealVisionRouter(
+            apiKeyStore: store,
+            preferences: preferences,
+            geminiVision: UnavailableGemini(),
+            openRouterVision: openRouter
+        )
+
+        let draft = try await router.draftMeal(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
+        #expect(draft.mealDescription == "OpenRouter draft meal")
+        #expect(openRouter.draftCalls == 1)
+    }
+
+    @Test("router does not fall back to openrouter on gemini auth failure")
+    func routerDoesNotFallBackOnGeminiAuthFailure() async throws {
+        final class TrackingOpenRouter: MealMacroVisionProviding, @unchecked Sendable {
+            private let lock = NSLock()
+            private var _draftCalls = 0
+
+            var draftCalls: Int {
+                lock.withLock { _draftCalls }
+            }
+
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("decompose unused")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                throw CoachProviderError.requestFailed("direct unused")
+            }
+
+            func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+                lock.withLock { _draftCalls += 1 }
+                throw CoachProviderError.requestFailed("OpenRouter should not be called")
+            }
+        }
+
+        struct AuthFailingGemini: MealMacroVisionProviding {
+            func decompose(imageJPEGData: Data, userNotes: String?) async throws -> MealDecomposition {
+                throw CoachProviderError.requestFailed("Gemini rejected the API key (HTTP 401).")
+            }
+
+            func estimateMacrosDirect(imageJPEGData: Data, userNotes: String?) async throws -> MealEstimate {
+                throw CoachProviderError.requestFailed("Gemini rejected the API key (HTTP 401).")
+            }
+
+            func draftMeal(imageJPEGData: Data, userNotes: String?) async throws -> MealVisionDraft {
+                throw CoachProviderError.requestFailed("Gemini rejected the API key (HTTP 401).")
+            }
+        }
+
+        let store = APIKeyStore(backend: InMemoryAPIKeyStoreBackend())
+        try store.save("gemini-key", kind: .gemini)
+        try store.save("openrouter-key", kind: .openRouter)
+
+        let preferences = MealVisionPreferencesStore(
+            defaults: UserDefaults(suiteName: "com.cameronro.helm.tests.\(UUID().uuidString)")!
+        )
+        preferences.backendPreference = .auto
+
+        let openRouter = TrackingOpenRouter()
+        let router = MealVisionRouter(
+            apiKeyStore: store,
+            preferences: preferences,
+            geminiVision: AuthFailingGemini(),
+            openRouterVision: openRouter
+        )
+
+        do {
+            _ = try await router.draftMeal(imageJPEGData: Data([0xFF, 0xD8, 0xFF]), userNotes: nil)
+            Issue.record("Expected auth failure to throw")
+        } catch let error as CoachProviderError {
+            #expect(error == .requestFailed("Gemini rejected the API key (HTTP 401)."))
+        }
+        #expect(openRouter.draftCalls == 0)
+    }
 }

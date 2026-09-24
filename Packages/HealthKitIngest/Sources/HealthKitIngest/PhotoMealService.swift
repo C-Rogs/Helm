@@ -166,7 +166,11 @@ public struct PhotoMealService: Sendable {
         case .offline:
             return "Photo analysis needs a network connection."
         case .unavailable(let message):
-            return message
+            // Coach-branded 5xx copy from Gemini; keep explicit setup prompts as-is.
+            if message.hasPrefix("Add your ") || message.hasPrefix("Direct macro") {
+                return message
+            }
+            return "Photo analysis is temporarily unavailable. Try again."
         case .contextTooLarge:
             return "That photo could not be analysed. Try a smaller image."
         case .cancelled:

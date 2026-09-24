@@ -87,4 +87,17 @@ struct PhotoMealServiceTests {
             ) == false
         )
     }
+
+    @Test("user message maps coach unavailable to photo copy")
+    func userMessageMapsUnavailable() {
+        let coachCopy = PhotoMealService.userMessage(
+            for: CoachProviderError.unavailable("Coach is temporarily unavailable. Try again.")
+        )
+        #expect(coachCopy == "Photo analysis is temporarily unavailable. Try again.")
+
+        let setupCopy = PhotoMealService.userMessage(
+            for: CoachProviderError.unavailable("Add your Gemini API key in Settings.")
+        )
+        #expect(setupCopy == "Add your Gemini API key in Settings.")
+    }
 }

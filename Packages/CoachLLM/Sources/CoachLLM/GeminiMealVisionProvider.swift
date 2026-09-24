@@ -268,11 +268,17 @@ public struct GeminiMealVisionProvider: Sendable {
     }
 
     private static func shouldRetryWithAlternateModel(_ error: CoachProviderError) -> Bool {
-        guard case .requestFailed(let detail) = error else { return false }
-        let normalized = detail.lowercased()
-        return normalized.contains("404")
-            || normalized.contains("not found")
-            || normalized.contains("no longer available")
+        switch error {
+        case .unavailable, .rateLimited, .timeout:
+            return true
+        case .requestFailed(let detail):
+            let normalized = detail.lowercased()
+            return normalized.contains("404")
+                || normalized.contains("not found")
+                || normalized.contains("no longer available")
+        case .offline, .contextTooLarge, .cancelled:
+            return false
+        }
     }
 
     private func requireAPIKey() throws -> String {

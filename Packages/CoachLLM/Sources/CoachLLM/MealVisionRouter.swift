@@ -47,7 +47,15 @@ public struct MealVisionRouter: Sendable {
             guard hasGeminiKey else {
                 throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
             }
-            return try await geminiVision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            do {
+                return try await geminiVision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            } catch {
+                guard hasOpenRouterKey, Self.isTransientVisionFailure(error) else {
+                    throw error
+                }
+                mealVisionLog.debug("Meal vision falling back to OpenRouter after Gemini failure")
+                return try await openRouterVision.decompose(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            }
         }
     }
 
@@ -78,6 +86,17 @@ public struct MealVisionRouter: Sendable {
     private var hasGeminiKey: Bool {
         (try? apiKeyStore.load(kind: .gemini)).map { !$0.isEmpty } ?? false
     }
+
+    /// Transient provider failures that warrant trying the other vision backend.
+    static func isTransientVisionFailure(_ error: Error) -> Bool {
+        guard let providerError = error as? CoachProviderError else { return false }
+        switch providerError {
+        case .unavailable, .rateLimited, .timeout:
+            return true
+        case .offline, .contextTooLarge, .cancelled, .requestFailed:
+            return false
+        }
+    }
 }
 
 extension MealVisionRouter: MealMacroVisionProviding {
@@ -103,7 +122,15 @@ extension MealVisionRouter: MealMacroVisionProviding {
             guard hasGeminiKey else {
                 throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
             }
-            return try await geminiVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            do {
+                return try await geminiVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            } catch {
+                guard hasOpenRouterKey, Self.isTransientVisionFailure(error) else {
+                    throw error
+                }
+                mealVisionLog.debug("Meal vision draft falling back to OpenRouter after Gemini failure")
+                return try await openRouterVision.draftMeal(imageJPEGData: imageJPEGData, userNotes: userNotes)
+            }
         }
     }
 
@@ -137,12 +164,25 @@ extension MealVisionRouter: MealMacroVisionProviding {
             guard hasGeminiKey else {
                 throw CoachProviderError.unavailable("Add your Gemini API key in Settings.")
             }
-            return try await geminiVision.refineDraft(
-                imageJPEGData: imageJPEGData,
-                priorDraft: priorDraft,
-                userCorrections: userCorrections,
-                userNotes: userNotes
-            )
+            do {
+                return try await geminiVision.refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            } catch {
+                guard hasOpenRouterKey, Self.isTransientVisionFailure(error) else {
+                    throw error
+                }
+                mealVisionLog.debug("Meal vision refine falling back to OpenRouter after Gemini failure")
+                return try await openRouterVision.refineDraft(
+                    imageJPEGData: imageJPEGData,
+                    priorDraft: priorDraft,
+                    userCorrections: userCorrections,
+                    userNotes: userNotes
+                )
+            }
         }
     }
 }
