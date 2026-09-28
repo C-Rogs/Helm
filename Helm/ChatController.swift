@@ -23,6 +23,8 @@ final class ChatController {
     /// Citation validation map rebuilt each turn from the evidence index sent in context.
     var citationValidation: CitationValidationMap?
     private(set) var lastFailedUserMessage: String?
+    /// When true, next `sendMessage` skips persisting another user row (retry path).
+    private var omitNextUserAppend = false
     private(set) var pendingChatAction: CoachChatActionProposal?
     private(set) var pendingFoodMealConfirm: CoachFoodMealConfirmState?
     private(set) var isApplyingChatAction = false
@@ -79,6 +81,8 @@ final class ChatController {
 
     func retryLastTurn() {
         guard let lastFailedUserMessage, !isStreaming else { return }
+        // User row already persisted from the failed attempt; do not append a duplicate.
+        omitNextUserAppend = true
         draftText = lastFailedUserMessage
         send()
     }
@@ -632,15 +636,19 @@ final class ChatController {
         do {
             let isFoodDictation = coachUserMessage != nil
             if !isFoodDictation {
-                let userMessage = try persistence.chat.append(
-                    ChatMessageInsert(
-                        role: .user,
-                        text: text,
-                        promptVersion: CoachPromptVersion.chatV1.rawValue
+                if omitNextUserAppend {
+                    omitNextUserAppend = false
+                } else {
+                    let userMessage = try persistence.chat.append(
+                        ChatMessageInsert(
+                            role: .user,
+                            text: text,
+                            promptVersion: CoachPromptVersion.chatV1.rawValue
+                        )
                     )
-                )
-                messages.append(userMessage)
-                trimVisibleChatHistory()
+                    messages.append(userMessage)
+                    trimVisibleChatHistory()
+                }
             }
             navigateIfRequested(from: text)
 
@@ -733,7 +741,7 @@ final class ChatController {
                     contextBlock: prompt.contextBlock,
                     userMessage: providerUserMessage,
                     thread: thread,
-                    allowEmptyRetry: true,
+                    allowEmptyRetry: false,
                     freshnessSuffix: prompt.freshnessSuffix
                 )
             } catch let error as CoachStructuredOutputError where error == .emptyResponse {
@@ -1074,15 +1082,40 @@ final class ChatController {
                 || hasChart
                 || navigate != nil
             else {
+                await logEmptyAssembledTurn(
+                    stage: "strippedEmpty",
+                    attempt: 0,
+                    turn: assembledTurn,
+                    extra: [
+                        "rawChars": String(assembledTurn.text.count),
+                        "visibleChars": String(userFacingText.count),
+                        "hasPendingAction": pendingAction == nil ? "0" : "1",
+                        "hasChart": hasChart ? "1" : "0",
+                        "hasNavigate": navigate == nil ? "0" : "1"
+                    ]
+                )
                 throw CoachStructuredOutputError.emptyResponse
             }
 
             // Never persist a blank assistant row; confirmation card can stand alone when reply is empty.
+            // Navigate-only success still needs a bubble so retry/empty turns do not look like a hang.
             if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasChart {
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
                         role: .assistant,
                         text: hasChart ? storedText : userFacingText,
+                        promptVersion: CoachPromptVersion.chatV1.rawValue,
+                        schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+                    )
+                )
+                messages.append(assistantMessage)
+                trimVisibleChatHistory()
+            } else if navigate != nil, pendingAction == nil, pendingFoodMealConfirm == nil {
+                let note = "Opened \(navigate!.tab)."
+                let assistantMessage = try persistence.chat.append(
+                    ChatMessageInsert(
+                        role: .assistant,
+                        text: note,
                         promptVersion: CoachPromptVersion.chatV1.rawValue,
                         schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
                     )
@@ -1427,12 +1460,45 @@ final class ChatController {
             if !turn.isEmpty {
                 return turn
             }
+            await logEmptyAssembledTurn(
+                stage: attempt == 0 && allowEmptyRetry ? "streamEmptyRetrying" : "streamEmptyFinal",
+                attempt: attempt,
+                turn: turn
+            )
             if attempt == 0, allowEmptyRetry {
                 continue
             }
             throw CoachStructuredOutputError.emptyResponse
         }
         throw CoachStructuredOutputError.emptyResponse
+    }
+
+    private func logEmptyAssembledTurn(
+        stage: String,
+        attempt: Int,
+        turn: AssembledCoachTurn,
+        extra: [String: String] = [:]
+    ) async {
+        let visible = CoachChatTextFormatter.userFacingText(from: turn.text)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let callNames = turn.functionCalls.prefix(6).map(\.name).joined(separator: ",")
+        var context: [String: String] = [
+            "stage": stage,
+            "attempt": String(attempt),
+            "rawChars": String(turn.text.count),
+            "visibleChars": String(visible.count),
+            "callCount": String(turn.functionCalls.count),
+            "callNames": callNames.isEmpty ? "none" : callNames
+        ]
+        for (key, value) in extra {
+            context[key] = value
+        }
+        await DiagnosticsLog.shared.record(
+            category: .coachLLM,
+            level: .error,
+            message: "Chat turn empty",
+            context: context
+        )
     }
 
     private func needsStructuredWorkoutStart(
@@ -1543,7 +1609,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1588,7 +1654,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1631,7 +1697,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1699,7 +1765,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1743,7 +1809,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1786,7 +1852,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1828,7 +1894,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -1897,7 +1963,7 @@ final class ChatController {
                 contextBlock: prompt.contextBlock,
                 userMessage: toolMessage,
                 thread: thread,
-                allowEmptyRetry: true,
+                allowEmptyRetry: false,
                 freshnessSuffix: prompt.freshnessSuffix
             )
         } catch let error as CoachStructuredOutputError where error == .emptyResponse {
@@ -1948,7 +2014,7 @@ final class ChatController {
             contextBlock: prompt.contextBlock,
             userMessage: toolMessage,
             thread: thread,
-            allowEmptyRetry: true,
+            allowEmptyRetry: false,
             freshnessSuffix: prompt.freshnessSuffix
         )
     }
@@ -2131,18 +2197,25 @@ final class ChatController {
 
     private func maybeTriggerMemoryRefinementExtraction(profile: MemoryProfile) {
         guard pendingChatAction == nil, pendingFoodMealConfirm == nil else { return }
-        let substantiveTurns = messages.filter {
-            $0.role == .user && $0.text.count > 50
-        }
-        guard substantiveTurns.count >= 3 else { return }
-        guard lastRefinementExtractionDate == nil
-            || Date().timeIntervalSince(lastRefinementExtractionDate!) >= 30 * 60
-        else { return }
 
-        let recentMessages = messages.suffix(20)
+        let turns = messages.map {
+            MemoryRefinementTrigger.Turn(
+                isUser: $0.role == .user,
+                text: $0.text,
+                createdAt: $0.createdAt
+            )
+        }
+        let lastExtraction = lastRefinementExtractionDate
+            ?? UserDefaults.standard.object(forKey: Self.refinementExtractionDefaultsKey) as? Date
+        guard MemoryRefinementTrigger.shouldExtract(
+            messages: turns,
+            lastExtraction: lastExtraction
+        ) else { return }
+
+        let window = MemoryRefinementTrigger.sessionWindow(from: turns)
         let sourceID = messages.last(where: { $0.role == .assistant })?.id
-        let conversationText = recentMessages.map { msg in
-            "\(msg.role == .user ? "Athlete" : "Coach"): \(msg.text)"
+        let conversationText = window.map { turn in
+            "\(turn.isUser ? "Athlete" : "Coach"): \(turn.text)"
         }.joined(separator: "\n\n")
         let profileContext = MemoryRefinementExtractor.profileContext(from: profile)
 
@@ -2175,7 +2248,7 @@ final class ChatController {
                     }
                     self.pendingMemoryRefinements = payload.refinements
                     self.memoryRefinementSourceMessageID = sourceID
-                    self.lastRefinementExtractionDate = .now
+                    self.markRefinementExtractionRan()
                 }
             } catch {
                 await DiagnosticsLog.shared.capture(
@@ -2185,10 +2258,17 @@ final class ChatController {
                     context: ["detail": String(error.localizedDescription.prefix(240))]
                 )
                 await MainActor.run { [weak self] in
-                    self?.lastRefinementExtractionDate = .now
+                    self?.markRefinementExtractionRan()
                 }
             }
         }
+    }
+
+    private static let refinementExtractionDefaultsKey = "helm.chat.lastMemoryRefinementExtraction"
+
+    private func markRefinementExtractionRan() {
+        lastRefinementExtractionDate = .now
+        UserDefaults.standard.set(lastRefinementExtractionDate, forKey: Self.refinementExtractionDefaultsKey)
     }
 
     private func logTurn(

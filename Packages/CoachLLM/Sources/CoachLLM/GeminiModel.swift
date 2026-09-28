@@ -17,5 +17,5 @@ extension GeminiModel {
     /// Primary meal vision model.
     public static let mealVision = GeminiModel.flash35
 
-    public static let mealVisionCandidates: [GeminiModel] = [.flash35, .flashLite]
+    public static let mealVisionCandidates: [GeminiModel] = [.flashLite, .flash35]
 }

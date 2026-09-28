@@ -130,19 +130,38 @@ struct PhotoMealConfirmSheet: View {
                         }
 
                         if mode == .draft {
-                            HelmActionButton(
-                                "Update estimate",
-                                phase: controller.isBusy ? .loading : .idle,
-                                successTitle: "Updated"
-                            ) {
-                                Task {
-                                    await controller.refineDraft(
-                                        corrections: corrections,
-                                        editedEstimate: currentEstimate
-                                    )
+                            let hasCorrections = !corrections.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                            if hasCorrections {
+                                HelmActionButton(
+                                    "Update estimate",
+                                    phase: controller.isBusy ? .loading : .idle,
+                                    successTitle: "Updated"
+                                ) {
+                                    Task {
+                                        await controller.refineDraft(
+                                            corrections: corrections,
+                                            editedEstimate: currentEstimate
+                                        )
+                                    }
                                 }
+                                .disabled(!canRefine || controller.isBusy)
+                            } else {
+                                // Local line edits already recompute macros; skip a second vision call.
+                                HelmActionButton(
+                                    "Add meal",
+                                    phase: controller.isBusy ? .loading : .idle,
+                                    successTitle: "Added"
+                                ) {
+                                    Task {
+                                        await controller.confirm(
+                                            estimate: currentEstimate,
+                                            name: description,
+                                            bucket: bucket
+                                        )
+                                    }
+                                }
+                                .disabled(!isValid || controller.isBusy)
                             }
-                            .disabled(!canRefine || controller.isBusy)
                         } else {
                             HelmActionButton(
                                 "Add meal",
@@ -178,7 +197,7 @@ struct PhotoMealConfirmSheet: View {
     }
 
     private var draftGuidance: some View {
-        Text("Review the draft below. Edit ingredients or add corrections, then update the estimate before logging.")
+        Text("Review the draft. Edit ingredients and add the meal, or type corrections and update the estimate first.")
             .helmType(.body, color: HelmColor.fgMuted)
     }
 

@@ -50,10 +50,10 @@ public final class MealVisionPreferencesStore: @unchecked Sendable {
     }
 
     public var geminiModelCandidates: [GeminiModel] {
-        // gemini-2.5-flash 404s for new AI Studio keys - keep 3.5 Flash + Flash-Lite only.
+        // Prefer Flash-Lite first: free-tier Flash is 5 RPM and photo draft+refine burns it fast.
         switch qualityPreference {
         case .accurate:
-            [.flash35, .flashLite]
+            [.flashLite, .flash35]
         case .fast:
             [.flashLite, .flash35]
         }

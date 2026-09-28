@@ -280,7 +280,7 @@ public actor PlanPrescriptionEngine {
         let session = try computeSession(for: day, readiness: readiness, busyDays: busyDays)
         if session.exercises.isEmpty {
             if try isIntentionalRestDay(day) {
-                let busyHint = busyDays.contains(day)
+                let busyHint = try trainingDisplacedFrom(day, avoidDays: busyDays)
                 return .restDay(
                     RestDaySummary(
                         title: "Rest day",
@@ -501,6 +501,28 @@ public actor PlanPrescriptionEngine {
         guard !catalogRows.isEmpty else { return false }
         let plannedToday = try persistence.plan.fetchPlannedWorkouts(from: day, through: day)
         return plannedToday.isEmpty
+    }
+
+    /// True when a session that ideally landed on `day` was moved because of `avoidDays`.
+    private func trainingDisplacedFrom(_ day: HelmDay, avoidDays: Set<HelmDay>) throws -> Bool {
+        guard avoidDays.contains(day) else { return false }
+        let settings = try persistence.trainingPlan.load()
+        let history = try PrescriptionHistoryBuilder.history(
+            from: persistence,
+            endingAt: day,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: day, calendar: calendar)
+        let placements = SchedulePlanner.projectedTrainingDayPlacements(
+            startingAt: weekStart,
+            dayCount: 14,
+            sessionsPerWeek: settings.daysPerWeek,
+            history: history,
+            calendar: calendar,
+            avoidDays: avoidDays
+        )
+        return placements.contains { $0.idealDay == day }
     }
 
     public func saveAdjustedPrescription(
