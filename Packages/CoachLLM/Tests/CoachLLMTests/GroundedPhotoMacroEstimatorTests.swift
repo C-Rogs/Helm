@@ -298,10 +298,7 @@ struct GroundedPhotoMacroEstimatorTests {
             openRouterVision: FailingOpenRouter()
         )
 
-        let estimate = try await PhotoMacroEstimator(
-            router: router,
-            preferences: EnabledPhotoCofidGroundingPreferences()
-        ).estimateMacros(
+        let estimate = try await GroundedPhotoMacroEstimator(vision: router).estimateMacros(
             imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
             userNotes: nil,
             progress: nil

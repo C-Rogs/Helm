@@ -746,7 +746,6 @@ private struct NutritionLoggingSheets: ViewModifier {
                     completedSteps: photoMealController.estimateCompletedSteps,
                     currentStep: photoMealController.estimateCurrentStep,
                     usesLidarAssist: photoMealController.usesLidarPortionAssist,
-                    usesCofidGrounding: photoMealController.usesCofidGrounding,
                     onCancel: { photoMealController.cancel() }
                 )
             }
@@ -755,8 +754,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                     PhotoMealConfirmSheet(
                         controller: photoMealController,
                         initialEstimate: estimate,
-                        previewImage: previewImage,
-                        mode: .draft
+                        previewImage: previewImage
                     )
                 }
             }
@@ -765,8 +763,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                     PhotoMealConfirmSheet(
                         controller: photoMealController,
                         initialEstimate: estimate,
-                        previewImage: previewImage,
-                        mode: .confirm
+                        previewImage: previewImage
                     )
                 }
             }
@@ -1032,6 +1029,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                 return false
             },
             set: { isPresented in
+                // Sheet is interactiveDismissDisabled; Cancel calls controller.cancel().
                 if !isPresented, case .draft = photoMealController.phase {
                     photoMealController.cancel()
                 }
@@ -1046,7 +1044,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                 return false
             },
             set: { isPresented in
-                if !isPresented {
+                if !isPresented, case .confirm = photoMealController.phase {
                     photoMealController.cancel()
                 }
             }

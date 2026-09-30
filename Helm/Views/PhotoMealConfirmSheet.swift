@@ -5,15 +5,9 @@ import NutritionKit
 import SwiftUI
 
 struct PhotoMealConfirmSheet: View {
-    enum Mode {
-        case draft
-        case confirm
-    }
-
     @Bindable var controller: PhotoMealController
     let initialEstimate: MealEstimate
     let previewImage: UIImage?
-    let mode: Mode
 
     @State private var description: String
     @State private var lineItems: [MealLineItemEditor.EditableLineItem]
@@ -25,23 +19,17 @@ struct PhotoMealConfirmSheet: View {
     init(
         controller: PhotoMealController,
         initialEstimate: MealEstimate,
-        previewImage: UIImage?,
-        mode: Mode
+        previewImage: UIImage?
     ) {
         self.controller = controller
         self.initialEstimate = initialEstimate
         self.previewImage = previewImage
-        self.mode = mode
         let editableItems = initialEstimate.lineItems.map {
             MealLineItemEditor.EditableLineItem(id: UUID().uuidString, item: $0)
         }
         _description = State(initialValue: initialEstimate.description)
         _lineItems = State(initialValue: editableItems)
         _bucket = State(initialValue: controller.preferredBucket)
-    }
-
-    private var usesCofidGrounding: Bool {
-        mode == .confirm && initialEstimate.scanMode == .cofidGrounded
     }
 
     private var currentEstimate: MealEstimate {
@@ -55,17 +43,21 @@ struct PhotoMealConfirmSheet: View {
                 fatG: 0,
                 confidence: .medium
             )
-            estimate.scanMode = initialEstimate.scanMode
-            estimate.requiresRefinement = mode == .draft
+            estimate.scanMode = .visionDirect
+            estimate.requiresRefinement = false
             return estimate
         }
         var estimate = MacroAggregator.sum(
             description: description.trimmingCharacters(in: .whitespacesAndNewlines),
             lineItems: items
         )
-        estimate.scanMode = initialEstimate.scanMode
-        estimate.requiresRefinement = mode == .draft
+        estimate.scanMode = .visionDirect
+        estimate.requiresRefinement = false
         return estimate
+    }
+
+    private var hasCorrections: Bool {
+        !corrections.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
     }
 
     var body: some View {
@@ -82,27 +74,20 @@ struct PhotoMealConfirmSheet: View {
                                 .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
                         }
 
-                        confidenceLabel
+                        Text("Estimate confidence: \(currentEstimate.confidence.rawValue.capitalized)")
+                            .helmType(.body, color: HelmColor.fgMuted)
 
-                        if usesCofidGrounding, !currentEstimate.groundingWarnings.isEmpty {
-                            groundingWarningsSection
-                        }
+                        Text("Review the draft. Edit ingredients and add the meal, or type corrections and update the estimate first.")
+                            .helmType(.body, color: HelmColor.fgMuted)
 
-                        if usesCofidGrounding, let direct = currentEstimate.visionDirectEstimate {
-                            visionComparisonSection(direct)
-                        }
-
-                        if mode == .draft {
-                            draftGuidance
-                            correctionsField
-                        }
+                        correctionsField
 
                         MealBucketPicker(selection: $bucket)
 
                         MealLineItemEditor(
                             description: $description,
                             lineItems: $lineItems,
-                            usesCofidGrounding: usesCofidGrounding,
+                            usesCofidGrounding: false,
                             onFocusedScrollIDChange: { scrollID in
                                 guard let scrollID else { return }
                                 withAnimation(
@@ -121,47 +106,20 @@ struct PhotoMealConfirmSheet: View {
                                 .helmType(.body, color: HelmColor.fgSecondary)
                         }
 
-                        if usesCofidGrounding {
-                            Button("Re-estimate with context") {
-                                Task { await controller.reestimateFromConfirm() }
-                            }
-                            .buttonStyle(.helmSecondary)
-                            .disabled(controller.isBusy)
-                        }
-
-                        if mode == .draft {
-                            let hasCorrections = !corrections.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-                            if hasCorrections {
-                                HelmActionButton(
-                                    "Update estimate",
-                                    phase: controller.isBusy ? .loading : .idle,
-                                    successTitle: "Updated"
-                                ) {
-                                    Task {
-                                        await controller.refineDraft(
-                                            corrections: corrections,
-                                            editedEstimate: currentEstimate
-                                        )
-                                    }
+                        if hasCorrections {
+                            HelmActionButton(
+                                "Update estimate",
+                                phase: controller.isBusy ? .loading : .idle,
+                                successTitle: "Updated"
+                            ) {
+                                Task {
+                                    await controller.refineDraft(
+                                        corrections: corrections,
+                                        editedEstimate: currentEstimate
+                                    )
                                 }
-                                .disabled(!canRefine || controller.isBusy)
-                            } else {
-                                // Local line edits already recompute macros; skip a second vision call.
-                                HelmActionButton(
-                                    "Add meal",
-                                    phase: controller.isBusy ? .loading : .idle,
-                                    successTitle: "Added"
-                                ) {
-                                    Task {
-                                        await controller.confirm(
-                                            estimate: currentEstimate,
-                                            name: description,
-                                            bucket: bucket
-                                        )
-                                    }
-                                }
-                                .disabled(!isValid || controller.isBusy)
                             }
+                            .disabled(!isValid || controller.isBusy)
                         } else {
                             HelmActionButton(
                                 "Add meal",
@@ -181,9 +139,10 @@ struct PhotoMealConfirmSheet: View {
                     }
                     .padding(HelmSpacing.md)
                 }
+                .scrollDismissesKeyboard(.interactively)
             }
             .helmScreenBackground()
-            .navigationTitle(mode == .draft ? "Review draft" : "Confirm meal")
+            .navigationTitle("Confirm meal")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
@@ -194,11 +153,7 @@ struct PhotoMealConfirmSheet: View {
                 }
             }
         }
-    }
-
-    private var draftGuidance: some View {
-        Text("Review the draft. Edit ingredients and add the meal, or type corrections and update the estimate first.")
-            .helmType(.body, color: HelmColor.fgMuted)
+        .interactiveDismissDisabled()
     }
 
     private var correctionsField: some View {
@@ -215,53 +170,8 @@ struct PhotoMealConfirmSheet: View {
         }
     }
 
-    private var confidenceLabel: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Text("Estimate confidence: \(currentEstimate.confidence.rawValue.capitalized)")
-                .helmType(.body, color: HelmColor.fgMuted)
-            if usesCofidGrounding, currentEstimate.confidence == .low {
-                Text("Signal decomposes the photo then matches ingredients to CoFID. Low usually means uncertain portions or a weak food match, not the same as Gemini’s percentage score.")
-                    .helmType(.body, color: HelmColor.fgSecondary)
-            }
-        }
-    }
-
     private var isValid: Bool {
         !description.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             && currentEstimate.caloriesKcal > 0
-    }
-
-    private var canRefine: Bool {
-        isValid
-    }
-
-    private var groundingWarningsSection: some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Text("Grounding notes")
-                .helmType(.label)
-            ForEach(currentEstimate.groundingWarnings, id: \.self) { warning in
-                Text(warning)
-                    .helmType(.body, color: HelmColor.compromised)
-            }
-        }
-        .padding(HelmSpacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HelmColor.compromised.opacity(0.1), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
-    }
-
-    private func visionComparisonSection(_ direct: MealEstimate.VisionMacroComparison) -> some View {
-        VStack(alignment: .leading, spacing: HelmSpacing.xs) {
-            Text("Direct vision comparison")
-                .helmType(.label)
-            Text(
-                "Vision-only: \(FoodLogDisplayFormatter.formatNumber(direct.caloriesKcal)) kcal · P \(FoodLogDisplayFormatter.formatNumber(direct.proteinG)) · C \(FoodLogDisplayFormatter.formatNumber(direct.carbsG)) · F \(FoodLogDisplayFormatter.formatNumber(direct.fatG))"
-            )
-            .helmType(.body, color: HelmColor.fgSecondary)
-            Text("CoFID grounded totals are shown below. Use ingredient rows to fix weak matches.")
-                .helmType(.body, color: HelmColor.fgMuted)
-        }
-        .padding(HelmSpacing.sm)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(HelmColor.gaugeTrack.opacity(0.2), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
     }
 }

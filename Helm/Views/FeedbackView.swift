@@ -67,6 +67,7 @@ struct FeedbackView: View {
         .navigationTitle("Feedback")
         .helmScreenBackground()
         .scrollContentBackground(.hidden)
+        .scrollDismissesKeyboard(.interactively)
     }
 
     @MainActor

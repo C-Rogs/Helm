@@ -6,16 +6,9 @@ struct PhotoMealEstimatingView: View {
     let completedSteps: [String]
     let currentStep: String
     let usesLidarAssist: Bool
-    let usesCofidGrounding: Bool
     let onCancel: () -> Void
 
     private var footnote: String {
-        if usesCofidGrounding {
-            if usesLidarAssist {
-                return "Signal used LiDAR depth from your camera to refine portion size, then identifies ingredients with vision and matches each item to CoFID on your phone."
-            }
-            return "Signal identifies ingredients with vision, then matches each item to CoFID on your phone."
-        }
         if usesLidarAssist {
             return "Signal used LiDAR depth to refine portion size, then estimates ingredients, portion detail, and macros directly from the photo."
         }
@@ -80,10 +73,9 @@ struct PhotoMealEstimatingView: View {
 #Preview("Photo estimating") {
     PhotoMealEstimatingView(
         previewImage: nil,
-        completedSteps: ["Reading photo", "Identifying ingredients from photo…"],
-        currentStep: "Matching ingredients to CoFID…",
+        completedSteps: ["Reading photo", "Analysing portions and ingredients…"],
+        currentStep: "Building draft…",
         usesLidarAssist: false,
-        usesCofidGrounding: true,
         onCancel: {}
     )
     .helmTheme()
@@ -96,9 +88,8 @@ struct PhotoMealEstimatingView: View {
             "Reading photo with LiDAR depth…",
             "Applying LiDAR depth to portion scale…"
         ],
-        currentStep: "Identifying ingredients from photo…",
+        currentStep: "Analysing portions and ingredients…",
         usesLidarAssist: true,
-        usesCofidGrounding: true,
         onCancel: {}
     )
     .helmTheme()

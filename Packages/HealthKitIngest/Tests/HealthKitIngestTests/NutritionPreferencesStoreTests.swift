@@ -12,13 +12,13 @@ struct NutritionPreferencesStoreTests {
         #expect(store.isPhotoCofidGroundingEnabled() == false)
     }
 
-    @Test("photo CoFID grounding persists")
-    func photoCofidGroundingPersists() {
+    @Test("photo CoFID grounding stays off")
+    func photoCofidGroundingStaysOff() {
         let defaults = UserDefaults(suiteName: "com.cameronro.helm.tests.\(UUID().uuidString)")!
         let store = NutritionPreferencesStore(defaults: defaults)
 
         store.setPhotoCofidGroundingEnabled(true)
-        #expect(store.isPhotoCofidGroundingEnabled() == true)
+        #expect(store.isPhotoCofidGroundingEnabled() == false)
 
         store.setPhotoCofidGroundingEnabled(false)
         #expect(store.isPhotoCofidGroundingEnabled() == false)

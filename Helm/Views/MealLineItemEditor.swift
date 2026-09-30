@@ -31,7 +31,7 @@ struct MealLineItemEditor: View {
     @Binding var description: String
     @Binding var lineItems: [EditableLineItem]
     var showsTotals: Bool = true
-    var usesCofidGrounding: Bool = true
+    var usesCofidGrounding: Bool = false
     var onFocusedScrollIDChange: ((String?) -> Void)? = nil
 
     @Bindable private var focusModePreferences = FocusModePreferences.shared
@@ -194,7 +194,8 @@ struct MealLineItemEditor: View {
                     ServingQuantityFields(
                         options: servingOptions(for: entry),
                         servingsText: portionServingsBinding(for: entry.id),
-                        selectedLabel: portionSizeBinding(for: entry.id)
+                        selectedLabel: portionSizeBinding(for: entry.id),
+                        onServingsCommit: { commitServings(for: entry.id) }
                     )
                 }
             }
@@ -283,7 +284,7 @@ struct MealLineItemEditor: View {
             if let state, let servings = PortionServings.parse(state.servingsText), servings > 0 {
                 return entry.item.grams / servings
             }
-            return entry.item.grams
+            return max(entry.item.grams, 1)
         }()
         let labelHint = state?.selectedLabel ?? entry.servingLabel
         var extras: [ProducePortionOption] = []
@@ -298,10 +299,19 @@ struct MealLineItemEditor: View {
                 extras.insert(ProducePortionOption(label: label, grams: fixed), at: 0)
             }
         }
+        let plateAnchor = max(entry.item.grams, 25)
+        for factor in [0.5, 1.0, 1.5, 2.0, 3.0] {
+            let grams = (plateAnchor * factor).rounded()
+            guard grams > 0 else { continue }
+            extras.append(ProducePortionOption(label: "\(Int(grams)) g", grams: grams))
+        }
         return PortionOptionCatalog.servingMenu(
             for: entry.item.name,
+            cofidID: entry.item.usdaMatchID,
+            origin: entry.item.usdaMatchID == nil ? nil : .cofid,
             suggestedGrams: unitGramsHint,
             servingLabel: labelHint,
+            defaultGrams: max(entry.item.grams, 1),
             extra: extras
         )
     }
@@ -363,7 +373,8 @@ struct MealLineItemEditor: View {
         let entry = lineItems[index]
         let options = servingOptions(for: entry)
         let option = options.first { $0.label == state.selectedLabel } ?? options.first
-        guard let option, let servings = PortionServings.parse(state.servingsText) else { return }
+        guard let option else { return }
+        guard let servings = PortionServings.parse(state.servingsText), servings > 0 else { return }
         let totalGrams = PortionServings.totalGrams(servings: servings, unitGrams: option.grams)
         lineItems[index].item = recomputeLineItem(
             name: entry.item.name,
@@ -374,6 +385,16 @@ struct MealLineItemEditor: View {
             servings: servings,
             servingSize: option.label
         )
+    }
+
+    /// Keyboard Done: if servings text is empty/invalid, restore last good or `1`, then apply.
+    private func commitServings(for entryID: String) {
+        guard var state = portionStates[entryID] else { return }
+        if PortionServings.parse(state.servingsText) == nil {
+            state.servingsText = "1"
+            portionStates[entryID] = state
+        }
+        applyPortionUpdate(for: entryID)
     }
 
     private func recomputeLineItem(name: String, grams: Double, from item: MealLineItem) -> MealLineItem {

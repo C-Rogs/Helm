@@ -126,7 +126,7 @@ struct CoachSettingsView: View {
                 Text("Fast").tag(MealVisionQualityPreference.fast)
             }
 
-            Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Macro math stays on-device via CoFID.")
+            Text("Auto prefers Gemini when a key is present, otherwise OpenRouter. Accurate uses the stronger Gemini model first. Photo macros come from vision; CoFID stays for offline food search.")
                 .helmType(.body, color: HelmColor.fgMuted)
         }
 

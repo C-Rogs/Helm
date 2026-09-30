@@ -41,10 +41,6 @@ final class PhotoMealController {
         pendingPortionAssist != nil
     }
 
-    var usesCofidGrounding: Bool {
-        NutritionPreferencesStore.shared.isPhotoCofidGroundingEnabled()
-    }
-
     var isEstimating: Bool {
         if case .estimating = phase { return true }
         return false
@@ -108,7 +104,10 @@ final class PhotoMealController {
     }
 
     func reestimateFromConfirm() async {
-        guard let pendingImageJPEG else { return }
+        guard let pendingImageJPEG else {
+            phase = .failed("Could not re-estimate. Try taking the photo again.")
+            return
+        }
         startEstimateTask { [self] in
             await runEstimate(imageJPEGData: pendingImageJPEG, preview: pendingPreview)
         }
@@ -116,7 +115,10 @@ final class PhotoMealController {
     }
 
     func refineDraft(corrections: String, editedEstimate: MealEstimate) async {
-        guard let pendingImageJPEG else { return }
+        guard let pendingImageJPEG else {
+            phase = .failed("Could not update that estimate. Try taking the photo again.")
+            return
+        }
         startEstimateTask { [self] in
             await runRefine(
                 imageJPEGData: pendingImageJPEG,
@@ -134,6 +136,10 @@ final class PhotoMealController {
         let loggedAt = MealLogInstant.loggedAt(for: helmDay, bucket: bucket, today: today)
 
         phase = .saving
+        guard let imageJPEG = pendingImageJPEG else {
+            phase = .failed("Could not save that photo.")
+            return
+        }
         do {
             _ = try await HelmActionRuntime.perform(
                 .meal(.logPhoto(
@@ -142,7 +148,8 @@ final class PhotoMealController {
                     bucket: bucket,
                     loggedAt: loggedAt,
                     helmDay: helmDay,
-                    mealID: UUID().uuidString
+                    mealID: UUID().uuidString,
+                    imageJPEG: imageJPEG
                 )),
                 after: .coach
             )

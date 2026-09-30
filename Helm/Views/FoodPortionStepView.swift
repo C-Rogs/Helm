@@ -251,6 +251,10 @@ struct ServingQuantityFields: View {
     @Binding var servingsText: String
     @Binding var selectedLabel: String
     var onServingSizeChange: (() -> Void)?
+    /// Called when servings text should commit (keyboard Done).
+    var onServingsCommit: (() -> Void)?
+
+    @FocusState private var servingsFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
@@ -259,6 +263,7 @@ struct ServingQuantityFields: View {
                     .helmType(.label)
                 TextField("1", text: $servingsText)
                     .keyboardType(.decimalPad)
+                    .focused($servingsFocused)
                     .helmType(.number)
                     .padding(HelmSpacing.sm)
                     .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
@@ -288,6 +293,16 @@ struct ServingQuantityFields: View {
                     .background(HelmColor.gaugeTrack.opacity(0.35), in: RoundedRectangle(cornerRadius: HelmRadius.sm))
                 }
                 .accessibilityLabel("Serving size")
+            }
+        }
+        .toolbar {
+            ToolbarItemGroup(placement: .keyboard) {
+                Spacer()
+                Button("Done") {
+                    onServingsCommit?()
+                    servingsFocused = false
+                    HapticEngine.shared.play(.selection)
+                }
             }
         }
     }

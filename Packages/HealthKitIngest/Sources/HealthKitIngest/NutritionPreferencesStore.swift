@@ -65,21 +65,17 @@ public final class NutritionPreferencesStore: @unchecked Sendable {
         }
     }
 
-    /// When false (default), photo meals use vision-direct draft estimates without CoFID matching.
+    /// Photo meals are vision-direct only. CoFID stays for offline search / describe. Always false.
     public func isPhotoCofidGroundingEnabled() -> Bool {
-        lock.withLock {
-            TrainPreferencePersistence.loadBool(
-                key: Self.photoCofidGroundingEnabledKey,
-                defaults: defaults,
-                defaultValue: false
-            )
-        }
+        false
     }
 
+    /// No-op retained for call sites / tests; photo CoFID grounding is retired.
     public func setPhotoCofidGroundingEnabled(_ enabled: Bool) {
         lock.withLock {
-            TrainPreferencePersistence.saveBool(enabled, key: Self.photoCofidGroundingEnabledKey, defaults: defaults)
+            TrainPreferencePersistence.saveBool(false, key: Self.photoCofidGroundingEnabledKey, defaults: defaults)
         }
+        _ = enabled
     }
 
     public func isCheckInDue(today: HelmDay, calendar: Calendar = .current) -> Bool {

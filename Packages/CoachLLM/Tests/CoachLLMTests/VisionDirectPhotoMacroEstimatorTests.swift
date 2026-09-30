@@ -128,36 +128,19 @@ struct VisionDirectPhotoMacroEstimatorTests {
         #expect(vision.refinedName == "thicker salmon")
     }
 
-    @Test("photo macro estimator routes by preference")
-    func estimatorRouting() async throws {
+    @Test("photo macro estimator always uses vision-direct")
+    func estimatorAlwaysVisionDirect() async throws {
         let vision = DraftFixtureVision()
-        let grounded = GroundedPhotoMacroEstimator(vision: vision)
-        let direct = VisionDirectPhotoMacroEstimator(vision: vision)
-
-        let enabled = PhotoMacroEstimator(
-            grounded: grounded,
-            visionDirect: direct,
-            preferences: EnabledPhotoCofidGroundingPreferences()
-        )
-        let disabled = PhotoMacroEstimator(
-            grounded: grounded,
-            visionDirect: direct,
-            preferences: DisabledPhotoCofidGroundingPreferences()
+        let estimator = PhotoMacroEstimator(
+            visionDirect: VisionDirectPhotoMacroEstimator(vision: vision)
         )
 
-        let directEstimate = try await disabled.estimateMacros(
+        let estimate = try await estimator.estimateMacros(
             imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
             userNotes: nil,
             progress: nil
         )
-        #expect(directEstimate.scanMode == .visionDirect)
-
-        await #expect(throws: (any Error).self) {
-            try await enabled.estimateMacros(
-                imageJPEGData: Data([0xFF, 0xD8, 0xFF]),
-                userNotes: nil,
-                progress: nil
-            )
-        }
+        #expect(estimate.scanMode == .visionDirect)
+        #expect(estimate.requiresRefinement == true)
     }
 }

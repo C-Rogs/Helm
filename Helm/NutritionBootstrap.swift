@@ -72,8 +72,7 @@ enum NutritionBootstrap {
         guard isPhotoMealAvailable else { return nil }
         let service = PhotoMealService(
             estimator: PhotoMacroEstimator(
-                router: MealVisionRouter(apiKeyStore: APIKeyStore()),
-                preferences: NutritionPreferencesStore.shared
+                router: MealVisionRouter(apiKeyStore: APIKeyStore())
             ),
             localStore: PhotoMealLocalStore(store: PersistenceBootstrap.persistenceStore),
             hkWrites: manualMealService.hkWrites
