@@ -54,6 +54,7 @@ final class WorkoutSessionSideEffects {
     ) async {
         await notifications.requestPermissionIfNeeded()
         lifecycle.begin(sessionID: snapshot.session.id)
+        musicCapture.reset()
         musicCapture.sampleIfChanged(sessionID: snapshot.session.id)
         musicCapture.startPolling(sessionID: snapshot.session.id)
         let exerciseName = currentExerciseName(in: snapshot)

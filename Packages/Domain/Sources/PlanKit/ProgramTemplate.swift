@@ -165,4 +165,20 @@ public enum TrainingDayKind: String, Sendable, Hashable, Codable, CaseIterable {
         }
         return best?.kind
     }
+
+    /// Parse coach / prescription labels ("Push", "push day", raw values) into a day kind.
+    public static func parseLabel(_ raw: String) -> TrainingDayKind? {
+        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let direct = TrainingDayKind(rawValue: trimmed) { return direct }
+        switch trimmed {
+        case "push day", "push": return .push
+        case "pull day", "pull": return .pull
+        case "leg day", "legs", "leg": return .legs
+        case "upper", "upper day": return .upper
+        case "lower", "lower day": return .lower
+        case "full", "full body", "full_body", "fullbody": return .full
+        case "arms", "arm", "arm day": return .arms
+        default: return nil
+        }
+    }
 }

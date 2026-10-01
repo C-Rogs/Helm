@@ -4,7 +4,6 @@ import SwiftUI
 struct RecoveryDetailView: View {
     let model: RecoveryDetailModel
     let historyPoints: [ReadinessHistoryPoint]
-    var matchedCardNamespace: Namespace.ID?
     var onAskCoach: ((String) -> Void)?
 
     var body: some View {
@@ -82,7 +81,6 @@ struct RecoveryDetailView: View {
             }
         }
         .skinAccentStripe(HelmColor.color(for: model.helmState))
-        .helmMatchedCard(id: "arc-readiness", namespace: matchedCardNamespace)
     }
 
     private var contributorsCard: some View {

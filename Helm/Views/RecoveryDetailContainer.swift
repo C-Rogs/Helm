@@ -7,7 +7,6 @@ import SwiftUI
 
 struct RecoveryDetailContainer: View {
     let score: ReadinessScore
-    var matchedCardNamespace: Namespace.ID?
 
     @State private var model: RecoveryDetailModel?
     @State private var historyPoints: [ReadinessHistoryPoint] = []
@@ -21,7 +20,6 @@ struct RecoveryDetailContainer: View {
                 RecoveryDetailView(
                     model: model,
                     historyPoints: historyPoints,
-                    matchedCardNamespace: matchedCardNamespace,
                     onAskCoach: chatController.requestCoachHandoff(prompt:)
                 )
             } else {

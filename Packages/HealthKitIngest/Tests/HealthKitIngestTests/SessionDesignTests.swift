@@ -78,6 +78,53 @@ struct SchedulePlannerTests {
         #expect(result.splitKind == .pull)
     }
 
+    @Test("title fallback advances rotation when muscle maps missing")
+    func nextSplitAfterPushTitleFallback() {
+        let weekStart = HelmDay(year: 2026, month: 7, day: 27)
+        let pushDay = weekStart
+        let today = weekStart.adding(days: 1)
+        let history = PrescriptionHistory(
+            loggedSets: [
+                LoggedSet(
+                    exerciseID: "unknown_push_move",
+                    sequence: 1,
+                    mass: Mass(kilograms: 80),
+                    reps: 8,
+                    completedAt: Date()
+                )
+            ],
+            sessions: [
+                WorkoutSession(
+                    id: UUID(),
+                    helmDay: pushDay,
+                    startedAt: Date(),
+                    finishedAt: Date(),
+                    sets: [
+                        LoggedSet(
+                            exerciseID: "unknown_push_move",
+                            sequence: 1,
+                            mass: Mass(kilograms: 80),
+                            reps: 8,
+                            completedAt: Date()
+                        )
+                    ],
+                    title: "Push"
+                )
+            ],
+            weekStart: weekStart
+        )
+
+        let result = SchedulePlanner.plan(
+            for: today,
+            emphasis: nil,
+            history: history,
+            muscleMaps: [:],
+            dayKindRotation: [.push, .pull, .legs]
+        )
+
+        #expect(result.splitKind == .pull)
+    }
+
     @Test("planned workout records encode decodable week payload")
     func plannedWorkoutRecordsPayload() {
         let start = HelmDay(year: 2026, month: 7, day: 28)

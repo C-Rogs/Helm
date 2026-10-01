@@ -104,18 +104,46 @@ public struct WorkoutSession: Sendable, Hashable, Codable, Identifiable {
     public let startedAt: Date
     public let finishedAt: Date?
     public let sets: [LoggedSet]
+    /// Prescription / session title when known (e.g. "Push"). Used as schedule-rotation fallback.
+    public let title: String?
 
     public init(
         id: UUID = UUID(),
         helmDay: HelmDay,
         startedAt: Date,
         finishedAt: Date? = nil,
-        sets: [LoggedSet] = []
+        sets: [LoggedSet] = [],
+        title: String? = nil
     ) {
         self.id = id
         self.helmDay = helmDay
         self.startedAt = startedAt
         self.finishedAt = finishedAt
         self.sets = sets
+        self.title = title
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id, helmDay, startedAt, finishedAt, sets, title
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(UUID.self, forKey: .id)
+        helmDay = try container.decode(HelmDay.self, forKey: .helmDay)
+        startedAt = try container.decode(Date.self, forKey: .startedAt)
+        finishedAt = try container.decodeIfPresent(Date.self, forKey: .finishedAt)
+        sets = try container.decodeIfPresent([LoggedSet].self, forKey: .sets) ?? []
+        title = try container.decodeIfPresent(String.self, forKey: .title)
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(id, forKey: .id)
+        try container.encode(helmDay, forKey: .helmDay)
+        try container.encode(startedAt, forKey: .startedAt)
+        try container.encodeIfPresent(finishedAt, forKey: .finishedAt)
+        try container.encode(sets, forKey: .sets)
+        try container.encodeIfPresent(title, forKey: .title)
     }
 }

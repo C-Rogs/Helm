@@ -39,7 +39,6 @@ struct DashboardView: View {
     @State private var isShowingReadinessExplain = false
     @Bindable private var tabRouter = AppTabRouter.shared
     @Bindable private var trendsController = TrendsBootstrap.controller
-    @Namespace private var readinessNamespace
     @Namespace private var muscleVolumeNamespace
 
     private var today: HelmDay {
@@ -556,10 +555,7 @@ struct DashboardView: View {
         let shouldReveal = revealStore.shouldReveal(for: today)
 
         return NavigationLink {
-            RecoveryDetailContainer(
-                score: score,
-                matchedCardNamespace: readinessNamespace
-            )
+            RecoveryDetailContainer(score: score)
         } label: {
             readinessShell(
                 subtitle: readinessSubtitle(for: score),
@@ -601,7 +597,6 @@ struct DashboardView: View {
             }
         }
         .buttonStyle(.helmPressableCard)
-        .helmMatchedCardDetail(id: "arc-readiness", in: readinessNamespace)
     }
 
     @ViewBuilder

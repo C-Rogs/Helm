@@ -488,18 +488,7 @@ public enum ScheduleOverrideApplier {
     }
 
     private static func parseKind(_ raw: String) -> TrainingDayKind? {
-        let trimmed = raw.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if let direct = TrainingDayKind(rawValue: trimmed) { return direct }
-        switch trimmed {
-        case "push day", "push": return .push
-        case "pull day", "pull": return .pull
-        case "leg day", "legs", "leg": return .legs
-        case "upper", "upper day": return .upper
-        case "lower", "lower day": return .lower
-        case "full", "full body", "full_body": return .full
-        case "arms", "arm", "arm day": return .arms
-        default: return nil
-        }
+        TrainingDayKind.parseLabel(raw)
     }
 
     private static func parseDay(_ raw: String?) -> HelmDay? {

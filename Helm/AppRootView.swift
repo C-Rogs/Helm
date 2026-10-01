@@ -30,11 +30,11 @@ struct AppRootView: View {
                     await RestNotificationRouter.processPendingIfForeground()
                     await UsualMealNotificationRouter.processPendingIfForeground()
                 }
-            case .inactive, .background:
+            case .inactive:
+                break
+            case .background:
                 SpotifyAppRemoteService.shared.handleAppResignActive()
-                if newPhase == .background {
-                    CloudBackupCoordinator.shared.schedulePush()
-                }
+                CloudBackupCoordinator.shared.schedulePush()
             @unknown default:
                 break
             }

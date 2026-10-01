@@ -21,13 +21,20 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
 
     var workoutMusicChipTitle: String {
         if isConnected { return "Spotify connected" }
-        if isReconnecting { return "Reconnecting Spotify" }
+        if disconnectingForLifecycle || isConnecting {
+            return "Reconnecting Spotify"
+        }
+        if lastErrorMessage != nil {
+            return "Spotify asleep - tap to wake"
+        }
         return "Tap to wake Spotify"
     }
 
     /// App Remote only connects while the Spotify app is running and playing, so a workout that
     /// starts before the music does keeps retrying rather than silently capturing nothing.
+    /// During an active workout capture we allow more attempts so transient SDK drops recover.
     private static let maxConnectAttempts = 4
+    private static let maxWorkoutConnectAttempts = 12
     private static let connectRetryDelays: [Duration] = [.seconds(5), .seconds(15), .seconds(45)]
 
     static let spotifyIdleMessage = "Open Spotify and start playing. Signal connects once music is running."
@@ -47,6 +54,7 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
     /// have one, because App Remote may reject a token minted by the web flow.
     private var appRemoteToken: String?
     private var refreshTask: Task<SpotifyAuthSession?, Never>?
+    private var lastNudgeAt: Date?
 
     private init(authClient: SpotifyAuthClient? = nil) {
         self.authClient = authClient ?? SpotifyAuthClient()
@@ -285,14 +293,23 @@ final class SpotifyAppRemoteService: NSObject, ObservableObject {
         lastErrorMessage = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
     }
 
-    func nudgeReconnectIfCapturing() {
+    func nudgeReconnectIfCapturing(force: Bool = false) {
         guard workoutCaptureActive, isAuthorized, !isConnected else { return }
+        if !force, let lastNudgeAt, Date().timeIntervalSince(lastNudgeAt) < 30 {
+            return
+        }
+        lastNudgeAt = Date()
+        // Keep trying across a long workout even after the initial connect budget is spent.
+        if connectAttempts >= Self.maxConnectAttempts {
+            connectAttempts = 0
+        }
         Task { await connectUsingFreshToken() }
     }
 
     private func scheduleReconnect() {
         guard workoutCaptureActive, isAuthorized else { return }
-        guard connectAttempts < Self.maxConnectAttempts else { return }
+        let attemptCap = Self.maxWorkoutConnectAttempts
+        guard connectAttempts < attemptCap else { return }
         let delay = Self.connectRetryDelays[
             SpotifyReconnectBackoff.delayIndex(
                 attempts: connectAttempts,
@@ -406,6 +423,10 @@ extension SpotifyAppRemoteService: SPTAppRemoteDelegate {
             }
             if let error {
                 self.lastErrorMessage = error.localizedDescription
+            }
+            // Transient SDK drops mid-workout should keep trying past the initial budget.
+            if self.workoutCaptureActive, self.connectAttempts >= Self.maxConnectAttempts {
+                self.connectAttempts = 0
             }
             self.scheduleReconnect()
         }

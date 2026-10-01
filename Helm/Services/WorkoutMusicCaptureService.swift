@@ -118,8 +118,14 @@ final class WorkoutMusicCaptureService {
 
         pollTask = Task { [weak self] in
             guard let self else { return }
+            var tick = 0
             while !Task.isCancelled {
                 self.sampleIfChanged(sessionID: sessionID)
+                // Every ~30s while authorized but disconnected, nudge App Remote reconnect.
+                tick += 1
+                if tick % 6 == 0 {
+                    self.spotify.nudgeReconnectIfCapturing()
+                }
                 try? await Task.sleep(nanoseconds: self.pollIntervalSeconds * 1_000_000_000)
                 guard !Task.isCancelled else { break }
             }

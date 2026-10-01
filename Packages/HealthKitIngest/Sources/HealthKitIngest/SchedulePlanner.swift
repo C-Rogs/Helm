@@ -474,6 +474,9 @@ public enum SchedulePlanner {
             let among = rotation.isEmpty ? Array(TrainingDayKind.allCases) : rotation
             if let kind = TrainingDayKind.bestMatch(muscles: muscleSet, among: among) {
                 completed[session.helmDay] = kind
+            } else if let title = session.title, let kind = TrainingDayKind.parseLabel(title) {
+                // Muscle maps can be missing for catalogue IDs; keep rotation honest via session title.
+                completed[session.helmDay] = kind
             }
         }
 

@@ -397,8 +397,30 @@ public actor PlanPrescriptionEngine {
         }
 
         if let adjusted = PrescriptionDayStore.load(for: day, historyFingerprint: historyFingerprint),
-           !adjusted.exercises.isEmpty {
-            return adjusted
+           !adjusted.exercises.isEmpty
+        {
+            let overrides = loadScheduleOverrides(for: day)
+            let schedule = SchedulePlanner.plan(
+                for: day,
+                emphasis: settings.phaseGoal.emphasis,
+                history: history,
+                muscleMaps: muscleMaps,
+                calendar: calendar,
+                sessionsPerWeek: settings.daysPerWeek,
+                dayKindRotation: TrainingPlanShape.dayKindRotation(from: settings),
+                overrides: overrides
+            )
+            let isPinned = overrides.pinnedByDay[day] != nil
+            if !isPinned,
+               let cachedTitle = adjusted.title,
+               let cachedKind = TrainingDayKind.parseLabel(cachedTitle),
+               cachedKind != schedule.splitKind.trainingDayKind
+            {
+                // Stale coach day cache can keep Push after history now implies Pull (CAM-70).
+                PrescriptionDayStore.clear(for: day)
+            } else {
+                return adjusted
+            }
         }
 
         let schedule = SchedulePlanner.plan(

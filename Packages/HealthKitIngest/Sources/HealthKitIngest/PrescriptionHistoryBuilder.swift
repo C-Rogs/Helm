@@ -50,7 +50,8 @@ public enum PrescriptionHistoryBuilder {
                     helmDay: helmDay,
                     startedAt: draft.startedAt,
                     finishedAt: draft.endedAt,
-                    sets: sessionSets
+                    sets: sessionSets,
+                    title: draft.title
                 )
             )
         }
