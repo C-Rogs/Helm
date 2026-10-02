@@ -18,6 +18,8 @@ final class WatchWorkoutSessionStore {
     private(set) var isHealthKitAuthorized = false
     /// True when Watch successfully started HealthKit mirroring to the phone.
     private(set) var isMirroringToCompanion = false
+    /// True when the underlying `HKWorkoutSession` is still held (may disagree with `phase`).
+    var hasActiveSession: Bool { manager.hasActiveSession }
 
     private let manager: WatchWorkoutSessionManaging
     private let lifecycle = WatchWorkoutSessionLifecycleTracker()
@@ -128,20 +130,14 @@ final class WatchWorkoutSessionStore {
             return
         }
         lastError = nil
-        isMirroringToCompanion = false
 
-        // Emergency session already active -- just sync state and mirroring.
-        if phase == .active || phase == .paused {
-            let phoneStart = WatchCompanionBootstrap.coordinator.companionSessionStartedAt
-            if let phoneStart {
-                startedAt = phoneStart
-            }
-            isMirroringToCompanion = manager.isMirroringToCompanion
-            startElapsedTimer()
-            WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
-            Task { await prepareHealthKit() }
+        // Gate on HK session, not phase: phase can lag emergencyFullStart / stale after fail.
+        if manager.hasActiveSession {
+            adoptExistingSession()
             return
         }
+
+        isMirroringToCompanion = false
 
         // Normal / recover-from-preparing path: create from scratch if needed.
         if phase != .preparing {
@@ -178,6 +174,27 @@ final class WatchWorkoutSessionStore {
             isMirroringToCompanion = false
             apply(.teardownFailed)
         }
+    }
+
+    /// Sync store phase to an already-running HK session (emergency / adopt). Never starts HK again.
+    private func adoptExistingSession() {
+        let phoneStart = WatchCompanionBootstrap.coordinator.companionSessionStartedAt
+        if let phoneStart {
+            startedAt = phoneStart
+        } else if startedAt == nil {
+            startedAt = Date()
+        }
+        isMirroringToCompanion = manager.isMirroringToCompanion
+        if phase == .idle || phase == .ended {
+            apply(.startRequested)
+        }
+        if phase == .preparing {
+            apply(.sessionReady)
+        }
+        // active/paused: already correct
+        startElapsedTimer()
+        WatchCompanionBootstrap.coordinator.pushWatchWorkoutActive(true)
+        Task { await prepareHealthKit() }
     }
 
     func togglePause() async {
@@ -227,6 +244,11 @@ final class WatchWorkoutSessionStore {
             isMirroringToCompanion = false
             apply(.teardownFailed)
         }
+    }
+
+    /// Used by companion sync when phase is stale `.active`/`.paused` with no HK session.
+    func applyTeardownFailedForRecovery() {
+        apply(.teardownFailed)
     }
 
     private func apply(_ event: WatchWorkoutSessionEvent) {

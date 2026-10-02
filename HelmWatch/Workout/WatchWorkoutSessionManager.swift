@@ -185,8 +185,8 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         if let existing = self.session {
             workoutSession = existing
             // Emergency session already has startActivity + beginCollection.
-            // Ensure delegates are set in case emergencyFullStart was called
-            // before the delegate was wired.
+            // Never call beginCollection again - HK returns
+            // "Unable to begin a workout that has already started."
             if workoutSession.delegate == nil {
                 workoutSession.delegate = self
             }
@@ -198,17 +198,8 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
                 )
                 workoutBuilder.delegate = self
                 self.builder = workoutBuilder
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    workoutBuilder.beginCollection(withStart: startDate) { success, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                        } else if success {
-                            continuation.resume()
-                        } else {
-                            continuation.resume(throwing: WatchWorkoutSessionError.builderStepFailed("beginCollection"))
-                        }
-                    }
-                }
+                // Builder missing but activity already started: adopt only.
+                // Re-beginCollection produced watch.session.fail in CAM-73.
             }
         } else {
             workoutSession = try HKWorkoutSession(healthStore: healthStore, configuration: configuration)

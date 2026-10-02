@@ -697,7 +697,18 @@ final class TrainSessionController {
         Task { @MainActor in
             pushWatchCompanionState()
             WatchReadinessBootstrap.coordinator.flushPendingWorkoutCompanionPushIfNeeded()
+            // Skip speculative re-kick when Watch already owns a workout session
+            // (emergency start may be live while first HR is still in flight).
+            let watchAlreadyActive = WatchReadinessBootstrap.coordinator.watchWorkoutActive
             guard !sessionDeliveredHeartRate, !didRelaunchWatchForReachability else { return }
+            guard !watchAlreadyActive else {
+                WatchReadinessBootstrap.coordinator.recordDiagnostic(
+                    .phoneReachability,
+                    detail: "skipRekick watchWorkoutActive=true hrDelivered=false"
+                )
+                scheduleWatchLiveConfirm()
+                return
+            }
             didRelaunchWatchForReachability = true
             _ = await WatchReadinessBootstrap.coordinator.launchWatchWorkoutCompanion()
             pushWatchCompanionState()

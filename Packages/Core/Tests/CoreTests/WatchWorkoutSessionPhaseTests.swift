@@ -29,6 +29,17 @@ struct WatchWorkoutSessionPhaseTests {
         #expect(phase == .idle)
     }
 
+    @Test("teardown failure from active or paused resets to idle")
+    func teardownFailureFromLivePhases() {
+        var active = WatchWorkoutSessionPhase.active
+        active = apply(&active, .teardownFailed)
+        #expect(active == .idle)
+
+        var paused = WatchWorkoutSessionPhase.paused
+        paused = apply(&paused, .teardownFailed)
+        #expect(paused == .idle)
+    }
+
     @Test("maps known and unknown HealthKit activity values")
     func mapsStrengthActivityRawValue() {
         #expect(

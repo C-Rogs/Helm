@@ -72,11 +72,11 @@ enum WatchCompanionBootstrap {
         )
         workoutStore.selectActivity(kind)
 
-        // Emergency path already owns an active HK session - just sync.
-        if workoutStore.phase == .active || workoutStore.phase == .paused {
+        // Emergency path already owns an HK session - adopt even if phase lagged.
+        if workoutStore.hasActiveSession {
             coordinator.recordDiagnostic(
                 .watchSessionStart,
-                detail: "adoptEmergency phase=\(String(describing: workoutStore.phase))"
+                detail: "adoptEmergency phase=\(String(describing: workoutStore.phase)) hasSession=true"
             )
             await workoutStore.startWorkout(fromPhoneConfiguration: configuration)
             flushLiveHeartRateIfNeeded()
@@ -120,6 +120,26 @@ enum WatchCompanionBootstrap {
 
     static func startCompanionWorkoutIfNeeded(playHaptic: Bool) async {
         guard !isHandlingPhoneLaunch else { return }
+
+        // Healthy: companion on + HK live. Do not speculative-start.
+        if workoutStore.hasActiveSession,
+           workoutStore.phase == .active || workoutStore.phase == .paused {
+            flushLiveHeartRateIfNeeded()
+            return
+        }
+
+        // Stale UI: phase says active/paused but HK is gone - reset via adopt path won't help;
+        // fall through after forcing idle via teardown if needed, then start fresh.
+        if (workoutStore.phase == .active || workoutStore.phase == .paused),
+           !workoutStore.hasActiveSession {
+            coordinator.recordDiagnostic(
+                .watchSessionStart,
+                detail: "recoverStalePhase phase=\(String(describing: workoutStore.phase))"
+            )
+            // teardownFailed now maps active/paused -> idle
+            workoutStore.applyTeardownFailedForRecovery()
+        }
+
         guard workoutStore.phase == .idle || workoutStore.phase == .ended else { return }
         if playHaptic {
             WatchHaptic.sessionStart.play()

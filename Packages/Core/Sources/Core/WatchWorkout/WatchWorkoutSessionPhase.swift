@@ -36,6 +36,9 @@ public enum WatchWorkoutSessionReducer {
             return .paused
         case (.active, .endRequested), (.active, .discardRequested):
             return .ending
+        case (.active, .teardownFailed), (.paused, .teardownFailed):
+            // HK dropped while UI still thought session was live.
+            return .idle
         case (.paused, .resume):
             return .active
         case (.paused, .endRequested), (.paused, .discardRequested):
