@@ -145,6 +145,12 @@ public enum CoachCatalogQueryResolver {
         infer: (String) -> Payload?
     ) -> Payload? {
         if CoachCatalogToolName.hasWrite(in: functionCalls) {
+            // Still run client infer for read questions when the model also emitted a write
+            // (CAM-78 recovery / CAM-80 schedule asks).
+            if name == .recoveryQuery || name == .nutritionQuery || name == .workoutQuery,
+               let inferred = infer(userText) {
+                return decode(functionCalls) ?? parseJSON(assembledText) ?? inferred
+            }
             return nil
         }
         if functionCalls.contains(where: { $0.name == name.rawValue }) {

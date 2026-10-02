@@ -1,6 +1,7 @@
 import CoachLLM
 import Core
 import DesignSystem
+import HealthKitIngest
 import NutritionKit
 import SwiftUI
 
@@ -90,6 +91,7 @@ struct CoachFoodMealConfirmSheet: View {
                             MealLineItemEditor(
                                 description: $description,
                                 lineItems: $lineItems,
+                                usesCofidGrounding: NutritionPreferencesStore.shared.isAIMealCofidGroundingEnabled(),
                                 onFocusedScrollIDChange: { scrollID in
                                     guard let scrollID else { return }
                                     withAnimation(

@@ -13,6 +13,53 @@ struct HealthKitDayAggregatorTests {
 
     private let day = HelmDay(year: 2026, month: 7, day: 21)
 
+    @Test("HRV uses overnight median on wake calendar day")
+    func hrvOvernightMedianWakeDay() throws {
+        let overnight = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 28, hour: 3, minute: 30))
+        )
+        let afternoon = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 7, day: 28, hour: 15))
+        )
+        let samples = [
+            IngestQuantitySample(
+                id: UUID(),
+                start: overnight,
+                end: overnight,
+                value: 80,
+                unitSymbol: "ms",
+                sourceBundleID: "com.apple.health"
+            ),
+            IngestQuantitySample(
+                id: UUID(),
+                start: overnight.addingTimeInterval(1_800),
+                end: overnight.addingTimeInterval(1_800),
+                value: 100,
+                unitSymbol: "ms",
+                sourceBundleID: "com.apple.health"
+            ),
+            IngestQuantitySample(
+                id: UUID(),
+                start: afternoon,
+                end: afternoon,
+                value: 20,
+                unitSymbol: "ms",
+                sourceBundleID: "com.apple.health"
+            )
+        ]
+
+        let patches = HealthKitDayAggregator.aggregateQuantity(
+            kind: .hrvSDNN,
+            samples: samples,
+            calendar: calendar
+        )
+
+        #expect(patches.count == 1)
+        #expect(patches[0].helmDay == HelmDay(year: 2026, month: 7, day: 28))
+        // Afternoon 20ms ignored; overnight median of 80 and 100.
+        #expect(patches[0].hrvSDNN?.milliseconds == 90)
+    }
+
     @Test("averages HRV samples per helm day")
     func hrvAverage() throws {
         let morning = try #require(

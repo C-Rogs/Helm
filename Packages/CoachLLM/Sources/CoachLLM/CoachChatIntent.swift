@@ -159,7 +159,31 @@ public enum CoachChatIntent: Sendable {
             "good afternoon",
             "good evening"
         ]
-        return greetings.contains(trimmed)
+        if greetings.contains(trimmed) { return true }
+        return looksLikeScheduleReadQuestion(text)
+    }
+
+    /// Read-only asks about training days / week schedule should not become schedule_adjustment (CAM-80).
+    public static func looksLikeScheduleReadQuestion(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "how many training days",
+            "training days this week",
+            "training days do i",
+            "what days do i train",
+            "which days am i training",
+            "my training days",
+            "days a week am i",
+            "what's my schedule",
+            "whats my schedule",
+            "what is my schedule",
+            "week ahead schedule",
+            "what does my week look",
+            "how often do i train"
+        ]
+        if needles.contains(where: { lower.contains($0) }) { return true }
+        if lower.contains("training day"), lower.contains("?") { return true }
+        return false
     }
 
     public static func looksLikeClearChat(_ text: String) -> Bool {
@@ -265,7 +289,22 @@ public enum CoachChatIntent: Sendable {
             "recovery trend",
             "sleep trend",
             "weight trend",
-            "rhr trend"
+            "rhr trend",
+            // CAM-78: broader sleep / recovery asks
+            "my recovery",
+            "recovery today",
+            "recovery score",
+            "why is my recovery",
+            "sleep recovery",
+            "how is my sleep",
+            "how's my sleep",
+            "hows my sleep",
+            "did i sleep",
+            "sleep enough",
+            "enough sleep",
+            "my readiness",
+            "readiness today",
+            "readiness score"
         ]
         return needles.contains { lower.contains($0) }
     }
@@ -315,7 +354,10 @@ public enum CoachChatIntent: Sendable {
         let lower = text.lowercased()
         if lower.contains("stage") || lower.contains("deep sleep") || lower.contains("rem sleep")
             || lower.contains("sleep last night") || lower.contains("how did i sleep")
-            || lower.contains("how was my sleep") {
+            || lower.contains("how was my sleep") || lower.contains("how is my sleep")
+            || lower.contains("how's my sleep") || lower.contains("hows my sleep")
+            || lower.contains("did i sleep") || lower.contains("sleep enough")
+            || lower.contains("enough sleep") || lower.contains("sleep recovery") {
             return RecoveryQueryPayload(queryType: .sleepDetail)
         }
         return RecoveryQueryPayload(queryType: .range, lookbackDays: 14)

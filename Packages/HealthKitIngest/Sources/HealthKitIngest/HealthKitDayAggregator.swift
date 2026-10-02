@@ -21,9 +21,21 @@ public enum HealthKitDayAggregator {
             var patch = AggregatedDailyPatch(helmDay: helmDay)
             switch kind {
             case .hrvSDNN:
-                let values = daySamples.map(\.value)
-                let average = values.reduce(0, +) / Double(values.count)
-                patch.hrvSDNN = DurationMs(milliseconds: Int(average.rounded()))
+                // Prefer overnight / morning samples (proxy for sleep-window SDNN). Median beats mean.
+                let overnight = daySamples.filter { sample in
+                    let hour = calendar.component(.hour, from: sample.start)
+                    return hour >= 20 || hour < 12
+                }
+                let chosen = overnight.isEmpty ? daySamples : overnight
+                let values = chosen.map(\.value).sorted()
+                let mid = values.count / 2
+                let median: Double
+                if values.count.isMultiple(of: 2) {
+                    median = (values[mid - 1] + values[mid]) / 2
+                } else {
+                    median = values[mid]
+                }
+                patch.hrvSDNN = DurationMs(milliseconds: Int(median.rounded()))
             case .restingHeartRate:
                 let values = daySamples.map(\.value)
                 let average = values.reduce(0, +) / Double(values.count)
@@ -252,7 +264,7 @@ public enum HealthKitDayAggregator {
         return values.reduce(0, +)
     }
 
-    /// Resting HR is measured overnight; Health attributes it to the wake calendar day.
+    /// Resting HR and overnight HRV are attributed to the wake calendar day (CAM-79).
     private static func helmDay(
         for sample: IngestQuantitySample,
         kind: HealthKitSampleKind,
@@ -260,7 +272,7 @@ public enum HealthKitDayAggregator {
         calendar: Calendar
     ) -> HelmDay {
         switch kind {
-        case .restingHeartRate:
+        case .restingHeartRate, .hrvSDNN:
             calendarDayHelmDay(for: sample.end, calendar: calendar)
         default:
             HelmDay.day(for: sample.start, cutoff: cutoff, calendar: calendar)

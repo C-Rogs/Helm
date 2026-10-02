@@ -227,7 +227,7 @@ enum SessionExerciseIDResolver {
 
         return operations.map { operation in
             switch operation.kind {
-            case .adjustLoad, .adjustSets, .adjustWarmupSets, .adjustRPE:
+            case .adjustLoad, .adjustSets, .adjustRPE:
                 guard let rawID = operation.exerciseID, !rawID.isEmpty else { return operation }
                 if sessionExerciseIDs.contains(rawID) { return operation }
                 let normalizedLabel = ExerciseSearchNormalizer.normalizeKeepingEquipment(rawID)
@@ -241,6 +241,9 @@ enum SessionExerciseIDResolver {
                     warmupSets: operation.warmupSets ?? 0,
                     targetReps: operation.targetReps
                 )
+            case .adjustWarmupSets:
+                // "Add warmup sets" must not become addExercise (CAM-74).
+                return operation
             default:
                 return operation
             }

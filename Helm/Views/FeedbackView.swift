@@ -45,7 +45,7 @@ struct FeedbackView: View {
 
                 Section {
                     Toggle("Include coach history", isOn: $includeCoachHistory)
-                    Text("Attaches Chat and Train coach threads so Cam can see both.")
+                    Text("Attaches Chat and Train turns from the last 48 hours, with timestamps.")
                         .helmType(.body, color: HelmColor.fgMuted)
                 }
 

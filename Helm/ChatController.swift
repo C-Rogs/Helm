@@ -997,9 +997,13 @@ final class ChatController {
                 )
                 isPreparingFoodMealConfirm = true
                 chatProgressCompletedSteps = ["Coach estimated your meal"]
-                chatProgressStep = "Matching ingredients to CoFID…"
+                let usesCofid = NutritionPreferencesStore.shared.isAIMealCofidGroundingEnabled()
+                chatProgressStep = usesCofid ? "Matching ingredients to CoFID…" : "Preparing meal confirm…"
                 await Task.yield()
-                let estimate = FoodLogMealGrounding.groundedEstimate(from: foodPayload)
+                let estimate = FoodLogMealGrounding.groundedEstimate(
+                    from: foodPayload,
+                    usesCofidGrounding: usesCofid
+                )
                 isPreparingFoodMealConfirm = false
                 clearChatProgress()
                 pendingFoodMealConfirm = CoachFoodMealConfirmState(
@@ -1178,7 +1182,7 @@ final class ChatController {
             streamingText = nil
             CoachDiagnosticsStore.shared.clearTurnState()
             degradedState = CoachFailurePolicy.degradedState(for: error)
-            lastTurnError = degradedState?.userMessage
+            lastTurnError = CoachUserFacingError.message(for: error)
             CoachDiagnosticsStore.shared.recordFailure(surface: "chat", error: error)
             let nsError = error as NSError
             await DiagnosticsLog.shared.capture(

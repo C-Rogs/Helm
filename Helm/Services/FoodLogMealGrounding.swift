@@ -1,10 +1,17 @@
 import CoachLLM
 import Core
 import Foundation
+import HealthKitIngest
 import NutritionKit
 
 enum FoodLogMealGrounding {
-    static func groundedEstimate(from payload: FoodLogPayload) -> MealEstimate {
+    static func groundedEstimate(
+        from payload: FoodLogPayload,
+        usesCofidGrounding: Bool = NutritionPreferencesStore.shared.isAIMealCofidGroundingEnabled()
+    ) -> MealEstimate {
+        if !usesCofidGrounding {
+            return visionOnlyEstimate(from: payload)
+        }
         if payload.hasIngredientBreakdown {
             let decomposition = MealDecomposition(
                 payload: MealDecompositionPayload(
@@ -19,13 +26,24 @@ enum FoodLogMealGrounding {
             if !estimate.lineItems.isEmpty {
                 return estimate
             }
-            return proportionalFallback(from: payload)
+            return proportionalFallback(from: payload, includeCofidWarning: true)
         }
 
         return aggregateFallback(from: payload)
     }
 
-    private static func proportionalFallback(from payload: FoodLogPayload) -> MealEstimate {
+    /// Prefer coach macros without CoFID ingredient matching (CAM-76).
+    private static func visionOnlyEstimate(from payload: FoodLogPayload) -> MealEstimate {
+        if payload.hasIngredientBreakdown {
+            return proportionalFallback(from: payload, includeCofidWarning: false)
+        }
+        return aggregateFallback(from: payload)
+    }
+
+    private static func proportionalFallback(
+        from payload: FoodLogPayload,
+        includeCofidWarning: Bool
+    ) -> MealEstimate {
         let description = payload.description?.trimmingCharacters(in: .whitespacesAndNewlines)
         let mealName = description?.isEmpty == false ? description! : "Meal"
         let items = (payload.items ?? []) + (payload.implicitFats ?? [])
@@ -53,7 +71,10 @@ enum FoodLogMealGrounding {
             lineItems = aggregateFallback(from: payload).lineItems
         }
 
-        var warnings = ["Could not match ingredients to CoFID. Review each row before logging."]
+        var warnings: [String] = []
+        if includeCofidWarning {
+            warnings.append("Could not match ingredients to CoFID. Review each row before logging.")
+        }
         if let portionNotes = payload.portionNotes?.trimmingCharacters(in: .whitespacesAndNewlines),
            !portionNotes.isEmpty {
             warnings.append("Portion notes: \(portionNotes)")

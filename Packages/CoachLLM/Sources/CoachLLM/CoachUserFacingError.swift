@@ -22,7 +22,7 @@ public enum CoachUserFacingError: Sendable {
         case .decodingFailed:
             return "Coach returned an invalid adjustment. Try rephrasing."
         case .emptyResponse:
-            return "Coach returned an empty response. Try again."
+            return "Coach returned an empty response (no usable reply). Try again."
         }
     }
 

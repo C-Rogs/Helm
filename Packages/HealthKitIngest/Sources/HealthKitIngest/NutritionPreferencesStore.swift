@@ -7,6 +7,8 @@ public final class NutritionPreferencesStore: @unchecked Sendable {
     public static let checkInWeekdayKey = WeeklyCheckInPreferences.checkInWeekdayKey
     public static let lastCheckInCompletedOnKey = "helm.nutrition.lastCheckInCompletedOn"
     public static let photoCofidGroundingEnabledKey = "helm.nutrition.photoCofidGroundingEnabled"
+    /// Describe-meal / dictation CoFID grounding. Default off (CAM-76).
+    public static let aiMealCofidGroundingEnabledKey = "helm.nutrition.aiMealCofidGroundingEnabled"
     public static let shared = NutritionPreferencesStore()
 
     private let defaults: UserDefaults
@@ -76,6 +78,19 @@ public final class NutritionPreferencesStore: @unchecked Sendable {
             TrainPreferencePersistence.saveBool(false, key: Self.photoCofidGroundingEnabledKey, defaults: defaults)
         }
         _ = enabled
+    }
+
+    /// Describe-meal and chat food dictation CoFID matching. Off by default.
+    public func isAIMealCofidGroundingEnabled() -> Bool {
+        lock.withLock {
+            defaults.object(forKey: Self.aiMealCofidGroundingEnabledKey) as? Bool ?? false
+        }
+    }
+
+    public func setAIMealCofidGroundingEnabled(_ enabled: Bool) {
+        lock.withLock {
+            TrainPreferencePersistence.saveBool(enabled, key: Self.aiMealCofidGroundingEnabledKey, defaults: defaults)
+        }
     }
 
     public func isCheckInDue(today: HelmDay, calendar: Calendar = .current) -> Bool {

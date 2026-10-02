@@ -6,6 +6,7 @@ import SwiftUI
 struct NutritionSettingsView: View {
     @State private var dietarySourceMode: DietarySourceMode
     @State private var checkInWeekday: Int
+    @State private var aiMealCofidGroundingEnabled: Bool
 
     private let preferences: NutritionPreferencesStore
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
@@ -14,6 +15,7 @@ struct NutritionSettingsView: View {
         self.preferences = preferences
         _dietarySourceMode = State(initialValue: preferences.mode())
         _checkInWeekday = State(initialValue: preferences.checkInWeekday())
+        _aiMealCofidGroundingEnabled = State(initialValue: preferences.isAIMealCofidGroundingEnabled())
     }
 
     var body: some View {
@@ -35,6 +37,19 @@ struct NutritionSettingsView: View {
                     .fixedSize(horizontal: false, vertical: true)
             } header: {
                 Text("Nutrition")
+            }
+
+            Section {
+                Toggle("Match AI meals to CoFID", isOn: $aiMealCofidGroundingEnabled)
+                    .onChange(of: aiMealCofidGroundingEnabled) { _, newValue in
+                        preferences.setAIMealCofidGroundingEnabled(newValue)
+                        HapticEngine.shared.play(.selection)
+                    }
+                Text("Off by default. When on, describe-meal and chat food logging try to match ingredients to CoFID. Photo meals stay vision-only.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Text("AI meal logging")
             }
 
             Section {

@@ -85,6 +85,9 @@ public enum ReadinessHistoryBuilder {
             history.append(
                 ReadinessDayInput(
                     helmDay: helmDay,
+                    // Overnight-median SDNN from ingest is the sleep-window proxy until raw
+                    // samples are persisted for true asleep-stage filtering (CAM-79).
+                    hrvSleepSDNN: dayMetrics?.hrvSDNN,
                     hrvDailyAverage: dayMetrics?.hrvSDNN,
                     restingHeartRate: resolvedRestingHeartRate(
                         for: helmDay,

@@ -325,13 +325,19 @@ struct MealLineItemEditor: View {
     private func seedPortionStateIfNeeded(for entry: EditableLineItem) {
         guard portionStates[entry.id] == nil else { return }
         let options = servingOptions(for: entry)
+        let estimatedGrams = max(entry.item.grams, 1)
+        // Prefer a 1x unit matching the estimate - options.first is often 0.5x plate
+        // which seeds servings ~ 2 for every row (CAM-76).
         let selected = options.first { $0.label == entry.servingLabel }
+            ?? options.first { abs($0.grams - estimatedGrams) < 0.5 }
+            ?? options.min(by: { abs($0.grams - estimatedGrams) < abs($1.grams - estimatedGrams) })
             ?? options.first
-        let unitGrams = selected?.grams ?? max(entry.item.grams, 1)
+        let unitGrams = selected?.grams ?? estimatedGrams
+        let servings = abs(unitGrams - estimatedGrams) < 0.5
+            ? 1
+            : PortionServings.servings(grams: entry.item.grams, unitGrams: unitGrams)
         portionStates[entry.id] = PortionEditorState(
-            servingsText: PortionServings.format(
-                PortionServings.servings(grams: entry.item.grams, unitGrams: unitGrams)
-            ),
+            servingsText: PortionServings.format(servings),
             selectedLabel: selected?.label ?? "1 g"
         )
     }

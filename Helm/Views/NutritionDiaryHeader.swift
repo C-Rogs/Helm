@@ -28,25 +28,37 @@ struct NutritionDiaryHeader: View {
     }
 
     var body: some View {
-        HStack(spacing: HelmSpacing.xs) {
-            Button {
-                onSelectDay(selectedDay.adding(days: -1))
-            } label: {
-                Image(systemName: "chevron.left")
-            }
-            .buttonStyle(.helmPressable)
-            .accessibilityLabel("Previous day")
-
-            HStack(spacing: HelmSpacing.xxs) {
-                ForEach(weekDays) { day in
-                    dayChip(day)
+        VStack(alignment: .trailing, spacing: HelmSpacing.xxs) {
+            HStack(spacing: HelmSpacing.xs) {
+                Button {
+                    onSelectDay(selectedDay.adding(days: -1))
+                } label: {
+                    Image(systemName: "chevron.left")
                 }
-            }
-            .frame(minWidth: 0, maxWidth: .infinity)
-            .clipped()
-            .contentShape(Rectangle())
-            .highPriorityGesture(weekSwipeGesture)
+                .buttonStyle(.helmPressable)
+                .accessibilityLabel("Previous day")
 
+                HStack(spacing: HelmSpacing.xxs) {
+                    ForEach(weekDays) { day in
+                        dayChip(day)
+                    }
+                }
+                .frame(minWidth: 0, maxWidth: .infinity)
+                .clipped()
+                .contentShape(Rectangle())
+                .highPriorityGesture(weekSwipeGesture)
+
+                Button {
+                    goToNextDay()
+                } label: {
+                    Image(systemName: "chevron.right")
+                }
+                .buttonStyle(.helmPressable)
+                .disabled(selectedDay >= today)
+                .accessibilityLabel("Next day")
+            }
+
+            // Keep the week-chip row width stable when browsing past days (CAM-77).
             if selectedDay != today {
                 Button {
                     onSelectDay(today)
@@ -57,15 +69,6 @@ struct NutritionDiaryHeader: View {
                 .buttonStyle(.helmPressable)
                 .accessibilityLabel("Jump to today")
             }
-
-            Button {
-                goToNextDay()
-            } label: {
-                Image(systemName: "chevron.right")
-            }
-            .buttonStyle(.helmPressable)
-            .disabled(selectedDay >= today)
-            .accessibilityLabel("Next day")
         }
     }
 

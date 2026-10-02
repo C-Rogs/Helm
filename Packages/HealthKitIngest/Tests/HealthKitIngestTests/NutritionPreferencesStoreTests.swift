@@ -23,4 +23,16 @@ struct NutritionPreferencesStoreTests {
         store.setPhotoCofidGroundingEnabled(false)
         #expect(store.isPhotoCofidGroundingEnabled() == false)
     }
+
+    @Test("AI meal CoFID grounding defaults off and is toggleable")
+    func aiMealCofidGroundingToggle() {
+        let defaults = UserDefaults(suiteName: "com.cameronro.helm.tests.\(UUID().uuidString)")!
+        let store = NutritionPreferencesStore(defaults: defaults)
+
+        #expect(store.isAIMealCofidGroundingEnabled() == false)
+        store.setAIMealCofidGroundingEnabled(true)
+        #expect(store.isAIMealCofidGroundingEnabled() == true)
+        store.setAIMealCofidGroundingEnabled(false)
+        #expect(store.isAIMealCofidGroundingEnabled() == false)
+    }
 }
