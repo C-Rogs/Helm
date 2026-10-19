@@ -15,6 +15,7 @@ final class MuscleVolumeBoardStore {
     private let store: PersistenceStore
     private let calendar: Calendar
     private let cutoff: DayCutoff
+    private var refreshTask: Task<Void, Never>?
 
     init(
         store: PersistenceStore,
@@ -26,24 +27,55 @@ final class MuscleVolumeBoardStore {
         self.cutoff = cutoff
     }
 
-    func refresh() {
+    func refresh() async {
+        refreshTask?.cancel()
         isLoading = true
         errorMessage = nil
 
+        let store = self.store
+        let calendar = self.calendar
+        let cutoff = self.cutoff
+        let task = Task(priority: .userInitiated) { [weak self] in
+            let result = await Task.detached(priority: .userInitiated) {
+                Self.computeBoard(store: store, calendar: calendar, cutoff: cutoff)
+            }.value
+            guard let self, !Task.isCancelled else { return }
+            switch result {
+            case let .success(model):
+                self.model = model
+                self.errorMessage = nil
+            case let .failure(message):
+                self.model = MuscleVolumeBoardModel(rows: [])
+                self.errorMessage = message
+            }
+            self.isLoading = false
+        }
+        refreshTask = task
+        await task.value
+    }
+
+    private enum BoardResult: Sendable {
+        case success(MuscleVolumeBoardModel)
+        case failure(String)
+    }
+
+    private nonisolated static func computeBoard(
+        store: PersistenceStore,
+        calendar: Calendar,
+        cutoff: DayCutoff
+    ) -> BoardResult {
         do {
             let today = HelmDay.day(for: .now, cutoff: cutoff, calendar: calendar)
-            model = try TrendsDataBuilder.buildMuscleVolumeBoard(
+            let model = try TrendsDataBuilder.buildMuscleVolumeBoard(
                 store: store,
                 weekContaining: today,
                 calendar: calendar,
                 cutoff: cutoff
             )
+            return .success(model)
         } catch {
-            model = MuscleVolumeBoardModel(rows: [])
-            errorMessage = error.localizedDescription
+            return .failure(error.localizedDescription)
         }
-
-        isLoading = false
     }
 }
 

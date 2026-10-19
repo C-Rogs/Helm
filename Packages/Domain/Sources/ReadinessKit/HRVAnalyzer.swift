@@ -93,7 +93,20 @@ enum HRVAnalyzer {
       baseline: chronic,
       sigmaFloor: hrvSigmaFloor
     )
-    let zHRV = 0.70 * zAcute + 0.30 * zMedium
+    // Last night is the acute signal. A 7-day mean alone keeps a good morning
+    // inside a depleted week (CAM-102).
+    let tonight = history.last { $0.helmDay == day }?.effectiveHRVMilliseconds
+    let zHRV: Double
+    if let tonight {
+      let zTonight = BaselineTracker.zScore(
+        value: tonight,
+        baseline: chronic,
+        sigmaFloor: hrvSigmaFloor
+      )
+      zHRV = 0.55 * zTonight + 0.30 * zAcute + 0.15 * zMedium
+    } else {
+      zHRV = 0.70 * zAcute + 0.30 * zMedium
+    }
 
     return HRVBalanceResult(
       zHRV: zHRV,

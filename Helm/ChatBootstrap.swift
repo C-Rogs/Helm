@@ -9,6 +9,7 @@ enum ChatBootstrap {
 
     @MainActor
     static func start() {
+        // Prefetch history + availability once at launch; ChatView.onAppear is idempotent.
         Task {
             await controller.onAppear()
         }

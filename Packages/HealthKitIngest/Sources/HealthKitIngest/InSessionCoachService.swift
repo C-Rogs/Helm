@@ -363,8 +363,13 @@ public struct InSessionCoachService: Sendable {
             throw InSessionCoachError.noApplicableChange
         }
 
+        let seededPayload = try seedAddExerciseLoads(
+            payload: normalized.payload,
+            userMessage: userMessage,
+            catalog: catalog
+        )
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
-        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
+        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: seededPayload)
 
         guard !adjustment.operations.isEmpty else {
             throw InSessionCoachError.noApplicableChange
@@ -387,7 +392,7 @@ public struct InSessionCoachService: Sendable {
             }
 
             let bannerLabels = try makeBanner(
-                payload: normalized.payload,
+                payload: seededPayload,
                 previous: currentPrescription,
                 adjusted: adjusted
             )
@@ -405,7 +410,7 @@ public struct InSessionCoachService: Sendable {
             } else {
                 let stored = try logRecommendation(
                     sessionID: snapshot.session.id,
-                    payload: normalized.payload,
+                    payload: seededPayload,
                     modelVersion: modelVersion,
                     markActedOn: markActedOn
                 )
@@ -416,17 +421,98 @@ public struct InSessionCoachService: Sendable {
                 banner: SessionAdjustmentBannerModel(
                     fromLabel: bannerLabels.fromLabel,
                     toLabel: bannerLabels.toLabel,
-                    reason: normalized.payload.bannerReason,
+                    reason: seededPayload.bannerReason,
                     recommendationID: resolvedRecommendationID
                 ),
                 previousExercises: previousExercises,
                 swappedExerciseIDs: swappedExerciseIDs(
-                    payload: normalized.payload,
+                    payload: seededPayload,
                     previous: currentPrescription,
                     adjusted: adjusted
                 )
             )
         }
+    }
+
+    /// CAM-96: coach addExercise must not invent working loads. Prefer athlete-named kg,
+    /// otherwise ProgressionEngine (same path as planned-session prescription).
+    private func seedAddExerciseLoads(
+        payload: SessionAdjustmentPayload,
+        userMessage: String?,
+        catalog: [CatalogExercise]
+    ) throws -> SessionAdjustmentPayload {
+        guard payload.operations.contains(where: { $0.kind == .addExercise }) else {
+            return payload
+        }
+
+        let athleteNamedKg = SessionSwapPhrase.parseNamedLoadKg(userMessage)
+        let athleteNamedWeight = athleteNamedKg != nil
+        let day = HelmDay.day(for: Date(), cutoff: .default, calendar: .current)
+        let history = try PrescriptionHistoryBuilder.history(from: persistence, endingAt: day)
+        let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
+
+        let operations = payload.operations.map { operation -> SessionAdjustmentOperation in
+            guard operation.kind == .addExercise, let exerciseID = operation.toExerciseID else {
+                return operation
+            }
+
+            if athleteNamedWeight {
+                let massKg = athleteNamedKg ?? operation.targetMassKg
+                return SessionAdjustmentOperation(
+                    kind: operation.kind,
+                    fromExerciseID: operation.fromExerciseID,
+                    toExerciseID: operation.toExerciseID,
+                    excludeExerciseIDs: operation.excludeExerciseIDs,
+                    orderedExerciseIDs: operation.orderedExerciseIDs,
+                    exerciseID: operation.exerciseID,
+                    setDelta: operation.setDelta,
+                    massDeltaKg: operation.massDeltaKg,
+                    targetMassKg: massKg,
+                    rpeDelta: operation.rpeDelta,
+                    targetRPE: operation.targetRPE,
+                    loadAdjustmentIntent: operation.loadAdjustmentIntent,
+                    targetSets: operation.targetSets,
+                    warmupSets: operation.warmupSets,
+                    targetReps: operation.targetReps
+                )
+            }
+
+            // Live coach turns: replace invented LLM kg with engine. Direct applies
+            // (nil userMessage, e.g. tests) keep an explicit targetMassKg when present.
+            if userMessage == nil, operation.targetMassKg != nil {
+                return operation
+            }
+
+            let progression = PlanKit.progression(
+                for: exerciseID,
+                history: history.loggedSets,
+                muscleMap: catalogByID[exerciseID]?.muscleMap
+            )
+            return SessionAdjustmentOperation(
+                kind: operation.kind,
+                fromExerciseID: operation.fromExerciseID,
+                toExerciseID: operation.toExerciseID,
+                excludeExerciseIDs: operation.excludeExerciseIDs,
+                orderedExerciseIDs: operation.orderedExerciseIDs,
+                exerciseID: operation.exerciseID,
+                setDelta: operation.setDelta,
+                massDeltaKg: operation.massDeltaKg,
+                targetMassKg: progression.workingWeight?.kilograms,
+                rpeDelta: operation.rpeDelta,
+                targetRPE: operation.targetRPE,
+                loadAdjustmentIntent: operation.loadAdjustmentIntent,
+                targetSets: operation.targetSets,
+                warmupSets: operation.warmupSets,
+                targetReps: operation.targetReps ?? progression.targetRepMin
+            )
+        }
+
+        return SessionAdjustmentPayload(
+            schemaVersion: payload.schemaVersion,
+            reply: payload.reply,
+            rationale: payload.rationale,
+            operations: operations
+        )
     }
 
     func buildProposal(
@@ -519,8 +605,13 @@ public struct InSessionCoachService: Sendable {
             )
         }
 
+        let seededPayload = try seedAddExerciseLoads(
+            payload: normalized.payload,
+            userMessage: userMessage,
+            catalog: catalog
+        )
         let currentPrescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)
-        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: normalized.payload)
+        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: seededPayload)
 
         let result = PlanKit.apply(
             adjustment: adjustment,
@@ -534,7 +625,7 @@ public struct InSessionCoachService: Sendable {
         case .rejected(let reason):
             return CoachSessionProposal(
                 reply: payload.reply,
-                payload: normalized.payload,
+                payload: seededPayload,
                 recommendationID: recommendation.id,
                 previewBanner: nil,
                 status: .failed(.clamp(reason)),
@@ -545,7 +636,7 @@ public struct InSessionCoachService: Sendable {
             guard PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted) else {
                 return CoachSessionProposal(
                     reply: payload.reply,
-                    payload: normalized.payload,
+                    payload: seededPayload,
                     recommendationID: recommendation.id,
                     previewBanner: nil,
                     status: .failed(.noDiff),
@@ -555,19 +646,19 @@ public struct InSessionCoachService: Sendable {
             }
 
             let bannerLabels = try makeBanner(
-                payload: normalized.payload,
+                payload: seededPayload,
                 previous: currentPrescription,
                 adjusted: adjusted
             )
 
             return CoachSessionProposal(
                 reply: payload.reply,
-                payload: normalized.payload,
+                payload: seededPayload,
                 recommendationID: recommendation.id,
                 previewBanner: SessionAdjustmentBannerModel(
                     fromLabel: bannerLabels.fromLabel,
                     toLabel: bannerLabels.toLabel,
-                    reason: normalized.payload.bannerReason,
+                    reason: seededPayload.bannerReason,
                     recommendationID: recommendation.id
                 ),
                 status: .confirmable,
@@ -636,6 +727,12 @@ public struct InSessionCoachService: Sendable {
         if !exerciseBlock.isEmpty {
             contextBlock += "\n\nActive session exercises:\n\(exerciseBlock)"
         }
+        if let loadRationale = try? sessionLoadRationaleBlock(
+            exerciseIDs: sortedExercises.map(\.exerciseID),
+            displayNames: displayNames
+        ), !loadRationale.isEmpty {
+            contextBlock += "\n\n# Prescription Load Rationale\n\(loadRationale)"
+        }
         if let picker = try? persistence.exercises.listForPicker(search: nil, limit: 120),
            !picker.isEmpty {
             let available = InSessionCoachContextBuilder.availableExercisesBlock(picker)
@@ -656,6 +753,33 @@ public struct InSessionCoachService: Sendable {
             includedDayCount: context.recent.count,
             droppedDayCount: 0
         )
+    }
+
+    private func sessionLoadRationaleBlock(
+        exerciseIDs: [String],
+        displayNames: [String: String]
+    ) throws -> String {
+        guard !exerciseIDs.isEmpty else { return "" }
+        let day = HelmDay.day(for: Date(), cutoff: .default, calendar: .current)
+        let history = try PrescriptionHistoryBuilder.history(from: persistence, endingAt: day)
+        let (catalog, _, _) = try loadCatalog()
+        let catalogByID = Dictionary(uniqueKeysWithValues: catalog.map { ($0.exerciseID, $0) })
+        let inputs = exerciseIDs.map { exerciseID in
+            PrescriptionLoadRationale.ExerciseInput(
+                exerciseID: exerciseID,
+                displayName: ExerciseDisplayFormatter.friendlyName(
+                    for: exerciseID,
+                    displayNames: displayNames
+                ),
+                progression: PlanKit.progression(
+                    for: exerciseID,
+                    history: history.loggedSets,
+                    muscleMap: catalogByID[exerciseID]?.muscleMap
+                ),
+                constraintAffected: false
+            )
+        }
+        return PrescriptionLoadRationale.format(exercises: inputs)
     }
 
     private func loadCatalog() throws -> (

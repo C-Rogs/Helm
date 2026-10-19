@@ -41,21 +41,62 @@ final class WorkoutHistoryController {
     func setListScope(_ scope: WorkoutSessionHistoryScope) {
         guard listScope != scope else { return }
         listScope = scope
-        refresh()
+        Task { await refresh() }
     }
 
-    func refresh() {
+    func refresh() async {
         loadState = .loadingInitial
-        do {
+        let persistence = self.persistence
+        let listScope = self.listScope
+        let pageSize = self.pageSize
+        let result = await Task.detached(priority: .userInitiated) {
+            Self.computeRefresh(persistence: persistence, listScope: listScope, pageSize: pageSize)
+        }.value
+        switch result {
+        case let .success(payload):
             loadedCount = pageSize
-            activeCount = try persistence.workoutSessions.countSummaries(scope: .active)
-            deletedCount = try persistence.workoutSessions.countSummaries(scope: .deleted)
+            activeCount = payload.activeCount
+            deletedCount = payload.deletedCount
+            activePreviewSessions = payload.activePage
+            sessions = payload.sessions
+            templates = payload.templates
+            canLoadMore = sessions.count == pageSize
+            refreshExerciseNames()
+            errorMessage = nil
+            loadState = .loaded
+        case let .failure(message):
+            errorMessage = message
+            loadState = .loaded
+        }
+    }
+
+    private struct RefreshPayload: Sendable {
+        var activeCount: Int
+        var deletedCount: Int
+        var activePage: [WorkoutSessionSummary]
+        var sessions: [WorkoutSessionSummary]
+        var templates: [WorkoutTemplateSummary]
+    }
+
+    private enum RefreshResult: Sendable {
+        case success(RefreshPayload)
+        case failure(String)
+    }
+
+    private nonisolated static func computeRefresh(
+        persistence: PersistenceStore,
+        listScope: WorkoutSessionHistoryScope,
+        pageSize: Int
+    ) -> RefreshResult {
+        do {
+            let activeCount = try persistence.workoutSessions.countSummaries(scope: .active)
+            let deletedCount = try persistence.workoutSessions.countSummaries(scope: .deleted)
             let activePage = try persistence.workoutSessions.listSummaries(
                 limit: pageSize,
                 offset: 0,
                 scope: .active
             )
-            activePreviewSessions = activePage
+            let sessions: [WorkoutSessionSummary]
             if listScope == .active {
                 sessions = activePage
             } else {
@@ -65,14 +106,18 @@ final class WorkoutHistoryController {
                     scope: .deleted
                 )
             }
-            templates = try persistence.workoutTemplates.fetchSummaries()
-            canLoadMore = sessions.count == pageSize
-            refreshExerciseNames()
-            errorMessage = nil
-            loadState = .loaded
+            let templates = try persistence.workoutTemplates.fetchSummaries()
+            return .success(
+                RefreshPayload(
+                    activeCount: activeCount,
+                    deletedCount: deletedCount,
+                    activePage: activePage,
+                    sessions: sessions,
+                    templates: templates
+                )
+            )
         } catch {
-            errorMessage = error.localizedDescription
-            loadState = .loaded
+            return .failure(error.localizedDescription)
         }
     }
 
@@ -117,7 +162,7 @@ final class WorkoutHistoryController {
     func saveSession(_ draft: WorkoutSessionDraft) -> Bool {
         do {
             try persistence.workoutSessions.updateCompletedSession(draft)
-            refresh()
+            Task { await refresh() }
             PlanBootstrap.refreshPrescription()
             return true
         } catch {
@@ -137,7 +182,7 @@ final class WorkoutHistoryController {
             }
             activeCount = max(0, activeCount - 1)
             deletedCount += 1
-            refresh()
+            Task { await refresh() }
             PlanBootstrap.refreshPrescription()
             return true
         } catch {
@@ -155,7 +200,7 @@ final class WorkoutHistoryController {
             }
             deletedCount = max(0, deletedCount - 1)
             activeCount += 1
-            refresh()
+            Task { await refresh() }
             return true
         } catch {
             errorMessage = error.localizedDescription

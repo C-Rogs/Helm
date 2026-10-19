@@ -197,6 +197,16 @@ public enum ReadinessKit {
 
     guard !required.isEmpty else { return nil }
 
+    // Missing required sleep weight redistributes onto present required terms
+    // (same idea as missing optional → required), so HRV/RHR absorb the 0.22.
+    let missingSleepWeight = zSleep == nil ? weightSleep : 0.0
+    let requiredWeightBeforeSleepRedistrib = required.reduce(0) { $0 + $1.1 }
+    if missingSleepWeight > 0, requiredWeightBeforeSleepRedistrib > 0 {
+      required = required.map { term, weight in
+        (term, weight + missingSleepWeight * (weight / requiredWeightBeforeSleepRedistrib))
+      }
+    }
+
     var optional: [(Double, Double)] = []
     if let zResp { optional.append((zResp, weightResp)) }
     if let zTemp { optional.append((zTemp, weightTemp)) }

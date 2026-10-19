@@ -21,7 +21,7 @@ struct WorkoutHistoryRecentSection: View {
                 HelmErrorState(
                     title: "History unavailable",
                     message: errorMessage,
-                    onRetry: { history.refresh() }
+                    onRetry: { Task { await history.refresh() } }
                 )
             } else if history.activePreviewSessions.isEmpty {
                 Text("Finish a session to see it here.")
@@ -124,7 +124,7 @@ struct WorkoutHistoryScreen: View {
                     HelmErrorState(
                         title: "History unavailable",
                         message: errorMessage,
-                        onRetry: { history.refresh() }
+                        onRetry: { Task { await history.refresh() } }
                     )
                 } else if history.sessions.isEmpty {
                     emptyState
@@ -148,7 +148,7 @@ struct WorkoutHistoryScreen: View {
         .navigationTitle("Workout history")
         .navigationBarTitleDisplayMode(.inline)
         .refreshable {
-            history.refresh()
+            await history.refresh()
         }
         .confirmationDialog(
             "Delete this workout?",

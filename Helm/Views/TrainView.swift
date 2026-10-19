@@ -16,7 +16,6 @@ struct TrainView: View {
     @Environment(\.helmReduceMotion) private var reduceMotion
 
     @State private var isShowingImport = false
-    @State private var didTrackInitialRestRemaining = false
     @State private var restEditorExerciseID: String?
     @State private var isShowingTodaysSession = false
     @State private var discussAfterPreviewDismiss = false
@@ -50,9 +49,10 @@ struct TrainView: View {
                 }
                 await AppTabRouter.shared.preferChromeOverContentLoad()
                 guard !Task.isCancelled else { return }
-                history.refresh()
-                muscleVolumeStore.refresh()
-                await weekAheadStore.refresh()
+                async let historyRefresh: Void = history.refresh()
+                async let muscleRefresh: Void = muscleVolumeStore.refresh()
+                async let weekRefresh: Void = weekAheadStore.refresh()
+                _ = await (historyRefresh, muscleRefresh, weekRefresh)
                 await loadPhaseNarrative()
             }
             .onChange(of: scenePhase) { _, newPhase in
@@ -106,40 +106,12 @@ struct TrainView: View {
     @ViewBuilder
     private var bottomSessionChrome: some View {
         if controller.hasActiveSession, controller.numpadTarget != nil {
-            numpadSessionChrome
+            TrainNumpadSessionChrome(measuredChromeHeight: $measuredChromeHeight)
         } else if controller.hasActiveSession, showsSessionAccessory {
             TrainSessionAccessoryBar()
                 .frame(maxWidth: .infinity)
                 .fixedSize(horizontal: false, vertical: true)
                 .background(HelmColor.canvas)
-        }
-    }
-
-    @ViewBuilder
-    private var numpadSessionChrome: some View {
-        VStack(spacing: HelmSpacing.xs) {
-            if controller.isRestTimerRunning,
-               let timer = controller.snapshot?.restTimer,
-               let endsAt = timer.endsAt {
-                CompactRestPill(
-                    endsAt: endsAt,
-                    totalSeconds: controller.restTimerTotalSeconds(for: timer),
-                    onRemainingSecondsChange: { remaining in
-                        handleRestTimerTick(remaining)
-                    }
-                )
-                .geometryGroup()
-            }
-
-            numpadOverlay
-        }
-        .frame(maxWidth: .infinity)
-        .fixedSize(horizontal: false, vertical: true)
-        .background(HelmColor.canvas)
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.size.height
-        } action: { height in
-            measuredChromeHeight = height
         }
     }
 
@@ -305,16 +277,22 @@ struct TrainView: View {
     private func loadPhaseNarrative() async {
         do {
             let readiness = ReadinessBootstrap.readinessService.state.score
-            let settings = try await PlanBootstrap.engine.loadTrainingPlan()
-            let model = try await ProgressionDetailBuilder.load(
-                store: PersistenceBootstrap.persistenceStore,
-                engine: PlanBootstrap.engine,
-                readiness: readiness
-            )
-            phaseNarrative = PhaseNarrativeFormatter.string(
-                from: model,
-                weeklyRateKg: settings.phaseGoal.weeklyRateKg
-            )
+            let store = PersistenceBootstrap.persistenceStore
+            let engine = PlanBootstrap.engine
+            let narrative = try await Task.detached(priority: .utility) {
+                let settings = try await engine.loadTrainingPlan()
+                let model = try await ProgressionDetailBuilder.load(
+                    store: store,
+                    engine: engine,
+                    readiness: readiness
+                )
+                return PhaseNarrativeFormatter.string(
+                    from: model,
+                    weeklyRateKg: settings.phaseGoal.weeklyRateKg
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            phaseNarrative = narrative
         } catch {
             phaseNarrative = nil
         }
@@ -737,7 +715,7 @@ struct TrainView: View {
             : "sets"
         return ScrollViewReader { proxy in
             HelmVerticalPageScroll {
-                VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
                     HStack {
                         TrainSessionHeaderView(
                             startedAt: snapshot.session.startedAt,
@@ -918,19 +896,6 @@ struct TrainView: View {
         return UnitPoint(x: 0.5, y: y)
     }
 
-    private func handleRestTimerTick(_ remaining: Int) {
-        // Pass 0 at expiry so restDone policy fires (nil was skipping the bell).
-        let current: Int? = remaining
-        if !didTrackInitialRestRemaining {
-            didTrackInitialRestRemaining = true
-            controller.handleRestRemainingSecondsChange(remaining > 0 ? remaining : 0)
-            return
-        }
-        controller.handleRestRemainingSecondsChange(current)
-        // Rest-monitor owns expiry reconcile. Do not spawn a bare Task here; that raced
-        // the monitor and mutated SwiftUI off the main thread after await.
-    }
-
     private var reorderActionBar: some View {
         HStack(spacing: HelmSpacing.sm) {
             Button("Cancel") {
@@ -952,6 +917,36 @@ struct TrainView: View {
             onDiscard: { controller.requestDiscardConfirmation() },
             onFinish: { controller.requestFinishConfirmation() }
         )
+    }
+}
+
+/// Isolated numpad chrome so digit/RPE edits observe only numpad fields, not the full Train tree.
+private struct TrainNumpadSessionChrome: View {
+    @Bindable private var controller = TrainBootstrap.sessionController
+    @Binding var measuredChromeHeight: CGFloat
+
+    var body: some View {
+        VStack(spacing: HelmSpacing.xs) {
+            if controller.isRestTimerRunning,
+               let timer = controller.snapshot?.restTimer,
+               let endsAt = timer.endsAt {
+                CompactRestPill(
+                    endsAt: endsAt,
+                    totalSeconds: controller.restTimerTotalSeconds(for: timer)
+                )
+                .geometryGroup()
+            }
+
+            numpadOverlay
+        }
+        .frame(maxWidth: .infinity)
+        .fixedSize(horizontal: false, vertical: true)
+        .background(HelmColor.canvas)
+        .onGeometryChange(for: CGFloat.self) { proxy in
+            proxy.size.height
+        } action: { height in
+            measuredChromeHeight = height
+        }
     }
 
     private var numpadOverlay: some View {

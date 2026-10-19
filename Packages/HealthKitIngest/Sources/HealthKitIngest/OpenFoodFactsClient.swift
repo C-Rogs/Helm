@@ -110,6 +110,17 @@ enum OpenFoodFactsEndpoint {
     }
 }
 
+struct OpenFoodFactsParsedMacros: Equatable {
+    var per100gKcal: Double?
+    var per100gProteinG: Double?
+    var per100gCarbsG: Double?
+    var per100gFatG: Double?
+
+    var hasAny: Bool {
+        per100gKcal != nil || per100gProteinG != nil || per100gCarbsG != nil || per100gFatG != nil
+    }
+}
+
 enum OpenFoodFactsParser {
     static func parseProductResponse(data: Data) throws -> OpenFoodFactsProduct {
         guard
@@ -189,10 +200,7 @@ enum OpenFoodFactsParser {
             throw OpenFoodFactsError.invalidResponse
         }
 
-        let nutriments = product["nutriments"] as? [String: Any] ?? [:]
-        let kcal = energyKcalPer100g(from: nutriments)
-        let macrosKnown = kcal != nil
-
+        let parsed = parsedMacros(from: product)
         let brand = parseBrand(from: product)
 
         let servingSizeLabel = (product["serving_size"] as? String)?
@@ -206,15 +214,111 @@ enum OpenFoodFactsParser {
             barcode: barcode,
             productName: name,
             brand: brand,
-            per100gKcal: kcal ?? 0,
-            per100gProteinG: doubleValue(nutriments["proteins_100g"]) ?? 0,
-            per100gCarbsG: doubleValue(nutriments["carbohydrates_100g"]) ?? 0,
-            per100gFatG: doubleValue(nutriments["fat_100g"]) ?? 0,
+            per100gKcal: parsed.per100gKcal ?? 0,
+            per100gProteinG: parsed.per100gProteinG ?? 0,
+            per100gCarbsG: parsed.per100gCarbsG ?? 0,
+            per100gFatG: parsed.per100gFatG ?? 0,
             servingSizeLabel: servingSizeLabel?.isEmpty == false ? servingSizeLabel : nil,
             servingQuantityGrams: servingQuantityGrams,
             rawJSON: rawJSONString,
-            macrosKnown: macrosKnown
+            macrosKnown: parsed.per100gKcal != nil
         )
+    }
+
+    /// Macros recovered from a stored OFF snapshot. Nil fields were absent, so callers keep cached numbers.
+    static func macros(fromSnapshotJSON json: String) -> OpenFoodFactsParsedMacros? {
+        guard
+            let data = json.data(using: .utf8),
+            let object = try? JSONSerialization.jsonObject(with: data) as? [String: Any]
+        else {
+            return nil
+        }
+
+        let product = (object["product"] as? [String: Any]) ?? object
+        let parsed = parsedMacros(from: product)
+        guard parsed.hasAny else { return nil }
+        return parsed
+    }
+
+    private static func parsedMacros(from product: [String: Any]) -> OpenFoodFactsParsedMacros {
+        let nutriments = product["nutriments"] as? [String: Any] ?? [:]
+        let servingGrams = servingGrams(from: product)
+        return OpenFoodFactsParsedMacros(
+            per100gKcal: energyKcalPer100g(from: nutriments, servingGrams: servingGrams),
+            per100gProteinG: nutrientPer100g(
+                nutriments,
+                flatField: "proteins_100g",
+                nestedKey: "proteins",
+                servingKey: "proteins_serving",
+                servingGrams: servingGrams
+            ),
+            per100gCarbsG: nutrientPer100g(
+                nutriments,
+                flatField: "carbohydrates_100g",
+                nestedKey: "carbohydrates",
+                servingKey: "carbohydrates_serving",
+                servingGrams: servingGrams
+            ),
+            per100gFatG: nutrientPer100g(
+                nutriments,
+                flatField: "fat_100g",
+                nestedKey: "fat",
+                servingKey: "fat_serving",
+                servingGrams: servingGrams
+            )
+        )
+    }
+
+    private static func servingGrams(from product: [String: Any]) -> Double? {
+        if let quantity = doubleValue(product["serving_quantity"]), quantity > 0 {
+            return quantity
+        }
+        if let label = product["serving_size"] as? String {
+            return grams(fromServingLabel: label)
+        }
+        return nil
+    }
+
+    private static func grams(fromServingLabel label: String) -> Double? {
+        let pattern = #"(\d+(?:\.\d+)?)\s*g\b"#
+        guard let regex = try? NSRegularExpression(pattern: pattern, options: [.caseInsensitive]) else {
+            return nil
+        }
+        let range = NSRange(label.startIndex..., in: label)
+        guard
+            let match = regex.firstMatch(in: label, options: [], range: range),
+            let valueRange = Range(match.range(at: 1), in: label)
+        else {
+            return nil
+        }
+        return Double(label[valueRange])
+    }
+
+    /// Flat `*_100g`, nested `{ "100g": }`, then serving value scaled to 100 g.
+    private static func nutrientPer100g(
+        _ nutriments: [String: Any],
+        flatField: String,
+        nestedKey: String,
+        servingKey: String,
+        servingGrams: Double?
+    ) -> Double? {
+        if let flat = doubleValue(nutriments[flatField]) {
+            return flat
+        }
+        if let nested = nutriments[nestedKey] as? [String: Any] {
+            if let per100 = doubleValue(nested["100g"]) {
+                return per100
+            }
+            if let serving = doubleValue(nested["serving"]),
+               let servingGrams, servingGrams > 0 {
+                return serving / servingGrams * 100
+            }
+        }
+        if let serving = doubleValue(nutriments[servingKey]),
+           let servingGrams, servingGrams > 0 {
+            return serving / servingGrams * 100
+        }
+        return nil
     }
 
     private static func parseBrand(from product: [String: Any]) -> String? {
@@ -242,6 +346,12 @@ enum OpenFoodFactsParser {
             return number
         case let number as Int:
             return Double(number)
+        case let number as NSNumber:
+            // JSON booleans bridge as NSNumber. Nutriment fields are numeric.
+            if CFGetTypeID(number) == CFBooleanGetTypeID() {
+                return nil
+            }
+            return number.doubleValue
         case let string as String:
             return Double(string)
         default:
@@ -249,7 +359,19 @@ enum OpenFoodFactsParser {
         }
     }
 
-    private static func energyKcalPer100g(from nutriments: [String: Any]) -> Double? {
+    private static func energyKcalPer100g(
+        from nutriments: [String: Any],
+        servingGrams: Double? = nil
+    ) -> Double? {
+        if let nested = nutriments["energy-kcal"] as? [String: Any],
+           let per100 = doubleValue(nested["100g"]) {
+            return per100
+        }
+        if let nested = (nutriments["energy-kj"] as? [String: Any]) ?? (nutriments["energy"] as? [String: Any]),
+           let per100 = doubleValue(nested["100g"]) {
+            return per100 / 4.184
+        }
+
         let kcalField = doubleValue(nutriments["energy-kcal_100g"])
         let kjField = doubleValue(nutriments["energy-kj_100g"]) ?? doubleValue(nutriments["energy_100g"])
 
@@ -275,6 +397,10 @@ enum OpenFoodFactsParser {
                 return kcalFromKJ
             }
             return kcal
+        }
+        if let serving = doubleValue(nutriments["energy-kcal_serving"]),
+           let servingGrams, servingGrams > 0 {
+            return serving / servingGrams * 100
         }
         if let kcal = servingKcal {
             return kcal

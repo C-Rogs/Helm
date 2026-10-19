@@ -2,6 +2,13 @@ import SwiftUI
 
 /// Confirm-before-apply card for coach mutations (adjust, workout start, food log).
 public struct CoachActionConfirmationCard: View {
+    public enum Presentation: Sendable, Equatable {
+        case interactive
+        case confirmed(selectedLabel: String?)
+        case dismissed(selectedLabel: String?)
+        case skipped
+    }
+
     private let title: String
     private let detail: String
     private let reason: String?
@@ -10,6 +17,7 @@ public struct CoachActionConfirmationCard: View {
     private let cancelLabel: String
     private let retryLabel: String
     private let isRetryDisabled: Bool
+    private let presentation: Presentation
     private let onConfirm: () -> Void
     private let onCancel: () -> Void
     private let onRetry: (() -> Void)?
@@ -25,6 +33,7 @@ public struct CoachActionConfirmationCard: View {
         cancelLabel: String = "Keep plan",
         retryLabel: String = "Try again",
         isRetryDisabled: Bool = false,
+        presentation: Presentation = .interactive,
         onConfirm: @escaping () -> Void,
         onCancel: @escaping () -> Void,
         onRetry: (() -> Void)? = nil
@@ -37,6 +46,7 @@ public struct CoachActionConfirmationCard: View {
         self.cancelLabel = cancelLabel
         self.retryLabel = retryLabel
         self.isRetryDisabled = isRetryDisabled
+        self.presentation = presentation
         self.onConfirm = onConfirm
         self.onCancel = onCancel
         self.onRetry = onRetry
@@ -49,10 +59,41 @@ public struct CoachActionConfirmationCard: View {
 
     private var hasError: Bool { resolvedError != nil }
 
+    private var isHistorical: Bool {
+        switch presentation {
+        case .interactive: false
+        case .confirmed, .dismissed, .skipped: true
+        }
+    }
+
+    private var eyebrow: String {
+        switch presentation {
+        case .interactive:
+            hasError ? "COULD NOT APPLY" : "CONFIRM CHANGE"
+        case .confirmed:
+            "CONFIRMED"
+        case .dismissed:
+            "DISMISSED"
+        case .skipped:
+            "SKIPPED"
+        }
+    }
+
+    private var historicalLabel: String? {
+        switch presentation {
+        case .interactive:
+            nil
+        case let .confirmed(selectedLabel), let .dismissed(selectedLabel):
+            selectedLabel
+        case .skipped:
+            "Left without confirming"
+        }
+    }
+
     public var body: some View {
         let _ = typographyEpoch
         VStack(alignment: .leading, spacing: HelmSpacing.md) {
-            HelmSectionEyebrow(hasError ? "COULD NOT APPLY" : "CONFIRM CHANGE")
+            HelmSectionEyebrow(eyebrow)
 
             VStack(alignment: .leading, spacing: HelmSpacing.xxs) {
                 Text(title)
@@ -73,22 +114,29 @@ public struct CoachActionConfirmationCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
 
-            HStack(spacing: HelmSpacing.sm) {
-                if hasError {
-                    Button(retryLabel) {
-                        (onRetry ?? onConfirm)()
-                    }
-                    .buttonStyle(.helmPrimary)
-                    .disabled(isRetryDisabled)
-
-                    Button(cancelLabel, action: onCancel)
-                        .buttonStyle(.helmSecondary)
-                } else {
-                    Button(confirmLabel, action: onConfirm)
+            if isHistorical {
+                if let selected = historicalLabel, !selected.isEmpty {
+                    Text(selected)
+                        .helmType(.label, color: HelmColor.fgSecondary)
+                }
+            } else {
+                HStack(spacing: HelmSpacing.sm) {
+                    if hasError {
+                        Button(retryLabel) {
+                            (onRetry ?? onConfirm)()
+                        }
                         .buttonStyle(.helmPrimary)
+                        .disabled(isRetryDisabled)
 
-                    Button(cancelLabel, action: onCancel)
-                        .buttonStyle(.helmSecondary)
+                        Button(cancelLabel, action: onCancel)
+                            .buttonStyle(.helmSecondary)
+                    } else {
+                        Button(confirmLabel, action: onConfirm)
+                            .buttonStyle(.helmPrimary)
+
+                        Button(cancelLabel, action: onCancel)
+                            .buttonStyle(.helmSecondary)
+                    }
                 }
             }
         }
@@ -96,6 +144,7 @@ public struct CoachActionConfirmationCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(hasError ? HelmColor.depleted.opacity(0.08) : Color.clear)
         .helmPanelChrome(hasError ? .elevated : .accentQuiet)
+        .opacity(isHistorical ? 0.85 : 1)
     }
 }
 

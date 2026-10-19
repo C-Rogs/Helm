@@ -766,6 +766,78 @@ struct InSessionCoachServiceTests {
         #expect(fly.sets.allSatisfy { $0.mass?.kilograms == 15 })
     }
 
+    @Test("addExercise live turn replaces invented LLM kg with ProgressionEngine history")
+    func addExerciseSeedsEngineLoadNotInvented() async throws {
+        let store = try PersistenceStore.inMemory()
+        try seedExercises(in: store)
+        try store.exercises.upsert(
+            id: cableFlyID,
+            canonicalName: "cable fly",
+            displayName: "Cable Fly",
+            exerciseMode: .weightReps,
+            primaryMuscleGroup: "chest"
+        )
+
+        let priorEngine = ActiveSessionEngine(repository: store.activeSessions)
+        let priorPrescription = SessionPrescription(
+            helmDay: HelmDay(year: 2026, month: 7, day: 20),
+            exercises: [
+                PrescribedExercise(
+                    exerciseID: cableFlyID,
+                    order: 0,
+                    targetSets: 2,
+                    targetRepMin: 10,
+                    targetRepMax: 10,
+                    targetMass: Mass(kilograms: 41),
+                    targetRPE: 8
+                )
+            ]
+        )
+        var prior = try await priorEngine.startFromPrescription(priorPrescription)
+        let priorExercise = try #require(prior.session.exercises.first)
+        for set in priorExercise.sets where set.setType.countsAsPrescribedWorkingSet {
+            prior = try await priorEngine.logSet(
+                setID: set.id,
+                update: SetLogUpdate(mass: Mass(kilograms: 41), reps: 10, rpe: 8)
+            )
+            prior = try await priorEngine.completeSet(
+                sessionExerciseID: priorExercise.id,
+                setID: set.id
+            )
+        }
+        _ = try await priorEngine.finish()
+
+        let snapshot = try await startBenchSession(in: store)
+        let service = InSessionCoachService(persistence: store)
+        let payload = SessionAdjustmentPayload(
+            schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+            reply: "Adding cable fly.",
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .addExercise,
+                    toExerciseID: cableFlyID,
+                    targetMassKg: 28,
+                    targetSets: 2
+                )
+            ]
+        )
+
+        _ = try service.applyAdjustment(
+            payload: payload,
+            snapshot: snapshot,
+            excludedExerciseIDs: [],
+            userMessage: "add cable fly"
+        )
+
+        let refreshed = try store.activeSessions.fetchActiveSnapshot(at: Date())
+        let fly = try #require(
+            refreshed?.session.exercises.first { $0.exerciseID == cableFlyID }
+        )
+        let working = fly.sets.filter { $0.setType.countsAsPrescribedWorkingSet }
+        #expect(working.count == 2)
+        #expect(working.allSatisfy { $0.mass?.kilograms == 41 })
+    }
+
     @Test("set adds past the engine cap apply")
     func setAddPastEngineCapApplies() async throws {
         let store = try PersistenceStore.inMemory()

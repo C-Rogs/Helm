@@ -20,16 +20,51 @@ public enum ReadinessDashboardState: Sendable, Equatable {
     }
 }
 
+/// Dashboard extras computed alongside ARC (not part of persisted score JSON).
+public struct ReadinessDashboardExtras: Sendable, Equatable {
+    public let illnessWarning: IllnessEarlyWarning?
+    public let priorDayTRIMP: Double?
+    public let trimpP75: Double?
+
+    public init(
+        illnessWarning: IllnessEarlyWarning? = nil,
+        priorDayTRIMP: Double? = nil,
+        trimpP75: Double? = nil
+    ) {
+        self.illnessWarning = illnessWarning
+        self.priorDayTRIMP = priorDayTRIMP
+        self.trimpP75 = trimpP75
+    }
+
+    public static let empty = ReadinessDashboardExtras()
+}
+
+public struct ReadinessDashboardSnapshot: Sendable, Equatable {
+    public let state: ReadinessDashboardState
+    public let extras: ReadinessDashboardExtras
+
+    public init(state: ReadinessDashboardState, extras: ReadinessDashboardExtras = .empty) {
+        self.state = state
+        self.extras = extras
+    }
+}
+
 @MainActor
 @Observable
 public final class ReadinessService {
     public private(set) var state: ReadinessDashboardState = .loading
+    /// Surfaced illness early-warn after once-per-day store gate (nil when suppressed).
+    public private(set) var illnessWarning: IllnessEarlyWarning?
+    public private(set) var priorDayTRIMP: Double?
+    public private(set) var trimpP75: Double?
 
     private let engine: ReadinessEngine
+    private let illnessStore: IllnessEarlyWarningStore?
     private var refreshTask: Task<Void, Never>?
 
-    public init(engine: ReadinessEngine) {
+    public init(engine: ReadinessEngine, illnessStore: IllnessEarlyWarningStore? = nil) {
         self.engine = engine
+        self.illnessStore = illnessStore
     }
 
     /// Paint last persisted score immediately (no 180-day history rebuild).
@@ -58,19 +93,42 @@ public final class ReadinessService {
             let engine = self.engine
             do {
                 // History + ISO decode run on ReadinessEngine's actor executor (not MainActor).
-                let next = try await engine.dashboardState(for: day)
+                let snapshot = try await engine.dashboardSnapshot(for: day)
                 await self.reclaimMainThread()
-                self.state = next
+                self.state = snapshot.state
+                self.priorDayTRIMP = snapshot.extras.priorDayTRIMP
+                self.trimpP75 = snapshot.extras.trimpP75
+                self.illnessWarning = self.surfacedIllnessWarning(
+                    snapshot.extras.illnessWarning,
+                    on: day
+                )
             } catch {
                 await self.reclaimMainThread()
                 if case .loading = self.state {
                     self.state = .awaitingData
                 }
+                self.illnessWarning = nil
+                self.priorDayTRIMP = nil
+                self.trimpP75 = nil
             }
         }
         refreshTask = task
         await task.value
         refreshTask = nil
+    }
+
+    private func surfacedIllnessWarning(
+        _ candidate: IllnessEarlyWarning?,
+        on day: HelmDay
+    ) -> IllnessEarlyWarning? {
+        guard let candidate, let illnessStore else { return candidate }
+        do {
+            guard try illnessStore.shouldSurface(candidate, on: day) else { return nil }
+            try illnessStore.markSurfaced(candidate, on: day)
+            return candidate
+        } catch {
+            return nil
+        }
     }
 
     public func recomputeAfterIngest(affectedFamilies: Set<HealthKitMetricFamily>) async {
@@ -162,23 +220,50 @@ public actor ReadinessEngine {
     }
 
     public func dashboardState(for day: HelmDay) throws -> ReadinessDashboardState {
+        try dashboardSnapshot(for: day).state
+    }
+
+    public func dashboardSnapshot(for day: HelmDay) throws -> ReadinessDashboardSnapshot {
         let history = try ReadinessHistoryBuilder.history(
             from: persistence,
             endingAt: day,
             calendar: calendar,
             cutoff: cutoff
         )
+        let extras = makeExtras(for: day, history: history)
         let validNights = ReadinessKit.validNightCount(in: history, through: day)
 
         if let message = ReadinessKit.buildingBaselineMessage(validNights: validNights) {
-            return .buildingBaseline(validNights: validNights, message: message)
+            return ReadinessDashboardSnapshot(
+                state: .buildingBaseline(validNights: validNights, message: message),
+                extras: extras
+            )
         }
 
         guard let score = try computeAndPersist(for: day, history: history) else {
-            return .awaitingData
+            return ReadinessDashboardSnapshot(state: .awaitingData, extras: extras)
         }
 
-        return .scored(score)
+        return ReadinessDashboardSnapshot(state: .scored(score), extras: extras)
+    }
+
+    private func makeExtras(
+        for day: HelmDay,
+        history: [ReadinessDayInput]
+    ) -> ReadinessDashboardExtras {
+        let todayInput = history.first { $0.helmDay == day }
+        let baseline = try? loadBaselineState()
+        let illness = IllnessEarlyWarningDetector.detect(
+            history: history,
+            day: day,
+            calendar: calendar
+        )
+        return ReadinessDashboardExtras(
+            illnessWarning: illness,
+            priorDayTRIMP: todayInput?.priorDayTRIMP,
+            trimpP75: baseline?.trimpP75
+                ?? StrainCalculator.percentile75(history.compactMap(\.priorDayTRIMP))
+        )
     }
 
     public func recompute(for day: HelmDay) throws -> ReadinessScore? {

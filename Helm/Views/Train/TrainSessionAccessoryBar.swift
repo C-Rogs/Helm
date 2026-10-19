@@ -9,7 +9,6 @@ import UIKit
 struct TrainSessionAccessoryBar: View {
     @Bindable private var controller = TrainBootstrap.sessionController
     @Bindable private var trainPreferences = TrainPreferences.shared
-    @State private var didTrackInitialRestRemaining = false
 
     static func isEnabled(
         selectedTab: AppTab,
@@ -69,8 +68,7 @@ struct TrainSessionAccessoryBar: View {
                     },
                     onAdjust: { delta in
                         Task { @MainActor in await controller.adjustRestTimer(deltaSeconds: delta) }
-                    },
-                    onRemainingSecondsChange: forwardRestTick
+                    }
                 )
             }
 
@@ -117,14 +115,6 @@ struct TrainSessionAccessoryBar: View {
         }
     }
 
-    private func forwardRestTick(_ remaining: Int) {
-        if !didTrackInitialRestRemaining {
-            didTrackInitialRestRemaining = true
-            controller.handleRestRemainingSecondsChange(remaining > 0 ? remaining : 0)
-            return
-        }
-        controller.handleRestRemainingSecondsChange(remaining)
-    }
 }
 
 /// In-app stand-in for the workout Dynamic Island when the athlete is off Train.
@@ -313,10 +303,19 @@ struct InAppWorkoutIsland: View {
 
             Button("Train") {
                 HapticEngine.shared.play(.selection)
-                tabRouter.selectedTab = .train
+                tabRouter.returnToTrainFocus()
             }
             .buttonStyle(.helmSecondary)
             .accessibilityLabel("Open Train")
+
+            if tabRouter.isWorkoutFocusActive {
+                Button("Tabs") {
+                    HapticEngine.shared.play(.selection)
+                    tabRouter.revealWorkoutTabBar()
+                }
+                .buttonStyle(.helmSecondary)
+                .accessibilityLabel("Show tabs")
+            }
         }
         .fixedSize()
     }

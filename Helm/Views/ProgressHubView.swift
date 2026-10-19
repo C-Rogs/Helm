@@ -53,7 +53,7 @@ struct ProgressHubView: View {
                 await loadIfNeeded()
             }
             .onChange(of: trendsController.snapshot) { _, _ in
-                refreshRecompStory()
+                Task { await refreshRecompStory() }
             }
             .onChange(of: progressAnalyticsStore.historyWindow) { _, newWindow in
                 trendsController.setHistoryWindow(newWindow)
@@ -223,8 +223,9 @@ struct ProgressHubView: View {
     private func loadIfNeeded() async {
         if didLoadOnce {
             // Tab re-select: keep cached model; refresh volume + analytics only (cheap).
-            muscleVolumeStore.refresh()
+            async let volume: Void = muscleVolumeStore.refresh()
             progressAnalyticsStore.refresh()
+            await volume
             return
         }
         await reloadAll()
@@ -236,11 +237,12 @@ struct ProgressHubView: View {
         isLoadingHistory = progressionModel == nil
         defer { isLoadingHistory = false }
 
-        muscleVolumeStore.refresh()
+        async let volume: Void = muscleVolumeStore.refresh()
         progressAnalyticsStore.refresh()
-        await loadProgression()
+        async let progression: Void = loadProgression()
         trendsController.refresh()
-        refreshRecompStory()
+        async let recomp: Void = refreshRecompStory()
+        _ = await (volume, progression, recomp)
         Task {
             await ProactiveBootstrap.refreshPatterns()
         }
@@ -250,29 +252,40 @@ struct ProgressHubView: View {
     private func loadProgression() async {
         do {
             let readiness = ReadinessBootstrap.readinessService.state.score
-            let settings = try await PlanBootstrap.engine.loadTrainingPlan()
-            weeklyRateKg = settings.phaseGoal.weeklyRateKg
-            progressionModel = try await ProgressionDetailBuilder.load(
-                store: PersistenceBootstrap.persistenceStore,
-                engine: PlanBootstrap.engine,
-                readiness: readiness
-            )
+            let store = PersistenceBootstrap.persistenceStore
+            let engine = PlanBootstrap.engine
+            let loaded = try await Task.detached(priority: .utility) {
+                let settings = try await engine.loadTrainingPlan()
+                let model = try await ProgressionDetailBuilder.load(
+                    store: store,
+                    engine: engine,
+                    readiness: readiness
+                )
+                return (settings.phaseGoal.weeklyRateKg, model)
+            }.value
+            weeklyRateKg = loaded.0
+            progressionModel = loaded.1
         } catch {
             weeklyRateKg = nil
             progressionModel = ProgressionDetailBuilder.coldStartFallback()
         }
     }
 
-    private func refreshRecompStory() {
+    private func refreshRecompStory() async {
         let today = HelmDay.day(for: .now, calendar: .current)
-        let bodyFat = (try? persistence.bodyComposition.fetchBodyFatHistory(onOrBefore: today, limit: 8)) ?? []
-        let bodyFatPercents = bodyFat
-            .compactMap(\.bodyFatPercentage)
-            .reversed()
-        recompStory = RecompStoryBuilder.story(
-            snapshot: trendsController.snapshot,
-            bodyFatPercentOldestFirst: Array(bodyFatPercents)
-        )
+        let store = persistence
+        let snapshot = trendsController.snapshot
+        let story = await Task.detached(priority: .utility) {
+            let bodyFat = (try? store.bodyComposition.fetchBodyFatHistory(onOrBefore: today, limit: 8)) ?? []
+            let bodyFatPercents = bodyFat
+                .compactMap(\.bodyFatPercentage)
+                .reversed()
+            return RecompStoryBuilder.story(
+                snapshot: snapshot,
+                bodyFatPercentOldestFirst: Array(bodyFatPercents)
+            )
+        }.value
+        recompStory = story
     }
 }
 

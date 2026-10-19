@@ -52,6 +52,7 @@ struct MigrationTests {
                 "nutrition_day_demand_override",
                 "coach_advice_record",
                 "coach_applied_action",
+                "coach_chat_confirmation",
                 "schedule_override",
                 "pattern_finding",
                 "pattern_fdr_state"

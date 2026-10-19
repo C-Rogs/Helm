@@ -32,7 +32,7 @@
     { "helmDay": "2024-03-15", "hrvDailyAverage": 50, "restingHeartRate": 60, "sleepDurationHours": 7.5, "sleepEfficiency": 0.9, "deepSleepMinutes": 50, "remSleepMinutes": 90, "priorDayTRIMP": 50 }
   ],
   "expected": {
-    "score": 54,
+    "score": 69,
     "scoreTolerance": 12,
     "validNights": 29
   }

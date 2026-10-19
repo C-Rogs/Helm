@@ -15,7 +15,7 @@ extension View {
       WorkoutImportView(controller: importController) { plan, saveTemplate in
         await controller.startWorkout(fromImportedPlan: plan, saveTemplate: saveTemplate)
         if saveTemplate {
-          history.refresh()
+          await history.refresh()
         }
       }
     }
@@ -185,9 +185,11 @@ private struct TrainFinishSummarySheet: View {
           Button("Done") {
             controller.dismissFinishSummary()
             controller.clearFinishSummary()
-            history.refresh()
-            history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
-            muscleVolumeStore.refresh()
+            Task {
+              await history.refresh()
+              history.setRecentPersonalRecords(controller.lastFinishedPersonalRecords)
+              await muscleVolumeStore.refresh()
+            }
           }
         }
       }

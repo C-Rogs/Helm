@@ -150,36 +150,38 @@ final class TrainSessionController {
     private var excludedExerciseIDs: Set<String> = []
     private var undoStack: [AppliedSessionAdjustment] = []
 
-    private var previousRestRemaining: Int?
-    private var wasRestRunningOnBackground = false
-    private var trackedRestTimerID: String?
+    // Rest-tick / side-effect bookkeeping must not invalidate SwiftUI observers every second.
+    @ObservationIgnored private var previousRestRemaining: Int?
+    @ObservationIgnored private var wasRestRunningOnBackground = false
+    @ObservationIgnored private var trackedRestTimerID: String?
     private let prescriptionAutoStartStore: PrescriptionAutoStartStore
     private let trainPreferences: TrainPreferences
 
     private var sessionPersonalRecordKeys: Set<String> = []
     private var metadataRefreshGeneration = 0
     private var lastEncouragementGlyph: EncouragementGlyph?
-    private var sessionNoteSaveTask: Task<Void, Never>?
-    private var coachMessageTask: Task<Void, Never>?
-    private var proactiveCoachPeekClearTask: Task<Void, Never>?
-    private var proactiveCoachBannerClearTask: Task<Void, Never>?
-    private var accessoryToastClearTask: Task<Void, Never>?
-    private var restTimerMonitorTask: Task<Void, Never>?
-    private var isReconcilingRest = false
-    private var isSyncingSideEffects = false
-    private var pendingSideEffects: (rest: Int?, force: Bool)?
+    @ObservationIgnored private var sessionNoteSaveTask: Task<Void, Never>?
+    @ObservationIgnored private var coachMessageTask: Task<Void, Never>?
+    @ObservationIgnored private var proactiveCoachPeekClearTask: Task<Void, Never>?
+    @ObservationIgnored private var proactiveCoachBannerClearTask: Task<Void, Never>?
+    @ObservationIgnored private var adjustmentBannerClearTask: Task<Void, Never>?
+    @ObservationIgnored private var accessoryToastClearTask: Task<Void, Never>?
+    @ObservationIgnored private var restTimerMonitorTask: Task<Void, Never>?
+    @ObservationIgnored private var isReconcilingRest = false
+    @ObservationIgnored private var isSyncingSideEffects = false
+    @ObservationIgnored private var pendingSideEffects: (rest: Int?, force: Bool)?
     /// In-flight set toggle; guards against double-tap completing then uncompleting.
-    private var inFlightSetToggleIDs = Set<String>()
-    private var heartRateSampleTask: Task<Void, Never>?
-    private var liveActivityHeartbeatTask: Task<Void, Never>?
-    private var didWireLiveActivityLostHandler = false
+    @ObservationIgnored private var inFlightSetToggleIDs = Set<String>()
+    @ObservationIgnored private var heartRateSampleTask: Task<Void, Never>?
+    @ObservationIgnored private var liveActivityHeartbeatTask: Task<Void, Never>?
+    @ObservationIgnored private var didWireLiveActivityLostHandler = false
     /// Phone-side live HR buffer during Train (best-effort chip / in-session coach).
     /// Finish summary chart uses HealthKit via `WorkoutHeartRateSeriesFetcher`, not this buffer.
-    private var sessionHeartRateBuffer = SessionHeartRateBuffer()
-    private var sessionNoteIsDirty = false
-    private var lastSyncedRestRemaining: Int?
-    private var lastSyncedRestEndsAt: Date?
-    private var lastLiveActivitySyncDate: Date?
+    @ObservationIgnored private var sessionHeartRateBuffer = SessionHeartRateBuffer()
+    @ObservationIgnored private var sessionNoteIsDirty = false
+    @ObservationIgnored private var lastSyncedRestRemaining: Int?
+    @ObservationIgnored private var lastSyncedRestEndsAt: Date?
+    @ObservationIgnored private var lastLiveActivitySyncDate: Date?
 
     var sessionNoteText = ""
     private(set) var sessionNoteSavedConfirmation = false
@@ -392,6 +394,8 @@ final class TrainSessionController {
     /// Keeps Ask Coach bar single-line most of the time; peek text is brief.
     private static let proactiveCoachPeekDisplayDuration: Duration = .seconds(6)
     private static let proactiveCoachBannerDisplayDuration: Duration = .seconds(8)
+    /// CAM-95: provenance + UNDO stays glanceable, then expires (accepted by continuing).
+    private static let adjustmentBannerDisplayDuration: Duration = .seconds(8)
     private static let accessoryToastDisplayDuration: Duration = .seconds(4.5)
 
     func setCoachPeekSnippet(_ snippet: String) {
@@ -992,10 +996,26 @@ final class TrainSessionController {
             .filter { $0.setIndex > completedSet.setIndex && $0.status != .completed }
         guard let nextSet = remaining.min(by: { $0.setIndex < $1.setIndex }) else { return }
 
-        // Treat mass/reps of 0 as unset so a stuck zero does not block carry (CAM-31/35).
-        let massToCarry = nextSet.mass.hasMeaningfulWorkingLoad
-            ? nextSet.mass
-            : completedSet.mass
+        // CAM-91: never overwrite a real next-set load. If next is empty, prefer another
+        // planned working set's coach/prescription mass over the just-completed weight.
+        let peerPrescriptionMass = exercise.sets
+            .filter {
+                $0.id != completedSet.id
+                    && $0.id != nextSet.id
+                    && $0.setType.countsAsPrescribedWorkingSet
+                    && $0.mass.hasMeaningfulWorkingLoad
+            }
+            .sorted { $0.setIndex < $1.setIndex }
+            .first?.mass
+        let massToCarry: Mass?
+        if nextSet.mass.hasMeaningfulWorkingLoad {
+            massToCarry = nextSet.mass
+        } else if let peerPrescriptionMass {
+            massToCarry = peerPrescriptionMass
+        } else {
+            // Treat mass/reps of 0 as unset so a stuck zero does not block carry (CAM-31/35).
+            massToCarry = completedSet.mass
+        }
         let repsToCarry = nextSet.reps ?? completedSet.reps
         let durationToCarry = nextSet.durationSeconds ?? completedSet.durationSeconds
         let distanceToCarry = nextSet.distanceKilometers ?? completedSet.distanceKilometers
@@ -1293,7 +1313,7 @@ final class TrainSessionController {
     func handleRestRemainingSecondsChange(_ currentRemaining: Int?) {
         let timerID = snapshot?.restTimer?.id
         let previous = previousRestRemaining
-        // Mutate Observable state before haptic/audio side effects.
+        // ObservationIgnored bookkeeping; display stays in TimelineView, this only drives haptics.
         previousRestRemaining = currentRemaining
         trackedRestTimerID = timerID
         WorkoutHapticCoordinator.handleForegroundTransition(
@@ -1653,6 +1673,16 @@ final class TrainSessionController {
         guard let target = numpadTarget else { return }
         numpadWorkingText = formattedRPE(numpadDraftRPE)
         guard await applyNumpadInput() else { return }
+        // CAM-94: editing RPE on an already-completed set must persist only.
+        // `completeSet` toggles uncomplete when status is `.completed`.
+        if findSet(setID: target.setID)?.status == .completed {
+            withAnimation(chromeMotion) {
+                numpadTarget = nil
+            }
+            numpadValidationError = nil
+            numpadSelectAll = false
+            return
+        }
         await completeSet(sessionExerciseID: target.sessionExerciseID, setID: target.setID)
     }
 
@@ -2274,6 +2304,7 @@ final class TrainSessionController {
 
     func undoLastAdjustment() async {
         guard let last = undoStack.popLast() else { return }
+        cancelAdjustmentBannerClear()
         do {
             try await store.restoreExerciseLayout(last.previousExercises)
             adjustmentBanner = nil
@@ -3129,6 +3160,7 @@ final class TrainSessionController {
         excludedExerciseIDs = []
         undoStack = []
         adjustmentBanner = nil
+        cancelAdjustmentBannerClear()
         proactiveCoachPeekClearTask?.cancel()
         proactiveCoachPeekClearTask = nil
         proactiveCoachBannerClearTask?.cancel()
@@ -3263,10 +3295,34 @@ final class TrainSessionController {
         }
     }
 
+    private func scheduleAdjustmentBannerClear() {
+        cancelAdjustmentBannerClear()
+        adjustmentBannerClearTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.adjustmentBannerDisplayDuration)
+            guard !Task.isCancelled else { return }
+            expireAdjustmentBannerOffer()
+        }
+    }
+
+    private func cancelAdjustmentBannerClear() {
+        adjustmentBannerClearTask?.cancel()
+        adjustmentBannerClearTask = nil
+    }
+
+    /// Hides the undo chrome and drops the matching stack entry without restoring layout.
+    private func expireAdjustmentBannerOffer() {
+        adjustmentBanner = nil
+        if !undoStack.isEmpty {
+            _ = undoStack.popLast()
+        }
+        adjustmentBannerClearTask = nil
+    }
+
     private func finishApplyingAdjustment(_ applied: AppliedSessionAdjustment) async throws {
         undoStack.append(applied)
         excludedExerciseIDs.formUnion(applied.swappedExerciseIDs)
         adjustmentBanner = applied.banner
+        scheduleAdjustmentBannerClear()
         await store.recover()
         if let snapshot = store.snapshot {
             let prescription = ActiveSessionPrescriptionBridge.prescribedSession(from: snapshot)

@@ -53,6 +53,25 @@ public enum CoachChatIntent: Sendable {
             || trimmed.hasSuffix(" and start")
     }
 
+    /// Keep a workout_start card only when this message asked to start, or a short yes follows a start offer.
+    public static func shouldKeepWorkoutStart(_ text: String, lastAssistant: String?) -> Bool {
+        if looksLikeWorkoutStart(text) { return true }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .lowercased()
+        let affirms: Set<String> = [
+            "yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead", "start", "start it"
+        ]
+        guard affirms.contains(trimmed) else { return false }
+        guard let lastAssistant else { return false }
+        let hay = lastAssistant.lowercased()
+        return hay.contains("start")
+            || hay.contains("lock this")
+            || hay.contains("lock it")
+            || hay.contains("ready to")
+            || hay.contains("get started")
+    }
+
     /// Exercise phrase the current message requires in workout_start (e.g. "with lat pulldown").
     public static func requiredWorkoutExerciseHint(from text: String) -> String? {
         let lower = text.lowercased()
@@ -101,6 +120,7 @@ public enum CoachChatIntent: Sendable {
         let lower = text.lowercased()
         let needles = [
             "what did i have",
+            "what did i eat",
             "usual breakfast",
             "usual lunch",
             "usual dinner",
@@ -108,7 +128,52 @@ public enum CoachChatIntent: Sendable {
             "previous breakfast",
             "from other days",
             "copy that breakfast",
-            "breakfast on"
+            "breakfast on",
+            "can you see",
+            "could you see",
+            "see a snack",
+            "see my snack",
+            "snack i had",
+            "snack i ate",
+            "past meal",
+            "past snack",
+            "earlier snack",
+            "did i log"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Past-tense consumption or explicit log request that should produce a food_log confirm (CAM-85).
+    public static func looksLikeFoodLog(_ text: String) -> Bool {
+        if looksLikePastMealLookup(text) { return false }
+        if looksLikeNutritionLookup(text) { return false }
+        let lower = text.lowercased()
+        let needles = [
+            "i ate",
+            "i've ate",
+            "i just ate",
+            "ate an ",
+            "ate a ",
+            "ate some ",
+            "i had an ",
+            "i had a ",
+            "i just had",
+            "i've had",
+            "log meal",
+            "log a meal",
+            "log my ",
+            "log the ",
+            "log an ",
+            "log a ",
+            "add meal",
+            "add a meal",
+            "log food",
+            "log snack",
+            "i drank",
+            "had for breakfast",
+            "had for lunch",
+            "had for dinner",
+            "had for a snack"
         ]
         return needles.contains { lower.contains($0) }
     }
@@ -232,21 +297,26 @@ public enum CoachChatIntent: Sendable {
             bucket = "lunch"
         } else if lower.contains("dinner") {
             bucket = "dinner"
+        } else if lower.contains("snack") {
+            bucket = "snacks"
         } else {
             bucket = nil
         }
 
+        let helmDay = inferredHelmDay(from: text)?.formatted
+
         if lower.contains("usual") || lower.contains("previous meals") || lower.contains("from other days") {
             return MealQueryPayload(
                 queryType: .usualForBucket,
+                helmDay: helmDay,
                 bucket: bucket ?? "breakfast",
                 lookbackDays: 30
             )
         }
         if let bucket {
-            return MealQueryPayload(queryType: .bucketOnDay, bucket: bucket)
+            return MealQueryPayload(queryType: .bucketOnDay, helmDay: helmDay, bucket: bucket)
         }
-        return MealQueryPayload(queryType: .daySummary)
+        return MealQueryPayload(queryType: .daySummary, helmDay: helmDay)
     }
 
     public static func inferredWorkoutQuery(from text: String, now: Date = Date(), calendar: Calendar = .current) -> WorkoutQueryPayload? {

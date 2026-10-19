@@ -8,7 +8,8 @@ import ReadinessKit
 public enum ReadinessHistoryBuilder {
     /// Scoring windows need up to 14 days of history (HRV acute/medium, sleep debt).
     /// 30 days provides a buffer while keeping queries fast.
-    public static let defaultHistoryDays = 30
+    /// 35 days covers illness early-warn baseline (28d ending 3d ago) plus recent window.
+    public static let defaultHistoryDays = 35
 
     private static let historySignpost = HelmSignpost(
         name: .readinessHistoryBuild,

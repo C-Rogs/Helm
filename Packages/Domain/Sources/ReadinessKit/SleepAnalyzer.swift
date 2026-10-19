@@ -24,6 +24,17 @@ enum SleepAnalyzer {
     let prior = history.filter { $0.helmDay < day }.sorted { $0.helmDay < $1.helmDay }
     let today = history.first { $0.helmDay == day }
 
+    // No measured last-night sleep → unknown sleep channel (do not score from debt alone).
+    guard today?.sleepDurationHours != nil else {
+      return Result(
+        zDuration: nil,
+        zEfficiency: nil,
+        zStageQuality: nil,
+        zDebt: nil,
+        zSleep: nil
+      )
+    }
+
     let durationBaseline = seededBaselines?.sleepDuration
       ?? BaselineTracker.ewmaBaseline(values: prior.compactMap(\.sleepDurationHours))
     let efficiencyBaseline = seededBaselines?.sleepEfficiency

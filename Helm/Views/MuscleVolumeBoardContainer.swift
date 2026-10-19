@@ -41,7 +41,7 @@ struct MuscleVolumeBoardContainer: View {
             }
         }
         .task {
-            boardStore.refresh()
+            await boardStore.refresh()
         }
     }
 }

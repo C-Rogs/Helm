@@ -448,13 +448,34 @@ public actor FoodResolver {
     }
 
     private func resolved(from cache: FoodProductCacheEntry, source: FoodResolutionSource) -> ResolvedFoodProduct {
-        let kcal = cache.snapshotJSON.flatMap { OpenFoodFactsParser.kcalPer100g(fromSnapshotJSON: $0) } ?? cache.per100gKcal
+        let parsed = cache.snapshotJSON.flatMap { OpenFoodFactsParser.macros(fromSnapshotJSON: $0) }
+        let kcal = parsed?.per100gKcal ?? cache.per100gKcal
+        let protein = parsed?.per100gProteinG ?? cache.per100gProteinG
+        let carbs = parsed?.per100gCarbsG ?? cache.per100gCarbsG
+        let fat = parsed?.per100gFatG ?? cache.per100gFatG
+        let changed = kcal != cache.per100gKcal
+            || protein != cache.per100gProteinG
+            || carbs != cache.per100gCarbsG
+            || fat != cache.per100gFatG
+        if changed {
+            try? foodLog.upsertCacheEntry(
+                FoodProductCacheEntry(
+                    ref: cache.ref,
+                    per100gKcal: kcal,
+                    per100gProteinG: protein,
+                    per100gCarbsG: carbs,
+                    per100gFatG: fat,
+                    snapshotJSON: cache.snapshotJSON,
+                    updatedAt: now()
+                )
+            )
+        }
         return ResolvedFoodProduct(
             ref: cache.ref,
             per100gKcal: kcal,
-            per100gProteinG: cache.per100gProteinG,
-            per100gCarbsG: cache.per100gCarbsG,
-            per100gFatG: cache.per100gFatG,
+            per100gProteinG: protein,
+            per100gCarbsG: carbs,
+            per100gFatG: fat,
             confidence: cache.ref.origin == .openFoodFacts ? .branded : .custom,
             source: source
         )

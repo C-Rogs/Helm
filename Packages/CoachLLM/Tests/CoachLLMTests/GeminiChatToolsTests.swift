@@ -123,6 +123,22 @@ struct GeminiChatToolsTests {
         #expect(!CoachCatalogToolName.workoutDiscard.isQuery)
     }
 
+    @Test("meal_query still resolves when a write tool is also present")
+    func mealQuerySurvivesWriteTool() {
+        let write = CoachLLMFunctionCall(name: "food_log", arguments: ["action": "log"])
+        let payload = CoachCatalogQueryResolver.resolve(
+            named: .mealQuery,
+            functionCalls: [write],
+            assembledText: "Looking up snack.",
+            userText: "Can you see a snack I had yesterday",
+            decode: { _ in nil as MealQueryPayload? },
+            parseJSON: { _ in nil },
+            infer: CoachChatIntent.inferredMealQuery
+        )
+        #expect(payload?.bucket == "snacks")
+        #expect(payload?.helmDay != nil)
+    }
+
     @Test("malformed query tool still falls back to JSON")
     func malformedQueryToolFallsBackToJSON() {
         let bad = CoachLLMFunctionCall(name: "nutrition_query", arguments: ["queryType": "not-a-type"])

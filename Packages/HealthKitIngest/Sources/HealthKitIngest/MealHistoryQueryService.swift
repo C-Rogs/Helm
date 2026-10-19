@@ -125,6 +125,8 @@ public struct MealHistoryQueryService: Sendable {
 
     private func parseBucket(_ raw: String?) -> MealBucket? {
         guard let raw else { return nil }
-        return MealBucket(rawValue: raw.lowercased())
+        let normalized = raw.lowercased().trimmingCharacters(in: .whitespacesAndNewlines)
+        if normalized == "snack" { return .snacks }
+        return MealBucket(rawValue: normalized)
     }
 }

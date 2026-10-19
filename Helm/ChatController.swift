@@ -26,6 +26,9 @@ final class ChatController {
     /// When true, next `sendMessage` skips persisting another user row (retry path).
     private var omitNextUserAppend = false
     private(set) var pendingChatAction: CoachChatActionProposal?
+    /// Assistant message that owns the current pending confirm card (CAM-86).
+    private(set) var pendingChatActionMessageID: String?
+    private(set) var chatConfirmationsByMessageID: [String: CoachChatConfirmation] = [:]
     private(set) var pendingFoodMealConfirm: CoachFoodMealConfirmState?
     private(set) var isApplyingChatAction = false
     private(set) var applyProgressStep: String?
@@ -59,6 +62,11 @@ final class ChatController {
     private let providerPreferences: ProviderPreferencesStore
     private var streamTask: Task<Void, Never>?
     private var isFoodDictationTurn = false
+    /// Coalesce token UI updates so Chat does not rebuild on every chunk.
+    @ObservationIgnored private var pendingStreamingText: String?
+    @ObservationIgnored private var lastStreamingUIPublish = Date.distantPast
+    @ObservationIgnored private var hasHydratedHistory = false
+    private static let streamingUIInterval: TimeInterval = 0.05
     private static let cloudFeaturesOffMessage =
         "Cloud features are off. Turn them on in Settings to use Coach."
 
@@ -71,7 +79,11 @@ final class ChatController {
     }
 
     func onAppear() async {
-        loadHistory()
+        // Bootstrap may hydrate at launch; skip duplicate GRDB load when Chat tab opens.
+        if !hasHydratedHistory {
+            loadHistory()
+            hasHydratedHistory = true
+        }
         await refreshAvailability()
     }
 
@@ -91,6 +103,7 @@ final class ChatController {
         do {
             messages = try persistence.chat.fetchRecent(limit: ChatStore.chatUILimit)
             reloadUndoableActions()
+            reloadChatConfirmations()
         } catch {
             degradedState = CoachFailurePolicy.degradedState(for: error)
         }
@@ -102,8 +115,11 @@ final class ChatController {
         streamTask = nil
         do {
             try persistence.chat.clear()
+            try? persistence.coachChatConfirmations.clearAll()
             messages = []
             pendingChatAction = nil
+            pendingChatActionMessageID = nil
+            chatConfirmationsByMessageID = [:]
             pendingFoodMealConfirm = nil
             pendingNavigateTab = nil
             lastTurnError = nil
@@ -256,7 +272,10 @@ final class ChatController {
         if case let .sessionAdjustment(proposal) = pendingChatAction?.kind {
             TrainBootstrap.sessionController.dismissChatSessionProposal(proposal)
         }
+        let cancelLabel = pendingChatAction?.cancelLabel ?? "Cancel"
+        resolvePendingChatConfirmation(outcome: .dismissed, selectedLabel: cancelLabel)
         pendingChatAction = nil
+        pendingChatActionMessageID = nil
         pendingNavigateTab = nil
         lastTurnError = nil
     }
@@ -414,7 +433,12 @@ final class ChatController {
 
             if let idempotencyKey = mutationIdempotencyKey(for: proposal),
                mutationLedger.wasApplied(idempotencyKey) {
+                resolvePendingChatConfirmation(
+                    outcome: .confirmed,
+                    selectedLabel: proposal.confirmLabel
+                )
                 pendingChatAction = nil
+                pendingChatActionMessageID = nil
                 lastTurnError = nil
                 applyDeferredNavigateIfNeeded()
                 return
@@ -538,7 +562,12 @@ final class ChatController {
             if let idempotencyKey = mutationIdempotencyKey(for: proposal) {
                 try? mutationLedger.recordApplied(idempotencyKey)
             }
+            resolvePendingChatConfirmation(
+                outcome: .confirmed,
+                selectedLabel: proposal.confirmLabel
+            )
             pendingChatAction = nil
+            pendingChatActionMessageID = nil
             lastTurnError = nil
             applyDeferredNavigateIfNeeded()
         } catch let duplicate as MealRepeatError where duplicate == .duplicateCopy {
@@ -623,7 +652,7 @@ final class ChatController {
         // Greetings must not silently clear schedule/memory confirms (CAM-37).
         if CoachChatIntent.clearsPendingWorkoutStart(text),
            case .workoutStart = pendingChatAction?.kind {
-            pendingChatAction = nil
+            abandonPendingChatAction(selectedLabel: pendingChatAction?.cancelLabel ?? "Skipped")
         }
         if coachUserMessage != nil {
             beginFoodDictationProgress(step: "Sending to coach…")
@@ -734,6 +763,7 @@ final class ChatController {
 
             let providerUserMessage = coachUserMessage ?? text
             var assembledTurn: AssembledCoachTurn
+            var didProseHeal = false
             do {
                 assembledTurn = try await streamAssistantTurn(
                     provider: provider,
@@ -747,8 +777,50 @@ final class ChatController {
             } catch let error as CoachStructuredOutputError where error == .emptyResponse {
                 if inferredHealthSync != nil {
                     assembledTurn = AssembledCoachTurn(text: "", functionCalls: [])
+                } else if coachUserMessage == nil {
+                    await logCoachHeal(stage: "emptyProseRetry", callNames: "none", userText: text)
+                    didProseHeal = true
+                    assembledTurn = try await streamAssistantTurn(
+                        provider: provider,
+                        systemInstructions: prompt.systemInstructions,
+                        contextBlock: prompt.contextBlock,
+                        userMessage: Self.proseOnlyNudge(providerUserMessage),
+                        thread: thread,
+                        allowEmptyRetry: false,
+                        freshnessSuffix: prompt.freshnessSuffix
+                    )
                 } else {
                     throw error
+                }
+            }
+
+            // CAM-85: past-tense food reports that skipped food_log get one silent re-prompt.
+            if !isFoodDictationTurn,
+               coachUserMessage == nil,
+               CoachChatIntent.looksLikeFoodLog(text),
+               !hasDecodableFoodLog(in: assembledTurn) {
+                streamingText = "Logging meal…"
+                do {
+                    let nudged = try await streamAssistantTurn(
+                        provider: provider,
+                        systemInstructions: prompt.systemInstructions,
+                        contextBlock: prompt.contextBlock,
+                        userMessage: """
+                        \(providerUserMessage)
+
+                        [System: Athlete reported eating something. You MUST call food_log this turn with estimated macros. Do not only acknowledge.]
+                        """,
+                        thread: thread,
+                        allowEmptyRetry: false,
+                        freshnessSuffix: prompt.freshnessSuffix
+                    )
+                    if hasDecodableFoodLog(in: nudged)
+                        || !CoachChatTextFormatter.userFacingText(from: nudged.text)
+                            .trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                        assembledTurn = nudged
+                    }
+                } catch {
+                    // Keep first-turn output; soft error handled below if still no food_log.
                 }
             }
 
@@ -861,15 +933,13 @@ final class ChatController {
                 }
             } else if CoachCatalogQueryResolver.shouldFollowUp(.mealQuery, explicitQueries: explicitQueries),
                let mealQuery {
-                assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
-                    try await runMealQueryFollowUp(
-                        query: mealQuery,
-                        provider: provider,
-                        profile: profile,
-                        endDay: endDay,
-                        priorAssembled: assembledTurn.text
-                    )
-                }
+                assembledTurn = await mealQueryFollowUpOrFallback(
+                    current: assembledTurn,
+                    query: mealQuery,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay
+                )
             } else if CoachCatalogQueryResolver.shouldFollowUp(.recoveryQuery, explicitQueries: explicitQueries),
                       let recoveryQuery {
                 assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
@@ -1012,7 +1082,7 @@ final class ChatController {
                     helmDay: helmDay,
                     coachReply: foodPayload.reply
                 )
-                pendingChatAction = nil
+                abandonPendingChatAction(selectedLabel: "Skipped")
                 pendingAction = nil
             } else {
                 isFoodDictationTurn = false
@@ -1063,7 +1133,61 @@ final class ChatController {
                             pendingAction = nil
                         }
                     }
-                    pendingChatAction = pendingAction
+                }
+            }
+
+            if case .workoutStart = pendingAction?.kind,
+               !CoachChatIntent.shouldKeepWorkoutStart(text, lastAssistant: lastAssistant) {
+                let callNames = assembledTurn.functionCalls.map(\.name).joined(separator: ",")
+                await logCoachHeal(
+                    stage: "dropUnmatchedWorkoutStart",
+                    callNames: callNames.isEmpty ? "workout_start" : callNames,
+                    userText: text
+                )
+                pendingAction = nil
+                assembledTurn.functionCalls.removeAll {
+                    $0.name == CoachCatalogToolName.workoutStart.rawValue
+                }
+            }
+
+            let visibleAfterGate = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !didProseHeal,
+               coachUserMessage == nil,
+               !wasFoodDictation,
+               visibleAfterGate.isEmpty,
+               pendingAction == nil,
+               pendingFoodMealConfirm == nil,
+               assembledTurn.functionCalls.isEmpty {
+                await logCoachHeal(stage: "proseOnlyAfterDroppedWrite", callNames: "none", userText: text)
+                didProseHeal = true
+                let healed = try await streamAssistantTurn(
+                    provider: provider,
+                    systemInstructions: prompt.systemInstructions,
+                    contextBlock: prompt.contextBlock,
+                    userMessage: Self.proseOnlyNudge(providerUserMessage),
+                    thread: thread,
+                    allowEmptyRetry: false,
+                    freshnessSuffix: prompt.freshnessSuffix
+                )
+                let healedVisible = CoachChatTextFormatter.userFacingText(from: healed.text)
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                if !healedVisible.isEmpty || !healed.functionCalls.isEmpty {
+                    assembledTurn = healed
+                    pendingAction = CoachChatActionParser.proposal(
+                        from: healed.text,
+                        functionCalls: healed.functionCalls
+                    )
+                    if case .workoutStart = pendingAction?.kind,
+                       !CoachChatIntent.shouldKeepWorkoutStart(text, lastAssistant: lastAssistant) {
+                        pendingAction = nil
+                        assembledTurn.functionCalls.removeAll {
+                            $0.name == CoachCatalogToolName.workoutStart.rawValue
+                        }
+                    }
+                    if CoachChatIntent.suppressesWriteProposals(text) {
+                        pendingAction = nil
+                    }
                 }
             }
 
@@ -1101,8 +1225,9 @@ final class ChatController {
                 throw CoachStructuredOutputError.emptyResponse
             }
 
-            // Never persist a blank assistant row; confirmation card can stand alone when reply is empty.
-            // Navigate-only success still needs a bubble so retry/empty turns do not look like a hang.
+            // Persist an assistant row whenever we have visible text, a chart, or a confirm card.
+            // Confirm cards must anchor to a message id (CAM-86).
+            var assistantMessageID: String?
             if !userFacingText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || hasChart {
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
@@ -1113,8 +1238,25 @@ final class ChatController {
                     )
                 )
                 messages.append(assistantMessage)
+                assistantMessageID = assistantMessage.id
                 trimVisibleChatHistory()
-            } else if navigate != nil, pendingAction == nil, pendingFoodMealConfirm == nil {
+            } else if pendingAction != nil {
+                let anchorText = CoachChatDisplayText.assistantText(
+                    from: "",
+                    pendingAction: pendingAction
+                )
+                let assistantMessage = try persistence.chat.append(
+                    ChatMessageInsert(
+                        role: .assistant,
+                        text: anchorText.isEmpty ? (pendingAction?.title ?? "Confirm change") : anchorText,
+                        promptVersion: CoachPromptVersion.chatV1.rawValue,
+                        schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+                    )
+                )
+                messages.append(assistantMessage)
+                assistantMessageID = assistantMessage.id
+                trimVisibleChatHistory()
+            } else if navigate != nil, pendingFoodMealConfirm == nil {
                 let note = "Opened \(navigate!.tab)."
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
@@ -1126,6 +1268,10 @@ final class ChatController {
                 )
                 messages.append(assistantMessage)
                 trimVisibleChatHistory()
+            }
+
+            if let pendingAction, let assistantMessageID {
+                setPendingChatAction(pendingAction, anchoredTo: assistantMessageID)
             }
 
             presentOrDeferNavigate(navigate)
@@ -1143,6 +1289,13 @@ final class ChatController {
             } else if wasFoodDictation, pendingFoodMealConfirm == nil, lastTurnError == nil {
                 // Nutrition describe has no chat transcript UI - prose-only replies looked like a hang.
                 lastTurnError = "Couldn't estimate that meal. Try again with clearer portions, or use Search."
+            } else if !wasFoodDictation,
+                      pendingAction == nil,
+                      pendingFoodMealConfirm == nil,
+                      lastTurnError == nil,
+                      CoachChatIntent.looksLikeFoodLog(text),
+                      !hasDecodableFoodLog(in: assembledTurn) {
+                lastTurnError = "Couldn't log that meal. Try again with the food name and approximate calories."
             }
 
             await logTurn(
@@ -1354,6 +1507,62 @@ final class ChatController {
         }
     }
 
+    /// Meal lookup follow-up: on provider/empty failure, keep DB summary so the turn does not blank (CAM-84).
+    private func mealQueryFollowUpOrFallback(
+        current: AssembledCoachTurn,
+        query: MealQueryPayload,
+        provider: any CoachLLMProvider,
+        profile: MemoryProfile,
+        endDay: HelmDay
+    ) async -> AssembledCoachTurn {
+        do {
+            let results = try MealHistoryQueryService(store: persistence).run(query)
+            lastMealQueryContext = MealQueryContext.from(query: query, results: results)
+            do {
+                let followUp = try await runMealQueryFollowUp(
+                    query: query,
+                    provider: provider,
+                    profile: profile,
+                    endDay: endDay,
+                    priorAssembled: current.text,
+                    prefetchedResults: results
+                )
+                return keepIfFollowUpEmpty(current, next: followUp)
+            } catch {
+                let fallback = mealQueryFallbackText(results: results, priorText: current.text)
+                return AssembledCoachTurn(text: fallback, functionCalls: [])
+            }
+        } catch {
+            let visible = CoachChatTextFormatter.userFacingText(from: current.text)
+                .trimmingCharacters(in: .whitespacesAndNewlines)
+            if !visible.isEmpty { return current }
+            return AssembledCoachTurn(
+                text: "I couldn't look up that meal history right now. Try again in a moment.",
+                functionCalls: []
+            )
+        }
+    }
+
+    private func mealQueryFallbackText(results: String, priorText: String) -> String {
+        let prior = CoachChatTextFormatter.userFacingText(from: priorText)
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+        let summary = results.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !summary.isEmpty else {
+            return prior.isEmpty
+                ? "I couldn't find that meal history."
+                : prior
+        }
+        if prior.isEmpty {
+            return "Here's what I found:\n\(summary)"
+        }
+        return "\(prior)\n\nHere's what I found:\n\(summary)"
+    }
+
+    private func hasDecodableFoodLog(in turn: AssembledCoachTurn) -> Bool {
+        CoachChatActionParser.foodLogPayload(from: turn.functionCalls) != nil
+            || FoodLogPayloadParser.parse(from: turn.text) != nil
+    }
+
     private func catalogQuery<Payload>(
         named name: CoachCatalogToolName,
         from turn: AssembledCoachTurn,
@@ -1451,11 +1660,12 @@ final class ChatController {
                     switch event {
                     case .text(let chunk):
                         assembled += chunk
-                        streamingText = assembled
+                        publishStreamingText(assembled)
                     case .functionCall(let call):
                         functionCalls.append(call)
                     }
                 }
+                flushPendingStreamingText()
             } catch is CancellationError {
                 finishStreamingPresentation()
                 throw CancellationError()
@@ -1475,6 +1685,29 @@ final class ChatController {
             throw CoachStructuredOutputError.emptyResponse
         }
         throw CoachStructuredOutputError.emptyResponse
+    }
+
+    private static func proseOnlyNudge(_ userMessage: String) -> String {
+        """
+        \(userMessage)
+
+        [System: The previous attempt failed or called a write tool the athlete did not ask for. Answer in visible prose only. Do not call workout_start or any other write tool.]
+        """
+    }
+
+    private func logCoachHeal(stage: String, callNames: String, userText: String) async {
+        await DiagnosticsLog.shared.record(
+            category: .coachLLM,
+            level: .error,
+            message: "Chat turn heal",
+            context: [
+                "stage": stage,
+                "callNames": callNames,
+                "looksLikeWorkoutStart": CoachChatIntent.looksLikeWorkoutStart(userText) ? "1" : "0",
+                "suppressesWrite": CoachChatIntent.suppressesWriteProposals(userText) ? "1" : "0",
+                "textLength": String(userText.count)
+            ]
+        )
     }
 
     private func logEmptyAssembledTurn(
@@ -1984,11 +2217,16 @@ final class ChatController {
         provider: any CoachLLMProvider,
         profile: MemoryProfile,
         endDay: HelmDay,
-        priorAssembled: String
+        priorAssembled: String,
+        prefetchedResults: String? = nil
     ) async throws -> AssembledCoachTurn {
-        let service = MealHistoryQueryService(store: persistence)
-        let results = try service.run(query)
-        lastMealQueryContext = MealQueryContext.from(query: query, results: results)
+        let results: String
+        if let prefetchedResults {
+            results = prefetchedResults
+        } else {
+            results = try MealHistoryQueryService(store: persistence).run(query)
+            lastMealQueryContext = MealQueryContext.from(query: query, results: results)
+        }
         let toolMessage = """
         # Meal query results
         \(results)
@@ -2025,7 +2263,9 @@ final class ChatController {
 
     private func resolvedFoodLogBucket(_ raw: String?) -> MealBucket {
         guard let raw else { return .snacks }
-        return MealBucket(rawValue: raw.lowercased()) ?? .snacks
+        let normalized = raw.lowercased()
+        if normalized == "snack" { return .snacks }
+        return MealBucket(rawValue: normalized) ?? .snacks
     }
 
     private func beginFoodDictationProgress(step: String) {
@@ -2037,7 +2277,25 @@ final class ChatController {
 
     private func finishStreamingPresentation() {
         isStreaming = false
+        pendingStreamingText = nil
         streamingText = nil
+    }
+
+    private func publishStreamingText(_ text: String) {
+        pendingStreamingText = text
+        let now = Date()
+        guard now.timeIntervalSince(lastStreamingUIPublish) >= Self.streamingUIInterval else {
+            return
+        }
+        lastStreamingUIPublish = now
+        streamingText = text
+    }
+
+    private func flushPendingStreamingText() {
+        guard let pending = pendingStreamingText else { return }
+        pendingStreamingText = nil
+        lastStreamingUIPublish = Date()
+        streamingText = pending
     }
 
     private func clearChatProgress() {
@@ -2170,7 +2428,6 @@ final class ChatController {
             throw CoachStructuredOutputError.emptyResponse
         }
 
-        pendingChatAction = pendingAction
         lastFailedUserMessage = nil
         CoachDiagnosticsStore.shared.clearTurnState()
 
@@ -2185,6 +2442,21 @@ final class ChatController {
             )
             messages.append(assistantMessage)
             trimVisibleChatHistory()
+            if let pendingAction {
+                setPendingChatAction(pendingAction, anchoredTo: assistantMessage.id)
+            }
+        } else if let pendingAction {
+            let assistantMessage = try persistence.chat.append(
+                ChatMessageInsert(
+                    role: .assistant,
+                    text: pendingAction.title,
+                    promptVersion: CoachPromptVersion.sessionAdjustmentV2.rawValue,
+                    schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue
+                )
+            )
+            messages.append(assistantMessage)
+            trimVisibleChatHistory()
+            setPendingChatAction(pendingAction, anchoredTo: assistantMessage.id)
         }
 
         finishStreamingPresentation()
@@ -2311,6 +2583,114 @@ final class ChatController {
             }
         }
         undoableActionsByMessageID = map
+    }
+
+    private func reloadChatConfirmations() {
+        let ids = messages.map(\.id)
+        var records = (try? persistence.coachChatConfirmations.fetch(forMessageIDs: ids)) ?? []
+
+        // Orphaned pending rows (no live proposal after relaunch) become skipped.
+        for record in records where record.outcome == .pending {
+            try? persistence.coachChatConfirmations.markResolved(
+                messageID: record.messageID,
+                outcome: .dismissed,
+                selectedLabel: "Skipped"
+            )
+        }
+        if records.contains(where: { $0.outcome == .pending }) {
+            records = (try? persistence.coachChatConfirmations.fetch(forMessageIDs: ids)) ?? []
+        }
+
+        var map: [String: CoachChatConfirmation] = [:]
+        for record in records {
+            map[record.messageID] = record
+        }
+        chatConfirmationsByMessageID = map
+        pendingChatActionMessageID = nil
+    }
+
+    private func setPendingChatAction(
+        _ proposal: CoachChatActionProposal,
+        anchoredTo messageID: String
+    ) {
+        if pendingChatActionMessageID != nil, pendingChatActionMessageID != messageID {
+            abandonPendingChatAction(selectedLabel: "Skipped", appendChoiceBubble: false)
+        }
+        pendingChatAction = proposal
+        pendingChatActionMessageID = messageID
+        let record = CoachChatConfirmation(
+            messageID: messageID,
+            title: proposal.title,
+            detail: proposal.detail,
+            reason: proposal.reason,
+            confirmLabel: proposal.confirmLabel,
+            cancelLabel: proposal.cancelLabel,
+            outcome: .pending
+        )
+        chatConfirmationsByMessageID[messageID] = record
+        try? persistence.coachChatConfirmations.upsert(record)
+    }
+
+    private func abandonPendingChatAction(
+        selectedLabel: String,
+        appendChoiceBubble: Bool = false
+    ) {
+        guard pendingChatAction != nil || pendingChatActionMessageID != nil else { return }
+        if appendChoiceBubble {
+            resolvePendingChatConfirmation(outcome: .dismissed, selectedLabel: selectedLabel)
+        } else if let messageID = pendingChatActionMessageID {
+            try? persistence.coachChatConfirmations.markResolved(
+                messageID: messageID,
+                outcome: .dismissed,
+                selectedLabel: selectedLabel
+            )
+            if var record = chatConfirmationsByMessageID[messageID] {
+                record.outcome = .dismissed
+                record.selectedLabel = selectedLabel
+                record.resolvedAt = .now
+                chatConfirmationsByMessageID[messageID] = record
+            }
+        }
+        pendingChatAction = nil
+        pendingChatActionMessageID = nil
+    }
+
+    private func resolvePendingChatConfirmation(
+        outcome: CoachChatConfirmation.Outcome,
+        selectedLabel: String
+    ) {
+        guard let messageID = pendingChatActionMessageID else { return }
+        try? persistence.coachChatConfirmations.markResolved(
+            messageID: messageID,
+            outcome: outcome,
+            selectedLabel: selectedLabel
+        )
+        if var record = chatConfirmationsByMessageID[messageID] {
+            record.outcome = outcome
+            record.selectedLabel = selectedLabel
+            record.resolvedAt = .now
+            chatConfirmationsByMessageID[messageID] = record
+        }
+        appendConfirmationChoiceBubble(selectedLabel)
+    }
+
+    private func appendConfirmationChoiceBubble(_ label: String) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        do {
+            let userMessage = try persistence.chat.append(
+                ChatMessageInsert(
+                    role: .user,
+                    text: trimmed,
+                    promptVersion: CoachPromptVersion.chatV1.rawValue,
+                    schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+                )
+            )
+            messages.append(userMessage)
+            trimVisibleChatHistory()
+        } catch {
+            // Non-fatal: confirm/dismiss already applied.
+        }
     }
 
     private func snapshotMeals(for payload: FoodLogPayload) throws -> MealDeleteSnapshot? {

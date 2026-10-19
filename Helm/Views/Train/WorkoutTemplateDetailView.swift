@@ -60,7 +60,7 @@ struct WorkoutTemplateDetailView: View {
         draft = loaded
         name = loaded.name
         notes = loaded.notes ?? ""
-        history.refresh()
+        Task { await history.refresh() }
     }
 
     private func saveChanges(base: WorkoutTemplateDraft) {

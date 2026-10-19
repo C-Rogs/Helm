@@ -109,7 +109,65 @@ struct FoodResolverTests {
 
         #expect(resolved.source == .productCache)
         #expect(resolved.per100gKcal == 380)
+        #expect(resolved.per100gProteinG == 35)
         #expect(offClient.requestCount == 0)
+    }
+
+    @Test("nested nutriments parse protein carbs and fat")
+    func nestedNutrimentsParse() throws {
+        let json = """
+        {"status":1,"code":"111","product":{"product_name":"Nested Bar","nutriments":{"energy-kcal":{"100g":410},"proteins":{"100g":32},"carbohydrates":{"100g":22},"fat":{"100g":14}}}}
+        """.data(using: .utf8)!
+        let product = try OpenFoodFactsParser.parseProductResponse(data: json)
+        #expect(product.per100gKcal == 410)
+        #expect(product.per100gProteinG == 32)
+        #expect(product.per100gCarbsG == 22)
+        #expect(product.per100gFatG == 14)
+    }
+
+    @Test("serving nutriments scale to per 100 g")
+    func servingNutrimentsScale() throws {
+        let json = """
+        {"status":1,"code":"222","product":{"product_name":"Serving Pot","serving_quantity":50,"nutriments":{"energy-kcal_serving":80,"proteins_serving":10,"carbohydrates_serving":6,"fat_serving":2}}}
+        """.data(using: .utf8)!
+        let product = try OpenFoodFactsParser.parseProductResponse(data: json)
+        #expect(product.per100gKcal == 160)
+        #expect(product.per100gProteinG == 20)
+        #expect(product.per100gCarbsG == 12)
+        #expect(product.per100gFatG == 4)
+    }
+
+    @Test("zero cache row reparses macros from snapshot")
+    func zeroCacheReparsesSnapshot() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        let snapshot = """
+        {"product":{"product_name":"Grenade Carb Killa","nutriments":{"energy-kcal":{"100g":380},"proteins":{"100g":35},"carbohydrates":{"100g":18},"fat":{"100g":12}}}}
+        """
+        try store.foodLog.upsertCacheEntry(
+            FoodProductCacheEntry(
+                ref: grenadeRef,
+                per100gKcal: 0,
+                per100gProteinG: 0,
+                per100gCarbsG: 0,
+                per100gFatG: 0,
+                snapshotJSON: snapshot,
+                updatedAt: loggedAt
+            )
+        )
+
+        let resolver = makeResolver(store: store, offClient: offClient, online: true)
+        let resolved = try await resolver.resolveBarcode("5050159001234")
+
+        #expect(resolved.per100gKcal == 380)
+        #expect(resolved.per100gProteinG == 35)
+        #expect(resolved.per100gCarbsG == 18)
+        #expect(resolved.per100gFatG == 12)
+        #expect(offClient.requestCount == 0)
+        let cached = try store.foodLog.fetchCacheEntry(ref: grenadeRef)
+        #expect(cached?.per100gProteinG == 35)
+        #expect(cached?.per100gCarbsG == 18)
+        #expect(cached?.per100gFatG == 12)
     }
 
     @Test("barcode lookup is offline without cache")

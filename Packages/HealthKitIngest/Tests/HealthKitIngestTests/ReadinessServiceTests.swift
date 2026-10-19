@@ -204,6 +204,50 @@ struct ReadinessServiceTests {
         #expect(loaded.score == 68)
     }
 
+    @Test("dashboard snapshot exposes prior-day TRIMP and illness extras")
+    func dashboardSnapshotExtras() async throws {
+        let store = try PersistenceStore.inMemory()
+        let engine = ReadinessEngine(persistence: store, calendar: calendar)
+        let endDay = HelmDay(year: 2026, month: 7, day: 30)
+
+        for offset in 0..<35 {
+            let helmDay = endDay.adding(days: offset - 34, calendar: calendar)
+            let isRecent = offset >= 33
+            try store.dailyMetrics.upsert(
+                DailyMetrics(
+                    helmDay: helmDay,
+                    hrvSDNN: DurationMs(milliseconds: isRecent ? 35 : 50),
+                    restingHeartRate: isRecent ? 60 : 52,
+                    respiratoryRate: 14.0,
+                    wristTemperatureDeltaCelsius: 0.0,
+                    priorDayTRIMP: isRecent ? 120 : 40
+                )
+            )
+            let dayStart = helmDay.startInstant(calendar: calendar)!
+            let sleepStart = dayStart.addingTimeInterval(-8 * 3_600)
+            let sleepEnd = sleepStart.addingTimeInterval(7.5 * 3_600)
+            try store.sleep.upsert(
+                SleepRecord(
+                    start: sleepStart,
+                    end: sleepEnd,
+                    helmDay: helmDay,
+                    sourceBundleID: "test"
+                )
+            )
+        }
+
+        let snapshot = try await engine.dashboardSnapshot(for: endDay)
+        #expect(snapshot.extras.priorDayTRIMP == 120)
+        #expect(snapshot.extras.trimpP75 != nil)
+        #expect(snapshot.extras.illnessWarning != nil)
+        #expect(snapshot.extras.illnessWarning?.signals.contains(.hrv) == true)
+        #expect(snapshot.extras.illnessWarning?.signals.contains(.restingHeartRate) == true)
+        guard case .scored = snapshot.state else {
+            Issue.record("Expected scored state, got \(snapshot.state)")
+            return
+        }
+    }
+
     @Test("baseline seed persists after backfill window")
     func baselineSeedPersists() async throws {
         let store = try PersistenceStore.inMemory()

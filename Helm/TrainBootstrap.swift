@@ -11,9 +11,13 @@ enum TrainBootstrap {
     @MainActor
     static let sideEffects = WorkoutSessionSideEffects(persistence: persistence)
 
+    /// Lightweight session observation for Dashboard / tab chrome (snapshot only).
+    @MainActor
+    static let activeSessionStore = ActiveSessionStore(engine: engine)
+
     @MainActor
     static let sessionController = TrainSessionController(
-        store: ActiveSessionStore(engine: engine),
+        store: activeSessionStore,
         persistence: persistence,
         sideEffects: sideEffects,
         prescriptionService: PlanBootstrap.prescriptionService
@@ -39,7 +43,7 @@ enum TrainBootstrap {
     @MainActor
     static func start() {
         Task {
-            historyController.refresh()
+            await historyController.refresh()
             await sessionController.recoverOnLaunch()
             hasCompletedLaunchRecovery = true
             await RestNotificationRouter.processPendingLaunchNotificationIfNeeded()

@@ -14,7 +14,8 @@ struct DashboardView: View {
     private var nutritionService: NutritionService { NutritionBootstrap.nutritionService }
     @Bindable private var chatController = ChatBootstrap.controller
     @Bindable private var muscleVolumeStore = MuscleVolumeBootstrap.store
-    @Bindable private var sessionController = TrainBootstrap.sessionController
+    /// Snapshot-only; avoids TrainSessionController rest/numpad invalidating Home.
+    private var activeSessionStore: ActiveSessionStore { TrainBootstrap.activeSessionStore }
     private var thresholdInsightService: ThresholdInsightService { ProactiveBootstrap.thresholdInsightService }
 
     @Environment(\.helmReduceMotion) private var reduceMotion
@@ -54,6 +55,8 @@ struct DashboardView: View {
                     heroCard
                         .helmStaggeredAppear(index: 1)
                     thresholdInsightCard
+                        .helmStaggeredAppear(index: 2)
+                    illnessEarlyWarningCard
                         .helmStaggeredAppear(index: 2)
                     // Always-visible body context (Signal wedge). Not buried in a closed disclosure.
                     readinessCard
@@ -133,17 +136,24 @@ struct DashboardView: View {
             .task {
                 await AppTabRouter.shared.preferChromeOverContentLoad()
                 guard !Task.isCancelled else { return }
+                // Hero path first: readiness + prescription/nutrition/brief.
                 await ReadinessBootstrap.refreshForDashboard()
                 await refreshDependentContent(for: readinessService.state.score)
-                await loadSleepSummary()
-                muscleVolumeStore.refresh()
-                await loadTodaySteps()
-                await loadPhaseNarrative()
+                guard !Task.isCancelled else { return }
+                // Independent secondary cards in parallel after hero settles.
+                async let sleep: Void = loadSleepSummary()
+                async let steps: Void = loadTodaySteps()
+                await muscleVolumeStore.refresh()
+                _ = await (sleep, steps)
+                guard !Task.isCancelled else { return }
+                // Defer heavier narrative / trends until after hero + secondary cards.
+                async let narrative: Void = loadPhaseNarrative()
                 trendsController.refresh()
-                refreshRecompStory()
+                await refreshRecompStory()
+                await narrative
             }
             .onChange(of: trendsController.snapshot) { _, _ in
-                refreshRecompStory()
+                Task { await refreshRecompStory() }
             }
             .task {
                 for await _ in HealthKitBootstrap.healthKitIngest.updates(for: .activity) {
@@ -206,6 +216,13 @@ struct DashboardView: View {
     }
 
     @ViewBuilder
+    private var illnessEarlyWarningCard: some View {
+        if let warning = readinessService.illnessWarning {
+            IllnessEarlyWarningCard(warning: warning)
+        }
+    }
+
+    @ViewBuilder
     private var briefCard: some View {
         switch briefService.state {
         case .loading:
@@ -254,8 +271,8 @@ struct DashboardView: View {
                     .multilineTextAlignment(.leading)
             }
         case let .restDay(rest):
-            if sessionController.hasActiveSession {
-                let activeExercises = sessionController.snapshot?.session.exercises ?? []
+            if activeSessionStore.hasActiveSession {
+                let activeExercises = activeSessionStore.snapshot?.session.exercises ?? []
                 let usesIntervals = !activeExercises.isEmpty && activeExercises.allSatisfy { $0.exerciseMode.isCardio }
                 TodaySessionTeaser(
                     title: rest.title,
@@ -277,9 +294,9 @@ struct DashboardView: View {
                 .buttonStyle(.helmPressableCard)
             }
         case let .prescribed(summary):
-            let activeExercises = sessionController.snapshot?.session.exercises ?? []
+            let activeExercises = activeSessionStore.snapshot?.session.exercises ?? []
             let usesIntervals = !activeExercises.isEmpty && activeExercises.allSatisfy { $0.exerciseMode.isCardio }
-            let totalWorkItems = sessionController.hasActiveSession
+            let totalWorkItems = activeSessionStore.hasActiveSession
                 ? activeExercises.reduce(0) { $0 + $1.sets.count }
                 : summary.totalSets
             TodaySessionTeaser(
@@ -287,7 +304,7 @@ struct DashboardView: View {
                 totalSets: totalWorkItems,
                 phaseLabel: summary.phase.label,
                 readinessAdjusted: summary.readinessAdjusted,
-                actionTitle: sessionController.hasActiveSession ? "Resume session" : "Start session",
+                actionTitle: activeSessionStore.hasActiveSession ? "Resume session" : "Start session",
                 workItemLabel: usesIntervals ? "intervals" : "sets",
                 onOpenTrain: { AppTabRouter.shared.openTrain() }
             )
@@ -372,7 +389,7 @@ struct DashboardView: View {
     private var heroActionSubtitle: String {
         switch heroKind {
         case .session:
-            if sessionController.hasActiveSession {
+            if activeSessionStore.hasActiveSession {
                 return "One thing: resume your session."
             }
             if case .restDay = prescriptionService.state {
@@ -610,6 +627,9 @@ struct DashboardView: View {
             VStack(alignment: .leading, spacing: HelmSpacing.md) {
                 HStack(spacing: HelmSpacing.xs) {
                     HelmSectionEyebrow("ARC")
+                    if readinessService.priorDayTRIMP != nil || readinessService.state.score != nil {
+                        effortChip
+                    }
                     Spacer(minLength: HelmSpacing.sm)
                     if let onExplain {
                         HelmExplainInfoButton(
@@ -687,6 +707,37 @@ struct DashboardView: View {
             value: contributorValueText(z),
             state: contributorState(z)
         )
+    }
+
+    private var effortChip: some View {
+        let trimp = readinessService.priorDayTRIMP
+        let valueText: String
+        if let trimp {
+            valueText = "\(Int(trimp.rounded()))"
+        } else {
+            valueText = "-"
+        }
+        return StatChip(
+            label: "Effort",
+            value: valueText,
+            state: effortState(trimp: trimp, p75: readinessService.trimpP75)
+        )
+        .frame(maxWidth: 88)
+        .accessibilityLabel(effortAccessibilityLabel(trimp: trimp))
+    }
+
+    private func effortState(trimp: Double?, p75: Double?) -> HelmState? {
+        guard let trimp, let p75, p75 > 0 else { return nil }
+        let ratio = trimp / p75
+        if ratio >= 1.35 { return .depleted }
+        if ratio >= 1.0 { return .compromised }
+        if ratio >= 0.6 { return .ready }
+        return .primed
+    }
+
+    private func effortAccessibilityLabel(trimp: Double?) -> String {
+        guard let trimp else { return "Prior day effort unavailable" }
+        return "Prior day effort \(Int(trimp.rounded())) TRIMP"
     }
 
     private func contributorState(_ z: Double?) -> HelmState? {
@@ -931,29 +982,40 @@ struct DashboardView: View {
     private func loadPhaseNarrative() async {
         do {
             let readiness = readinessService.state.score
-            let settings = try await PlanBootstrap.engine.loadTrainingPlan()
-            let model = try await ProgressionDetailBuilder.load(
-                store: PersistenceBootstrap.persistenceStore,
-                engine: PlanBootstrap.engine,
-                readiness: readiness
-            )
-            phaseNarrative = PhaseNarrativeFormatter.string(
-                from: model,
-                weeklyRateKg: settings.phaseGoal.weeklyRateKg
-            )
+            let store = PersistenceBootstrap.persistenceStore
+            let engine = PlanBootstrap.engine
+            let narrative = try await Task.detached(priority: .utility) {
+                let settings = try await engine.loadTrainingPlan()
+                let model = try await ProgressionDetailBuilder.load(
+                    store: store,
+                    engine: engine,
+                    readiness: readiness
+                )
+                return PhaseNarrativeFormatter.string(
+                    from: model,
+                    weeklyRateKg: settings.phaseGoal.weeklyRateKg
+                )
+            }.value
+            guard !Task.isCancelled else { return }
+            phaseNarrative = narrative
         } catch {
             phaseNarrative = nil
         }
     }
 
-    private func refreshRecompStory() {
+    private func refreshRecompStory() async {
         let store = PersistenceBootstrap.persistenceStore
-        let bodyFat = (try? store.bodyComposition.fetchBodyFatHistory(onOrBefore: today, limit: 8)) ?? []
-        let bodyFatPercents = bodyFat.compactMap(\.bodyFatPercentage).reversed()
-        let story = RecompStoryBuilder.story(
-            snapshot: trendsController.snapshot,
-            bodyFatPercentOldestFirst: Array(bodyFatPercents)
-        )
+        let day = today
+        let snapshot = trendsController.snapshot
+        let story = await Task.detached(priority: .utility) {
+            let bodyFat = (try? store.bodyComposition.fetchBodyFatHistory(onOrBefore: day, limit: 8)) ?? []
+            let bodyFatPercents = bodyFat.compactMap(\.bodyFatPercentage).reversed()
+            return RecompStoryBuilder.story(
+                snapshot: snapshot,
+                bodyFatPercentOldestFirst: Array(bodyFatPercents)
+            )
+        }.value
+        guard !Task.isCancelled else { return }
         // Keep warm empty off Dashboard; Progress hub always shows the card.
         recompStory = story.isEmptyState ? nil : story
     }

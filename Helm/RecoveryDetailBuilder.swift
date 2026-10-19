@@ -224,8 +224,16 @@ enum RecoveryDetailBuilder {
         let hasValue = hours != nil
         let value = hours ?? 0
         let band = personalBand(baseline)
-        let state = contributorState(zScore: zScore)
-        let tag = band == nil ? "PROVISIONAL" : verdictTag(zScore: zScore, higherIsBetter: true)
+        // No measured sleep → unknown, not compromised (CAM-83).
+        let state = hasValue ? contributorState(zScore: zScore) : .ready
+        let tag: String?
+        if !hasValue {
+            tag = "NO DATA"
+        } else if band == nil {
+            tag = "PROVISIONAL"
+        } else {
+            tag = verdictTag(zScore: zScore, higherIsBetter: true)
+        }
         let displayText = hours.map { SleepDurationFormatting.hoursAndMinutes(from: $0) }
         return RecoveryContributorRow(
             id: "sleep",

@@ -31,7 +31,7 @@ struct ChatView: View {
 
                 ScrollViewReader { proxy in
                     ScrollView {
-                        VStack(alignment: .leading, spacing: HelmSpacing.md) {
+                        LazyVStack(alignment: .leading, spacing: HelmSpacing.md) {
                             if controller.messages.isEmpty,
                                !showsWorkingSlot,
                                controller.lastTurnError == nil,
@@ -50,6 +50,9 @@ struct ChatView: View {
                                             onAcceptAll: { controller.acceptMemoryRefinements() },
                                             onDismiss: { controller.dismissMemoryRefinements() }
                                         )
+                                    }
+                                    if let confirmation = controller.chatConfirmationsByMessageID[message.id] {
+                                        chatConfirmationCard(for: confirmation, messageID: message.id)
                                     }
                                     if let action = controller.undoableAction(for: message.id) {
                                         VStack(alignment: .leading, spacing: HelmSpacing.xs) {
@@ -85,23 +88,6 @@ struct ChatView: View {
                                     )
                             }
 
-                            if let proposal = controller.pendingChatAction {
-                                CoachActionConfirmationCard(
-                                    title: proposal.title,
-                                    detail: proposal.detail,
-                                    reason: proposal.reason,
-                                    errorMessage: controller.lastTurnError.map { chatActionErrorCopy($0) },
-                                    confirmLabel: proposal.confirmLabel,
-                                    cancelLabel: proposal.cancelLabel,
-                                    isRetryDisabled: controller.isApplyingChatAction,
-                                    onConfirm: { controller.confirmChatAction() },
-                                    onCancel: { controller.dismissChatAction() },
-                                    onRetry: { controller.confirmChatAction() }
-                                )
-                                .id("chat-confirmation")
-                                .transition(coachSlotTransition)
-                            }
-
                             Color.clear
                                 .frame(height: 1)
                                 .id("chat-bottom")
@@ -110,6 +96,8 @@ struct ChatView: View {
                         .frame(maxWidth: .infinity, alignment: .leading)
                         .animation(slotAnimation, value: showsWorkingSlot)
                         .animation(slotAnimation, value: controller.pendingChatAction?.id)
+                        .animation(slotAnimation, value: controller.pendingChatActionMessageID)
+                        .animation(slotAnimation, value: controller.chatConfirmationsByMessageID.count)
                         .animation(slotAnimation, value: controller.pendingMemoryRefinements.count)
                     }
                     .defaultScrollAnchor(controller.messages.isEmpty ? .top : .bottom)
@@ -364,6 +352,48 @@ struct ChatView: View {
               !caption.isEmpty
         else { return nil }
         return caption
+    }
+
+    @ViewBuilder
+    private func chatConfirmationCard(
+        for confirmation: CoachChatConfirmation,
+        messageID: String
+    ) -> some View {
+        let isInteractive = confirmation.outcome == .pending
+            && controller.pendingChatAction != nil
+            && controller.pendingChatActionMessageID == messageID
+        let proposal = controller.pendingChatAction
+        let presentation: CoachActionConfirmationCard.Presentation = {
+            if isInteractive { return .interactive }
+            switch confirmation.outcome {
+            case .pending:
+                return .skipped
+            case .confirmed:
+                return .confirmed(selectedLabel: confirmation.selectedLabel)
+            case .dismissed:
+                if confirmation.selectedLabel == "Skipped" {
+                    return .skipped
+                }
+                return .dismissed(selectedLabel: confirmation.selectedLabel)
+            }
+        }()
+        CoachActionConfirmationCard(
+            title: proposal?.title ?? confirmation.title,
+            detail: proposal?.detail ?? confirmation.detail,
+            reason: proposal?.reason ?? confirmation.reason,
+            errorMessage: isInteractive
+                ? controller.lastTurnError.map { chatActionErrorCopy($0) }
+                : nil,
+            confirmLabel: proposal?.confirmLabel ?? confirmation.confirmLabel,
+            cancelLabel: proposal?.cancelLabel ?? confirmation.cancelLabel,
+            isRetryDisabled: controller.isApplyingChatAction,
+            presentation: presentation,
+            onConfirm: { controller.confirmChatAction() },
+            onCancel: { controller.dismissChatAction() },
+            onRetry: { controller.confirmChatAction() }
+        )
+        .id("chat-confirmation-\(messageID)")
+        .transition(coachSlotTransition)
     }
 
     private func actionCaption(_ text: String) -> some View {

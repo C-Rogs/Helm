@@ -97,6 +97,9 @@ struct AppMigrator {
         if version >= 28 {
             ExerciseDemoURLSchemaMigration.register(on: &migrator)
         }
+        if version >= 29 {
+            CoachChatConfirmationSchemaMigration.register(on: &migrator)
+        }
         return migrator
     }
 

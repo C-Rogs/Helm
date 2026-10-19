@@ -11,13 +11,12 @@ public struct ReadinessBaseline: Sendable, Hashable, Codable, Equatable {
 
   /// Incremental EWMA update. Returns new baseline from one day's value.
   /// Alpha is the EWMA smoothing factor (0.048 for 14-day half-life).
+  ///
+  /// When sigma is established: values beyond 5σ are hard-rejected from the mean
+  /// (spread still sees the deviation). Values inside that band are Winsor-clamped
+  /// to ±3σ before folding into the mean. Cold start (sigma ≤ 0) is unclamped.
   public func updating(with value: Double) -> ReadinessBaseline {
-    let alpha = BaselineTracker.alpha
-    let deviation = abs(value - mean)
-    let newMad = alpha * deviation + (1 - alpha) * robustSigma / 1.253
-    let newMean = alpha * value + (1 - alpha) * mean
-    let newSigma = max(1.253 * newMad, 0)
-    return ReadinessBaseline(mean: newMean, robustSigma: newSigma)
+    BaselineTracker.ewmaStep(current: self, value: value)
   }
 }
 
@@ -123,25 +122,55 @@ public struct ReadinessBaselineState: Sendable, Hashable, Codable, Equatable {
 
 enum BaselineTracker {
   static let halfLifeDays = 14.0
+  /// Hard-reject threshold: do not fold into the center beyond this many σ.
+  static let hardRejectSigmaMultiple = 5.0
+  /// Winsor clamp band applied to values that pass the hard-reject gate.
+  static let winsorSigmaMultiple = 3.0
 
   static var alpha: Double {
     1.0 - exp(log(0.5) / halfLifeDays)
   }
 
   static func ewmaBaseline(values: [Double], alpha: Double = alpha) -> ReadinessBaseline? {
-    guard !values.isEmpty else { return nil }
+    _ = alpha
+    guard let first = values.first else { return nil }
 
-    var mean = values[0]
-    var mad = 0.0
-
+    var baseline = ReadinessBaseline(mean: first, robustSigma: 0)
     for value in values.dropFirst() {
-      let deviation = abs(value - mean)
-      mad = alpha * deviation + (1 - alpha) * mad
-      mean = alpha * value + (1 - alpha) * mean
+      baseline = ewmaStep(current: baseline, value: value)
+    }
+    return baseline
+  }
+
+  /// Shared EWMA step used by batch seed and incremental `ReadinessBaseline.updating`.
+  static func ewmaStep(current: ReadinessBaseline, value: Double) -> ReadinessBaseline {
+    let smoothing = alpha
+    let sigma = current.robustSigma
+    let mad = sigma / 1.253
+
+    // Cold start: no clamp until sigma is meaningful.
+    guard sigma > 0 else {
+      let deviation = abs(value - current.mean)
+      let newMad = smoothing * deviation + (1 - smoothing) * mad
+      let newMean = smoothing * value + (1 - smoothing) * current.mean
+      return ReadinessBaseline(mean: newMean, robustSigma: max(1.253 * newMad, 0))
     }
 
-    let robustSigma = max(1.253 * mad, 0)
-    return ReadinessBaseline(mean: mean, robustSigma: robustSigma)
+    let deviationFromMean = abs(value - current.mean)
+
+    // Hard reject: skip mean update; still let spread see the deviation.
+    if deviationFromMean > hardRejectSigmaMultiple * sigma {
+      let newMad = smoothing * deviationFromMean + (1 - smoothing) * mad
+      return ReadinessBaseline(mean: current.mean, robustSigma: max(1.253 * newMad, 0))
+    }
+
+    let halfWidth = winsorSigmaMultiple * sigma
+    let clamped = min(max(value, current.mean - halfWidth), current.mean + halfWidth)
+    let newMean = smoothing * clamped + (1 - smoothing) * current.mean
+    // Spread tracks unclamped deviation so real physiological change still lands.
+    let deviation = abs(value - newMean)
+    let newMad = smoothing * deviation + (1 - smoothing) * mad
+    return ReadinessBaseline(mean: newMean, robustSigma: max(1.253 * newMad, 0))
   }
 
   static func zScore(

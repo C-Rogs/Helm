@@ -7,7 +7,12 @@ enum ReadinessBootstrap {
     @MainActor private static var startupRefreshTask: Task<Void, Never>?
 
     @MainActor
-    static let readinessService = ReadinessService(engine: engine)
+    static let readinessService = ReadinessService(
+        engine: engine,
+        illnessStore: IllnessEarlyWarningStore(
+            metadata: PersistenceBootstrap.persistenceStore.appMetadata
+        )
+    )
 
     static var readinessEngine: ReadinessEngine { engine }
 

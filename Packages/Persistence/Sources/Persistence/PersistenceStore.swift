@@ -26,6 +26,7 @@ public actor PersistenceStore {
     public nonisolated let workoutMusicSamples: WorkoutMusicSampleRepository
     public nonisolated let coachAdviceRecords: CoachAdviceRecordStore
     public nonisolated let coachAppliedActions: CoachAppliedActionStore
+    public nonisolated let coachChatConfirmations: CoachChatConfirmationStore
     public nonisolated let nutritionDayDemandOverrides: NutritionDayDemandOverrideRepository
     public nonisolated let scheduleOverrides: ScheduleOverrideStore
     public nonisolated let patternFindings: PatternFindingStore
@@ -62,6 +63,7 @@ public actor PersistenceStore {
         workoutMusicSamples = WorkoutMusicSampleRepository(pool: pool)
         coachAdviceRecords = CoachAdviceRecordStore(pool: pool)
         coachAppliedActions = CoachAppliedActionStore(pool: pool)
+        coachChatConfirmations = CoachChatConfirmationStore(pool: pool)
         nutritionDayDemandOverrides = NutritionDayDemandOverrideRepository(pool: pool)
         scheduleOverrides = ScheduleOverrideStore(pool: pool)
         patternFindings = PatternFindingStore(pool: pool)

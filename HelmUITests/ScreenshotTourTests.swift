@@ -73,8 +73,25 @@ final class ScreenshotTourTests: XCTestCase {
 
     private func openTab(_ name: String) {
         let tab = app.tabBars.buttons[name]
-        guard tab.waitForExistence(timeout: 8) else {
-            XCTFail("Tab \(name) missing")
+        if tab.waitForExistence(timeout: 4) {
+            tab.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.6))
+            return
+        }
+        // Active workout hides the system tab bar; swipe-up / tap reveal handle first.
+        openTabViaWorkoutFocusReveal(name)
+    }
+
+    /// Workout focus: reveal glass tab bar, then tap the system tab.
+    private func openTabViaWorkoutFocusReveal(_ name: String) {
+        let reveal = app.buttons["workout-focus-tab-reveal"]
+        if reveal.waitForExistence(timeout: 3) {
+            reveal.tap()
+            RunLoop.current.run(until: Date().addingTimeInterval(0.35))
+        }
+        let tab = app.tabBars.buttons[name]
+        guard tab.waitForExistence(timeout: 4) else {
+            XCTFail("Tab \(name) missing after workout-focus reveal")
             return
         }
         tab.tap()

@@ -20,12 +20,18 @@ final class AppTabRouter {
     var pendingOpenSettings = false
     var pendingOpenCloudFeatures = false
 
+    /// Active workout: inactive tab bodies sleep; system tab bar stays hidden until revealed.
+    private(set) var isWorkoutFocusActive = false
+    /// When true during focus, liquid-glass system tab bar is visible (swipe-up / island).
+    private(set) var isWorkoutTabBarRevealed = false
+
     /// Bumped on every tab selection change so deferred loads can follow the latest switch.
     private(set) var selectionEpoch: UInt64 = 0
     private var lastSettledEpoch: UInt64 = 0
+    @ObservationIgnored private var tabBarAutoHideTask: Task<Void, Never>?
 
     func openNutrition(focus: NutritionNavigationFocus? = nil) {
-        select(.nutrition)
+        open(.nutrition)
         if pendingNutritionFocus != focus {
             pendingNutritionFocus = focus
         }
@@ -41,17 +47,17 @@ final class AppTabRouter {
 
     func open(_ tab: AppTab) {
         if tab == .settings {
-            select(.dashboard)
+            wakeDestination(.dashboard)
             if !pendingOpenSettings {
                 pendingOpenSettings = true
             }
-        } else {
-            select(tab)
+            return
         }
+        wakeDestination(tab)
     }
 
     func openCloudFeaturesSettings() {
-        select(.dashboard)
+        open(.dashboard)
         pendingOpenCloudFeatures = true
     }
 
@@ -70,6 +76,87 @@ final class AppTabRouter {
     func select(_ tab: AppTab) {
         guard selectedTab != tab else { return }
         selectedTab = tab
+    }
+
+    func enterWorkoutFocus() {
+        guard !isWorkoutFocusActive else { return }
+        isWorkoutFocusActive = true
+        cancelTabBarAutoHide()
+        isWorkoutTabBarRevealed = false
+        if selectedTab != .train {
+            selectedTab = .train
+        }
+        noteSelectionChanged()
+    }
+
+    func exitWorkoutFocus() {
+        guard isWorkoutFocusActive else { return }
+        cancelTabBarAutoHide()
+        isWorkoutFocusActive = false
+        isWorkoutTabBarRevealed = false
+    }
+
+    /// Select a tab during (or outside) focus.
+    func wakeDestination(_ tab: AppTab, revealTabBar: Bool = false) {
+        let destination: AppTab = tab == .settings ? .dashboard : tab
+        if destination == .train, isWorkoutFocusActive {
+            returnToTrainFocus()
+            return
+        }
+        if selectedTab != destination {
+            selectedTab = destination
+        }
+        if isWorkoutFocusActive {
+            if revealTabBar {
+                revealWorkoutTabBar()
+            } else {
+                hideWorkoutTabBar()
+            }
+        }
+        noteSelectionChanged()
+    }
+
+    func returnToTrainFocus() {
+        if selectedTab != .train {
+            selectedTab = .train
+        }
+        hideWorkoutTabBar()
+        noteSelectionChanged()
+    }
+
+    func revealWorkoutTabBar() {
+        guard isWorkoutFocusActive else { return }
+        isWorkoutTabBarRevealed = true
+        // If they open the bar and do not switch tabs, tuck it like Home.
+        scheduleTabBarAutoHide(after: .seconds(3))
+    }
+
+    func hideWorkoutTabBar() {
+        cancelTabBarAutoHide()
+        guard isWorkoutFocusActive else { return }
+        isWorkoutTabBarRevealed = false
+    }
+
+    /// After the athlete picks a tab from the revealed glass bar, tuck it away again.
+    func dismissWorkoutTabBarAfterSelection() {
+        guard isWorkoutFocusActive, isWorkoutTabBarRevealed else { return }
+        cancelTabBarAutoHide()
+        // Brief beat so liquid-glass selection morph is visible.
+        scheduleTabBarAutoHide(after: .milliseconds(450))
+    }
+
+    private func scheduleTabBarAutoHide(after duration: Duration) {
+        cancelTabBarAutoHide()
+        tabBarAutoHideTask = Task { @MainActor in
+            try? await Task.sleep(for: duration)
+            guard !Task.isCancelled, isWorkoutFocusActive else { return }
+            isWorkoutTabBarRevealed = false
+        }
+    }
+
+    private func cancelTabBarAutoHide() {
+        tabBarAutoHideTask?.cancel()
+        tabBarAutoHideTask = nil
     }
 
     func noteSelectionChanged() {
