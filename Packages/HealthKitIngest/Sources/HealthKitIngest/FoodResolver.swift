@@ -196,10 +196,7 @@ public actor FoodResolver {
         }
 
         let filtered = scored.filter { entry in
-            if queryTokens.count >= 2 {
-                return entry.overlap >= 2 || entry.fullMatch
-            }
-            return entry.overlap > 0
+            entry.overlap > 0
         }
 
         return filtered.sorted { lhs, rhs in
