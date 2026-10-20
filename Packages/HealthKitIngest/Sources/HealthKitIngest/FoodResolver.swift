@@ -284,8 +284,13 @@ public actor FoodResolver {
 
         let ref = FoodProductRef(origin: .openFoodFacts, externalID: trimmed, displayName: trimmed)
         if let cached = try foodLog.fetchCacheEntry(ref: ref) {
-            log.debug("Barcode resolved from product cache barcode=\(trimmed, privacy: .public)")
-            return resolved(from: cached, source: .productCache)
+            let cachedProduct = resolved(from: cached, source: .productCache)
+            let online = await networkGate.isOnline()
+            if cachedProduct.macrosKnown || !online {
+                log.debug("Barcode resolved from product cache barcode=\(trimmed, privacy: .public)")
+                return cachedProduct
+            }
+            log.debug("Barcode cache missing macros; refetch barcode=\(trimmed, privacy: .public)")
         }
 
         guard await networkGate.isOnline() else {
@@ -395,16 +400,18 @@ public actor FoodResolver {
 
     private func resolved(from recent: FoodLogRecent) -> ResolvedFoodProduct {
         if let cached = try? foodLog.fetchCacheEntry(ref: recent.ref) {
+            let parsed = resolved(from: cached, source: .recent)
             return ResolvedFoodProduct(
                 ref: recent.ref,
-                per100gKcal: cached.per100gKcal,
-                per100gProteinG: cached.per100gProteinG,
-                per100gCarbsG: cached.per100gCarbsG,
-                per100gFatG: cached.per100gFatG,
+                per100gKcal: parsed.per100gKcal,
+                per100gProteinG: parsed.per100gProteinG,
+                per100gCarbsG: parsed.per100gCarbsG,
+                per100gFatG: parsed.per100gFatG,
                 confidence: recent.ref.origin == .openFoodFacts ? .branded : .exact,
                 suggestedGrams: recent.grams,
                 servingLabel: recent.servingLabel,
-                source: .recent
+                source: .recent,
+                macrosKnown: parsed.macrosKnown
             )
         }
 
@@ -431,7 +438,8 @@ public actor FoodResolver {
             confidence: .fallback,
             suggestedGrams: recent.grams,
             servingLabel: recent.servingLabel,
-            source: .recent
+            source: .recent,
+            macrosKnown: false
         )
     }
 
@@ -453,6 +461,12 @@ public actor FoodResolver {
         let protein = parsed?.per100gProteinG ?? cache.per100gProteinG
         let carbs = parsed?.per100gCarbsG ?? cache.per100gCarbsG
         let fat = parsed?.per100gFatG ?? cache.per100gFatG
+        let macrosKnown: Bool
+        if let parsed {
+            macrosKnown = parsed.per100gKcal != nil || parsed.hasAny
+        } else {
+            macrosKnown = kcal > 0 || protein > 0 || carbs > 0 || fat > 0
+        }
         let changed = kcal != cache.per100gKcal
             || protein != cache.per100gProteinG
             || carbs != cache.per100gCarbsG
@@ -477,7 +491,8 @@ public actor FoodResolver {
             per100gCarbsG: carbs,
             per100gFatG: fat,
             confidence: cache.ref.origin == .openFoodFacts ? .branded : .custom,
-            source: source
+            source: source,
+            macrosKnown: macrosKnown
         )
     }
 

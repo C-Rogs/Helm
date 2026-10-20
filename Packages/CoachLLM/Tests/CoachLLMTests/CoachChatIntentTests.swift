@@ -11,6 +11,11 @@ struct CoachChatIntentTests {
         #expect(!CoachChatIntent.looksLikeWorkoutStart("Make a full pull day workout"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Start the workout"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Yes let's go"))
+        #expect(CoachChatIntent.looksLikeWorkoutStart("Yes go"))
+        #expect(CoachChatIntent.shouldKeepWorkoutStart(
+            "Yes go",
+            lastAssistant: "Whenever you are ready to get started, let me know."
+        ))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Start a pull day with lat pulldown"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Make a workout with just bicep curls and start"))
         #expect(CoachChatIntent.looksLikeWorkoutStart("Start an example workout"))
@@ -56,6 +61,12 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "Did I sleep enough")?.queryType == .sleepDetail)
         #expect(CoachChatIntent.looksLikeScheduleReadQuestion("How many training days this week?"))
         #expect(CoachChatIntent.suppressesWriteProposals("What days do I train?"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Let's talk about it first"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Cancel"))
+        #expect(CoachChatIntent.dismissesPendingConfirm("Cancel"))
+        #expect(CoachChatIntent.dismissesPendingConfirm("not yet"))
+        #expect(!CoachChatIntent.dismissesPendingConfirm("Let's talk about bulking"))
+        #expect(!CoachChatIntent.suppressesWriteProposals("Set my phase to gain"))
         #expect(CoachChatIntent.inferredHealthSync(from: "How up to date is that measurement") != nil)
         #expect(CoachChatIntent.inferredHealthSync(from: "Yes", lastAssistant: "Would you like me to refresh your HRV?") != nil)
         #expect(CoachChatIntent.inferredHealthSync(from: "Yes", lastAssistant: "How are the arms feeling?") == nil)

@@ -9,11 +9,14 @@ struct MealLineItemEditor: View {
         let id: String
         var item: MealLineItem
         var servingLabel: String?
+        /// Original photo-scan macros. Portion edits scale from this, not the last row.
+        var visionBase: VisionPortionScaler.Base?
 
         init(id: String, item: MealLineItem, servingLabel: String? = nil) {
             self.id = id
             self.item = item
             self.servingLabel = servingLabel
+            self.visionBase = VisionPortionScaler.Base(item: item)
         }
     }
 
@@ -299,7 +302,7 @@ struct MealLineItemEditor: View {
                 extras.insert(ProducePortionOption(label: label, grams: fixed), at: 0)
             }
         }
-        let plateAnchor = max(entry.item.grams, 25)
+        let plateAnchor = max(entry.visionBase?.grams ?? entry.item.grams, 25)
         for factor in [0.5, 1.0, 1.5, 2.0, 3.0] {
             let grams = (plateAnchor * factor).rounded()
             guard grams > 0 else { continue }
@@ -380,17 +383,35 @@ struct MealLineItemEditor: View {
         let options = servingOptions(for: entry)
         let option = options.first { $0.label == state.selectedLabel } ?? options.first
         guard let option else { return }
-        guard let servings = PortionServings.parse(state.servingsText), servings > 0 else { return }
-        let totalGrams = PortionServings.totalGrams(servings: servings, unitGrams: option.grams)
-        lineItems[index].item = recomputeLineItem(
-            name: entry.item.name,
-            grams: totalGrams,
-            from: entry.item
-        )
-        lineItems[index].servingLabel = PortionServings.displayLabel(
-            servings: servings,
-            servingSize: option.label
-        )
+        guard PortionServings.parse(state.servingsText) != nil else { return }
+        var row = lineItems[index]
+        if usesCofidGrounding {
+            guard let servings = PortionServings.parse(state.servingsText), servings > 0 else { return }
+            let totalGrams = PortionServings.totalGrams(servings: servings, unitGrams: option.grams)
+            row.item = recomputeLineItem(
+                name: entry.item.name,
+                grams: totalGrams,
+                from: entry.item
+            )
+            row.servingLabel = PortionServings.displayLabel(
+                servings: servings,
+                servingSize: option.label
+            )
+        } else {
+            let base = row.visionBase ?? VisionPortionScaler.Base(item: entry.item)
+            guard let edit = VisionPortionScaler.edit(
+                name: entry.item.name,
+                base: base,
+                template: entry.item,
+                servingsText: state.servingsText,
+                unitGrams: option.grams,
+                unitLabel: option.label
+            ) else { return }
+            row.visionBase = base
+            row.item = edit.item
+            row.servingLabel = edit.servingLabel
+        }
+        lineItems[index] = row
     }
 
     /// Keyboard Done: if servings text is empty/invalid, restore last good or `1`, then apply.

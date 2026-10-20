@@ -26,4 +26,21 @@ struct BodyFatLatestFactsTests {
         #expect(reply.contains("scale"))
         #expect(reply.contains("Body fat probe"))
     }
+
+    @Test("trend tool lines are facts, not the canned chat sentence")
+    func trendToolLinesAreNotChatCopy() {
+        let facts = BodyFatLatestFacts(
+            hkDay: "2026-10-20",
+            hkPercent: 24.2,
+            storeDay: "2026-10-20",
+            storePercent: 24.2,
+            hkReadableCount: 4,
+            hkSource: "com.vt.vitafit"
+        )
+        let lines = facts.trendToolLines()
+        #expect(lines.contains("hk_newest_percent=24.2"))
+        #expect(lines.contains("hk_source=com.vt.vitafit"))
+        #expect(!lines.contains("Apple Health newest"))
+        #expect(lines != facts.groundedChatReply())
+    }
 }

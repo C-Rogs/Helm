@@ -168,6 +168,53 @@ struct FoodResolverTests {
         #expect(cached?.per100gProteinG == 35)
         #expect(cached?.per100gCarbsG == 18)
         #expect(cached?.per100gFatG == 12)
+        #expect(resolved.macrosKnown)
+    }
+
+    @Test("zero macro cache without a snapshot refetches when online")
+    func zeroCacheWithoutSnapshotRefetches() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        try store.foodLog.upsertCacheEntry(
+            FoodProductCacheEntry(
+                ref: grenadeRef,
+                per100gKcal: 0,
+                per100gProteinG: 0,
+                per100gCarbsG: 0,
+                per100gFatG: 0,
+                updatedAt: loggedAt
+            )
+        )
+
+        let resolver = makeResolver(store: store, offClient: offClient, online: true)
+        let resolved = try await resolver.resolveBarcode("5050159001234")
+
+        #expect(offClient.requestCount == 1)
+        #expect(resolved.macrosKnown)
+        #expect(resolved.per100gKcal > 0)
+    }
+
+    @Test("zero macro cache stays unknown when offline")
+    func zeroCacheOfflineIsUnknown() async throws {
+        let store = try PersistenceStore.inMemory()
+        let offClient = FixtureOpenFoodFactsClient(bundle: .module)
+        try store.foodLog.upsertCacheEntry(
+            FoodProductCacheEntry(
+                ref: grenadeRef,
+                per100gKcal: 0,
+                per100gProteinG: 0,
+                per100gCarbsG: 0,
+                per100gFatG: 0,
+                updatedAt: loggedAt
+            )
+        )
+
+        let resolver = makeResolver(store: store, offClient: offClient, online: false)
+        let resolved = try await resolver.resolveBarcode("5050159001234")
+
+        #expect(offClient.requestCount == 0)
+        #expect(!resolved.macrosKnown)
+        #expect(resolved.per100gKcal == 0)
     }
 
     @Test("barcode lookup is offline without cache")

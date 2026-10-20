@@ -262,6 +262,23 @@ struct ContextBuilderTests {
         #expect(!prompt.contextBlock.contains("readiness=58"))
     }
 
+    @Test("follow-up today is the calendar day, not the newest stored row")
+    func followUpTodayUsesCalendarDay() {
+        let calendarDay = HelmDay(year: 2026, month: 10, day: 20)
+        let prompt = ContextBuilder.build(
+            profile: profile,
+            days: fixtureDays(),
+            budget: 10_000,
+            turn: .followUp,
+            calendarDay: calendarDay
+        )
+
+        #expect(prompt.contextBlock.contains("# Today\n## 2026-10-20\nno_daily_row_yet"))
+        #expect(prompt.contextBlock.contains("# Latest day\n## 2026-07-21"))
+        #expect(prompt.contextBlock.contains("readiness=64"))
+        #expect(!prompt.contextBlock.contains("# Today\n## 2026-07-21"))
+    }
+
     @Test("evidence index sorts by id for stable output")
     func evidenceIndexStableOrder() {
         let shuffled = CoachContextDays(
@@ -303,6 +320,21 @@ struct ContextBuilderTests {
         #expect(suffix.contains("nutrition_day=2026-08-20"))
         #expect(!prompt.contextBlock.contains("# App State"))
         #expect(prompt.contextBlock.hasPrefix("# Memory Profile"))
+    }
+
+    @Test("stale active session is flagged on the freshness suffix")
+    func staleSessionFlagged() {
+        let surface = CoachAppSurfaceSnapshot(
+            selectedTab: "train",
+            sessionStatus: "active",
+            sessionTitle: "Push",
+            sessionHelmDay: "2026-10-19",
+            sessionStale: true
+        )
+        let suffix = ContextBuilder.freshnessSuffix(appSurface: surface, staleness: "") ?? ""
+        #expect(suffix.contains("session_title=Push"))
+        #expect(suffix.contains("session_helm_day=2026-10-19"))
+        #expect(suffix.contains("session_stale=true"))
     }
 
     @Test("pattern findings land in the stable prefix")

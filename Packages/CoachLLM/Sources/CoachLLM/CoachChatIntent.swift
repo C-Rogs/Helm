@@ -49,7 +49,8 @@ public enum CoachChatIntent: Sendable {
         }
         // Short confirm after negotiation.
         let trimmed = lower.trimmingCharacters(in: .whitespacesAndNewlines)
-        return ["yes let's go", "yes lets go", "yes start", "start it"].contains(trimmed)
+            .trimmingCharacters(in: .punctuationCharacters)
+        return ["yes let's go", "yes lets go", "yes start", "yes go", "start it"].contains(trimmed)
             || trimmed.hasSuffix(" and start")
     }
 
@@ -68,8 +69,10 @@ public enum CoachChatIntent: Sendable {
         return hay.contains("start")
             || hay.contains("lock this")
             || hay.contains("lock it")
+            || hay.contains("locked in")
             || hay.contains("ready to")
             || hay.contains("get started")
+            || hay.contains("let me know")
     }
 
     /// Exercise phrase the current message requires in workout_start (e.g. "with lat pulldown").
@@ -225,7 +228,47 @@ public enum CoachChatIntent: Sendable {
             "good evening"
         ]
         if greetings.contains(trimmed) { return true }
-        return looksLikeScheduleReadQuestion(text)
+        if looksLikeScheduleReadQuestion(text) { return true }
+        if dismissesPendingConfirm(text) { return true }
+        return looksLikeAdvisoryDiscussion(text)
+    }
+
+    /// Discuss-first or hold-off. Do not emit settings, schedule, or deload writes this turn.
+    public static func looksLikeAdvisoryDiscussion(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "let's talk",
+            "lets talk",
+            "talk about it",
+            "talk first",
+            "before we change",
+            "before we lock",
+            "don't change",
+            "do not change",
+            "not yet",
+            "hold off",
+            "why are you failing",
+            "why failing",
+            "why are you broken"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Typed cancel for a pending confirm card.
+    public static func dismissesPendingConfirm(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .lowercased()
+        guard !trimmed.isEmpty else { return false }
+        let exact: Set<String> = [
+            "cancel",
+            "never mind",
+            "nevermind",
+            "not yet",
+            "hold off"
+        ]
+        if exact.contains(trimmed) { return true }
+        return trimmed.hasPrefix("cancel ")
     }
 
     /// Read-only asks about training days / week schedule should not become schedule_adjustment (CAM-80).

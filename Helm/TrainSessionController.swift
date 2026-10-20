@@ -286,7 +286,7 @@ final class TrainSessionController {
         let day = todayHelmDay()
         do {
             _ = try await HelmActionRuntime.perform(
-                .trainingPlan(.regenerateToday(day)),
+                .trainingPlan(.regenerateToday(day, ignoreReadinessTrim: false)),
                 after: .none
             )
             prescriptionSummary = prescriptionService.state.summary

@@ -1,3 +1,4 @@
+import Core
 import Foundation
 
 /// Pure assembler for coach prompts with stable-prefix ordering and token trimming.
@@ -7,7 +8,8 @@ public enum ContextBuilder {
         days: CoachContextDays,
         budget: Int,
         turn: ContextTurn,
-        appSurface: CoachAppSurfaceSnapshot? = nil
+        appSurface: CoachAppSurfaceSnapshot? = nil,
+        calendarDay: HelmDay? = nil
     ) -> CoachPrompt {
         var systemInstructions = CoachSystemPrompt.chatV1
         if let style = profile.globalStyle ?? profile.trainingStyle {
@@ -35,7 +37,7 @@ public enum ContextBuilder {
         switch turn {
         case .followUp:
             contextBlock = trimFollowUpBlockToBudget(
-                sections: followUpSections(from: days, profile: profile),
+                sections: followUpSections(from: days, profile: profile, calendarDay: calendarDay),
                 systemInstructions: systemInstructions,
                 budget: budget
             )
@@ -159,7 +161,11 @@ public enum ContextBuilder {
         return sections.joined(separator: "\n\n")
     }
 
-    private static func followUpSections(from days: CoachContextDays, profile: MemoryProfile) -> [String] {
+    private static func followUpSections(
+        from days: CoachContextDays,
+        profile: MemoryProfile,
+        calendarDay: HelmDay? = nil
+    ) -> [String] {
         var sections: [String] = []
         let slim = normalized(profile.slimPhaseLine())
         if !slim.isEmpty {
@@ -178,12 +184,7 @@ public enum ContextBuilder {
         if !patterns.isEmpty {
             sections.append("# Pattern Findings\n\(patterns)")
         }
-        if let today = days.recent.max(by: { $0.helmDay < $1.helmDay }) {
-            let todayText = normalized(today.text)
-            if !todayText.isEmpty {
-                sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
-            }
-        }
+        appendTodaySection(days: days, calendarDay: calendarDay, into: &sections)
         if let training = recentTrainingSection(
             workouts: normalized(days.recentWorkouts),
             outcomes: days.recentSessionOutcomes
@@ -255,6 +256,41 @@ public enum ContextBuilder {
 
         // Even the highest-priority section overflows; ship it alone rather than nothing.
         return sections[0]
+    }
+
+    private static func appendTodaySection(
+        days: CoachContextDays,
+        calendarDay: HelmDay?,
+        into sections: inout [String]
+    ) {
+        guard let calendarDay else {
+            if let today = days.recent.max(by: { $0.helmDay < $1.helmDay }) {
+                let todayText = normalized(today.text)
+                if !todayText.isEmpty {
+                    sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
+                }
+            }
+            return
+        }
+
+        if let match = days.recent.first(where: { $0.helmDay == calendarDay }) {
+            let todayText = normalized(match.text)
+            if !todayText.isEmpty {
+                sections.append("# Today\n## \(match.helmDay.formatted)\n\(todayText)")
+            } else {
+                sections.append("# Today\n## \(calendarDay.formatted)\nno_daily_row_yet")
+            }
+        } else {
+            sections.append("# Today\n## \(calendarDay.formatted)\nno_daily_row_yet")
+        }
+
+        if let latest = days.recent.max(by: { $0.helmDay < $1.helmDay }),
+           latest.helmDay != calendarDay {
+            let latestText = normalized(latest.text)
+            if !latestText.isEmpty {
+                sections.append("# Latest day\n## \(latest.helmDay.formatted)\n\(latestText)")
+            }
+        }
     }
 
     private static func followUpContextBlock(from days: CoachContextDays, profile: MemoryProfile) -> String {

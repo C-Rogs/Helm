@@ -300,7 +300,9 @@ public actor PlanPrescriptionEngine {
         let names = try persistence.exercises.displayNames(
             for: session.exercises.map(\.exerciseID)
         )
-        let readinessAdjusted = readiness.map { $0.band == .depleted } ?? false
+        let readinessAdjusted = ReadinessTrimBypass.isActive(for: day)
+            ? false
+            : (readiness.map { $0.band == .depleted } ?? false)
 
         let exercises = session.exercises.sorted(by: { $0.order < $1.order }).map { exercise in
             PrescribedExerciseSummary(
@@ -478,9 +480,10 @@ public actor PlanPrescriptionEngine {
 
         let signpostID = signpost.makeSignpostID()
         signpost.begin(id: signpostID)
+        let gatingReadiness = ReadinessTrimBypass.isActive(for: day) ? nil : readiness
         var session = PlanKit.prescription(
             for: profile,
-            givenReadiness: readiness,
+            givenReadiness: gatingReadiness,
             history: history
         )
         signpost.end(id: signpostID)

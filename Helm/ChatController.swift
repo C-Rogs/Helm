@@ -545,11 +545,11 @@ final class ChatController {
                     .trainingPlan(.reactiveDeload(action)),
                     after: .coach
                 )
-            case let .planRegenerate:
+            case let .planRegenerate(payload):
                 applyProgressStep = "Regenerating…"
                 let today = HelmDay.day(for: .now, calendar: .current)
                 _ = try await HelmActionRuntime.perform(
-                    .trainingPlan(.regenerateToday(today)),
+                    .trainingPlan(.regenerateToday(today, ignoreReadinessTrim: payload.ignoreReadinessTrim)),
                     after: .coach
                 )
             case let .sessionAdjustment(sessionProposal):
@@ -653,6 +653,9 @@ final class ChatController {
         if CoachChatIntent.clearsPendingWorkoutStart(text),
            case .workoutStart = pendingChatAction?.kind {
             abandonPendingChatAction(selectedLabel: pendingChatAction?.cancelLabel ?? "Skipped")
+        }
+        if CoachChatIntent.dismissesPendingConfirm(text) {
+            abandonPendingChatAction(selectedLabel: "Cancel")
         }
         if coachUserMessage != nil {
             beginFoodDictationProgress(step: "Sending to coach…")
@@ -1454,19 +1457,26 @@ final class ChatController {
             days: days,
             budget: budget,
             turn: turn,
-            appSurface: currentAppSurface()
+            appSurface: currentAppSurface(),
+            calendarDay: HelmDay.day(for: .now, calendar: .current)
         )
     }
 
     private func currentAppSurface() -> CoachAppSurfaceSnapshot {
-        let session = try? persistence.activeSessions.fetchActiveSnapshot(at: .now)
+        let now = Date()
+        let today = HelmDay.day(for: now, calendar: .current)
+        let session = try? persistence.activeSessions.fetchActiveSnapshot(at: now)
+        let sessionDay = session.map { HelmDay.day(for: $0.session.startedAt, calendar: .current) }
+        let stale = sessionDay.map { $0 != today } ?? false
         return CoachAppSurfaceSnapshot(
             selectedTab: AppTabRouter.shared.selectedTab.coachSurfaceLabel,
             sessionStatus: session?.session.status.rawValue ?? "none",
             sessionTitle: session?.session.title,
             viewedNutritionDay: AppTabRouter.shared.selectedTab == .nutrition
                 ? NutritionBootstrap.lastViewedHelmDay?.formatted
-                : nil
+                : nil,
+            sessionHelmDay: sessionDay?.formatted,
+            sessionStale: stale
         )
     }
 
@@ -1946,6 +1956,7 @@ final class ChatController {
         endDay: HelmDay,
         priorAssembled: String
     ) async throws -> AssembledCoachTurn {
+        var healthFacts = ""
         if query.queryType == .bodyFat {
             isStreaming = true
             streamingText = "Checking Apple Health for body fat…"
@@ -1959,25 +1970,22 @@ final class ChatController {
             if let source = facts.hkSource {
                 context["hkSource"] = source
             }
-            let reply = facts.groundedChatReply()
-            context["reply"] = "grounded"
+            context["reply"] = "model"
             await DiagnosticsLog.shared.record(
                 category: .coachLLM,
                 level: facts.hkPercent == nil ? .error : .info,
                 message: "Coach body fat follow-up",
                 context: context
             )
-            isStreaming = false
-            streamingText = nil
-            return AssembledCoachTurn(text: reply, functionCalls: [])
+            healthFacts = facts.trendToolLines() + "\n"
         }
         let service = TrendsHistoryQueryService(store: persistence)
         let results = try service.run(query)
         let toolMessage = """
         # Trends query results
-        \(results)
+        \(healthFacts)\(results)
 
-        Answer in chat-length style grounded in the numbers. Explain what the trend shows (up, down, stable) and what might be driving it. Not a raw metric dump.
+        Answer the athlete's latest message in chat-length style grounded in the numbers. If they asked for a trend, use the history rows (up, down, or stable) and what might be driving it. Do not reply with only the newest sample when they asked for a trend or something else. Not a raw metric dump.
         """
 
         isStreaming = true

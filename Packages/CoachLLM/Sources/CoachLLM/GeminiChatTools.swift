@@ -258,11 +258,12 @@ public enum GeminiChatTools {
     private static func planRegenerateDeclaration() -> [String: Any] {
         [
             "name": CoachCatalogToolName.planRegenerate.rawValue,
-            "description": "Propose regenerating today's prescription from the engine.",
+            "description": "Propose regenerating today's prescription from the engine. Set ignoreReadinessTrim when the athlete wants a full session instead of the depleted-readiness trim.",
             "parameters": [
                 "type": "object",
                 "properties": [
-                    "reply": stringProperty()
+                    "reply": stringProperty(),
+                    "ignoreReadinessTrim": ["type": "boolean"]
                 ]
             ]
         ]

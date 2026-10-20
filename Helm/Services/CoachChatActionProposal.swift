@@ -331,7 +331,7 @@ enum CoachChatActionParser {
         let preview = SettingsAdjustmentPreview.preview(for: payload)
         let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
         let reply = stripped.isEmpty
-            ? "Settings updated."
+            ? "Tap to confirm these settings."
             : stripped
         return CoachChatActionProposal(
             reply: reply,
@@ -392,7 +392,9 @@ enum CoachChatActionParser {
             reply: payload.reply,
             kind: .planRegenerate(payload),
             title: "Regenerate today's plan",
-            detail: "Clears today's prescription and re-plans from the engine.",
+            detail: payload.ignoreReadinessTrim
+                ? "Rebuilds today's session at full volume, without the readiness trim."
+                : "Clears today's prescription and re-plans from the engine.",
             reason: payload.reply,
             confirmLabel: "Regenerate",
             cancelLabel: "Cancel"

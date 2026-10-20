@@ -70,7 +70,7 @@ struct FoodPortionStepView: View {
     }
 
     private var macros: FoodPortionMacros? {
-        guard let grams, grams > 0 else { return nil }
+        guard product.macrosKnown, let grams, grams > 0 else { return nil }
         return product.macros(forGrams: grams)
     }
 
@@ -117,7 +117,10 @@ struct FoodPortionStepView: View {
                         .helmType(.body, color: HelmColor.fgSecondary)
                 }
 
-                if let macros {
+                if !product.macrosKnown {
+                    Text("Macros unknown for this barcode. Try again online, or log a custom food.")
+                        .helmType(.body, color: HelmColor.fgSecondary)
+                } else if let macros {
                     macroSummary(macros)
                 }
             }

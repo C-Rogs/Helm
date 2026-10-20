@@ -76,6 +76,7 @@ public enum CoachContextAssembler {
         .joined(separator: "\n")
 
         let chronicHRV = baselineState?.hrvChronic?.mean
+        let respiratoryBaseline = baselineState?.respiratoryRate?.mean
 
         let recent = try days.sorted().map { helmDay in
             let loggingComplete = (try? store.nutritionLogStatus.isLoggingComplete(helmDay: helmDay)) ?? false
@@ -90,7 +91,8 @@ public enum CoachContextAssembler {
                     sleepHours: try store.sleep.totalSleepHours(for: helmDay, calendar: calendar),
                     bodyComposition: bodyCompositionByDay[helmDay],
                     loggingComplete: loggingComplete,
-                    chronicHRVMilliseconds: chronicHRV
+                    chronicHRVMilliseconds: chronicHRV,
+                    respiratoryBaseline: respiratoryBaseline
                 )
             )
         }
@@ -482,7 +484,8 @@ public enum CoachContextAssembler {
         sleepHours: Double?,
         bodyComposition: BodyComposition?,
         loggingComplete: Bool,
-        chronicHRVMilliseconds: Double?
+        chronicHRVMilliseconds: Double?,
+        respiratoryBaseline: Double? = nil
     ) -> String {
         var parts: [String] = []
 
@@ -490,6 +493,9 @@ public enum CoachContextAssembler {
             parts.append("readiness=\(readiness.score)")
             if let band = readiness.band {
                 parts.append("readiness_band=\(band.rawValue)")
+                if band == .depleted {
+                    parts.append("explain_from=zHRV,zRHR,zSleep,zResp,zStrain")
+                }
             }
             if let confidence = readiness.confidence {
                 parts.append("confidence=\(confidence.rawValue)")
@@ -552,6 +558,9 @@ public enum CoachContextAssembler {
 
         if let resp = metrics?.respiratoryRate {
             parts.append("resp=\(format(resp))")
+            if let respiratoryBaseline {
+                parts.append("respVsBaseline=\(formatSigned(resp - respiratoryBaseline))")
+            }
         }
         if let temp = metrics?.wristTemperatureDeltaCelsius {
             parts.append("tempDeltaC=\(format(temp))")

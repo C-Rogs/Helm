@@ -1333,13 +1333,35 @@ public enum ReactiveDeloadPayloadParser: Sendable {
 public struct PlanRegeneratePayload: Codable, Sendable, Equatable {
     public let schemaVersion: String
     public let reply: String
+    /// Athlete rejected the depleted trim for this regenerate.
+    public let ignoreReadinessTrim: Bool
 
     public init(
         schemaVersion: String = CoachOutputSchemaVersion.planRegenerateV1.rawValue,
-        reply: String
+        reply: String,
+        ignoreReadinessTrim: Bool = false
     ) {
         self.schemaVersion = schemaVersion
         self.reply = reply
+        self.ignoreReadinessTrim = ignoreReadinessTrim
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case schemaVersion, reply, ignoreReadinessTrim
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        schemaVersion = try values.decode(String.self, forKey: .schemaVersion)
+        reply = try values.decodeIfPresent(String.self, forKey: .reply) ?? ""
+        ignoreReadinessTrim = try values.decodeIfPresent(Bool.self, forKey: .ignoreReadinessTrim) ?? false
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(schemaVersion, forKey: .schemaVersion)
+        try container.encode(reply, forKey: .reply)
+        try container.encode(ignoreReadinessTrim, forKey: .ignoreReadinessTrim)
     }
 }
 

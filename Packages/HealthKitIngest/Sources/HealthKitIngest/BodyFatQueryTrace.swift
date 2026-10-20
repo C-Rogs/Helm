@@ -175,6 +175,27 @@ public struct BodyFatLatestFacts: Sendable, Equatable {
         return parts.joined(separator: " ")
     }
 
+    /// Structured facts for a trends follow-up. Not chat copy.
+    public func trendToolLines() -> String {
+        var lines = ["query=bodyFat source=appleHealth"]
+        if let hkDay, let hkPercent {
+            var line = "hk_newest_percent=\(Self.format(hkPercent)) hk_newest_day=\(hkDay)"
+            if let hkSource {
+                line += " hk_source=\(hkSource)"
+            }
+            lines.append(line)
+        } else {
+            lines.append("hk_newest=none")
+        }
+        if let storeDay, let storePercent {
+            lines.append("store_percent=\(Self.format(storePercent)) store_day=\(storeDay)")
+        } else {
+            lines.append("store=none")
+        }
+        lines.append("hk_readable_count=\(hkReadableCount)")
+        return lines.joined(separator: "\n")
+    }
+
     private static func format(_ value: Double) -> String {
         String(format: "%.1f", value)
     }

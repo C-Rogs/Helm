@@ -137,7 +137,12 @@ public struct HelmActionExecutor: Sendable {
                 return HelmActionResult(sideEffects: [.refreshPrescription])
             }
 
-        case let .regenerateToday(day):
+        case let .regenerateToday(day, ignoreReadinessTrim):
+            if ignoreReadinessTrim {
+                ReadinessTrimBypass.activate(for: day)
+            } else {
+                ReadinessTrimBypass.clear(for: day)
+            }
             PrescriptionDayStore.clear(for: day)
             return HelmActionResult(sideEffects: [.refreshPrescription])
 
