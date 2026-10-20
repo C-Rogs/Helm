@@ -127,6 +127,12 @@ struct NutritionMealBucketSection: View {
     @ViewBuilder
     private func mealBlock(_ display: LoggedMealDisplay) -> some View {
         let content = VStack(alignment: .leading, spacing: HelmSpacing.xs) {
+            if display.meal.source == .photo, MealPhotoStore.exists(mealID: display.meal.id) {
+                Image(systemName: HelmIcon.camera.rawValue)
+                    .font(.system(size: 12))
+                    .foregroundStyle(HelmColor.fgMuted)
+                    .accessibilityLabel("Saved meal photo")
+            }
             if shouldShowMealHeader(for: display) {
                 Text(display.meal.name)
                     .helmType(.body, color: HelmColor.fgSecondary)

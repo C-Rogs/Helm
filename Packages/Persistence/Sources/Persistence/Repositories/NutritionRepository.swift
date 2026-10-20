@@ -105,6 +105,18 @@ public struct NutritionRepository: Sendable {
         }
     }
 
+    /// Photo-sourced meals, newest first. Callers still check `MealPhotoStore` because older rows have no file.
+    public func fetchPhotoMeals(limit: Int, offset: Int) throws -> [MealRecord] {
+        try pool.read { db in
+            let rows = try MealRow
+                .filter(Column("source") == MealRecord.Source.photo.rawValue)
+                .order(Column("logged_at").desc)
+                .limit(limit, offset: offset)
+                .fetchAll(db)
+            return try rows.map { try $0.toValue() }
+        }
+    }
+
     public func fetchMeal(id: UUID) throws -> MealRecord? {
         try pool.read { db in
             guard let row = try MealRow.fetchOne(db, key: id.uuidString.lowercased()) else {

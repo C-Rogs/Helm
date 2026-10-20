@@ -188,7 +188,8 @@ struct HelmActionExecutorTests {
                 bucket: .lunch,
                 loggedAt: loggedAt,
                 helmDay: helmDay,
-                mealID: "fixture-meal"
+                mealID: "fixture-meal",
+                imageJPEG: nil
             ))
         )
 
@@ -199,6 +200,38 @@ struct HelmActionExecutorTests {
         #expect(meals[0].source == .photo)
         #expect(meals[0].name == "Large chicken bowl")
         #expect(meals[0].energy?.kilocalories == 650)
+    }
+
+    @Test("photo confirm stores the JPEG beside the meal")
+    func photoConfirmStoresJPEG() async throws {
+        let store = try PersistenceStore.inMemory()
+        let executor = makeMealExecutor(store: store)
+        let helmDay = HelmDay.day(for: loggedAt, calendar: calendar)
+        let mealID = UUID()
+        let jpeg = Data([0xFF, 0xD8, 0xFF, 0xD9])
+        defer { try? MealPhotoStore.delete(mealID: mealID) }
+
+        _ = try await executor.run(
+            .meal(.logPhoto(
+                estimate: MealEstimate(
+                    description: "Yogurt",
+                    caloriesKcal: 180,
+                    proteinG: 12,
+                    carbsG: 20,
+                    fatG: 4,
+                    confidence: .high
+                ),
+                name: "Yogurt",
+                bucket: .breakfast,
+                loggedAt: loggedAt,
+                helmDay: helmDay,
+                mealID: mealID.uuidString,
+                imageJPEG: jpeg
+            ))
+        )
+
+        #expect(MealPhotoStore.exists(mealID: mealID))
+        #expect(try MealPhotoStore.load(mealID: mealID) == jpeg)
     }
 
     @Test("template log writes through run() with source template")

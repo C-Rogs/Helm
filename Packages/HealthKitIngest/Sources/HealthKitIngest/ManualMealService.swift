@@ -257,6 +257,7 @@ public struct ManualMealService: Sendable {
         guard try localStore?.deleteMeal(id: mealID) != nil else {
             throw ManualMealError.mealNotFound
         }
+        try MealPhotoStore.delete(mealID: mealID)
         manualMealLog.debug("Manual meal deleted mealID=\(mealIDString, privacy: .public)")
     }
 

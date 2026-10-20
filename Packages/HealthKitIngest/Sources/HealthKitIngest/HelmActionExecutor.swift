@@ -286,14 +286,15 @@ public struct HelmActionExecutor: Sendable {
             try await manualMealService.deleteMeal(mealID: mealID)
             return .nutrition(helmDay)
 
-        case let .logPhoto(estimate, name, bucket, loggedAt, helmDay, mealID):
+        case let .logPhoto(estimate, name, bucket, loggedAt, helmDay, mealID, imageJPEG):
             _ = try await photoPersister.confirm(
                 estimate: estimate,
                 name: name,
                 bucket: bucket,
                 loggedAt: loggedAt,
                 helmDay: helmDay,
-                mealID: mealID
+                mealID: mealID,
+                imageJPEG: imageJPEG
             )
             return .nutrition(helmDay)
         }

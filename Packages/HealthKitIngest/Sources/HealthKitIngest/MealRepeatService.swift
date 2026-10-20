@@ -234,6 +234,9 @@ public struct MealRepeatService: Sendable {
                     source: meal.source
                 )
             }
+            if meal.source == .photo {
+                try MealPhotoStore.copy(from: meal.id, to: mealID)
+            }
             copiedCount += 1
         }
 

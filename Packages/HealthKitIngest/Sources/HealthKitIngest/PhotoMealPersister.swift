@@ -31,7 +31,8 @@ public struct PhotoMealPersister: Sendable {
         bucket: MealBucket = .snacks,
         loggedAt: Date = Date(),
         helmDay: HelmDay? = nil,
-        mealID: String = UUID().uuidString
+        mealID: String = UUID().uuidString,
+        imageJPEG: Data? = nil
     ) async throws -> SavedMealSamples {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let resolvedName = trimmedName.isEmpty ? estimate.description : trimmedName
@@ -51,6 +52,7 @@ public struct PhotoMealPersister: Sendable {
         guard let localStore else {
             do {
                 let saved = try await writer.saveMeal(request)
+                savePhotoIfNeeded(jpeg: imageJPEG, mealID: request.mealID)
                 photoMealPersistLog.debug("Photo meal saved mealID=\(saved.mealID, privacy: .public)")
                 return saved
             } catch {
@@ -70,6 +72,7 @@ public struct PhotoMealPersister: Sendable {
 
         let localOnly = SavedMealSamples.localOnly(mealID: mealID)
         try localStore.recordSavedMeal(request, saved: localOnly, bucket: bucket)
+        savePhotoIfNeeded(jpeg: imageJPEG, mealID: request.mealID)
         let mealUUID = UUID(uuidString: request.mealID) ?? localOnly.energy.id
         let writer = self.writer
         await hkWrites.enqueue(mealID: request.mealID) {
@@ -82,6 +85,17 @@ public struct PhotoMealPersister: Sendable {
         }
         photoMealPersistLog.debug("Photo meal saved mealID=\(localOnly.mealID, privacy: .public) hk=deferred")
         return localOnly
+    }
+
+    private func savePhotoIfNeeded(jpeg: Data?, mealID: String) {
+        guard let jpeg, let mealUUID = UUID(uuidString: mealID) else { return }
+        do {
+            try MealPhotoStore.save(jpeg: jpeg, mealID: mealUUID)
+        } catch {
+            photoMealPersistLog.error(
+                "Photo file save failed mealID=\(mealID, privacy: .public): \(String(describing: type(of: error)), privacy: .public)"
+            )
+        }
     }
 
     private static func writeHealthKitInBackground(

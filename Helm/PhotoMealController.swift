@@ -148,7 +148,8 @@ final class PhotoMealController {
                     bucket: bucket,
                     loggedAt: loggedAt,
                     helmDay: helmDay,
-                    mealID: UUID().uuidString
+                    mealID: UUID().uuidString,
+                    imageJPEG: imageJPEG
                 )),
                 after: .coach
             )

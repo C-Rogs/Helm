@@ -71,7 +71,8 @@ public enum HelmMealWrite: Sendable {
         bucket: MealBucket,
         loggedAt: Date,
         helmDay: HelmDay,
-        mealID: String
+        mealID: String,
+        imageJPEG: Data?
     )
 }
 

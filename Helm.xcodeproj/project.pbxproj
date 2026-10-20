@@ -209,6 +209,8 @@
 		A4C3A5964BFA6C25269EEB94 /* CoachFoodMealConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = B8221A5D67850470079B83CE /* CoachFoodMealConfirmSheet.swift */; };
 		A70049987981B16E80788314 /* WatchCompanionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0C227DC1389D1E3150D7A4B1 /* WatchCompanionView.swift */; };
 		A7C85693C659EA016C29501D /* PhotoMealConfirmSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */; };
+		F1A0B001C001D001E001F002 /* MealPhotoGalleryView.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A0B001C001D001E001F001 /* MealPhotoGalleryView.swift */; };
+		F1A0B001C001D001E001F004 /* MealPhotoFullScreenCover.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1A0B001C001D001E001F003 /* MealPhotoFullScreenCover.swift */; };
 		AAAD78EFE1039A587E991A7F /* SpotifyAppRemoteService.swift in Sources */ = {isa = PBXBuildFile; fileRef = 7F575612470963D7AE49C3B0 /* SpotifyAppRemoteService.swift */; };
 		AB97255CCFFA481F87CE420B /* HelmWatchWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 38FF9DF22AD0D505292B38B3 /* HelmWatchWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		ACF7EC588BCF81579B336F00 /* MealEditSheet.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41276A961E6E89096F44D629 /* MealEditSheet.swift */; };
@@ -516,6 +518,8 @@
 		44888E7954FF5364A3CAB7A1 /* CoachArchetypeBootstrap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoachArchetypeBootstrap.swift; sourceTree = "<group>"; };
 		472C04C4FF83B33AA989EB20 /* ManualRestTimerSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ManualRestTimerSheet.swift; sourceTree = "<group>"; };
 		480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PhotoMealConfirmSheet.swift; sourceTree = "<group>"; };
+		F1A0B001C001D001E001F001 /* MealPhotoGalleryView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoGalleryView.swift; sourceTree = "<group>"; };
+		F1A0B001C001D001E001F003 /* MealPhotoFullScreenCover.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MealPhotoFullScreenCover.swift; sourceTree = "<group>"; };
 		49AE07A1436E7283081C804B /* TrendsModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrendsModels.swift; sourceTree = "<group>"; };
 		4B841D3AFC0AE85566250C82 /* WorkoutHapticCoordinator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutHapticCoordinator.swift; sourceTree = "<group>"; };
 		4C5B4CC6ACA26084694DB194 /* UsualMealConfirmRow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UsualMealConfirmRow.swift; sourceTree = "<group>"; };
@@ -1169,6 +1173,8 @@
 				E58EE8CBB9C224B4F13D3CC8 /* PhaseGoalSettingsView.swift */,
 				BA61CF3E207A7E5FB94517F8 /* PhotoLogOptionsSheet.swift */,
 				480CB692E424DB22B01146C9 /* PhotoMealConfirmSheet.swift */,
+				F1A0B001C001D001E001F001 /* MealPhotoGalleryView.swift */,
+				F1A0B001C001D001E001F003 /* MealPhotoFullScreenCover.swift */,
 				0A2CDF8D3D9ADD92B012E05A /* PhotoMealEstimatingView.swift */,
 				B60FDC2D56DE4EF2811E69BF /* ProgressHubView.swift */,
 				8FD7149F5257250C7F5D0427 /* ProgressionDetailContainer.swift */,
@@ -1944,6 +1950,8 @@
 				7852DE6668EEADFAA522099C /* PhoneWorkoutSessionManager.swift in Sources */,
 				3E609E15EBA98DCE533E723E /* PhotoLogOptionsSheet.swift in Sources */,
 				A7C85693C659EA016C29501D /* PhotoMealConfirmSheet.swift in Sources */,
+				F1A0B001C001D001E001F002 /* MealPhotoGalleryView.swift in Sources */,
+				F1A0B001C001D001E001F004 /* MealPhotoFullScreenCover.swift in Sources */,
 				0044162FBFF4876FC075FA2C /* PhotoMealController.swift in Sources */,
 				5B540719390E9EFD1B19ABF6 /* PhotoMealEstimatingView.swift in Sources */,
 				695B49ABCADBF39EAA55BE2A /* PlanBootstrap.swift in Sources */,

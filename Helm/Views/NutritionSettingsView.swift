@@ -40,6 +40,19 @@ struct NutritionSettingsView: View {
             }
 
             Section {
+                NavigationLink {
+                    MealPhotoGalleryView()
+                } label: {
+                    Text("Meal photos")
+                }
+                Text("All meals logged with Photo, newest first. Meals logged before photos were saved stay in the diary without a thumbnail.")
+                    .helmType(.body, color: HelmColor.fgMuted)
+                    .fixedSize(horizontal: false, vertical: true)
+            } header: {
+                Text("Photo logging")
+            }
+
+            Section {
                 Toggle("Match AI meals to CoFID", isOn: $aiMealCofidGroundingEnabled)
                     .onChange(of: aiMealCofidGroundingEnabled) { _, newValue in
                         preferences.setAIMealCofidGroundingEnabled(newValue)

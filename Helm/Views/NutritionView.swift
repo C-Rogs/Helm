@@ -39,6 +39,7 @@ struct NutritionView: View {
     @State private var showsPhotoOptions = false
     @State private var showsTemplates = false
     @State private var showsWeeklyCheckIn = false
+    @State private var showsMealPhotos = false
     @State private var didAutoPresentWeeklyCheckIn = false
     @State private var selectedHelmDay: HelmDay?
     @State private var describeBucket: MealBucket?
@@ -66,6 +67,16 @@ struct NutritionView: View {
                     }
                 )
             )
+            .sheet(isPresented: $showsMealPhotos) {
+                NavigationStack {
+                    MealPhotoGalleryView()
+                        .toolbar {
+                            ToolbarItem(placement: .confirmationAction) {
+                                Button("Done") { showsMealPhotos = false }
+                            }
+                        }
+                }
+            }
             .onChange(of: scenePhase) { _, newPhase in
                 handleScenePhaseChange(newPhase)
             }
@@ -322,6 +333,9 @@ struct NutritionView: View {
             Menu {
                 Button("Review week") {
                     showsWeeklyCheckIn = true
+                }
+                Button("Meal photos") {
+                    showsMealPhotos = true
                 }
                 Button("Saved meals") {
                     openTemplates()

@@ -68,6 +68,14 @@ struct MealEditSheet: View {
                         Text(mealSourceLabel)
                             .helmType(.monoTag, color: HelmColor.fgMuted)
 
+                        if display.meal.source == .photo, MealPhotoStore.exists(mealID: display.meal.id) {
+                            MealPhotoHeroButton(
+                                mealID: display.meal.id,
+                                mealName: display.meal.name,
+                                loggedAt: display.meal.loggedAt
+                            )
+                        }
+
                         MealBucketPicker(selection: $bucket)
 
                         if hasStoredLineItems {
