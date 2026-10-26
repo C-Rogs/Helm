@@ -1957,14 +1957,15 @@ final class TrainSessionController {
                 thread: coachThread.windowed()
             )
 
+            let facing = proposal.athleteFacingText(previousAssistant: lastCoachAssistantText())
             appendCoachThread(role: .user, text: trimmed)
-            appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
-            appendTrainCoachMessage(role: .assistant, text: proposal.displayedAssistantText)
+            appendCoachThread(role: .assistant, text: facing)
+            appendTrainCoachMessage(role: .assistant, text: facing)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
 
-            if proposal.requiresConfirmation {
+            if proposal.shouldOfferConfirmation {
                 pendingCoachProposal = proposal
                 isShowingCoachPrompt = true
             } else {
@@ -2044,14 +2045,15 @@ final class TrainSessionController {
                 )
             )
 
+            let facing = proposal.athleteFacingText(previousAssistant: lastCoachAssistantText())
             appendCoachThread(role: .user, text: trimmed)
-            appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
-            appendTrainCoachMessage(role: .assistant, text: proposal.displayedAssistantText)
+            appendCoachThread(role: .assistant, text: facing)
+            appendTrainCoachMessage(role: .assistant, text: facing)
             lastCoachRequestID = proposal.requestID
             lastFailedCoachMessage = nil
             CoachDiagnosticsStore.shared.clear()
 
-            if proposal.requiresConfirmation {
+            if proposal.shouldOfferConfirmation {
                 pendingCoachProposal = proposal
                 isShowingCoachPrompt = true
             } else {
@@ -2125,9 +2127,14 @@ final class TrainSessionController {
                 thread: thread.windowed()
             )
         }
+        let facing = proposal.athleteFacingText(previousAssistant: lastCoachAssistantText())
         appendCoachThread(role: .user, text: userMessage)
-        appendCoachThread(role: .assistant, text: proposal.displayedAssistantText)
+        appendCoachThread(role: .assistant, text: facing)
         return proposal
+    }
+
+    private func lastCoachAssistantText() -> String? {
+        coachThread.messages.last(where: { $0.role == .assistant })?.text
     }
 
     func dismissChatSessionProposal(_ proposal: CoachSessionProposal) {

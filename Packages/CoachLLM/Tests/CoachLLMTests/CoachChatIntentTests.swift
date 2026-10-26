@@ -22,8 +22,36 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.shouldKeepWorkoutStart("Start the workout", lastAssistant: nil))
         #expect(CoachChatIntent.shouldKeepWorkoutStart("yes", lastAssistant: "Ready to lock this in and get started?"))
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("Why are you failing", lastAssistant: "Confirm to start Legs."))
+        let repair = CoachChatIntent.athleteTurn(
+            "Why are you failing",
+            earlierUser: "Do you see how heavy I was this morning",
+            earlierAssistant: "Confirm to start Legs."
+        )
+        #expect(repair.contains("[Reply failed]"))
+        #expect(repair.contains("Do you see how heavy I was this morning"))
+        #expect(!CoachChatIntent.athleteTurn("hello", earlierUser: nil, earlierAssistant: nil).contains("[Reply failed]"))
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("Do you see how heavy I was this morning", lastAssistant: nil))
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("yes", lastAssistant: "How are your legs feeling?"))
+        #expect(!CoachChatIntent.looksLikeWorkoutStart("do not start a workout now let's just talk about it"))
+        #expect(!CoachChatIntent.shouldKeepWorkoutStart(
+            "do not start a workout now let's just talk about it",
+            lastAssistant: nil
+        ))
+        #expect(CoachChatIntent.suppressesWriteProposals("do not start a workout now let's just talk about it"))
+        #expect(CoachChatIntent.suppressesWriteProposals("All I said was hello"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Answer my questions"))
+        #expect(CoachChatIntent.suppressesWriteProposals("Stop repeating the same thing"))
+        #expect(CoachChatIntent.shouldDropUnsolicitedDeloadPitch("Hello"))
+        #expect(CoachChatIntent.shouldDropUnsolicitedDeloadPitch("All I said was hello"))
+        #expect(!CoachChatIntent.shouldDropUnsolicitedDeloadPitch("Why is my recovery low"))
+        #expect(!CoachChatIntent.shouldRouteChatToSessionCoach(
+            "Why did you swap the bench",
+            sessionIsLive: true
+        ))
+        #expect(CoachChatIntent.shouldRouteChatToSessionCoach(
+            "Remove a set of lateral raise",
+            sessionIsLive: true
+        ))
         #expect(CoachChatIntent.requiredWorkoutExerciseHint(from: "Start a pull day with lat pulldown") == "lat pulldown")
         #expect(
             CoachChatIntent.exerciseLabelsCoverHint(["Barbell Curl"], hint: "lat pulldown") == false
@@ -331,6 +359,26 @@ struct CoachTranscriptBuilderTests {
         }
         #expect(userTexts.filter { $0 == "start it" }.count == 1)
         #expect(userTexts.contains("hello"))
+    }
+
+    @Test("reference pack is not a turn the coach agrees to")
+    func referencePackStaysOutOfTheConversation() throws {
+        let body = try GeminiRequestBuilder.streamChatBody(
+            systemInstructions: "You are a PT.",
+            contextBlock: "readiness=29",
+            userMessage: "hello",
+            thread: .empty
+        ).encoded()
+        let object = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let system = try #require(object["system_instruction"] as? [String: Any])
+        let systemText = ((system["parts"] as? [[String: Any]])?.first?["text"] as? String) ?? ""
+        #expect(systemText.contains("Reference pack"))
+        #expect(systemText.contains("readiness=29"))
+        let contents = try #require(object["contents"] as? [[String: Any]])
+        let blob = String(describing: contents)
+        #expect(!blob.contains("Understood."))
+        #expect(!blob.contains("readiness=29"))
+        #expect(blob.contains("hello"))
     }
 }
 

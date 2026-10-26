@@ -654,7 +654,7 @@ final class ChatController {
            case .workoutStart = pendingChatAction?.kind {
             abandonPendingChatAction(selectedLabel: pendingChatAction?.cancelLabel ?? "Skipped")
         }
-        if CoachChatIntent.dismissesPendingConfirm(text) {
+        if CoachChatIntent.dismissesPendingConfirm(text) || CoachChatIntent.refusesWorkoutStart(text) {
             abandonPendingChatAction(selectedLabel: "Cancel")
         }
         if coachUserMessage != nil {
@@ -742,6 +742,8 @@ final class ChatController {
                 return
             }
 
+            let lastAssistant = messages.last(where: { $0.role == .assistant })?.text
+            let earlierUser = messages.dropLast().last(where: { $0.role == .user })?.text
             let prompt = makeCoachPrompt(
                 profile: profile,
                 days: contextDays,
@@ -755,7 +757,6 @@ final class ChatController {
                 chatProgressStep = "Coach is estimating your meal…"
             }
 
-            let lastAssistant = messages.last(where: { $0.role == .assistant })?.text
             let inferredHealthSync = CoachChatIntent.inferredHealthSync(
                 from: text,
                 lastAssistant: lastAssistant
@@ -764,7 +765,12 @@ final class ChatController {
                 streamingText = "Syncing Health…"
             }
 
-            let providerUserMessage = coachUserMessage ?? text
+            let providerUserMessage = coachUserMessage
+                ?? CoachChatIntent.athleteTurn(
+                    text,
+                    earlierUser: earlierUser,
+                    earlierAssistant: lastAssistant
+                )
             var assembledTurn: AssembledCoachTurn
             var didProseHeal = false
             do {
@@ -1153,6 +1159,14 @@ final class ChatController {
                 }
             }
 
+            if CoachChatIntent.shouldDropUnsolicitedDeloadPitch(text) {
+                let pitched = assembledTurn.text.lowercased()
+                if pitched.contains("deload") || pitched.contains("confirm to start") {
+                    assembledTurn.text = "Hello."
+                    pendingAction = nil
+                }
+            }
+
             let visibleAfterGate = CoachChatTextFormatter.userFacingText(from: assembledTurn.text)
                 .trimmingCharacters(in: .whitespacesAndNewlines)
             if !didProseHeal,
@@ -1244,14 +1258,11 @@ final class ChatController {
                 assistantMessageID = assistantMessage.id
                 trimVisibleChatHistory()
             } else if pendingAction != nil {
-                let anchorText = CoachChatDisplayText.assistantText(
-                    from: "",
-                    pendingAction: pendingAction
-                )
+                let spoken = CoachChatDisplayText.assistantText(from: "", pendingAction: pendingAction)
                 let assistantMessage = try persistence.chat.append(
                     ChatMessageInsert(
                         role: .assistant,
-                        text: anchorText.isEmpty ? (pendingAction?.title ?? "Confirm change") : anchorText,
+                        text: spoken,
                         promptVersion: CoachPromptVersion.chatV1.rawValue,
                         schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
                     )
@@ -1696,6 +1707,7 @@ final class ChatController {
         }
         throw CoachStructuredOutputError.emptyResponse
     }
+
 
     private static func proseOnlyNudge(_ userMessage: String) -> String {
         """

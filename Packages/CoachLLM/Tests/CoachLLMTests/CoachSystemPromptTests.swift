@@ -14,6 +14,8 @@ struct CoachSystemPromptTests {
     @Test("chat voice is conversational, not brief-style metric dumps or sentence quotas")
     func chatVoiceRules() {
         let prompt = CoachSystemPrompt.chatV1
+        #expect(prompt.contains("their latest message"))
+        #expect(!prompt.contains("Assess the athlete's current state"))
         #expect(prompt.contains("chat-length"))
         #expect(prompt.contains("morning-brief-style metric list") || prompt.contains("morning-brief-style"))
         #expect(!prompt.contains("Be terse, numbers-first"))

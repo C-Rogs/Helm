@@ -29,7 +29,57 @@ public enum CoachChatIntent: Sendable {
         return needles.contains { lower.contains($0) }
     }
 
+    /// Explicit hold-off. Must win over start phrases inside the same sentence ("do not start a workout").
+    public static func refusesWorkoutStart(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "do not start",
+            "don't start",
+            "dont start",
+            "do not begin",
+            "don't begin",
+            "dont begin",
+            "just talk",
+            "let's just talk",
+            "lets just talk",
+            "let us just talk"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Question or complaint. A failed tool call must not replace this turn's answer.
+    public static func prefersSpokenAnswer(_ text: String) -> Bool {
+        if refusesWorkoutStart(text) { return true }
+        if looksLikeReplyFailure(text) { return true }
+        let lower = text.lowercased()
+        let complaints = [
+            "stop repeating",
+            "not understanding",
+            "answer my question",
+            "what are you talking about",
+            "you're not reading",
+            "you are not reading",
+            "not reading my",
+            "all i said",
+            "i just said hello",
+            "i just said hi"
+        ]
+        if complaints.contains(where: { lower.contains($0) }) { return true }
+        let asks = lower.contains("?")
+            || lower.hasPrefix("why ")
+            || lower.hasPrefix("what ")
+            || lower.hasPrefix("how ")
+            || lower.hasPrefix("who ")
+        guard asks else { return false }
+        if looksLikeWorkoutStart(text) { return false }
+        if looksLikeFoodLog(text), !lower.hasPrefix("why "), !lower.hasPrefix("what "), !lower.hasPrefix("how ") {
+            return false
+        }
+        return true
+    }
+
     public static func looksLikeWorkoutStart(_ text: String) -> Bool {
+        if refusesWorkoutStart(text) { return false }
         let lower = text.lowercased()
         let startNeedles = [
             "start the workout",
@@ -56,6 +106,7 @@ public enum CoachChatIntent: Sendable {
 
     /// Keep a workout_start card only when this message asked to start, or a short yes follows a start offer.
     public static func shouldKeepWorkoutStart(_ text: String, lastAssistant: String?) -> Bool {
+        if refusesWorkoutStart(text) || prefersSpokenAnswer(text) { return false }
         if looksLikeWorkoutStart(text) { return true }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: .punctuationCharacters)
@@ -184,7 +235,7 @@ public enum CoachChatIntent: Sendable {
     public static func clearsPendingWorkoutStart(_ text: String) -> Bool {
         if looksLikeWorkoutStart(text) { return false }
         if looksLikeWorkoutProposal(text) { return false }
-        if suppressesWriteProposals(text) { return false }
+        if isPureGreeting(text) { return false }
         let lower = text.lowercased()
         let clearNeedles = [
             "clear",
@@ -213,24 +264,76 @@ public enum CoachChatIntent: Sendable {
             .trimmingCharacters(in: .punctuationCharacters)
             .lowercased()
         guard !trimmed.isEmpty else { return false }
-        let greetings: Set<String> = [
-            "hello",
-            "hi",
-            "hey",
-            "hello coach",
-            "hi coach",
-            "hey coach",
-            "hello there",
-            "hi there",
-            "hey there",
-            "good morning",
-            "good afternoon",
-            "good evening"
-        ]
-        if greetings.contains(trimmed) { return true }
+        if isPureGreeting(text) { return true }
+        if refusesWorkoutStart(text) { return true }
+        if looksLikeReplyFailure(text) { return true }
+        if prefersSpokenAnswer(text) { return true }
         if looksLikeScheduleReadQuestion(text) { return true }
         if dismissesPendingConfirm(text) { return true }
         return looksLikeAdvisoryDiscussion(text)
+    }
+
+    /// Greeting (or "all I said was hello") whose reply must not pitch a deload or a start card.
+    public static func shouldDropUnsolicitedDeloadPitch(_ text: String) -> Bool {
+        if isPureGreeting(text) { return true }
+        let lower = text.lowercased()
+        return lower.contains("all i said")
+            || lower.contains("i just said hello")
+            || lower.contains("i just said hi")
+    }
+
+    public static func isPureGreeting(_ text: String) -> Bool {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .lowercased()
+        let greetings: Set<String> = [
+            "hello", "hi", "hey", "hello coach", "hi coach", "hey coach",
+            "hello there", "hi there", "hey there",
+            "good morning", "good afternoon", "good evening"
+        ]
+        return greetings.contains(trimmed)
+    }
+
+    /// The athlete is saying the last reply missed. The harness replays the earlier message.
+    public static func looksLikeReplyFailure(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "why are you failing",
+            "why failing",
+            "why did you fail",
+            "why are you broken",
+            "you're broken",
+            "youre broken",
+            "you are broken",
+            "why are you doing incorrect",
+            "you ignored",
+            "you didn't answer",
+            "you did not answer"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    public static func athleteTurn(
+        _ text: String,
+        earlierUser: String?,
+        earlierAssistant: String?
+    ) -> String {
+        guard looksLikeReplyFailure(text) else { return text }
+        let earlier = earlierUser?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        let shown = earlierAssistant?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return """
+        [Reply failed]
+        The athlete says the last reply failed. Answer the earlier message. Do not apologize at length. Do not start a workout unless that earlier message asked to start. Do not repeat what you showed.
+
+        Earlier message:
+        \(earlier.isEmpty ? "(none)" : earlier)
+
+        What you showed:
+        \(shown.isEmpty ? "(no reply)" : shown)
+
+        They just said:
+        \(text)
+        """
     }
 
     /// Discuss-first or hold-off. Do not emit settings, schedule, or deload writes this turn.
@@ -985,6 +1088,7 @@ public enum CoachChatIntent: Sendable {
 
     public static func shouldRouteChatToSessionCoach(_ text: String, sessionIsLive: Bool) -> Bool {
         guard looksLikeSessionAdjustment(text) else { return false }
+        if prefersSpokenAnswer(text) || refusesWorkoutStart(text) { return false }
         if sessionIsLive { return true }
         return looksLikeTodaySessionChange(text)
     }

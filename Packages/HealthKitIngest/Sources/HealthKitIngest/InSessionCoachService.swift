@@ -107,6 +107,33 @@ public struct CoachSessionProposal: Sendable, Equatable {
         return failureNotice ?? reply
     }
 
+    /// Questions and complaints keep the spoken answer. The same failure line is not repeated.
+    public func athleteFacingText(previousAssistant: String?) -> String {
+        let previous = previousAssistant?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let canned = failureNotice
+        if let canned, previous == canned {
+            return "I didn't change the session. Name the exercise and what you want different."
+        }
+        let asked = sourceUserMessage ?? ""
+        if CoachChatIntent.prefersSpokenAnswer(asked) || CoachChatIntent.refusesWorkoutStart(asked) {
+            let spoken = reply.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !spoken.isEmpty, spoken != canned {
+                return spoken
+            }
+        }
+        return displayedAssistantText
+    }
+
+    /// Confirm cards stay off when this turn was a question, a complaint, or a refusal to start.
+    public var shouldOfferConfirmation: Bool {
+        guard requiresConfirmation else { return false }
+        let asked = sourceUserMessage ?? ""
+        if CoachChatIntent.prefersSpokenAnswer(asked) || CoachChatIntent.refusesWorkoutStart(asked) {
+            return false
+        }
+        return true
+    }
+
     public init(
         reply: String,
         payload: SessionAdjustmentPayload,

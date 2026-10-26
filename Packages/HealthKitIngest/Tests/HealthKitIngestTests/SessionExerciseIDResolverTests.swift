@@ -619,6 +619,23 @@ struct InSessionCoachProposalStatusTests {
         #expect(proposal.failureNotice?.contains("Bench Press") == true)
         #expect(proposal.displayedAssistantText == proposal.failureNotice)
         #expect(!proposal.displayedAssistantText.contains("I'll bump"))
+        let question = CoachSessionProposal(
+            reply: "Lateral raise still has four working sets.",
+            payload: SessionAdjustmentPayload(
+                schemaVersion: CoachOutputSchemaVersion.sessionAdjustmentV2.rawValue,
+                reply: "Lateral raise still has four working sets.",
+                operations: []
+            ),
+            recommendationID: "q",
+            previewBanner: nil,
+            status: .failed(.noDiff),
+            sourceUserMessage: "Why can't I remove the last set of lateral raise"
+        )
+        #expect(question.athleteFacingText(previousAssistant: nil).contains("four working sets"))
+        #expect(question.shouldOfferConfirmation == false)
+        let repeated = question.athleteFacingText(previousAssistant: question.failureNotice)
+        #expect(repeated.contains("didn't change the session"))
+        #expect(repeated != question.failureNotice)
     }
 
     @Test("resolved load proposal is confirmable")
