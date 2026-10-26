@@ -25,7 +25,7 @@ enum SleepAnalyzer {
     let today = history.first { $0.helmDay == day }
 
     // No measured last-night sleep → unknown sleep channel (do not score from debt alone).
-    guard today?.sleepDurationHours != nil else {
+    guard let hours = today?.sleepDurationHours, hours > 0 else {
       return Result(
         zDuration: nil,
         zEfficiency: nil,

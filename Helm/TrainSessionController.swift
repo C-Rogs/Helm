@@ -2596,8 +2596,10 @@ final class TrainSessionController {
             active: false,
             saveWatchWorkout: saveWorkout
         )
+        // Save one Health workout so Apple training load can see the session.
+        // Watch save wins when the watch collected heart rate. Otherwise the phone
+        // workout is saved even with no heart-rate samples.
         let shouldSavePhoneWorkout = saveWorkout
-            && sessionDeliveredHeartRate
             && !watchDeliveredHeartRate
             && PhoneWorkoutSessionManager.shared.isActive
         await PhoneWorkoutSessionManager.shared.end(discard: !shouldSavePhoneWorkout)

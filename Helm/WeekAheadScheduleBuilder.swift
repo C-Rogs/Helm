@@ -112,6 +112,16 @@ enum WeekAheadScheduleBuilder {
         today: HelmDay,
         completedDays: Set<HelmDay>
     ) -> WeekAheadSessionStatus {
+        if helmDay > today {
+            switch PlannedSessionStatus(rawValue: storedStatus) {
+            case .shifted:
+                return .shifted
+            case .skipped:
+                return .skipped
+            default:
+                return .upcoming
+            }
+        }
         if let plannedStatus = PlannedSessionStatus(rawValue: storedStatus) {
             switch plannedStatus {
             case .completed:

@@ -548,8 +548,10 @@ public enum CoachContextAssembler {
             }
         }
 
-        if let sleepHours {
+        if let sleepHours, sleepHours > 0 {
             parts.append("sleep=\(SleepDurationFormatting.hoursAndMinutes(from: sleepHours))")
+        } else {
+            parts.append("sleep=unknown")
         }
 
         if let trimp = metrics?.priorDayTRIMP {

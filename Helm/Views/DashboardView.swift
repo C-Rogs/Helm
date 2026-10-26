@@ -34,6 +34,8 @@ struct DashboardView: View {
     @State private var recompStory: RecompStory?
     @State private var dependentRefreshTask: Task<Void, Never>?
     @State private var lastRefreshedReadiness: ReadinessScore?
+    @State private var lastShownReadinessScore: Int?
+    @State private var readinessUpdatedNote: String?
     @State private var hasRefreshedDependentContent = false
     @State private var lastRefreshedPrescription: PrescriptionDashboardState?
     @State private var hasRefreshedNutritionAndBrief = false
@@ -564,6 +566,10 @@ struct DashboardView: View {
             }
         case let .scored(score):
             scoredReadinessCard(score: score)
+                .onAppear { noteReadinessScore(score.score) }
+                .onChange(of: score.score) { _, newScore in
+                    noteReadinessScore(newScore)
+                }
         }
     }
 
@@ -765,11 +771,24 @@ struct DashboardView: View {
         }
     }
 
-    private func readinessSubtitle(for score: ReadinessScore) -> String {
-        if score.validNights < 14 {
-            return "Provisional baseline (\(score.validNights)/14 nights)"
+    private func noteReadinessScore(_ score: Int) {
+        if let previous = lastShownReadinessScore, previous != score {
+            readinessUpdatedNote = "Updated from \(previous) after Health finished syncing"
         }
-        return "\(HelmState.readiness(score: Double(score.score)).label) · \(confidenceLabel(for: score.confidence))"
+        lastShownReadinessScore = score
+    }
+
+    private func readinessSubtitle(for score: ReadinessScore) -> String {
+        let base: String
+        if score.validNights < 14 {
+            base = "Provisional baseline (\(score.validNights)/14 nights)"
+        } else {
+            base = "\(HelmState.readiness(score: Double(score.score)).label) · \(confidenceLabel(for: score.confidence))"
+        }
+        if let readinessUpdatedNote {
+            return "\(readinessUpdatedNote) · \(base)"
+        }
+        return base
     }
 
     private func confidenceLabel(for confidence: ReadinessConfidence) -> String {
