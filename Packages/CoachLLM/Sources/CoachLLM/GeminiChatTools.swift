@@ -395,9 +395,12 @@ public enum GeminiChatTools {
         [
             "name": CoachCatalogToolName.healthSync.rawValue,
             "description": """
-            Sync HealthKit vitals and sleep now, recompute readiness, then answer with \
-            timestamps. Call this instead of promising a wearable refresh in prose. \
-            Use for "refresh HRV", "pull latest", "how up to date", or a yes after offering a sync.
+            Live HealthKit pull of vitals and sleep. Recompute readiness, then answer with \
+            timestamps. Call this in the same turn as your prose answer when that answer needs \
+            vitals or sleep that are missing or stale in the context block. If the context block \
+            already has those numbers, do not call this. Do not call it merely because the athlete \
+            said yes, or because an earlier line contained "sync". Do not promise a wearable pull \
+            in prose without this call. recovery_query is stored history.
             """,
             "parameters": [
                 "type": "object",

@@ -173,12 +173,13 @@ public enum CoachCatalogQueryResolver {
         explicitQueries.isEmpty || explicitQueries.contains(name)
     }
 
-    /// Live wearable refresh always runs, even if the model called recovery_query instead.
+    /// Live HealthKit pull runs only when the model called health_sync.
+    /// `inferred` does not start a sync, including when the explicit tool was recovery_query.
     public static func shouldRunHealthSyncFollowUp(
-        inferred: Bool,
+        inferred _: Bool,
         explicitQueries: Set<CoachCatalogToolName>
     ) -> Bool {
-        inferred || shouldFollowUp(.healthSync, explicitQueries: explicitQueries)
+        shouldFollowUp(.healthSync, explicitQueries: explicitQueries)
     }
 
     /// Chart/navigate from the follow-up stream, else the original turn (tools then JSON).

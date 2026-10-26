@@ -547,53 +547,9 @@ public enum CoachChatIntent: Sendable {
         return needles.contains { lower.contains($0) }
     }
 
-    public static func looksLikeHealthSync(_ text: String) -> Bool {
-        let lower = text.lowercased()
-        if lower.contains("calendar") { return false }
-        let needles = [
-            "refresh hrv",
-            "refresh my hrv",
-            "latest hrv",
-            "pull the latest",
-            "pull latest",
-            "sync from wearable",
-            "wearable sync",
-            "how up to date",
-            "up to date is that",
-            "refresh recovery",
-            "re-sync",
-            "resync",
-            "pre-sync",
-            "sync health",
-            "health sync"
-        ]
-        return needles.contains { lower.contains($0) }
-    }
-
-    public static func looksLikeHealthSyncConfirm(_ text: String, lastAssistant: String?) -> Bool {
-        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
-        if trimmed.contains("calendar") { return false }
-        let affirms = ["yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead"]
-        let leadingYes = ["yes", "yeah", "yep", "ok", "okay", "sure"]
-        let bareAffirm = affirms.contains(trimmed)
-        let syncAffirm = leadingYes.contains { trimmed.hasPrefix($0) } && trimmed.contains("sync")
-        guard bareAffirm || syncAffirm else { return false }
-        guard let lastAssistant else { return syncAffirm }
-        let hay = lastAssistant.lowercased()
-        return hay.contains("hrv")
-            || hay.contains("wearable")
-            || hay.contains("healthkit")
-            || hay.contains("health kit")
-            || hay.contains("recovery baseline")
-            || hay.contains("up to date")
-            || hay.contains("pull the latest")
-            || hay.contains("sync")
-    }
-
+    /// The model calls `health_sync` when the answer needs a fresh pull. The app does not infer one.
     public static func inferredHealthSync(from text: String, lastAssistant: String? = nil) -> HealthSyncPayload? {
-        if looksLikeHealthSync(text) || looksLikeHealthSyncConfirm(text, lastAssistant: lastAssistant) {
-            return HealthSyncPayload()
-        }
+        _ = (text, lastAssistant)
         return nil
     }
 

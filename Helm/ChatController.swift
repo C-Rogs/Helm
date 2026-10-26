@@ -774,14 +774,6 @@ final class ChatController {
                 chatProgressStep = "Coach is estimating your meal…"
             }
 
-            let inferredHealthSync = CoachChatIntent.inferredHealthSync(
-                from: text,
-                lastAssistant: lastAssistant
-            )
-            if inferredHealthSync != nil {
-                streamingText = "Syncing Health…"
-            }
-
             let providerUserMessage = coachUserMessage
                 ?? CoachChatIntent.athleteTurn(
                     text,
@@ -801,9 +793,7 @@ final class ChatController {
                     freshnessSuffix: prompt.freshnessSuffix
                 )
             } catch let error as CoachStructuredOutputError where error == .emptyResponse {
-                if inferredHealthSync != nil {
-                    assembledTurn = AssembledCoachTurn(text: "", functionCalls: [])
-                } else if coachUserMessage == nil {
+                if coachUserMessage == nil {
                     await logCoachHeal(stage: "emptyProseRetry", callNames: "none", userText: text)
                     didProseHeal = true
                     assembledTurn = try await streamAssistantTurn(
@@ -922,8 +912,8 @@ final class ChatController {
                 userText: text,
                 decode: CoachCatalogQueryDecoder.healthSync,
                 parseJSON: HealthSyncPayloadParser.parse,
-                infer: { CoachChatIntent.inferredHealthSync(from: $0, lastAssistant: lastAssistant) }
-            ) ?? inferredHealthSync
+                infer: { _ in nil }
+            )
 
             let explicitQueries = CoachCatalogQueryResolver.explicitQueryNames(
                 in: querySource.functionCalls
@@ -935,7 +925,7 @@ final class ChatController {
                 return TrendsQueryPayload(queryType: .bodyFat, lookbackDays: 90)
             }()
             if CoachCatalogQueryResolver.shouldRunHealthSyncFollowUp(
-                inferred: inferredHealthSync != nil,
+                inferred: false,
                 explicitQueries: explicitQueries
             ), let healthSync {
                 assembledTurn = try await followUpOrKeepCurrent(assembledTurn) {
@@ -1992,6 +1982,7 @@ final class ChatController {
             }
             return streamed
         } catch {
+            if error is CancellationError { throw error }
             return AssembledCoachTurn(text: calendarSyncFallback(results), functionCalls: [])
         }
     }
@@ -2270,6 +2261,7 @@ final class ChatController {
             }
             return streamed
         } catch {
+            if error is CancellationError { throw error }
             return AssembledCoachTurn(text: fallback, functionCalls: [])
         }
     }
