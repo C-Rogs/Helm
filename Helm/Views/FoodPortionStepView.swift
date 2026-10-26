@@ -132,26 +132,30 @@ struct FoodPortionStepView: View {
         .onChange(of: selectedServingLabel) { _, _ in
             resetServingsOnUnitChange()
         }
+        .safeAreaInset(edge: .bottom, spacing: 0) {
+            Button("Add") {
+                guard let grams else { return }
+                if abs(grams - defaults.grams) > 5 {
+                    logger.debug("portion edited; delta=(grams - defaults.grams)g vs suggested (defaults.grams)g")
+                } else {
+                    logger.debug("portion accepted as suggested")
+                }
+                onLog(grams, resolvedServingLabel, bucket)
+            }
+            .buttonStyle(.helmPrimary)
+            .disabled(isSaving || !isValid)
+            .overlay {
+                if isSaving {
+                    ProgressView()
+                }
+            }
+            .padding(HelmSpacing.md)
+            .frame(maxWidth: .infinity)
+            .background(HelmColor.canvas)
+        }
         .toolbar {
             ToolbarItem(placement: .cancellationAction) {
                 Button("Cancel", action: onCancel)
-            }
-            ToolbarItem(placement: .confirmationAction) {
-                Button("Add") {
-                    guard let grams else { return }
-                    if abs(grams - defaults.grams) > 5 {
-                        logger.debug("portion edited; delta=(grams - defaults.grams)g vs suggested (defaults.grams)g")
-                    } else {
-                        logger.debug("portion accepted as suggested")
-                    }
-                    onLog(grams, resolvedServingLabel, bucket)
-                }
-                .disabled(isSaving || !isValid)
-                .overlay {
-                    if isSaving {
-                        ProgressView()
-                    }
-                }
             }
         }
     }

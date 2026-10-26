@@ -114,19 +114,25 @@ struct MealEditSheet: View {
             }
             .navigationTitle("Edit entry")
             .navigationBarTitleDisplayMode(.inline)
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                Button("Save") {
+                    saveTapped()
+                }
+                .buttonStyle(.helmPrimary)
+                .disabled(isSaving)
+                .overlay {
+                    if isSaving {
+                        ProgressView()
+                    }
+                }
+                .padding(HelmSpacing.md)
+                .frame(maxWidth: .infinity)
+                .background(HelmColor.canvas)
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancel", action: onCancel)
                         .disabled(isSaving)
-                }
-                ToolbarItem(placement: .confirmationAction) {
-                    if isSaving {
-                        ProgressView()
-                    } else {
-                        Button("Save") {
-                            saveTapped()
-                        }
-                    }
                 }
             }
             .confirmationDialog(
