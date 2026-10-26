@@ -660,6 +660,21 @@ public struct InSessionCoachService: Sendable {
                 sourceUserMessage: userMessage
             )
         case .applied(let adjusted):
+            if !PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted),
+               let repaired = try repairAbsoluteSetCount(
+                userMessage: userMessage,
+                reply: payload.reply,
+                seededPayload: seededPayload,
+                current: currentPrescription,
+                excludedExerciseIDs: excludedExerciseIDs,
+                catalog: catalog,
+                familiarExerciseIDs: familiarExerciseIDs,
+                displayNames: displayNames,
+                recommendationID: recommendation.id,
+                requestID: requestID
+               ) {
+                return repaired
+            }
             guard PrescriptionDiff.exercisesChanged(from: currentPrescription, to: adjusted) else {
                 return CoachSessionProposal(
                     reply: payload.reply,
@@ -693,6 +708,83 @@ public struct InSessionCoachService: Sendable {
                 sourceUserMessage: userMessage
             )
         }
+    }
+
+    /// "only want three" when the model echoed the current set count.
+    private func repairAbsoluteSetCount(
+        userMessage: String?,
+        reply: String,
+        seededPayload: SessionAdjustmentPayload,
+        current: SessionPrescription,
+        excludedExerciseIDs: Set<String>,
+        catalog: [CatalogExercise],
+        familiarExerciseIDs: Set<String>,
+        displayNames: [String: String],
+        recommendationID: String,
+        requestID: UUID?
+    ) throws -> CoachSessionProposal? {
+        guard let request = SessionSwapPhrase.parseCountRequest(userMessage),
+              let absolute = request.absoluteSets
+        else { return nil }
+
+        let hinted = request.exerciseHint.flatMap { hint in
+            let needle = ExerciseSearchNormalizer.normalizeKeepingEquipment(hint)
+            return current.exercises.first { exercise in
+                let label = ExerciseSearchNormalizer.normalizeKeepingEquipment(
+                    ExerciseDisplayFormatter.friendlyName(for: exercise.exerciseID, displayNames: displayNames)
+                )
+                return label.contains(needle) || needle.contains(label)
+            }?.exerciseID
+        }
+        let fromPayload = seededPayload.operations.first { $0.kind == .adjustSets }?.exerciseID
+        let exerciseID = hinted ?? fromPayload
+        guard let exerciseID,
+              let exercise = current.exercises.first(where: { $0.exerciseID == exerciseID }),
+              exercise.targetSets != absolute
+        else { return nil }
+
+        let repairPayload = SessionAdjustmentPayload(
+            schemaVersion: seededPayload.schemaVersion,
+            reply: reply.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+                ? "Updated the set count."
+                : reply,
+            operations: [
+                SessionAdjustmentOperation(
+                    kind: .adjustSets,
+                    exerciseID: exerciseID,
+                    setDelta: absolute - exercise.targetSets
+                )
+            ]
+        )
+        let adjustment = SessionAdjustmentMapper.prescriptionAdjustment(from: repairPayload)
+        guard case .applied(let repaired) = PlanKit.apply(
+            adjustment: adjustment,
+            to: current,
+            excluding: excludedExerciseIDs,
+            catalog: catalog,
+            familiarExerciseIDs: familiarExerciseIDs
+        ), PrescriptionDiff.exercisesChanged(from: current, to: repaired) else {
+            return nil
+        }
+        let bannerLabels = try makeBanner(
+            payload: repairPayload,
+            previous: current,
+            adjusted: repaired
+        )
+        return CoachSessionProposal(
+            reply: repairPayload.reply,
+            payload: repairPayload,
+            recommendationID: recommendationID,
+            previewBanner: SessionAdjustmentBannerModel(
+                fromLabel: bannerLabels.fromLabel,
+                toLabel: bannerLabels.toLabel,
+                reason: repairPayload.bannerReason,
+                recommendationID: recommendationID
+            ),
+            status: .confirmable,
+            requestID: requestID,
+            sourceUserMessage: userMessage
+        )
     }
 
     private func buildPrompt(

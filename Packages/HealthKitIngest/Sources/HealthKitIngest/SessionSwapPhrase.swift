@@ -50,6 +50,100 @@ enum SessionSwapPhrase: Sendable {
         return nil
     }
 
+    struct CountRequest: Sendable, Equatable {
+        var exerciseHint: String?
+        var absoluteSets: Int?
+        var setDelta: Int?
+        var warmupDelta: Int?
+    }
+
+    /// "only want three", "remove the last set", "add warmup sets". Not an exercise name.
+    static func parseCountRequest(_ text: String?) -> CountRequest? {
+        guard let text else { return nil }
+        let lower = text.lowercased()
+        let warmup = lower.contains("warmup") || lower.contains("warm-up") || lower.contains("warm up")
+        if warmup, lower.contains("set") || lower.contains("add") {
+            return CountRequest(exerciseHint: exerciseHint(in: lower), warmupDelta: 2)
+        }
+        if let count = wantedSetCount(in: lower) {
+            return CountRequest(exerciseHint: exerciseHint(in: lower), absoluteSets: count)
+        }
+        let dropNeedles = [
+            "remove the last set", "remove one set", "remove a set",
+            "drop a set", "drop one set", "take a set off", "one less set"
+        ]
+        if dropNeedles.contains(where: { lower.contains($0) }) {
+            return CountRequest(exerciseHint: exerciseHint(in: lower), setDelta: -1)
+        }
+        return nil
+    }
+
+    /// "still dumbbell" / "dumbbells please" locks the swap target's equipment.
+    static func forcedEquipment(_ text: String?) -> String? {
+        guard let text else { return nil }
+        let lower = text.lowercased()
+        let dumbbell = ["dumbbell", "dumbbells", "dumbell", "dumbbel", "dumbel", "dumbells"]
+        if dumbbell.contains(where: { lower.contains($0) }) { return "dumbbell" }
+        if lower.contains("barbell"), !lower.contains("dumb") { return "barbell" }
+        if lower.contains("machine"), !lower.contains("dumb") { return "machine" }
+        return nil
+    }
+
+    /// "let's do seated shoulder press instead" names the destination, not the source slot.
+    static func parseBareInstead(_ text: String?) -> String? {
+        guard let text, !text.lowercased().contains("instead of") else { return nil }
+        guard let regex = try? NSRegularExpression(
+            pattern: #"(?i)(?:do|use)\s+(.+?)\s+instead\b"#
+        ) else { return nil }
+        let range = NSRange(text.startIndex..., in: text)
+        guard let match = regex.firstMatch(in: text, range: range),
+              match.numberOfRanges >= 2,
+              let capture = Range(match.range(at: 1), in: text)
+        else { return nil }
+        let value = sanitize(String(text[capture]))
+        return value.count >= 3 ? value : nil
+    }
+
+    private static func wantedSetCount(in lower: String) -> Int? {
+        let pattern = #"(?i)(?:only want|want only|down to|make it)\s+(one|two|three|four|five|six|seven|eight|\d+)"#
+        guard let regex = try? NSRegularExpression(pattern: pattern) else { return nil }
+        let range = NSRange(lower.startIndex..., in: lower)
+        guard let match = regex.firstMatch(in: lower, range: range),
+              match.numberOfRanges >= 2,
+              let capture = Range(match.range(at: 1), in: lower)
+        else { return nil }
+        return countWord(String(lower[capture]))
+    }
+
+    private static func exerciseHint(in lower: String) -> String? {
+        let pattern = #"(?i)(?:of|on|to|for)\s+([a-z][a-z0-9 \-]{2,40})"#
+        guard let regex = try? NSRegularExpression(pattern: pattern),
+              let match = regex.firstMatch(in: lower, range: NSRange(lower.startIndex..., in: lower)),
+              match.numberOfRanges >= 2,
+              let capture = Range(match.range(at: 1), in: lower)
+        else { return nil }
+        var hint = String(lower[capture])
+        for trailer in [" i ", " and ", " please", " instead"] {
+            if let trailerRange = hint.range(of: trailer) {
+                hint = String(hint[..<trailerRange.lowerBound])
+            }
+        }
+        hint = hint.trimmingCharacters(in: .whitespacesAndNewlines)
+        if hint.hasPrefix("warmup") || hint.hasPrefix("warm-up") || hint.hasPrefix("warm up") {
+            return nil
+        }
+        return hint.count >= 3 ? hint : nil
+    }
+
+    private static func countWord(_ raw: String) -> Int? {
+        let words = [
+            "one": 1, "two": 2, "three": 3, "four": 4,
+            "five": 5, "six": 6, "seven": 7, "eight": 8
+        ]
+        if let value = words[raw.lowercased()] { return value }
+        return Int(raw)
+    }
+
     /// "add rope hammer curl" / "include face pull". Used so athlete wording
     /// is tried as a catalog phrase before a wrong toExerciseID.
     static func parseAdd(_ text: String?) -> String? {
@@ -121,6 +215,9 @@ enum SessionSwapPhrase: Sendable {
             }
             let key = value.lowercased()
             guard value.count >= 3, seen.insert(key).inserted else { continue }
+            if key.hasPrefix("warmup") || key.hasPrefix("warm-up") || key.hasPrefix("warm up") {
+                continue
+            }
             // Bare "new exercise" / "another exercise" is intent-only, not a lift name.
             if key == "new exercise" || key == "another exercise" || key == "an exercise" {
                 continue

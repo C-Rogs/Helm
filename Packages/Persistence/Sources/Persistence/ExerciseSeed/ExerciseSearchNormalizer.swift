@@ -38,7 +38,7 @@ public enum ExerciseSearchNormalizer {
         switch token {
         case "rope": "cable"
         case "db": "dumbbell"
-        case "dumbbells": "dumbbell"
+        case "dumbbells", "dumbell", "dumbells", "dumbbel", "dumbbels", "dumbel", "dumbels": "dumbbell"
         case "bb": "barbell"
         case "barbells": "barbell"
         case "kb": "kettlebell"

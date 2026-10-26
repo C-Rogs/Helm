@@ -46,12 +46,15 @@ enum SessionExerciseIDResolver {
         // Model often emits adjustLoad for a brand-new lift ("add crunch machine at 32kg").
         // Rewrite those into addExercise when the athlete phrase is clearly an add and the
         // named ID is not already a session row (CAM-34).
-        let rewrittenOps = rewriteSessionOpsAsAddWhenPhraseSaysAdd(
-            operations: payload.operations,
-            sessionExerciseIDs: sessionExerciseIDs,
-            exerciseDisplayNames: exerciseDisplayNames,
-            addPhrases: addPhrases,
-            namedLoadKg: namedLoadKg
+        let rewrittenOps = applyAthleteCountRequest(
+            rewriteSessionOpsAsAddWhenPhraseSaysAdd(
+                operations: payload.operations,
+                sessionExerciseIDs: sessionExerciseIDs,
+                exerciseDisplayNames: exerciseDisplayNames,
+                addPhrases: addPhrases,
+                namedLoadKg: namedLoadKg
+            ),
+            phraseHint: phraseHint
         )
 
         for operation in rewrittenOps {
@@ -250,6 +253,87 @@ enum SessionExerciseIDResolver {
         }
     }
 
+    /// Athlete set-count and warmup wording wins over a catalogue add named "warmup".
+    private static func applyAthleteCountRequest(
+        _ operations: [SessionAdjustmentOperation],
+        phraseHint: String?
+    ) -> [SessionAdjustmentOperation] {
+        guard let request = SessionSwapPhrase.parseCountRequest(phraseHint) else { return operations }
+        if let warmupDelta = request.warmupDelta {
+            var kept = operations.filter { operation in
+                guard operation.kind == .addExercise else { return true }
+                let id = (operation.toExerciseID ?? "").lowercased()
+                return !(id.contains("warmup") || id.contains("warm-up") || id.contains("warm up") || id.contains("warm-up"))
+            }
+            if !kept.contains(where: { $0.kind == .adjustWarmupSets }) {
+                kept.append(
+                    SessionAdjustmentOperation(
+                        kind: .adjustWarmupSets,
+                        exerciseID: request.exerciseHint,
+                        setDelta: warmupDelta
+                    )
+                )
+            }
+            return kept
+        }
+        guard let delta = request.setDelta else { return operations }
+        if let index = operations.firstIndex(where: { $0.kind == .adjustSets }) {
+            var copy = operations
+            let current = copy[index]
+            if current.setDelta == nil {
+                copy[index] = SessionAdjustmentOperation(
+                    kind: .adjustSets,
+                    exerciseID: current.exerciseID ?? request.exerciseHint,
+                    setDelta: delta
+                )
+            }
+            return copy
+        }
+        return operations + [
+            SessionAdjustmentOperation(
+                kind: .adjustSets,
+                exerciseID: request.exerciseHint,
+                setDelta: delta
+            )
+        ]
+    }
+
+    /// "do seated shoulder press instead" should retarget the press, not the incline bench slot.
+    private static func preferredSwapSource(
+        phrase: String,
+        sessionExerciseIDs: Set<String>,
+        exerciseDisplayNames: [String: String]
+    ) -> String? {
+        let phraseTokens = Set(
+            phrase.lowercased()
+                .split(whereSeparator: { !$0.isLetter && !$0.isNumber })
+                .map(String.init)
+                .filter { $0.count > 3 }
+        )
+        var bestID: String?
+        var bestScore = 1
+        for id in sessionExerciseIDs {
+            let label = ExerciseDisplayFormatter.friendlyName(
+                for: id,
+                displayNames: exerciseDisplayNames
+            ).lowercased()
+            var score = phraseTokens.filter { label.contains($0) }.count
+            if phraseTokens.contains("shoulder") || phraseTokens.contains("seated") {
+                if label.contains("overhead") || label.contains("shoulder") { score += 3 }
+                if label.contains("bench") || label.contains("incline") { score -= 2 }
+            }
+            if phraseTokens.contains("bench") {
+                if label.contains("bench") { score += 3 }
+                if label.contains("overhead") || label.contains("shoulder") { score -= 2 }
+            }
+            if score > bestScore {
+                bestScore = score
+                bestID = id
+            }
+        }
+        return bestID
+    }
+
     private static func mapOperation(
         _ operation: SessionAdjustmentOperation,
         sessionExerciseIDs: Set<String>,
@@ -268,7 +352,7 @@ enum SessionExerciseIDResolver {
         switch operation.kind {
         case .swap:
             let parsed = phraseHint.flatMap { SessionSwapPhrase.parse($0) }
-            let from = resolveSessionSource(
+            var from = resolveSessionSource(
                 modelID: operation.fromExerciseID,
                 athleteFrom: parsed?.from,
                 sessionExerciseIDs: sessionExerciseIDs,
@@ -280,13 +364,21 @@ enum SessionExerciseIDResolver {
                 unresolved: &unresolved,
                 catalogCandidates: &catalogCandidates
             )
+            if parsed == nil, let instead = SessionSwapPhrase.parseBareInstead(phraseHint),
+               let better = preferredSwapSource(
+                phrase: instead,
+                sessionExerciseIDs: sessionExerciseIDs,
+                exerciseDisplayNames: exerciseDisplayNames
+               ), better != from {
+                from = better
+            }
             // Exclude the current slot so same-archetype equipment swaps (rope -> DB)
             // cannot collapse back onto the from ID when the user message still names it.
             var toExcluded = excludedExerciseIDs
             if let from {
                 toExcluded.insert(from)
             }
-            let to: String?
+            var to: String?
             if let from, let toPhrase = parsed?.to, ExerciseResolver.isEquipmentOnlyPhrase(toPhrase) {
                 to = ExerciseResolver.pickEquipmentSibling(
                     of: from,
@@ -326,6 +418,32 @@ enum SessionExerciseIDResolver {
                     unresolved: &unresolved,
                     catalogCandidates: &catalogCandidates
                 )
+            }
+            if let equipment = SessionSwapPhrase.forcedEquipment(phraseHint), let currentTo = to {
+                let label = ExerciseDisplayFormatter.friendlyName(
+                    for: currentTo,
+                    displayNames: exerciseDisplayNames
+                )
+                let haystack = ExerciseSearchNormalizer.normalizeKeepingEquipment(label + " " + currentTo)
+                if !haystack.contains(equipment) {
+                    let siblingContext = ExerciseResolver.Context(
+                        sessionExerciseIDs: sessionExerciseIDs,
+                        exerciseDisplayNames: exerciseDisplayNames,
+                        excludedExerciseIDs: toExcluded,
+                        familiarExerciseIDs: familiarExerciseIDs,
+                        recentExerciseIDs: recentExerciseIDs,
+                        mustBeInSession: false,
+                        phraseHint: equipment
+                    )
+                    if let sibling = ExerciseResolver.pickEquipmentSibling(
+                        of: currentTo,
+                        equipmentPhrase: equipment,
+                        context: siblingContext,
+                        persistence: persistence
+                    ) {
+                        to = sibling
+                    }
+                }
             }
             return SessionAdjustmentOperation(
                 kind: operation.kind,

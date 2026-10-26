@@ -29,6 +29,23 @@ struct SessionSwapPhraseTests {
         #expect(namedEnd?.position == .end)
     }
 
+    @Test("set count and equipment phrases")
+    func setCountAndEquipment() {
+        let wantThree = SessionSwapPhrase.parseCountRequest("There are four sets I only want three")
+        #expect(wantThree?.absoluteSets == 3)
+        let lateral = SessionSwapPhrase.parseCountRequest("remove the last set of lateral raise")
+        #expect(lateral?.setDelta == -1)
+        #expect(lateral?.exerciseHint?.contains("lateral") == true)
+        let warmup = SessionSwapPhrase.parseCountRequest("Add warmup sets to incline bench")
+        #expect(warmup?.warmupDelta == 2)
+        #expect(SessionSwapPhrase.parseAddList("Add warmup sets to incline bench").isEmpty)
+        #expect(SessionSwapPhrase.forcedEquipment("No it's still dumbbell") == "dumbbell")
+        #expect(SessionSwapPhrase.forcedEquipment("dumbbel bench") == "dumbbell")
+        #expect(SessionSwapPhrase.parseBareInstead("Let's do seated shoulder press instead")?
+            .lowercased().contains("shoulder") == true)
+        #expect(SessionSwapPhrase.parseBareInstead("swap bench for dumbbell press") == nil)
+    }
+
     @Test("messy swap phrasing still splits from and to")
     func messySwapPhrasing() {
         let swapOut = SessionSwapPhrase.parse("swap out the leg press for leg extension")
