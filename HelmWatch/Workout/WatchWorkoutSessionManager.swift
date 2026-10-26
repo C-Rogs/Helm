@@ -142,19 +142,9 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
                 }
             }
 
-            // Mirror off the critical path.
-            Task { @MainActor in
-                do {
-                    try await workoutSession.startMirroringToCompanionDevice()
-                    if self.session === workoutSession {
-                        self.isMirroringToCompanion = true
-                    }
-                } catch {
-                    if self.session === workoutSession {
-                        self.isMirroringToCompanion = false
-                    }
-                }
-            }
+            // Do not mirror onto the phone. Mirroring ends this session when the
+            // phone app leaves the foreground, which drops the workout off the watch face.
+            // Heart rate still reaches the phone over the watch connectivity session.
         } catch {
             WatchCompanionBootstrap.coordinator.recordDiagnostic(
                 .watchEmergencyFail,
@@ -243,21 +233,8 @@ final class WatchWorkoutSessionManager: NSObject, WatchWorkoutSessionManaging {
         self.session = workoutSession
         self.sessionID = sessionID
 
-        // Mirror if not already started.
-        if !isMirroringToCompanion {
-            Task { @MainActor in
-                do {
-                    try await workoutSession.startMirroringToCompanionDevice()
-                    if self.session === workoutSession {
-                        self.isMirroringToCompanion = true
-                    }
-                } catch {
-                    if self.session === workoutSession {
-                        self.isMirroringToCompanion = false
-                    }
-                }
-            }
-        }
+        // Watch owns the Health workout. Phone backgrounding must not end it.
+        isMirroringToCompanion = false
     }
 
     func pause() { session?.pause() }
