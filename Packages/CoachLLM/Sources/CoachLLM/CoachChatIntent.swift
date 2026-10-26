@@ -294,6 +294,28 @@ public enum CoachChatIntent: Sendable {
         return greetings.contains(trimmed)
     }
 
+    /// Yes/no and short value asks that should stay as a confirm-style chat card.
+    public static func structuredPromptLabels(from text: String) -> (confirm: String, cancel: String)? {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.contains("?") else { return nil }
+        let lower = trimmed.lowercased()
+        if lower.contains("how many")
+            || lower.contains("what weight")
+            || lower.contains("how much")
+            || lower.contains("how heavy") {
+            return ("Got it", "Skip")
+        }
+        if lower.contains("yes or no")
+            || lower.contains("yes/no")
+            || lower.contains("would you like")
+            || lower.contains("do you want")
+            || lower.contains("shall i")
+            || lower.contains("want me to") {
+            return ("Yes", "No")
+        }
+        return nil
+    }
+
     /// The athlete is saying the last reply missed. The harness replays the earlier message.
     public static func looksLikeReplyFailure(_ text: String) -> Bool {
         let lower = text.lowercased()
@@ -527,6 +549,7 @@ public enum CoachChatIntent: Sendable {
 
     public static func looksLikeHealthSync(_ text: String) -> Bool {
         let lower = text.lowercased()
+        if lower.contains("calendar") { return false }
         let needles = [
             "refresh hrv",
             "refresh my hrv",
@@ -537,16 +560,25 @@ public enum CoachChatIntent: Sendable {
             "wearable sync",
             "how up to date",
             "up to date is that",
-            "refresh recovery"
+            "refresh recovery",
+            "re-sync",
+            "resync",
+            "pre-sync",
+            "sync health",
+            "health sync"
         ]
         return needles.contains { lower.contains($0) }
     }
 
     public static func looksLikeHealthSyncConfirm(_ text: String, lastAssistant: String?) -> Bool {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if trimmed.contains("calendar") { return false }
         let affirms = ["yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead"]
-        guard affirms.contains(trimmed) else { return false }
-        guard let lastAssistant else { return false }
+        let leadingYes = ["yes", "yeah", "yep", "ok", "okay", "sure"]
+        let bareAffirm = affirms.contains(trimmed)
+        let syncAffirm = leadingYes.contains { trimmed.hasPrefix($0) } && trimmed.contains("sync")
+        guard bareAffirm || syncAffirm else { return false }
+        guard let lastAssistant else { return syncAffirm }
         let hay = lastAssistant.lowercased()
         return hay.contains("hrv")
             || hay.contains("wearable")
@@ -555,7 +587,7 @@ public enum CoachChatIntent: Sendable {
             || hay.contains("recovery baseline")
             || hay.contains("up to date")
             || hay.contains("pull the latest")
-            || hay.contains("sync from")
+            || hay.contains("sync")
     }
 
     public static func inferredHealthSync(from text: String, lastAssistant: String? = nil) -> HealthSyncPayload? {

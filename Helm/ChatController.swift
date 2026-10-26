@@ -28,6 +28,8 @@ final class ChatController {
     private(set) var pendingChatAction: CoachChatActionProposal?
     /// Assistant message that owns the current pending confirm card (CAM-86).
     private(set) var pendingChatActionMessageID: String?
+    /// Yes/no or value prompt that stays in the transcript after it is answered.
+    private(set) var structuredPromptMessageID: String?
     private(set) var chatConfirmationsByMessageID: [String: CoachChatConfirmation] = [:]
     private(set) var pendingFoodMealConfirm: CoachFoodMealConfirmState?
     private(set) var isApplyingChatAction = false
@@ -608,7 +610,22 @@ final class ChatController {
         }
     }
 
+    func answerStructuredPrompt(_ label: String) {
+        let trimmed = label.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, structuredPromptMessageID != nil else { return }
+        let sends = trimmed == "Yes" || trimmed == "No"
+        resolveStructuredPrompt(label: trimmed)
+        guard sends, !isStreaming else { return }
+        streamTask?.cancel()
+        streamTask = Task { @MainActor in
+            await sendMessage(trimmed)
+        }
+    }
+
     private func sendMessage(_ text: String, coachUserMessage: String? = nil) async {
+        if structuredPromptMessageID != nil {
+            resolveStructuredPrompt(label: text)
+        }
         guard CloudFeatureConsentPreferences.shared.isConsented else {
             let wasFoodDictation = isFoodDictationTurn
             isFoodDictationTurn = false
@@ -1061,8 +1078,9 @@ final class ChatController {
 
             let wasFoodDictation = isFoodDictationTurn
             var pendingAction: CoachChatActionProposal?
-            let foodPayload = CoachChatActionParser.foodLogPayload(from: assembledTurn.functionCalls)
+            let parsedFoodPayload = CoachChatActionParser.foodLogPayload(from: assembledTurn.functionCalls)
                 ?? FoodLogPayloadParser.parse(from: assembledTurn.text)
+            let foodPayload = parsedFoodPayload.map { SpokenDrinkLog.corrected($0, spoken: text) }
             if wasFoodDictation,
                let foodPayload,
                foodPayload.action == .log {
@@ -1286,6 +1304,15 @@ final class ChatController {
 
             if let pendingAction, let assistantMessageID {
                 setPendingChatAction(pendingAction, anchoredTo: assistantMessageID)
+            } else if pendingAction == nil,
+                      let assistantMessageID,
+                      let labels = CoachChatIntent.structuredPromptLabels(from: userFacingText) {
+                attachStructuredPrompt(
+                    messageID: assistantMessageID,
+                    question: userFacingText,
+                    confirmLabel: labels.confirm,
+                    cancelLabel: labels.cancel
+                )
             }
 
             presentOrDeferNavigate(navigate)
@@ -1950,15 +1977,31 @@ final class ChatController {
             turn: .followUp
         )
 
-        return try await streamAssistantTurn(
-            provider: provider,
-            systemInstructions: prompt.systemInstructions,
-            contextBlock: prompt.contextBlock,
-            userMessage: toolMessage,
-            thread: thread,
-            allowEmptyRetry: false,
-            freshnessSuffix: prompt.freshnessSuffix
-        )
+        do {
+            let streamed = try await streamAssistantTurn(
+                provider: provider,
+                systemInstructions: prompt.systemInstructions,
+                contextBlock: prompt.contextBlock,
+                userMessage: toolMessage,
+                thread: thread,
+                allowEmptyRetry: false,
+                freshnessSuffix: prompt.freshnessSuffix
+            )
+            if streamed.isEmpty {
+                return AssembledCoachTurn(text: calendarSyncFallback(results), functionCalls: [])
+            }
+            return streamed
+        } catch {
+            return AssembledCoachTurn(text: calendarSyncFallback(results), functionCalls: [])
+        }
+    }
+
+    private func calendarSyncFallback(_ results: String) -> String {
+        let summary = results.trimmingCharacters(in: .whitespacesAndNewlines)
+        if summary.isEmpty {
+            return "Calendar sync finished. I couldn't read any events from that window."
+        }
+        return "Calendar sync finished.\n\(summary)"
     }
 
     private func runTrendsQueryFollowUp(
@@ -2212,9 +2255,8 @@ final class ChatController {
             turn: .followUp
         )
 
-        let streamed: AssembledCoachTurn
         do {
-            streamed = try await streamAssistantTurn(
+            let streamed = try await streamAssistantTurn(
                 provider: provider,
                 systemInstructions: prompt.systemInstructions,
                 contextBlock: prompt.contextBlock,
@@ -2223,13 +2265,13 @@ final class ChatController {
                 allowEmptyRetry: false,
                 freshnessSuffix: prompt.freshnessSuffix
             )
-        } catch let error as CoachStructuredOutputError where error == .emptyResponse {
+            if streamed.isEmpty {
+                return AssembledCoachTurn(text: fallback, functionCalls: [])
+            }
+            return streamed
+        } catch {
             return AssembledCoachTurn(text: fallback, functionCalls: [])
         }
-        if streamed.isEmpty {
-            return AssembledCoachTurn(text: fallback, functionCalls: [])
-        }
-        return streamed
     }
 
     private func runMealQueryFollowUp(
@@ -2627,6 +2669,43 @@ final class ChatController {
         }
         chatConfirmationsByMessageID = map
         pendingChatActionMessageID = nil
+    }
+
+    private func attachStructuredPrompt(
+        messageID: String,
+        question: String,
+        confirmLabel: String,
+        cancelLabel: String
+    ) {
+        let trimmed = question.trimmingCharacters(in: .whitespacesAndNewlines)
+        let record = CoachChatConfirmation(
+            messageID: messageID,
+            title: confirmLabel == "Yes" ? "Yes or no" : "Your answer",
+            detail: trimmed,
+            reason: nil,
+            confirmLabel: confirmLabel,
+            cancelLabel: cancelLabel,
+            outcome: .pending
+        )
+        structuredPromptMessageID = messageID
+        chatConfirmationsByMessageID[messageID] = record
+        try? persistence.coachChatConfirmations.upsert(record)
+    }
+
+    private func resolveStructuredPrompt(label: String) {
+        guard let messageID = structuredPromptMessageID else { return }
+        try? persistence.coachChatConfirmations.markResolved(
+            messageID: messageID,
+            outcome: .confirmed,
+            selectedLabel: label
+        )
+        if var record = chatConfirmationsByMessageID[messageID] {
+            record.outcome = .confirmed
+            record.selectedLabel = label
+            record.resolvedAt = .now
+            chatConfirmationsByMessageID[messageID] = record
+        }
+        structuredPromptMessageID = nil
     }
 
     private func setPendingChatAction(

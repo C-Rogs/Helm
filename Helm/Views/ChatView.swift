@@ -359,9 +359,12 @@ struct ChatView: View {
         for confirmation: CoachChatConfirmation,
         messageID: String
     ) -> some View {
-        let isInteractive = confirmation.outcome == .pending
-            && controller.pendingChatAction != nil
-            && controller.pendingChatActionMessageID == messageID
+        let isStructuredPrompt = confirmation.outcome == .pending
+            && controller.structuredPromptMessageID == messageID
+        let isInteractive = isStructuredPrompt
+            || (confirmation.outcome == .pending
+                && controller.pendingChatAction != nil
+                && controller.pendingChatActionMessageID == messageID)
         let proposal = controller.pendingChatAction
         let presentation: CoachActionConfirmationCard.Presentation = {
             if isInteractive { return .interactive }
@@ -388,8 +391,20 @@ struct ChatView: View {
             cancelLabel: proposal?.cancelLabel ?? confirmation.cancelLabel,
             isRetryDisabled: controller.isApplyingChatAction,
             presentation: presentation,
-            onConfirm: { controller.confirmChatAction() },
-            onCancel: { controller.dismissChatAction() },
+            onConfirm: {
+                if isStructuredPrompt {
+                    controller.answerStructuredPrompt(proposal?.confirmLabel ?? confirmation.confirmLabel)
+                } else {
+                    controller.confirmChatAction()
+                }
+            },
+            onCancel: {
+                if isStructuredPrompt {
+                    controller.answerStructuredPrompt(proposal?.cancelLabel ?? confirmation.cancelLabel)
+                } else {
+                    controller.dismissChatAction()
+                }
+            },
             onRetry: { controller.confirmChatAction() }
         )
         .id("chat-confirmation-\(messageID)")
