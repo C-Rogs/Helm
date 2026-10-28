@@ -6,9 +6,13 @@ struct PhotoMealEstimatingView: View {
     let completedSteps: [String]
     let currentStep: String
     let usesLidarAssist: Bool
+    let lidarMeasurementLine: String?
     let onCancel: () -> Void
 
     private var footnote: String {
+        if let lidarMeasurementLine {
+            return lidarMeasurementLine
+        }
         if usesLidarAssist {
             return "Signal used LiDAR depth to refine portion size, then estimates ingredients, portion detail, and macros directly from the photo."
         }
@@ -76,6 +80,7 @@ struct PhotoMealEstimatingView: View {
         completedSteps: ["Reading photo", "Analysing portions and ingredients…"],
         currentStep: "Building draft…",
         usesLidarAssist: false,
+        lidarMeasurementLine: nil,
         onCancel: {}
     )
     .helmTheme()
@@ -90,6 +95,7 @@ struct PhotoMealEstimatingView: View {
         ],
         currentStep: "Analysing portions and ingredients…",
         usesLidarAssist: true,
+        lidarMeasurementLine: "27 cm away · 14 cm across",
         onCancel: {}
     )
     .helmTheme()

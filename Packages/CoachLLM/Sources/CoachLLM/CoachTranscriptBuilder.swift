@@ -10,19 +10,18 @@ public enum CoachTranscriptBuilder {
     ) -> [[String: Any]] {
         var contents: [[String: Any]] = []
 
-        if !contextBlock.isEmpty {
-            contents.append([
-                "role": "user",
-                "parts": [["text": "Context:\n\(contextBlock)"]]
-            ])
-            contents.append([
-                "role": "model",
-                "parts": [["text": "Understood."]]
-            ])
-        }
+        // The reference pack belongs in the system instruction. It is not a turn
+        // the athlete sent, and the model must not answer it before they speak.
+        _ = systemInstructions
+        _ = contextBlock
+        _ = freshnessSuffix
 
-        // Avoid duplicating the current user turn when it was already appended to thread.
-        let contextMessages = thread.messagesForContext()
+        let contextMessages = thread.messagesForContext().filter { message in
+            if message.role == .assistant {
+                return !message.text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+            }
+            return true
+        }
         let history = Self.historyExcludingTrailingDuplicate(
             messages: contextMessages,
             userMessage: userMessage
@@ -37,15 +36,6 @@ public enum CoachTranscriptBuilder {
             contents.append([
                 "role": role,
                 "parts": [["text": message.text]]
-            ])
-        }
-
-        // Appended as trailing user message after history to preserve
-        // Gemini implicit caching on the context block prefix.
-        if let suffix = freshnessSuffix, !suffix.isEmpty {
-            contents.append([
-                "role": "user",
-                "parts": [["text": suffix]]
             ])
         }
 
@@ -75,11 +65,24 @@ public enum CoachTranscriptBuilder {
         if current.contains(lastText), current.contains("[Food dictation") {
             return Array(messages.dropLast())
         }
+        if current.contains("[Reply failed]"), current.contains(lastText) {
+            return Array(messages.dropLast())
+        }
         return messages
     }
 
-    public static func systemInstruction(_ systemInstructions: String) -> [String: Any] {
-        ["parts": [["text": systemInstructions]]]
+    public static func systemInstruction(
+        _ systemInstructions: String,
+        reference: String? = nil
+    ) -> [String: Any] {
+        var text = systemInstructions
+        if let reference {
+            let pack = reference.trimmingCharacters(in: .whitespacesAndNewlines)
+            if !pack.isEmpty {
+                text += "\n\n# Reference pack\nHealth data and the training plan. Not a message from the athlete. Answer their messages. Use a fact from this pack when their message needs it. Do not open with the pack, and do not let it replace what they just said.\n\n\(pack)"
+            }
+        }
+        return ["parts": [["text": text]]]
     }
 
     public static func mealPhotoContents(

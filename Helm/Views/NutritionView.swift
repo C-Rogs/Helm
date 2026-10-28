@@ -760,6 +760,7 @@ private struct NutritionLoggingSheets: ViewModifier {
                     completedSteps: photoMealController.estimateCompletedSteps,
                     currentStep: photoMealController.estimateCurrentStep,
                     usesLidarAssist: photoMealController.usesLidarPortionAssist,
+                    lidarMeasurementLine: photoMealController.lidarMeasurementLine,
                     onCancel: { photoMealController.cancel() }
                 )
             }

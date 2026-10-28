@@ -41,6 +41,10 @@ final class PhotoMealController {
         pendingPortionAssist != nil
     }
 
+    var lidarMeasurementLine: String? {
+        pendingPortionAssist?.measurementLine
+    }
+
     var isEstimating: Bool {
         if case .estimating = phase { return true }
         return false

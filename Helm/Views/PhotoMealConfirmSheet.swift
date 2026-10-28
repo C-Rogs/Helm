@@ -74,6 +74,11 @@ struct PhotoMealConfirmSheet: View {
                                 .clipShape(RoundedRectangle(cornerRadius: HelmRadius.md))
                         }
 
+                        if let line = controller.lidarMeasurementLine {
+                            Text(line)
+                                .helmType(.monoTag, color: HelmColor.fgMuted)
+                        }
+
                         Text("Estimate confidence: \(currentEstimate.confidence.rawValue.capitalized)")
                             .helmType(.body, color: HelmColor.fgMuted)
 

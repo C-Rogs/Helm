@@ -1,7 +1,10 @@
 @preconcurrency import AVFoundation
 import Core
+import OSLog
 import SwiftUI
 import UIKit
+
+private let mealCameraLog = Logger(subsystem: "com.cameronro.helm", category: "NutritionKit")
 
 enum MealDepthPortionAssist {
     /// Typical overhead plate distance for gram reference calibration.
@@ -16,7 +19,7 @@ enum MealDepthPortionAssist {
     static func derive(from depthData: AVDepthData, imageSize: CGSize) -> MealPortionAssistContext? {
         let converted = depthData.converting(toDepthDataType: kCVPixelFormatType_DepthFloat32)
         let pixelBuffer = converted.depthDataMap
-        guard let medianDepth = medianDepthMeters(in: pixelBuffer, roiFraction: 0.4),
+        guard let medianDepth = medianDepthMeters(in: pixelBuffer),
               medianDepth > 0.05,
               medianDepth < 2.0 else {
             return nil
@@ -24,14 +27,39 @@ enum MealDepthPortionAssist {
 
         let rawScale = referenceDepthMeters / medianDepth
         let clampedScale = min(max(rawScale, minScaleFactor), maxScaleFactor)
+        let width = CVPixelBufferGetWidth(pixelBuffer)
         return MealPortionAssistContext(
             gramScaleFactor: clampedScale,
             medianDepthMeters: medianDepth,
-            referenceDepthMeters: referenceDepthMeters
+            referenceDepthMeters: referenceDepthMeters,
+            centerSpanCentimeters: centerSpanCentimeters(
+                from: converted,
+                depthMapWidth: width,
+                depthMeters: medianDepth
+            )
         )
     }
 
-    private static func medianDepthMeters(in pixelBuffer: CVPixelBuffer, roiFraction: CGFloat) -> Double? {
+    static func measurementLine(from depthData: AVDepthData) -> String? {
+        derive(from: depthData, imageSize: .zero)?.measurementLine
+    }
+
+    private static func centerSpanCentimeters(
+        from depthData: AVDepthData,
+        depthMapWidth: Int,
+        depthMeters: Double
+    ) -> Double? {
+        guard let calibration = depthData.cameraCalibrationData else { return nil }
+        return MealDepthSpan.centerSpanCentimeters(
+            depthMapWidthPixels: Double(depthMapWidth),
+            roiFraction: MealDepthSpan.centerROIFraction,
+            focalLengthPixels: Double(calibration.intrinsicMatrix.columns.0.x),
+            intrinsicReferenceWidthPixels: Double(calibration.intrinsicMatrixReferenceDimensions.width),
+            depthMeters: depthMeters
+        )
+    }
+
+    private static func medianDepthMeters(in pixelBuffer: CVPixelBuffer) -> Double? {
         CVPixelBufferLockBaseAddress(pixelBuffer, .readOnly)
         defer { CVPixelBufferUnlockBaseAddress(pixelBuffer, .readOnly) }
 
@@ -43,8 +71,8 @@ enum MealDepthPortionAssist {
         }
 
         let rowBytes = CVPixelBufferGetBytesPerRow(pixelBuffer)
-        let roiWidth = max(1, Int(CGFloat(width) * roiFraction))
-        let roiHeight = max(1, Int(CGFloat(height) * roiFraction))
+        let roiWidth = max(1, Int((Double(width) * MealDepthSpan.centerROIFraction).rounded(.down)))
+        let roiHeight = max(1, Int((Double(height) * MealDepthSpan.centerROIFraction).rounded(.down)))
         let startX = (width - roiWidth) / 2
         let startY = (height - roiHeight) / 2
 
@@ -94,7 +122,11 @@ final class MealDepthCameraViewController: UIViewController {
 
     private let session = AVCaptureSession()
     private let photoOutput = AVCapturePhotoOutput()
+    private let depthOutput = AVCaptureDepthDataOutput()
+    nonisolated private let depthSampleGate = DepthSampleGate()
+    nonisolated private let latestDepthReading = LatestDepthReading()
     private var previewLayer: AVCaptureVideoPreviewLayer?
+    private var lidarLabel: UILabel?
     private var isCapturing = false
     private var isCaptureConfigured = false
 
@@ -141,7 +173,13 @@ final class MealDepthCameraViewController: UIViewController {
             return
         }
         session.addOutput(photoOutput)
-        if photoOutput.isDepthDataDeliverySupported {
+        // Streaming depth and still-photo depth cannot share one session. Live
+        // reading uses the stream; the shutter keeps the latest sample.
+        if session.canAddOutput(depthOutput) {
+            session.addOutput(depthOutput)
+            depthOutput.isFilteringEnabled = true
+            depthOutput.setDelegate(self, callbackQueue: DispatchQueue(label: "com.cameronro.helm.meal-depth"))
+        } else if photoOutput.isDepthDataDeliverySupported {
             photoOutput.isDepthDataDeliveryEnabled = true
         }
         isCaptureConfigured = true
@@ -175,6 +213,7 @@ final class MealDepthCameraViewController: UIViewController {
             lidarLabel.textColor = .white.withAlphaComponent(0.9)
             lidarLabel.translatesAutoresizingMaskIntoConstraints = false
             view.addSubview(lidarLabel)
+            self.lidarLabel = lidarLabel
 
             NSLayoutConstraint.activate([
                 lidarLabel.centerXAnchor.constraint(equalTo: view.centerXAnchor),
@@ -205,7 +244,7 @@ final class MealDepthCameraViewController: UIViewController {
         isCapturing = true
 
         let settings = AVCapturePhotoSettings()
-        if photoOutput.isDepthDataDeliverySupported {
+        if photoOutput.isDepthDataDeliveryEnabled {
             settings.isDepthDataDeliveryEnabled = true
         }
         photoOutput.capturePhoto(with: settings, delegate: self)
@@ -223,17 +262,74 @@ extension MealDepthCameraViewController: AVCapturePhotoCaptureDelegate {
                 isCapturing = false
             }
         }
-        guard error == nil,
-              let imageData = photo.fileDataRepresentation(),
-              let image = UIImage(data: imageData) else {
+        if let error {
+            mealCameraLog.error("Meal camera capture failed: \(error.localizedDescription, privacy: .public)")
+            return
+        }
+        guard let imageData = photo.fileDataRepresentation() else {
+            mealCameraLog.error("Meal camera returned no photo file")
+            return
+        }
+        guard let image = UIImage(data: imageData) else {
+            mealCameraLog.error("Meal camera photo could not be decoded")
             return
         }
 
         let assist = photo.depthData.flatMap {
             MealDepthPortionAssist.derive(from: $0, imageSize: image.size)
-        }
+        } ?? latestDepthReading.current()
         Task { @MainActor in
             onCapture?(image, assist)
         }
+    }
+}
+
+extension MealDepthCameraViewController: AVCaptureDepthDataOutputDelegate {
+    nonisolated func depthDataOutput(
+        _ output: AVCaptureDepthDataOutput,
+        didOutput depthData: AVDepthData,
+        timestamp: CMTime,
+        connection: AVCaptureConnection
+    ) {
+        guard depthSampleGate.allow(interval: 0.25),
+              let assist = MealDepthPortionAssist.derive(from: depthData, imageSize: .zero) else {
+            return
+        }
+        latestDepthReading.store(assist)
+        let line = assist.measurementLine
+        Task { @MainActor in
+            lidarLabel?.text = line
+        }
+    }
+}
+
+private final class LatestDepthReading: @unchecked Sendable {
+    private let lock = NSLock()
+    private var assist: MealPortionAssistContext?
+
+    func store(_ assist: MealPortionAssistContext) {
+        lock.lock()
+        self.assist = assist
+        lock.unlock()
+    }
+
+    func current() -> MealPortionAssistContext? {
+        lock.lock()
+        defer { lock.unlock() }
+        return assist
+    }
+}
+
+private final class DepthSampleGate: @unchecked Sendable {
+    private let lock = NSLock()
+    private var last: CFAbsoluteTime = 0
+
+    func allow(interval: CFAbsoluteTime) -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        let now = CFAbsoluteTimeGetCurrent()
+        guard now - last >= interval else { return false }
+        last = now
+        return true
     }
 }

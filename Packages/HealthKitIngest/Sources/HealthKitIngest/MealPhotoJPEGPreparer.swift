@@ -3,7 +3,7 @@ import UIKit
 
 /// Downscales and compresses meal photos for vision API upload.
 public enum MealPhotoJPEGPreparer {
-    public static let maxJPEGBytes = 4 * 1_024 * 1_024
+    public static let maxJPEGBytes = 1_024 * 1_024
     public static let maxPixelDimension: CGFloat = 2_048
 
     public static func prepare(from image: UIImage) -> Data? {

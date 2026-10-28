@@ -428,16 +428,6 @@ enum CoachChatDisplayText {
         if let pendingAction, !pendingAction.reply.isEmpty {
             return pendingAction.reply
         }
-        // Structured-only turn with empty reply: keep a short line so the transcript
-        // does not drop the assistant row before the confirmation card.
-        if let pendingAction {
-            switch pendingAction.kind {
-            case .workoutStart:
-                return "Confirm to start \(pendingAction.title)."
-            case .foodLog, .mealCopy, .memoryAdjustment, .settingsAdjustment, .scheduleAdjustment, .reactiveDeload, .planRegenerate, .sessionAdjustment, .workoutDiscard:
-                return pendingAction.title
-            }
-        }
         return stripped
     }
 }

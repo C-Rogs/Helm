@@ -180,10 +180,8 @@ public struct PhotoMealService: Sendable {
         }
     }
 
-    static let maxJPEGBytes = 4 * 1_024 * 1_024
-
     private static func normalizedPayload(from imageJPEGData: Data) throws -> Data {
-        if imageJPEGData.count <= maxJPEGBytes {
+        if imageJPEGData.count <= MealPhotoJPEGPreparer.maxJPEGBytes {
             return imageJPEGData
         }
         #if canImport(UIKit)

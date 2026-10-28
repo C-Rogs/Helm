@@ -48,7 +48,10 @@ public enum GeminiRequestBuilder {
         includeCatalogTools: Bool = false
     ) throws -> GeminiStreamRequestBody {
         GeminiStreamRequestBody(
-            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(
+                systemInstructions,
+                reference: referencePack(contextBlock: contextBlock, freshnessSuffix: freshnessSuffix)
+            ),
             contents: CoachTranscriptBuilder.contents(
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
@@ -65,6 +68,14 @@ public enum GeminiRequestBuilder {
         )
     }
 
+    private static func referencePack(contextBlock: String, freshnessSuffix: String? = nil) -> String? {
+        let parts = [contextBlock, freshnessSuffix ?? ""]
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+        guard !parts.isEmpty else { return nil }
+        return parts.joined(separator: "\n\n")
+    }
+
     public static func sessionAdjustmentBody(
         systemInstructions: String,
         contextBlock: String,
@@ -72,7 +83,10 @@ public enum GeminiRequestBuilder {
         thread: CoachThreadState
     ) throws -> GeminiGenerateRequestBody {
         GeminiGenerateRequestBody(
-            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(
+                systemInstructions,
+                reference: referencePack(contextBlock: contextBlock)
+            ),
             contents: CoachTranscriptBuilder.contents(
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
@@ -170,7 +184,10 @@ public enum GeminiRequestBuilder {
         thread: CoachThreadState
     ) throws -> GeminiGenerateRequestBody {
         GeminiGenerateRequestBody(
-            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(
+                systemInstructions,
+                reference: referencePack(contextBlock: contextBlock)
+            ),
             contents: CoachTranscriptBuilder.contents(
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
@@ -386,7 +403,10 @@ public enum GeminiRequestBuilder {
         thread: CoachThreadState
     ) throws -> GeminiGenerateRequestBody {
         GeminiGenerateRequestBody(
-            systemInstruction: CoachTranscriptBuilder.systemInstruction(systemInstructions),
+            systemInstruction: CoachTranscriptBuilder.systemInstruction(
+                systemInstructions,
+                reference: referencePack(contextBlock: contextBlock)
+            ),
             contents: CoachTranscriptBuilder.contents(
                 systemInstructions: systemInstructions,
                 contextBlock: contextBlock,
