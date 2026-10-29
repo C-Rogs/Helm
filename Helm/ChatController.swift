@@ -1051,8 +1051,11 @@ final class ChatController {
                 }
             }
 
-            if CoachChatIntent.looksLikeWorkoutStart(text),
-               !CoachChatIntent.looksLikeWorkoutReview(text),
+            let forceWorkoutStartCard = CoachChatIntent.shouldForceWorkoutStartCard(
+                text,
+                lastAssistant: lastAssistant
+            )
+            if forceWorkoutStartCard,
                needsStructuredWorkoutStart(
                 assembled: assembledTurn.text,
                 functionCalls: assembledTurn.functionCalls,
@@ -1162,6 +1165,36 @@ final class ChatController {
                                 today: today
                             ) {
                             pendingAction = nil
+                        } else if ScheduleOverrideApplier.conflictsWithPrescribedSlot(
+                            payload,
+                            persistence: persistence,
+                            today: today
+                        ), !CoachChatIntent.looksLikeScheduleOverrideIntent(text) {
+                            // Unsolicited pin/swap/defer vs today_slot (CAM-111).
+                            pendingAction = nil
+                            assembledTurn.functionCalls.removeAll {
+                                $0.name == CoachCatalogToolName.scheduleAdjustment.rawValue
+                            }
+                            let targetDay = HelmDay(formatted: payload.helmDay ?? "") ?? today
+                            let slot = ScheduleOverrideApplier.prescribedSlotLabel(
+                                on: targetDay,
+                                persistence: persistence,
+                                today: today
+                            )
+                            if CoachChatIntent.looksLikeSchedulePinAnnouncement(assembledTurn.text)
+                                || payload.action == .pinDay
+                                || payload.action == .deferKinds
+                                || payload.action == .swapDays
+                            {
+                                assembledTurn.text = CoachChatIntent.unsolicitedScheduleOverrideReply(
+                                    prescribedSlot: slot
+                                )
+                            }
+                            await logCoachHeal(
+                                stage: "dropUnsolicitedScheduleOverride",
+                                callNames: CoachCatalogToolName.scheduleAdjustment.rawValue,
+                                userText: text
+                            )
                         }
                     }
                 }
@@ -1227,6 +1260,18 @@ final class ChatController {
                     if CoachChatIntent.suppressesWriteProposals(text) {
                         pendingAction = nil
                     }
+                }
+            }
+
+            // Start affirmatives need a real confirm card, not prose "Confirm to start?" (CAM-111).
+            if forceWorkoutStartCard,
+               !isPendingWorkoutStart(pendingAction),
+               CoachChatIntent.isProseOnlyWorkoutStartConfirm(assembledTurn.text)
+            {
+                assembledTurn.text =
+                    "I still need a Start workout card. Ask me to list the session again, then say Go."
+                assembledTurn.functionCalls.removeAll {
+                    $0.name == CoachCatalogToolName.workoutStart.rawValue
                 }
             }
 
@@ -1333,9 +1378,9 @@ final class ChatController {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
             } else if lastTurnError == nil,
                       pendingFoodMealConfirm == nil,
-                      CoachChatIntent.shouldKeepWorkoutStart(text, lastAssistant: lastAssistant),
+                      forceWorkoutStartCard,
                       !isPendingWorkoutStart(pendingAction) {
-                lastTurnError = "Couldn't start that workout. Try again."
+                lastTurnError = "Couldn't start that workout. Say Go again after I show the Start workout card."
             } else if wasFoodDictation, pendingFoodMealConfirm == nil, lastTurnError == nil {
                 // Nutrition describe has no chat transcript UI - prose-only replies looked like a hang.
                 lastTurnError = "Couldn't estimate that meal. Try again with clearer portions, or use Search."

@@ -76,6 +76,84 @@ public enum ScheduleOverrideApplier {
             && lhs.dayB == rhs.dayB
     }
 
+    /// Engine `today_slot` / prescribed kind label for a calendar day (Rest when nil).
+    public static func prescribedSlotLabel(
+        on day: HelmDay,
+        persistence: PersistenceStore,
+        today: HelmDay,
+        calendar: Calendar = .current
+    ) -> String {
+        let kind = prescribedKind(
+            on: day,
+            persistence: persistence,
+            today: today,
+            calendar: calendar
+        )
+        return kind?.label ?? "Rest"
+    }
+
+    /// Effective prescribed kind before applying a new coach override.
+    public static func prescribedKind(
+        on day: HelmDay,
+        persistence: PersistenceStore,
+        today: HelmDay,
+        calendar: Calendar = .current
+    ) -> TrainingDayKind? {
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: calendar)
+        let stored = workingCopy(
+            of: (try? persistence.scheduleOverrides.load()) ?? .empty,
+            weekStart: weekStart
+        )
+        let kindByDay = (try? resolveKindByDay(
+            persistence: persistence,
+            today: today,
+            weekStart: weekStart,
+            calendar: calendar,
+            stored: stored
+        )) ?? [:]
+        return kindByDay[day] ?? nil
+    }
+
+    /// True when pin/swap/defer would change the prescribed slot for an affected day.
+    public static func conflictsWithPrescribedSlot(
+        _ payload: ScheduleAdjustmentPayload,
+        persistence: PersistenceStore,
+        today: HelmDay,
+        calendar: Calendar = .current
+    ) -> Bool {
+        if isRedundant(payload, persistence: persistence, today: today, calendar: calendar) {
+            return false
+        }
+        switch payload.action {
+        case .clear:
+            return true
+        case .pinDay:
+            let day = parseDay(payload.helmDay) ?? today
+            guard let pinKind = payload.pinKind.flatMap(parseKind) else { return true }
+            let prescribed = prescribedKind(
+                on: day,
+                persistence: persistence,
+                today: today,
+                calendar: calendar
+            )
+            return prescribed != pinKind
+        case .deferKinds:
+            let pinDay = parseDay(payload.helmDay) ?? today
+            if let explicit = payload.pinKind.flatMap(parseKind) {
+                let prescribed = prescribedKind(
+                    on: pinDay,
+                    persistence: persistence,
+                    today: today,
+                    calendar: calendar
+                )
+                return prescribed != explicit
+            }
+            return true
+        case .swapDays:
+            return true
+        }
+    }
+
     private static func mutatedOverrides(
         _ payload: ScheduleAdjustmentPayload,
         persistence: PersistenceStore,

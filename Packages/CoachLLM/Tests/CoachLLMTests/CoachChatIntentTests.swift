@@ -27,10 +27,35 @@ struct CoachChatIntentTests {
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("go", lastAssistant: "How are your legs feeling?"))
         #expect(CoachChatIntent.confirmsPendingWorkoutStart("go"))
         #expect(CoachChatIntent.confirmsPendingWorkoutStart("Start workout"))
+        #expect(CoachChatIntent.confirmsPendingWorkoutStart("Matt didn't you start"))
         #expect(!CoachChatIntent.confirmsPendingWorkoutStart("Why are you failing"))
+        #expect(CoachChatIntent.looksLikeMissedWorkoutStart("Matt didn't you start"))
+        #expect(CoachChatIntent.shouldForceWorkoutStartCard(
+            "go",
+            lastAssistant: "Ready to start this session?"
+        ))
+        #expect(CoachChatIntent.shouldForceWorkoutStartCard(
+            "Start workout",
+            lastAssistant: nil
+        ))
+        #expect(CoachChatIntent.shouldForceWorkoutStartCard(
+            "Matt didn't you start",
+            lastAssistant: "Ready to start this session?"
+        ))
+        #expect(!CoachChatIntent.shouldForceWorkoutStartCard(
+            "go",
+            lastAssistant: nil
+        ))
+        #expect(CoachChatIntent.isProseOnlyWorkoutStartConfirm("Confirm to start Shoulders & Arms Pump."))
+        #expect(!CoachChatIntent.isProseOnlyWorkoutStartConfirm("Shoulders & Arms Pump"))
         let bubble = CoachChatIntent.workoutStartBubble(sessionTitle: "Shoulders & Arms Pump", modelText: "")
         #expect(bubble == "Shoulders & Arms Pump")
         #expect(!bubble.hasPrefix("Confirm to start"))
+        let strippedBubble = CoachChatIntent.workoutStartBubble(
+            sessionTitle: "Shoulders & Arms Pump",
+            modelText: "Confirm to start Shoulders & Arms Pump."
+        )
+        #expect(strippedBubble == "Shoulders & Arms Pump")
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("Why are you failing", lastAssistant: "Confirm to start Legs."))
         let repair = CoachChatIntent.athleteTurn(
             "Why are you failing",
@@ -98,6 +123,19 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "Why is my recovery so low")?.queryType == .range)
         #expect(CoachChatIntent.inferredRecoveryQuery(from: "Did I sleep enough")?.queryType == .sleepDetail)
         #expect(CoachChatIntent.looksLikeScheduleReadQuestion("How many training days this week?"))
+        #expect(!CoachChatIntent.looksLikeScheduleOverrideIntent(
+            "Hello, I'm on my way to the gym. See what workouts I've done and what I need to do today."
+        ))
+        #expect(!CoachChatIntent.looksLikeScheduleOverrideIntent("How many training days this week?"))
+        #expect(CoachChatIntent.looksLikeScheduleOverrideIntent("Pin legs today"))
+        #expect(CoachChatIntent.looksLikeScheduleOverrideIntent("Swap Friday and Saturday"))
+        #expect(CoachChatIntent.looksLikeScheduleOverrideIntent("My arms are sore, skip push"))
+        #expect(CoachChatIntent.looksLikeScheduleOverrideIntent("Do legs today instead"))
+        #expect(CoachChatIntent.looksLikeSchedulePinAnnouncement("Pinning Pull for today so your training aligns with your rotation."))
+        #expect(
+            CoachChatIntent.unsolicitedScheduleOverrideReply(prescribedSlot: "Legs")
+                .contains("scheduled as Legs")
+        )
         #expect(CoachChatIntent.suppressesWriteProposals("What days do I train?"))
         #expect(CoachChatIntent.suppressesWriteProposals("Let's talk about it first"))
         #expect(CoachChatIntent.suppressesWriteProposals("Cancel"))

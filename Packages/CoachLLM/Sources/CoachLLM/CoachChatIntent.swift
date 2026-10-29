@@ -128,7 +128,9 @@ public enum CoachChatIntent: Sendable {
 
     /// A start card is already on screen. Short confirms press it instead of another model turn.
     public static func confirmsPendingWorkoutStart(_ text: String) -> Bool {
-        if refusesWorkoutStart(text) || prefersSpokenAnswer(text) { return false }
+        if refusesWorkoutStart(text) { return false }
+        if looksLikeMissedWorkoutStart(text) { return true }
+        if prefersSpokenAnswer(text) { return false }
         if looksLikeWorkoutStart(text) { return true }
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
             .trimmingCharacters(in: .punctuationCharacters)
@@ -140,9 +142,48 @@ public enum CoachChatIntent: Sendable {
         return affirms.contains(trimmed)
     }
 
+    /// Athlete expected a start and the card never appeared (CAM-111).
+    public static func looksLikeMissedWorkoutStart(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        let needles = [
+            "didn't you start",
+            "didnt you start",
+            "did you not start",
+            "you didn't start",
+            "you didnt start",
+            "why didn't you start",
+            "why didnt you start",
+            "never started",
+            "didn't start the workout",
+            "didnt start the workout"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Force a real workout_start confirm card - never a prose-only "Confirm to start?".
+    public static func shouldForceWorkoutStartCard(_ text: String, lastAssistant: String?) -> Bool {
+        if refusesWorkoutStart(text) { return false }
+        if looksLikeMissedWorkoutStart(text) { return true }
+        if looksLikeWorkoutReview(text) { return false }
+        if looksLikeWorkoutStart(text) { return true }
+        return shouldKeepWorkoutStart(text, lastAssistant: lastAssistant)
+    }
+
+    /// Model asked for verbal confirm instead of emitting workout_start (CAM-111).
+    public static func isProseOnlyWorkoutStartConfirm(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.hasPrefix("confirm to start")
+            || lower.contains("confirm to start ")
+            || lower.contains("tap confirm to start")
+    }
+
     /// Spoken line beside a start card. The card is the confirm; the bubble only names the session.
     public static func workoutStartBubble(sessionTitle: String, modelText: String) -> String {
         let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if isProseOnlyWorkoutStartConfirm(model) {
+            let title = sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+            return title.isEmpty ? "Workout" : title
+        }
         if !model.isEmpty { return model }
         let title = sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
         return title.isEmpty ? "Workout" : title
@@ -439,6 +480,78 @@ public enum CoachChatIntent: Sendable {
         if needles.contains(where: { lower.contains($0) }) { return true }
         if lower.contains("training day"), lower.contains("?") { return true }
         return false
+    }
+
+    /// Athlete explicitly asked to change Week Ahead / pin / swap / defer (CAM-111).
+    public static func looksLikeScheduleOverrideIntent(_ text: String) -> Bool {
+        if looksLikeScheduleReadQuestion(text) { return false }
+        let lower = text.lowercased()
+        if looksLikePlanLevelChange(lower) { return true }
+        let needles = [
+            "pin ",
+            "pinning ",
+            "swap day",
+            "swap my",
+            "swap friday",
+            "swap saturday",
+            "swap sunday",
+            "swap monday",
+            "swap tuesday",
+            "swap wednesday",
+            "swap thursday",
+            "move my workout",
+            "move friday",
+            "move saturday",
+            "change my schedule",
+            "change the schedule",
+            "change my week",
+            "override the schedule",
+            "skip push",
+            "skip pull",
+            "skip legs",
+            "skip upper",
+            "skip lower",
+            "arms are sore",
+            "sore arms",
+            "chest is sore",
+            "back is sore",
+            "legs are sore",
+            "shoulders are sore",
+            "train on my rest",
+            "train on a rest",
+            "rest day became",
+            "make today a",
+            "make today push",
+            "make today pull",
+            "make today legs",
+            "set today to",
+            "i want push today",
+            "i want pull today",
+            "i want legs today",
+            "let's do push",
+            "lets do push",
+            "let's do pull",
+            "lets do pull",
+            "let's do legs",
+            "lets do legs"
+        ]
+        return needles.contains { lower.contains($0) }
+    }
+
+    /// Coach prose announcing an unsolicited pin (drop tool + rewrite).
+    public static func looksLikeSchedulePinAnnouncement(_ text: String) -> Bool {
+        let lower = text.lowercased()
+        return lower.contains("pinning ")
+            || lower.contains("pinned ")
+            || lower.hasPrefix("pin ")
+            || lower.contains(" pin ")
+            || lower.contains("for today so your training aligns")
+    }
+
+    public static func unsolicitedScheduleOverrideReply(prescribedSlot: String) -> String {
+        let slot = prescribedSlot.trimmingCharacters(in: .whitespacesAndNewlines)
+        let label = slot.isEmpty ? "today's scheduled day" : slot
+        return "Today is scheduled as \(label). I am not changing your Week Ahead unless you ask to swap, pin, or defer a day."
     }
 
     public static func looksLikeClearChat(_ text: String) -> Bool {

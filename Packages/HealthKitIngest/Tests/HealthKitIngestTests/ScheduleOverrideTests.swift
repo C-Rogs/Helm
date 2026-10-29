@@ -202,4 +202,80 @@ struct ScheduleOverrideTests {
         let payload = ScheduleAdjustmentPayload(action: .clear)
         #expect(ScheduleOverrideApplier.isRedundant(payload, persistence: store, today: today))
     }
+
+    @Test("pin_day to a different split conflicts with prescribed today_slot")
+    func pinDayConflictsWithPrescribedSlot() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(
+            StoredTrainingPlanSettings(
+                daysPerWeek: 3,
+                dayKindRotationRaw: [
+                    TrainingDayKind.push.rawValue,
+                    TrainingDayKind.pull.rawValue,
+                    TrainingDayKind.legs.rawValue
+                ]
+            )
+        )
+        let today = HelmDay(year: 2026, month: 9, day: 7) // Monday
+        let weekStart = PrescriptionHistoryBuilder.weekStart(containing: today, calendar: .current)
+        try store.scheduleOverrides.save(
+            StoredScheduleOverrides(
+                weekStartFormatted: weekStart.formatted,
+                pinnedByDay: [today.formatted: TrainingDayKind.legs.rawValue],
+                reason: "Pinned Legs"
+            )
+        )
+        #expect(
+            ScheduleOverrideApplier.prescribedSlotLabel(
+                on: today,
+                persistence: store,
+                today: today
+            ) == "Legs"
+        )
+        let unsolicitedPull = ScheduleAdjustmentPayload(
+            action: .pinDay,
+            pinKind: "pull",
+            helmDay: today.formatted,
+            reason: "Pinning Pull for today"
+        )
+        #expect(
+            ScheduleOverrideApplier.conflictsWithPrescribedSlot(
+                unsolicitedPull,
+                persistence: store,
+                today: today
+            )
+        )
+        let matchingLegs = ScheduleAdjustmentPayload(
+            action: .pinDay,
+            pinKind: "legs",
+            helmDay: today.formatted,
+            reason: "Pin legs again"
+        )
+        #expect(
+            !ScheduleOverrideApplier.conflictsWithPrescribedSlot(
+                matchingLegs,
+                persistence: store,
+                today: today
+            )
+        )
+    }
+
+    @Test("swap_days always conflicts when not redundant")
+    func swapDaysConflictsUnlessRedundant() throws {
+        let store = try PersistenceStore.inMemory()
+        try store.trainingPlan.save(.default)
+        let today = HelmDay(year: 2026, month: 9, day: 7)
+        let payload = ScheduleAdjustmentPayload(
+            action: .swapDays,
+            dayA: today.formatted,
+            dayB: today.adding(days: 1).formatted
+        )
+        #expect(
+            ScheduleOverrideApplier.conflictsWithPrescribedSlot(
+                payload,
+                persistence: store,
+                today: today
+            )
+        )
+    }
 }
