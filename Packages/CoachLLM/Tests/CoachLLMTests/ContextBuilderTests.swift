@@ -134,10 +134,13 @@ struct ContextBuilderTests {
         #expect(prompt.systemInstructions == CoachSystemPrompt.chatV1)
         #expect(prompt.includedDayCount == 3)
         #expect(prompt.droppedDayCount == 0)
-        #expect(prompt.contextBlock.hasPrefix("# Memory Profile\n## Baselines\nHRV chronic ~52 ms"))
+        #expect(prompt.contextBlock.hasPrefix("now="))
+        #expect(prompt.contextBlock.contains("# Memory Profile\n## Baselines\nHRV chronic ~52 ms"))
         #expect(prompt.contextBlock.contains("# Recent Days"))
-        #expect(prompt.contextBlock.contains("## 2026-07-19\nreadiness=58"))
-        #expect(prompt.contextBlock.contains("## 2026-07-21\nreadiness=64"))
+        #expect(prompt.contextBlock.contains("2026-07-19"))
+        #expect(prompt.contextBlock.contains("readiness=58"))
+        #expect(prompt.contextBlock.contains("2026-07-21 (today)"))
+        #expect(prompt.contextBlock.contains("readiness=64"))
         #expect(prompt.estimatedTokens > 0)
     }
 
@@ -179,8 +182,8 @@ struct ContextBuilderTests {
         #expect(prompt.contextBlock.contains("# Memory Profile"))
         #expect(prompt.contextBlock.contains("# Readiness Baselines"))
         #expect(prompt.contextBlock.contains("# Evidence Index"))
-        #expect(!prompt.contextBlock.contains("## 2026-07-19"))
-        #expect(prompt.contextBlock.contains("## 2026-07-21"))
+        #expect(!prompt.contextBlock.contains("2026-07-19"))
+        #expect(prompt.contextBlock.contains("2026-07-21"))
         #expect(
             TokenBudget.estimateTokens(characterCount: prompt.contextBlock.count) <= tightBudget
         )
@@ -197,7 +200,8 @@ struct ContextBuilderTests {
         )
 
         let expectedPrefix = ContextBuilder.stablePrefixText(profile: profile, days: fixtureDays())
-        #expect(prompt.contextBlock == expectedPrefix)
+        #expect(prompt.contextBlock.hasPrefix("now="))
+        #expect(prompt.contextBlock.contains(expectedPrefix))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 3)
         #expect(!prompt.contextBlock.contains("# Recent Days"))
@@ -234,7 +238,7 @@ struct ContextBuilderTests {
         #expect(prompt.contextBlock.contains("# Readiness Baselines"))
         #expect(prompt.contextBlock.contains("hrvChronicMs=52.1"))
         #expect(prompt.contextBlock.contains("# Today"))
-        #expect(prompt.contextBlock.contains("## 2026-07-20"))
+        #expect(prompt.contextBlock.contains("2026-07-20 (today)"))
         #expect(prompt.contextBlock.contains("readiness=61"))
         #expect(prompt.includedDayCount == 0)
         #expect(prompt.droppedDayCount == 2)
@@ -273,8 +277,16 @@ struct ContextBuilderTests {
             calendarDay: calendarDay
         )
 
-        #expect(prompt.contextBlock.contains("# Today\n## 2026-10-20\nno_daily_row_yet"))
-        #expect(prompt.contextBlock.contains("# Latest day\n## 2026-07-21"))
+        let todayLabel = calendarDay.coachContextLabel(
+            relativeTo: calendarDay,
+            calendar: Calendar(identifier: .gregorian)
+        )
+        #expect(todayLabel.contains("2026-10-20"))
+        #expect(todayLabel.contains("(today)"))
+        #expect(prompt.contextBlock.contains("# Today\n## \(todayLabel)\nno_daily_row_yet"))
+        #expect(prompt.contextBlock.contains("now=\(calendarDay.coachClockLabel(calendar: Calendar(identifier: .gregorian)))"))
+        #expect(prompt.contextBlock.contains("# Latest day\n## "))
+        #expect(prompt.contextBlock.contains("2026-07-21"))
         #expect(prompt.contextBlock.contains("readiness=64"))
         #expect(!prompt.contextBlock.contains("# Today\n## 2026-07-21"))
     }
@@ -319,7 +331,8 @@ struct ContextBuilderTests {
         #expect(suffix.contains("session_title=Push"))
         #expect(suffix.contains("nutrition_day=2026-08-20"))
         #expect(!prompt.contextBlock.contains("# App State"))
-        #expect(prompt.contextBlock.hasPrefix("# Memory Profile"))
+        #expect(prompt.contextBlock.hasPrefix("now="))
+        #expect(prompt.contextBlock.contains("# Memory Profile"))
     }
 
     @Test("stale active session is flagged on the freshness suffix")

@@ -97,7 +97,13 @@ public enum CoachContextAssembler {
             )
         }
 
-        let recentWorkouts = try recentWorkoutsBlock(from: store, limit: 5)
+        let recentWorkouts = try recentWorkoutsBlock(
+            from: store,
+            limit: 5,
+            today: endDay,
+            calendar: calendar,
+            cutoff: cutoff
+        )
         let trainingPlanSnapshot = try trainingPlanSnapshotBlock(
             from: store,
             endingAt: endDay,
@@ -109,7 +115,9 @@ public enum CoachContextAssembler {
             startingAt: endDay,
             through: endDay.adding(days: 6, calendar: calendar),
             calendar: calendar,
-            busyDayHints: busyDayHints
+            busyDayHints: busyDayHints,
+            workoutsByDay: workoutsByDay,
+            readinessBand: readinessByDay[endDay]?.band?.rawValue
         )
         let nutritionDiary = await CoachNutritionContextBuilder.diaryBlock(
             from: store,
@@ -290,7 +298,9 @@ public enum CoachContextAssembler {
         startingAt startDay: HelmDay,
         through endDay: HelmDay,
         calendar: Calendar,
-        busyDayHints: [HelmDay: String]
+        busyDayHints: [HelmDay: String],
+        workoutsByDay: [HelmDay: [WorkoutSessionSummary]],
+        readinessBand: String?
     ) throws -> String {
         let dayCount = max(1, startDay.days(to: endDay, calendar: calendar) + 1)
         let records = try store.plan.fetchPlannedWorkouts(from: startDay, through: endDay)
@@ -336,6 +346,7 @@ public enum CoachContextAssembler {
         }
         for offset in 0 ..< dayCount {
             let day = startDay.adding(days: offset, calendar: calendar)
+            let label = day.coachContextLabel(relativeTo: startDay, calendar: calendar)
             let busy = busyDayHints[day].map { " busy=\($0)" } ?? ""
             let pin = overrides.pinnedByDay[day].map { " pin=\($0.label)" } ?? ""
             let forcedRest = overrides.restDays.contains(day) ? " override=rest" : ""
@@ -344,24 +355,101 @@ public enum CoachContextAssembler {
                 let note = payload.primaryNote.map { " note=\($0)" } ?? ""
                 let done = completedDays.contains(day) ? " logged=true" : ""
                 lines.append(
-                    "- \(day.formatted): \(payload.splitLabel) status=\(record.status)\(note)\(done)\(pin)\(busy)"
+                    "- \(label): \(payload.splitLabel) status=\(record.status)\(note)\(done)\(pin)\(busy)"
                 )
             } else if completedDays.contains(day) {
-                let label = inferredSplitLabel(
+                let split = inferredSplitLabel(
                     day: day,
                     history: history,
                     muscleMaps: muscleMaps,
                     rotation: rotation
                 )
-                lines.append("- \(day.formatted): \(label) status=completed note=logged_off_slot\(busy)")
+                lines.append("- \(label): \(split) status=completed note=logged_off_slot\(busy)")
             } else {
-                lines.append("- \(day.formatted): Rest\(forcedRest)\(pin)\(busy)")
+                lines.append("- \(label): Rest\(forcedRest)\(pin)\(busy)")
             }
         }
         if busyDayHints.isEmpty {
             lines.append("calendar_busy=none_or_unavailable")
         }
+        lines.append(
+            todayDecisionLine(
+                today: startDay,
+                calendar: calendar,
+                recordsByDay: recordsByDay,
+                completedDays: completedDays,
+                history: history,
+                muscleMaps: muscleMaps,
+                rotation: rotation,
+                workoutsByDay: workoutsByDay,
+                readinessBand: readinessBand
+            )
+        )
         return lines.joined(separator: "\n")
+    }
+
+    /// Grounded session facts. The model must not recompute the split from chat memory.
+    private static func todayDecisionLine(
+        today: HelmDay,
+        calendar: Calendar,
+        recordsByDay: [HelmDay: PlannedWorkoutRecord],
+        completedDays: Set<HelmDay>,
+        history: PrescriptionHistory,
+        muscleMaps: [String: ExerciseMuscleMap],
+        rotation: [TrainingDayKind],
+        workoutsByDay: [HelmDay: [WorkoutSessionSummary]],
+        readinessBand: String?
+    ) -> String {
+        let slot: String
+        let status: String
+        if let record = recordsByDay[today],
+           let payload = PlannedWorkoutSessionDecoder.decode(from: record.sessionJSON) {
+            slot = payload.splitLabel
+            status = record.status
+        } else if completedDays.contains(today) {
+            slot = inferredSplitLabel(
+                day: today,
+                history: history,
+                muscleMaps: muscleMaps,
+                rotation: rotation
+            )
+            status = "completed"
+        } else {
+            slot = "Rest"
+            status = "rest"
+        }
+
+        let lastLift: String
+        if let session = history.sessions
+            .filter({ $0.helmDay < today })
+            .max(by: { lhs, rhs in
+                if lhs.helmDay != rhs.helmDay { return lhs.helmDay < rhs.helmDay }
+                return lhs.startedAt < rhs.startedAt
+            }) {
+            let split = inferredSplitLabel(
+                day: session.helmDay,
+                history: history,
+                muscleMaps: muscleMaps,
+                rotation: rotation
+            )
+            let name = split == "Session" ? (session.title ?? split) : split
+            let when = session.helmDay.coachClockLabel(calendar: calendar)
+            lastLift = "\(name) on \(when)"
+        } else {
+            lastLift = "none"
+        }
+
+        let yesterday = today.adding(days: -1, calendar: calendar)
+        let yesterdayNames = (workoutsByDay[yesterday] ?? []).compactMap { summary -> String? in
+            let title = summary.title?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let title, !title.isEmpty { return title }
+            let activity = summary.hkActivityType?.trimmingCharacters(in: .whitespacesAndNewlines)
+            if let activity, !activity.isEmpty { return activity }
+            return nil
+        }
+        let yesterdayText = yesterdayNames.isEmpty ? "none" : yesterdayNames.joined(separator: ", ")
+        let readiness = readinessBand ?? "unknown"
+        return "today_slot=\(slot) status=\(status). last_lift=\(lastLift). yesterday=\(yesterdayText). readiness=\(readiness)."
     }
 
     private static func inferredSplitLabel(
@@ -391,7 +479,10 @@ public enum CoachContextAssembler {
 
     private static func recentWorkoutsBlock(
         from store: PersistenceStore,
-        limit: Int
+        limit: Int,
+        today: HelmDay,
+        calendar: Calendar,
+        cutoff: DayCutoff
     ) throws -> String {
         let summaries = try store.workoutSessions.listSummaries(limit: limit)
         guard !summaries.isEmpty else { return "" }
@@ -399,17 +490,32 @@ public enum CoachContextAssembler {
         var blocks: [String] = []
         for summary in summaries {
             if summary.source == .healthKit {
-                blocks.append(formatHealthKitWorkout(summary))
+                blocks.append(
+                    formatHealthKitWorkout(summary, today: today, calendar: calendar, cutoff: cutoff)
+                )
             } else {
                 guard let draft = try store.workoutSessions.fetch(id: summary.id) else { continue }
                 let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
-                blocks.append(WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names))
+                blocks.append(
+                    WorkoutExportFormatter.formatForCoachContext(
+                        draft: draft,
+                        displayNames: names,
+                        today: today,
+                        calendar: calendar,
+                        cutoff: cutoff
+                    )
+                )
             }
         }
         return blocks.joined(separator: "\n\n---\n\n")
     }
 
-    private static func formatHealthKitWorkout(_ summary: WorkoutSessionSummary) -> String {
+    private static func formatHealthKitWorkout(
+        _ summary: WorkoutSessionSummary,
+        today: HelmDay,
+        calendar: Calendar,
+        cutoff: DayCutoff
+    ) -> String {
         var parts: [String] = [
             "workout=\"\(summary.title ?? "Workout")\" source=health_kit",
         ]
@@ -423,7 +529,13 @@ public enum CoachContextAssembler {
         if let distance = summary.hkTotalDistanceMeters {
             parts.append("distance_m=\(Int(distance))")
         }
-        parts.append("started=\(ISO8601DateFormatter().string(from: summary.startedAt))")
+        let started = HelmDay.coachStartedLabel(
+            for: summary.startedAt,
+            today: today,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        parts.append("started=\(started)")
         return parts.joined(separator: " ")
     }
 

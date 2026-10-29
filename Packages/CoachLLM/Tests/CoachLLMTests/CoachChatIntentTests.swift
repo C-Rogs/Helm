@@ -21,6 +21,16 @@ struct CoachChatIntentTests {
         #expect(CoachChatIntent.looksLikeWorkoutStart("Start an example workout"))
         #expect(CoachChatIntent.shouldKeepWorkoutStart("Start the workout", lastAssistant: nil))
         #expect(CoachChatIntent.shouldKeepWorkoutStart("yes", lastAssistant: "Ready to lock this in and get started?"))
+        #expect(CoachChatIntent.shouldKeepWorkoutStart("go", lastAssistant: "Ready to start this session?"))
+        #expect(CoachChatIntent.shouldKeepWorkoutStart("yeah", lastAssistant: "Ready to start this session?"))
+        #expect(!CoachChatIntent.shouldKeepWorkoutStart("go", lastAssistant: nil))
+        #expect(!CoachChatIntent.shouldKeepWorkoutStart("go", lastAssistant: "How are your legs feeling?"))
+        #expect(CoachChatIntent.confirmsPendingWorkoutStart("go"))
+        #expect(CoachChatIntent.confirmsPendingWorkoutStart("Start workout"))
+        #expect(!CoachChatIntent.confirmsPendingWorkoutStart("Why are you failing"))
+        let bubble = CoachChatIntent.workoutStartBubble(sessionTitle: "Shoulders & Arms Pump", modelText: "")
+        #expect(bubble == "Shoulders & Arms Pump")
+        #expect(!bubble.hasPrefix("Confirm to start"))
         #expect(!CoachChatIntent.shouldKeepWorkoutStart("Why are you failing", lastAssistant: "Confirm to start Legs."))
         let repair = CoachChatIntent.athleteTurn(
             "Why are you failing",

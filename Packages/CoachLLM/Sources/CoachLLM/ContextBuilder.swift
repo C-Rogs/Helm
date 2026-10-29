@@ -18,6 +18,7 @@ public enum ContextBuilder {
         let stablePrefix = stablePrefixText(profile: profile, days: days)
 
         let sortedDays = days.recent.sorted { $0.helmDay < $1.helmDay }
+        let referenceDay = coachReferenceDay(calendarDay: calendarDay, days: days)
         let includedDays: [CoachContextDay]
         let droppedDayCount: Int
 
@@ -29,22 +30,28 @@ public enum ContextBuilder {
             (includedDays, droppedDayCount) = trimDaysToBudget(
                 stablePrefix: stablePrefix,
                 days: sortedDays,
-                budget: budget
+                budget: budget,
+                referenceDay: referenceDay
             )
         }
-
         let contextBlock: String
         switch turn {
         case .followUp:
             contextBlock = trimFollowUpBlockToBudget(
-                sections: followUpSections(from: days, profile: profile, calendarDay: calendarDay),
+                sections: followUpSections(
+                    from: days,
+                    profile: profile,
+                    calendarDay: calendarDay,
+                    referenceDay: referenceDay
+                ),
                 systemInstructions: systemInstructions,
                 budget: budget
             )
         case .initial:
             contextBlock = assembleContextBlock(
                 stablePrefix: stablePrefix,
-                days: includedDays
+                days: includedDays,
+                referenceDay: referenceDay
             )
         }
 
@@ -164,9 +171,12 @@ public enum ContextBuilder {
     private static func followUpSections(
         from days: CoachContextDays,
         profile: MemoryProfile,
-        calendarDay: HelmDay? = nil
+        calendarDay: HelmDay? = nil,
+        referenceDay: HelmDay
     ) -> [String] {
-        var sections: [String] = []
+        var sections: [String] = [
+            clockLine(for: referenceDay)
+        ]
         let slim = normalized(profile.slimPhaseLine())
         if !slim.isEmpty {
             sections.append("# Phase\n\(slim)")
@@ -184,7 +194,12 @@ public enum ContextBuilder {
         if !patterns.isEmpty {
             sections.append("# Pattern Findings\n\(patterns)")
         }
-        appendTodaySection(days: days, calendarDay: calendarDay, into: &sections)
+        appendTodaySection(
+            days: days,
+            calendarDay: calendarDay,
+            referenceDay: referenceDay,
+            into: &sections
+        )
         if let training = recentTrainingSection(
             workouts: normalized(days.recentWorkouts),
             outcomes: days.recentSessionOutcomes
@@ -261,13 +276,15 @@ public enum ContextBuilder {
     private static func appendTodaySection(
         days: CoachContextDays,
         calendarDay: HelmDay?,
+        referenceDay: HelmDay,
         into sections: inout [String]
     ) {
+        let calendar = coachCalendar
         guard let calendarDay else {
             if let today = days.recent.max(by: { $0.helmDay < $1.helmDay }) {
                 let todayText = normalized(today.text)
                 if !todayText.isEmpty {
-                    sections.append("# Today\n## \(today.helmDay.formatted)\n\(todayText)")
+                    sections.append("# Today\n## \(labeled(today.helmDay, relativeTo: referenceDay, calendar: calendar))\n\(todayText)")
                 }
             }
             return
@@ -276,43 +293,58 @@ public enum ContextBuilder {
         if let match = days.recent.first(where: { $0.helmDay == calendarDay }) {
             let todayText = normalized(match.text)
             if !todayText.isEmpty {
-                sections.append("# Today\n## \(match.helmDay.formatted)\n\(todayText)")
+                sections.append("# Today\n## \(labeled(match.helmDay, relativeTo: referenceDay, calendar: calendar))\n\(todayText)")
             } else {
-                sections.append("# Today\n## \(calendarDay.formatted)\nno_daily_row_yet")
+                sections.append("# Today\n## \(labeled(calendarDay, relativeTo: referenceDay, calendar: calendar))\nno_daily_row_yet")
             }
         } else {
-            sections.append("# Today\n## \(calendarDay.formatted)\nno_daily_row_yet")
+            sections.append("# Today\n## \(labeled(calendarDay, relativeTo: referenceDay, calendar: calendar))\nno_daily_row_yet")
         }
 
         if let latest = days.recent.max(by: { $0.helmDay < $1.helmDay }),
            latest.helmDay != calendarDay {
             let latestText = normalized(latest.text)
             if !latestText.isEmpty {
-                sections.append("# Latest day\n## \(latest.helmDay.formatted)\n\(latestText)")
+                sections.append("# Latest day\n## \(labeled(latest.helmDay, relativeTo: referenceDay, calendar: calendar))\n\(latestText)")
             }
         }
     }
 
-    private static func followUpContextBlock(from days: CoachContextDays, profile: MemoryProfile) -> String {
-        followUpSections(from: days, profile: profile).joined(separator: "\n\n")
+    private static var coachCalendar: Calendar { Calendar(identifier: .gregorian) }
+
+    private static func coachReferenceDay(calendarDay: HelmDay?, days: CoachContextDays) -> HelmDay {
+        if let calendarDay { return calendarDay }
+        if let newest = days.recent.map(\.helmDay).max() { return newest }
+        return HelmDay.day(for: Date(), calendar: coachCalendar)
+    }
+
+    private static func clockLine(for day: HelmDay) -> String {
+        "now=\(day.coachClockLabel(calendar: coachCalendar))"
+    }
+
+    private static func labeled(_ day: HelmDay, relativeTo today: HelmDay, calendar: Calendar) -> String {
+        day.coachContextLabel(relativeTo: today, calendar: calendar)
     }
 
     private static func assembleContextBlock(
         stablePrefix: String,
-        days: [CoachContextDay]
+        days: [CoachContextDay],
+        referenceDay: HelmDay
     ) -> String {
-        guard !days.isEmpty else { return stablePrefix }
+        let clock = clockLine(for: referenceDay)
+        guard !days.isEmpty else { return [clock, stablePrefix].joined(separator: "\n\n") }
 
         let daySections = days.map { day in
-            "## \(day.helmDay.formatted)\n\(normalized(day.text))"
+            "## \(labeled(day.helmDay, relativeTo: referenceDay, calendar: coachCalendar))\n\(normalized(day.text))"
         }
-        return ([stablePrefix, "# Recent Days"] + daySections).joined(separator: "\n\n")
+        return ([clock, stablePrefix, "# Recent Days"] + daySections).joined(separator: "\n\n")
     }
 
     private static func trimDaysToBudget(
         stablePrefix: String,
         days: [CoachContextDay],
-        budget: Int
+        budget: Int,
+        referenceDay: HelmDay
     ) -> (included: [CoachContextDay], dropped: Int) {
         guard budget > 0 else {
             return ([], days.count)
@@ -320,7 +352,11 @@ public enum ContextBuilder {
 
         var remaining = days
         while !remaining.isEmpty {
-            let candidate = assembleContextBlock(stablePrefix: stablePrefix, days: remaining)
+            let candidate = assembleContextBlock(
+                stablePrefix: stablePrefix,
+                days: remaining,
+                referenceDay: referenceDay
+            )
             if TokenBudget.estimateTokens(characterCount: candidate.count) <= budget {
                 return (remaining, days.count - remaining.count)
             }

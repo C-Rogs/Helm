@@ -310,9 +310,7 @@ enum CoachChatActionParser {
     ) -> CoachChatActionProposal {
         let preview = WorkoutStartCommandPreview.preview(for: payload)
         let stripped = CoachChatTextFormatter.userFacingText(from: visibleText)
-        let reply = stripped.isEmpty
-            ? "Confirm to start \(preview.title)."
-            : stripped
+        let reply = CoachChatIntent.workoutStartBubble(sessionTitle: preview.title, modelText: stripped)
         return CoachChatActionProposal(
             reply: reply,
             kind: .workoutStart(payload),

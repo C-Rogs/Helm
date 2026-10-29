@@ -112,7 +112,7 @@ public enum CoachChatIntent: Sendable {
             .trimmingCharacters(in: .punctuationCharacters)
             .lowercased()
         let affirms: Set<String> = [
-            "yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead", "start", "start it"
+            "yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it", "go ahead", "go", "start", "start it"
         ]
         guard affirms.contains(trimmed) else { return false }
         guard let lastAssistant else { return false }
@@ -124,6 +124,28 @@ public enum CoachChatIntent: Sendable {
             || hay.contains("ready to")
             || hay.contains("get started")
             || hay.contains("let me know")
+    }
+
+    /// A start card is already on screen. Short confirms press it instead of another model turn.
+    public static func confirmsPendingWorkoutStart(_ text: String) -> Bool {
+        if refusesWorkoutStart(text) || prefersSpokenAnswer(text) { return false }
+        if looksLikeWorkoutStart(text) { return true }
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: .punctuationCharacters)
+            .lowercased()
+        let affirms: Set<String> = [
+            "yes", "yeah", "yep", "ok", "okay", "sure", "please", "do it",
+            "go ahead", "go", "start", "start it"
+        ]
+        return affirms.contains(trimmed)
+    }
+
+    /// Spoken line beside a start card. The card is the confirm; the bubble only names the session.
+    public static func workoutStartBubble(sessionTitle: String, modelText: String) -> String {
+        let model = modelText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !model.isEmpty { return model }
+        let title = sessionTitle.trimmingCharacters(in: .whitespacesAndNewlines)
+        return title.isEmpty ? "Workout" : title
     }
 
     /// Exercise phrase the current message requires in workout_start (e.g. "with lat pulldown").

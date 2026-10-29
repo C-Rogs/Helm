@@ -186,5 +186,44 @@ struct CoachContextAssemblerTests {
         #expect(context.trainingPlanSnapshot.contains("rolling_7d_hard_sets:"))
         #expect(context.weekAheadSchedule.contains("horizon_days=7"))
         #expect(context.weekAheadSchedule.contains(": Rest"))
+        #expect(context.weekAheadSchedule.contains("(today)"))
+        #expect(context.weekAheadSchedule.contains("today_slot=Rest status=rest."))
+    }
+
+    @Test("health kit start uses the local weekday, not the previous day")
+    func healthKitStartUsesLocalWeekday() async throws {
+        let store = try PersistenceStore.inMemory()
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        let today = HelmDay(year: 2026, month: 10, day: 28)
+        let tuesdayEvening = calendar.date(from: DateComponents(
+            timeZone: TimeZone(secondsFromGMT: 0),
+            year: 2026,
+            month: 10,
+            day: 27,
+            hour: 19
+        ))!
+        try store.workoutSessions.insert(
+            WorkoutSessionDraft(
+                id: "hk-football",
+                title: "Football",
+                startedAt: tuesdayEvening,
+                endedAt: tuesdayEvening.addingTimeInterval(72 * 60),
+                source: .healthKit,
+                exercises: []
+            )
+        )
+
+        let context = try await CoachContextAssembler.assemble(
+            from: store,
+            endingAt: today,
+            lookbackDays: 7,
+            calendar: calendar
+        )
+
+        #expect(context.recentWorkouts.contains("started=Tuesday 2026-10-27 (yesterday)"))
+        #expect(!context.recentWorkouts.contains("Monday"))
+        #expect(context.weekAheadSchedule.contains("Wednesday 2026-10-28 (today)"))
+        #expect(context.weekAheadSchedule.contains("yesterday=Football"))
     }
 }

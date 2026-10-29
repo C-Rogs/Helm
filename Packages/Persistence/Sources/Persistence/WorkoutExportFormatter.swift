@@ -5,14 +5,22 @@ import Foundation
 public enum WorkoutExportFormatter {
     public static func formatForCoachContext(
         draft: WorkoutSessionDraft,
-        displayNames: [String: String]
+        displayNames: [String: String],
+        today: HelmDay? = nil,
+        calendar: Calendar = .current,
+        cutoff: DayCutoff = .default
     ) -> String {
         var lines: [String] = []
+        let sessionDay = HelmDay.day(for: draft.startedAt, cutoff: cutoff, calendar: calendar)
+        let dayLabel = today.map {
+            sessionDay.coachContextLabel(relativeTo: $0, calendar: calendar)
+        } ?? sessionDay.coachClockLabel(calendar: calendar)
+        lines.append("day=\(dayLabel)")
         let title = draft.title?.trimmingCharacters(in: .whitespacesAndNewlines)
         if let title, !title.isEmpty {
             lines.append(title)
         } else {
-            lines.append("Workout \(ISO8601Coding.string(from: draft.startedAt))")
+            lines.append("Workout \(dayLabel)")
         }
 
         for exercise in draft.exercises.sorted(by: { $0.displayOrder < $1.displayOrder }) {

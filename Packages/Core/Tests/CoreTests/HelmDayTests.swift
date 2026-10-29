@@ -229,6 +229,18 @@ struct HelmDayArithmeticTests {
         #expect(beforeLeap.days(to: afterLeap, calendar: calendar) == 2)
     }
 
+    @Test("coach labels name the weekday and only today or yesterday get a relative suffix")
+    func coachDateLabels() {
+        let wednesday = day(2026, 10, 28)
+        let tuesday = day(2026, 10, 27)
+        let monday = day(2026, 10, 26)
+        #expect(wednesday.coachClockLabel(calendar: calendar) == "Wednesday 2026-10-28")
+        #expect(wednesday.coachContextLabel(relativeTo: wednesday, calendar: calendar) == "Wednesday 2026-10-28 (today)")
+        #expect(tuesday.coachContextLabel(relativeTo: wednesday, calendar: calendar) == "Tuesday 2026-10-27 (yesterday)")
+        #expect(monday.coachContextLabel(relativeTo: wednesday, calendar: calendar) == "Monday 2026-10-26")
+        #expect(wednesday.formatted == "2026-10-28")
+    }
+
     @Test("days(to:) crosses year boundary")
     func yearBoundary() {
         let newYearsEve = day(2025, 12, 31)

@@ -172,9 +172,18 @@ final class ChatController {
         )
     }
 
+    private func isPendingWorkoutStart(_ proposal: CoachChatActionProposal?) -> Bool {
+        if case .workoutStart = proposal?.kind { return true }
+        return false
+    }
+
     func send() {
         let trimmed = draftText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty, !isStreaming else { return }
+        guard !trimmed.isEmpty else { return }
+        if isStreaming {
+            lastTurnError = "Coach is still responding. Wait a moment and try again."
+            return
+        }
         if CoachChatIntent.looksLikeClearChat(trimmed) {
             draftText = ""
             clearConversation()
@@ -189,9 +198,14 @@ final class ChatController {
             lastTurnError = CoachActivityGate.shared.blockingMessage(for: .chat)
             return
         }
+        if case .workoutStart = pendingChatAction?.kind,
+           CoachChatIntent.confirmsPendingWorkoutStart(trimmed) {
+            draftText = ""
+            confirmChatAction()
+            return
+        }
 
         draftText = ""
-        streamTask?.cancel()
         streamTask = Task { @MainActor in
             await sendMessage(trimmed)
         }
@@ -1317,6 +1331,11 @@ final class ChatController {
                CoachChatActionParser.hasMalformedFoodLogCall(assembledTurn.functionCalls)
                 || FoodLogPayloadParser.hasMalformedBlock(in: assembledTurn.text) {
                 lastTurnError = "Couldn't read that meal log. Ask again with calories."
+            } else if lastTurnError == nil,
+                      pendingFoodMealConfirm == nil,
+                      CoachChatIntent.shouldKeepWorkoutStart(text, lastAssistant: lastAssistant),
+                      !isPendingWorkoutStart(pendingAction) {
+                lastTurnError = "Couldn't start that workout. Try again."
             } else if wasFoodDictation, pendingFoodMealConfirm == nil, lastTurnError == nil {
                 // Nutrition describe has no chat transcript UI - prose-only replies looked like a hang.
                 lastTurnError = "Couldn't estimate that meal. Try again with clearer portions, or use Search."

@@ -185,6 +185,48 @@ public extension HelmDay {
         return adding(days: offset, calendar: calendar)
     }
 
+    /// English weekday plus ISO date, for coach context. Example: `Wednesday 2026-10-28`.
+    public func coachClockLabel(calendar: Calendar) -> String {
+        "\(englishWeekdayName(calendar: calendar)) \(formatted)"
+    }
+
+    /// Clock label plus `(today)` or `(yesterday)` when this day is the reference day or the day before.
+    public func coachContextLabel(relativeTo today: HelmDay, calendar: Calendar) -> String {
+        let clock = coachClockLabel(calendar: calendar)
+        if self == today {
+            return "\(clock) (today)"
+        }
+        if self == today.adding(days: -1, calendar: calendar) {
+            return "\(clock) (yesterday)"
+        }
+        return clock
+    }
+
+    /// Local calendar day of an instant, labeled for the coach. Not a UTC timestamp.
+    public static func coachStartedLabel(
+        for instant: Date,
+        today: HelmDay,
+        calendar: Calendar,
+        cutoff: DayCutoff = .default
+    ) -> String {
+        day(for: instant, cutoff: cutoff, calendar: calendar)
+            .coachContextLabel(relativeTo: today, calendar: calendar)
+    }
+
+    public func englishWeekdayName(calendar: Calendar) -> String {
+        guard let date = calendar.date(from: dateComponents()) else { return "Unknown" }
+        switch calendar.component(.weekday, from: date) {
+        case 1: return "Sunday"
+        case 2: return "Monday"
+        case 3: return "Tuesday"
+        case 4: return "Wednesday"
+        case 5: return "Thursday"
+        case 6: return "Friday"
+        case 7: return "Saturday"
+        default: return "Unknown"
+        }
+    }
+
     /// Short weekday name ("Mon") using the current calendar. Cached formatter.
     @MainActor
     public var shortWeekday: String {

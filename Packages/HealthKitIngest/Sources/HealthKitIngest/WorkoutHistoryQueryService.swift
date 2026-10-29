@@ -78,7 +78,14 @@ public struct WorkoutHistoryQueryService: Sendable {
             return "\(header)\nerror=missing_draft"
         }
         let names = try store.exercises.displayNames(for: draft.exercises.map(\.exerciseID))
-        let body = WorkoutExportFormatter.formatForCoachContext(draft: draft, displayNames: names)
+        let today = HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
+        let body = WorkoutExportFormatter.formatForCoachContext(
+            draft: draft,
+            displayNames: names,
+            today: today,
+            calendar: calendar,
+            cutoff: cutoff
+        )
         let title = summary.title ?? "Workout"
         let duration: String
         if let ended = summary.endedAt {
@@ -86,7 +93,12 @@ public struct WorkoutHistoryQueryService: Sendable {
         } else {
             duration = "duration_s=unknown"
         }
-        let started = ISO8601DateFormatter().string(from: summary.startedAt)
+        let started = HelmDay.coachStartedLabel(
+            for: summary.startedAt,
+            today: today,
+            calendar: calendar,
+            cutoff: cutoff
+        )
         let metrics: String
         if summary.isNativeCardio {
             var cardioMetrics = ["source=native_cardio", "intervals=\(summary.totalSetCount)"]
@@ -124,7 +136,14 @@ public struct WorkoutHistoryQueryService: Sendable {
         if let distance = summary.hkTotalDistanceMeters {
             parts.append("distance_m=\(Int(distance))")
         }
-        parts.append("started=\(ISO8601DateFormatter().string(from: summary.startedAt))")
+        let today = HelmDay.day(for: Date(), cutoff: cutoff, calendar: calendar)
+        let started = HelmDay.coachStartedLabel(
+            for: summary.startedAt,
+            today: today,
+            calendar: calendar,
+            cutoff: cutoff
+        )
+        parts.append("started=\(started)")
 
         return """
         \(header)
