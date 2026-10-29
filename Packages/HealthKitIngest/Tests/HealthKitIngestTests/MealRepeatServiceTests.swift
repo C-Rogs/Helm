@@ -175,6 +175,71 @@ struct MealRepeatServiceTests {
         #expect(copiedItems.map(\.servingLabel) == lineItems.map(\.servingLabel))
     }
 
+    @Test("browse Sunday dinner copy to calendar today writes on today not Sunday")
+    func copySundayDinnerToCalendarToday() async throws {
+        let store = try PersistenceStore.inMemory()
+        let calendar = Calendar(identifier: .gregorian)
+        let now = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 8, hour: 14))
+        )
+        let today = HelmDay.day(for: now, calendar: calendar)
+        let sunday = HelmDay(year: 2026, month: 9, day: 6)
+        #expect(today == HelmDay(year: 2026, month: 9, day: 8))
+        #expect(sunday.englishWeekdayName(calendar: calendar) == "Sunday")
+
+        let repeatService = MealRepeatService(
+            store: store,
+            manualMealService: ManualMealService(
+                writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+                localStore: ManualMealLocalStore(store: store)
+            ),
+            now: { now }
+        )
+        let mealID = UUID()
+        try store.nutrition.upsertMeal(
+            MealRecord(
+                id: mealID,
+                helmDay: sunday,
+                name: "Sunday dinner",
+                loggedAt: sunday.startInstant(calendar: calendar)!.addingTimeInterval(68_400),
+                bucket: .dinner,
+                energy: Energy(kilocalories: 800),
+                proteinGrams: 60,
+                carbohydrateGrams: 70,
+                fatGrams: 25,
+                source: .manual
+            )
+        )
+        try store.foodLog.replaceLineItems(
+            for: mealID,
+            with: [
+                MealLineItemRecord(
+                    mealID: mealID,
+                    foodRef: FoodProductRef(origin: .custom, externalID: "dinner-1", displayName: "Chicken"),
+                    grams: 200,
+                    energyKcal: 800,
+                    proteinG: 60,
+                    carbsG: 70,
+                    fatG: 25,
+                    sortOrder: 0
+                )
+            ]
+        )
+
+        let copied = try await repeatService.copyBucket(
+            from: sunday,
+            bucket: .dinner,
+            to: today
+        )
+        #expect(copied == 1)
+        #expect(try store.nutrition.fetchMeals(for: today).count == 1)
+        #expect(try store.nutrition.fetchMeals(for: sunday).count == 1)
+        let targetMeals = try store.nutrition.fetchMeals(for: today)
+        #expect(targetMeals[0].bucket == .dinner)
+        #expect(targetMeals[0].helmDay == today)
+        #expect(targetMeals[0].helmDay != sunday)
+    }
+
     @Test("copy all meals duplicates every bucket to target day")
     func copyAllMealsDuplicatesEveryBucket() async throws {
         let store = try PersistenceStore.inMemory()

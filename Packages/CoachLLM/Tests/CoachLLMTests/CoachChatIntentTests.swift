@@ -374,6 +374,76 @@ struct CoachChatIntentTests {
             ) == HelmDay(year: 2026, month: 8, day: 27)
         )
     }
+
+    @Test("weekday-only Sunday dinner forces meal_query without matching query or nutrition_day")
+    func weekdayOnlySundayForcesMealQuery() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(secondsFromGMT: 0)!
+        // Early Tuesday morning: still Monday HelmDay under 04:00 cutoff (CAM-44/45).
+        let afterMidnight = calendar.date(from: DateComponents(year: 2026, month: 9, day: 8, hour: 1))!
+        let afternoon = calendar.date(from: DateComponents(year: 2026, month: 9, day: 8, hour: 14))!
+        let sunday = HelmDay(year: 2026, month: 9, day: 6)
+        #expect(HelmDay.day(for: afterMidnight, calendar: calendar) == HelmDay(year: 2026, month: 9, day: 7))
+        #expect(
+            CoachChatIntent.weekdayOnlyMealDay(
+                from: "Delete all the dinner items on Sunday",
+                now: afterMidnight,
+                calendar: calendar
+            ) == sunday
+        )
+        #expect(
+            CoachChatIntent.weekdayOnlyMealDay(
+                from: "Delete Sundays dinner",
+                now: afterMidnight,
+                calendar: calendar
+            ) == sunday
+        )
+        #expect(
+            CoachChatIntent.shouldForceMealQueryForWeekdayMealOp(
+                userText: "Delete Sundays dinner",
+                mealQueryDay: nil,
+                mealQueryIsFresh: false,
+                nutritionTabVisible: false,
+                viewedNutritionDay: nil,
+                now: afternoon,
+                calendar: calendar
+            )
+        )
+        #expect(
+            !CoachChatIntent.shouldForceMealQueryForWeekdayMealOp(
+                userText: "Delete Sundays dinner",
+                mealQueryDay: sunday,
+                mealQueryIsFresh: true,
+                nutritionTabVisible: false,
+                viewedNutritionDay: nil,
+                now: afternoon,
+                calendar: calendar
+            )
+        )
+        #expect(
+            CoachChatIntent.weekdayConflictsWithPayloadDay(
+                userText: "Delete Sundays dinner",
+                payloadDay: "2026-09-07",
+                now: afternoon,
+                calendar: calendar
+            )
+        )
+        #expect(
+            !CoachChatIntent.weekdayConflictsWithPayloadDay(
+                userText: "Delete Sundays dinner",
+                payloadDay: "2026-09-06",
+                now: afternoon,
+                calendar: calendar
+            )
+        )
+        #expect(
+            CoachChatIntent.weekdayOnlyMealDay(
+                from: "delete yesterday dinner",
+                now: afternoon,
+                calendar: calendar
+            ) == nil
+        )
+    }
 }
 
 @Suite("CoachThreadState")

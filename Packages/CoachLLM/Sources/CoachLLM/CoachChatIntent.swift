@@ -1109,6 +1109,61 @@ public enum CoachChatIntent: Sendable {
         return inferredWeekdayHelmDay(from: lower, now: now, calendar: calendar)
     }
 
+    /// Weekday-only meal day (e.g. "Sunday dinner") with no ISO / today / yesterday cue.
+    public static func weekdayOnlyMealDay(
+        from text: String,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> HelmDay? {
+        let lower = text.lowercased()
+        if firstISODate(in: text) != nil { return nil }
+        if containsWholePhrase("yesterday", in: lower) || containsWholePhrase("yday", in: lower) {
+            return nil
+        }
+        if containsWholePhrase("today", in: lower) { return nil }
+        return inferredWeekdayHelmDay(from: lower, now: now, calendar: calendar)
+    }
+
+    /// Refuse delete/copy when athlete named only a weekday and nutrition_day / meal_query
+    /// do not uniquely pin that ISO day (CAM-44 / CAM-45 midnight mix-ups).
+    public static func shouldForceMealQueryForWeekdayMealOp(
+        userText: String,
+        mealQueryDay: HelmDay?,
+        mealQueryIsFresh: Bool,
+        nutritionTabVisible: Bool,
+        viewedNutritionDay: String?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let weekdayDay = weekdayOnlyMealDay(from: userText, now: now, calendar: calendar) else {
+            return false
+        }
+        if mealQueryIsFresh, mealQueryDay == weekdayDay {
+            return false
+        }
+        if nutritionTabVisible,
+           let viewed = parseHelmDay(viewedNutritionDay ?? ""),
+           viewed == weekdayDay {
+            return false
+        }
+        return true
+    }
+
+    /// Athlete named a weekday but the tool payload ISO day does not match that weekday.
+    public static func weekdayConflictsWithPayloadDay(
+        userText: String,
+        payloadDay: String?,
+        now: Date = Date(),
+        calendar: Calendar = .current
+    ) -> Bool {
+        guard let weekdayDay = weekdayOnlyMealDay(from: userText, now: now, calendar: calendar),
+              let payloadDay,
+              let parsed = parseHelmDay(payloadDay) else {
+            return false
+        }
+        return parsed != weekdayDay
+    }
+
     /// Exercise/set/load change to the current session, not a new plan or a past-workout review.
     public static func looksLikeSessionAdjustment(_ text: String) -> Bool {
         if looksLikeWorkoutStart(text) { return false }
@@ -1355,12 +1410,25 @@ public enum CoachChatIntent: Sendable {
             ("sunday", 1), ("monday", 2), ("tuesday", 3), ("wednesday", 4),
             ("thursday", 5), ("friday", 6), ("saturday", 7)
         ]
-        guard let match = names.first(where: { containsWholePhrase($0.0, in: lower) }) else {
+        guard let match = names.first(where: { containsWeekdayName($0.0, in: lower) }) else {
             return nil
         }
-        let today = calendar.component(.weekday, from: now)
-        var delta = match.1 - today
+        // Anchor on HelmDay (cutoff-aware), not wall-clock weekday; otherwise
+        // 01:00 Tuesday still on Monday's HelmDay maps "Sunday" to Saturday.
+        let todayHelm = HelmDay.day(for: now, calendar: calendar)
+        guard let todayDate = calendar.date(from: todayHelm.dateComponents()) else {
+            return nil
+        }
+        let todayWeekday = calendar.component(.weekday, from: todayDate)
+        var delta = match.1 - todayWeekday
         if delta > 0 { delta -= 7 }
-        return HelmDay.day(for: now, calendar: calendar).adding(days: delta, calendar: calendar)
+        return todayHelm.adding(days: delta, calendar: calendar)
+    }
+
+    /// Matches "sunday", "sunday's", and "sundays".
+    private static func containsWeekdayName(_ name: String, in lower: String) -> Bool {
+        containsWholePhrase(name, in: lower)
+            || containsWholePhrase("\(name)'s", in: lower)
+            || containsWholePhrase("\(name)s", in: lower)
     }
 }

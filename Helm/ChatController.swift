@@ -71,6 +71,8 @@ final class ChatController {
     private static let streamingUIInterval: TimeInterval = 0.05
     private static let cloudFeaturesOffMessage =
         "Cloud features are off. Turn them on in Settings to use Coach."
+    private static let weekdayMealQueryRequiredMessage =
+        "I need to look up that weekday in your diary first. Ask what was logged (for example, Sunday dinner), then I can delete or copy using the ISO day from the results."
 
     init(
         persistence: PersistenceStore,
@@ -474,6 +476,9 @@ final class ChatController {
                 if let day = result.nutritionDay {
                     NutritionBootstrap.refreshNutrition(for: day)
                 }
+                if let echo = result.diaryOpEcho {
+                    appendDiaryOpEcho(echo)
+                }
             case let .mealCopy(payload):
                 applyProgressStep = "Copying meal…"
                 let today = HelmDay.day(for: Date(), calendar: .current)
@@ -499,6 +504,9 @@ final class ChatController {
                 )
                 if let day = result.nutritionDay {
                     NutritionBootstrap.refreshNutrition(for: day)
+                }
+                if let echo = result.diaryOpEcho {
+                    appendDiaryOpEcho(echo)
                 }
             case let .memoryAdjustment(payload):
                 applyProgressStep = "Updating Memory…"
@@ -1126,14 +1134,38 @@ final class ChatController {
                     functionCalls: assembledTurn.functionCalls
                 )
                 if case let .foodLog(payload) = pendingAction?.kind {
+                    let nutritionTabVisible = AppTabRouter.shared.selectedTab == .nutrition
+                    let viewedNutritionDay = NutritionBootstrap.lastViewedHelmDay?.formatted
                     let day = CoachChatIntent.resolvedChatFoodHelmDay(
                         userText: text,
                         payloadDay: payload.helmDay,
-                        nutritionTabVisible: AppTabRouter.shared.selectedTab == .nutrition,
-                        viewedNutritionDay: NutritionBootstrap.lastViewedHelmDay?.formatted
+                        nutritionTabVisible: nutritionTabVisible,
+                        viewedNutritionDay: viewedNutritionDay
                     )
                     let resolvedPayload = payload.replacingHelmDay(day.formatted)
-                    if let validationError = FoodLogProposalValidator.validate(
+                    if payload.action == .delete || payload.action == .edit,
+                       CoachChatIntent.shouldForceMealQueryForWeekdayMealOp(
+                           userText: text,
+                           mealQueryDay: lastMealQueryContext?.helmDay,
+                           mealQueryIsFresh: lastMealQueryContext?.isFresh() ?? false,
+                           nutritionTabVisible: nutritionTabVisible,
+                           viewedNutritionDay: viewedNutritionDay
+                       ) {
+                        pendingAction = nil
+                        assembledTurn = AssembledCoachTurn(
+                            text: Self.weekdayMealQueryRequiredMessage,
+                            functionCalls: []
+                        )
+                    } else if CoachChatIntent.weekdayConflictsWithPayloadDay(
+                        userText: text,
+                        payloadDay: resolvedPayload.helmDay
+                    ) {
+                        pendingAction = nil
+                        assembledTurn = AssembledCoachTurn(
+                            text: Self.weekdayMealQueryRequiredMessage,
+                            functionCalls: []
+                        )
+                    } else if let validationError = FoodLogProposalValidator.validate(
                         payload: resolvedPayload,
                         queryContext: lastMealQueryContext,
                         persistence: persistence
@@ -1146,6 +1178,26 @@ final class ChatController {
                     } else {
                         pendingAction = CoachChatActionParser.proposal(
                             fromFoodLog: resolvedPayload
+                        )
+                    }
+                }
+                if case let .mealCopy(payload) = pendingAction?.kind {
+                    let nutritionTabVisible = AppTabRouter.shared.selectedTab == .nutrition
+                    let viewedNutritionDay = NutritionBootstrap.lastViewedHelmDay?.formatted
+                    if CoachChatIntent.shouldForceMealQueryForWeekdayMealOp(
+                        userText: text,
+                        mealQueryDay: lastMealQueryContext?.helmDay,
+                        mealQueryIsFresh: lastMealQueryContext?.isFresh() ?? false,
+                        nutritionTabVisible: nutritionTabVisible,
+                        viewedNutritionDay: viewedNutritionDay
+                    ) || CoachChatIntent.weekdayConflictsWithPayloadDay(
+                        userText: text,
+                        payloadDay: payload.sourceHelmDay
+                    ) {
+                        pendingAction = nil
+                        assembledTurn = AssembledCoachTurn(
+                            text: Self.weekdayMealQueryRequiredMessage,
+                            functionCalls: []
                         )
                     }
                 }
@@ -2845,6 +2897,27 @@ final class ChatController {
             trimVisibleChatHistory()
         } catch {
             // Non-fatal: confirm/dismiss already applied.
+        }
+    }
+
+    /// Verified ISO day + count after meal_copy / food_log delete so the model cannot claim the wrong day.
+    private func appendDiaryOpEcho(_ echo: String) {
+        let trimmed = echo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        let text = "Diary update: \(trimmed)."
+        do {
+            let assistantMessage = try persistence.chat.append(
+                ChatMessageInsert(
+                    role: .assistant,
+                    text: text,
+                    promptVersion: CoachPromptVersion.chatV1.rawValue,
+                    schemaVersion: CoachOutputSchemaVersion.chatV1.rawValue
+                )
+            )
+            messages.append(assistantMessage)
+            trimVisibleChatHistory()
+        } catch {
+            // Non-fatal: mutation already applied.
         }
     }
 

@@ -105,6 +105,10 @@ struct HelmActionExecutorTests {
             ))
         )
         #expect(result.nutritionDay == target)
+        #expect(
+            result.diaryOpEcho
+                == "copied 1 meal from 2023-11-14 lunch → 2023-11-15 lunch"
+        )
         #expect(try store.nutrition.fetchMeals(for: target).count == 1)
     }
 

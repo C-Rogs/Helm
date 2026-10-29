@@ -234,7 +234,50 @@ struct FoodLogCommandTests {
             action: .delete,
             helmDay: "2026-08-01"
         )
-        try await applier.apply(payload)
+        let echo = try await applier.apply(payload)
+        #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
+        #expect(echo == "deleted 2 meals on 2026-08-01")
+    }
+
+    @Test("bulk delete by bucket echoes ISO day and count")
+    func bulkDeleteBucketEcho() async throws {
+        let store = try PersistenceStore.inMemory()
+        let service = ManualMealService(
+            writer: MealHealthKitWriter(store: MockHealthKitStoreClient()),
+            localStore: ManualMealLocalStore(store: store, calendar: calendar)
+        )
+        let applier = FoodLogCommandApplier(
+            manualMealService: service,
+            persistence: store,
+            calendar: calendar
+        )
+        let helmDay = HelmDay(year: 2026, month: 9, day: 6)
+        let at = try #require(
+            calendar.date(from: DateComponents(year: 2026, month: 9, day: 6, hour: 19))
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: 400,
+            label: "Dinner A",
+            bucket: .dinner,
+            loggedAt: at,
+            helmDay: helmDay
+        )
+        _ = try await service.logQuickAdd(
+            kilocalories: 400,
+            label: "Dinner B",
+            bucket: .dinner,
+            loggedAt: at.addingTimeInterval(60),
+            helmDay: helmDay
+        )
+        let payload = FoodLogPayload(
+            schemaVersion: CoachOutputSchemaVersion.foodLogV1.rawValue,
+            reply: "Deleted Sunday dinner.",
+            action: .delete,
+            bucket: "dinner",
+            helmDay: "2026-09-06"
+        )
+        let echo = try await applier.apply(payload)
+        #expect(echo == "deleted 2 meals on 2026-09-06 dinner")
         #expect(try store.nutrition.fetchMeals(for: helmDay).isEmpty)
     }
 

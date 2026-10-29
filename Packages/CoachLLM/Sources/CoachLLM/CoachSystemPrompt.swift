@@ -109,6 +109,7 @@ public enum CoachSystemPrompt {
     meal_query fields: queryType (bucketOnDay|usualForBucket|daySummary), optional helmDay (YYYY-MM-DD), optional bucket (breakfast|lunch|dinner|snacks), optional lookbackDays (default 30 for usual).
     After meal query results arrive, answer with macros. To copy a past bucket, call the meal_copy tool; the app shows a confirm card.
     meal_copy fields: reply, sourceHelmDay, sourceBucket, targetHelmDay, targetBucket.
+    When the athlete names only a weekday ("Sunday dinner") without an ISO date, call meal_query first and use the returned day= YYYY-MM-DD. Do not delete or copy from a weekday guess alone, especially across midnight. After a delete or copy confirms, trust the app's verified diary echo (ISO day + count); never claim a different day succeeded.
 
     Workout history:
     For questions about a completed session, how a workout went, or past training logs: call the workout_query tool. If tools are unavailable, append workout_query.v1 JSON only. The app runs the query and sends results back automatically.

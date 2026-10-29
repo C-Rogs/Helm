@@ -45,13 +45,21 @@ public struct HelmActionExecutor: Sendable {
         case let .meal(write):
             return try await runMeal(write)
         case let .copyMeal(copy):
-            _ = try await mealRepeatService.copyBucket(
+            let count = try await mealRepeatService.copyBucket(
                 from: copy.sourceDay,
                 bucket: copy.sourceBucket,
                 to: copy.targetDay,
                 targetBucket: copy.targetBucket
             )
-            return .nutrition(copy.targetDay)
+            let targetBucket = copy.targetBucket ?? copy.sourceBucket
+            let echo = MealDiaryOpEcho.copied(
+                count: count,
+                source: copy.sourceDay,
+                sourceBucket: copy.sourceBucket,
+                target: copy.targetDay,
+                targetBucket: targetBucket
+            )
+            return .nutrition(copy.targetDay, diaryOpEcho: echo)
         case let .copyAllMeals(sourceDay, targetDay):
             _ = try await mealRepeatService.copyAllMeals(from: sourceDay, to: targetDay)
             return .nutrition(targetDay)
@@ -212,13 +220,25 @@ public struct HelmActionExecutor: Sendable {
                 persistence: persistence,
                 calendar: calendar
             )
-            try await applier.apply(payload, now: payloadNow)
-            let day = FoodLogCommandApplier.resolvedHelmDay(
+            let preDeleteDay: HelmDay? = {
+                guard payload.action == .delete else { return nil }
+                if let mealIDString = payload.mealID,
+                   let mealID = UUID(uuidString: mealIDString),
+                   let meal = try? persistence.nutrition.fetchMeal(id: mealID) {
+                    return meal.helmDay
+                }
+                if let dayRaw = payload.helmDay {
+                    return HelmDay(formatted: dayRaw)
+                }
+                return nil
+            }()
+            let echo = try await applier.apply(payload, now: payloadNow)
+            let day = preDeleteDay ?? FoodLogCommandApplier.resolvedHelmDay(
                 from: payload,
                 now: payloadNow,
                 calendar: calendar
             )
-            return .nutrition(day)
+            return .nutrition(day, diaryOpEcho: echo)
 
         case let .logFood(product, grams, servingLabel, bucket, loggedAt, helmDay, source):
             _ = try await manualMealService.logFood(

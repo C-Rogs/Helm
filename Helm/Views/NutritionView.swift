@@ -106,6 +106,9 @@ struct NutritionView: View {
                 todayHelmDay: todayHelmDay,
                 onMealsChanged: {
                     reloadPersistedMeals()
+                },
+                onFocusDay: { day in
+                    await selectDay(day)
                 }
             ))
             .modifier(
@@ -751,6 +754,7 @@ private struct NutritionLoggingSheets: ViewModifier {
     let currentHelmDay: HelmDay?
     let todayHelmDay: HelmDay?
     let onMealsChanged: () -> Void
+    let onFocusDay: (HelmDay) async -> Void
 
     func body(content: Content) -> some View {
         content
@@ -878,10 +882,12 @@ private struct NutritionLoggingSheets: ViewModifier {
                         isSaving: mealActionsController.isSaving,
                         onConfirm: { targetDay, targetBucket in
                             Task {
-                                await mealActionsController.confirmCopyEntry(
+                                if let focused = await mealActionsController.confirmCopyEntry(
                                     targetDay: targetDay,
                                     targetBucket: targetBucket
-                                )
+                                ) {
+                                    await onFocusDay(focused)
+                                }
                                 onMealsChanged()
                             }
                         },

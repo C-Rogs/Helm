@@ -171,21 +171,26 @@ public struct HelmActionResult: Sendable, Equatable {
     public let nutritionDay: HelmDay?
     public let sessionAdjustment: AppliedSessionAdjustment?
     public let sideEffects: [HelmActionSideEffect]
+    /// Verified post-op diary line (ISO helmDay + count) for coach echo.
+    public let diaryOpEcho: String?
 
     public init(
         nutritionDay: HelmDay? = nil,
         sessionAdjustment: AppliedSessionAdjustment? = nil,
-        sideEffects: [HelmActionSideEffect] = []
+        sideEffects: [HelmActionSideEffect] = [],
+        diaryOpEcho: String? = nil
     ) {
         self.nutritionDay = nutritionDay
         self.sessionAdjustment = sessionAdjustment
         self.sideEffects = sideEffects
+        self.diaryOpEcho = diaryOpEcho
     }
 
-    public static func nutrition(_ day: HelmDay) -> HelmActionResult {
+    public static func nutrition(_ day: HelmDay, diaryOpEcho: String? = nil) -> HelmActionResult {
         HelmActionResult(
             nutritionDay: day,
-            sideEffects: [.refreshNutrition(day)]
+            sideEffects: [.refreshNutrition(day)],
+            diaryOpEcho: diaryOpEcho
         )
     }
 }

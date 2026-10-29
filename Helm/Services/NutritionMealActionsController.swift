@@ -114,8 +114,10 @@ final class NutritionMealActionsController {
         copyEntryContext = nil
     }
 
-    func confirmCopyEntry(targetDay: HelmDay, targetBucket: MealBucket) async {
-        guard let context = copyEntryContext else { return }
+    /// Returns the target day on success so the diary can focus there.
+    @discardableResult
+    func confirmCopyEntry(targetDay: HelmDay, targetBucket: MealBucket) async -> HelmDay? {
+        guard let context = copyEntryContext else { return nil }
         isSaving = true
         defer { isSaving = false }
         do {
@@ -137,6 +139,7 @@ final class NutritionMealActionsController {
             )
             copyEntryContext = nil
             HapticEngine.shared.play(.mealConfirmed)
+            return targetDay
         } catch MealRepeatError.emptyBucket {
             errorMessage = "Nothing logged in \(context.sourceBucket.displayName.lowercased()) to copy."
         } catch MealRepeatError.duplicateCopy {
@@ -144,6 +147,7 @@ final class NutritionMealActionsController {
         } catch {
             errorMessage = "Could not copy entry. Try again."
         }
+        return nil
     }
 
     func copyAllMeals(from sourceDay: HelmDay, to today: HelmDay) async {

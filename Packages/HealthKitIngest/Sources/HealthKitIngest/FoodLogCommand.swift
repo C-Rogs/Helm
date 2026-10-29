@@ -79,14 +79,17 @@ public struct FoodLogCommandApplier: Sendable {
         self.calendar = calendar
     }
 
-    public func apply(_ payload: FoodLogPayload, now: Date = Date(), userText: String? = nil) async throws {
+    @discardableResult
+    public func apply(_ payload: FoodLogPayload, now: Date = Date(), userText: String? = nil) async throws -> String? {
         switch payload.action {
         case .log:
             try await applyLog(payload, now: now, userText: userText)
+            return nil
         case .edit:
             try await applyEdit(payload, now: now, userText: userText)
+            return nil
         case .delete:
-            try await applyDelete(payload, now: now)
+            return try await applyDelete(payload, now: now)
         }
     }
 
@@ -130,11 +133,14 @@ public struct FoodLogCommandApplier: Sendable {
         try await applyLog(payload, now: now, userText: userText)
     }
 
-    private func applyDelete(_ payload: FoodLogPayload, now: Date = Date()) async throws {
+    private func applyDelete(_ payload: FoodLogPayload, now: Date = Date()) async throws -> String {
         if let mealIDString = payload.mealID,
            let mealID = UUID(uuidString: mealIDString) {
+            let meal = try persistence.nutrition.fetchMeal(id: mealID)
             try await manualMealService.deleteMeal(mealID: mealID)
-            return
+            let day = meal?.helmDay ?? Self.resolvedHelmDay(from: payload, now: now, calendar: calendar)
+            let bucket = meal?.bucket
+            return MealDiaryOpEcho.deleted(count: 1, day: day, bucket: bucket)
         }
 
         // Bulk delete: helmDay required (optional bucket filter).
@@ -144,9 +150,11 @@ public struct FoodLogCommandApplier: Sendable {
         }
 
         var meals = try persistence.nutrition.fetchMeals(for: helmDay)
+        var bucket: MealBucket?
         if let bucketRaw = payload.bucket,
-           let bucket = MealBucket(rawValue: bucketRaw.lowercased()) {
-            meals = meals.filter { $0.bucket == bucket }
+           let resolved = MealBucket(rawValue: bucketRaw.lowercased()) {
+            bucket = resolved
+            meals = meals.filter { $0.bucket == resolved }
         }
         guard !meals.isEmpty else {
             throw ManualMealError.nothingToDelete
@@ -155,6 +163,7 @@ public struct FoodLogCommandApplier: Sendable {
         for meal in meals {
             try await manualMealService.deleteMeal(mealID: meal.id)
         }
+        return MealDiaryOpEcho.deleted(count: meals.count, day: helmDay, bucket: bucket)
     }
 
     private func resolvedBucket(_ raw: String?) -> MealBucket {
